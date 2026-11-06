@@ -28,8 +28,13 @@ try{
  await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports','share-chart-history'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
  const program=`
 import assert from 'node:assert/strict';
-import {createHash} from 'node:crypto';import {gzipSync} from 'node:zlib';
+import {createHash} from 'node:crypto';import {gzipSync} from 'node:zlib';import {readFile} from 'node:fs/promises';
 const {profileFixture}=await import('./tests/fixtures/public-profile.js');
+const hasExploreRows=html=>/<[a-z][^>]*\\bclass="[^"]*\\basset-row\\b/i.test(html);
+const noExploreCatalog=(html,label)=>{assert.ok(!hasExploreRows(html),label+' must replace Explore rows.');assert.ok(!html.includes('id="public-market-seed"'),label+' must not carry the Explore seed.');assert.ok(!html.includes('bank.public-market.document.v1'),label+' must not carry the Explore catalog packet.');};
+const exploreTemplate=await readFile('dist/explore/index.html','utf8');
+assert.ok(hasExploreRows(exploreTemplate),'Preview smoke must use actual compiled Explore rows.');
+assert.ok(exploreTemplate.includes('id="public-market-seed"'),'Preview smoke must use the actual seeded Explore template.');
 let calls=0,certificateCalls=0,materialCalls=0,profileStatus=200;
 const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:0,revision:'plain-node-display'},publicOriginals:[]}};
 const ledgerHeads={actions:{count:'0',lastSeq:'0'},wallet:{count:'0',lastKaiUpulse:null}},heldMaterial=JSON.stringify({publicDisplayPolicy:'bank.public-market.curated-display.v3',membership,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'unchanged-display-packet-not-decoded',heads:ledgerHeads}}),materialGeneration=createHash('sha256').update(heldMaterial).digest('hex');
@@ -63,22 +68,30 @@ const response=await profile.fetch(new Request('https://bankeiz.com/api/profile?
 assert.equal(response.status,200);const html=await response.text();
 assert.ok(html.trimEnd().endsWith('</html>'),'Browser receives a complete static document without Source settlement.');
 assert.ok(html.includes('id="public-explore-root"'));assert.ok(html.includes('id="receiz-navigation"'));
+assert.ok(html.includes('<main class="public-entry-placeholder">'),'Browser profile entry must show its own placeholder.');assert.ok(html.includes('<h1>Profile</h1>'));assert.ok(html.includes('@alexmorgan'));noExploreCatalog(html,'Browser profile entry');
 assert.ok(html.includes('href="https://bankeiz.com/alexmorgan/"'));
 assert.ok(!html.includes('id="public-profile-seed"'));assert.ok(!html.includes('id="public-profile-error"'));
 assert.ok(!html.includes('private@example.com'));assert.equal(calls,0,'Browser entry must not request a profile or start server rendering.');
 const crawler=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{headers:{accept:'text/html','user-agent':'Twitterbot'}}));
 assert.equal(crawler.status,200);const crawlerHtml=await crawler.text();
-assert.ok(crawlerHtml.includes('Alex Morgan | Bankeiz'));assert.ok(crawlerHtml.includes('id="public-profile-seed"'));assert.ok(crawlerHtml.includes('class="profile-hero"'));
+assert.ok(crawlerHtml.includes('Alex Morgan | Bankeiz'));assert.ok(crawlerHtml.includes('id="public-profile-seed"'));assert.ok(crawlerHtml.includes('class="profile-hero"'));noExploreCatalog(crawlerHtml,'Crawler profile entry');
 assert.ok(!crawlerHtml.includes('id="public-profile-error"'));assert.ok(!crawlerHtml.includes('private@example.com'));assert.equal(calls,1);
 for(const status of [403,404]){profileStatus=status;const refusal=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{headers:{accept:'text/html','user-agent':'Twitterbot'}}));assert.equal(refusal.status,status);const refusalHtml=await refusal.text();assert.ok(refusalHtml.includes(status===403?'PROFILE_PRIVATE':'PROFILE_NOT_FOUND'));assert.ok(!refusalHtml.includes('id="public-profile-seed"'));assert.ok(!refusalHtml.includes('upstream private diagnostic'));}
 profileStatus=200;assert.equal(calls,3);
+const {default:asset}=await import('./api/asset.js'),market=JSON.parse(await readFile('public/receiz-public-market.json','utf8')),assetId=market.transport.publicOriginals[0].id;
+assert.equal(typeof assetId,'string');
+const assetResponse=await asset.fetch(new Request('https://bankeiz.com/api/asset?asset='+encodeURIComponent(assetId),{headers:{accept:'text/html','user-agent':'Browser smoke check'}}));
+assert.equal(assetResponse.status,200);const assetHtml=await assetResponse.text(),assetSeeds=[...assetHtml.matchAll(/<script id="public-asset-seed" type="application\\/json">([\\s\\S]*?)<\\/script>/g)];
+assert.equal(assetSeeds.length,1,'Asset preview carries exactly its own selected asset seed.');const selectedAsset=JSON.parse(assetSeeds[0][1]);assert.equal(selectedAsset.id,assetId);
+const escape=value=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+assert.ok(assetHtml.includes('<h1>'+escape(selectedAsset.title)+'</h1>'),'Asset preview renders its selected title.');assert.ok(assetHtml.includes('aria-label="Asset navigation"'));assert.ok(!assetHtml.includes('id="public-profile-seed"'));noExploreCatalog(assetHtml,'Asset preview');assert.equal(calls,3,'A shipped asset preview must not request a profile or catalog.');
 const {default:bank}=await import('./api/index.js');
 const certificateResponse=await bank.fetch(new Request('https://bankeiz.com/api/bank/native/api/market/share-certificates/share_deployed_certificate_test'));
 assert.equal(certificateResponse.status,200);const certificate=await certificateResponse.json();
 assert.equal(certificate.state.item.livePulseSeed?.kind,'sigil','The deployed public certificate reader reuses its shipped Original pricing source.');
 assert.equal(certificate.state.note.remainingShareQuantityMicro,'2500000');assert.equal(certificateCalls,1);assert.equal(calls,3);
 console.log('PASS deployed certificate source with one public read and no quote/session work.');
-console.log('PASS plain Node API imports, profile HEAD, closed browser static entry with zero Source reads, and exact crawler SSR/status refusals; no identity or financial operations.');`;
+console.log('PASS plain Node API imports, actual compiled seeded-template profile/asset previews, profile HEAD, zero-read browser entry and exact crawler SSR/status refusals; no identity or financial operations.');`;
 
  const result=spawnSync(process.execPath,['--input-type=module','-e',program],{cwd:stage,encoding:'utf8',timeout:30000});process.stdout.write(result.stdout??'');process.stderr.write(result.stderr??'');if(result.error)throw result.error;process.exitCode=result.status??1;
 }finally{await rm(stage,{recursive:true,force:true});}

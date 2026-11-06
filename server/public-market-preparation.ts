@@ -1,9 +1,14 @@
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import {mergePublicQuotes,parsePublicMarket} from '../src/receiz/public-market.js';
+import {mergePublicQuotes,parsePublicMarket,retainPublicArtwork,retainPublicProfileHeaders,validatePublicQuotes} from '../src/receiz/public-market.js';
+import {retainPublicMomentManifest} from '../src/receiz/public-asset-manifest.js';
 import {compatibleShareInventory} from '../src/receiz/market-share-inventory.js';
 import {mergePublicSports,retainPublicSportsInput} from '../src/receiz/public-sports.js';
 import {curatePublicMarketMembership,readReceizPublicMarketSource} from './public-market.js';
+import {buildMarketHistory} from '../src/receiz/market-projection/build-history.js';
+import {parseMarketHistory} from '../src/receiz/market-projection/history.js';
+import {packMarketHistory} from '../src/receiz/market-projection/history-wire.js';
+import {parseMarketCapSource} from '../src/receiz/market-projection/source.js';
 
 export type PublicMarketOperand='membership'|'quotes'|'sports'|'capitalization';
 const MAX=32*1024*1024;
@@ -74,4 +79,45 @@ export async function preparePublicMarketRenderMaterial(input:PublicMarketMateri
  const quotes=publicMarketSeedQuotes(snapshot,new Set(catalog.items.map(item=>item.id)));
  const history=input.history??previous?.history;
  return materialResult({membership,snapshot:quotes,sports,capitalization,...(history?{history}:{}),...(preparedLedger?ledgerPacketFields(preparedLedger):input.ledgerCacheGzipB64u?{ledgerCacheGzipB64u:input.ledgerCacheGzipB64u}:{})},input.prepareMarket);
+}
+
+/** Membership/quote display refresh over the held seed. Existing projection
+ * guards retain compatible observations, artwork and receipt bases; nothing
+ * here opens an Original or creates financial authority. */
+type SeedQuote=Record<string,unknown>&{itemId:string};
+type SeedTransport={publicOriginals:Array<{id:string;profileOriginal:Record<string,unknown>}>;publicProfileHeads?:Array<{profile:Record<string,unknown>}>};
+export function buildMembershipOnlyPublicMarketSeed({membership:input,snapshot,previous}:{membership:Record<string,unknown>;snapshot:unknown;previous?:Record<string,unknown>}){
+ validatePublicQuotes(snapshot);
+ const offered=new Set(((input.transport as SeedTransport)?.publicProfileHeads??[]).map(head=>head?.profile?.userId+':'+head?.profile?.username));
+ const membership=curatePublicMarketMembership({...input}),current=parsePublicMarket(membership),prior=previous?parsePublicMarket(previous,previous.snapshot):null;
+ if(!current.complete||prior&&!prior.complete)throw new Error('The public source did not return its complete collection; seed not replaced.');
+ const known=new Map(prior?.items.map(item=>[item.id,item])??[]),items=new Map(current.items.map(item=>[item.id,item]));
+ const carried={...current,items:current.items.map(item=>({...item,shareInventory:compatibleShareInventory(item,known.get(item.id)?.shareInventory)}))};
+ const quotes=new Map<string,SeedQuote>();
+ for(const quote of (previous?.snapshot as {data?:{liveMarkets?:SeedQuote[]}})?.data?.liveMarkets??[]){const item=items.get(quote.itemId),old=known.get(quote.itemId);if(item&&old?.assetId===item.assetId&&quote.visibility==='public')quotes.set(quote.itemId,quote);}
+ for(const quote of (snapshot as {data:{liveMarkets:SeedQuote[]}}).data.liveMarkets){if(!items.has(quote.itemId))continue;if(quote.visibility!=='public'){quotes.delete(quote.itemId);continue;}quotes.set(quote.itemId,{...quotes.get(quote.itemId),...quote});}
+ const combined={ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[...quotes.values()]}},selected=mergePublicQuotes(carried,combined),selectedItems=new Map(selected.items.map(item=>[item.id,item]));
+ // Serialize the inventory selected by the existing compatibility/history
+ // guards, never the thinner raw observation that arrived beside it.
+ const completeQuotes={...combined,data:{...combined.data,liveMarkets:combined.data.liveMarkets.map(row=>{const quote={...row};delete quote.shareInventory;const inventory=selectedItems.get(row.itemId)?.shareInventory;if(inventory)quote.shareInventory=inventory;return quote;})}};
+ const rows=new Map((membership.transport as SeedTransport).publicOriginals.map(row=>[row.id,row]));
+ for(const item of current.items){const previousItem=known.get(item.id),retained=retainPublicMomentManifest(retainPublicArtwork(item,previousItem),previousItem),profile=rows.get(item.id)!.profileOriginal;if(retained.artworkUrl!==item.artworkUrl)profile.artworkUrl=retained.artworkUrl;if(retained.proofManifestSource?.recordCardMediaSha256Hex!==item.proofManifestSource?.recordCardMediaSha256Hex)profile.recordCardMediaSha256Hex=retained.proofManifestSource!.recordCardMediaSha256Hex;}
+ // An offered but refused/ambiguous header is distinct from absent metadata.
+ const eligiblePrior=prior?{...prior,publicProfileHeads:prior.publicProfileHeads?.filter(head=>!offered.has(head.profile.userId+':'+head.profile.username))}:null,headers=retainPublicProfileHeaders(current,eligiblePrior).publicProfileHeads;
+ return {...membership,transport:{...(membership.transport as SeedTransport),...(headers?{publicProfileHeads:headers}:{})},snapshot:publicMarketSeedQuotes(completeQuotes,new Set(items.keys())) as {data:{liveMarkets:SeedQuote[]}}};
+}
+
+/** Advance the two saved display histories at the same seed transition. The
+ * existing operator must prove reuse of each held prefix; this mode never
+ * substitutes a full history rebuild when those operands do not match. */
+export async function buildMembershipOnlyPublicMarketState(input:{membership:Record<string,unknown>;snapshot:unknown;previous:Record<string,unknown>;sports?:unknown;capitalization:unknown;history:unknown;shareHistory:unknown}){
+ const previousHistory=parseMarketHistory(input.history),previousShares=parseMarketHistory(input.shareHistory),capitalization=parseMarketCapSource(input.capitalization);
+ const source=buildMembershipOnlyPublicMarketSeed(input),base=parsePublicMarket(source,source.snapshot),priorBase=parsePublicMarket(input.previous,input.previous.snapshot),catalog=input.sports?mergePublicSports(base,input.sports):base,prior=input.sports?mergePublicSports(priorBase,input.sports):priorBase;
+ // The carried model births and exact inventory checkpoints bound this
+ // transition. Preparing a build seed does not need a fresh clock or Source.
+ const pulse=catalog.items.reduce((latest,item)=>Math.max(latest,item.livePulseSeed?.claimPulse??0,item.shareInventory?Number((BigInt(item.shareInventory.observedAtKaiUPulse)+999999n)/1000000n):0),Math.max(capitalization.serverPulse,previousHistory.summary.serverPulse,previousShares.summary.serverPulse));
+ const history=await buildMarketHistory(capitalization,previousHistory,undefined,undefined,{catalog,pulse,priorInput:{source:capitalization,catalog:prior},requireRetained:true});
+ const shareHistory=await buildMarketHistory(capitalization,previousShares,undefined,undefined,{catalog,pulse,capitalization:true,priorInput:{source:capitalization,catalog:prior},requireRetained:true});
+ if(!history||!shareHistory)throw Error('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ return{source,history:packMarketHistory(history),shareHistory:packMarketHistory(shareHistory)};
 }

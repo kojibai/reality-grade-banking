@@ -2,7 +2,7 @@ import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { gzipSync } from 'node:zlib';
+import { gzipSync,gunzipSync } from 'node:zlib';
 import {createHash} from 'node:crypto';
 import { phoneLaunchTargets } from './build-launch-images.mjs';
 import {publicPages,publicOrigin,escapeMetadata} from './public-page-metadata.mjs';
@@ -51,6 +51,42 @@ const sharedExampleBank=html.match(sharedExamplePattern);
 assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
 const navigation = structuredClone(carriedNavigation);
 for(const page of [...Object.values(navigation.pages),navigation.bank,navigation.bank.css??{}])for(const field of Object.keys(page).filter(key=>key!=='styles'))if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
+// Direct cold Explorer documents use the held complete build family. Keep the
+// ordinary navigation/Bank entry compact and independent of that public seed.
+assert.ok(!/<script\b[^>]*\bid="(?:public-market-seed|bank-public-market-(?:seed|hint))"/.test(html),'Static Bank entry never carries or waits for an Explorer document seed.');
+assert.ok(Object.values(navigation.pages).every(page=>!/<script\b[^>]*\bid="public-market-seed"/.test(page.content)),'Ordinary navigation never duplicates the complete Explorer seed.');
+const membershipInput=JSON.parse(await readFile('public/receiz-public-market.json','utf8')),capInput=JSON.parse(await readFile('public/receiz-public-capitalization.json','utf8')),historyInput=JSON.parse(await readFile('public/receiz-public-share-chart-history.json','utf8'));
+const categoryMatches={music:item=>item.mediaKind==='audio',images:item=>item.mediaKind==='image',videos:item=>item.mediaKind==='video',books:item=>item.mediaKind==='epub',essays:item=>item.hasLongForm===true&&item.mediaKind!=='epub',moments:item=>item.mediaKind==='moment'&&!item.hasLongForm,collectibles:item=>item.category==='sports',documents:item=>item.mediaKind==='pdf'||item.mediaKind==='file'};
+let staticFamily,staticCatalog;
+for(const [path,page]of Object.entries(navigation.pages).filter(([,page])=>page.runtime==='explore')){
+ const document=await readFile(`dist${path}index.html`,'utf8'),match=document.match(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>\s*<script id="receiz-navigation"/);
+ assert.ok(Buffer.byteLength(document)<=32*1024*1024,`Cold ${path} stays within the existing public document capacity.`);
+ assert.ok(match,`Cold ${path} carries one existing seed immediately before navigation for exact hydration.`);
+ assert.equal((document.match(/id="public-market-seed"/g)??[]).length,1,`Cold ${path} carries the full family once.`);
+ const seed=JSON.parse(match[1]);
+ if(seed.catalogGzip){assert.equal(seed.catalog,undefined);assert.ok(seed.catalogGzip.bytes<=32*1024*1024);const compressed=Buffer.from(seed.catalogGzip.gzipB64u,'base64url');assert.ok(compressed.length<=8*1024*1024);const bytes=gunzipSync(compressed,{maxOutputLength:32*1024*1024});assert.equal(bytes.length,seed.catalogGzip.bytes);seed.catalog=JSON.parse(bytes.toString('utf8'));}
+ const catalog=seed.catalog,ids=new Map(catalog.items.map(item=>[item.id,item]));
+ assert.equal(seed.schema,'bank.public-market.document.v1');assert.equal(seed.path,path.slice(1,-1));assert.equal(catalog.complete,true);assert.equal(ids.size,catalog.items.length);assert.ok(catalog.items.every(item=>item.authority==='projection-only'&&item.canTrade===false));
+ assert.equal(seed.visibleCount,Math.min(50,catalog.items.length));assert.deepEqual(seed.capitalization,capInput.marketCapProjection);assert.equal(seed.history.summary.serverPulse,historyInput.summary.serverPulse);
+ for(const row of membershipInput.transport.publicOriginals)assert.equal(ids.get(row.id)?.assetId,row.receizId,`Cold ${path} retains every selected Original beyond the viewport.`);
+ const family=JSON.stringify(catalog);if(staticFamily===undefined){staticFamily=family;staticCatalog=catalog;}else assert.equal(family,staticFamily,'Category documents retain the same underlying complete family.');
+ const opening=document.slice(document.indexOf('id="public-explore-root"'),match.index),category=path.split('/')[2],items=category?catalog.items.filter(categoryMatches[category]):catalog.items;
+ assert.ok(!opening.includes('public-entry-placeholder'),`Cold ${path} paints the existing interface before JavaScript.`);
+ assert.equal((opening.match(/class="asset-row"/g)??[]).length,path==='/market-cap/'?0:Math.min(50,items.length),`Cold ${path} paints only its first viewport of held rows.`);
+ assert.equal(page.preparedRevision,undefined,'Ordinary navigation keeps its existing entry contract without freshness coordinates.');
+}
+console.log('Verified cold Explorer/category rows, one complete display seed per document, and unchanged ordinary navigation/Bank seed boundaries.');
+// Publication preparation consumes these exact compiled templates too. A new
+// static seed must be replaced, not retained beside the accepted successor.
+const {renderPublicMarketDocument}=await import(new URL('../server/profile-runtime/public-market-document.mjs',import.meta.url).href);
+const {snapshot:publicationSnapshot,...publicationMembership}=membershipInput,publicationMaterial=JSON.stringify({membership:publicationMembership,snapshot:publicationSnapshot,sports:JSON.parse(await readFile('public/receiz-public-sports.json','utf8')),capitalization:capInput,history:historyInput,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:Math.max(historyInput.summary.serverPulse,capInput.marketCapProjection.serverPulse)}}),publicationGeneration=createHash('sha256').update(publicationMaterial).digest('hex');
+for(const path of ['/explore/','/explore/images/']){
+ const template=await readFile(`dist${path}index.html`,'utf8'),output=await renderPublicMarketDocument({material:publicationMaterial,generation:publicationGeneration,template,path:path.slice(1,-1)}),scripts=[...output.matchAll(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>/g)];
+ assert.equal(scripts.length,1,`Prepared ${path} replaces the static seed exactly once.`);const seed=JSON.parse(scripts[0][1]);
+ assert.equal(seed.generation,publicationGeneration);assert.equal(seed.path,path.slice(1,-1));assert.equal(seed.catalogGzip,undefined,'Accepted publication retains its existing raw seed contract.');assert.equal(JSON.stringify(seed.catalog),staticFamily,'Publication preserves the entire selected public family.');
+ assert.ok(Buffer.byteLength(output)<=32*1024*1024,`Prepared ${path} retains the existing delivery capacity.`);assert.ok(output.includes(`src="${navigation.pages[path].entry}"`),'Publication preserves the exact compiled runtime facade.');
+}
+console.log('Verified accepted publication rendering from actual compiled Explorer/category templates with one full seed inside the existing delivery capacity.');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
@@ -195,7 +231,15 @@ const carriedDiscover=feedNavigation.pages['/discover/'];
 assert.deepEqual({...carriedDiscover,head:expandFeedPart(carriedDiscover.head),content:expandFeedPart(carriedDiscover.content)},{...navigation.pages['/discover/'],content:''},'Feed retains exact static Discover metadata and its original cached JSON fallback without duplicating the body.');
 assert.ok(navigation.pages['/discover/'].content.includes('id="public-discovery-seed"'),'The global restored Discover descriptor retains its matching static seed.');
 assert.ok(feedNavigation.reserved?.includes('learn')&&feedNavigation.reserved?.includes('ledger'),'The shipped lean navigation carries the existing reserved route projection.');
-assert.ok(feedDocument.length<600000,'The dedicated feed document stays under 600 kB uncompressed.');
+// Complete authored text is carried data, not interface overhead. Keep the
+// original interface budgets without cutting text or making readers fetch it.
+const staticItems=new Map(staticCatalog.items.map(item=>[item.id,item]));
+function carriedTextSize(document,id,count){
+ const match=document.match(new RegExp('<script id="'+id+'" type="application/json">([\\s\\S]*?)<\\/script>'));
+ assert.ok(match);const items=JSON.parse(match[1]);assert.equal(items.length,count,'The existing first-paint item count is preserved.');
+ return items.reduce((size,item)=>{assert.deepEqual(item.carriedText,staticItems.get(item.id)?.carriedText,'First-paint text is the complete selected Original text.');return size+(item.carriedText?JSON.stringify(item.carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026').length:0);},0);
+}
+assert.ok(feedDocument.length-carriedTextSize(feedDocument,'public-feed-seed',8)<600000,'The dedicated feed interface and non-text payload stay under 600 kB uncompressed.');
 const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
 await checkFeedEntry('feed/index.html');
@@ -207,4 +251,4 @@ assert.ok(discoveryOpening.includes('data-public-runtime="discover"')&&discovery
 assert.ok(discoveryOpening.includes('<style data-public-page-style="discover">')&&!/<link rel="stylesheet"/.test(discoveryOpening),'Discovery does not wait for a stylesheet.');
 assert.ok(/<script type="module" async[^>]*src="\/assets\/discover-/.test(discoveryDocument),'Discovery hydrates before unrelated document payload.');
 assert.ok(!discoveryOpening.includes('site-footer')&&!discoveryOpening.includes('account-opening-screen'),'Discovery starts with works, without footer or account work.');
-assert.ok(discoveryDocument.length<700000,'Discovery document remains below 700 kB uncompressed.');
+assert.ok(discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)<700000,'Discovery interface and non-text payload remain below 700 kB uncompressed.');

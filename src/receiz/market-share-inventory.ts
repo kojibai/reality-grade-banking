@@ -100,7 +100,10 @@ export function mergeShareInventory(previous:PublicShareInventory|undefined,next
  if(!previous||previous.assetId!==next.assetId||previous.marketItemId!==next.marketItemId||previous.family!==next.family||previous.nativeAssetId!==next.nativeAssetId||previous.issuanceSourceSha256!==next.issuanceSourceSha256)return next;
  if(BigInt(next.observedAtKaiUPulse)<BigInt(previous.observedAtKaiUPulse))return previous;
  if(next.observedAtKaiUPulse===previous.observedAtKaiUPulse&&next.outstandingShareQuantityMicro!==previous.outstandingShareQuantityMicro)return previous;
- if(!next.releaseCapitalization&&previous.releaseCapitalization)next=Object.freeze({...next,releaseCapitalization:previous.releaseCapitalization});
+ const heldRelease=previous.releaseCapitalization,offeredRelease=next.releaseCapitalization;
+ // A release checkpoint is a carried historical observation, not today's
+ // remaining capacity. Retain it only under the same binding and valuation.
+ if(heldRelease&&(!offeredRelease||heldRelease.kaiUPulse===offeredRelease.kaiUPulse&&heldRelease.modelVersion===offeredRelease.modelVersion&&heldRelease.unitPriceUsdCents===offeredRelease.unitPriceUsdCents&&heldRelease.outstandingShareQuantityMicro===offeredRelease.outstandingShareQuantityMicro))next=Object.freeze({...next,releaseCapitalization:heldRelease});
  const capPoints=new Map<string,NonNullable<PublicShareInventory['capitalizationHistory']>[number]>();
  for(const inventory of [previous,next])for(const point of inventory.capitalizationHistory??[]){
   const held=capPoints.get(point.kaiUPulse);

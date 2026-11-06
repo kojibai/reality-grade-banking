@@ -93,3 +93,84 @@ it('accepts first genuine quantities for an already listed modeled Original as a
  let samples=0;const next=(await buildMarketHistory(source,previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,capitalization:true,priorInput:{source,catalog:pending}}))!;
  expect(next.membershipSha256).toBe(previous.membershipSha256);expect(next.summary.shareCapitalization?.covered).toBe(2);expect(next.summary.serverPulse).toBe(pulse+1);expect(samples).toBeLessThan(20);
 });
+
+it('adds late-born unit Originals without replaying held samples and retains zero-delta point identities',async()=>{
+ const {source,before,after}=fixture(),previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;
+ after.items[1]={...after.items[1],pulse:String(pulse+1),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse+1},shareInventory:undefined};
+ const saved=JSON.stringify(previous),birth=Number(after.items[1].pulse),zero=previous.series.ALL.find(point=>point.pulse<birth)!;
+ let samples=0;
+ const next=(await buildMarketHistory(source,previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before},requireRetained:true} as Parameters<typeof buildMarketHistory>[4]))!;
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog:after,pulse:pulse+1}))!;
+ expect(samples).toBeLessThan(20);
+ expect(next.series.ALL.find(point=>point.pulse===zero.pulse)).toBe(zero);
+ expect(next.summary).toEqual(full.summary);
+ const model=currentMarketDisplayModel(source,after,pulse+1),{marketAssetUsdAtPulse}=await import('../src/receiz/market-projection/project'),added=model.valueRows.find(row=>row.marketItem?.id===after.items[1].id)!;
+ const old=new Map(Object.values(previous.series).flat().map(point=>[point.pulse,point]));
+ for(const points of Object.values(next.series))for(const point of points){const held=old.get(point.pulse);if(held){const delta=point.pulse<birth?0:Math.round(marketAssetUsdAtPulse(added,point.pulse)*100);expect(point.usdCents).toBe(String(BigInt(held.usdCents)+BigInt(delta)));if(!delta)expect(point).toBe(held);}}
+ expect(JSON.stringify(previous)).toBe(saved);expect(parseMarketHistory(next)).toBe(next);
+});
+
+it.each(['before','at'] as const)('refuses unit additions born %s the retained head and preserves canonical fallback with sub-cent Sports',async birth=>{
+ const {source,before,after}=fixture(),{parseMarketCapSource}=await import('../src/receiz/market-projection/source'),{marketPulseTime}=await import('../src/receiz/market-projection/project');
+ source.valueRows.push({id:'sports-test',source:'sports-economy-card',seed:'sports-test',baseUsdValue:0.005,birthUsdValue:0.005,marketUsdValue:0.005,proofTotalValueUsd:0.005,scoreDelta:0,sealedCopies:[{collectibleId:'rsc_aaaaaaaaaaaaaaaa',claimHash:'a'.repeat(64),sealedAt:new Date(marketPulseTime(source.firstIssuancePulse)).toISOString(),birthUsdValue:0.005,proofValueUsd:0.005,currentValueUsd:0.005}]});
+ source.sportsCardsPriced=1;source.cardsInCirculation=1;expect(parseMarketCapSource({ok:true,marketCapProjection:source})).toBe(source);
+ after.items[1]={...after.items[1],shareInventory:undefined,...(birth==='at'?{pulse:String(pulse),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse}}:{})};
+ const previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;let retainedSamples=0;
+ await expect(buildMarketHistory(source,previous,undefined,async()=>{retainedSamples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before},requireRetained:true})).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ expect(retainedSamples).toBe(0);
+ let rebuiltSamples=0;
+ const rebuilt=(await buildMarketHistory(source,previous,undefined,async()=>{rebuiltSamples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before}}))!;
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog:after,pulse:pulse+1}))!;
+ expect(rebuilt).toEqual(full);expect(rebuiltSamples).toBeGreaterThan(20);
+});
+
+it.each(['model','binding','context','basis'] as const)('refuses required unit-prefix retention before sampling after a prior %s change',async change=>{
+ const {source,before,after}=fixture(),previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;
+ after.items[1]={...after.items[1],pulse:String(pulse+1),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse+1},shareInventory:undefined};
+ let nextSource=source;
+ if(change==='model')after.items[0]={...after.items[0],livePulseSeed:{...after.items[0].livePulseSeed!,creatorVerified:!after.items[0].livePulseSeed!.creatorVerified}};
+ if(change==='binding')after.items[0]={...after.items[0],originalDigest:'f'.repeat(64)};
+ if(change==='context')nextSource={...source,sourceEvaluation:{pulse:source.serverPulse,usdValue:source.currentUsd,sourceHash:'f'.repeat(64)}};
+ let samples=0;
+ await expect(buildMarketHistory(nextSource,change==='basis'?{...previous,basisSha256:'f'.repeat(64)}:previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before},requireRetained:true} as Parameters<typeof buildMarketHistory>[4])).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ expect(samples).toBe(0);
+});
+
+it.each([false,true])('requires an existing reusable history before sampling when retention is requested (shares=%s)',async capitalization=>{
+ const {source,before,after}=fixture();let samples=0;
+ await expect(buildMarketHistory(source,null,undefined,async()=>{samples++;},{catalog:after,pulse,capitalization,priorInput:{source,catalog:before},requireRetained:true} as Parameters<typeof buildMarketHistory>[4])).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ expect(samples).toBe(0);
+});
+
+it('refuses required share-prefix retention when an old release changes without weakening ordinary fallback',async()=>{
+ const {source,before,after}=fixture(),previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse,capitalization:true}))!;
+ after.items[0]={...after.items[0],shareInventory:{...after.items[0].shareInventory!,releaseCapitalization:{...after.items[0].shareInventory!.releaseCapitalization!,availableShareQuantityMicro:'9000000'}}};
+ let samples=0;
+ await expect(buildMarketHistory(source,previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,capitalization:true,priorInput:{source,catalog:before},requireRetained:true} as Parameters<typeof buildMarketHistory>[4])).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ expect(samples).toBe(0);
+});
+
+
+it('refuses required unit-prefix retention after an existing Sports row changes',async()=>{
+ const sports=(await import('../public/receiz-public-sports.json')).default,{mergePublicSports}=await import('../src/receiz/public-sports');
+ const {source,before:originals,after:added}=fixture(),input={...sports,cards:sports.cards.slice(0,1)},before=mergePublicSports(originals,input),after=mergePublicSports(added,input);
+ after.items[1]={...after.items[1],pulse:String(pulse+1),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse+1},shareInventory:undefined};
+ const previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;
+ after.items=after.items.map(item=>item.sportsValuation?{...item,sportsValuation:{...item.sportsValuation,marketUsdValue:item.sportsValuation.marketUsdValue+1}}:item);
+ let samples=0;
+ await expect(buildMarketHistory(source,previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before},requireRetained:true})).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ expect(samples).toBe(0);
+});
+
+it('retains an unchanged unit basis when required and preserves the ordinary rebuild fallback for changed models',async()=>{
+ const {source,before,after}=fixture(),previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;
+ after.items[1]={...after.items[1],pulse:String(pulse+1),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse+1},shareInventory:undefined};
+ let retainedSamples=0;
+ const retained=(await buildMarketHistory(source,previous,undefined,async()=>{retainedSamples++;},{catalog:before,pulse:pulse+1,requireRetained:true}))!;
+ expect(retained.summary.serverPulse).toBe(pulse+1);expect(retainedSamples).toBeLessThan(20);
+ after.items[0]={...after.items[0],livePulseSeed:{...after.items[0].livePulseSeed!,creatorVerified:!after.items[0].livePulseSeed!.creatorVerified}};
+ let rebuiltSamples=0;
+ const rebuilt=(await buildMarketHistory(source,previous,undefined,async()=>{rebuiltSamples++;},{catalog:after,pulse:pulse+1,priorInput:{source,catalog:before}}))!;
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog:after,pulse:pulse+1}))!;
+ expect(rebuilt).toEqual(full);expect(rebuiltSamples).toBeGreaterThan(20);
+});

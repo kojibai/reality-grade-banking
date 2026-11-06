@@ -22,10 +22,8 @@ function inventoryPrefix(inventory:PublicShareInventory,last:number){
  return {family:inventory.family,quantityScope:inventory.quantityScope,nativeAssetId:inventory.nativeAssetId,issuanceSourceSha256:inventory.issuanceSourceSha256,intervals,anchors:[...anchors].map(([at,price])=>[String(at),price])};
 }
 const identity=(item:PublicMarketPricingItem)=>item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;
-/** A new public Original can add to exact completed samples. Every former
- * membership, pricing model and share prefix must still be present. This is a
- * display optimization; no input, quantity, coverage or law is manufactured. */
-export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog,last:number):PublicMarketPricingCatalog|null{
+/** Shared membership, binding and prior-row checks for Original additions. */
+function originalAdditionInputs(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog){
  if(!before.complete||!catalog.complete||source.firstIssuancePulse!==beforeSource.firstIssuancePulse)return null;
  // Global shares rebuild the sports-only residual from these same rows; the
  // full-universe residual/sourceEvaluation is deliberately cleared there.
@@ -33,9 +31,32 @@ export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,sour
  if(!same(context(beforeSource),context(source)))return null;
  const rows=new Map(source.valueRows.map(row=>[row.id,row]));if(rows.size!==source.valueRows.length)return null;
  for(const row of beforeSource.valueRows)if(!same(row,rows.get(row.id)))return null;
- const priorRows=new Set(beforeSource.valueRows.map(row=>row.id));if(source.valueRows.some(row=>!priorRows.has(row.id)&&row.source!=='market-desk-live-asset'))return null;
+ const priorRows=new Set(beforeSource.valueRows.map(row=>row.id)),addedRows=source.valueRows.filter(row=>!priorRows.has(row.id));
+ if(addedRows.some(row=>row.source!=='market-desk-live-asset'))return null;
  const membership=new Map(catalog.items.map(item=>[item.id,item])),priorMembership=new Map(before.items.map(item=>[item.id,item]));
+ if(membership.size!==catalog.items.length||priorMembership.size!==before.items.length)return null;
  for(const item of before.items){const next=membership.get(item.id);if(!next||next.assetId!==item.assetId||next.category!==item.category||next.originalDigest!==item.originalDigest||next.pulse!==item.pulse)return null;}
+ return {membership,priorMembership,addedRows};
+}
+/** Only later births can retain rounded unit-value samples exactly: rounding
+ * a retroactive contribution separately can differ from the canonical sum. */
+export function marketHistoryOriginalUnitAdditions(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog):MarketCapSource['valueRows']|null{
+ const inputs=originalAdditionInputs(beforeSource,source,before,catalog);if(!inputs)return null;
+ if(!same([beforeSource.undatedHistory,beforeSource.sourceEvaluation],[source.undatedHistory,source.sourceEvaluation]))return null;
+ for(const item of before.items){const next=inputs.membership.get(item.id)!;
+  if(item.category==='sports'?!same(item,next):!same(publicAssetPulseSeed(item,beforeSource),publicAssetPulseSeed(next,source)))return null;
+ }
+ for(const row of inputs.addedRows){const item=inputs.membership.get(row.marketItem?.id??'');
+  if(!item||item.category!=='proof'||item.assetId!==row.seed||!row.marketItem?.livePulseSeed||row.marketItem.livePulseSeed.claimPulse<=beforeSource.serverPulse||!same(publicAssetPulseSeed(item,source),row.marketItem.livePulseSeed))return null;
+ }
+ return inputs.addedRows;
+}
+/** A new public Original can add to exact completed samples. Every former
+ * membership, pricing model and share prefix must still be present. This is a
+ * display optimization; no input, quantity, coverage or law is manufactured. */
+export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog,last:number):PublicMarketPricingCatalog|null{
+ const inputs=originalAdditionInputs(beforeSource,source,before,catalog);if(!inputs)return null;
+ const {membership,priorMembership}=inputs;
  const previous=publicCapitalizationAssets(publicCatalogAtPulse(before,beforeSource,last)).items,next=publicCapitalizationAssets(publicCatalogAtPulse(catalog,source,source.serverPulse)).items,selected=new Map(next.map(item=>[identity(item),item]));
  for(const item of previous){const current=selected.get(identity(item));if(!current)return null;
   if(item.category==='sports'){if(!same(priorMembership.get(item.id),membership.get(current.id)))return null;continue;}

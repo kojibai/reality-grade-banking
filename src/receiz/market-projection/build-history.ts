@@ -10,7 +10,8 @@ import {sameSportsPricingOperands}from'./sports-observations';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
 import {prepareGlobalShareCapitalization,globalMarketCapitalizationInputs} from './global-share-capitalization';
 import type {GlobalMarketCalculation} from './calculation';
-import {marketHistoryOriginalAdditions} from './history-additions';
+import {marketHistoryOriginalAdditions,marketHistoryOriginalUnitAdditions} from './history-additions';
+import {marketRowsUsdAtPulse} from './project';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
  for(const birth of source.unpricedSealedBirths??[])add(marketPulseAtOrAfterTime(birth.sealedAt),birth.birthUsdValue);
@@ -34,7 +35,7 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
  return {ranked:[...events].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).map(([pulse])=>pulse),observed:[...observed].sort((a,b)=>a-b)};
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
-export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketPricingCatalog|null;pulse:number;capitalization?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}}): Promise<MarketHistorySnapshot | null> {
+export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketPricingCatalog|null;pulse:number;capitalization?:boolean;requireRetained?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}}): Promise<MarketHistorySnapshot | null> {
   if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;
@@ -46,15 +47,20 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const publish=(value:MarketHistorySnapshot)=>{if(shares?.calculation)current?.onCalculation?.({...shares.calculation,basisSha256:value.basisSha256,sourceHash:source.proofObjectHash,generatedAt:source.generatedAt});return value;};
   const [basisSha256,membershipSha256] = await Promise.all([marketHistoryBasis(source,shares?.basis),marketHistoryMembership(source)]);
   if (!continuing()) return null;
-  let addedShares:ReturnType<typeof prepareGlobalShareCapitalization>|null=null;
-  if(shares&&previous?.historyPolicy===policy&&(previous.membershipSha256!==membershipSha256||shares.coverage.covered>(previous.summary.shareCapitalization?.covered??0))&&current?.catalog&&current.priorInput&&previous.summary.serverPulse<=source.serverPulse){
-    const prior=current.priorInput,scoped=globalMarketCapitalizationInputs(prior.source,prior.catalog);
+  let addedAt:((pulse:number)=>string)|null=null;
+  if(previous?.historyPolicy===policy&&(previous.membershipSha256!==membershipSha256||!!shares&&shares.coverage.covered>(previous.summary.shareCapitalization?.covered??0))&&current?.catalog&&current.priorInput&&previous.summary.serverPulse<=source.serverPulse){
+    const prior=current.priorInput,scoped=shares?globalMarketCapitalizationInputs(prior.source,prior.catalog):prior;
     const model=currentMarketDisplayModel(scoped.source,scoped.catalog,previous.summary.serverPulse,previous.copyObservations);
-    const priorSource=mergeMarketCopyObservations(model,previous.copyObservations).source,priorShares=prepareGlobalShareCapitalization(priorSource,prior.catalog);
+    const priorSource=mergeMarketCopyObservations(model,previous.copyObservations).source,priorShares=shares?prepareGlobalShareCapitalization(priorSource,prior.catalog):null;
     // Reuse only inputs that reproduce the exact completed publication basis.
-    if(await marketHistoryBasis(priorSource,priorShares.basis)===previous.basisSha256){
-      const added=marketHistoryOriginalAdditions(priorSource,source,prior.catalog,current.catalog,previous.summary.serverPulse);
-      if(added)addedShares=prepareGlobalShareCapitalization({...source,valueRows:source.valueRows.filter(row=>row.source!=='sports-economy-card'),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined,undatedHistory:undefined},added);
+    if(await marketHistoryBasis(priorSource,priorShares?.basis)===previous.basisSha256){
+      if(shares){
+        const added=marketHistoryOriginalAdditions(priorSource,source,prior.catalog,current.catalog,previous.summary.serverPulse);
+        if(added)addedAt=prepareGlobalShareCapitalization({...source,valueRows:source.valueRows.filter(row=>row.source!=='sports-economy-card'),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined,undatedHistory:undefined},added).at;
+      }else{
+        const rows=marketHistoryOriginalUnitAdditions(priorSource,source,prior.catalog,current.catalog);
+        if(rows)addedAt=pulse=>String(Math.round(marketRowsUsdAtPulse(rows,pulse,true)*100));
+      }
     }
   }
   const sameBasis = previous?.historyPolicy===policy && previous?.basisSha256 === basisSha256 && previous.summary.serverPulse <= source.serverPulse;
@@ -73,28 +79,30 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   if(eventPulses.length>100000)throw Error('Public market event coverage exceeds capacity.');
   const knownEvents=new Set(previous?.eventPulses??[]),knownObservations=new Set(previous?.observationPulses??[]),newObservations=new Set(events.observed.filter(pulse=>!knownObservations.has(pulse)));
   const sameMembership=matchingMembership&&(previous.summary.serverPulse<source.serverPulse||newObservations.size>0);
+  if(current?.requireRetained&&(!previous||!(sameBasis||sameMembership||addedAt)))throw Error('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
   // A dated feed can arrive behind the locally projected head. Keep earlier
   // records, then replay projections from the newly supplied observation.
   const replaceFrom=sameMembership&&!sameBasis&&newObservations.size?Math.min(...newObservations):Infinity;
   // One index for all ranges; avoid repeated flattening and sorting per point.
-  const heldPoints=previous&&(sameMembership&&!sameBasis||!!addedShares)?[...new Map(Object.values(previous.series).flat().map(point=>[point.pulse,point])).values()].sort((a,b)=>a.pulse-b.pulse):[];
+  const heldPoints=previous&&(sameMembership&&!sameBasis||!!addedAt)?[...new Map(Object.values(previous.series).flat().map(point=>[point.pulse,point])).values()].sort((a,b)=>a.pulse-b.pulse):[];
   const heldByPulse=new Map(heldPoints.map(point=>[point.pulse,point]));
   const heldAt=(pulse:number)=>{let lo=0,hi=heldPoints.length;while(lo<hi){const mid=(lo+hi)>>>1;if(heldPoints[mid].pulse<=pulse)lo=mid+1;else hi=mid;}return heldPoints[lo-1];};
   const point = async (pulse: number) => {
     if (!memo.has(pulse)) {
-      const held=!addedShares&&sameMembership&&!sameBasis&&pulse<replaceFrom&&pulse<=previous.summary.serverPulse?heldAt(pulse):undefined;
-      const added=addedShares&&pulse<=previous!.summary.serverPulse?heldByPulse.get(pulse):undefined;
-      memo.set(pulse, { at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:added?(BigInt(added.usdCents)+BigInt(addedShares!.at(pulse))).toString():held?.usdCents??shares?.at(pulse)??String(Math.round(marketCapChartUsdAtPulse(source, pulse,context) * 100)) });
+      const held=!addedAt&&sameMembership&&!sameBasis&&pulse<replaceFrom&&pulse<=previous.summary.serverPulse?heldAt(pulse):undefined;
+      const added=addedAt&&pulse<=previous!.summary.serverPulse?heldByPulse.get(pulse):undefined;
+      const delta=added?BigInt(addedAt!(pulse)):0n;
+      memo.set(pulse,added&&delta===0n?added:{ at: new Date(marketPulseTime(pulse)).toISOString(), pulse, usdCents:added?(BigInt(added.usdCents)+delta).toString():held?.usdCents??shares?.at(pulse)??String(Math.round(marketCapChartUsdAtPulse(source, pulse,context) * 100)) });
       if(!added)await yieldSample();
     }
     return memo.get(pulse)!;
   };
   for (const period of CHART_PERIODS) {
     const pulses = marketPeriodPulses(source, period);
-    if (previous&&(sameBasis||sameMembership||addedShares)) {
-      const additions=events.ranked.filter(pulse=>(pulse>previous.summary.serverPulse||newObservations.has(pulse)||!!addedShares&&!knownEvents.has(pulse))&&pulse>pulses[0]&&pulse<source.serverPulse);
+    if (previous&&(sameBasis||sameMembership||addedAt)) {
+      const additions=events.ranked.filter(pulse=>(pulse>previous.summary.serverPulse||newObservations.has(pulse)||!!addedAt&&!knownEvents.has(pulse))&&pulse>pulses[0]&&pulse<source.serverPulse);
       const retained=new Map<number,CapitalizationPoint>();
-      for(const prior of previous.series[period]){if(!continuing())return null;retained.set(prior.pulse,addedShares||prior.pulse>=replaceFrom?await point(prior.pulse):prior);}
+      for(const prior of previous.series[period]){if(!continuing())return null;retained.set(prior.pulse,addedAt||prior.pulse>=replaceFrom?await point(prior.pulse):prior);}
       for(const pulse of new Set([...additions,...pulses.filter(pulse=>pulse>previous.summary.serverPulse)])){if(!continuing())return null;retained.set(pulse,await point(pulse));}
       series[period] = retainMarketInterval([...retained.values()].sort((a,b)=>a.pulse-b.pulse), await point(pulses[0]), await point(source.serverPulse),protectedPulses);
     }

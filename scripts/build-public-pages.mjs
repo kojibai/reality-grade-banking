@@ -79,6 +79,7 @@ const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
 let bankHtml,certificateShell,feedState,discoveryState,bookingExamples,paymentExamples,readingWriter,readingCatalog,readingLedger,readingLinks;
 let assetPaths=[];
+const explorerStates=new Map();
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
@@ -91,8 +92,14 @@ try {
   paymentExamples=await renderPaymentExamples();
   const { BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES } = await server.ssrLoadModule('/src/receiz/config.ts');
   const {parsePublicMarket}=await server.ssrLoadModule('/src/receiz/public-market.ts'),{mergePublicSports}=await server.ssrLoadModule('/src/receiz/public-sports.ts');
-  const [market,sports]=await Promise.all(['market','sports'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8').then(JSON.parse)));
+  const operandBytes=await Promise.all(['market','sports','capitalization','share-chart-history'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8')));
+  const [market,sports,capitalizationInput,historyInput]=operandBytes.map(JSON.parse);
   readingCatalog=mergePublicSports(parsePublicMarket(market,market.snapshot),sports);
+  const [{renderSelectedPublicMarketState,publicMarketPreparedPaths},{parseMarketHistory},{parseMarketCapSource}]=await Promise.all([server.ssrLoadModule('/server/public-market-document.tsx'),server.ssrLoadModule('/src/receiz/market-projection/history.ts'),server.ssrLoadModule('/src/receiz/market-projection/source.ts')]);
+  const history=parseMarketHistory(historyInput),capitalization=parseMarketCapSource(capitalizationInput),asOfPulse=Math.max(history.summary.serverPulse,capitalization.serverPulse),hash=createHash('sha256').update('bank.public-market.static.v1');
+  for(const bytes of operandBytes)hash.update('\0').update(bytes);
+  const generation=hash.digest('hex');
+  for(const path of publicMarketPreparedPaths)explorerStates.set('/'+path+'/',renderSelectedPublicMarketState({catalog:readingCatalog,history,capitalization,asOfPulse,generation,path,compressCatalog:true}));
   assetPaths=readingCatalog.items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
   const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/src/receiz/public-network-cache.ts'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
   readingWriter=reading.writePublicReadingPages;readingLinks=readingMetadata.publicReadingLinks;
@@ -131,6 +138,7 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
   const path = `/${runtime}/`; let html = await readFile(`dist${path}index.html`, 'utf8');
   if(runtime==='feed')html=applyFeedState(html,feedState);
   if(runtime==='discover')html=applyDiscoveryState(html,discoveryState);
+  if(runtime==='explore'){const state=explorerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_MARKET_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
   const head = html.match(/<head>([\s\S]+?)<\/head>/)[1];
   const cssLinks = [...head.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
   const css = (await Promise.all(cssLinks.map(async match => {
@@ -152,10 +160,10 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
 // Changing these routes cannot open another feed or another valuation engine.
 for(const path of ['/market-cap/',...assetCategories.map(category=>category.path)]){
  const base=publicPages['/explore/'],metadata=publicPage(path);
- const content=publicPages[path]?.content??publicEntryFallback(path);
+ const state=explorerStates.get(path),content=publicPages[path]?.content??publicEntryFallback(path);
  const head=applyPublicMetadata(`<head>${base.head}</head>`,metadata,socialImages.images[path]).slice(6,-7);
  publicPages[path]={...base,title:metadata.title,head,content};
- runtimeDocuments.set(path,`<!doctype html><html lang="en"><head>${head}<script type="module" src="${base.entry}"></script></head><body><div id="public-explore-root" data-public-runtime="explore">${content}</div></body></html>`);
+ runtimeDocuments.set(path,`<!doctype html><html lang="en"><head>${head}<script type="module" src="${base.entry}"></script></head><body><div id="public-explore-root" data-public-runtime="explore">${state.content}</div>${state.seedScript}</body></html>`);
 }
 const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]);
 const styleManifest = JSON.parse(await readFile('dist/.vite/manifest.json','utf8'));

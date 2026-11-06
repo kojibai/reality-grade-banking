@@ -1,7 +1,7 @@
 import {fetchPublicMarket,parsePublicMarket,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
 import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
-import {readPublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
+import {readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog;generation:string}|null};
 let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=null;
 let preparedGeneration:string|null=null,revision=0;
@@ -51,8 +51,17 @@ export function completeFeedItems(current:readonly PublicMarketItem[],next:reado
  const ids=new Set(next.map(item=>item.id));return refreshFeedItems(current.filter(item=>item.category==='sports'||ids.has(item.id)),next);
 }
 async function shippedSource(){
+ if(typeof document!=='undefined'&&document.getElementById('public-market-seed')){
+  const local=await prepareCarriedFeedCatalog();if(local)return local;
+ }
  const response=await fetch('/receiz-public-market.json',{credentials:'omit',cache:'force-cache',signal:AbortSignal.timeout(12000)});
  if(!response.ok)throw Error('PUBLIC_FEED_SOURCE_UNAVAILABLE');const input=await response.json(),catalog=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(catalog);return catalog;
+}
+/** Only already-carried local bytes may delay a missing background expansion.
+ * Existing Feed content remains visible, and a newer selected family wins. */
+async function prepareCarriedFeedCatalog(){
+ const seed=await preparePublicMarketDocumentSeed(),selected=readHeldFeedCatalog();
+ return selected??(seed?.catalog.complete?reusePreparedFeedCatalog(seed.catalog,seed.generation):null);
 }
 /** Read the existing shipped public projection once, without any hosted writer,
  * quotes, account or media work. Explicit Refresh uses existing live discovery. */
@@ -76,12 +85,15 @@ export function prepareFeedItems(signal?:AbortSignal,refresh=false):Promise<Publ
  return new Promise((resolve,reject)=>{const abort=()=>{signal.removeEventListener('abort',abort);reject(signal.reason);};signal.addEventListener('abort',abort,{once:true});void work.then(value=>{signal.removeEventListener('abort',abort);if(!signal.aborted)resolve(value);},error=>{signal.removeEventListener('abort',abort);if(!signal.aborted)reject(error);});});
 }
 let collectibles:PublicMarketItem[]|null=null,collectiblesPending:Promise<PublicMarketItem[]>|null=null;
-/** Collectible inventory is a different existing source, opened only on intent. */
-export function prepareFeedCollectibles():Promise<PublicMarketItem[]>{
+function heldFeedCollectibles(){
  const selected=readHeldFeedCatalog(),family=typeof document==='undefined'?null:(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketDocument?.()?.catalog;
  // Originals-only membership does not withdraw the independently held sports.
  const source=selected?.items.some(item=>item.category==='sports')||selected?.sportsCoverage==='complete'?selected:family,sports=source?.items.filter(item=>item.category==='sports');
- if(sports?.length||source?.sportsCoverage==='complete')return Promise.resolve(orderFeedItems(sports??[]));
+ return sports?.length||source?.sportsCoverage==='complete'?orderFeedItems(sports??[]):null;
+}
+/** Collectible inventory is a different existing source, opened only on intent. */
+export function prepareFeedCollectibles():Promise<PublicMarketItem[]>{
+ const selected=heldFeedCollectibles();if(selected)return Promise.resolve(selected);
  if(collectibles)return Promise.resolve(collectibles);if(collectiblesPending)return collectiblesPending;
- const work=(async()=>{const response=await fetch('/receiz-public-sports.json',{credentials:'omit',cache:'force-cache',signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('PUBLIC_COLLECTIBLES_SOURCE_UNAVAILABLE');const input=await response.json(),{mergePublicSports}=await import('../receiz/public-sports');const catalog=mergePublicSports({items:[],complete:true,revision:'feed-collectibles',observedAt:null,sourceCount:0},input);collectibles=orderFeedItems(catalog.items);return collectibles;})();collectiblesPending=work;void work.finally(()=>{if(collectiblesPending===work)collectiblesPending=null;}).catch(()=>{});return work;
+ const work=(async()=>{if(typeof document!=='undefined'&&document.getElementById('public-market-seed')){await prepareCarriedFeedCatalog();const selected=heldFeedCollectibles();if(selected)return selected;}const response=await fetch('/receiz-public-sports.json',{credentials:'omit',cache:'force-cache',signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('PUBLIC_COLLECTIBLES_SOURCE_UNAVAILABLE');const input=await response.json(),{mergePublicSports}=await import('../receiz/public-sports');const catalog=mergePublicSports({items:[],complete:true,revision:'feed-collectibles',observedAt:null,sourceCount:0},input);collectibles=orderFeedItems(catalog.items);return collectibles;})();collectiblesPending=work;void work.finally(()=>{if(collectiblesPending===work)collectiblesPending=null;}).catch(()=>{});return work;
 }

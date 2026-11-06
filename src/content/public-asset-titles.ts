@@ -1,5 +1,10 @@
 // Generated from the existing public snapshot. Display metadata only; no request or proof authority.
 export const publicAssetTitles:Readonly<Record<string,readonly [string,string,string]>>={
+ "profile:bjklock:imported-b69c12eaabfb7e5e2a3875c936a728f2670c007d7ad191471388da23c78e73d4": [
+  "imported-b69c12eaabfb7e5e2a3875c936a728f2670c007d7ad191471388da23c78e73d4",
+  "ea1ac75145e828fdf2873ce40790d566579b32a967093ff457c6aa4c21a8621f",
+  "THE MONEY DOESN’T NEED TO COME BACK."
+ ],
  "profile:receiz_vyfrbse0m0qbgrtxi:imported-d5de70a234ecd83a9791d0ac16a48c54dd1aec0e11f5788674dd8c43b692aa13": [
   "imported-d5de70a234ecd83a9791d0ac16a48c54dd1aec0e11f5788674dd8c43b692aa13",
   "b0a0b186d0caaa0ab69848532d3d150fc49fc1f9d4c54c0d9e13d640f647e0b6",
@@ -2438,6 +2443,14 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F8237c1ec-3c7a-463c-bcc7-41c51346edb7%2F20260430204824_08cd85c96e7e7a8a8eec.png",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F8237c1ec-3c7a-463c-bcc7-41c51346edb7%2F20260430204810_08cd85c96e7e7a8a8eec.png"
  ],
+ "bjklock": [
+  "https://receiz.com/api/profile/showcase/imported-source?reference=%7B%22artifactSha256%22%3A%22ea1ac75145e828fdf2873ce40790d566579b32a967093ff457c6aa4c21a8621f%22%2C%22byteLength%22%3A36896%2C%22bytes%22%3A%7B%22byteLength%22%3A36896%2C%22contentByteLength%22%3A36896%2C%22height%22%3A0%2C%22kind%22%3A%22bytes%22%2C%22sha256%22%3A%22ea1ac75145e828fdf2873ce40790d566579b32a967093ff457c6aa4c21a8621f%22%7D%2C%22filename%22%3A%22asset-content.receized.receizbundle%22%2C%22mimeType%22%3A%22application%2Fvnd.receiz.bundle%2Bjson%22%2C%22schema%22%3A%22receiz.imported-proof-source.v1%22%7D&payload=1",
+  "https://receiz.com/api/proof-material/packages/cdded50ef884cb9202b815155063e4efaf9393057ee2ebc34ace8fdf2b717712/artifact",
+  "https://receiz.com/api/proof-material/packages/d1c5afeb743fd851bcafca59d9158415c3be5ac57fd28c30bbea591dc758a6d4/artifact",
+  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Feecb99a0-9c6a-4e89-813b-f76331ea9c41%2F20261002201803_7c931cf1f6cca542ff68.png",
+  "https://receiz.com/api/proof-material/packages/375aecaec9763b52013cc12c888fd27a25a476439ef8ab49cc9049732e079c75/artifact",
+  "https://receiz.com/api/proof-material/packages/1692e02028bee3b937ced097db662a037af44b4229ab46dd7bbcb788c45bc733/artifact"
+ ],
  "nubiel": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-media&path=profile%2F8ae4d1eb-ec89-40b6-85da-08d92866540d%2Favatar%2F20261029150352_4fade99512ee88d3857a.webp",
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F8ae4d1eb-ec89-40b6-85da-08d92866540d%2F20260521125013_0f8ec44c694aa86f7ab2.png",
@@ -2457,14 +2470,6 @@ export const publicProfileArtwork:Readonly<Record<string,readonly string[]>>={
  "receiz_vyfrbse0m0qbgrtxi": [
   "https://receiz.com/api/profile/showcase/imported-source?reference=%7B%22artifactSha256%22%3A%22b0a0b186d0caaa0ab69848532d3d150fc49fc1f9d4c54c0d9e13d640f647e0b6%22%2C%22byteLength%22%3A6443%2C%22bytes%22%3A%7B%22byteLength%22%3A6443%2C%22contentByteLength%22%3A6443%2C%22height%22%3A0%2C%22kind%22%3A%22bytes%22%2C%22sha256%22%3A%22b0a0b186d0caaa0ab69848532d3d150fc49fc1f9d4c54c0d9e13d640f647e0b6%22%7D%2C%22filename%22%3A%22asset-content.receized.receizbundle%22%2C%22mimeType%22%3A%22application%2Fvnd.receiz.bundle%2Bjson%22%2C%22schema%22%3A%22receiz.imported-proof-source.v1%22%7D&payload=1",
   "https://receiz.com/api/profile/showcase/imported-source?reference=%7B%22artifactSha256%22%3A%22dd08e68387f10c8a81cbe2a302241564d69fc7b6e755cc6eb30809024d5c9976%22%2C%22byteLength%22%3A6445%2C%22bytes%22%3A%7B%22byteLength%22%3A6445%2C%22contentByteLength%22%3A6445%2C%22height%22%3A0%2C%22kind%22%3A%22bytes%22%2C%22sha256%22%3A%22dd08e68387f10c8a81cbe2a302241564d69fc7b6e755cc6eb30809024d5c9976%22%7D%2C%22filename%22%3A%22asset-content.receized.receizbundle%22%2C%22mimeType%22%3A%22application%2Fvnd.receiz.bundle%2Bjson%22%2C%22schema%22%3A%22receiz.imported-proof-source.v1%22%7D&payload=1"
- ],
- "bjklock": [
-  "https://receiz.com/api/proof-material/packages/cdded50ef884cb9202b815155063e4efaf9393057ee2ebc34ace8fdf2b717712/artifact",
-  "https://receiz.com/api/proof-material/packages/d1c5afeb743fd851bcafca59d9158415c3be5ac57fd28c30bbea591dc758a6d4/artifact",
-  "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2Feecb99a0-9c6a-4e89-813b-f76331ea9c41%2F20261002201803_7c931cf1f6cca542ff68.png",
-  "https://receiz.com/api/proof-material/packages/375aecaec9763b52013cc12c888fd27a25a476439ef8ab49cc9049732e079c75/artifact",
-  "https://receiz.com/api/proof-material/packages/1692e02028bee3b937ced097db662a037af44b4229ab46dd7bbcb788c45bc733/artifact",
-  "https://receiz.com/api/proof-material/packages/33d51b754294c96221e6cc1aa1fdce46f0e592d9967a0a62e81c2bf31709924d/artifact"
  ],
  "receiz_rrbl2gwdab4imnrci": [
   "https://receiz.com/api/storage/object?bucket=receiz-profile-originals&path=originals%2F4f40b93a-fa77-4427-8b6f-910801c8484e%2F20260909122202_7e91781909a6695aa718.png",

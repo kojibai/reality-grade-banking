@@ -7,7 +7,8 @@ import type {CompactMarketHistory} from './market-projection/history-wire';
 
 /** Carried presentation bytes only; these never admit ownership or spending. */
 export type PublicMarketDocumentSeed={schema:'bank.public-market.document.v1';generation:string;path:string;catalog:PublicMarketCatalog;visibleCount:number;asOfPulse:number;format:PublicDocumentFormat;history?:CompactMarketHistory;capitalization?:MarketCapSource};
-const readSeeds=new WeakMap<Element,{text:string;seed:PublicMarketDocumentSeed|null}>();
+type SeedRead={text:string;seed:PublicMarketDocumentSeed|null;packet?:unknown};
+const readSeeds=new WeakMap<Element,SeedRead>();
 const preparingSeeds=new WeakMap<Element,{text:string;seed:Promise<PublicMarketDocumentSeed|null>}>();
 const readHistories=new WeakMap<PublicMarketDocumentSeed,MarketHistorySnapshot>();
 export function publicMarketDocumentHistory(seed:PublicMarketDocumentSeed):MarketHistorySnapshot|undefined{
@@ -28,10 +29,9 @@ function inspectSeed(value:unknown):PublicMarketDocumentSeed|null{
 }
 /** Same v1 display parser for an inert saved data document. It executes no
  * HTML or script and supplies no ownership/financial admission. */
-export async function preparePublicMarketSeedText(text:string):Promise<PublicMarketDocumentSeed|null>{
+async function preparePublicMarketSeedValue(input:unknown):Promise<PublicMarketDocumentSeed|null>{
  try{
-  if(!text||text.length>32*1024*1024)return null;
-  const value=JSON.parse(text);
+  const value=input as PublicMarketDocumentSeed&{catalogGzip?:unknown};
   if(value?.catalogGzip!==undefined){
    if(Object.hasOwn(value,'catalog'))return null;
    const bytes=await decodePublicDocumentGzip(value.catalogGzip,{raw:32*1024*1024,gzip:8*1024*1024});
@@ -40,22 +40,32 @@ export async function preparePublicMarketSeedText(text:string):Promise<PublicMar
   return inspectSeed(value);
  }catch{return null;}
 }
+export async function preparePublicMarketSeedText(text:string):Promise<PublicMarketDocumentSeed|null>{
+ try{if(!text||text.length>32*1024*1024)return null;return await preparePublicMarketSeedValue(JSON.parse(text));}catch{return null;}
+}
+/** Reuse the parsed packet from the synchronous probe through local decode.
+ * The pending packet is retired when the existing accepted seed replaces it. */
+function readSeedInput(element:Element,text:string):SeedRead{
+ const held=readSeeds.get(element);if(held?.text===text)return held;
+ let input:SeedRead;
+ try{const value=JSON.parse(text);input={text,seed:inspectSeed(value),...(value?.catalogGzip!==undefined?{packet:value}:{})};}catch{input={text,seed:null};}
+ readSeeds.set(element,input);return input;
+}
 export function readPublicMarketDocumentSeed(doc:Pick<Document,'getElementById'>|undefined=typeof document==='undefined'?undefined:document):PublicMarketDocumentSeed|null{
  const element=doc?.getElementById('public-market-seed'),text=element?.textContent;if(!element||!text||text.length>32*1024*1024)return null;
- const held=readSeeds.get(element);if(held?.text===text)return held.seed;
- try{const seed=inspectSeed(JSON.parse(text));if(seed)readSeeds.set(element,{text,seed});return seed;}catch{return null;}
+ return readSeedInput(element,text).seed;
 }
 /** Decode a carried public projection once for its existing public document.
  * Account entry never awaits this helper. No source is fetched, signed,
  * financially admitted, or historically reconstructed here. */
 export function preparePublicMarketDocumentSeed(doc:Pick<Document,'getElementById'>|undefined=typeof document==='undefined'?undefined:document):Promise<PublicMarketDocumentSeed|null>{
  const element=doc?.getElementById('public-market-seed'),text=element?.textContent;if(!element||!text||text.length>32*1024*1024)return Promise.resolve(null);
- const held=readSeeds.get(element);if(held?.text===text)return Promise.resolve(held.seed);
  const pending=preparingSeeds.get(element);if(pending?.text===text)return pending.seed;
+ const input=readSeedInput(element,text);if(input.packet===undefined)return Promise.resolve(input.seed);
  const seed=(async()=>{try{
-  const accepted=await preparePublicMarketSeedText(text);
-  if(element.textContent!==text)return null;
+  const accepted=await preparePublicMarketSeedValue(input.packet);
+  if(element.textContent!==text){if(readSeeds.get(element)===input)readSeeds.delete(element);return null;}
   readSeeds.set(element,{text,seed:accepted});return accepted;
- }catch{if(element.textContent===text)readSeeds.set(element,{text,seed:null});return null;}})();
+ }catch{if(element.textContent===text)readSeeds.set(element,{text,seed:null});else if(readSeeds.get(element)===input)readSeeds.delete(element);return null;}})().finally(()=>{delete input.packet;if(preparingSeeds.get(element)?.seed===seed)preparingSeeds.delete(element);});
  preparingSeeds.set(element,{text,seed});return seed;
 }

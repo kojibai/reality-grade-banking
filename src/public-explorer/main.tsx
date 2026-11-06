@@ -2,7 +2,7 @@ import {preparedBankCatalogState} from '../receiz/prepared-bank-catalog';
 import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext} from '../core/public-document-format';
 import {adoptPublicMarketDocument} from '../receiz/usePublicMarket';
 import {publishMarketDisplaySource} from '../receiz/market-projection/display-source';
-import {publicMarketDocumentHistory,readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
+import {publicMarketDocumentHistory,readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed,type PublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import {StrictMode,useEffect,useState} from 'react';
 import {createRoot,hydrateRoot,type Root} from 'react-dom/client';
@@ -14,13 +14,15 @@ import '../styles/tokens.css';
 import '../styles/app.css';
 import '../styles/features.css';
 import {publicRuntimeRoot,usePublicRuntimeActive} from '../core/public-runtime';
-type ExplorerDocument={prepared:PublicMarketDocumentSeed|null;path?:string};
-function PublicExplorerRoot({prepared,path}:ExplorerDocument){
- const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared);useEffect(()=>setInitial(false),[]);
+type ExplorerDocument={prepared:PublicMarketDocumentSeed|null;path?:string;reconcilePath?:boolean};
+function PublicExplorerRoot({prepared,path,reconcilePath=false}:ExplorerDocument){
+ const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared),entryPath=prepared?path??'/'+prepared.path+'/':undefined;
+ useEffect(()=>{setInitial(false);if(!reconcilePath||!entryPath||entryPath===location.pathname)return;let alive=true;queueMicrotask(()=>{if(alive)dispatchEvent(new Event('receiz-bank:surface'));});return()=>{alive=false;};},[]);
  const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined,preparedSource=prepared?{catalog:prepared.catalog,historyCatalog:prepared.catalog,pulse:prepared.asOfPulse,quoteStatus:'stale' as const,sportsStatus:prepared.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
  return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?prepared?.format:undefined}><PublicExplorer active={active&&!initial} initialPath={prepared?path??'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsOfPulse={initial?prepared?.asOfPulse:undefined}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;
 }
 const roots=new WeakMap<HTMLElement,Root>();
+const preparingRoots=new WeakMap<HTMLElement,Promise<Root|undefined>>();
 /** Reuse only the exact complete public family already retained by the Bank
  * reader. This is a display mount, never an admission or a new read. */
 export function mountHeldPublicDocument(root:HTMLElement,held:PublicMarketDocumentSeed,path='/explore/'){
@@ -29,15 +31,31 @@ export function mountHeldPublicDocument(root:HTMLElement,held:PublicMarketDocume
  if(!roots.has(root))flushSync(()=>{const renderer=createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);renderer.render(<StrictMode><PublicExplorerRoot prepared={held} path={path}/></StrictMode>);});
  return roots.get(root)!;
 }
-/** A cached entry can hydrate a later saved document through the same root. */
-export function mountPublicDocument(root=publicRuntimeRoot('explore')){
- const mounted=roots.get(root);if(mounted)return mounted;
+function publicDocumentSeedElement(root:HTMLElement){
  const sibling=document.getElementById('public-market-seed'),source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&sibling.nextElementSibling?.id==='receiz-navigation'?sibling:null);
- const prepared=readPublicMarketDocumentSeed({getElementById:()=>source}),navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
+ return source;
+}
+function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocumentSeed|null,reconcilePath=false){
+ const mounted=roots.get(root);if(mounted)return mounted;
+ const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
  if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined);
  if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
- const content=<StrictMode><PublicExplorerRoot prepared={prepared}/></StrictMode>;
+ const content=<StrictMode><PublicExplorerRoot prepared={prepared} reconcilePath={reconcilePath}/></StrictMode>;
  const renderer=prepared?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!prepared)renderer.render(content);return renderer;
+}
+/** Raw prepared entries stay synchronous. A compressed static entry retains
+ * its visible rows while the existing bounded, cached local decoder finishes. */
+export function mountPublicDocument(root=publicRuntimeRoot('explore')){
+ const mounted=roots.get(root);if(mounted)return mounted;
+ const held=preparingRoots.get(root);if(held)return held;
+ const source=publicDocumentSeedElement(root),prepared=readPublicMarketDocumentSeed({getElementById:()=>source});
+ if(prepared||!source)return mountResolvedPublicDocument(root,prepared);
+ const text=source.textContent,pending=preparePublicMarketDocumentSeed({getElementById:()=>source}).then(seed=>{
+  const mounted=roots.get(root);if(mounted)return mounted;
+  if(!root.isConnected||root.dataset.publicRuntime!=='explore'||source.textContent!==text||publicDocumentSeedElement(root)!==source)return undefined;
+  return mountResolvedPublicDocument(root,seed,true);
+ }).finally(()=>{if(preparingRoots.get(root)===pending)preparingRoots.delete(root);});
+ preparingRoots.set(root,pending);return pending;
 }
 const start=()=>{mountPublicDocument();};
 if(profilePageUsername(location.pathname))startProfileDocumentRuntime(start);else if(document.querySelector('[data-public-runtime="explore"]')||/^\/(?:explore|explorer|market-cap|asset|shares)(?:\/|$)/.test(location.pathname))startPublicDocumentRuntime('explore',start);
