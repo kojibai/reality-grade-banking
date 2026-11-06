@@ -25,7 +25,8 @@ it('uses the existing logo in the top navigation and keeps the name in the foote
  const doc=new DOMParser().parseFromString(businessContent(),'text/html');
  expect(doc.querySelector('.learn-brand svg')).not.toBeNull();expect(doc.querySelector('.learn-brand')?.textContent?.trim()).toBe('');
  expect(doc.querySelector('header')?.textContent).not.toContain('Bankeiz');expect(doc.querySelector('.site-footer')?.textContent).toContain('Bankeiz');
- expect(doc.querySelector('header a[href="/business/"]')).not.toBeNull();
+ expect(doc.querySelector('header a[href="/standards/"]')?.textContent).toBe('The standard');
+ expect(doc.querySelector('header a[href="/business/"]')).toBeNull();
 });
 it('connects free participation to the paid offer without describing fiat funding as destruction',()=>{
  const home=learnHome();expect(home).toContain('Your money.');expect(home).toContain('Its Original carries the record of where it came from, who owns it and how it moved.');expect(home).toContain('href="/business/"');

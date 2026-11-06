@@ -35,12 +35,12 @@ const solutionGuides=[
  {slug:'identity-continuity',path:'/id/',group:'Banking',title:'Identity continuity',description:'Open Bankeiz with the Receiz identity you already hold. Authentication, recovery and supported history stay connected.'},
  {...meetingPage,group:'Banking',title:'Meetings, connected'},
  {...bankingPage,group:'Banking',title:'See banking in action'},
- ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'Business in action'})),
+ ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'Business in action',description:page.key==='your-twin'?page.lead:page.description})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
  {slug:'business',path:'/business/',group:'Banking',title:'Business',description:'Understand cash flow, simplify payment work and spend less time on financial admin.'},
  {...directoryPage,group:'Banking'},
- ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label})),
+ ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label,description:[page.fit.headline,...page.fit.benefits.slice(0,2).map(([title])=>title)].join(' ')})),
  ...cooperativePages.map(page=>({...page,group:'Cooperatives'})),
  ...togetherPages.map(page=>({...page,group:'Together'}))
 ];
@@ -72,7 +72,7 @@ const layers = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 
 export function learnHeader() {
   const base = '/learn/';
-  return `<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><div class="learn-shell header-inner"><a class="learn-brand" href="/learn/" aria-label="${brandText(branding.applicationName)} Learn">${bankMarkSvg}</a><nav class="header-nav" aria-label="Learn navigation"><a href="${base}#how-it-works">How it works</a><a href="/business/">Business</a><a href="${base}#guides">Guides</a></nav><a class="learn-button button-ink header-enter" href="/">Enter bank ${arrow}</a></div><div class="reading-progress" aria-hidden="true"></div></header>`;
+  return `<a class="skip-link" href="#main">Skip to content</a><header class="learn-header"><div class="learn-shell header-inner"><a class="learn-brand" href="/learn/" aria-label="${brandText(branding.applicationName)} Learn">${bankMarkSvg}</a><nav class="header-nav" aria-label="Learn navigation"><a href="${base}#how-it-works">How it works</a><a href="/standards/">The standard</a><a href="${base}#guides">Guides</a></nav><a class="learn-button button-ink header-enter" href="/">Enter bank ${arrow}</a></div><div class="reading-progress" aria-hidden="true"></div></header>`;
 }
 
 const flowPaths = [

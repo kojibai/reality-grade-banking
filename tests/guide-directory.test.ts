@@ -13,6 +13,26 @@ const visible=(root:HTMLElement)=>[...root.querySelectorAll<HTMLAnchorElement>('
 async function mount(){const root=rendered();expect(root,'The complete static directory exposes a selected-page enhancement root').not.toBeNull();const path='../public/learn/guide-directory.js';const module=await import(/* @vite-ignore */ path);module.init();return{root,module,input:root.querySelector<HTMLInputElement>('input[type="search"]')!};}
 const query=(input:HTMLInputElement,value:string)=>{input.value=value;input.dispatchEvent(new window.Event('input',{bubbles:true}) as unknown as Event);};
 
+it('prioritizes the standard in the shared Learn header and retains contextual Business discovery',()=>{
+ const root=rendered();
+ expect([...document.querySelectorAll('.learn-header .header-nav a')].map(a=>[a.textContent,a.getAttribute('href')])).toEqual([
+  ['How it works','/learn/#how-it-works'],['The standard','/standards/'],['Guides','/learn/#guides'],
+ ]);
+ expect(document.querySelector('.learn-header .header-enter')?.getAttribute('href')).toBe('/');
+ expect(root.querySelector('[data-guide-card][href="/business/"]')?.textContent).toContain('Business');
+ expect(document.querySelector('.site-footer a[href="/fit/"]')?.textContent).toBe('Find your fit');
+ expect(document.querySelector('.site-footer a[href="/action/"]')?.textContent).toBe('Business in action');
+});
+
+it('keeps all guide previews free of Business price advertising while retaining every contextual route',()=>{
+ const root=rendered(),cards=[...root.querySelectorAll<HTMLAnchorElement>('[data-guide-card]')];
+ expect(cards.map(a=>a.textContent).join(' ')).not.toContain('$149');
+ expect(cards.map(a=>a.dataset.search).join(' ')).not.toContain('$149');
+ expect(cards.filter(a=>a.getAttribute('href')?.startsWith('/business/for/'))).toHaveLength(30);
+ expect(root.querySelector('[href="/business/for/agencies/"]')?.textContent).toContain('Follow up without rebuilding the account history.');
+ expect(root.querySelector('[href="/your-twin/"]')?.textContent).toContain('Your Twin');
+});
+
 it('keeps every guide readable without JavaScript and reserves enabled-search geometry before initialization',()=>{
  const root=rendered();expect(root).not.toBeNull();
  expect(root.querySelectorAll('[data-guide-card]').length).toBeGreaterThan(120);
