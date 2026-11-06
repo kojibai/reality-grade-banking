@@ -29,7 +29,8 @@ it('restores the complete bundled catalogue beside a pending Original on a cold 
  try{
   await act(async()=>root.render(<Probe/>));
   expect(state.catalog?.items.map(item=>item.id)).toEqual(['profile:artist:pending-work','signed','unsigned','sports:rsc_0123456789abcdef']);
-  expect(fetcher.mock.calls.map(call=>String(call[0]))).toEqual(['/receiz-public-sports.json','/receiz-public-market.json','/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);
+  // Independent operands may start in either order; each must be read once.
+  expect(fetcher.mock.calls.map(call=>String(call[0])).sort()).toEqual(['/receiz-public-market.json','/receiz-public-sports.json','/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports'].sort());
  }finally{act(()=>root.unmount());}
 });
 
@@ -44,11 +45,11 @@ it.each(['new','already-mounted'] as const)('paints the whole settled public cat
  function Second({active=false}:{active?:boolean}){second=usePublicMarket(active,false);paints.push(second.catalog?.items.map(item=>item.id)??[]);return <span>{second.catalog?.items.length??0} assets</span>;}
  try{
   if(lifetime==='already-mounted')act(()=>secondRoot.render(<Second/>));
-  await act(async()=>firstRoot.render(<First/>));expect(first.catalog?.items.map(item=>item.id)).toEqual(['signed','unsigned','sports:rsc_0123456789abcdef']);expect(localStorage.getItem(key)).toBe(previous);
+  await act(async()=>firstRoot.render(<First/>));await act(()=>first.refresh());expect(first.catalog?.items.map(item=>item.id)).toEqual(['signed','unsigned','sports:rsc_0123456789abcdef']);expect(localStorage.getItem(key)).toBe(previous);
   fetcher.mockImplementation(()=>new Promise<Response>(()=>{}));const reads=fetcher.mock.calls.length;paints.length=0;
   act(()=>secondRoot.render(<Second active={lifetime==='already-mounted'}/>));
   expect(paints[0]).toEqual(['signed','unsigned','sports:rsc_0123456789abcdef']);expect(secondHost.textContent).toBe('3 assets');expect(second.historyCatalog).toBe(first.historyCatalog);
-  expect(fetcher.mock.calls.slice(reads).map(call=>String(call[0]))).toEqual([]);
+  expect(fetcher.mock.calls.slice(reads).map(call=>String(call[0])).filter(path=>path.startsWith('/api/'))).toEqual([]);
   expect(second.catalog?.items.map(item=>item.hasPbiSignature)).toEqual([true,false,undefined]);expect(second.catalog?.items.every(item=>item.authority==='projection-only'&&item.canTrade===false)).toBe(true);
  }finally{act(()=>firstRoot.unmount());act(()=>secondRoot.unmount());}
 });

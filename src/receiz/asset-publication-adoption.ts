@@ -1,4 +1,4 @@
-import {parsePublicMarket,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {parsePublicMarket,retainPublicMarket,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
@@ -111,7 +111,7 @@ export function forgetAssetPublicationAdmissions(username?:string){restore();if(
 let discoveredPublicCatalog:PublicMarketCatalog|null=null;
 /** The exact accepted display projection may precede its first mounted owner. */
 export const retainedDiscoveredPublicCatalog=()=>discoveredPublicCatalog;
-export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog):void{if(catalog.complete)discoveredPublicCatalog=catalog;mergeAdmittedPublicAssets(catalog);for(const listener of listeners)listener(catalog);}
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog):void{if(catalog.complete)discoveredPublicCatalog=catalog;mergeAdmittedPublicAssets(catalog);for(const listener of listeners)listener(catalog);if(catalog.complete)retainPublicMarket(catalog);}
 const publicationRefreshes=new Map<string,Promise<void>>();
 export function refreshAssetPublicationCatalog(sourceDigest:string):Promise<void>{
  const existing=publicationRefreshes.get(sourceDigest);if(existing)return existing;

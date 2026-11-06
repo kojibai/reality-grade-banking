@@ -1,4 +1,4 @@
-import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog} from '../prepared-bank-catalog';
+import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog} from '../prepared-bank-catalog';
 import { useCallback,useEffect,useLayoutEffect,useSyncExternalStore, useRef, useState } from 'react';
 import{receizKaiNow}from'@receiz/sdk';
 import {readPublicMarketDocumentSeed,publicMarketDocumentHistory} from '../public-market-document-seed';
@@ -24,12 +24,13 @@ function restore(): MarketHistorySnapshot {
 }
 type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
 export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active,initialHistory?:MarketHistorySnapshot) {
-  const preparedState=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState),bank=preparedBankCatalogEnabled()&&(sourceActive||preparedState.phase!=='idle'),packet=bank?preparedState.value:null,carried=bank?preparedState.carried:null,display=packet??carried,family=display??(sourceActive?preparedState.value??preparedState.carried:null),awaitingPrepared=bank&&preparedState.phase!=='fallback'&&!display;
+  const preparedState=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState),candidate=preparedState.value??preparedState.carried,cachedConflict=!!candidate?.fromCache&&!!catalog?.complete&&candidate.seed.catalog!==catalog,bank=!cachedConflict&&preparedBankCatalogEnabled()&&(sourceActive||preparedState.phase!=='idle'),packet=bank?preparedState.value:null,carried=bank?preparedState.carried:null,display=packet??carried,family=display??(sourceActive&&!cachedConflict?candidate:null),awaitingPrepared=bank&&preparedState.phase!=='fallback'&&!display;
   const preparedHistory=initialHistory??display?.history??(()=>{const seed=readPublicMarketDocumentSeed(),carried=seed&&publicMarketDocumentHistory(seed);return carried?.historyPolicy===SHARE_MARKET_HISTORY_POLICY?carried:undefined;})();
-  const [history,setHistory]=useState<MarketHistorySnapshot|null>(()=>preparedHistory??(awaitingPrepared?null:restore())),[fallbackSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
+  const [history,setHistory]=useState<MarketHistorySnapshot|null>(()=>preparedHistory??restore()),[fallbackSource,setFullSource]=useState<MarketCapSource|null>(retainedMarketDisplaySource),[pulse,setPulse]=useState(now),[status,setStatus]=useState<'cached'|'live'|'unavailable'>('cached');
   const pendingPrepared=awaitingPrepared&&(!history||!catalog);
-  // Another public reader may have published a held source while this view was inactive.
-  const appliedPrepared=useRef(display?.seed??null),newPrepared=!!family&&appliedPrepared.current!==family.seed,visibleHistory=pendingPrepared?null:newPrepared?family!.history:history,fullSource=pendingPrepared?null:display?.capitalization??(newPrepared?family!.capitalization:retainedMarketDisplaySource()??fallbackSource);
+  // Pending preparation cannot erase a valid historical chart or pricing source.
+  // A selected complete family still replaces every display operand together.
+  const appliedPrepared=useRef(display?.seed??null),newPrepared=!!family&&appliedPrepared.current!==family.seed,visibleHistory=newPrepared?family!.history:history,fullSource=display?.capitalization??(newPrepared?family!.capitalization:retainedMarketDisplaySource()??fallbackSource);
   const heldHistory=useRef(visibleHistory),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
   const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
@@ -61,7 +62,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
   },[active]);
   useEffect(() => {
     if (!sourceActive) return;
-    if(family||bank&&preparedState.phase!=='fallback'){if(bank&&preparedState.phase==='idle')void readPreparedBankCatalog();return;}
+    if(family||preparedState.bootstrapping)return;
     const controller = new AbortController(); let pending = false;
     const read = async (path: string, live: boolean) => {
       if (pending && live) return; if (live) pending = true;
@@ -78,7 +79,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     if(!retainedMarketDisplaySource()){void read('/receiz-public-capitalization.json', false);void read('/api/bank/public-market/capitalization', true);}
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void read('/api/bank/public-market/capitalization', true); }, 60000);
     return () => { controller.abort(); clearInterval(interval); };
-  }, [sourceActive,bank,!!family,preparedState.phase]);
+  }, [sourceActive,bank,!!family,preparedState.phase,preparedState.bootstrapping]);
   useEffect(() => {
     if (!active || typeof Worker === 'undefined') return;
     const start=()=>{

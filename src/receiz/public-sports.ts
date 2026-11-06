@@ -3,6 +3,7 @@ import {readPublicSportsValueRow} from './market-projection/source';
 import {publicSportsSealedBirths} from './market-projection/sealed-copies';
 import {boundSportsHistoryObservation,publicSportsHistoryObservation,publicSportsHistorySnapshot} from './market-projection/sports-observations';
 import {readPublicCollectiblePresentation} from './public-collectible-presentation';
+import {browserPreparedBankCache} from './prepared-bank-cache';
 function object(value: unknown): Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function cents(value: unknown): string | null { if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null; const result = Math.round(value * 100); return Number.isSafeInteger(result) ? String(result) : null; }
 function count(value: unknown): number | null { return Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 1e9 ? Number(value) : null; }
@@ -13,6 +14,34 @@ const metadataAt=(data:Record<string,unknown>)=>typeof data.sealedBirthsObserved
 const cardKey=(card:Record<string,unknown>)=>`${String(card.collectibleId).toLowerCase()}:${String(card.claimHash).toLowerCase()}`;
 const itemClaim=(item:PublicMarketItem)=>item.cardClaimHash??item.sportsValuation?.seed??item.sealedBirths?.find(copy=>copy.collectibleId===item.assetId.toLowerCase())?.claimHash;
 const sameItemClaim=(item:PublicMarketItem,claim:unknown)=>typeof claim==='string'&&itemClaim(item)?.toLowerCase()===claim.toLowerCase();
+const SPORTS_KEY='receiz-bank-public-sports-v1',sportsCache=browserPreparedBankCache('/api/bank/public-market/sports');
+let selectedSportsInput:unknown=null,restoredSports=false,sportsRestore:Promise<unknown|null>|undefined;
+/** The existing selected public envelope is shared by mounted consumers. */
+export function readStoredPublicSportsInput():unknown|null{
+ if(!restoredSports){restoredSports=true;try{const value=JSON.parse(localStorage.getItem(SPORTS_KEY)??'null');if(sportsInput(value))selectedSportsInput=value;}catch{/* Optional public display copy. */}}
+ return selectedSportsInput;
+}
+/** Called only after the public owner accepts its retained/transformed input. */
+export function retainSelectedPublicSportsInput(input:unknown):void{
+ if(!sportsInput(input))return;selectedSportsInput=input;restoredSports=true;
+ let serialized:string;try{const body=JSON.stringify(input);if(typeof body!=='string')return;serialized=body;}catch{return;}
+ let previous:string|null|undefined,saved=false;
+ try{previous=localStorage.getItem(SPORTS_KEY);localStorage.setItem(SPORTS_KEY,serialized);saved=true;}catch{/* Larger public envelopes can exceed localStorage. */}
+ try{void sportsCache?.write(new Response(serialized,{headers:{'content-type':'application/json'}}),()=>{if(!saved&&previous!==undefined)try{if(localStorage.getItem(SPORTS_KEY)===previous)localStorage.removeItem(SPORTS_KEY);}catch{/* A newer or unavailable copy stays untouched. */}}).catch(()=>{/* Failed retention cannot change the accepted display. */});}catch{/* The selected public input remains available in RAM. */}
+}
+/** Restore the same optional sports operand once; this supplies no Bank family
+ * or Source-currentness receipt and never blocks available catalogue rendering. */
+export function restorePublicSportsInput():Promise<unknown|null>{
+ const held=readStoredPublicSportsInput();if(held)return Promise.resolve(held);if(sportsRestore)return sportsRestore;
+ return sportsRestore=(async()=>{let cached:Response|null=null;try{
+  cached=await sportsCache?.read()??null;const current=readStoredPublicSportsInput();if(current){void cached?.body?.cancel().catch(()=>{});return current;}if(!cached)return null;
+  const max=32*1024*1024;if(!cached.ok||!/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')||Number(cached.headers.get('content-length'))>max)throw Error('PUBLIC_SPORTS_CACHE_INVALID');
+  const reader=cached.body?.getReader();if(!reader)throw Error('PUBLIC_SPORTS_CACHE_INVALID');let size=0;const chunks:Uint8Array[]=[];
+  try{for(;;){const next=await reader.read();if(next.done)break;size+=next.value.byteLength;if(size>max)throw Error('PUBLIC_SPORTS_CACHE_CAPACITY');chunks.push(next.value);}}finally{void reader.cancel().catch(()=>{});reader.releaseLock();}
+  const bytes=new Uint8Array(size);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(!sportsInput(value))throw Error('PUBLIC_SPORTS_CACHE_INVALID');
+  if(!selectedSportsInput)selectedSportsInput=value;return selectedSportsInput;
+ }catch{if(cached)void sportsCache?.discard(cached).catch(()=>{});return readStoredPublicSportsInput();}})();
+}
 /** A weaker discovery response cannot remove carried copy provenance or models. */
 export function retainPublicSportsInput(previous:unknown,input:unknown):unknown{
  const held=sportsInput(previous),next=sportsInput(input);if(!held||!next)return input;
@@ -124,7 +153,7 @@ export async function fetchPublicSports(signal?: AbortSignal): Promise<unknown> 
   if (!response.ok) throw new Error('Public sports inventory could not be refreshed.');
   const input = await response.json(); if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards)) throw new Error('Public sports inventory is unavailable.');
   let retained:unknown=input,rejectedOlder=false;
-  try {const held=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')??'null');rejectedOlder=!!sportsInput(held)&&olderCapture(object(held).generatedAt,input.generatedAt);retained=retainPublicSportsInput(held,input);localStorage.setItem('receiz-bank-public-sports-v1',JSON.stringify(retained));} catch { /* Public discovery retention is optional. */ }
+  const held=readStoredPublicSportsInput();rejectedOlder=!!sportsInput(held)&&olderCapture(object(held).generatedAt,input.generatedAt);retained=retainPublicSportsInput(held,input);
   if(rejectedOlder)return {...object(retained),fallback:true};
   return input.fallback===true?input:retained;
 }

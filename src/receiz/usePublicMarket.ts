@@ -4,8 +4,8 @@ import {compatibleShareInventory,mergeShareInventory} from './market-share-inven
 import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
-import { fetchPublicSports, mergePublicSports,retainPublicSportsInput } from './public-sports';
-import { fetchPublicMarket, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
+import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, reusePublicMarketResponse, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -22,25 +22,28 @@ const subscribeCatalog=(listener:()=>void)=>{catalogListeners.add(listener);cons
 const inactiveCatalog=()=>()=>{};
 function restorePublicCatalog(): PublicMarketCatalog | null {
   const carried=readPublicMarketDocumentSeed();if(carried){preparedDocument=true;rememberPublicOriginalLocators(carried.catalog);return carried.catalog;}
-  try{retainedSports=JSON.parse(localStorage.getItem('receiz-bank-public-sports-v1')??'null');}catch{/* Optional public inventory. */}
-  try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicOriginalLocators(catalog); const disk=mergePublicSports(catalog,retainedSports);restoredDiskCatalog=disk;return disk; } catch { return null; }
+  retainedSports=readStoredPublicSportsInput();
+  try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicMarketResponse(catalog,input);rememberPublicOriginalLocators(catalog); const disk=mergePublicSports(catalog,retainedSports);reusePublicMarketResponse(catalog,disk);restoredDiskCatalog=disk;if(catalog.complete&&!lastRefreshAt&&typeof location!=='undefined'&&location.pathname==='/')lastRefreshAt=Date.now();return disk; } catch { return null; }
 }
 // Only this exact disk-restored display may yield to the complete carried
 // family. A subsequent RAM publication has a different reference.
-function restoreAdoptedCatalog(){const cached=restorePublicCatalog(),catalog=adoptCatalog(cached);if(cached&&cached===restoredDiskCatalog)restoredDiskCatalog=catalog;return catalog;}
-let adoptedPrepared:PreparedBankCatalog['seed']|null=null,adoptedCarried:PreparedBankCatalog['seed']|null=null;
+function restoreAdoptedCatalog(){const cached=restorePublicCatalog(),catalog=adoptCatalog(cached);if(cached&&catalog)reusePublicMarketResponse(cached,catalog);if(cached&&cached===restoredDiskCatalog)restoredDiskCatalog=catalog;return catalog;}
+let adoptedPrepared:PreparedBankCatalog['seed']|null=null,adoptedCarried:PreparedBankCatalog['seed']|null=null,adoptedBare:PublicMarketCatalog|null=null;
 function readPublicCatalog(){
  const prepared=preparedBankCatalogState();
  // A complete publication may have settled in Feed before this owner loaded.
  // Its RAM selection precedes historical disk/carried display, never a newly
  // qualified Bank packet or an already selected RAM successor.
- if(!retainedCatalog&&!restored&&!prepared.value){const accepted=retainedDiscoveredPublicCatalog();if(accepted){restored=true;retainedCatalog=adoptCatalog(accepted);}}
-  if(prepared.value){const value=prepared.value;if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
+ if(!retainedCatalog&&!restored&&!prepared.value){const accepted=retainedDiscoveredPublicCatalog();if(accepted){restored=true;retainedCatalog=adoptCatalog(accepted);if(retainedCatalog)reusePublicMarketResponse(accepted,retainedCatalog);if(!lastRefreshAt)lastRefreshAt=Date.now();}}
+ if((!prepared.value&&!prepared.carried||(prepared.value??prepared.carried)?.fromCache)&&!retainedCatalog&&!restored){restored=true;retainedCatalog=restoreAdoptedCatalog();}
+ if(prepared.bareCatalog!==adoptedBare&&prepared.bareCatalog&&!retainedCatalog?.complete&&!retainedDiscoveredPublicCatalog()){adoptedBare=prepared.bareCatalog;restored=true;retainedCatalog=adoptCatalog(mergePublicSports(prepared.bareCatalog,retainedSports));restoredDiskCatalog=retainedCatalog;if(retainedCatalog)reusePublicMarketResponse(prepared.bareCatalog,retainedCatalog);rememberPublicOriginalLocators(retainedCatalog!);if(!lastRefreshAt)lastRefreshAt=Date.now();}
+  if(prepared.value){const value=prepared.value;if(value.fromCache&&retainedCatalog?.complete&&retainedCatalog!==value.seed.catalog){adoptedPrepared=value.seed;adoptedCarried=value.seed;return retainedCatalog;}if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(!lastRefreshAt)lastRefreshAt=Date.now();if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
  if(preparedBankCatalogEnabled()){
   if(prepared.carried){const value=prepared.carried;if(adoptedCarried!==value.seed){
    // A boot display cannot roll back a newer public discovery that completed
    // while this document's compressed seed was being decoded.
-   if(!retainedCatalog||retainedCatalog===restoredDiskCatalog||retainedCatalog.revision==='local-admission'){adoptedCarried=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
+   if(value.fromCache&&retainedCatalog?.complete){adoptedCarried=value.seed;}
+   else if(!retainedCatalog||retainedCatalog===restoredDiskCatalog||retainedCatalog.revision==='local-admission'){adoptedCarried=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
    if(!lastRefreshAt)lastRefreshAt=value.receivedAt;
   }return retainedCatalog;}
   if(prepared.phase!=='fallback'){
@@ -60,18 +63,18 @@ export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualific
 function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
   const current=readPublicCatalog(),candidate=typeof next==='function'?next(current):next;
   const currentAt=Date.parse(current?.observedAt??''),candidateAt=Date.parse(candidate?.observedAt??'');
-  if(candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return;
+  if(candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return current;
   const updated=adoptCatalog(candidate);
-  if(updated===current)return;retainedCatalog=updated;for(const listener of catalogListeners)listener();
+  if(updated===current)return current;retainedCatalog=updated;for(const listener of catalogListeners)listener();return updated;
 }
 // The accepted public projection belongs to the document, even when its last
 // Market consumer is hidden or unmounted. The prepared receipt stays separate.
-subscribeAssetPublicationAdmissions(accepted=>{const before=readPublicCatalog();publishPublicCatalog(current=>{
+subscribeAssetPublicationAdmissions(accepted=>{const before=readPublicCatalog(),selected=publishPublicCatalog(current=>{
  if(!accepted||!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
  return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:compatibleShareInventory(item,prior?.shareInventory)};return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports);
-});if(accepted?.complete&&readPublicCatalog()!==before){lastRefreshAt=Date.now();lastRefreshFailed=false;}});
+});if(before&&selected&&!accepted)reusePublicMarketResponse(before,selected);if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,undefined,selected,before);lastRefreshAt=Date.now();lastRefreshFailed=false;}});
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
-if(typeof document!=='undefined'){exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
+if(typeof document!=='undefined'){void prepareCarriedBankCatalog().then(()=>{const prepared=preparedBankCatalogState();if(!prepared.bareCatalog&&!prepared.value&&!prepared.carried)return;const before=retainedCatalog;readPublicCatalog();if(before!==retainedCatalog)for(const listener of catalogListeners)listener();});exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
 let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
 /** Shipped inputs belong to this document, not to a mounted surface. Parse and
  * adopt each once; closing one consumer cannot cancel another's preparation. */
@@ -84,12 +87,12 @@ function prepareShippedCatalog():Promise<void>{
     publishPublicCatalog(current=>{
       if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
       const hints=new Map(cached.items.map(item=>[item.id,item]));
-      return {...current,items:current.items.map(item=>{
+      const updated={...current,items:current.items.map(item=>{
         const hint=hints.get(item.id);
         if(!hint||hint.assetId!==item.assetId||hint.pulse!==item.pulse||hint.originalDigest!==item.originalDigest||hint.verifyUrl!==item.verifyUrl)return item;
         const presented=item.mediaKind===undefined&&hint.mediaKind!==undefined?{...item,mediaKind:hint.mediaKind}:item;
         return {...retainPublicMomentManifest(retainPublicArtwork(presented,hint),hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
-      })};
+      })};reusePublicMarketResponse(current,updated);return updated;
     });
   })();
   shippedCatalog=attempt;void attempt.catch(()=>{if(shippedCatalog===attempt)shippedCatalog=undefined;});return attempt;
@@ -97,10 +100,12 @@ function prepareShippedCatalog():Promise<void>{
 function prepareShippedSports():Promise<void>{
   if(shippedSports)return shippedSports;
   const attempt=(async()=>{
+    const restored=retainedSports?null:await restorePublicSportsInput();
+    if(restored){retainedSports=restored;const before=readPublicCatalog(),selected=publishPublicCatalog(current=>current?mergePublicSports(current,restored):current);if(before&&selected)reusePublicMarketResponse(before,selected);return;}
     const response=await fetch('/receiz-public-sports.json',{credentials:'omit'});
     if(!response.ok)throw Error('Public collectible snapshot unavailable.');
     const data=await response.json(),next=retainedSports?retainPublicSportsInput(data,retainedSports):data;
-    if(next===retainedSports)return;retainedSports=next;publishPublicCatalog(current=>current?mergePublicSports(current,next):current);
+    if(next===retainedSports)return;retainedSports=next;const before=readPublicCatalog(),selected=publishPublicCatalog(current=>current?mergePublicSports(current,next):current);if(before&&selected)reusePublicMarketResponse(before,selected);retainSelectedPublicSportsInput(next);
   })();
   shippedSports=attempt;void attempt.catch(()=>{if(shippedSports===attempt)shippedSports=undefined;});return attempt;
 }
@@ -130,7 +135,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const pending=fetchPublicQuotes(controller.signal,afterTrade).then(validatePublicQuotes).then(value=>{
       if(!current())return;latestQuotes.current=value;quoteFailed.current=false;
       if(pendingMarketChange.current===afterTrade)pendingMarketChange.current=undefined;
-      setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);setQuoteStatus('fresh');
+      const before=readPublicCatalog(),selected=setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);if(before&&selected&&selected!==before)retainPublicMarket(before,value,selected);setQuoteStatus('fresh');
     },()=>{if(current()){quoteFailed.current=true;setQuoteStatus('stale');setError(message=>[message,'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));}}).finally(()=>{
       if(quoteRead.current?.controller===controller)quoteRead.current=null;
     });
@@ -144,7 +149,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     void fetchPublicSports(cards.signal).catch(()=>null).then(value=>{
       if(cards.signal.aborted)return;
       sportsFailed.current=!value;
-      if(value){const retained=retainPublicSportsInput(retainedSports,value);retainedSports=retained;setCatalog(current=>current?mergePublicSports(current,retained):current);setSportsStatus((value as {fallback?:boolean}).fallback===true||retained!==value?'retained':'fresh');}
+      if(value){const retained=retainPublicSportsInput(retainedSports,value);retainedSports=retained;const before=readPublicCatalog(),selected=setCatalog(current=>current?mergePublicSports(current,retained):current);if(before&&selected)reusePublicMarketResponse(before,selected);retainSelectedPublicSportsInput(retained);setSportsStatus((value as {fallback?:boolean}).fallback===true||retained!==value?'retained':'fresh');}
       else setSportsStatus(retainedSports?'retained':'missing');
     }).finally(()=>{if(sportsRunning.current===cards)sportsRunning.current=null;});
   },[setCatalog]);
@@ -152,7 +157,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     if(quotesOnly){await refreshQuotes(pendingMarketChange.current);return;}
     if (running.current) return;
     lastRefreshAt=Date.now();lastRefreshFailed=false;
-    if(!existingFallback&&(preparedBankCatalogEnabled()||preparedBankCatalogState().value||preparedBankCatalogState().carried)&&readPublicCatalog()?.revision!=='local-admission'){
+    if(!existingFallback&&readPublicCatalog()===(preparedBankCatalogState().value??preparedBankCatalogState().carried)?.seed.catalog&&preparedBankCatalogEnabled()){
       const prepared=await readPreparedBankCatalog();
       if(prepared){sportsFailed.current=false;setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');setError(null);return;}
       const held=preparedBankCatalogState();
@@ -160,6 +165,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       if(retained){lastRefreshFailed=true;setStatus('stale');setQuoteStatus('stale');setSportsStatus(retained.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');setError(held.error);return;}
       void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
     }
+    void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
     // Prepare pricing operands beside discovery, before an object is opened.
     // The overview and direct-object paths share this same read and cache.
     void prepareMarketDisplaySource();
@@ -169,7 +175,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
     const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
       if(!currentAttempt())return;const next=membership.value;if(!next?.complete)lastRefreshFailed=true;
-      setCatalog(current=>{
+      const before=readPublicCatalog(),selected=setCatalog(current=>{
         if(!next||!next.complete&&current)return current;
         const previous=new Map(current?.items.map(item=>[item.id,item]));
         let updated=mergePublicSports({...next,items:next.items.map(item=>{
@@ -180,6 +186,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
         if(latestQuotes.current)updated=mergePublicQuotes(updated,latestQuotes.current);
         return updated;
       });
+      if(next?.complete&&selected&&selected!==before)retainPublicMarket(next,latestQuotes.current,selected,before);
       setStatus(next?.complete?'live':'stale');
       setError(next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.');
     });
@@ -192,11 +199,18 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     if (!active) return;
     let alive=true;
     const prepared=preparedBankCatalogState(),bank=preparedBankCatalogEnabled()||!!prepared.value||!!prepared.carried;
-    const age=Date.now()-lastRefreshAt,heldFamily=bank&&(!!prepared.value||!!prepared.carried||prepared.phase==='fallback'&&readPublicCatalog()?.complete===true)&&lastRefreshAt>0;
-    if(bank&&prepared.bootstrapping){
-      // Account entry and its custody lifecycle run independently. The first
-      // Market paint can wait for this already-carried public display only.
-      void prepareCarriedBankCatalog().then(value=>{if(!alive)return;if(value){readPublicCatalog();setStatus('stale');}else void refresh();});
+    const age=Date.now()-lastRefreshAt,heldFamily=(!!prepared.value||!!prepared.carried||readPublicCatalog()?.complete===true)&&lastRefreshAt>0;
+    const prepareMissingHints=()=>{const held=readPublicCatalog(),family=preparedBankCatalogState().value??preparedBankCatalogState().carried;
+      if(held&&!preparedDocument&&(!family||family.seed.catalog!==held)){
+        if(held.items.some(item=>item.category==='proof'&&(!item.shareInventory||item.mediaKind===undefined)))void prepareShippedCatalog().catch(()=>{});
+        if(held.sportsCoverage!=='complete'||held.items.some(item=>item.category==='sports'&&!item.sealedAt))void prepareShippedSports().then(()=>{if(alive&&retainedSports)setSportsStatus(current=>current==='fresh'?current:'retained');}).catch(()=>{});
+      }
+    };
+    if(!prepared.bootstrapping)prepareMissingHints();
+    if(prepared.bootstrapping){
+      // Available held state renders immediately; local restore only
+      // coordinates missing-input side effects.
+      void prepareCarriedBankCatalog().then(value=>{if(!alive)return;prepareMissingHints();if(value||readPublicCatalog()?.complete&&lastRefreshAt>0&&Date.now()-lastRefreshAt<refreshInterval){readPublicCatalog();setStatus('stale');}else void refresh();});
     }else if(heldFamily){
       if(age<0||age>=refreshInterval)void refresh();
     }else if(bank&&!(prepared.phase==='fallback'&&!prepared.value)&&readPublicCatalog()?.revision!=='local-admission'){
@@ -207,12 +221,13 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     void refresh(false,true);
     }
     let timer:ReturnType<typeof setTimeout>;
-    const poll=()=>{const age=Date.now()-lastRefreshAt;if(lastRefreshAt>0&&age>=0&&age<refreshInterval){timer=setTimeout(poll,refreshInterval-age);return;}if(document.visibilityState==='visible')void refresh();timer=setTimeout(poll,refreshInterval);};
+    const poll=()=>{const age=Date.now()-lastRefreshAt;if(lastRefreshAt>0&&age>=0&&age<refreshInterval){timer=setTimeout(poll,refreshInterval-age);return;}if(document.visibilityState==='visible'&&!preparedBankCatalogState().bootstrapping)void refresh();timer=setTimeout(poll,refreshInterval);};
     const elapsed=Date.now()-lastRefreshAt;timer=setTimeout(poll,lastRefreshAt>0&&elapsed>=0&&elapsed<refreshInterval?refreshInterval-elapsed:refreshInterval);
     const wake = () => {
       if(document.visibilityState!=='visible')return;
-      if(sportsFailed.current||readPublicCatalog()?.sportsCoverage==='missing')refreshSports();
       if(pendingMarketChange.current||quoteFailed.current&&!lastRefreshFailed){void refresh(true);return;}
+      if(preparedBankCatalogState().bootstrapping)return;
+      if(sportsFailed.current||readPublicCatalog()?.sportsCoverage==='missing')refreshSports();
       const age=Date.now()-lastRefreshAt,prepared=preparedBankCatalogState();
       if(lastRefreshAt>0&&age>=0&&age<refreshInterval&&!lastRefreshFailed&&prepared.phase!=='fallback'&&readPublicCatalog()?.complete)return;
       void refresh();
@@ -226,5 +241,6 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
  // A separate membership successor does not inherit this packet's currentness.
  const selectedFamily=!!family&&catalog===family.seed.catalog,accepted=prepared?.phase==='ready'&&selectedFamily?prepared.value:null;
  const historical=!!prepared&&(!!family&&!selectedFamily||prepared.phase!=='ready'&&!!(family||prepared.phase!=='fallback'&&catalog));
-  return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&sportsStatus==='fresh'?'retained' as const:sportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
+ const visibleSportsStatus=(sportsStatus==='loading'||sportsStatus==='missing')&&(catalog?.sportsCoverage==='complete'||catalog?.items.some(item=>item.category==='sports'))?'retained' as const:sportsStatus;
+  return { catalog:pricedCatalog, historyCatalog:catalog, pulse, quoteStatus:historical?'stale' as const:quoteStatus, sportsStatus:historical&&visibleSportsStatus==='fresh'?'retained' as const:visibleSportsStatus, status:historical?'stale' as const:accepted?(accepted.receipt.state==='current'?'live' as const:'stale' as const): !catalog && status === 'stale' ? 'error' as const : status, error, refresh };
 }

@@ -1,17 +1,19 @@
-import {browserPreparedBankCache,type PreparedBankCache} from './prepared-bank-cache';
+import {preparedPublicCatalogCache,PREPARED_BANK_CATALOG_PATH,type PreparedBankCache} from './prepared-bank-cache';
 import {preparePublicMarketSeedText,publicMarketDocumentHistory,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {parseMarketCapSource,type MarketCapSource} from './market-projection/source';
 import {SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
 
-export const PREPARED_BANK_CATALOG_PATH='/api/explore?path=bank';
+export {PREPARED_BANK_CATALOG_PATH} from './prepared-bank-cache';
+import {parsePublicMarket,rememberPublicMarketResponse,type PublicMarketCatalog} from './public-market';
+import {retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
 const MAX=32*1024*1024,HEX=/^[a-f0-9]{64}$/;
 export type PreparedBankReceipt={generation:string;build:string;bodySha256:string;state:'current'|'retained';coordinate:string;pendingCoordinate?:string};
-export type PreparedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;receipt:PreparedBankReceipt};
+export type PreparedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;receipt:PreparedBankReceipt;fromCache?:true};
 export type PreparedBankIdentity={generation:string;build:string;bodySha256:string};
-export type CarriedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;identity?:PreparedBankIdentity;receivedAt:number};
+export type CarriedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;identity?:PreparedBankIdentity;receivedAt:number;fromCache?:true};
 export type PublicDocumentHandoff={state:'current'|'retained';identity:unknown};
 export type CarriedBankCatalogInput={seedText:string;hint:unknown};
-export type PreparedBankCatalogState={phase:'idle'|'pending'|'carried'|'ready'|'fallback';value:PreparedBankCatalog|null;error:string|null;carried?:CarriedBankCatalog;bootstrapping?:true};
+export type PreparedBankCatalogState={phase:'idle'|'pending'|'carried'|'ready'|'fallback';value:PreparedBankCatalog|null;error:string|null;carried?:CarriedBankCatalog;bootstrapping?:true;bareCatalog?:PublicMarketCatalog};
 type Fetcher=(path:string,init:RequestInit)=>Promise<Response>;
 function receipt(response:Response):PreparedBankReceipt{
  const generation=response.headers.get('x-receiz-public-material-revision')??'',build=response.headers.get('x-receiz-public-render-build')??'',bodySha256=response.headers.get('x-receiz-public-html-sha256')??'',state=response.headers.get('x-receiz-public-html-state'),coordinate=response.headers.get('x-receiz-public-state-coordinate')??'',pending=response.headers.get('x-receiz-public-pending-state-coordinate');
@@ -62,22 +64,37 @@ function retainedResponse(value:Awaited<ReturnType<typeof openedResponse>>){
  * bytes are decoded in the background; account entry never awaits this work. */
 export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fetch(path,init),input?:CarriedBankCatalogInput,storage?:PreparedBankCache){
  let state:PreparedBankCatalogState=immutable({phase:'idle',value:null,error:null}),held:PreparedBankCatalog|null=null,flight:Promise<PreparedBankCatalog|null>|undefined,controller:AbortController|undefined,epoch=0;
- const listeners=new Set<()=>void>();let carried:CarriedBankCatalog|null=null,bootstrapping=!!input||!!storage,carriedBodyVerified=false,displayRevision=0,acceptedIdentity:PublicMarketDocumentSeed|null=null,acceptedAt=0;const observedDocuments=new Set<string>(),appliedFamilies=new WeakSet<PublicMarketDocumentSeed>();
- const publish=(next:PreparedBankCatalogState,beforeNotify?:()=>void)=>{const value={...next,...(carried?{carried}:{}),...(bootstrapping?{bootstrapping:true as const}:{})};if(value.phase===state.phase&&value.value===state.value&&value.error===state.error&&state.carried===value.carried&&state.bootstrapping===value.bootstrapping)return;state=immutable(value);beforeNotify?.();for(const listener of listeners)listener();};
+ const listeners=new Set<()=>void>();let bareCatalog:PublicMarketCatalog|null=null,carried:CarriedBankCatalog|null=null,bootstrapping=!!input||!!storage,carriedBodyVerified=false,displayRevision=0,acceptedIdentity:PublicMarketDocumentSeed|null=null,acceptedAt=0;const observedDocuments=new Set<string>(),appliedFamilies=new WeakSet<PublicMarketDocumentSeed>();
+ const publish=(next:PreparedBankCatalogState,beforeNotify?:()=>void)=>{const value={...next,...(bareCatalog?{bareCatalog}:{}),...(carried?{carried}:{}),...(bootstrapping?{bootstrapping:true as const}:{})};if(value.phase===state.phase&&value.value===state.value&&value.error===state.error&&state.carried===value.carried&&state.bareCatalog===value.bareCatalog&&state.bootstrapping===value.bootstrapping)return;state=immutable(value);beforeNotify?.();for(const listener of listeners)listener();};
  // Capture all caller-owned input before asynchronous decode. This identity is
  // a cache hint only; only a later actual HEAD can supply a receipt/verdict.
  const seedText=input?.seedText,hint=input?.hint as Partial<PreparedBankIdentity>|undefined,identity=hint?{generation:hint.generation,build:hint.build,bodySha256:hint.bodySha256}:null;
  let scheduledCacheIdentity:string|null=null;
- const retain=(value:Awaited<ReturnType<typeof openedResponse>>)=>{if(!storage)return;const key=value.receipt.generation+':'+value.receipt.bodySha256;if(scheduledCacheIdentity===key)return;scheduledCacheIdentity=key;void Promise.resolve().then(()=>storage.write(retainedResponse(value))).catch(()=>{if(scheduledCacheIdentity===key)scheduledCacheIdentity=null;});};
+ const retain=(value:Awaited<ReturnType<typeof openedResponse>>)=>{
+  if(!storage)return;const key=value.receipt.generation+':'+value.receipt.bodySha256;if(scheduledCacheIdentity===key)return;scheduledCacheIdentity=key;
+  let previous:string|null|undefined;try{previous=localStorage.getItem('receiz-bank-public-discovery-v2');}catch{/* Optional display copy. */}
+  const failed=()=>{if(scheduledCacheIdentity===key)scheduledCacheIdentity=null;};
+  try{void storage.write(retainedResponse(value),()=>{if(previous!==undefined)try{if(localStorage.getItem('receiz-bank-public-discovery-v2')===previous)localStorage.removeItem('receiz-bank-public-discovery-v2');}catch{/* A newer or unavailable copy stays untouched. */}}).catch(failed);}catch{failed();}
+ };
  if(bootstrapping)publish({phase:'pending',value:null,error:null});
  const bootRevision=displayRevision;
  const bootstrap:Promise<CarriedBankCatalog|null>=input||storage?(async()=>{let cached:Response|null=null;try{
   if(!input){
    cached=await storage!.read();if(displayRevision!==bootRevision)return carried;
    if(!cached){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+   const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
+   // Neither historical response form can replace the complete selected view.
+   if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){void cached.body?.cancel().catch(()=>{});bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+   if(/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')){
+    if(!cached.ok||Number(cached.headers.get('content-length'))>MAX)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
+    const input=await untilAborted(cached.json(),AbortSignal.timeout(15000));if(displayRevision!==bootRevision)return carried;
+    if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+    const catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)throw Error('PREPARED_PUBLIC_CATALOG_INCOMPLETE');
+    rememberPublicMarketResponse(catalog,input);bareCatalog=immutable(catalog);bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;
+   }
    const value=await openedResponse(cached,AbortSignal.timeout(15000));if(displayRevision!==bootRevision)return carried;
    const length=cached.headers.get('content-length');if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==value.bytes.byteLength))throw Error('PREPARED_PUBLIC_CATALOG_SIZE_MISMATCH');
-   const r=value.receipt;carried=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,identity:{generation:r.generation,build:r.build,bodySha256:r.bodySha256},receivedAt:Date.now()});
+   const r=value.receipt;carried=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,identity:{generation:r.generation,build:r.build,bodySha256:r.bodySha256},receivedAt:Date.now(),fromCache:true});
    carriedBodyVerified=true;scheduledCacheIdentity=r.generation+':'+r.bodySha256;observedDocuments.add(r.generation);bootstrapping=false;publish({phase:flight?'pending':'carried',value:held,error:null});return carried;
   }
   if(typeof seedText!=='string'||!identity||![identity.generation,identity.build,identity.bodySha256].every(value=>typeof value==='string'&&HEX.test(value)))throw Error('PREPARED_PUBLIC_CARRIED_INVALID');
@@ -98,13 +115,13 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    let head:PreparedBankReceipt|undefined;
    if(held||carried?.identity){const response=await request('HEAD');head=receipt(response);void response.body?.cancel().catch(()=>{});if(!current())return null;
     if(held&&sameBody(head,held.receipt)){held=sameReceipt(head,held.receipt)?held:immutable({...held,receipt:head});acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
-    if(!held&&carried?.identity&&head.generation===carried.identity.generation&&(head.build===carried.identity.build||carriedBodyVerified)&&head.bodySha256===carried.identity.bodySha256){held=immutable({seed:carried.seed,capitalization:carried.capitalization,history:carried.history,receipt:head});carried=null;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
+    if(!held&&carried?.identity&&head.generation===carried.identity.generation&&(head.build===carried.identity.build||carriedBodyVerified)&&head.bodySha256===carried.identity.bodySha256){held=immutable({seed:carried.seed,capitalization:carried.capitalization,history:carried.history,receipt:head,...(carried.fromCache?{fromCache:true as const}:{})});carried=null;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});return held;}
     publish({phase:'pending',value:held,error:null});
    }
    const response=await request('GET');
    // HEAD is an invalidation hint. GET qualifies its own exact complete bytes.
    const value=await openedResponse(response,signal);if(!current())return null;
-   held=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,receipt:value.receipt});carried=null;carriedBodyVerified=false;acceptedIdentity=held.seed;acceptedAt=Date.now();publish({phase:'ready',value:held,error:null});retain(value);return held;
+   held=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,receipt:value.receipt});bareCatalog=null;carried=null;carriedBodyVerified=false;acceptedIdentity=held.seed;acceptedAt=Date.now();retain(value);publish({phase:'ready',value:held,error:null});return held;
   }catch{if(selectedRead())publish({phase:'fallback',value:held,error:'Prepared public collection unavailable.'});return null;}
   })();flight=job;void job.finally(()=>{if(flight===job){flight=undefined;controller=undefined;}}).catch(()=>{});return job;
  }
@@ -119,7 +136,7 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
   const history=publicMarketDocumentHistory(seed);if(!seed.catalog.complete||!seed.capitalization||!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)return null;
   const capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization}),display=immutable({seed,history,capitalization,receivedAt:Date.now()});
   // No Bank data-body hint or Source currentness verdict is manufactured.
-  if(identity?.generation&&HEX.test(identity.generation))observedDocuments.add(identity.generation);if(held)observedDocuments.add(held.seed.generation);if(carried)observedDocuments.add(carried.seed.generation);observedDocuments.add(seed.generation);appliedFamilies.add(seed);++displayRevision;++epoch;controller?.abort();controller=undefined;flight=undefined;held=null;carried=display;carriedBodyVerified=false;bootstrapping=false;acceptedIdentity=seed;acceptedAt=display.receivedAt;
+  if(identity?.generation&&HEX.test(identity.generation))observedDocuments.add(identity.generation);if(held)observedDocuments.add(held.seed.generation);if(carried)observedDocuments.add(carried.seed.generation);observedDocuments.add(seed.generation);appliedFamilies.add(seed);++displayRevision;++epoch;controller?.abort();controller=undefined;flight=undefined;held=null;bareCatalog=null;carried=display;carriedBodyVerified=false;bootstrapping=false;acceptedIdentity=seed;acceptedAt=display.receivedAt;
   publish({phase:'carried',value:null,error:null},()=>accept(display));return display;
  }
  return{getSnapshot:()=>state,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},read,bootstrap:()=>bootstrap,adoptDocument,identity:()=>acceptedIdentity};
@@ -130,7 +147,7 @@ function carriedDocumentInput():CarriedBankCatalogInput|undefined{
  seed?.remove();hint?.remove();
  if(!seedText||!text||text.length>1024)return;try{return{seedText,hint:JSON.parse(text)};}catch{return;}
 }
-const reader=createPreparedBankCatalogReader(undefined,carriedDocumentInput(),browserPreparedBankCache(PREPARED_BANK_CATALOG_PATH));
+const reader=createPreparedBankCatalogReader(undefined,carriedDocumentInput(),preparedPublicCatalogCache);
 export const prepareCarriedBankCatalog=reader.bootstrap;
 export const adoptPublicDocumentCatalog=reader.adoptDocument;
 export const publicMarketIdentity=reader.identity;
@@ -139,4 +156,4 @@ if(typeof document!=='undefined'){exposeIdentity();if(document.readyState==='loa
 export const readPreparedBankCatalog=reader.read;
 export const preparedBankCatalogState=reader.getSnapshot;
 export const subscribePreparedBankCatalog=reader.subscribe;
-export function preparedBankCatalogEnabled(){if(typeof document==='undefined'||typeof location==='undefined'||location.pathname!=='/')return false;const carried=document.getElementById('public-market-seed');return !carried||!!carried.closest('[data-public-runtime][hidden]');}
+export function preparedBankCatalogEnabled(){if(typeof document==='undefined'||typeof location==='undefined'||location.pathname!=='/')return false;const state=reader.getSnapshot();return !!(state.value??state.carried);}

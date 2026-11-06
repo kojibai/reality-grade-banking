@@ -233,6 +233,7 @@ it('does not queue a post-trade share update behind a stalled collection or olde
  const membership=deferredQuote<ReturnType<typeof parsePublicMarket>>(),oldQuote=deferredQuote<unknown>(),fresh=deferredQuote<unknown>();
  localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(sourceInput()));network.membership.mockReturnValue(membership.promise);network.quotes.mockReturnValueOnce(oldQuote.promise).mockReturnValueOnce(fresh.promise);
  await observe(async read=>{
+  await act(()=>{void read().refresh();});
   const nonce='10000000-0000-4000-8000-000000000021';
   await act(async()=>{dispatchEvent(new CustomEvent('bankeiz:market-shares-changed',{detail:{clientNonce:nonce}}));});
   expect(network.quotes).toHaveBeenCalledTimes(2);expect(network.quotes.mock.calls[1][1]).toBe(nonce);expect(network.membership).toHaveBeenCalledTimes(1);

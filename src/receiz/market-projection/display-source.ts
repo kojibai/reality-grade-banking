@@ -1,4 +1,4 @@
-import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog} from '../prepared-bank-catalog';
+import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,prepareCarriedBankCatalog} from '../prepared-bank-catalog';
 import {useSyncExternalStore} from 'react';
 import {readPublicMarketDocumentSeed} from '../public-market-document-seed';
 import {parseMarketCapSource,retainMarketSourceHistory,type MarketCapSource} from './source';
@@ -24,7 +24,7 @@ export function publishMarketDisplaySource(next:MarketCapSource,kind:'live'|'shi
 }
 const subscribe=(listener:()=>void)=>{listeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{listeners.delete(listener);unsubscribe();};};
 export function retainedMarketDisplaySource(){
- if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState(),held=prepared.value??prepared.carried;if(held)return held.capitalization;}
+ if(preparedBankCatalogEnabled()){const prepared=preparedBankCatalogState(),held=prepared.value??prepared.carried;if(held){const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>{complete:boolean}})|null,selected=held.fromCache?marker?.publicMarketCatalog?.():null;if(!selected?.complete||selected===held.seed.catalog)return held.capitalization;}}
  if(!restored){restored=true;const prepared=readPublicMarketDocumentSeed()?.capitalization;
   if(prepared){source=prepared;sourceKind='live';}
   else try{const input=JSON.parse(localStorage.getItem(KEY)??'null'),cached=parseMarketCapSource(input);if(!source||cached.serverPulse>source.serverPulse){source=cached;sourceKind=input.displaySourceKind==='shipped'?'shipped':'live';}}catch{/* No qualified public cache. */}}
@@ -38,7 +38,8 @@ export function readMarketDisplaySource(path:string):Promise<MarketCapSource>{
 }
 export function prepareMarketDisplaySource(refreshMissing=false):Promise<void>{
  const held=retainedMarketDisplaySource();if(held&&!refreshMissing)return Promise.resolve();
- if(preparedBankCatalogEnabled()&&(preparedBankCatalogState().phase!=='fallback'||preparedBankCatalogState().value||preparedBankCatalogState().carried))return readPreparedBankCatalog().then(value=>{if(!value&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)return prepareMarketDisplaySource(refreshMissing);});
+ if(preparedBankCatalogState().bootstrapping)return prepareCarriedBankCatalog().then(()=>prepareMarketDisplaySource(refreshMissing));
+ if(preparedBankCatalogEnabled()&&held===(preparedBankCatalogState().value??preparedBankCatalogState().carried)?.capitalization)return readPreparedBankCatalog().then(value=>{if(!value&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)return prepareMarketDisplaySource(refreshMissing);});
  if(initialRead)return initialRead;
  const attempt=(async()=>{await Promise.allSettled([...(held?[]:[readMarketDisplaySource('/receiz-public-capitalization.json')]),readMarketDisplaySource('/api/bank/public-market/capitalization')]);})();
  initialRead=attempt;void attempt.finally(()=>{if(initialRead===attempt)initialRead=undefined;});return attempt;

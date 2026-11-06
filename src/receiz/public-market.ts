@@ -1,3 +1,4 @@
+import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
 import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory.js';
@@ -8,7 +9,7 @@ import {safeImportedSourceUrl} from "./imported-source-url.js";
 import {publicMarketPulseSeed,type MarketPulseSeed,type MarketValueRow} from './market-projection/source.js';
 import type {MarketSealedBirth} from './market-projection/sealed-copies.js';
 import type {SportsHistorySnapshot} from './market-projection/sports-observations.js';
-import {readPublicAssetManifestSource,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
+import {readPublicAssetManifestSource,retainPublicMomentManifest,type PublicAssetManifestRow,type PublicAssetManifestSource} from './public-asset-manifest.js';
 import {publicAssetTitle} from './asset-title.js';
 import type {PublicCollectiblePresentation} from './public-collectible-presentation.js';
 import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
@@ -220,6 +221,7 @@ export function mergePublicQuotes(catalog: PublicMarketCatalog, snapshot: unknow
   if (envelope.ok !== true || data.schema !== 'receiz.market.public-snapshot.v1' || !Array.isArray(data.liveMarkets)) return catalog;
   const quotes = new Map<string, RecordValue>();
   for (const raw of data.liveMarkets) { const quote = record(raw), id = text(quote.itemId, 256); if (id && quote.visibility === 'public') quotes.set(id, quote); }
+  if(!quotes.size)return catalog;
   return { ...catalog, items: catalog.items.map(item => {
     const quote = quotes.get(item.id); if (!quote) return item;
     // The public snapshot chart is in Phi; convert only with its own display basis.
@@ -235,11 +237,55 @@ export function validatePublicQuotes(snapshot: unknown): unknown {
   if (envelope.ok !== true || data.schema !== 'receiz.market.public-snapshot.v1' || !Array.isArray(data.liveMarkets) || data.liveMarkets.length > 100_000) throw new Error('Public quotes returned an unsupported response.');
   return snapshot;
 }
+const publicMarketResponses=new WeakMap<PublicMarketCatalog,{response:Response|null;input:unknown;basis:PublicMarketCatalog;status:number;contentType:string;retained?:true;snapshot?:unknown;quotes?:unknown}>();
+function publicQuoteSnapshot(snapshot:unknown,catalog:PublicMarketCatalog,previous?:unknown){
+ validatePublicQuotes(snapshot);const data=record(record(snapshot).data),prior=record(record(previous).data),rows=new Map<string,RecordValue>();
+ for(const raw of [...(Array.isArray(prior.liveMarkets)?prior.liveMarkets:[]),...data.liveMarkets as unknown[]]){const quote=record(raw),id=text(quote.itemId,256);if(id&&quote.visibility==='public')rows.set(id,quote);}
+ return{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:catalog.items.flatMap(item=>{
+  const quote=rows.get(item.id);if(!quote)return[];
+  const inventory=compatibleShareInventory(item,item.shareInventory);
+  return[{itemId:item.id,visibility:'public',priceUsd:nonnegative(item.priceUsd),quoteUsdPerPhi:nonnegative(quote.quoteUsdPerPhi),changePct:typeof quote.changePct==='number'&&Number.isFinite(quote.changePct)&&Math.abs(quote.changePct)<=1e6?quote.changePct:null,
+   chart:Array.isArray(quote.chart)?quote.chart.slice(-256).map(point=>nonnegative(record(point).value)).filter((value):value is number=>value!==null).map(value=>({value})):[],...(inventory?{shareInventory:inventory}:{})}];
+ })}};
+}
+/** Restore the same weak response association from an already parsed public
+ * transport. This performs no read and supplies no currentness verdict. */
+export function rememberPublicMarketResponse(catalog:PublicMarketCatalog,input:unknown,response:Response|null=null):void{
+ if(!catalog.complete)return;const source=record(input);let quotes:unknown;
+ if(source.snapshot)try{quotes=publicQuoteSnapshot(source.snapshot,catalog);}catch{/* Unsupported quote fields are not retained. */}
+ const selectedInput=source.snapshot?{...source,snapshot:quotes}:input;
+ publicMarketResponses.set(catalog,{response:source.snapshot?null:response,input:selectedInput,basis:catalog,status:response?.status??200,contentType:response?.headers.get('content-type')??'application/json',...(quotes?{quotes}:{})});
+ if(source.snapshot)void response?.body?.cancel().catch(()=>{});
+}
+function carriedMomentInput(input:unknown,basis:PublicMarketCatalog,selected:PublicMarketCatalog){
+ const source=record(input),transport=record(source.transport);if(!Array.isArray(transport.publicOriginals))return input;
+ const known=new Map(basis.items.map(item=>[item.id,item])),current=new Map(selected.items.map(item=>[item.id,item]));let changed=false;
+ const originals=transport.publicOriginals.map(raw=>{const row=record(raw),id=text(row.id,256),original=id?known.get(id):null,hint=id?current.get(id):null;if(!original||!hint)return raw;
+  const retained=retainPublicMomentManifest(original,hint),hash=retained.proofManifestSource?.recordCardMediaSha256Hex,profile=record(row.profileOriginal);
+  if(retained===original||!hash||profile.recordCardMediaSha256Hex===hash)return raw;changed=true;return{...row,profileOriginal:{...profile,recordCardMediaSha256Hex:hash}};
+ });return changed?{...source,transport:{...transport,publicOriginals:originals}}:input;
+}
+/** Retain the response selected by an existing consumer. Its supported optional
+ * snapshot carries public quote fields through their existing source guards. */
+export function reusePublicMarketResponse(previous:PublicMarketCatalog,selected:PublicMarketCatalog):void{const held=publicMarketResponses.get(previous);if(held)publicMarketResponses.set(selected,held);}
+export function retainPublicMarket(catalog:PublicMarketCatalog,snapshot?:unknown,selected=catalog,previousCatalog?:PublicMarketCatalog|null):void{
+ const inherited=previousCatalog?publicMarketResponses.get(previousCatalog)?.quotes:undefined;snapshot??=inherited;
+ const held=publicMarketResponses.get(catalog);if(!held)return;publicMarketResponses.set(selected,held);
+ const input=carriedMomentInput(held.input,held.basis,selected),changed=input!==held.input;if(changed){held.input=input;void held.response?.body?.cancel().catch(()=>{});held.response=null;}
+ if(!changed&&held.retained&&(!snapshot||held.snapshot===snapshot))return;
+ const quotes=snapshot?publicQuoteSnapshot(snapshot,selected,held.quotes??inherited):held.quotes,retainedInput=quotes?{...record(held.input),snapshot:quotes}:held.input,serialized=JSON.stringify(retainedInput);
+ let previous:string|null|undefined,saved=false;
+ try { previous=localStorage.getItem('receiz-bank-public-discovery-v2');localStorage.setItem('receiz-bank-public-discovery-v2',serialized);saved=true; } catch { /* Storage capacity does not change source availability. */ }
+ const exact=held.response&&!snapshot?new Response(held.response.body,{status:held.status,headers:{'content-type':held.contentType}}):preparedPublicCatalogCache?new Response(serialized,{status:held.status,headers:{'content-type':held.contentType}}):null;
+ held.response=null;held.retained=true;if(snapshot)held.snapshot=snapshot;if(quotes)held.quotes=quotes;
+ if(exact)void preparedPublicCatalogCache!.write(exact,()=>{if(!saved&&previous!==undefined)try{if(localStorage.getItem('receiz-bank-public-discovery-v2')===previous)localStorage.removeItem('receiz-bank-public-discovery-v2');}catch{/* A newer or unavailable copy stays untouched. */}}).catch(()=>{/* Optional display retention never gates the selected response. */});
+}
 export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=assetPublicationFreshnessHint()): Promise<PublicMarketCatalog> {
   const response = await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''), { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('The public Market could not be refreshed.');
-  const input = await response.json(); const catalog = parsePublicMarket(input); rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
-  if (catalog.complete) try { localStorage.setItem('receiz-bank-public-discovery-v2', JSON.stringify(input)); } catch { /* Storage capacity does not change source availability. */ }
+  const exact=preparedPublicCatalogCache&&/^application\/json(?:;|$)/i.test(response.headers.get('content-type')??'')?response.clone():null;
+  const input = await response.json(); const catalog = parsePublicMarket(input,input?.snapshot); rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
+  rememberPublicMarketResponse(catalog,input,exact);
   return catalog;
 }
 export async function fetchPublicQuotes(signal?: AbortSignal,afterTrade?:string): Promise<unknown> {

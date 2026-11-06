@@ -49,7 +49,7 @@ it('keeps accepted membership B selected for Feed without borrowing prepared A p
  expect(host.textContent).toContain('Original qualified C');expect(host.textContent).not.toContain('Original accepted');expect(marker.publicDiscoveryDocument()?.generation).toBe('c'.repeat(64));
  const withdrawn=await seed([],'e'.repeat(64));await act(()=>adoptPublicMarketDocument(withdrawn,{state:'current',identity:reader.publicMarketIdentity()}));
  expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual([]);expect(host.textContent).not.toContain('Original qualified C');
- expect(fetcher).toHaveBeenCalledTimes(2);
+ expect(fetcher.mock.calls.map(([path])=>String(path)).filter(path=>path.startsWith('/api/'))).toEqual(['/api/bank/public-market/membership?afterPublication='+ 'd'.repeat(64),'/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);
 });
 it('retains accepted membership when publication resolves after its Market consumer unmounts',async()=>{
  const a=await seed(['old']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
