@@ -11,8 +11,10 @@ async function load(){
  const values=await Promise.all(resources.map(async([path,expected])=>{
   let bytes:Uint8Array;
   if(typeof window==='undefined'){
-   const {readFile}=await import('node:fs/promises'),base=import.meta.url;
-   bytes=new Uint8Array(await readFile(new URL('../../public/conformance/'+path,base)));
+   const {readFile}=await import('node:fs/promises'),{resolve}=await import('node:path');
+   // Server bundles have a different module directory. The same pinned public
+   // renderer/fonts are traced into the function and resolved from its root.
+   bytes=new Uint8Array(await readFile(resolve('public/conformance',path)));
   }else{
    const response=await fetch('/conformance/'+path,{credentials:'same-origin',cache:'force-cache',signal:AbortSignal.timeout(15000)});
    if(!response.ok)throw Error('CONFORMANCE_RENDER_RESOURCE_UNAVAILABLE');

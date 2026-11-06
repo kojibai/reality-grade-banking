@@ -29,3 +29,8 @@ test-results/
 /public/build-demo/
 
 /dist-public/
+
+# Local development Registry proof publications; production uses durable Redis.
+/.registry-data/
+/server/registry-runtime/*.mjs
+/server/registry-runtime/document-head.html

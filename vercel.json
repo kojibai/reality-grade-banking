@@ -34,6 +34,10 @@
     "api/explore.ts": {
       "maxDuration": 120,
       "includeFiles": "{dist/index.html,dist/explore/**,dist/{market-cap,ledger,feed,discover}/index.html,server/profile-runtime/**,public/receiz-public-{ledger.json.gz.bin,share-chart-history.json,sports.json}}"
+    },
+    "api/registry.ts": {
+      "maxDuration": 60,
+      "includeFiles": "{server/registry-runtime/**,public/conformance/renderer.wasm,public/conformance/fonts/*.ttf}"
     }
   },
   "redirects": [
@@ -49,6 +53,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/registry/index.html",
+      "destination": "/api/registry?document=1"
+    },
+    {
+      "source": "/institutions/scorecard/index.html",
+      "destination": "/api/registry?document=1"
+    },
     {
       "source": "/",
       "destination": "/__bank_static_entry/bank/index.html"
@@ -649,19 +661,19 @@
     },
     {
       "source": "/institutions/scorecard/",
-      "destination": "/registry/index.html"
+      "destination": "/api/registry?document=1"
     },
     {
       "source": "/institutions/scorecard",
-      "destination": "/registry/index.html"
+      "destination": "/api/registry?document=1"
     },
     {
       "source": "/registry/",
-      "destination": "/registry/index.html"
+      "destination": "/api/registry?document=1"
     },
     {
       "source": "/registry",
-      "destination": "/registry/index.html"
+      "destination": "/api/registry?document=1"
     },
     {
       "source": "/standards",
@@ -1112,6 +1124,14 @@
     {
       "source": "/verify/:digest/",
       "destination": "/verify/index.html"
+    },
+    {
+      "source": "/api/bank/registry",
+      "destination": "/api/registry"
+    },
+    {
+      "source": "/api/bank/registry/(.*)",
+      "destination": "/api/registry"
     },
     {
       "source": "/api/bank/(.*)",

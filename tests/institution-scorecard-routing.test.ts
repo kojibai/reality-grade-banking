@@ -22,6 +22,6 @@ it('exposes the receiving register from guides, institution guidance and shared 
 it('serves both scorecard entrances as the static document without altering the static account entrance',()=>{
  const config=JSON.parse(readFileSync('vercel.json','utf8'));
  const destination=(path:string)=>config.rewrites.find((entry:{source:string})=>entry.source===path)?.destination;
- for(const path of ['/registry','/registry/','/institutions/scorecard','/institutions/scorecard/'])expect(destination(path)).toBe('/registry/index.html');
+ for(const path of ['/registry','/registry/','/institutions/scorecard','/institutions/scorecard/'])expect(destination(path)).toBe('/api/registry?document=1');
  expect(destination('/')).toBe('/__bank_static_entry/bank/index.html');
 });

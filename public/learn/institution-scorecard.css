@@ -276,3 +276,38 @@
 @media(max-width:480px){.institution-scorecard .isc-gate{grid-template-columns:minmax(0,1fr)}.institution-scorecard .isc-gate-word,.institution-scorecard .isc-gate h2{grid-column:1/-1}.institution-scorecard .isc-gate h2{margin-top:12px}}
 @media(max-width:390px){.institution-scorecard .isc-hero h1{font-size:clamp(20px,16cqi,85px)}.institution-scorecard .isc-gate{padding:23px 21px}.institution-scorecard .isc-gate-word{font-size:75px}.institution-scorecard .isc-gate h2{font-size:28px}.institution-scorecard .isc-register-counts dt{font-size:9px}.institution-scorecard .isc-institution{padding-inline:16px}.institution-scorecard .isc-institution.isc-green{padding-left:14px}.institution-scorecard .isc-institution h3{font-size:22px}.institution-scorecard .isc-section-heading h2,.institution-scorecard .isc-same-standard h2{font-size:39px}.institution-scorecard .isc-directory-controls{padding:17px 15px}.institution-scorecard .isc-filter-row{gap:14px 10px}.institution-scorecard .isc-filter-row select{font-size:11px}.institution-scorecard .isc-directory-results{padding-inline:15px}}
 @media(prefers-reduced-motion:reduce){.institution-scorecard *,.institution-scorecard *::before,.institution-scorecard *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.institution-scorecard [data-existing-conformance]{display:contents}
+.institution-scorecard [data-existing-conformance][hidden]{display:none}
+.institution-scorecard [data-published-conformance]{grid-column:1/-1;min-width:0}
+.institution-scorecard .isc-proof-upload{grid-column:1/-1;min-width:0;margin:8px 0 0;padding:25px 0 0;border-top:1px solid var(--isc-line)}
+.institution-scorecard .isc-proof-upload[hidden]{display:none}
+.institution-scorecard .isc-proof-upload-heading .isc-eyebrow{font-size:9px;color:var(--isc-muted);letter-spacing:.13em}
+.institution-scorecard .isc-proof-upload-heading h4{font-family:Georgia,'Times New Roman',serif;font-size:25px;font-weight:400;letter-spacing:-.035em;margin:10px 0 0}
+.institution-scorecard .isc-proof-upload>p{max-width:760px;font-size:12px;line-height:1.8;margin:13px 0 0}
+.institution-scorecard .isc-proof-origin{font-size:11px;line-height:1.8;color:var(--isc-muted);margin-top:14px;min-width:0}
+.institution-scorecard .isc-proof-origin summary{padding:0!important;font-size:11px!important;list-style:none;cursor:pointer;text-decoration:underline;text-underline-offset:4px;display:inline}
+.institution-scorecard .isc-proof-origin summary::after{display:none!important}
+.institution-scorecard .isc-proof-origin p{margin:12px 0 8px;font-size:11px}
+.institution-scorecard .isc-proof-origin a{overflow-wrap:anywhere;font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.institution-scorecard .isc-proof-upload-actions{display:flex;align-items:center;flex-wrap:wrap;gap:20px 28px;margin-top:21px}
+.institution-scorecard .isc-proof-picker{min-width:0;flex:1 1 280px}
+.institution-scorecard .isc-proof-picker label{display:block;font-size:11px;line-height:1.6;font-weight:600;color:var(--isc-ink);margin-bottom:9px}
+.institution-scorecard .isc-proof-picker input{display:block;font:inherit;font-size:11px;color:var(--isc-muted);width:100%;max-width:100%;min-width:0}
+.institution-scorecard .isc-proof-picker input::file-selector-button{font:inherit;color:var(--isc-ink);border:1px solid #aeb9bd;background:transparent;border-radius:0;padding:10px 13px;margin-right:12px;cursor:pointer}
+.institution-scorecard .isc-proof-picker p{font-size:9px;line-height:1.8;margin:8px 0 0;color:var(--isc-muted)}
+.institution-scorecard .isc-proof-upload button{background:var(--isc-ink);border:1px solid var(--isc-ink);border-radius:0;color:#fffdf7;min-height:44px;padding:12px 17px;font:inherit;font-size:11px;line-height:1.6;font-weight:500;cursor:pointer}
+.institution-scorecard .isc-proof-upload button:disabled{opacity:.45;cursor:default}
+.institution-scorecard .isc-proof-upload input:focus-visible,.institution-scorecard .isc-proof-upload button:focus-visible{outline:2px solid #365b79;outline-offset:4px}
+.institution-scorecard .isc-proof-upload .isc-proof-status{font-size:11px;line-height:1.8;min-height:0;margin-top:13px}
+.institution-scorecard .isc-proof-status:empty{display:none}
+.institution-scorecard .isc-proof-status[data-state="error"]{color:#ac231c}
+.institution-scorecard .isc-proof-status[data-state="success"]{color:#17623d}
+.institution-scorecard .isc-proof-history{margin:22px 0 0;padding-top:18px;border-top:1px solid var(--isc-line)}
+.institution-scorecard .isc-proof-history ol{padding-left:18px;margin-top:13px}
+.institution-scorecard .isc-proof-history li{font-size:11px;line-height:1.8;margin-top:9px;overflow-wrap:anywhere}
+.institution-scorecard .isc-proof-history a{text-decoration:underline;text-underline-offset:3px}
+.institution-scorecard .isc-prior-record{grid-column:1/-1;min-width:0;border-top:1px solid var(--isc-line);padding-top:17px}
+.institution-scorecard .isc-prior-record>summary{font-size:11px;line-height:1.8;padding:0 25px 0 0;cursor:pointer;color:var(--isc-muted)}
+.institution-scorecard .isc-prior-record>summary::after{top:-3px}
+.institution-scorecard .isc-prior-record>.isc-original-evidence{padding-top:20px}
+@media(max-width:760px){.institution-scorecard .isc-proof-upload{padding-top:20px;margin-top:0}.institution-scorecard .isc-proof-upload-heading h4{font-size:23px}.institution-scorecard .isc-proof-upload>p{font-size:10px}.institution-scorecard .isc-proof-upload-actions{gap:15px;margin-top:17px}.institution-scorecard .isc-proof-picker{flex-basis:100%}.institution-scorecard .isc-proof-upload button{width:100%;font-size:11px}.institution-scorecard .isc-proof-origin,.institution-scorecard .isc-proof-origin summary,.institution-scorecard .isc-proof-origin p,.institution-scorecard .isc-proof-origin a{font-size:10px!important}.institution-scorecard .isc-proof-picker p{font-size:9px}}
