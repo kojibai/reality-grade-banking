@@ -1,3 +1,4 @@
+.learn-header{--paper:#f8f6ef}
 .institution-scorecard{--isc-paper:#f8f6ef;--isc-ink:#10263d;--isc-muted:#526171;--isc-line:#d5d8d5;--isc-red:#aa261d;--isc-red-wash:#fff0eb;--isc-green:#13643c;--isc-green-wash:#e9f6ec;background:var(--isc-paper);color:var(--isc-ink);padding-top:1px;overflow-wrap:break-word}
 .institution-scorecard [hidden]{display:none!important}
 .institution-scorecard .isc-shell{width:min(1280px,calc(100% - 112px));margin-inline:auto;min-width:0}
@@ -9,7 +10,7 @@
 .institution-scorecard h1,.institution-scorecard h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.055em}
 .institution-scorecard .isc-hero{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:8%;padding-block:70px 62px;align-items:center}
 .institution-scorecard .isc-hero-copy{container-type:inline-size}
-.institution-scorecard .isc-hero h1{font-size:clamp(20px,10vw,102px);font-size:clamp(20px,16cqi,102px);line-height:1.01;margin:27px 0}
+.institution-scorecard .isc-hero h1{font-size:clamp(20px,10vw,102px);font-size:clamp(20px,16cqi,102px);font-weight:400;letter-spacing:-.055em;line-height:1.01;margin:27px 0}
 .institution-scorecard .isc-title-line{display:block;white-space:nowrap}
 .institution-scorecard .isc-hero-lede{font-size:18px;line-height:1.7;max-width:610px}
 .institution-scorecard .isc-hero-moral{font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.4;color:var(--isc-ink);margin-top:24px}

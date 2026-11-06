@@ -123,6 +123,12 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   const [quoteStatus, setQuoteStatus] = useState<'loading' | 'fresh' | 'stale'>(()=>preparedBankCatalogEnabled()&&preparedBankCatalogState().value?.receipt.state==='current'?'fresh':'stale');
   const [sportsStatus, setSportsStatus] = useState<'loading' | 'fresh' | 'retained' | 'missing'>(catalog?.items.some(item => item.category === 'sports') ? 'retained' : 'loading');
   const [error, setError] = useState<string | null>(null);
+  // These operands settle independently; a success clears only its own failure.
+  const refreshErrors=useRef<{membership:string|null;quotes:string|null}>({membership:null,quotes:null});
+  const updateRefreshError=useCallback((next:Partial<typeof refreshErrors.current>)=>{
+    Object.assign(refreshErrors.current,next);
+    setError([refreshErrors.current.membership,refreshErrors.current.quotes].filter(Boolean).join(' ')||null);
+  },[]);
   const running = useRef<AbortController | null>(null);
   const sportsRunning=useRef<AbortController|null>(null),sportsFailed=useRef(false);
   const pendingMarketChange=useRef<string|undefined>(undefined);
@@ -141,12 +147,12 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const pending=fetchPublicQuotes(controller.signal,afterTrade).then(validatePublicQuotes).then(value=>{
       if(!current())return;latestQuotes.current=value;quoteFailed.current=false;
       if(pendingMarketChange.current===afterTrade)pendingMarketChange.current=undefined;
-      const before=readPublicCatalog(),selected=setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);if(before&&selected&&selected!==before)retainPublicMarket(before,value,selected);setQuoteStatus('fresh');
-    },()=>{if(current()){quoteFailed.current=true;setQuoteStatus('stale');setError(message=>[message,'Public prices and charts could not be refreshed. Showing cached quotes.'].filter(Boolean).join(' '));}}).finally(()=>{
+      const before=readPublicCatalog(),selected=setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);if(before&&selected&&selected!==before)retainPublicMarket(before,value,selected);setQuoteStatus('fresh');updateRefreshError({quotes:null});
+    },()=>{if(current()){quoteFailed.current=true;setQuoteStatus('stale');updateRefreshError({quotes:'Public prices and charts could not be refreshed. Showing cached quotes.'});}}).finally(()=>{
       if(quoteRead.current?.controller===controller)quoteRead.current=null;
     });
     quoteRead.current={controller,nonce:afterTrade,pending};return pending;
-  },[setCatalog]);
+  },[setCatalog,updateRefreshError]);
   // Sports has its own missing/failure lifetime, just like share quotes. A
   // wake can retry that distinct operand without rediscovering membership.
   const refreshSports=useCallback(()=>{
@@ -165,10 +171,10 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     lastRefreshAt=Date.now();lastRefreshFailed=false;
     if(!existingFallback&&readPublicCatalog()===(preparedBankCatalogState().value??preparedBankCatalogState().carried)?.seed.catalog&&preparedBankCatalogEnabled()){
       const prepared=await readPreparedBankCatalog();
-      if(prepared){sportsFailed.current=false;setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');setError(null);return;}
+      if(prepared){sportsFailed.current=false;setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');updateRefreshError({membership:null,quotes:null});return;}
       const held=preparedBankCatalogState();
       const retained=held.value??held.carried;
-      if(retained){lastRefreshFailed=true;setStatus('stale');setQuoteStatus('stale');setSportsStatus(retained.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');setError(held.error);return;}
+      if(retained){lastRefreshFailed=true;setStatus('stale');setQuoteStatus('stale');setSportsStatus(retained.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');updateRefreshError({membership:held.error});return;}
       void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
     }
     void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
@@ -194,12 +200,12 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       });
       if(next?.complete&&selected&&selected!==before)retainPublicMarket(next,latestQuotes.current,selected,before);
       setStatus(next?.complete?'live':'stale');
-      setError(next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.');
+      updateRefreshError({membership:next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.'});
     });
     refreshSports();
     await Promise.allSettled([membershipAttempt,quotesAttempt]);
     if (running.current === controller) running.current = null;
-  }, [refreshQuotes,refreshSports]);
+  }, [refreshQuotes,refreshSports,updateRefreshError]);
   useEffect(()=>{if(!active)return;const changed=(event:Event)=>{const nonce=(event as CustomEvent<{clientNonce?:unknown}>).detail?.clientNonce;if(typeof nonce!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(nonce))return;pendingMarketChange.current=nonce;void refresh(true);};addEventListener('bankeiz:market-shares-changed',changed);return()=>removeEventListener('bankeiz:market-shares-changed',changed);},[active,refresh]);
   useEffect(() => {
     if (!active) return;
