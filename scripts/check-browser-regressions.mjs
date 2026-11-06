@@ -86,7 +86,7 @@ try{
  for(const width of [390,1440]){
   const context=await browser.newContext({viewport:{width,height:844},serviceWorkers:'block',permissions:['clipboard-read','clipboard-write']}),page=await context.newPage();
   const images=[],errors=[],documents=[],profiles=[],forbidden=[];
-  await context.addInitScript(input=>{localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));window.__regressionProfiles=0;addEventListener('bankeiz:profile-metadata',event=>{if(event.detail?.username==='fixtureowner')window.__regressionProfiles++;});},market);
+  await context.addInitScript(input=>{localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input.market));window.__regressionAssetReady=false;window.__regressionProfiles=0;addEventListener('bankeiz:asset-metadata',event=>{if(event.detail?.id===input.assetId)window.__regressionAssetReady=true;});addEventListener('bankeiz:profile-metadata',event=>{if(event.detail?.username==='fixtureowner')window.__regressionProfiles++;});},{market,assetId:selected.id});
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url());
    if(url.origin===origin)return route.continue();
@@ -101,13 +101,12 @@ try{
    await page.locator('.public-asset-top').waitFor({timeout:2500});
    await page.waitForFunction(()=>{const cover=document.querySelector('.proof-image-view img'),owner=document.querySelector('.asset-profile-byline img');return cover?.complete&&cover.naturalWidth>0&&owner?.complete&&owner.naturalWidth>0;});
    await page.waitForLoadState('load');
-   // Wait for the actual deferred JSON adoption, not just document load. This
-   // also observes unused-image work mistakenly added after frame/idle preparation.
-   await page.waitForFunction(()=>window.__regressionProfiles===1,{},{timeout:5000});
+   // Observe the selected asset's real runtime adoption, not just its static
+   // HTML. Its carried portrait must not start work for an unopened profile.
+   await page.waitForFunction(()=>window.__regressionAssetReady,{},{timeout:5000});
    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-   assert.equal(profiles.length,1,'Profile preparation was omitted or fetched more than once');
-   const profileTiming=await page.evaluate(url=>({start:performance.getEntriesByName(url)[0]?.startTime,loaded:performance.getEntriesByType('navigation')[0]?.loadEventEnd}),profiles[0]);
-   assert.ok(profileTiming.loaded>0&&profileTiming.start>=profileTiming.loaded,'Profile preparation started before document load');
+   const checkUnopenedProfile=async()=>{assert.equal(profiles.length,0,'An unopened profile was fetched');assert.equal(await page.evaluate(()=>window.__regressionProfiles),0,'An unopened profile was adopted');};
+   await checkUnopenedProfile();
    assert.equal(await page.locator('.proof-image-view img').getAttribute('loading'),'eager','Carried artwork lost eager loading');
    assert.equal(await page.locator('.proof-image-view img').getAttribute('fetchpriority'),'high','Carried artwork lost its loading priority');
    assert.equal(await page.locator('.asset-profile-byline img').getAttribute('loading'),'eager','Carried portrait lost eager loading');
@@ -127,7 +126,7 @@ try{
    // while allowing its observed 1/16px layout rounding at the same position.
    for(const field of ['x','y','width','height'])assert.ok(Math.abs(confirmedBox[field]-box[field])<=0.1,`Copy confirmation changed ${field}: ${box[field]} → ${confirmedBox[field]}`);
    await copy.waitFor({timeout:2500});
-   checkColdImages();assert.equal(await page.locator('link[data-profile-preload]').count(),0,'Deferred profile preparation preloaded unused images');
+   checkColdImages();await checkUnopenedProfile();assert.equal(await page.locator('link[data-profile-preload]').count(),0,'An unopened profile preloaded unused images');
    await page.getByRole('link',{name:'Explore',exact:true}).first().click();const search=page.getByRole('textbox',{name:'Search proof objects'});await search.waitFor({timeout:2500});
    const unsigned=market.transport.publicOriginals.find(item=>item.profileOriginal.hasPbiSignature===false);await search.fill(unsigned.title);await page.locator('.market-rows .asset-row').filter({hasText:unsigned.title}).first().waitFor({timeout:2500});
    await search.fill('Selected regression specimen');
@@ -141,7 +140,7 @@ try{
    await page.locator('#regression-return').click();await search.waitFor({timeout:2500});await page.waitForTimeout(300);
    const frames=await page.evaluate(()=>{window.__recordReturn=false;return window.__returnFrames;});assert.ok(frames.length>0,'No return frames sampled');assert.ok(frames.every(frame=>frame?.opacity==='1'&&frame.transform==='none'),'Retained page replayed its entrance animation');
    assert.equal(await search.inputValue(),'Selected regression specimen');assert.equal(documents.length,1,'Navigation loaded a replacement document');
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Page overflowed horizontally');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[],'The test attempted a live service call');
+   await checkUnopenedProfile();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Page overflowed horizontally');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[],'The test attempted a live service call');
    await page.screenshot({path:resolve(output,`retained-return-${width}.png`)});results.push({width,coldAssetImageRequests:imageRequests.length,unusedImageRequests:0,retainedReturnFrames:frames.length,documentLoads:documents.length,copyFeedback:true,errors});
   }catch(error){await page.screenshot({path:resolve(output,`failure-${width}.png`)}).catch(()=>{});throw error;}
   finally{await context.close();}

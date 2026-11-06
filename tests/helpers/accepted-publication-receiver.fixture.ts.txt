@@ -1,60 +1,91 @@
 import type * as SourceSdk from '../../native/receiz/packages/receiz-sdk/src/artifactAdmission';
 import type * as Persistent from '../../native/receiz/packages/receiz-sdk/src/profileShowcasePersistentState';
+import type * as Composite from '../../native/receiz/packages/receiz-sdk/src/compositeProofTransport';
 import type * as Transport from '../../native/receiz/app/lib/profile/showcase/completeSourceTransport';
 import type * as Retainer from '../../native/receiz/app/lib/profile/showcase/acceptedPredecessorCustody';
 import type * as Vault from '../../native/receiz/app/lib/profile/showcase/boundedEdgeVault';
 import type {ReceizSignatureV4RootPublicKey} from '../../native/receiz/packages/receiz-sdk/src/verifier/signatureV4';
-import type {ProfileShowcaseArtifactId} from '../../native/receiz/app/lib/profile/showcase/types';
+import type {ProfileShowcaseArtifactId,ProfileShowcaseCommittedSegment} from '../../native/receiz/app/lib/profile/showcase/types';
 import {reconstructExactByteBlocks} from '../../native/receiz/app/lib/transport/exactByteBlocks';
 import type {verifyReceizArtifact} from '../../native/receiz/packages/receiz-sdk/src/artifactVerification';
 import type {ExactByteBlockReference} from '../../native/receiz/app/lib/transport/exactByteBlocks';
 
-/** Actual installed-SDK receiver for publication protocol tests. The complete
- * genesis reader stays unchanged. Sparse tails require a genuinely admitted
- * parent and pass the unchanged SDK successor and complete-evidence guards.
- * The final full source is assertion evidence, never a sparse transport cast. */
+/** Actual installed-SDK receiver. Unknown complete input crosses the original
+ * complete-evidence admission boundary once. Further transitions extend the
+ * exact retained SDK predecessor; a new receiver reopens its durable proof.
+ * Complete Source export is an explicit assertion read, never append authority. */
 export function createAcceptedPublicationReceiver(runtime:{profileSourceSdk:typeof SourceSdk;profilePersistentState:typeof Persistent;
- verifyReceizArtifact:typeof verifyReceizArtifact;showcaseTransport:typeof Transport;showcaseRetainer:typeof Retainer;showcaseVault:typeof Vault},
- artifactId:string,rootsInput:ReadonlyMap<string,unknown>,resolve:(ref:ExactByteBlockReference)=>Promise<Uint8Array|null>){
- function assertArtifactId(value:string):asserts value is ProfileShowcaseArtifactId{if(!value.startsWith('profile-showcase:')||value.length==='profile-showcase:'.length)throw TypeError('FIXTURE_SOURCE_ID_REQUIRED');}assertArtifactId(artifactId);const selectedArtifactId=artifactId;
+ profileComposite:typeof Composite;verifyReceizArtifact:typeof verifyReceizArtifact;showcaseTransport:typeof Transport;
+ showcaseRetainer:typeof Retainer;showcaseVault:typeof Vault},artifactId:string,rootsInput:ReadonlyMap<string,unknown>,
+ resolve:(ref:ExactByteBlockReference)=>Promise<Uint8Array|null>,options:{databaseName?:string;indexedDB?:IDBFactory}={}){
+ function assertArtifactId(value:string):asserts value is ProfileShowcaseArtifactId{if(!value.startsWith('profile-showcase:')||value.length==='profile-showcase:'.length)throw TypeError('FIXTURE_SOURCE_ID_REQUIRED');}assertArtifactId(artifactId);const selectedArtifactId=artifactId,owner=artifactId.slice('profile-showcase:'.length);
  const roots=new Map<string,ReceizSignatureV4RootPublicKey>();for(const [kid,value]of rootsInput){if(!value||typeof value!=='object'||!('kid'in value)||!('alg'in value)||!('status'in value)||!('publicKeyRawB64u'in value)||value.kid!==kid||value.alg!=='Ed25519'||value.status!=='active'||typeof value.publicKeyRawB64u!=='string')throw TypeError('FIXTURE_EXACT_ROOT_POLICY_REQUIRED');roots.set(kid,{kid,alg:value.alg,status:value.status,publicKeyRawB64u:value.publicKeyRawB64u});}
+ const vault=runtime.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:options.databaseName??'actual-publication-receiver-'+crypto.randomUUID(),indexedDB:options.indexedDB,canonicalSignatureV4RootPublicKeys:roots});
  type Source=Vault.ProfileShowcaseCompletePublicSource;
  type Admission=Awaited<ReturnType<typeof runtime.showcaseRetainer.retainAcceptedShowcasePredecessor>>;
  type Carrier=Awaited<ReturnType<typeof runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission>>;
- type Accepted={source:Source;admission:Admission;carrier:Carrier;transport:Transport.ProfileShowcaseCompleteSourceTransport;sparse:boolean};
- const accepted=new Map<string,Accepted>(),children=new Map<string,Source['children'][number]>();
- const historical=new Map<number,string>();
+ type Accepted={admission:Admission;carrier:Carrier;transport:Transport.ProfileShowcaseCompleteSourceTransport;sparse:boolean;
+  resolveHistorical:(count:number)=>Promise<string|null>;visibleChildren:Awaited<ReturnType<typeof runtime.profilePersistentState.deriveReceizProfileShowcasePersistentMembershipV114>>['placements'];readCompleteSource:()=>Promise<Source>};
+ const accepted=new Map<string,Accepted>();
  const file=(bytes:Uint8Array)=>new File([bytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
- const key=(reference:Source['children'][number]['reference'])=>JSON.stringify([reference.stableChildArtifactId,reference.immutableVersion,reference.childArtifactDigest]);
- async function receive(transport:Transport.ProfileShowcaseCompleteSourceTransport):Promise<Accepted>{
+ const sameReference=(left:Source['children'][number]['reference'],right:Source['children'][number]['reference'])=>left.stableChildArtifactId===right.stableChildArtifactId&&left.immutableVersion===right.immutableVersion&&left.childArtifactDigest===right.childArtifactDigest&&left.admissionEvidenceRoot===right.admissionEvidenceRoot&&left.contentDigest===right.contentDigest;
+ async function admit(transport:Transport.ProfileShowcaseCompleteSourceTransport):Promise<Accepted>{
   const known=accepted.get(transport.artifactDigest);if(known){if(JSON.stringify(known.transport)!==JSON.stringify(transport))throw TypeError('FIXTURE_SOURCE_TRANSPORT_CONFLICT');return known;}
-  const current=await runtime.showcaseTransport.readProfileShowcaseCarrierTransport(transport,resolve);let source:Source;
-  if(!current.singleTransition)source=await runtime.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(transport,resolve);
-  else{
-   // This inspected signature supplies only a parent locator. No inspection or
-   // persisted descriptor is converted to a Source admission.
-   const inspection=await runtime.profileSourceSdk.inspectReceizBoundedProfileShowcaseV114({verification:await runtime.verifyReceizArtifact(file(current.exactSealedArtifactBytes)),ownerConstraint:artifactId.slice('profile-showcase:'.length),dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
-   const carrier=runtime.profileSourceSdk.readReceizBoundedProfileShowcaseInspectionCarrier(inspection),parents=carrier.receizProofHistory.parentRefs;
-   if(carrier.artifactId!==artifactId||inspection.artifactSha256!==transport.artifactDigest||parents.length!==1)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
-   let prior=accepted.get(parents[0]!.artifactDigest);if(!prior&&current.predecessor){prior=await receive(current.predecessor);}
-   if(!prior||prior.admission.artifactSha256!==parents[0]!.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
-   const admission=await runtime.profileSourceSdk.admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,candidateArtifact:{artifact:file(current.exactSealedArtifactBytes)},resolveVerifiedHistoricalArtifactDigest:async count=>historical.get(count)??null});
-   if(admission.artifactSha256!==transport.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_MISMATCH');
-   const head=carrier['profile-showcase'],io=runtime.profilePersistentState.createReceizProfileShowcasePersistentMemoryStoreV114([...prior.source.witnessNodes,
-    ...head.firstPaintWitnessNodes as Persistent.ReceizProfileShowcasePersistentNodeV114[],...head.stateTransitionWitnessNodes as Persistent.ReceizProfileShowcasePersistentNodeV114[]]);
-   const membership=await runtime.profilePersistentState.deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:String(head.placementRoot),orderRoot:String(head.orderRoot),counts:head.counts as Persistent.ReceizProfileShowcasePersistentStateV114['counts'],maximumKaiUpulse:String(head.headKaiUpulse)},io});
-   if(current.child){const exactSealedArtifactBytes=await reconstructExactByteBlocks(current.child.bytes,resolve,{component:'actual new sparse child evidence',maxContentBytes:64*1024*1024,maxBlockReads:131072});children.set(key(current.child.reference),{reference:current.child.reference,exactSealedArtifactBytes});}
-   const visible:Source['children'][number][]=[];for(const placement of membership.placements){if(placement.visibility!=='visible')continue;
-    const raw=placement.reference;if(typeof raw.stableChildArtifactId!=='string'||typeof raw.immutableVersion!=='string'||![raw.childArtifactDigest,raw.admissionEvidenceRoot,raw.contentDigest].every(value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)))throw TypeError('FIXTURE_EXACT_CHILD_REFERENCE_REQUIRED');
-    const reference={stableChildArtifactId:raw.stableChildArtifactId,immutableVersion:raw.immutableVersion,childArtifactDigest:String(raw.childArtifactDigest),admissionEvidenceRoot:String(raw.admissionEvidenceRoot),contentDigest:String(raw.contentDigest)},child=children.get(key(reference));if(!child||JSON.stringify(child.reference)!==JSON.stringify(reference))throw TypeError('FIXTURE_GENUINE_CHILD_EVIDENCE_REQUIRED');visible.push(child);}
-   const ancestry=new Map((prior.source.ancestry??[]).map(value=>[value.artifactDigest,value]));ancestry.set(prior.source.artifactDigest,{artifactDigest:prior.source.artifactDigest,exactSealedArtifactBytes:prior.source.exactSealedArtifactBytes});
-   source={artifactDigest:transport.artifactDigest,exactSealedArtifactBytes:current.exactSealedArtifactBytes,witnessNodes:membership.witnessNodes,children:visible,ancestry:[...ancestry.values()]};
+  const current=await runtime.showcaseTransport.readProfileShowcaseCarrierTransport(transport,resolve);
+  // Inspection locates the exact parent; only the unchanged SDK supplies custody.
+  const inspection=await runtime.profileSourceSdk.inspectReceizBoundedProfileShowcaseV114({verification:await runtime.verifyReceizArtifact(file(current.exactSealedArtifactBytes)),ownerConstraint:owner,dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+  const inspected=runtime.profileSourceSdk.readReceizBoundedProfileShowcaseInspectionCarrier(inspection),parents=inspected.receizProofHistory.parentRefs;
+  if(inspected.artifactId!==artifactId||inspection.artifactSha256!==transport.artifactDigest||parents.length>1)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
+  const parent=parents[0];let predecessor=parent?(accepted.get(parent.artifactDigest)?.admission??await vault.reopenRetainedHead(selectedArtifactId,parent.artifactDigest)):null;
+  if(!predecessor&&current.predecessor){await admit(current.predecessor);predecessor=parent?(accepted.get(parent.artifactDigest)?.admission??null):null;}
+  const predecessorContext=parent?accepted.get(parent.artifactDigest):undefined;
+  const priorHistorical=predecessorContext?.resolveHistorical??((count:number)=>vault.resolveVerifiedHistoricalArtifactDigest(selectedArtifactId,predecessor?.artifactSha256??transport.artifactDigest,count));
+  let admission:Admission;
+  if(!predecessor){
+   if(current.singleTransition)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
+   const source=await runtime.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(transport,resolve);
+   admission=await runtime.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId:selectedArtifactId,vault,canonicalSignatureV4RootPublicKeys:roots});
+  }else{
+   if(!parent||predecessor.artifactSha256!==parent.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
+   admission=await runtime.profileSourceSdk.admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:predecessor,candidateArtifact:{artifact:file(current.exactSealedArtifactBytes)},resolveVerifiedHistoricalArtifactDigest:priorHistorical});
+   const carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
+   const children:Vault.ProfileShowcaseBoundedEdgeChild[]=[];
+   // Read only children newly introduced by this genuine SDK-admitted delta.
+   const appended=(head.directDelta as readonly Record<string,unknown>[]).filter(operation=>operation.kind==='showcase.append');
+   const descriptors=appended.length?(current.child?[current.child]:(await runtime.showcaseTransport.readProfileShowcaseAppendTransport(transport,resolve)).children):[];
+   for(const operation of appended){
+    const reference=operation.child as Source['children'][number]['reference'],descriptor=descriptors.find(child=>sameReference(child.reference,reference));
+    if(!descriptor)throw TypeError('FIXTURE_GENUINE_CHILD_EVIDENCE_REQUIRED');
+    const bytes=await reconstructExactByteBlocks(descriptor.bytes,resolve,{component:'actual new child evidence',maxContentBytes:64*1024*1024,maxBlockReads:131072});
+    const admittedArtifact=await runtime.profileSourceSdk.createReceizArtifactAdmissionEngine({canonicalSignatureV4RootPublicKeys:roots})(await runtime.verifyReceizArtifact(file(bytes)),{profile:'portable-state',ownerConstraint:owner});
+    if(admittedArtifact.profile!=='portable-state'||admittedArtifact.artifactSha256!==reference.childArtifactDigest||admittedArtifact.artifactId!==reference.stableChildArtifactId||admittedArtifact.payloadSha256!==reference.contentDigest)throw TypeError('FIXTURE_GENUINE_CHILD_EVIDENCE_REQUIRED');
+    children.push({reference,admittedArtifact});
+   }
+   const segments:ProfileShowcaseCommittedSegment[]=[];
+   if(head.directDelta.length){const segment=await runtime.profileComposite.createReceizProfileShowcaseSegmentMechanicsV114({operations:head.directDelta,startOperationCount:Number(head.priorOperationCount)});
+    segments.push({schema:segment.schema,commitment:{...segment.commitment,authority:segment.authority},bytes:segment.bytes,operations:segment.operations as ProfileShowcaseCommittedSegment['operations'],membershipWitnesses:segment.membershipWitnesses as ProfileShowcaseCommittedSegment['membershipWitnesses'],authority:segment.authority});}
+   // Same installed-SDK proof-only retention used by the incremental publisher.
+   // The existing vault guards still verify the exact new proof, child and segment.
+   await vault.admit({showcaseAdmission:admission,children,segments,retainOnly:true,retainHistoryOnly:true});
   }
-  const vault=runtime.showcaseVault.createProfileShowcaseBoundedEdgeVault({databaseName:'actual-publication-receiver-'+crypto.randomUUID()});
-  const admission=await runtime.showcaseRetainer.retainAcceptedShowcasePredecessor({source,artifactId:selectedArtifactId,vault,canonicalSignatureV4RootPublicKeys:roots}),carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);
   if(admission.artifactSha256!==transport.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_MISMATCH');
-  for(const child of source.children)children.set(key(child.reference),child);historical.set(Number(carrier['profile-showcase'].resultingOperationCount),admission.artifactSha256);
-  const value={source,admission,carrier,transport,sparse:current.singleTransition};accepted.set(source.artifactDigest,value);return value;
+  const carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
+  const io=await vault.createTransitionPersistentStateIO(selectedArtifactId,admission.artifactSha256,admission);
+  const membership=await runtime.profilePersistentState.deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:String(head.placementRoot),orderRoot:String(head.orderRoot),counts:head.counts as Persistent.ReceizProfileShowcasePersistentStateV114['counts'],maximumKaiUpulse:String(head.headKaiUpulse)},io});
+  let complete:Promise<Source>|undefined;
+  const readCompleteSource=()=>complete??=(async()=>{
+   // Explicit audit only: the SDK checks complete durable source custody and
+   // selects the exact admitted head before exporting it. No fabricated Source.
+   const selected=await vault.readPublicationHead(selectedArtifactId);
+   if(selected?.artifactDigest!==admission.artifactSha256)await vault.selectOwnerRestoreHead(admission,selected?.artifactDigest??null);
+   const source=await vault.exportCompleteSource(selectedArtifactId,admission.artifactSha256);
+   if(!source||source.artifactDigest!==admission.artifactSha256)throw TypeError('FIXTURE_GENUINE_COMPLETE_SOURCE_REQUIRED');
+   return source;
+  })();
+  const resolveHistorical=async(count:number)=>count===Number(head.resultingOperationCount)?admission.artifactSha256:priorHistorical(count);
+  const value={admission,carrier,transport,sparse:current.singleTransition,resolveHistorical,visibleChildren:membership.placements.filter(placement=>placement.visibility==='visible'),readCompleteSource};accepted.set(transport.artifactDigest,value);return value;
  }
- return receive;
+ // Existing short protocol fixtures explicitly request complete assertion
+ // evidence through this adapter. Bounded publication tests use .admit().
+ return Object.assign(async(transport:Transport.ProfileShowcaseCompleteSourceTransport)=>{const result=await admit(transport);return{...result,source:await result.readCompleteSource()};},{admit});
 }
