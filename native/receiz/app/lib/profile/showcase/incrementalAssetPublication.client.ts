@@ -253,7 +253,6 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    input.assertCurrent();const sealed=await input.sealDocument({fileBytes:successorPayloadBytes,filename:'profile-showcase.json',mime:'application/json',options:{forceBundleEnvelope:true,nativeRecordSeal:{ownerReceizId:input.owner,recordId:input.artifactId}}});
    const artifact=new File([sealed.artifactBytes.slice()],predecessor.openedArtifact!.sealedArtifact.filename,{type:predecessor.openedArtifact!.sealedArtifact.mimeType});
    const admitted=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,candidateArtifact:{artifact},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
-   const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admitted),head=carrier['profile-showcase'];
    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:admitted.artifactSha256,
     exactSealedArtifactBytes:new Uint8Array(await admitted.openedArtifact.sealedArtifact.artifact.arrayBuffer()),
     child:{reference:authority.children[0]!.reference,exactSealedArtifactBytes:new Uint8Array(await placement.admission.openedArtifact.sealedArtifact.artifact.arrayBuffer())}},custody.writeBlock,{exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});

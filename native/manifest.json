@@ -7100,8 +7100,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
-      "bytes": 34212,
+      "sha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
+      "bytes": 34088,
       "mode": 420
     },
     {
@@ -17418,6 +17418,13 @@
       "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22",
       "purpose": "Reuse the unchanged canonical held-profile/Source binding dependency required by the bounded publication adapter; SDK package sources and outputs remain unchanged.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
+    },
+    {
+      "id": "bankeiz-omit-unused-precommit-carrier",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
+      "sha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
+      "purpose": "Remove only the unused carrier/head derivation after genuine SDK successor admission. Preserve exact transport bytes, atomic commit admission, the consumed post-commit carrier, PBI ceremony, custody, identity, source and ownership checks."
     }
   ],
   "historicalValuation": {
@@ -18154,7 +18161,7 @@
     },
     {
       "path": "app/lib/profile/showcase/incrementalAssetPublication.client.ts",
-      "sha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a"
+      "sha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b"
     },
     {
       "path": "app/lib/profile/showcase/legacyMigrationPayload.ts",

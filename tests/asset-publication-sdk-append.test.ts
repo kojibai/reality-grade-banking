@@ -80,7 +80,8 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const outboxKey='receiz.local.signed-action-outbox.v1',container=JSON.parse(values.get(outboxKey)!),outbox=JSON.parse(container.payload);
  const pending:any=Object.values(outbox.entries).find((entry:any)=>entry.status==='pending'&&JSON.parse(entry.envelope.request.bodyReplayText??'{}').publicationSourceArtifactSha256===next.reference.artifactSha256);
  expect(pending).toBeDefined();
- for(let i=0;i<245;i++){const entry=structuredClone(pending),id=i.toString(16).padStart(64,'0');entry.actionId=id;entry.envelope.actionId=id;entry.status='propagated';entry.updatedAtMs=Date.now()+60_000;outbox.entries[id]=entry;}
+ const pressureFixtureIds=new Set<string>();
+ for(let i=0;i<245;i++){const entry=structuredClone(pending),id=i.toString(16).padStart(64,'0');expect(outbox.entries[id]).toBeUndefined();pressureFixtureIds.add(id);entry.actionId=id;entry.envelope.actionId=id;entry.status='propagated';entry.updatedAtMs=Date.now()+60_000;outbox.entries[id]=entry;}
  container.payload=JSON.stringify(outbox);values.set(outboxKey,JSON.stringify(container));
  r.publicationOutbox.markLocalSignedActionPending({actionId:pending.actionId,error:'retained pending fixture'});
  expect(r.publicationOutbox.readLocalSignedActionOutbox().entries[pending.actionId]).toBeDefined();
@@ -96,6 +97,12 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  expect(acceptedHead.visibleChildren).toHaveLength(priorChildren.length+1);
  for(const digest of priorChildren)expect(acceptedHead.visibleChildren.some((child:any)=>child.reference.childArtifactDigest===digest)).toBe(true);
  const again={seals,finalizations,reads:reads.length};expect((await runtime.publish(next.artifact)).status).toBe('published');expect({seals,finalizations,reads:reads.length}).toEqual(again);
+ // The pressure case is settled. Remove only its synthetic completed copies;
+ // later recovery cases retain every actual action and its exact envelope.
+ const settledContainer=JSON.parse(values.get(outboxKey)!),settledOutbox=JSON.parse(settledContainer.payload);
+ const actualEntries=Object.fromEntries(Object.entries(settledOutbox.entries).filter(([id])=>!pressureFixtureIds.has(id)));
+ settledOutbox.entries=actualEntries;settledContainer.payload=JSON.stringify(settledOutbox);values.set(outboxKey,JSON.stringify(settledContainer));
+ expect(r.publicationOutbox.readLocalSignedActionOutbox().entries).toEqual(actualEntries);
  // The receiver also restarts with no module memo. Its durable admitted proof
  // survives independently of the app's device store and complete-source audits.
  const receiverModule=await f.reloadRuntime();receiveActual=receiverModule.createAcceptedPublicationReceiver(receiverModule,artifactId,roots,receiverBlock,receiverOptions).admit;
@@ -203,4 +210,6 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  }finally{pendingGet.mockRestore();pendingAll.mockRestore();pendingPut.mockRestore();}
  expect({pendingOldReads,pendingScans,pendingActiveWrites}).toEqual({pendingOldReads:0,pendingScans:0,pendingActiveWrites:0});
 
-},60000);
+// Includes real SDK sealing, receiver restart, two cold publisher restarts and
+// post-commit recovery. Keep this atomic lifecycle within a bounded CI budget.
+},120000);

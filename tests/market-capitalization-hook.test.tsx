@@ -10,7 +10,7 @@ import{parseMarketHistory}from'../src/receiz/market-projection/history';
 const shippedHistory=parseMarketHistory(historyFile);
 import{parsePublicMarket}from'../src/receiz/public-market';
 import{parseMarketCapSource}from'../src/receiz/market-projection/source';
-import{publishMarketDisplaySource,retainedMarketDisplaySource}from'../src/receiz/market-projection/display-source';
+import{adoptMarketDisplaySource,publishMarketDisplaySource,retainedMarketDisplaySource}from'../src/receiz/market-projection/display-source';
 import{buildMarketHistory}from'../src/receiz/market-projection/build-history';
 const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -126,6 +126,8 @@ it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker
  const catalog=parsePublicMarket({ok:true,transport:{generatedAt:tiny.generatedAt,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'recovery'},publicOriginals:[{id:row.marketItem!.id,receizId:row.seed,title:'Retained asset',profileOriginal:{hasPbiSignature:true},pulse:String(row.marketItem!.livePulseSeed!.claimPulse),livePulseSeed:row.marketItem!.livePulseSeed}]}});
  const item=catalog.items[0],at=String(BigInt(item.pulse!)*1000000n);item.shareInventory={schema:'receiz.market.share-inventory.v1',marketItemId:item.id,assetId:item.assetId,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:at,outstandingShareQuantityMicro:'1000000',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availableShareQuantityMicro:'0',availability:'quote-capacity',releaseCapitalization:{kaiUPulse:at,unitPriceUsdCents:'100',outstandingShareQuantityMicro:'0',availableShareQuantityMicro:'1000000',modelVersion:'market-share-quote-v1'}};
  vi.stubGlobal('fetch',vi.fn(async()=>Response.json({ok:true,marketCapProjection:tiny})));
+ // Earlier cases retain the full display source; this recovery fixture owns one real row.
+ adoptMarketDisplaySource(tiny);
  const workers:WorkerStub[]=[];
  class WorkerStub{onmessage:((event:any)=>void)|null=null;onerror:((event:any)=>void)|null=null;onmessageerror:((event:any)=>void)|null=null;messages:any[]=[];terminate(){}constructor(){workers.push(this);}postMessage(value:any){this.messages.push(value);}}
  vi.stubGlobal('Worker',WorkerStub);
@@ -134,7 +136,7 @@ it.each(['onerror','onmessageerror'] as const)('recovers a visible failed worker
  try{
   await act(async()=>root.render(<Probe/>));const retained=state.source;act(()=>workers[0][kind]!({}));expect(workers).toHaveLength(1);expect(state.source).toBe(retained);
   clock.pulse++;await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(workers).toHaveLength(2);
-  const next=workers.at(-1)!,request=next.messages.find(message=>message.source);expect(request.pulse).toBe(clock.pulse);
+  const next=workers.at(-1)!,request=next.messages.find(message=>message.source);expect(request.source.marketCapProjection).toBe(tiny);expect(request.pulse).toBe(clock.pulse);
   const history=(await buildMarketHistory(request.source.marketCapProjection,null,undefined,undefined,{catalog,pulse:clock.pulse,capitalization:true}))!;
   act(()=>next.onmessage!({data:{id:request.id,history}}));expect(state.source!.serverPulse).toBe(clock.pulse);expect(state.points.at(-1)?.usdCents).toBe(String(Math.round(state.source!.currentUsd*100)));
  }finally{act(()=>root.unmount());}

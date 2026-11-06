@@ -40,7 +40,7 @@ export function createAcceptedPublicationReceiver(runtime:{profileSourceSdk:type
   if(!predecessor&&current.predecessor){await admit(current.predecessor);predecessor=parent?(accepted.get(parent.artifactDigest)?.admission??null):null;}
   const predecessorContext=parent?accepted.get(parent.artifactDigest):undefined;
   const priorHistorical=predecessorContext?.resolveHistorical??((count:number)=>vault.resolveVerifiedHistoricalArtifactDigest(selectedArtifactId,predecessor?.artifactSha256??transport.artifactDigest,count));
-  let admission:Admission;
+  let admission:Admission,carrier:Carrier|undefined;
   if(!predecessor){
    if(current.singleTransition)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
    const source=await runtime.showcaseTransport.reconstructProfileShowcaseCompleteSourceTransport(transport,resolve);
@@ -48,7 +48,7 @@ export function createAcceptedPublicationReceiver(runtime:{profileSourceSdk:type
   }else{
    if(!parent||predecessor.artifactSha256!==parent.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_PARENT_REQUIRED');
    admission=await runtime.profileSourceSdk.admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:predecessor,candidateArtifact:{artifact:file(current.exactSealedArtifactBytes)},resolveVerifiedHistoricalArtifactDigest:priorHistorical});
-   const carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
+   carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);const head=carrier['profile-showcase'];
    const children:Vault.ProfileShowcaseBoundedEdgeChild[]=[];
    // Read only children newly introduced by this genuine SDK-admitted delta.
    const appended=(head.directDelta as readonly Record<string,unknown>[]).filter(operation=>operation.kind==='showcase.append');
@@ -69,7 +69,7 @@ export function createAcceptedPublicationReceiver(runtime:{profileSourceSdk:type
    await vault.admit({showcaseAdmission:admission,children,segments,retainOnly:true,retainHistoryOnly:true});
   }
   if(admission.artifactSha256!==transport.artifactDigest)throw TypeError('FIXTURE_EXACT_SOURCE_MISMATCH');
-  const carrier=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
+  carrier??=await runtime.profileSourceSdk.rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);const head=carrier['profile-showcase'];
   const io=await vault.createTransitionPersistentStateIO(selectedArtifactId,admission.artifactSha256,admission);
   const membership=await runtime.profilePersistentState.deriveReceizProfileShowcasePersistentMembershipV114({state:{schema:'receiz.profile-showcase.persistent-state.v114',placementRoot:String(head.placementRoot),orderRoot:String(head.orderRoot),counts:head.counts as Persistent.ReceizProfileShowcasePersistentStateV114['counts'],maximumKaiUpulse:String(head.headKaiUpulse)},io});
   let complete:Promise<Source>|undefined;
