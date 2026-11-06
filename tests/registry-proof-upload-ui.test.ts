@@ -215,7 +215,7 @@ it('retains the previously published Bankeiz Original and its reference checks w
  f.module.init(f.document);
  await vi.waitFor(()=>expect(bankeiz.querySelector('[data-published-conformance]')?.textContent).toContain('d'.repeat(64)));
  const retained=bankeiz.querySelector<HTMLDetailsElement>('[data-prior-static-record]');
- expect(retained?.querySelector('summary')?.textContent).toBe('Previously published Bankeiz record');expect(retained?.open).toBe(false);
+ expect(retained?.querySelector('summary')?.textContent).toBe('Previously published conformance record');expect(retained?.open).toBe(false);
  expect(retained?.querySelector('.isc-original-evidence')).toBe(prior);
  expect(retained?.querySelector('a')?.getAttribute('href')).toBe(bankeizRecordedConformance.url);
  expect(retained?.textContent).toContain('Recorded reference checks');expect(retained?.textContent).toContain('12 / 12 checks passed');

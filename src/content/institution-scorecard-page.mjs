@@ -2,8 +2,8 @@
 // out of application imports that only enumerate public routes.
 export const institutionScorecardPage={
  slug:'institution-scorecard',path:'/registry/',group:'Standards',
- title:'Reality-Grade Banking Conformance Register',
- description:'Look up institutions by name, region and conformance status under Reality-Grade Banking. Inspect the proof that they can receive money and preserve its original proof, provenance, ownership and complete history through the next transfer.',
+ title:'Reality-Grade Banking Conformance Register',siteName:'Reality-Grade Banking',
+ description:'Inspect Reality-Grade Banking conformance certificates and receiving assessments by institution or implementation. Compare each result’s original evidence, assessed scope and exact build.',
  intro:'Reality-Grade Banking. Published requirements. Inspectable conformance.',
  visual:'conformance',sections:[],related:['/institutions/','/standards/','/conformance/'],institutionScorecard:true,
 };

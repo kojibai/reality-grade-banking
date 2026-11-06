@@ -36,6 +36,7 @@ export function shareCardSvg(page){
  if(page.id==='protect-your-value')return protectionShareCard();
  if(page.id?.startsWith('cooperatives'))return cooperativeShareCard(page);
  const business=/^(?:business|cooperatives|vaults$)/.test(page.id??'');
+ const registry=page.id==='institution-scorecard';
  const size=page.size??(Math.max(...page.lines.map(line=>line.length))>17?92:108);
  const icon=page.motif==='rails'?'<text x="124" y="229" font-family="Inter" font-size="115" font-weight="500" fill="white">Φ</text><path d="M238 210h59m-15-15 15 15-15 15" fill="none" stroke="white" stroke-width="5" stroke-linecap="round"/><text x="305" y="226" font-family="Inter" font-size="87" fill="white">$</text>':renderToStaticMarkup(createElement(icons[page.motif]??Layers3,{x:112,y:125,width:196,height:196,color:'#ffffff',strokeWidth:1.05}));
  const accent=page.motif==='globe'?'<circle cx="210" cy="223" r="142" fill="none" stroke="#e2ecff" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="3 12"/>':page.motif==='valuation'?'<path d="M60 355h300M60 315h300M60 275h300" stroke="#b8d0ff" stroke-opacity=".3"/>':'';
@@ -49,7 +50,7 @@ export function shareCardSvg(page){
  <linearGradient id="sheen" x2=".9" y2="1"><stop stop-color="#fff" stop-opacity=".40"/><stop offset=".38" stop-color="#fff" stop-opacity=".02"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#8ab2ff" stop-opacity=".22"/></linearGradient>
  <filter id="blur"><feGaussianBlur stdDeviation="24"/></filter><filter id="lift" x="-.3" y="-.3" width="1.7" height="1.8"><feDropShadow dx="12" dy="22" stdDeviation="20" flood-color="#102642" flood-opacity=".22"/></filter>
  </defs><rect width="1730" height="909" fill="url(#paper)"/><ellipse cx="1325" cy="650" rx="560" ry="350" fill="url(#halo)"/>
- <g fill="#10243d"><svg x="74" y="113" width="105" height="105" viewBox="112 112 288 288">${bank}</svg>${business?'':'<text x="201" y="190" font-family="Inter SemiBold" font-weight="600" font-size="70" letter-spacing="-2.7">Bankeiz</text>'}</g>
+ <g fill="#10243d">${registry?'<text x="77" y="190" font-family="Inter" font-size="24" letter-spacing="3">PUBLISHED CONFORMANCE</text>':`<svg x="74" y="113" width="105" height="105" viewBox="112 112 288 288">${bank}</svg>${business?'':'<text x="201" y="190" font-family="Inter SemiBold" font-weight="600" font-size="70" letter-spacing="-2.7">Bankeiz</text>'}`}</g>
  <g font-family="Inter SemiBold" fill="#09203f" font-size="${size}" font-weight="600" letter-spacing="-5">${page.lines.map((line,i)=>`<text x="74" y="${447+i*122}"${page.sizes?` font-size="${page.sizes[i]}" letter-spacing="-.04em"`:''}>${esc(line)}</text>`).join('')}</g>
  <text x="77" y="778" font-family="Inter" font-size="31" font-weight="400" letter-spacing="-.7" fill="#243c5b">${esc(page.caption)}</text>
  <ellipse cx="1350" cy="774" rx="265" ry="49" fill="#284d8a" opacity=".17" filter="url(#blur)"/>

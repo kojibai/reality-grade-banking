@@ -40,3 +40,11 @@ it.each(['/feed/','/discover/','/booking/'])('ships complete social metadata in 
   expect(graph[0]['@type']).toBe('CollectionPage');
  }
 });
+
+it('presents the Registry under the standard in sharing metadata while preserving its hosted address',()=>{
+ const html=applyPublicMetadata('<html><head></head><body></body></html>',publicPage('/registry/')!,image('/registry/'));
+ const doc=new DOMParser().parseFromString(html,'text/html');
+ expect(doc.title).toBe('Reality-Grade Banking Conformance Register');
+ expect(doc.querySelector('meta[property="og:site_name"]')?.getAttribute('content')).toBe('Reality-Grade Banking');
+ expect(doc.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe('https://bankeiz.com/registry/');
+});

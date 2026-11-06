@@ -24,7 +24,7 @@ function renderPublication(record,entry){
  const element=record.element,document=element.ownerDocument,value=entry.current;
  const target=element.querySelector('[data-published-conformance]');
  if(!target)return;
- const heading=node(document,'h4','Verified conformance Original');
+ const heading=node(document,'h4','Verified Reality-Grade Banking certificate');
  const note=node(document,'p','This PASS covers the Public integration contract at the exact assessed build below. It does not establish production receiving qualification.');
  const scope=node(document,'dl',undefined,'isc-scope');
  for(const [label,text,code] of [['Assessed scope',value.scope],['Cases passed',`${value.cases} / ${value.cases}`],['Implementation build SHA-256',value.implementationBuildSha256,true],['Evidence SHA-256',value.evidenceSha256,true],['Original artifact SHA-256',value.artifactSha256,true],['Credential holder · Receiz ID',value.holderReceizId,true],['Published in the Registry',value.acceptedAt]]){
@@ -32,7 +32,7 @@ function renderPublication(record,entry){
   description.append(code?node(document,'code',text):document.createTextNode(text));row.append(term,description);scope.append(row);
  }
  const actions=node(document,'div',undefined,'isc-recorded-actions');
- const original=node(document,'a','Open the original conformance certificate ↗');original.setAttribute('href',value.url);
+ const original=node(document,'a','Open the Reality-Grade Banking certificate ↗');original.setAttribute('href',value.url);
  const endorsement=node(document,'a',record.id==='bankeiz'?'Inspect the published Original ↗':'Inspect the institution’s publication ↗');endorsement.setAttribute('href',value.officialProofUrl);
  actions.append(original,endorsement);
  const content=[heading,note,scope,actions];
@@ -49,7 +49,7 @@ function renderPublication(record,entry){
    if(existing.dataset.recordedArtifactSha256!==value.artifactSha256){
     if(!existing.querySelector('[data-prior-static-record]')){
      const previous=node(document,'details',undefined,'isc-prior-record');previous.dataset.priorStaticRecord='';
-     previous.append(node(document,'summary','Previously published Bankeiz record'),...existing.childNodes);existing.replaceChildren(previous);
+     previous.append(node(document,'summary','Previously published conformance record'),...existing.childNodes);existing.replaceChildren(previous);
     }
    }else{
     const previous=existing.querySelector('[data-prior-static-record]');if(previous){const original=previous.querySelector('.isc-original-evidence');if(original)existing.replaceChildren(original);}

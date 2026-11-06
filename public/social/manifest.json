@@ -2,12 +2,12 @@
   "schema": "bankeiz.public-social-images.v1",
   "images": {
     "/registry/": {
-      "url": "/social/institution-scorecard-fbfffab7c1084545.png",
+      "url": "/social/institution-scorecard-e372524a7ad670c0.png",
       "width": 1730,
       "height": 909,
-      "sha256": "fbfffab7c1084545d323df05fa66f66d564db15269af8a5604b7a97a908914f3",
-      "bytes": 472898,
-      "alt": "Bankeiz. Reality-Grade Banking Conformance Register. Money. Original proof. Continuous history. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "e372524a7ad670c0ec7fd6b2677bc9c1b74f364991723267ae98c2458a547727",
+      "bytes": 471446,
+      "alt": "Reality-Grade Banking Conformance Register. Money. Original proof. Continuous history. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/build/": {
       "url": "/social/build-independent-bank-47120ad0ee1dda1f.png",
