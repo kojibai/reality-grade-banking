@@ -1,3 +1,4 @@
+import {institutionScorecardPage} from '../src/content/institution-scorecard-page.mjs';
 import {productWalkthrough,agentWorkflowMoment,productMoment,dailyMoneyWalkthrough} from './product-walkthrough.mjs';
 import {momentsPage} from '../src/content/personal-moments.mjs';
 import {meetingPage} from '../src/content/meeting-page.mjs';
@@ -22,6 +23,7 @@ import {paymentGuidePage} from '../src/content/payment-guide.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ {...institutionScorecardPage},
  {slug:'accept-the-money',path:'/accept/',group:'Standards',title:'Accept the money',description:'Experience payment providers and proof-native receiving side by side. Follow value into its next payment.'},
  {slug:'build-independent-bank',path:'/build/',group:'Standards',title:'Build your own bank',description:'Build an independent bank, wallet or merchant receiver. Follow the proof, receiving requirements and existing SDK.'},
  {...paymentGuidePage,group:'Banking',title:'The payment experience'},

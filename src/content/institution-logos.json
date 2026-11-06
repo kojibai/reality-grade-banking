@@ -1,0 +1,307 @@
+{
+  "bankeiz": {
+    "src": "/icon.svg",
+    "sourceUrl": "https://bankeiz.com/icon.svg",
+    "kind": "logo"
+  },
+  "chase": {
+    "src": "/institution-logos/chase.png",
+    "sourceUrl": "https://www.jpmorganchase.com/etc.clientlibs/cws/clientlibs/clientlib-base/resources/jpmc/images/jpmc-favicon-152.png",
+    "sourcePage": "https://www.jpmorganchase.com/",
+    "kind": "icon"
+  },
+  "wells-fargo": {
+    "src": "/institution-logos/wells-fargo.png",
+    "sourceUrl": "https://www17.wellsfargomedia.com/assets/images/icons/icon-hires_192x192.png",
+    "sourcePage": "https://www.wellsfargo.com/",
+    "kind": "icon"
+  },
+  "bank-of-america": {
+    "src": "/institution-logos/bank-of-america.png",
+    "sourceUrl": "https://www.bankofamerica.com/homepage/spa-assets/images/assets-images-global-favicon-android-chrome-192x192-CSXafb7d716.png",
+    "sourcePage": "https://www.bankofamerica.com/",
+    "kind": "icon"
+  },
+  "citi": {
+    "src": "/institution-logos/citi.png",
+    "sourceUrl": "https://www.citigroup.com/global/citigroup-ui/akpublic/images/gpa_favicon.ico",
+    "sourcePage": "https://www.citigroup.com/global",
+    "kind": "icon"
+  },
+  "goldman-sachs": {
+    "src": "/institution-logos/goldman-sachs.png",
+    "sourceUrl": "https://cdn.gs.com/images/goldman-sachs/v2/gs-favicon.ico",
+    "sourcePage": "https://www.goldmansachs.com/",
+    "kind": "icon"
+  },
+  "hsbc": {
+    "src": "/institution-logos/hsbc.png",
+    "sourceUrl": "https://www.hsbc.com/apple-touch-icon.png",
+    "sourcePage": "https://www.hsbc.com/",
+    "kind": "icon"
+  },
+  "morgan-stanley": {
+    "src": "/institution-logos/morgan-stanley.png",
+    "sourceUrl": "https://www.morganstanley.com/etc.clientlibs/msdotcomr5/clientlibs/components/site/resources/img/favicon-196x196.png",
+    "sourcePage": "https://www.morganstanley.com/",
+    "kind": "icon"
+  },
+  "ubs": {
+    "src": "/institution-logos/ubs.png",
+    "sourceUrl": "https://onlineservices.ubs.com/favicon.ico",
+    "sourcePage": "https://www.ubs.com/",
+    "kind": "logo"
+  },
+  "barclays": {
+    "src": "/institution-logos/barclays.png",
+    "sourceUrl": "https://home.barclays/content/dam/home-barclays/images/generic/barclays-eagle.svg",
+    "sourcePage": "https://home.barclays/",
+    "kind": "logo"
+  },
+  "deutsche-bank": {
+    "src": "/institution-logos/deutsche-bank.png",
+    "sourceUrl": "https://prod2.master.dwebcms.db.com/application/themes/default/favicon/apple-touch-icon.png",
+    "sourcePage": "https://www.db.com/",
+    "kind": "icon"
+  },
+  "bnp-paribas": {
+    "src": "/institution-logos/bnp-paribas.png",
+    "sourceUrl": "https://group.bnpparibas/favicon.ico",
+    "sourcePage": "https://group.bnpparibas/en/",
+    "kind": "icon"
+  },
+  "santander": {
+    "src": "/institution-logos/santander.png",
+    "sourceUrl": "https://www.santander.com/content/dam/santander-com/resources/favicon/favicon-192x192.png",
+    "sourcePage": "https://www.santander.com/en/home",
+    "kind": "icon"
+  },
+  "standard-chartered": {
+    "src": "/institution-logos/standard-chartered.png",
+    "sourceUrl": "https://www.sc.com/en/content/themes/standard-chartered-corporate-affairs/src/images/site-icons/apple-touch-icon.png",
+    "sourcePage": "https://www.sc.com/en/",
+    "kind": "icon"
+  },
+  "rbc": {
+    "src": "/institution-logos/rbc.png",
+    "sourceUrl": "https://www.rbc.com/dvl/v1.0/assets/images/logos/rbc-logo-shield.svg",
+    "sourcePage": "https://www.rbc.com/about-rbc.html",
+    "kind": "logo"
+  },
+  "td-bank-group": {
+    "src": "/institution-logos/td-bank-group.png",
+    "sourceUrl": "https://www.td.com/etc.clientlibs/tdsite/clientlibs/clientlib-wealth/resources/images/favicon.ico",
+    "sourcePage": "https://www.td.com/",
+    "kind": "icon"
+  },
+  "mufg": {
+    "src": "/institution-logos/mufg.png",
+    "sourceUrl": "https://www.mufg.jp/apple-touch-icon.png",
+    "sourcePage": "https://www.mufg.jp/english/",
+    "kind": "icon"
+  },
+  "icbc": {
+    "src": "/institution-logos/icbc.png",
+    "sourceUrl": "https://www.icbc-ltd.com/favicon.ico",
+    "sourcePage": "https://www.icbc-ltd.com/",
+    "kind": "icon"
+  },
+  "bny": {
+    "src": "/institution-logos/bny.png",
+    "sourceUrl": "https://www.bny.com/content/dam/bnymellon/web/favicons/favicon-152.png",
+    "sourcePage": "https://www.bny.com/corporate/global/en.html",
+    "kind": "icon"
+  },
+  "scotiabank": {
+    "src": "/institution-logos/scotiabank.png",
+    "sourceUrl": "https://www.scotiabank.com/content/dam/scotiabank/enterprise/images/logos/favicon.ico",
+    "sourcePage": "https://www.scotiabank.com/global/en/global-site.html",
+    "kind": "icon"
+  },
+  "bmo": {
+    "src": "/institution-logos/bmo.png",
+    "sourceUrl": "https://www.bmo.com/favicon.ico",
+    "sourcePage": "https://www.bmo.com/",
+    "kind": "icon"
+  },
+  "cibc": {
+    "src": "/institution-logos/cibc.png",
+    "sourceUrl": "https://www.cibc.com/favicon.ico",
+    "sourcePage": "https://www.cibc.com/en/personal-banking.html",
+    "kind": "icon"
+  },
+  "lloyds-banking-group": {
+    "src": "/institution-logos/lloyds-banking-group.png",
+    "sourceUrl": "https://www.lloydsbankinggroup.com/",
+    "sourcePage": "https://www.lloydsbankinggroup.com/",
+    "kind": "logo"
+  },
+  "natwest-group": {
+    "src": "/institution-logos/natwest-group.png",
+    "sourceUrl": "https://www.natwestgroup.com/apps/settings/wcm/designs/responsive_champion/clientlibs/resources/responsive_natwest_group_favicon.png",
+    "sourcePage": "https://www.natwestgroup.com/",
+    "kind": "icon"
+  },
+  "ing": {
+    "src": "/institution-logos/ing.png",
+    "sourceUrl": "https://ing.com/webfiles/1792143907485/images/favicon.ico",
+    "sourcePage": "https://ing.com/",
+    "kind": "icon"
+  },
+  "bbva": {
+    "src": "/institution-logos/bbva.png",
+    "sourceUrl": "https://www.bbva.com/wp-content/themes/coronita-bbvacom/assets/images/comun/favicon.ico",
+    "sourcePage": "https://www.bbva.com/en/",
+    "kind": "icon"
+  },
+  "credit-agricole": {
+    "src": "/institution-logos/credit-agricole.png",
+    "sourceUrl": "https://www.credit-agricole.com/assets/build/images/icons/favicon.ico",
+    "sourcePage": "https://www.credit-agricole.com/",
+    "kind": "icon"
+  },
+  "mizuho": {
+    "src": "/institution-logos/mizuho.png",
+    "sourceUrl": "https://cdn.prod.website-files.com/67cb23eaf0c6c4d4080e059a/67d44ce8bb4fc244b2b78014_mizuho-webclip.jpg",
+    "sourcePage": "https://www.mizuhogroup.com/",
+    "kind": "icon"
+  },
+  "smbc-group": {
+    "src": "/institution-logos/smbc-group.png",
+    "sourceUrl": "https://www.smfg.co.jp/assets/img/apple-touch-icon.png",
+    "sourcePage": "https://www.smfg.co.jp/english/",
+    "kind": "icon"
+  },
+  "china-construction-bank": {
+    "src": "/institution-logos/china-construction-bank.png",
+    "sourceUrl": "https://www.ccb.com/cn/v3/images/logo.png",
+    "sourcePage": "https://en.ccb.com/",
+    "kind": "logo"
+  },
+  "bank-of-china": {
+    "src": "/institution-logos/bank-of-china.png",
+    "sourceUrl": "https://www.boc.cn/favicon.ico",
+    "sourcePage": "https://www.boc.cn/en/",
+    "kind": "icon"
+  },
+  "dbs": {
+    "src": "/institution-logos/dbs.png",
+    "sourceUrl": "https://www.dbs.com/group/_next/public/favicon.ico",
+    "sourcePage": "https://www.dbs.com/default.page",
+    "kind": "icon"
+  },
+  "ocbc": {
+    "src": "/institution-logos/ocbc.png",
+    "sourceUrl": "https://www.ocbc.com/favicon.ico",
+    "sourcePage": "https://www.ocbc.com/group/gateway",
+    "kind": "icon"
+  },
+  "uob": {
+    "src": "/institution-logos/uob.png",
+    "sourceUrl": "https://www.uob.com.sg/assets/iwov-resources/assets/BrandAssets/UOB_Logo.svg",
+    "sourcePage": "https://www.uobgroup.com/uobgroup/default.page",
+    "kind": "logo"
+  },
+  "commonwealth-bank": {
+    "src": "/institution-logos/commonwealth-bank.png",
+    "sourceUrl": "https://www.commbank.com.au/content/dam/commbank/commBank-logo.svg",
+    "sourcePage": "https://www.commbank.com.au/",
+    "kind": "logo"
+  },
+  "nab": {
+    "src": "/institution-logos/nab.png",
+    "sourceUrl": "https://www.nab.com.au/etc.clientlibs/nab/clientlibs/clientlib-generated-components/resources/images/svg/nab-logo.svg",
+    "sourcePage": "https://www.nab.com.au/",
+    "kind": "logo"
+  },
+  "anz": {
+    "src": "/institution-logos/anz.png",
+    "sourceUrl": "https://www.anz.com.au/apps/settings/wcm/designs/commons/images/appicons/favicon-196x196.png",
+    "sourcePage": "https://www.anz.com.au/personal/",
+    "kind": "icon"
+  },
+  "hdfc-bank": {
+    "src": "/institution-logos/hdfc-bank.png",
+    "sourceUrl": "https://s7ap1.scene7.com/is/content/hdfcbankPWS/hdfc-bank-logo?fmt=webp",
+    "sourcePage": "https://www.hdfc.bank.in/",
+    "kind": "logo"
+  },
+  "state-bank-of-india": {
+    "src": "/institution-logos/state-bank-of-india.png",
+    "sourceUrl": "https://sbi.bank.in/o/SBI-Theme/images/favicon.ico",
+    "sourcePage": "https://sbi.bank.in/",
+    "kind": "icon"
+  },
+  "first-abu-dhabi-bank": {
+    "src": "/institution-logos/first-abu-dhabi-bank.png",
+    "sourceUrl": "https://www.bankfab.com/-/media/fab-uds/common-images/icons/favicon.png",
+    "sourcePage": "https://www.bankfab.com/en-ae/personal",
+    "kind": "icon"
+  },
+  "emirates-nbd": {
+    "src": "/institution-logos/emirates-nbd.png",
+    "sourceUrl": "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png",
+    "sourcePage": "https://www.emiratesnbd.com/en",
+    "kind": "icon"
+  },
+  "qnb": {
+    "src": "/institution-logos/qnb.png",
+    "sourceUrl": "https://qnb.com/qnb/en/_assets/img/finansbank.gif",
+    "sourcePage": "https://qnb.com/sites/qnb/qnbqatar/page/en/en-home.html",
+    "kind": "icon"
+  },
+  "al-rajhi-bank": {
+    "src": "/institution-logos/al-rajhi-bank.png",
+    "sourceUrl": "https://www.alrajhibank.com.sa/-/media/Project/AlRajhi/ARBRevamp/Temp/AlRajhiBankLogo.svg?h=53&iar=0&w=155&hash=CDCB0DBCE8B0FB5F773D371AC48A083E",
+    "sourcePage": "https://www.alrajhibank.com.sa/",
+    "kind": "logo"
+  },
+  "standard-bank": {
+    "src": "/institution-logos/standard-bank.png",
+    "sourceUrl": "https://www.standardbank.com/static_file/assets/favicons/favicon.ico",
+    "sourcePage": "https://www.standardbank.com/sbg/standard-bank-group",
+    "kind": "icon"
+  },
+  "absa": {
+    "src": "/institution-logos/absa.png",
+    "sourceUrl": "https://www.absa.africa/wp-content/uploads/2024/02/Absa-logo-badge_RGB_Passion_JPG-1.jpg",
+    "sourcePage": "https://www.absa.africa/",
+    "kind": "logo"
+  },
+  "access-bank": {
+    "src": "/institution-logos/access-bank.png",
+    "sourceUrl": "https://www.accessbankplc.com/Content/images/access-lg-logo.png",
+    "sourcePage": "https://www.accessbankplc.com/",
+    "kind": "logo"
+  },
+  "itau-unibanco": {
+    "src": "/institution-logos/itau-unibanco.png",
+    "sourceUrl": "https://www.itau.com.py/images/favicon/android-icon-192x192.png",
+    "sourcePage": "https://www.itau.com.py/",
+    "kind": "icon"
+  },
+  "bradesco": {
+    "src": "/institution-logos/bradesco.png",
+    "sourceUrl": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1446/2024/12/180x180_67546468da408.png",
+    "sourcePage": "https://www.bradescori.com.br/",
+    "kind": "icon"
+  },
+  "banco-do-brasil": {
+    "src": "/institution-logos/banco-do-brasil.png",
+    "sourceUrl": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_do_brasil_ri/img/favicon/favicon180.png",
+    "sourcePage": "https://ri.bb.com.br/",
+    "kind": "icon"
+  },
+  "banorte": {
+    "src": "/institution-logos/banorte.png",
+    "sourceUrl": "https://investors.banorte.com/~/media/Images/B/Banorte-IR/logo/logo-png.svg?h=159&iar=0&w=820",
+    "sourcePage": "https://investors.banorte.com/",
+    "kind": "logo"
+  },
+  "bancolombia": {
+    "src": "/institution-logos/bancolombia.png",
+    "sourceUrl": "https://www.grupobancolombia.com/favicon.svg",
+    "sourcePage": "https://www.grupobancolombia.com/es",
+    "kind": "icon"
+  }
+}

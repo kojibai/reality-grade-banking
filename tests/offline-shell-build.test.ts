@@ -15,6 +15,16 @@ it('versions complete final pages and fixed-path native resources and includes l
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
     await writeFile(join(dir, 'assets/bank.js'), 'bank'); await writeFile(join(dir, 'assets/qr-decoder.js'), 'qr'); await writeFile(join(dir, 'assets/conformance.js'), 'console');
     const pages = { ...Object.fromEntries(['economy','farmers','fuel','repairs','grocers','housing','workers'].map(name=>['/'+name+'/',{content:name}])), '/your-twin/':{content:'Your Twin'},'/action/':{content:'Both sides'},'/banking/':{content:'Banking'}, '/guide/':{content:'User guide'}, '/protect/':{content:'Protection'},'/vaults/':{content:'Vaults'},'/fit/':{content:'Fits'},'/coops/':{content:'Cooperatives'}, '/learn/protect-your-value/':{content:'Protection'},'/cooperatives/':{content:'Cooperatives'},'/cooperatives/producers/':{content:'Producers'}, '/business/for/':{content:'Fits'},'/business/for/agencies/':{content:'Agency'},'/business/':{content:'Business'}, '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
+    Object.assign(pages,{'/registry/':{content:'Institution conformance directory'}});
+    await mkdir(join(dir,'registry'),{recursive:true});
+    await writeFile(join(dir,'registry/index.html'),'Complete held institution directory');
+    await mkdir(join(dir,'learn'),{recursive:true});
+    await writeFile(join(dir,'learn/institution-scorecard.js'),'Local institution search');
+    const institutionLogos=JSON.parse(await readFile('src/content/institution-logos.json','utf8')) as Record<string,{src:string}>;
+    for(const {src} of Object.values(institutionLogos)){
+      await mkdir(join(dir,src,'..'),{recursive:true});
+      await writeFile(join(dir,src),await readFile('public'+src));
+    }
     for(const path of ['economy','farmers','fuel','repairs','grocers','housing','workers','your-twin','action','banking','guide','protect','vaults','fit','coops','learn/protect-your-value','cooperatives','cooperatives/producers','business','business/for','business/for/agencies','learn/notes','standards','market-cap','explore/music','explore']){await mkdir(join(dir,path),{recursive:true});await writeFile(join(dir,path,'index.html'),path);}
     await writeFile(join(dir,'learn/business-fit.js'),'public directory enhancement');
     await writeFile(join(dir,'learn/economy.js'),'public economy interaction');await writeFile(join(dir,'learn/economy-model.mjs'),'public illustrative arithmetic');
@@ -32,6 +42,10 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map.bin'),'public complete source');
     const renderBuildFile=join(dir,'render-build.json');await writeFile(renderBuildFile,JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:'a'.repeat(64)}));
     const first = await buildOfflineShell(dir, { fixed: [native],renderBuildFile });
+    expect(first.pages['/registry/']).toBe('/learn/');
+    expect(first.pages['/institutions/scorecard/']).toBe('/learn/');
+    expect(first.resources.some(resource=>resource.url==='/learn/institution-scorecard.js')).toBe(true);
+    for(const {src} of Object.values(institutionLogos))expect(first.resources.some(resource=>resource.url===src),src).toBe(true);
     expect(first.resources.filter(resource=>resource.url==='/learn/contact.js')).toEqual([expect.objectContaining({bytes:Buffer.byteLength('shared in-place contact'),sha256:expect.stringMatching(/^[a-f0-9]{64}$/)})]);
     for(const path of ['economy','farmers','fuel','repairs','grocers','housing','workers'])expect(first.pages['/'+path+'/']).toBe('/learn/');
     for(const url of ['/learn/economy.js','/learn/economy-model.mjs'])expect(first.resources.some((resource:{url:string})=>resource.url===url)).toBe(true);

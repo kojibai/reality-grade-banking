@@ -8,6 +8,7 @@ import {portabilityPages} from '../src/content/portability-pages.mjs';
 import {economyPages} from '../src/content/existing-economy.mjs';
 import {standardPages} from '../src/content/standard-pages.mjs';
 import {outcomePages} from '../src/content/outcome-pages.mjs';
+import institutionLogos from '../src/content/institution-logos.json' with {type:'json'};
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -102,8 +103,15 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath==='/accept/'){urls.add('/learn/accept-money.js');urls.add('/learn/accept-money-model.js');}
     if(canonicalPath==='/build/'){urls.add('/learn/independent-bank.js');urls.add('/learn/independent-bank-model.js');urls.add('/learn/accept-money-model.js');}
     if(path==='/learn/guides/')urls.add('/learn/guide-directory.js');
+    if(canonicalPath==='/registry/'){
+      urls.add('/learn/institution-scorecard.js');
+      for(const {src} of Object.values(institutionLogos)){
+        if(src!=='/icon.svg'&&!/^\/institution-logos\/[a-z0-9-]+\.png$/.test(src??''))throw Error('INSTITUTION_LOGO_PATH_INVALID');
+        urls.add(src);
+      }
+    }
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
-    const knownGuide=['/build/','/accept/','/pay/',bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=['/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

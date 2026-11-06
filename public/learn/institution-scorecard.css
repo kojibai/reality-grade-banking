@@ -1,0 +1,278 @@
+.institution-scorecard{--isc-paper:#f8f6ef;--isc-ink:#10263d;--isc-muted:#526171;--isc-line:#d5d8d5;--isc-red:#aa261d;--isc-red-wash:#fff0eb;--isc-green:#13643c;--isc-green-wash:#e9f6ec;background:var(--isc-paper);color:var(--isc-ink);padding-top:1px;overflow-wrap:break-word}
+.institution-scorecard [hidden]{display:none!important}
+.institution-scorecard .isc-shell{width:min(1280px,calc(100% - 112px));margin-inline:auto;min-width:0}
+.institution-scorecard section[id]{scroll-margin-top:145px}
+.institution-scorecard p{color:var(--isc-muted);line-height:1.65}
+.institution-scorecard a{color:inherit}
+.institution-scorecard a:focus-visible,.institution-scorecard summary:focus-visible,.institution-scorecard input:focus-visible,.institution-scorecard select:focus-visible,.institution-scorecard button:focus-visible{outline:3px solid #244cdb;outline-offset:5px;border-radius:2px}
+.institution-scorecard .isc-eyebrow{font-size:10px;line-height:1.5;letter-spacing:.14em;text-transform:uppercase;font-weight:650;color:var(--isc-ink)}
+.institution-scorecard h1,.institution-scorecard h2{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.055em}
+.institution-scorecard .isc-hero{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:8%;padding-block:70px 62px;align-items:center}
+.institution-scorecard .isc-hero-copy{container-type:inline-size}
+.institution-scorecard .isc-hero h1{font-size:clamp(20px,10vw,102px);font-size:clamp(20px,16cqi,102px);line-height:1.01;margin:27px 0}
+.institution-scorecard .isc-title-line{display:block;white-space:nowrap}
+.institution-scorecard .isc-hero-lede{font-size:18px;line-height:1.7;max-width:610px}
+.institution-scorecard .isc-hero-moral{font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.4;color:var(--isc-ink);margin-top:24px}
+.institution-scorecard .isc-text-link{display:inline-block;font-size:12px;line-height:1.8;border-bottom:1px solid currentColor;text-decoration:none;padding-bottom:5px;margin-top:25px}
+.institution-scorecard .isc-gate{background:var(--isc-red-wash);border:1px solid #e7b9aa;border-top:4px solid var(--isc-red);padding:31px 30px}
+.institution-scorecard .isc-gate>.isc-eyebrow{color:#8c3c33}
+.institution-scorecard .isc-gate-word{display:block;white-space:nowrap;font-size:clamp(82px,8.2vw,116px);line-height:1;letter-spacing:-.065em;font-weight:650;color:var(--isc-red);margin-top:22px}
+.institution-scorecard .isc-gate h2{font-size:34px;line-height:1.11;letter-spacing:-.045em;margin-top:19px}
+.institution-scorecard .isc-gate>p{font-size:12px;line-height:1.8;color:#82443b;margin-top:17px}
+.institution-scorecard .isc-gate-line{display:flex;gap:11px;align-items:flex-start;border-top:1px solid #e7b9aa;padding-top:18px;margin-top:20px}
+.institution-scorecard .isc-gate-line>span{width:5px;height:5px;border-radius:50%;background:var(--isc-red);flex-shrink:0;margin-top:7px}
+.institution-scorecard .isc-gate-line p{font-size:10px;line-height:1.8;color:#82443b}
+.institution-scorecard .isc-gate>a{display:inline-block;font-size:11px;text-underline-offset:5px;margin-top:20px}
+.institution-scorecard .isc-local-nav{display:flex;flex-wrap:wrap;gap:12px 40px;padding-block:20px;border-top:1px solid var(--isc-line);border-bottom:1px solid var(--isc-line);font-size:11px;line-height:1.8}
+.institution-scorecard .isc-local-nav a{text-decoration:none}
+.institution-scorecard .isc-local-nav a:hover{text-decoration:underline;text-underline-offset:5px}
+.institution-scorecard .isc-register{padding-block:64px 75px}
+.institution-scorecard .isc-section-heading{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:12%;align-items:end}
+.institution-scorecard .isc-section-heading h2{font-size:clamp(39px,4.5vw,62px);line-height:1.07;margin-top:19px}
+.institution-scorecard .isc-section-heading>p{font-size:14px;line-height:1.85;max-width:520px}
+.institution-scorecard .isc-register-counts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:25px;border-top:1px solid var(--isc-line);border-bottom:1px solid var(--isc-line);padding-block:23px;margin-top:35px}
+.institution-scorecard .isc-register-counts>div{display:grid;grid-template-rows:38px minmax(33px,auto);row-gap:10px;align-content:start;min-width:0}
+.institution-scorecard .isc-register-counts dt{grid-row:2;align-self:start;min-height:33px;font-size:11px;line-height:1.5;color:var(--isc-muted)}
+.institution-scorecard .isc-register-counts dd{grid-row:1;align-self:start;white-space:nowrap;font-size:38px;font-weight:500;letter-spacing:-.045em;line-height:1;margin:0;font-variant-numeric:tabular-nums}
+.institution-scorecard [data-register-count="qualified"]{color:var(--isc-green)}
+.institution-scorecard [data-register-count="evidence-required"]{color:var(--isc-red)}
+.institution-scorecard .isc-count-note{font-size:11px;line-height:1.8;max-width:970px;margin-top:14px}
+.institution-scorecard .isc-directory{margin-top:32px}
+.institution-scorecard .isc-directory-controls{padding:24px;background:#fffefa;border:1px solid var(--isc-line);border-top:2px solid var(--isc-ink)}
+.institution-scorecard .isc-directory-controls label{display:block;font-size:10px;font-weight:600;line-height:1.5;margin-bottom:8px;color:var(--isc-ink)}
+.institution-scorecard .isc-query-field>label{font-size:13px;line-height:1.5;margin-bottom:12px}
+.institution-scorecard .isc-query-input{display:flex;align-items:center;gap:13px;min-height:50px;border:1px solid #aab3b9;background:#fff;transition:border-color .15s,box-shadow .15s}
+.institution-scorecard .isc-query-input:focus-within{border-color:#244c7a;box-shadow:0 0 0 3px #e0e7ec}
+.institution-scorecard .isc-query-input>svg{display:block;flex:0 0 22px;width:22px;height:22px;margin-left:16px;color:#4b6071}
+.institution-scorecard .isc-query-input input{display:block;width:100%;min-width:0;min-height:50px;border:0;border-radius:0;background:transparent;color:var(--isc-ink);font:inherit;font-size:16px;line-height:1.5;padding:12px 14px 12px 0;box-sizing:border-box}
+.institution-scorecard .isc-query-input input::placeholder{color:#697782;opacity:1}
+.institution-scorecard .isc-query-input input:focus-visible{outline:0}
+.institution-scorecard .isc-directory-help{font-size:10px;line-height:1.6;margin-top:10px}
+.institution-scorecard .isc-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(160px,1.1fr) auto;align-items:end;gap:14px;padding-top:20px;margin-top:20px;border-top:1px solid #e1e4df}
+.institution-scorecard .isc-filter-row>div{min-width:0}
+.institution-scorecard .isc-filter-row select{display:block;width:100%;min-width:0;height:44px;border:1px solid #b6bec3;border-radius:0;background:#fffefa;color:var(--isc-ink);font:inherit;font-size:12px;line-height:1.4;padding:10px 27px 10px 11px;box-sizing:border-box}
+.institution-scorecard .isc-filter-row select:hover{border-color:#758591}
+.institution-scorecard .isc-directory-controls button{min-height:44px;padding:10px 17px;border:1px solid var(--isc-ink);border-radius:0;background:var(--isc-ink);color:var(--isc-paper);font:inherit;font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap}
+.institution-scorecard .isc-directory-controls button:hover{background:#274059}
+.institution-scorecard .isc-directory-results{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 24px;margin:0;background:#f0f0e9;border:1px solid var(--isc-line);border-top:0;font-size:11px;line-height:1.7}
+.institution-scorecard .isc-directory-results>p{font-variant-numeric:tabular-nums;color:var(--isc-ink);font-weight:500}
+.institution-scorecard .isc-directory-results>a{font-size:10px;text-underline-offset:4px}
+.institution-scorecard .isc-institutions{display:grid;grid-template-columns:minmax(0,1fr);border-top:1px solid var(--isc-line)}
+.institution-scorecard .isc-institution{display:grid;grid-template-columns:minmax(260px,1fr) 68px minmax(270px,1.1fr);gap:5px 28px;padding:23px 24px 0;border:1px solid var(--isc-line);border-top:0;background:#fffefa;min-width:0}
+.institution-scorecard .isc-institution.isc-green{background:#f2f9f1;border-left:3px solid var(--isc-green);padding-left:22px}
+.institution-scorecard .isc-record-identity{display:flex;align-items:flex-start;gap:17px;min-width:0}
+.institution-scorecard .isc-record-identity>div{min-width:0}
+.institution-scorecard .isc-logo{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;margin-top:4px;background:#fff;border:1px solid #e3e5df;border-radius:4px;overflow:hidden}
+.institution-scorecard .isc-logo img{display:block;width:40px;height:40px;padding:3px;box-sizing:border-box;object-fit:contain}
+.institution-scorecard .isc-register-number{font-size:8px;line-height:1.5;letter-spacing:.12em;color:var(--isc-muted);font-variant-numeric:tabular-nums}
+.institution-scorecard .isc-institution h3{font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;letter-spacing:-.035em;font-weight:400;margin:6px 0 0}
+.institution-scorecard .isc-record-metadata{font-size:10px;line-height:1.65;margin-top:7px}
+.institution-scorecard .isc-institution-link{font-size:10px;line-height:1.6;margin-top:9px}
+.institution-scorecard .isc-institution-link a{text-underline-offset:4px}
+.institution-scorecard .isc-verdict-block{padding-top:21px}
+.institution-scorecard .isc-verdict{display:inline-block;font-size:22px;line-height:1;letter-spacing:-.035em;font-weight:650;white-space:nowrap;color:var(--isc-red)}
+.institution-scorecard .isc-green .isc-verdict{color:var(--isc-green)}
+.institution-scorecard .isc-qualification-context{padding-top:4px;min-width:0}
+.institution-scorecard .isc-qualification-context>strong{display:block;font-size:12px;line-height:1.6;font-weight:600;color:var(--isc-red)}
+.institution-scorecard .isc-green .isc-qualification-context>strong{color:var(--isc-green)}
+.institution-scorecard .isc-qualification-context>p{font-size:11px;line-height:1.7;margin-top:6px}
+.institution-scorecard .isc-qualification-context>.isc-visible-scope{color:var(--isc-green);font-size:12px;font-weight:500}
+.institution-scorecard .isc-institution-evidence{grid-column:1/-1;border-top:1px solid var(--isc-line);margin-top:13px;min-width:0}
+.institution-scorecard .isc-institution-evidence summary{position:relative;font-size:10px;line-height:1.7;cursor:pointer;padding:12px 24px 12px 0;list-style:none}
+.institution-scorecard .isc-institution-evidence summary::-webkit-details-marker{display:none}
+.institution-scorecard .isc-institution-evidence summary::after{content:'+';position:absolute;right:1px;top:9px;font-size:18px;font-weight:400;line-height:1.5}
+.institution-scorecard .isc-institution-evidence[open] summary::after{content:'−'}
+.institution-scorecard .isc-institution-evidence[open] summary{border-bottom:1px solid var(--isc-line)}
+.institution-scorecard .isc-details-body{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:35px;padding-block:22px 25px;font-size:12px;line-height:1.8}
+.institution-scorecard .isc-details-body h4,.institution-scorecard .isc-original-evidence h4{font-size:13px;line-height:1.6;font-weight:600;margin:0 0 10px}
+.institution-scorecard .isc-details-body p{font-size:11px;line-height:1.8}
+.institution-scorecard .isc-details-body ul{padding-left:18px;margin:12px 0 0;font-size:11px;line-height:1.8;color:var(--isc-muted)}
+.institution-scorecard .isc-details-body .isc-card-next{border-left:1px solid var(--isc-line);padding-left:26px}
+.institution-scorecard .isc-card-next a,.institution-scorecard .isc-report-link{display:block;font-size:10px;line-height:1.8;text-underline-offset:4px;margin-top:13px}
+.institution-scorecard .isc-report-link{margin-top:0;margin-bottom:18px}
+.institution-scorecard .isc-scope-note{margin-bottom:13px}
+.institution-scorecard .isc-scope{margin:13px 0 20px;font-size:10px;line-height:1.75}
+.institution-scorecard .isc-scope>div{display:grid;grid-template-columns:115px minmax(0,1fr);gap:15px;border-top:1px solid var(--isc-line);padding-block:8px}
+.institution-scorecard .isc-scope dt{color:var(--isc-muted)}
+.institution-scorecard .isc-scope dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.institution-scorecard .isc-scope code{font-size:10px;overflow-wrap:anywhere}
+.institution-scorecard .isc-controls{list-style:none;padding:0!important;margin:0 0 20px!important}
+.institution-scorecard .isc-controls>li{border-top:1px solid var(--isc-line);padding-block:10px}
+.institution-scorecard .isc-controls>li>div{display:flex;gap:12px;justify-content:space-between;align-items:baseline}
+.institution-scorecard .isc-controls code{font-size:10px;overflow-wrap:anywhere;min-width:0}
+.institution-scorecard .isc-controls strong{font-size:10px;flex-shrink:0;color:var(--isc-ink)}
+.institution-scorecard .isc-controls p{font-size:11px;margin-top:5px}
+.institution-scorecard .isc-directory-empty{padding:45px 30px;text-align:center;border:1px solid var(--isc-line);background:#fffefa}
+.institution-scorecard .isc-directory-empty h3{font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:400;letter-spacing:-.03em}
+.institution-scorecard .isc-directory-empty p{font-size:13px;margin-top:10px}
+.institution-scorecard .isc-register-policy{display:flex;gap:35px;border-top:1px solid var(--isc-line);font-size:10px;line-height:1.9;margin-top:26px;padding-top:21px}
+.institution-scorecard .isc-register-policy span{min-width:175px;flex-shrink:0;color:var(--isc-ink)}
+.institution-scorecard .isc-recorded-pass{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:27px 45px;margin-top:32px;padding:28px 32px 0;background:var(--isc-green-wash);border:1px solid #9ac9ac;border-top:4px solid var(--isc-green);color:#113c27}
+.institution-scorecard .isc-recorded-pass .isc-eyebrow{color:#37604a}
+.institution-scorecard .isc-recorded-pass h3{font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.15;letter-spacing:-.04em;font-weight:400;margin-top:14px}
+.institution-scorecard .isc-recorded-status{display:block;font-size:14px;line-height:1.5;color:var(--isc-green);margin-top:11px}
+.institution-scorecard .isc-recorded-main>p:not(.isc-eyebrow){font-size:13px;line-height:1.65;color:#37604a;margin-top:8px}
+.institution-scorecard .isc-recorded-actions{display:flex;gap:14px 25px;flex-wrap:wrap;margin-top:20px}
+.institution-scorecard .isc-recorded-actions a,.institution-scorecard .isc-recorded-reference>a{font-size:11px;line-height:1.8;text-decoration:underline;text-underline-offset:4px}
+.institution-scorecard .isc-recorded-reference{border-left:1px solid #b3d1bb;padding-left:35px}
+.institution-scorecard .isc-recorded-reference h4{font-size:15px;line-height:1.5;font-weight:600;margin:14px 0 8px}
+.institution-scorecard .isc-recorded-reference>strong{display:block;font-size:30px;line-height:1.1;letter-spacing:-.04em;color:var(--isc-green)}
+.institution-scorecard .isc-recorded-reference>p:not(.isc-eyebrow){font-size:10px;line-height:1.8;color:#37604a;margin-top:7px}
+.institution-scorecard .isc-recorded-reference>a{display:inline-block;margin-top:10px}
+.institution-scorecard .isc-recorded-details{grid-column:1/-1;border-top:1px solid #b3d1bb}
+.institution-scorecard .isc-recorded-details summary{cursor:pointer;padding:17px 0;font-size:11px;line-height:1.6;font-weight:600}
+.institution-scorecard .isc-recorded-details>.isc-original-evidence{padding-bottom:25px}
+.institution-scorecard .isc-original-evidence{grid-column:1/-1;min-width:0}
+.institution-scorecard .isc-original-evidence p{font-size:11px;line-height:1.8;color:#37604a;max-width:860px}
+.institution-scorecard .isc-original-evidence .isc-scope>div{grid-template-columns:220px minmax(0,1fr);border-color:#c3dbc9;padding-block:10px}
+.institution-scorecard .isc-original-evidence .isc-recorded-actions{margin:16px 0}
+.institution-scorecard .isc-original-evidence .isc-scope dt{color:#37604a}
+.institution-scorecard .isc-requirements{background:var(--isc-ink);color:var(--isc-paper);padding-block:78px}
+.institution-scorecard .isc-requirements .isc-eyebrow{color:#b7c4ce}
+.institution-scorecard .isc-requirements p{color:#c1ccd5}
+.institution-scorecard .isc-requirement-list{padding:0;list-style:none;margin:43px 0 0}
+.institution-scorecard .isc-requirement-list>li{display:grid;grid-template-columns:50px minmax(0,1fr) 145px;gap:30px;align-items:start;padding-block:25px;border-top:1px solid #425364}
+.institution-scorecard .isc-requirement-number{white-space:nowrap;font-variant-numeric:tabular-nums;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.1;color:#a5b7c7}
+.institution-scorecard .isc-requirement-list h3{font-size:20px;letter-spacing:-.025em;line-height:1.3;font-weight:550}
+.institution-scorecard .isc-requirement-list p{font-size:13px;margin-top:10px;max-width:740px}
+.institution-scorecard .isc-requirement-list>li>a{font-size:11px;line-height:1.6;margin-top:4px;text-decoration:underline;text-underline-offset:5px;justify-self:end}
+.institution-scorecard .isc-requirements-note{font-size:11px;line-height:1.8;max-width:850px;border-top:1px solid #425364;padding-top:23px;margin-top:4px}
+.institution-scorecard .isc-requirements .isc-text-link{font-size:12px;border-color:#a5b7c7;margin-top:16px}
+.institution-scorecard .isc-qualify{padding-block:80px}
+.institution-scorecard .isc-qualify-steps{padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:38px;margin:40px 0 0}
+.institution-scorecard .isc-qualify-steps>li{border-top:1px solid var(--isc-line);padding-top:22px}
+.institution-scorecard .isc-qualify-steps>li>span{font-family:Georgia,'Times New Roman',serif;font-size:35px;letter-spacing:-.05em;color:var(--isc-muted)}
+.institution-scorecard .isc-qualify-steps h3{font-size:19px;line-height:1.4;font-weight:600;letter-spacing:-.03em;margin-top:24px}
+.institution-scorecard .isc-qualify-steps p{font-size:13px;line-height:1.8;margin-top:13px;min-height:118px}
+.institution-scorecard .isc-qualify-steps a{display:inline-block;font-size:11px;line-height:1.7;text-decoration:underline;text-underline-offset:5px;margin-top:19px}
+.institution-scorecard .isc-correction{display:grid;grid-template-columns:185px minmax(0,1fr);gap:12px 40px;margin-top:45px;padding:28px 30px;background:#eeede5;border:1px solid var(--isc-line)}
+.institution-scorecard .isc-correction h3{font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.15;letter-spacing:-.035em;font-weight:400}
+.institution-scorecard .isc-correction p{font-size:12px;line-height:1.8}
+.institution-scorecard .isc-correction a{grid-column:2;font-size:11px;line-height:1.7;text-decoration:underline;text-underline-offset:4px}
+.institution-scorecard .isc-same-standard{border-top:1px solid var(--isc-line);background:#efece2;padding-block:65px 73px}
+.institution-scorecard .isc-same-inner{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10%;align-items:start}
+.institution-scorecard .isc-same-standard h2{font-size:clamp(39px,4.4vw,62px);line-height:1.08;margin-top:20px}
+.institution-scorecard .isc-same-inner>div>p{font-size:13px;margin-top:20px}
+.institution-scorecard .isc-same-inner>div>.isc-same-lede{color:var(--isc-ink);font-size:18px;line-height:1.5;margin-top:0}
+.institution-scorecard .isc-same-links{display:flex;gap:25px;flex-wrap:wrap;margin-top:28px}
+.institution-scorecard .isc-same-links a{font-size:11px;line-height:1.6;text-decoration:underline;text-underline-offset:5px}
+@media(min-width:1600px){.institution-scorecard .isc-hero{padding-block:87px 77px}.institution-scorecard .isc-hero h1{font-size:clamp(20px,16cqi,110px)}}
+@media(max-width:1100px){
+ .institution-scorecard .isc-shell{width:calc(100% - 72px)}
+ .institution-scorecard .isc-hero{gap:6%;padding-block:55px}
+ .institution-scorecard .isc-hero h1{font-size:clamp(20px,16cqi,90px)}
+ .institution-scorecard .isc-hero-lede{font-size:16px}
+ .institution-scorecard .isc-gate{padding:27px 24px}
+ .institution-scorecard .isc-gate h2{font-size:30px}
+ .institution-scorecard .isc-gate-word{font-size:92px}
+ .institution-scorecard .isc-section-heading{gap:7%}
+ .institution-scorecard .isc-filter-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+ .institution-scorecard .isc-directory-controls button{grid-column:1/-1;justify-self:end;min-height:40px;padding-block:8px}
+ .institution-scorecard .isc-institution{grid-template-columns:minmax(220px,1fr) 58px minmax(230px,1.1fr);gap:5px 19px;padding-inline:20px}
+ .institution-scorecard .isc-institution.isc-green{padding-left:18px}
+ .institution-scorecard .isc-institution h3{font-size:23px}
+ .institution-scorecard .isc-record-identity{gap:13px}
+ .institution-scorecard .isc-qualify-steps{gap:25px}
+ .institution-scorecard .isc-qualify-steps p{min-height:164px}
+}
+@media(max-width:760px){
+ .institution-scorecard .isc-shell{width:calc(100% - 40px)}
+ .institution-scorecard section[id]{scroll-margin-top:150px}
+ .institution-scorecard .isc-hero{grid-template-columns:minmax(0,1fr);padding-block:40px 33px;gap:31px}
+ .institution-scorecard .isc-hero h1{font-size:clamp(20px,10vw,85px);font-size:clamp(20px,16cqi,85px);margin-block:22px}
+ .institution-scorecard .isc-hero-lede{font-size:16px;max-width:600px}
+ .institution-scorecard .isc-hero-moral{font-size:24px;margin-top:20px}
+ .institution-scorecard .isc-hero .isc-text-link{font-size:12px;margin-top:17px}
+ .institution-scorecard .isc-gate{padding:24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:0 25px;align-items:start}
+ .institution-scorecard .isc-gate>.isc-eyebrow{grid-column:1/-1}
+ .institution-scorecard .isc-gate-word{font-size:80px;margin-top:20px}
+ .institution-scorecard .isc-gate h2{font-size:30px;margin-top:23px}
+ .institution-scorecard .isc-gate>p{grid-column:1/-1;font-size:12px;margin-top:17px}
+ .institution-scorecard .isc-gate-line{grid-column:1/-1;margin-top:18px;padding-top:16px}
+ .institution-scorecard .isc-gate>a{grid-column:1/-1;margin-top:17px}
+ .institution-scorecard .isc-local-nav{gap:10px 26px;padding-block:15px;font-size:11px}
+ .institution-scorecard .isc-register{padding-block:45px 52px}
+ .institution-scorecard .isc-section-heading{grid-template-columns:minmax(0,1fr);gap:21px}
+ .institution-scorecard .isc-section-heading h2{font-size:42px;margin-top:16px}
+ .institution-scorecard .isc-section-heading>p{font-size:13px;max-width:600px}
+ .institution-scorecard .isc-register-counts{gap:15px;margin-top:26px;padding-block:19px}
+ .institution-scorecard .isc-register-counts>div{grid-template-rows:31px minmax(30px,auto);row-gap:9px}
+ .institution-scorecard .isc-register-counts dd{font-size:31px}
+ .institution-scorecard .isc-register-counts dt{font-size:10px;min-height:30px}
+ .institution-scorecard .isc-count-note{font-size:10px;line-height:1.8}
+ .institution-scorecard .isc-directory{margin-top:25px}
+ .institution-scorecard .isc-directory-controls{padding:20px}
+ .institution-scorecard .isc-query-field>label{font-size:12px;margin-bottom:10px}
+ .institution-scorecard .isc-query-input{gap:10px;min-height:48px}
+ .institution-scorecard .isc-query-input>svg{flex-basis:20px;width:20px;height:20px;margin-left:12px}
+ .institution-scorecard .isc-query-input input{min-height:48px;font-size:16px;padding-right:10px}
+ .institution-scorecard .isc-directory-help{font-size:9px;line-height:1.7}
+ .institution-scorecard .isc-filter-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 12px;padding-top:17px;margin-top:17px}
+ .institution-scorecard .isc-directory-controls label{font-size:10px;margin-bottom:7px}
+ .institution-scorecard .isc-filter-row select{font-size:12px;height:44px;padding-left:9px}
+ .institution-scorecard .isc-directory-controls button{min-height:40px;justify-self:stretch;grid-column:1/-1}
+ .institution-scorecard .isc-directory-results{font-size:10px;padding:14px 20px;align-items:flex-start;gap:12px}
+ .institution-scorecard .isc-directory-results>a{font-size:9px;text-align:right;max-width:120px}
+ .institution-scorecard .isc-institution{grid-template-columns:minmax(0,1fr) 58px;gap:14px 12px;padding:21px 20px 0}
+ .institution-scorecard .isc-institution.isc-green{padding-left:18px}
+ .institution-scorecard .isc-institution h3{font-size:24px}
+ .institution-scorecard .isc-record-identity{gap:12px}
+ .institution-scorecard .isc-logo{width:40px;height:40px;flex-basis:40px}
+ .institution-scorecard .isc-logo img{width:36px;height:36px}
+ .institution-scorecard .isc-register-number{font-size:7px}
+ .institution-scorecard .isc-record-metadata{font-size:9px;margin-top:6px}
+ .institution-scorecard .isc-institution-link{font-size:9px;margin-top:7px}
+ .institution-scorecard .isc-verdict-block{text-align:right;padding-top:23px}
+ .institution-scorecard .isc-verdict{font-size:21px}
+ .institution-scorecard .isc-qualification-context{grid-column:1/-1;padding-top:0}
+ .institution-scorecard .isc-qualification-context>strong{font-size:11px}
+ .institution-scorecard .isc-qualification-context>p{font-size:10px;line-height:1.8;margin-top:5px}
+ .institution-scorecard .isc-qualification-context>.isc-visible-scope{font-size:11px}
+ .institution-scorecard .isc-institution-evidence{margin-top:0}
+ .institution-scorecard .isc-institution-evidence summary{font-size:10px;padding-block:14px}
+ .institution-scorecard .isc-institution-evidence summary::after{top:11px}
+ .institution-scorecard .isc-details-body{grid-template-columns:minmax(0,1fr);gap:22px;padding-block:19px 22px}
+ .institution-scorecard .isc-details-body .isc-card-next{border-left:0;border-top:1px solid var(--isc-line);padding:19px 0 0}
+ .institution-scorecard .isc-scope>div{grid-template-columns:94px minmax(0,1fr);gap:13px}
+ .institution-scorecard .isc-register-policy{display:block;font-size:10px;margin-top:23px;padding-top:18px}
+ .institution-scorecard .isc-register-policy span{display:block;margin-bottom:8px}
+ .institution-scorecard .isc-recorded-pass{grid-template-columns:minmax(0,1fr);gap:23px;margin-top:26px;padding:23px 22px 0}
+ .institution-scorecard .isc-recorded-pass h3{font-size:33px}
+ .institution-scorecard .isc-recorded-main>p:not(.isc-eyebrow){font-size:12px}
+ .institution-scorecard .isc-recorded-status{font-size:13px}
+ .institution-scorecard .isc-recorded-actions{gap:11px;margin-top:18px;flex-direction:column;align-items:flex-start}
+ .institution-scorecard .isc-recorded-reference{border-left:0;border-top:1px solid #b3d1bb;padding:19px 0 0}
+ .institution-scorecard .isc-recorded-reference h4{margin-top:10px}
+ .institution-scorecard .isc-recorded-reference>strong{font-size:28px}
+ .institution-scorecard .isc-recorded-details summary{font-size:10px}
+ .institution-scorecard .isc-original-evidence .isc-scope>div{grid-template-columns:minmax(0,1fr);gap:4px}
+ .institution-scorecard .isc-original-evidence p{font-size:10px}
+ .institution-scorecard .isc-requirements{padding-block:50px}
+ .institution-scorecard .isc-requirement-list{margin-top:29px}
+ .institution-scorecard .isc-requirement-list>li{grid-template-columns:40px minmax(0,1fr);gap:14px 17px;padding-block:23px}
+ .institution-scorecard .isc-requirement-number{font-size:27px}
+ .institution-scorecard .isc-requirement-list h3{font-size:19px}
+ .institution-scorecard .isc-requirement-list p{font-size:12px;line-height:1.8}
+ .institution-scorecard .isc-requirement-list>li>a{grid-column:2;justify-self:start;margin-top:0}
+ .institution-scorecard .isc-requirements-note{font-size:10px}
+ .institution-scorecard .isc-qualify{padding-block:52px}
+ .institution-scorecard .isc-qualify-steps{grid-template-columns:minmax(0,1fr);gap:26px;margin-top:29px}
+ .institution-scorecard .isc-qualify-steps>li{position:relative;padding:21px 0 0 47px}
+ .institution-scorecard .isc-qualify-steps>li>span{position:absolute;left:0;top:20px;font-size:28px}
+ .institution-scorecard .isc-qualify-steps h3{font-size:19px;margin-top:0}
+ .institution-scorecard .isc-qualify-steps p{font-size:12px;min-height:0;margin-top:10px}
+ .institution-scorecard .isc-qualify-steps a{margin-top:14px}
+ .institution-scorecard .isc-correction{display:block;margin-top:32px;padding:23px}
+ .institution-scorecard .isc-correction h3{font-size:25px;max-width:220px}
+ .institution-scorecard .isc-correction p{margin-top:16px}
+ .institution-scorecard .isc-correction a{display:inline-block;margin-top:15px}
+ .institution-scorecard .isc-same-standard{padding-block:47px 52px}
+ .institution-scorecard .isc-same-inner{grid-template-columns:minmax(0,1fr);gap:27px}
+ .institution-scorecard .isc-same-standard h2{font-size:42px}
+ .institution-scorecard .isc-same-inner>div>p{font-size:12px;margin-top:15px}
+ .institution-scorecard .isc-same-inner>div>.isc-same-lede{font-size:17px}
+ .institution-scorecard .isc-same-links{margin-top:22px}
+}
+@media(max-width:480px){.institution-scorecard .isc-gate{grid-template-columns:minmax(0,1fr)}.institution-scorecard .isc-gate-word,.institution-scorecard .isc-gate h2{grid-column:1/-1}.institution-scorecard .isc-gate h2{margin-top:12px}}
+@media(max-width:390px){.institution-scorecard .isc-hero h1{font-size:clamp(20px,16cqi,85px)}.institution-scorecard .isc-gate{padding:23px 21px}.institution-scorecard .isc-gate-word{font-size:75px}.institution-scorecard .isc-gate h2{font-size:28px}.institution-scorecard .isc-register-counts dt{font-size:9px}.institution-scorecard .isc-institution{padding-inline:16px}.institution-scorecard .isc-institution.isc-green{padding-left:14px}.institution-scorecard .isc-institution h3{font-size:22px}.institution-scorecard .isc-section-heading h2,.institution-scorecard .isc-same-standard h2{font-size:39px}.institution-scorecard .isc-directory-controls{padding:17px 15px}.institution-scorecard .isc-filter-row{gap:14px 10px}.institution-scorecard .isc-filter-row select{font-size:11px}.institution-scorecard .isc-directory-results{padding-inline:15px}}
+@media(prefers-reduced-motion:reduce){.institution-scorecard *,.institution-scorecard *::before,.institution-scorecard *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}

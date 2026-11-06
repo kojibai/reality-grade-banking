@@ -56,3 +56,5 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.assessment-inputs input{font-size:16px}}
+
+.conformance-registry-link{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}

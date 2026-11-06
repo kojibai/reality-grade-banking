@@ -9,14 +9,11 @@ export const identityLayers=[
  ['Proof-native continuity','The source stays connected.','Supported identity, ownership, custody and history stay attached to their verified sources. Later synchronization can add verified records; it cannot replace stronger admitted proof with a weaker session or display.'],
 ];
 export const identitySourceCards=[
- ['Canonical passkey realm','The production RP ID, allowed-origin resolution and RP hash checks.','app/lib/auth/passkey.ts','receiz'],
- ['Explicit related origins','The exact Bankeiz origins admitted beneath the existing Receiz realm.','app/lib/auth/relatedOrigins.ts','receiz'],
- ['Create the challenge','The native challenge and established passkey request contract.','app/api/auth/passkey/begin/route.ts','receiz'],
- ['Verify and complete','The verification and session completion path after accepted proof.','app/api/auth/passkey/finish/route.ts','receiz'],
- ['Bind the same account','The identity/account binding, recovery and projection invariants.','docs/pbi-recovery-receiz-id-binding.md','receiz'],
- ['Continuity, documented','The implemented proof, session, projection, binding and sync boundaries.','docs/receiz-identity-continuity-one-pager.md','receiz'],
- ['Bankeiz identity admission','Original artifact verification, canonical identity admission and supported account projection.','src/receiz/native-identity.ts','reality-grade-banking'],
- ['Bankeiz PBI account recovery','Reuse of existing PBI proof and account binding within Bankeiz.','src/receiz/pbi-account.ts','reality-grade-banking'],
+ ['Receiz documentation','Public guidance for identity, proof admission, recovery and application authorization.','docs.receiz.com','https://docs.receiz.com/'],
+ ['Developer interfaces','Published SDK, MCP, AI Skills and hosted integration contracts.','receiz.com/developers','https://receiz.com/developers'],
+ ['Reality-Grade Infrastructure','Public contracts, disclosure boundaries and released conformance evidence.','Public infrastructure repository','https://github.com/kojibai/reality-grade-infrastructure'],
+ ['Bankeiz identity admission','Original artifact verification, canonical identity admission and supported account projection.','src/receiz/native-identity.ts','https://github.com/kojibai/reality-grade-banking/blob/main/src/receiz/native-identity.ts'],
+ ['Bankeiz PBI account recovery','Reuse of existing PBI proof and account binding within Bankeiz.','src/receiz/pbi-account.ts','https://github.com/kojibai/reality-grade-banking/blob/main/src/receiz/pbi-account.ts'],
 ];
 export const continuityUses=[
  ['01','Banking','The same identity. A connected account.','Bankeiz admits an existing Receiz identity and supported account state. Payments, Settlement and financial operations retain their own review and authority.','Implemented reference: Bankeiz','/learn/receiz-id/'],

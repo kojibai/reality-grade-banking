@@ -648,6 +648,22 @@
       "destination": "/standards/index.html"
     },
     {
+      "source": "/institutions/scorecard/",
+      "destination": "/registry/index.html"
+    },
+    {
+      "source": "/institutions/scorecard",
+      "destination": "/registry/index.html"
+    },
+    {
+      "source": "/registry/",
+      "destination": "/registry/index.html"
+    },
+    {
+      "source": "/registry",
+      "destination": "/registry/index.html"
+    },
+    {
       "source": "/standards",
       "destination": "/standards/index.html"
     },

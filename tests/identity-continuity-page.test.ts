@@ -32,7 +32,8 @@ it('demonstrates the same representative identity without executing authenticati
  expect(doc.querySelector('#identity-security')?.textContent).toContain('does not authorize a payment');
  expect(doc.querySelectorAll('#identity-architecture details')).toHaveLength(6);
  const sources=Array.from(doc.querySelectorAll('#identity-sources a'),node=>node.getAttribute('href'));
- for(const suffix of ['app/lib/auth/passkey.ts','app/lib/auth/relatedOrigins.ts','app/api/auth/passkey/begin/route.ts','app/api/auth/passkey/finish/route.ts','docs/pbi-recovery-receiz-id-binding.md','docs/receiz-identity-continuity-one-pager.md'])expect(sources).toContain('https://github.com/kojibai/receiz/blob/main/'+suffix);
+ for(const href of ['https://docs.receiz.com/','https://receiz.com/developers','https://github.com/kojibai/reality-grade-infrastructure'])expect(sources).toContain(href);
+ expect(Array.from(doc.querySelectorAll('a[href]'),node=>node.getAttribute('href')).some(href=>/^https:\/\/github\.com\/kojibai\/receiz(?:[/?#]|$)/.test(href??''))).toBe(false);
  expect(sources).toContain('https://github.com/kojibai/reality-grade-banking/blob/main/src/receiz/native-identity.ts');
 });
 
