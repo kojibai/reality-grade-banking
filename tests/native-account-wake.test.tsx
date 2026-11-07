@@ -78,7 +78,7 @@ it('refreshes for an identity-held recorded Send event even with no Send sheet m
  expect(identity.readWallet).toHaveBeenCalledTimes(1);
 });
 
-it('does not refresh hidden documents or non-bank routes and refreshes when the bank returns', async () => {
+it('does not refresh hidden documents or non-bank routes and reuses the complete frame when the bank returns', async () => {
   const identity = held(); await mount(identity);
   visible = false;
   await act(async () => { wake('focus'); wake('pageshow'); wake('visibilitychange'); });
@@ -88,7 +88,40 @@ it('does not refresh hidden documents or non-bank routes and refreshes when the 
   expect(identity.readWallet).not.toHaveBeenCalled();
   history.replaceState(null, '', '/');
   await act(async () => { wake('popstate'); wake('receiz-bank:surface'); });
-  expect(identity.readWallet).toHaveBeenCalledTimes(1);
+  expect(identity.readWallet).not.toHaveBeenCalled();
+});
+
+it.each(['/discover/','/bjklock/'])('reuses a complete held account on return from %s without an optional wallet read',async path=>{
+ const identity=held();identity.refreshLocalValuation=vi.fn(async()=>{identity.setKnown(observation('300'));return identity.knownWallet();});
+ vi.mocked(identity.readWallet).mockRejectedValue(Error('SOURCE_503'));
+ const {read,frames}=await mount(identity);
+ history.replaceState(null,'',path);await act(async()=>wake('receiz-bank:surface'));expect(identity.refreshLocalValuation).not.toHaveBeenCalled();
+ history.replaceState(null,'','/');await act(async()=>{wake('popstate');wake('receiz-bank:surface');});
+ expect(identity.refreshLocalValuation).toHaveBeenCalledTimes(1);expect(identity.readWallet).not.toHaveBeenCalled();
+ expect(read().wallet?.totalUsdCents).toBe('300');expect(read().historyComplete).toBe(true);expect(read().error).toBeNull();expect(read().syncPending).toBe(false);
+ expect(frames.filter(frame=>frame.identity).every(frame=>frame.wallet&&frame.walletHistory.length===2&&!frame.opening&&!frame.busy)).toBe(true);
+});
+
+it('does not retry a failed optional read on navigation or erase its legitimate failure',async()=>{
+ const identity=held();identity.refreshLocalValuation=vi.fn(async()=>null);vi.mocked(identity.readWallet).mockRejectedValue(Error('SOURCE_503'));
+ const {read}=await mount(identity);await act(async()=>read().refresh());const failure=read().error;
+ expect(failure).toContain('balance could not be updated');expect(identity.readWallet).toHaveBeenCalledTimes(1);
+ for(const path of ['/discover/','/bjklock/']){history.replaceState(null,'',path);await act(async()=>wake('receiz-bank:surface'));history.replaceState(null,'','/');await act(async()=>{wake('popstate');wake('receiz-bank:surface');});}
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);expect(read().error).toBe(failure);expect(read().syncPending).toBe(true);expect(read().wallet?.totalUsdCents).toBe('100');
+});
+
+it('keeps scheduled inbound reconciliation after a local navigation return',async()=>{
+ vi.useFakeTimers();const identity=held();identity.refreshLocalValuation=vi.fn(async()=>null);
+ vi.mocked(identity.readWallet).mockImplementation(async()=>{identity.setKnown(observation('450'));return identity.knownWallet()!.wallet;});
+ const {read}=await mount(identity);history.replaceState(null,'','/discover/');await act(async()=>wake('receiz-bank:surface'));history.replaceState(null,'','/');await act(async()=>{wake('popstate');wake('receiz-bank:surface');});
+ expect(identity.readWallet).not.toHaveBeenCalled();await act(async()=>vi.advanceTimersByTimeAsync(60_000));
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);expect(read().wallet?.totalUsdCents).toBe('450');expect(read().error).toBeNull();
+});
+
+it('uses the existing wallet reader on navigation when the held account frame is incomplete',async()=>{
+ const identity=held();await mount(identity);identity.setKnown({...observation(),historyBasis:undefined});
+ history.replaceState(null,'','/discover/');await act(async()=>wake('receiz-bank:surface'));history.replaceState(null,'','/');await act(async()=>{wake('popstate');wake('receiz-bank:surface');});
+ expect(identity.readWallet).toHaveBeenCalledTimes(1);
 });
 
 it('paints a supported local valuation before the network starts and retains it through network failure', async () => {

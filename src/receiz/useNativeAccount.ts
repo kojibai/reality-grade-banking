@@ -114,6 +114,15 @@ export function useNativeAccount(custody = nativeCustody) {
       wakeQueued = true;
       queueMicrotask(() => { wakeQueued = false; if (foreground()) void refresh(true); });
     };
+    const returnToBank = () => {
+      if (!foreground()) return;
+      const known=held.current?.knownWallet?.();
+      // Returning to an already-held view is not a source-change signal.
+      // Reuse its admitted frame and existing local Kai valuation; the normal
+      // source timer, connectivity wakes and recorded actions still reconcile.
+      if(known&&hasSettledAccountView(known)){publishObservation(known);void refreshLocal();}
+      else wake();
+    };
     const delay=()=>{const age=lastRead.current?Date.now()-lastRead.current.at:60_000;return lastRead.current&&!lastRead.current.failed&&age>=0&&age<60_000?60_000-age:60_000;};
     let timer=setTimeout(function poll(){wake();timer=setTimeout(poll,delay());},delay());
     const localTimer = setInterval(() => { if (foreground()) void refreshLocal(); }, 1_000);
@@ -121,11 +130,13 @@ export function useNativeAccount(custody = nativeCustody) {
     const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
     addEventListener('bankeiz:wallet-send-recorded',paymentRecorded);
     addEventListener('bankeiz:account-observation', repaint);
-    const wakeEvents = ['online', 'focus', 'pageshow', 'popstate', 'receiz-bank:surface'] as const;
+    const wakeEvents = ['online', 'focus', 'pageshow'] as const;
     for (const event of wakeEvents) addEventListener(event, wake);
+    const navigationEvents=['popstate','receiz-bank:surface'] as const;
+    for(const event of navigationEvents)addEventListener(event,returnToBank);
     document.addEventListener('visibilitychange', wake);
-    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearTimeout(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake); document.removeEventListener('visibilitychange', wake); };
-  }, [accept, refresh, refreshLocal, custody]);
+    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearTimeout(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake);for(const event of navigationEvents)removeEventListener(event,returnToBank); document.removeEventListener('visibilitychange', wake); };
+  }, [accept, refresh, refreshLocal, publishObservation, custody]);
   const open = async (operation: (identityPrepared:()=>void) => Promise<OpenIdentity>, reusePrepared = false) => {
     if (openingOperation.current) return;
     openingOperation.current = true; const ticket = generation.current; setOpeningStage('identity'); setBusy(true); setError(null);
