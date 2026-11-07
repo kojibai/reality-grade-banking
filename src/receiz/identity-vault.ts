@@ -894,3 +894,7 @@ export const saveRecordProofExport=(binding:{artifactSha256:string},key:string,v
 // serialize or re-encrypt the full catalog or any payment-original history.
 export const loadCounterRegisterWork=(binding:{artifactSha256:string})=>loadNoteState(binding,'counter-register');
 export const saveCounterRegisterWork=(binding:{artifactSha256:string},value:unknown,expected:unknown)=>saveNoteState(binding,'counter-register',value,expected);
+
+// Private receiving invitations are preparation, never payment or custody state.
+export const loadReceivingWork=(binding:{artifactSha256:string})=>loadNoteState(binding,'receiving-work-v1');
+export const saveReceivingWork=(binding:{artifactSha256:string},value:import('../adoption/workspace').ReceivingWorkState,expected:unknown)=>saveNoteState(binding,'receiving-work-v1',value,expected);

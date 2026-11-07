@@ -102,6 +102,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath==='/pay/')urls.add('/learn/pay.js');
     if(canonicalPath==='/accept/'){urls.add('/learn/accept-money.js');urls.add('/learn/accept-money-model.js');}
     if(canonicalPath==='/build/'){urls.add('/learn/independent-bank.js');urls.add('/learn/independent-bank-model.js');urls.add('/learn/accept-money-model.js');}
+    if(canonicalPath==='/receiving/')urls.add('/learn/receiving.js');
     if(path==='/learn/guides/')urls.add('/learn/guide-directory.js');
     if(canonicalPath==='/registry/'){
       urls.add('/learn/institution-scorecard.js');

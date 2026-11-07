@@ -150,7 +150,9 @@
   // Disable native history restoration so it cannot race the same transition.
   history.scrollRestoration = 'manual';
   const currentScroll = () => document.body.style.position==='fixed' ? Math.max(0,-parseFloat(document.body.style.top)||0) : scrollY;
-  const snapshot = () => ({ url: location.pathname + location.search + location.hash, scroll: currentScroll() });
+  // Invitation fragments are carried by their local reader, never history metadata.
+  const historyUrl=value=>{const url=new URL(value,location.origin);return /^\/(?:receiving|conformance)\/?$/.test(url.pathname)&&url.hash.startsWith('#invite=')?url.pathname+url.search:value;};
+  const snapshot = () => ({ url: historyUrl(location.pathname + location.search + location.hash), scroll: currentScroll() });
   let displayedUrl=snapshot().url;
   const rememberPosition = (url,scroll) => {
     const source=new URL(url,location.origin),key=source.pathname+source.search;
@@ -271,7 +273,7 @@
     const assetReturnPath=enteringAsset?(leavingAsset?history.state?.assetReturnPath:panel?'/#'+panel:location.pathname):undefined;
     const current=snapshot();rememberPosition(current.url,current.scroll);history.replaceState({...history.state,publicNavigation:current},'');
     if(location.pathname==='/'&&bankRoot&&!bankRoot.hidden)bankUrl=current.url;
-    history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: target, scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
+    history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: historyUrl(target), scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
   // Lazy public destinations reuse this retained router and catalog by reference.
   Object.assign(element,{pages,navigate,ensurePublicRuntime:page=>page&&(page===pages['/explore/']||page===pages['/feed/']||page===pages['/discover/'])?ensurePublicRuntime(page):undefined});

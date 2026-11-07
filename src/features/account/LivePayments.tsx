@@ -16,6 +16,7 @@ import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
 import {RecipientInput} from './RecipientInput';
 import {PaymentTools} from './PaymentTools';
+import {ReceivingHelp,type ReceivingHelpInput} from '../adoption/ReceivingHelp';
 
 const Counter=lazy(()=>import('./MerchantCounter').then(module=>({default:module.MerchantCounter})));
 
@@ -55,13 +56,14 @@ export function LiveSend({ identity, onRefresh = () => {}, initialRequest, initi
   const [selectedRecipient,setSelectedRecipient]=useState(initialRequest?undefined:initialRecipient);
   const recipientCoordinate=selectedRecipient&&recipient===selectedRecipient.username?selectedRecipient.userId:recipient;
   const noteHint=useId();
+  const [receivingHelp,setReceivingHelp]=useState(false);
   if (noteMode && identity) return <OfflineNotes identity={identity} mode={noteMode} onBack={() => setNoteMode(null)} backLabel="Back to payment" onRefresh={onRefresh} />;
   const choices = <>{identity && <button className="text-button note-action" onClick={() => setNoteMode('create')}>Create note</button>}<div className="segmented"><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send money</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
   if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} onRefresh={onRefresh} /></>;
-  return <>{choices}<WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate, amount,sendNote])} input={() => ({ amountUsdCents: bankOperationDollars(amount), recipient:recipientCoordinate,note:sendNote })} onRefresh={onRefresh}>
+  return <>{choices}<WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate, amount,sendNote])} input={() => ({ amountUsdCents: bankOperationDollars(amount), recipient:recipientCoordinate,note:sendNote })} onRefresh={onRefresh} secondaryAction={identity&&<details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">Share a receiving path, or bring the standard to an institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details>}>
     <h1 className="sheet-hero">Move money.<br />Keep what makes it yours.</h1>
     <AmountInput label="Amount to send" value={amount} onChange={setAmount} dollars />
     <div className="send-recipient"><RecipientInput allowEmail identity={identity} value={recipient} onChange={value=>{setSelectedRecipient(undefined);setRecipient(value);}} onSelect={person=>{setSelectedRecipient(person);setRecipient(person.username);}}/><PaymentScanner compact onRequest={request=>{setSelectedRecipient(undefined);setRecipient(request.recipient);setAmount(request.amount??'');}}/></div>
     <details className="send-note-field"><summary>Add a memo <span>Optional</span></summary><label className="form-field"><span>Payment memo</span><textarea aria-label="Payment memo" aria-describedby={noteHint} value={sendNote} onChange={event=>setSendNote(event.target.value)} maxLength={280} rows={2} placeholder="What is this payment for?"/><small id={noteHint}>This memo is included with your payment in the public Ledger.</small></label></details>
-  </WalletSendOperation></>;
+  </WalletSendOperation>{identity&&receivingHelp&&<ReceivingHelp key={identity.binding.artifactSha256} identity={identity} initial={{recipient,amount,purpose:sendNote,...(selectedRecipient?{recipientUserId:selectedRecipient.userId,recipientUsername:selectedRecipient.username}:{})} satisfies ReceivingHelpInput} onClose={()=>setReceivingHelp(false)} onPay={input=>{const label=input.recipientUserId?input.recipientUsername||input.recipient:input.recipient;if(label!==recipient||input.amount!==amount)setSendNote('');setSelectedRecipient(input.recipientUserId?{userId:input.recipientUserId,username:label}:undefined);setRecipient(label);setAmount(input.amount);}}/>}</>;
 }

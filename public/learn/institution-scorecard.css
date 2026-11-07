@@ -70,6 +70,10 @@
 .institution-scorecard .isc-record-metadata{font-size:10px;line-height:1.65;margin-top:7px}
 .institution-scorecard .isc-institution-link{font-size:10px;line-height:1.6;margin-top:9px}
 .institution-scorecard .isc-institution-link a{text-underline-offset:4px}
+.institution-scorecard .isc-receiving-continuation{grid-column:1/-1;min-width:0;margin-top:12px}
+.institution-scorecard .isc-receiving-continuation a,.institution-scorecard [data-receiving-unlisted]{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-height:36px;padding-block:5px;color:var(--isc-ink);font-size:11px;line-height:1.7;text-decoration:underline;text-decoration-color:#b4c0c6;text-underline-offset:4px;overflow-wrap:anywhere}
+.institution-scorecard .isc-receiving-continuation a:hover,.institution-scorecard [data-receiving-unlisted]:hover{text-decoration-color:currentColor}
+.institution-scorecard .isc-receiving-continuation a>span{flex-shrink:0}
 .institution-scorecard .isc-verdict-block{padding-top:21px}
 .institution-scorecard .isc-verdict{display:inline-block;font-size:22px;line-height:1;letter-spacing:-.035em;font-weight:650;white-space:nowrap;color:var(--isc-red)}
 .institution-scorecard .isc-green .isc-verdict{color:var(--isc-green)}

@@ -29,7 +29,7 @@ export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIde
  </details>;
 }
 
-export function WalletSendOperation({identity,input,inputKey,onRefresh,children}:{identity?:OpenIdentity;input():{recipient:string;amountUsdCents:string;note?:string};inputKey:string;onRefresh():void;children:ReactNode}){
+export function WalletSendOperation({identity,input,inputKey,onRefresh,children,secondaryAction}:{identity?:OpenIdentity;input():{recipient:string;amountUsdCents:string;note?:string};inputKey:string;onRefresh():void;children:ReactNode;secondaryAction?:ReactNode}){
  const [review,setReview]=useState<WalletSendReview|null>(null),[outcome,setOutcome]=useState<WalletSendOutcome|null>(null),[approved,setApproved]=useState(false),[busy,setBusy]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState('');
  const [failure,setFailure]=useState<ReturnType<typeof bankOperationFailureDetails>|null>(null),api=useRef<WalletSend|null>(null),held=useRef<WalletSendReview|null>(null),running=useRef(false),generation=useRef(0);
  useEffect(()=>{const ticket=++generation.current;running.current=false;setReady(false);setBusy(false);setReview(null);setOutcome(null);setApproved(false);setError('');setFailure(null);
@@ -71,7 +71,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children}
  if(outcome)return <WalletPaymentResult outcome={outcome} busy={busy} onCheck={()=>void check()} onAgain={()=>{setOutcome(null);setApproved(false);}}>{identity&&<WalletSendRecovery key={outcome.status} identity={identity} onRefresh={onRefresh}/>} {diagnostics}</WalletPaymentResult>;
  if(review)return <WalletPaymentReview review={review} approved={approved} busy={busy} onApprove={setApproved} onSend={()=>void send()} onEdit={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>{diagnostics}</WalletPaymentReview>;
  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
-  <button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
+  {secondaryAction&&<fieldset className="native-operation-fields" disabled={busy}>{secondaryAction}</fieldset>}<button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
 }
 
 /** Shared presentation only. Financial authority remains in WalletSendOperation. */

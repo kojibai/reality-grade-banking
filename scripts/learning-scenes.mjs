@@ -16,6 +16,7 @@ export function learningScene(page){
  const person=(x,y,name,stage)=>`<g data-scene-stage="${stage}"><circle cx="${x}" cy="${y}" r="33" fill="${glass}" class="scene-edge"/><circle cx="${x}" cy="${y-7}" r="9" fill="${ink}"/><path d="M${x-16} ${y+17}q0-22 16-22t16 22" fill="${ink}"/>${text(x,y+64,name,true)}</g>`;
  const ledger=(x,y,title)=>`${sheet(x,y,150,170,title)}${bars(x+24,y+75,[102,72,102,85])}${seal(x+121,y+144,23)}`;
  const cases={
+ 'receiving':()=>`${sheet(30,75,145,170,'Receive','Your ID or link',0)}${bars(55,174,[95,70,82])}${route('M185 158H215')}${sheet(220,95,130,130,'Review','Recipient + amount',1)}${route('M360 158H390',-2)}${sheet(395,65,135,190,'Original','Payment + proof',2)}${bars(420,164,[84,60,76])}${line('M102 274V315H462V274')}${text(280,350,'Your next payment keeps the proof connected.',true)}`,
  'earn-from-originals':()=>`${sheet(30,80,145,140,'Original','Sealed source',0)}${seal(103,250,29)}${route('M180 150H215')}${sheet(220,80,145,140,'PBI signed','Public. Verified.',1)}${text(292,260,'Exact source. Current ownership.',true)}${route('M370 150H400',-2)}${sheet(405,80,130,140,'Earning','From the first Original',2)}${text(280,335,'The sealed origin and value law stay fixed.',true)}`,
 
  'your-account':()=>`${route('M105 115C105 185 280 155 280 220')}${route('M455 115C455 185 280 155 280 220',-2)}${sheet(30,45,150,80,'Reserve','Funding',0)}${sheet(380,45,150,80,'Settlement','Native value',1)}${sheet(160,220,240,110,'Your balance','One account',2)}${seal(280,220,25)}`,

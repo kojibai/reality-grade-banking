@@ -148,7 +148,9 @@ for(const page of publicPages){
 assert.equal(uniqueTitles.size,publicPages.length);assert.equal(uniqueDescriptions.size,publicPages.length);assert.ok(!sitemap.includes('<lastmod>'),'A build date must not impersonate a content modification date');
 for (const url of html.matchAll(/(?:href|src)="(\/learn\/learn\.(?:css|js)\?v=[a-f0-9]{12})"/g)) assert.ok(sw.includes(JSON.stringify(url[1])), `Versioned Learn asset must be precached: ${url[1]}`);
 const css = await readFile('dist/learn/learn.css'), motion = await readFile('dist/learn/learn.js');
-assert.ok(gzipSync(css).length + gzipSync(motion).length < 15_000, 'Shared public presentation runtime budget, including guides and retained asset/profile routes');
+// The route-scoped invitation-history privacy filter adds 59 gzip bytes to the
+// 14,996-byte baseline. The receiving runtime and styles remain page-only.
+assert.ok(gzipSync(css).length + gzipSync(motion).length < 15_100, 'Shared public presentation runtime budget, including guides and retained asset/profile routes');
 assert.ok((await readFile('dist/learn/proof-glass.webp')).length < 180_000, 'Hero art budget');
 const share = await readFile('dist/receiz-bank-learn-share.jpg');
 assert.equal(share.readUInt16BE(0), 0xffd8); assert.ok(share.length < 500_000, 'Social image budget');

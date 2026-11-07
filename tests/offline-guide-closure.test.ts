@@ -27,3 +27,8 @@ it('retains the real producer entry and every emitted lazy module, refusing alte
   saved.resources[0]!.url='/api/private';await f.put('learn/originals-qualification.modules.json',JSON.stringify(saved));await expect(buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile})).rejects.toThrow('OFFLINE_PUBLIC_MODULE_MISMATCH');
  }finally{await f.dispose();}
 });
+it('retains the complete public receiving extension without an invitation payload or account dependency',async()=>{
+ const f=await fixture();try{const {build}=await import('esbuild'),result=await build({entryPoints:['src/adoption/receiving-public.ts'],bundle:true,platform:'browser',format:'esm',target:'es2022',minify:true,write:false}),runtime=result.outputFiles[0]!.text;await f.put('learn/receiving.js',runtime);await f.put('receiving/index.html','<main>Receive directly.</main>');await f.put('index.html','<script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{'/receiving/':{content:'<main data-receiving>Receive directly.</main>'}}})+'</script>');
+  const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile});expect(report.resources.find(row=>row.url==='/learn/receiving.js')).toEqual({url:'/learn/receiving.js',bytes:Buffer.byteLength(runtime),sha256:createHash('sha256').update(runtime).digest('hex')});expect(runtime).not.toMatch(/\bfetch\(/);expect(JSON.stringify(report)).not.toContain('#invite=');
+ }finally{await f.dispose();}
+});

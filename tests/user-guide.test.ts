@@ -63,7 +63,7 @@ it('uses existing retained navigation for guide transitions without a document o
 
 it('keeps the shared presentation runtime within its established budget',async()=>{
  const {learnAssets}=await import('../scripts/learn-assets.mjs');const assets=await learnAssets();
- expect(gzipSync(assets.css).length+gzipSync(assets.js).length).toBeLessThan(15000);
+ expect(gzipSync(assets.css).length+gzipSync(assets.js).length).toBeLessThan(15100);
 });
 
 it('serves the same static guide in development and leaves the reserved username route alone',async()=>{
