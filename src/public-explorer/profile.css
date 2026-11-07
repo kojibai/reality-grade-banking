@@ -43,3 +43,5 @@
 .profile-footer nav{display:flex;gap:18px;align-items:center}
 .profile-footer nav a{display:inline-flex;align-items:center;min-height:40px}
 @media(max-width:540px){.profile-footer{flex-direction:column;gap:4px;padding-top:18px;text-align:center}.profile-footer nav{gap:26px}}
+
+.profile-view-switch .profile-create-asset{color:var(--navy);border-color:#cbd6e5;background:#edf3ff;border-radius:50%;min-width:36px;min-height:36px}.profile-view-switch .profile-create-asset:hover{color:var(--blue);border-color:#a8bde1}.profile-view-switch .profile-create-asset:focus-visible{outline:2px solid var(--blue);outline-offset:3px}

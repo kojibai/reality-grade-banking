@@ -36,7 +36,6 @@ import {businessPage,businessContent} from './business-page.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {directoryContent,fitContent} from './business-fit-pages.mjs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import {gunzipSync} from 'node:zlib';
 import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
@@ -80,7 +79,7 @@ const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
 let bankHtml,certificateShell,feedState,discoveryState,bookingExamples,paymentExamples,readingWriter,readingCatalog,readingLedger,readingLinks;
 let assetPaths=[];
-const explorerStates=new Map();
+const explorerStates=new Map(),ledgerStates=new Map();
 const publicPages = {};
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' });
 try {
@@ -102,9 +101,19 @@ try {
   const generation=hash.digest('hex');
   for(const path of publicMarketPreparedPaths)explorerStates.set('/'+path+'/',renderSelectedPublicMarketState({catalog:readingCatalog,history,capitalization,asOfPulse,generation,path,compressCatalog:true}));
   assetPaths=readingCatalog.items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
-  const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/src/receiz/public-network-cache.ts'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
+  const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/server/prepared-dependent-documents.tsx'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
   readingWriter=reading.writePublicReadingPages;readingLinks=readingMetadata.publicReadingLinks;
-  readingLedger=ledger.parsePublicNetworkCache(JSON.parse(gunzipSync(ledgerBytes)));
+  // Reuse the current accepted membership and the held financial prefix. The
+  // same existing preparer owns SSR, the compressed document seed and /read.
+  // No Source read, new cache or historical reverification belongs in a build.
+  const {snapshot:ledgerQuotes,...ledgerMembership}=market,material=JSON.stringify({membership:ledgerMembership,snapshot:ledgerQuotes,ledgerCacheGzipB64u:ledgerBytes.toString('base64url')}),ledgerGeneration=createHash('sha256').update(material).digest('hex');
+  readingLedger=(await ledger.preparePublicLedgerDocumentState(material,ledgerGeneration)).snapshot;
+  for(const path of ['ledger','ledger/proofs']){
+   const template='<html><head></head><body><div id="public-ledger-root"></div><script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{['/'+path+'/']:{}},bank:{}})+'</script></body></html>';
+   const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
+   if(!content||!seed)throw Error('PUBLIC_LEDGER_STATIC_STATE_REQUIRED');
+   ledgerStates.set('/'+path+'/',{content:content[1],seedScript:seed[0]});
+  }
   pages.push(institutionScorecardPage,merchantPage,momentsPage,bankingPage,guidePage,meetingPage,bookingGuidePage,paymentGuidePage,matterPage,...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, acceptMoneyPage, independentBankPage, valueExplainerPage, businessPage,vaultPage,protectionPage,directoryPage,...businessFitPages,...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages,identityContinuityPage,...outcomePages,...standardPages);
   const html = await readFile('dist/index.html', 'utf8');
   const launchImages = await buildLaunchImages('dist', AccountOpening);
@@ -139,6 +148,7 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
   const path = `/${runtime}/`; let html = await readFile(`dist${path}index.html`, 'utf8');
   if(runtime==='feed')html=applyFeedState(html,feedState);
   if(runtime==='discover')html=applyDiscoveryState(html,discoveryState);
+  if(runtime==='ledger'){const state=ledgerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_LEDGER_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
   if(runtime==='explore'){const state=explorerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_MARKET_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
   const head = html.match(/<head>([\s\S]+?)<\/head>/)[1];
   const cssLinks = [...head.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
@@ -149,6 +159,13 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
   const pageHead = head.replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
   publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
   runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
+}
+// The direct Proofs entry uses the same retained Ledger and runtime. Only its
+// current category, readable rows and seed path differ; navigation stays exact.
+{
+ const base=runtimeDocuments.get('/ledger/'),all=ledgerStates.get('/ledger/'),proofs=ledgerStates.get('/ledger/proofs/');
+ const html=base.replace(/<head>([\s\S]*?)<\/head>/,(_all,head)=>'<head>'+head.replaceAll('https://bankeiz.com/ledger/','https://bankeiz.com/ledger/proofs/')+'</head>').replace(all.content,()=>proofs.content).replace(all.seedScript,()=>proofs.seedScript);
+ runtimeDocuments.set('/ledger/proofs/',html);
 }
 // A direct certificate paints its own settled header/footer, never the
 // unrelated catalog. Keep the same Explorer runtime and Bank purchase host.
@@ -200,6 +217,8 @@ for (const [path, page] of Object.entries(documents)) {
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
   await writeFile(`dist${path}index.html`, withReadingLink(feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path));
 }
+await mkdir('dist/ledger/proofs',{recursive:true});
+await writeFile('dist/ledger/proofs/index.html',runtimeDocumentHtml(runtimeDocuments.get('/ledger/proofs/'),'ledger'));
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every

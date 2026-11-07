@@ -44,7 +44,9 @@ export async function loadPublicNetworkSeed(signal?: AbortSignal): Promise<Publi
     if (!decodedByTransport && typeof DecompressionStream === 'undefined') return null;
     const stream = decodedByTransport ? response.body : response.body.pipeThrough(new DecompressionStream('gzip'));
     const reader = stream.getReader(); const chunks: Uint8Array[] = []; let size = 0;
-    try { for (;;) { const chunk = await reader.read(); if (chunk.done) break; size += chunk.value.length; if (size > 32 * 1024 * 1024) throw new Error('Public cache exceeds capacity.'); chunks.push(chunk.value); } }
+    // The seed uses the same compact public wire and decoded bound as its
+    // prepared document and Saved Ledger carrier. The transport stays bounded.
+    try { for (;;) { const chunk = await reader.read(); if (chunk.done) break; size += chunk.value.length; if (size > 64 * 1024 * 1024) throw new Error('Public cache exceeds capacity.'); chunks.push(chunk.value); } }
     catch (cause) { await reader.cancel().catch(() => {}); throw cause; }
     const bytes = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
     return parsePublicNetworkCache(JSON.parse(new TextDecoder().decode(bytes)));

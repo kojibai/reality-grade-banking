@@ -166,6 +166,26 @@ assert.ok(learn.includes('href="/ledger/"'), 'Learn links directly to the public
 const ledger = await readFile('dist/ledger/index.html', 'utf8');
 assert.ok(ledger.includes('<link rel="canonical" href="https://bankeiz.com/ledger/">'));
 assert.ok(sitemap.includes('https://bankeiz.com/ledger/'));
+// Both cold Ledger entries carry the same retained financial prefix and the
+// complete current public Original cohort before any browser work begins.
+const heldLedger=JSON.parse(gunzipSync(await readFile('public/receiz-public-ledger.json.gz.bin')).toString('utf8'));
+const financialIds=heldLedger.records.filter(row=>row.source!=='proofs').map(row=>row.id).sort(),proofIds=membershipInput.transport.publicOriginals.map(row=>row.id).sort();
+let financialPacket;
+for(const path of ['ledger','ledger/proofs']){
+ const document=path==='ledger'?ledger:await readFile(`dist/${path}/index.html`,'utf8'),scripts=[...document.matchAll(/<script id="public-ledger-document-seed" type="application\/json">([\s\S]*?)<\/script>/g)];
+ assert.equal(scripts.length,1,`Cold ${path} carries the settled Ledger exactly once.`);assert.ok(document.includes(`<link rel="canonical" href="https://bankeiz.com/${path}/">`));
+ const seed=JSON.parse(scripts[0][1]);assert.equal(seed.schema,'bank.public-ledger.document.v1');assert.equal(seed.path,path);assert.equal(seed.snapshot,undefined);assert.equal(seed.snapshotGzip.length,2);
+ const packets=seed.snapshotGzip.map(packet=>{const bytes=gunzipSync(Buffer.from(packet.gzipB64u,'base64url'),{maxOutputLength:64*1024*1024});assert.equal(bytes.length,packet.bytes);return JSON.parse(bytes.toString('utf8'));}),rows=packets.flatMap(packet=>packet.records);
+ assert.deepEqual(rows.filter(row=>row.source!=='proofs').map(row=>row.id).sort(),financialIds,`Cold ${path} retains all financial history.`);
+ assert.deepEqual(rows.filter(row=>row.source==='proofs').map(row=>row.sourceId).sort(),proofIds,`Cold ${path} carries every selected Original, with no withdrawn proof cohort.`);
+ assert.equal(packets[0].inspectionVersion,heldLedger.inspectionVersion,'Packing public history never claims a newer financial inspection.');assert.ok(rows.every(row=>row.authority==='public-source-projection'&&row.origin===undefined));
+ assert.equal(new Set(rows.map(row=>row.id)).size,rows.length);const prefix=JSON.stringify(seed.snapshotGzip[0]);if(financialPacket===undefined)financialPacket=prefix;else assert.equal(prefix,financialPacket,'All Ledger categories reuse the exact compressed financial prefix.');
+ const opening=document.slice(document.indexOf('id="public-ledger-root"'),scripts[0].index);assert.ok(/class="public-ledger-row(?:\s|")/.test(opening),`Cold ${path} paints held records before JavaScript.`);assert.ok(!opening.includes('public-entry-placeholder'));
+ assert.ok(Buffer.byteLength(document)<=32*1024*1024,`Cold ${path} remains within the existing document capacity.`);
+}
+assert.ok(!html.includes('id="public-ledger-document-seed"'),'Bank entry never duplicates the complete Ledger.');
+assert.ok(Object.values(navigation.pages).every(page=>!page.content.includes('id="public-ledger-document-seed"')),'Ordinary navigation keeps its existing compact Ledger entry.');
+console.log('Verified cold Ledger and Proofs rows, all selected Originals, retained financial history and exact shared history packets.');
 const builds = JSON.parse(await readFile('dist/.vite/manifest.json', 'utf8'));
 assert.ok(builds['ledger/index.html']?.isEntry, 'Public Ledger has its own read-only entry');
 const publicEntries = new Set();

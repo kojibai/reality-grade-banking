@@ -24,7 +24,7 @@ const records = mergePublicRecords([], pages.flatMap(page => page.records)).map(
  return {...record,details:{...record.details,sourceObservedAt:record.source==='proofs'?membership.transport.generatedAt:capture.capturedAt}};
 });
 const bytes=Buffer.from(JSON.stringify(publicNetworkCacheWire({records,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,capturedAt:capture.capturedAt,coverage:pages.map(page=>({source:page.source,complete:true,count:page.records.length}))})));
-if(bytes.length>32*1024*1024)throw Error(`PUBLIC_LEDGER_SEED_DECODED_CAPACITY_EXCEEDED:${bytes.length}`);
+if(bytes.length>64*1024*1024)throw Error(`PUBLIC_LEDGER_SEED_DECODED_CAPACITY_EXCEEDED:${bytes.length}`);
 const compressed = gzipSync(bytes, { level: 9 });
 const target=new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url),temporary=new URL(`../public/.receiz-public-ledger-${process.pid}.tmp`,import.meta.url);
 try{await writeFile(temporary,compressed);await rename(temporary,target);}finally{await rm(temporary,{force:true});}

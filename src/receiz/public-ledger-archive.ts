@@ -1,6 +1,7 @@
 import {receizBase64UrlDecode,receizBase64UrlEncode,sha256ReceizBytes} from '@receiz/sdk';
 import {PUBLIC_NETWORK_INSPECTION_VERSION,PUBLIC_SOURCES,type PublicRecord,type PublicSource} from './public-network';
 import {parsePublicNetworkCache,type PublicNetworkCache} from './public-network-cache';
+import {publicNetworkCacheWire} from './public-network-cache-wire';
 import {ledgerValueForRecord,readLedgerValueDisplay,type LedgerValueDisplay,type LedgerValueIndex} from './ledger-value';
 import {ledgerCurrentAssetValue,ledgerValuationContext} from './ledger-economy';
 import {readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
@@ -40,7 +41,14 @@ export async function packLocalLedger(input:LocalLedgerInput):Promise<{carrier:L
   const value=ledgerValueForRecord(record,input.valueSource??null),currentValue=/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,input.valueSource??null):null;
   return value.amountUsdCents!==null||currentValue!==null&&currentValue.amountUsdCents!==null?[{id:record.id,value,currentValue,valuation:ledgerValuationContext(record,input.valueSource??null,value)}]:[];
  });
- const bytes=new TextEncoder().encode(JSON.stringify({schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',...cache,displayValues}));
+ // Keep the existing shared-context wire representation. Expanding the same
+ // carried identity/funding context into every row duplicates held history and
+ // can exhaust the archive budget even when the complete source already fits.
+ const wire=publicNetworkCacheWire(cache);
+ // Unlike optional display fields, explicitly carried empty counterparties are
+ // part of the captured record and must reopen exactly as supplied.
+ wire.records.forEach((row,index)=>{const record=cache.records[index];if(record.sender===null)row.sender=null;if(record.recipient===null)row.recipient=null;});
+ const bytes=new TextEncoder().encode(JSON.stringify({...wire,displayValues}));
  if(bytes.length>MAX_RAW)throw Error('PUBLIC_LEDGER_ARCHIVE_CAPACITY');
  const compressed=await streamBytes(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip')),MAX_COMPRESSED),dataSha256=await sha256ReceizBytes(bytes);
  return {carrier:{kind:'bankeiz.public-ledger-archive',version:'v1',codec:'gzip-base64url',dataSha256,dataBytes:bytes.length,recordCount:cache.records.length,data:receizBase64UrlEncode(compressed)},archive:{records:cache.records,capturedAt:cache.capturedAt,coverage:cache.coverage,dataSha256,displayValues}};

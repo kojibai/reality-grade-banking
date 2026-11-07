@@ -14,7 +14,7 @@ export function publicLedgerCrystalArtwork(review:PublicLedgerFileReview):string
  return `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3000" viewBox="0 0 2400 3000"><g font-family="Arial,Helvetica,sans-serif" fill="#17334c">
  <text x="160" y="185" font-size="72" font-weight="700" letter-spacing="-3">Bankeiz</text><text x="2240" y="172" text-anchor="end" font-size="24" letter-spacing="4">PUBLIC LEDGER</text>
  <rect x="120" y="2050" width="2160" height="795" rx="28" fill="#fffaf0" fill-opacity=".86" stroke="#b6a68a" stroke-opacity=".45"/>
- <text x="180" y="2165" font-size="88" letter-spacing="-3">Memory Crystal</text><text x="182" y="2230" font-size="31">${count} ${snapshot.records.length===1?'record':'records'} · complete public action history</text>
+ <text x="180" y="2165" font-size="88" letter-spacing="-3">Saved Ledger</text><text x="182" y="2230" font-size="31">${count} ${snapshot.records.length===1?'record':'records'} · complete public action history</text>
  <text x="182" y="2320" font-size="25" letter-spacing="3">SOURCE COORDINATE</text><text x="182" y="2370" font-size="30">☤µKAI ${escape(snapshot.kaiUpulse)}</text><text x="182" y="2420" font-size="26">${snapshot.baseline==='native'?'Native source continuity':'Observed baseline · continuity preserved'}</text>
  <text x="182" y="2500" font-size="24" letter-spacing="2">SOURCE HEAD</text><text x="182" y="2545" font-size="22" font-family="monospace">${escape(snapshot.sourceHead.slice(0,32))}</text><text x="182" y="2580" font-size="22" font-family="monospace">${escape(snapshot.sourceHead.slice(32))}</text>
  <text x="182" y="2660" font-size="24" letter-spacing="2">LEDGER ORIGINAL SHA-256</text><text x="182" y="2705" font-size="22" font-family="monospace">${escape(review.artifactSha256.slice(0,32))}</text><text x="182" y="2740" font-size="22" font-family="monospace">${escape(review.artifactSha256.slice(32))}</text>
@@ -40,7 +40,7 @@ export function localLedgerCrystalArtwork(archive:LocalLedgerArchive){
  return `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="3000" viewBox="0 0 2400 3000"><g font-family="Arial,Helvetica,sans-serif" fill="#17334c">
  <text x="160" y="185" font-size="72" font-weight="700" letter-spacing="-3">Bankeiz</text><text x="2240" y="172" text-anchor="end" font-size="24" letter-spacing="4">PUBLIC LEDGER</text>
  <rect x="120" y="2050" width="2160" height="795" rx="28" fill="#fffaf0" fill-opacity=".9" stroke="#b6a68a" stroke-opacity=".45"/>
- <text x="180" y="2165" font-size="88" letter-spacing="-3">Memory Crystal</text><text x="182" y="2240" font-size="34">${count} public records · locally held history</text>
+ <text x="180" y="2165" font-size="88" letter-spacing="-3">Saved Ledger</text><text x="182" y="2240" font-size="34">${count} public records · locally held history</text>
  <path d="M182 2310H2218" stroke="#b6a68a" stroke-opacity=".5"/><text x="182" y="2390" font-size="24" letter-spacing="3">THE RECORD, PRESERVED</text>
  <text x="182" y="2450" font-size="29">Every held record. Carried proof fields. Exact valuation operands.</text><text x="182" y="2500" font-size="27">${coverage} of 4 source collections marked complete at capture.</text>
  <text x="182" y="2595" font-size="24" letter-spacing="2">EMBEDDED HISTORY SHA-256</text><text x="182" y="2650" font-size="26" font-family="monospace">${escape(digest.slice(0,32))}</text><text x="182" y="2690" font-size="26" font-family="monospace">${escape(digest.slice(32))}</text>

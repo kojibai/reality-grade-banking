@@ -36,6 +36,13 @@ describe('prepared public Ledger',()=>{
   const errors:unknown[]=[],root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});
   await new Promise(resolve=>setTimeout(resolve,30));expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.textContent).toContain(title);expect(fetch).not.toHaveBeenCalled();root.unmount();
  });
+ it('keeps prepared rows in place when the browser uses the WebKit date-time connector',async()=>{
+  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));
+  document.body.innerHTML=await renderPreparedDependentDocument(input());const seed=(await readPublicLedgerDocumentSeed())!,container=document.querySelector('#public-ledger-root')!,before=[...container.querySelectorAll('.public-ledger-row')];
+  const native=Date.prototype.toLocaleString;vi.spyOn(Date.prototype,'toLocaleString').mockImplementation(function(this:Date,...args){return native.apply(this,args).replace(/, (?=\d{1,2}:\d{2})/,' at ');});
+  const errors:unknown[]=[],root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});
+  try{await new Promise(resolve=>setTimeout(resolve,30));expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.querySelector('.public-ledger-event small')?.textContent).toContain(' at ');expect(fetch).not.toHaveBeenCalled();}finally{root.unmount();}
+ });
  it('does not mark retained legacy transactions as having completed a newer inspection',async()=>{
   const value=JSON.parse(input().material);value.ledgerCache.inspectionVersion=3;const material=JSON.stringify(value);document.body.innerHTML=await renderPreparedDependentDocument({...input(),material,generation:createHash('sha256').update(material).digest('hex')});expect((await readPublicLedgerDocumentSeed())?.snapshot.inspectionVersion).toBe(3);
  });
@@ -47,6 +54,18 @@ describe('prepared public Ledger',()=>{
   const first=input(true),htmlA=await renderPreparedDependentDocument(first),packet=(html:string)=>JSON.parse(html.match(/<script id="public-ledger-document-seed" type="application\/json">([\s\S]*?)<\/script>/)![1]);
   const a=packet(htmlA),value=JSON.parse(first.material);value.membership.transport.publicMembership.itemCount++;value.membership.transport.publicOriginals.unshift(member('later','Later accepted Original'));const material=JSON.stringify(value),htmlB=await renderPreparedDependentDocument({...first,material,generation:createHash('sha256').update(material).digest('hex')});
   const b=packet(htmlB);expect(b.snapshotGzip[0]).toEqual(a.snapshotGzip[0]);expect(b.snapshotGzip[1]).not.toEqual(a.snapshotGzip[1]);document.body.innerHTML=htmlB;const seed=(await readPublicLedgerDocumentSeed())!;expect(seed.snapshot.records.filter(row=>row.source!=='proofs').map(row=>({evidence:row.evidence,sender:row.sender,recipient:row.recipient}))).toEqual([{evidence:{entryHash:'b'.repeat(64)},sender:'Public sender',recipient:'Public recipient'}]);expect(seed.snapshot.records.filter(row=>row.source==='proofs')).toHaveLength(3);
+ });
+ it.each(['ledger','ledger/proofs'])('replaces a seeded cold %s document with the complete accepted cohort without another read',async path=>{
+  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK')),first={...input(true),path},previous=await renderPreparedDependentDocument(first),value=JSON.parse(first.material);
+  value.membership.transport.publicOriginals=[member(target,title),member('later','Later accepted Original')];
+  const material=JSON.stringify(value),next=await renderPreparedDependentDocument({...first,material,generation:createHash('sha256').update(material).digest('hex'),template:previous});
+  document.body.innerHTML=next;const seed=(await readPublicLedgerDocumentSeed())!;
+  expect(document.querySelectorAll('#public-ledger-document-seed')).toHaveLength(1);expect(seed.path).toBe(path);
+  expect(seed.snapshot.records.filter(row=>row.source==='proofs').map(row=>row.sourceId).sort()).toEqual(['profile:artist:'+target,'profile:artist:later'].sort());
+  expect(document.querySelector('#public-ledger-root')?.textContent).toContain(title);expect(document.querySelector('#public-ledger-root')?.textContent).toContain('Later accepted Original');expect(next).not.toContain('Existing proof');
+  expect(seed.snapshot.inspectionVersion).toBe(cache.inspectionVersion);expect(seed.snapshot.records.find(row=>row.id==='wallet:existing')?.evidence).toEqual(transaction.evidence);
+  const packet=(html:string)=>JSON.parse(html.match(/<script id="public-ledger-document-seed" type="application\/json">([\s\S]*?)<\/script>/)![1]).snapshotGzip[0];expect(packet(next)).toEqual(packet(previous));
+  expect(next).not.toContain('MUST_NOT_CARRY');expect(fetch).not.toHaveBeenCalled();
  });
  it('uses the existing bounded gzip fallback and refuses understated or corrupt packets without replacing HTML',async()=>{
   document.body.innerHTML=await renderPreparedDependentDocument(input(true));vi.stubGlobal('DecompressionStream',undefined);expect((await readPublicLedgerDocumentSeed())?.snapshot.records.filter(row=>row.source==='proofs')).toHaveLength(2);

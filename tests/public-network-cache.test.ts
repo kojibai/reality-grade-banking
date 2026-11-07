@@ -20,6 +20,17 @@ it('does not accept private Mind captures or malformed display coordinates as a 
   const records = parsePublicNetworkPage('actions', { ok: true, actions: [{ id: 'a', actionKind: 'record' }], nextCursor: null }).records;
   expect(() => parsePublicNetworkCache({ schema: 'receiz.bank.public-ledger-cache.v1', authority: 'public-source-projection', records: [{ ...records[0], kaiUpulse: 'invalid' }], coverage: [] })).toThrow();
 });
+it('opens the complete shipped Ledger through its bounded gzip reader before any Source refresh',async()=>{
+ const gzip=readFileSync('public/receiz-public-ledger.json.gz.bin');
+ const expected=parsePublicNetworkCache(JSON.parse(gunzipSync(gzip).toString('utf8')));
+ const fetch=vi.fn(async(_input:RequestInfo|URL,_init?:RequestInit)=>new Response(gzip,{headers:{'Content-Type':'application/octet-stream','Content-Length':String(gzip.length)}}));
+ vi.stubGlobal('fetch',fetch);
+ const opened=await loadPublicNetworkSeed();
+ expect(opened?.records.map(row=>row.id)).toEqual(expected.records.map(row=>row.id));
+ expect(opened?.coverage).toEqual(expected.coverage);
+ expect(fetch).toHaveBeenCalledTimes(1);
+ expect(fetch.mock.calls[0][0]).toBe('/receiz-public-ledger.json.gz.bin');
+});
 
 it('reopens pooled public context without losing exact per-entry fields or accepting an invalid reference',()=>{
  const records=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'one',seq:1}]}).records;
@@ -31,7 +42,7 @@ it('reopens pooled public context without losing exact per-entry fields or accep
 });
 it('ships complete inspectable public records and prices inside the existing bounded seed reader',()=>{
  const bytes=gunzipSync(readFileSync('public/receiz-public-ledger.json.gz.bin'));
- expect(bytes.length).toBeLessThanOrEqual(32*1024*1024);
+ expect(bytes.length).toBeLessThanOrEqual(64*1024*1024);
  const cache=parsePublicNetworkCache(JSON.parse(bytes.toString('utf8'))),proofs=cache.records.filter(row=>row.source==='proofs');
  expect(cache.records.length).toBeGreaterThan(45000);expect(proofs.length).toBeGreaterThan(1600);
  expect(proofs.every(row=>row.valueOperands?.proofValueUsdCents!==undefined&&row.details?.owner)).toBe(true);

@@ -54,6 +54,9 @@ function prepare(material:string,generation:string):Promise<Prepared>{
   if(packets.reduce((total,packet)=>total+packet.bytes,0)>64*1024*1024||packets.reduce((total,packet)=>total+packet.gzipB64u.length,0)>Math.ceil(12*1024*1024*4/3))throw Error('PUBLIC_LEDGER_DOCUMENT_CAPACITY');return {snapshot,packets};
  });prepared.set(generation,job);while(prepared.size>2)prepared.delete(prepared.keys().next().value!);void job.catch(()=>{if(prepared.get(generation)===job)prepared.delete(generation);});return job;
 }
+// Build output reuses the exact cached display snapshot and compressed packets.
+export {prepare as preparePublicLedgerDocumentState};
+
 /** Background-only rendering from the retained public ledger and the current
  * complete public membership. Existing transaction history is retained; only
  * the public proof projection is replaced by its accepted current cohort. */
@@ -78,7 +81,8 @@ export async function renderPreparedDependentDocument({material,generation,path,
  const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot};
  const content=renderToString(<div><PublicLedgerApp active={false} initialSnapshot={snapshot} initialHref={'https://bankeiz.com/'+path+'/'} initialFilter={path==='ledger/proofs'?'proofs':'all'} initialFormat={format}/></div>,{identifierPrefix:'public-ledger-'}),script=publicLedgerDocumentSeedScript(seed,packets);
  let replaced=false;
- const html=template.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
+ const clean=template.replace(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/g,'');
+ const html=clean.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
  if(!replaced)throw Error('PUBLIC_LEDGER_PREPARED_TEMPLATE_INVALID');
  const aligned=alignPreparedPublicNavigation(html,path,content,generation,renderBuild);
  return aligned.replace('<script id="receiz-navigation"',()=>script+'<script id="receiz-navigation"');

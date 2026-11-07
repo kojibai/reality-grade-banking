@@ -14,16 +14,129 @@ vi.mock('../src/receiz/public-ledger-continuity',()=>({readHeldPublicLedger:orig
 vi.mock('../src/receiz/public-network', async original => ({ ...await original<typeof import('../src/receiz/public-network')>(), readPublicNetworkPage: network.read }));
 vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: cache.save }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-beforeEach(() => { publications.hint=undefined;publications.listeners.clear();network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); originals.restore.mockReset().mockResolvedValue(null);originals.sync.mockReset().mockResolvedValue(null);originals.rows.mockReset().mockImplementation(async(_review,known)=>known); });
+beforeEach(() => { document.getElementById('receiz-navigation')?.remove();publications.hint=undefined;publications.listeners.clear();network.read.mockReset(); cache.load.mockReset().mockResolvedValue(null); cache.seed.mockReset().mockResolvedValue(null); cache.save.mockReset().mockResolvedValue(undefined); originals.restore.mockReset().mockResolvedValue(null);originals.sync.mockReset().mockResolvedValue(null);originals.rows.mockReset().mockImplementation(async(_review,known)=>known); });
 function page(source: PublicSource, ids: string[] = [], cursor: string | null = null) {
   return { source, records: parsePublicNetworkPage('actions', { ok: true, actions: ids.map(id => ({ id, actionKind: 'record', summary: `Record ${id}`, pulse: 100 })), nextCursor: cursor }).records.map(item => ({ ...item, source, id: `${source}:${item.sourceId}` })), nextCursor: cursor, total: null, complete: cursor === null };
 }
 const proofInput=(at:string|null,ids:string[],complete=true)=>({ok:true,transport:{generatedAt:at,publicMembership:{version:1,scope:'whole-market-visible-showcase',source:complete?'canonical-complete':'partial',isComplete:complete,itemCount:ids.length},publicOriginals:ids.map(id=>({id,receizId:id,title:id,pulse:'14955302'}))}});
+function heldMarket(catalog:PublicMarketCatalog){
+ const marker=document.createElement('script');marker.id='receiz-navigation';document.body.append(marker);
+ let current=catalog;const listeners=new Set<()=>void>();
+ Object.assign(marker,{publicMarketCatalog:()=>current,subscribePublicMarketCatalog:(listener:()=>void)=>{listeners.add(listener);return()=>listeners.delete(listener);}});
+ return{select(next:PublicMarketCatalog){current=next;for(const listener of listeners)listener();},listeners};
+}
 async function observe(run: (read: () => ReturnType<typeof usePublicNetwork>) => Promise<void>) {
   let state!: ReturnType<typeof usePublicNetwork>; const root = createRoot(document.createElement('div'));
   function Probe() { state = usePublicNetwork(); return null; }
   try { await act(async () => { root.render(<Probe />); }); await run(() => state); } finally { act(() => root.unmount()); }
 }
+it('paints the exact held Market proof cohort before cache restoration and makes no Proofs Source request on return or reopen',async()=>{
+ const selected=parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['newest-original','older-original']));
+ selected.items.push({...selected.items[0],id:'sports-card',category:'sports'});const held=heldMarket(selected);
+ let finish!:(value:null)=>void;cache.load.mockReturnValue(new Promise(resolve=>{finish=resolve;}));
+ network.read.mockImplementation(async(source:PublicSource)=>{if(source==='proofs')throw Error('503');return page(source,[source]);});
+ await observe(async read=>{
+  expect(read().records.map(row=>row.sourceId)).toEqual(['newest-original','older-original']);
+  expect(read().sources.proofs).toMatchObject({complete:true,error:null,busy:false});expect(network.read).not.toHaveBeenCalled();
+  await act(async()=>finish(null));expect(network.read.mock.calls.map(([source])=>source)).toEqual(['actions','wallet','graph']);
+  await act(async()=>read().refresh());expect(network.read.mock.calls.filter(([source])=>source==='proofs')).toHaveLength(0);
+ });
+ expect(held.listeners.size).toBe(0);cache.load.mockResolvedValue(null);network.read.mockClear();
+ await observe(async read=>{expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['newest-original','older-original']);expect(network.read.mock.calls.map(([source])=>source)).toEqual(['actions','wallet','graph']);});
+});
+it('applies selected complete Market changes and withdrawals without re-reading Source or reviving an older cohort',async()=>{
+ const first=parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['existing','withdrawn'])),held=heldMarket(first);
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async read=>{
+  const next=parsePublicMarket(proofInput('2026-11-06T18:00:02Z',['existing','published']));await act(async()=>held.select(next));
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['existing','published']);
+  const records=read().records;await act(async()=>held.select(next));expect(read().records).toBe(records);
+  await act(async()=>held.select(first));expect(read().records).toBe(records);
+  await act(async()=>held.select(parsePublicMarket(proofInput(null,['withdrawn']))));expect(read().records).toBe(records);
+  await act(async()=>held.select(parsePublicMarket(proofInput('2026-11-06T18:00:03Z',[]))));
+  expect(read().records.filter(row=>row.source==='proofs')).toEqual([]);expect(read().sources.proofs).toMatchObject({complete:true,error:null});
+  expect(network.read).toHaveBeenCalledTimes(3);
+ });
+});
+it('does not let an older in-flight Proofs head replace a newly selected held Market cohort',async()=>{
+ let finish!:(value:ReturnType<typeof parsePublicNetworkPage>)=>void;
+ network.read.mockImplementation((source:PublicSource)=>source==='proofs'?new Promise(resolve=>{finish=resolve;}):Promise.resolve(page(source)));
+ const held=heldMarket(parsePublicMarket(proofInput(null,[],false)));
+ await observe(async read=>{
+  await act(async()=>held.select(parsePublicMarket(proofInput('2026-11-06T18:00:02Z',['published']))));
+  await act(async()=>finish(parsePublicNetworkPage('proofs',proofInput('2026-11-06T18:00:01Z',['withdrawn']))));
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published']);
+  expect(read().sources.proofs).toMatchObject({complete:true,status:'live',error:null,busy:false});
+ });
+});
+it('reuses public proof bindings from the selected cohort while rejecting private and incomplete candidates',async()=>{
+ const input=proofInput('2026-11-06T18:00:00Z',['public-original']);
+ Object.assign(input.transport.publicOriginals[0],{receizId:'exact-asset',ownerUsername:'artist',ownerDisplayName:'Artist',profileOriginal:{media:{originalDownloadSha256Hex:'d'.repeat(64)}}});
+ input.transport.publicOriginals.push({...input.transport.publicOriginals[0],id:'private-original',visibility:'private'} as typeof input.transport.publicOriginals[number]);
+ const selected=parsePublicMarket(input),held=heldMarket(selected);expect(selected.complete).toBe(true);
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async read=>{
+  expect(read().records).toHaveLength(1);expect(read().records[0]).toMatchObject({id:'proofs:public-original',sourceId:'public-original',authority:'public-source-projection',evidence:{artifactDigest:'d'.repeat(64)},valueOperands:{assetId:'exact-asset',marketItemId:'public-original'},details:{owner:{username:'artist',displayName:'Artist'}}});
+  await act(async()=>held.select(parsePublicMarket(proofInput('2026-11-06T18:00:01Z',['unconfirmed'],false))));
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['public-original']);expect(network.read).toHaveBeenCalledTimes(3);
+ });
+});
+it('retains financial cache history while replacing its stale proof membership with the selected Market',async()=>{
+ heldMarket(parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['current-public'])));
+ cache.load.mockResolvedValue({records:[...page('actions',['retained-action']).records,...parsePublicNetworkPage('proofs',proofInput('2026-11-05T18:00:00Z',['withdrawn'])).records],capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:(['actions','wallet','graph','proofs']as const).map(source=>({source,complete:true,observedAt:Date.parse('2099-01-01T00:00:00Z')}))});
+ network.read.mockImplementation(async(source:PublicSource)=>{if(source==='actions')throw Error('503');return page(source);});
+ await observe(async read=>{
+  expect(cache.load).toHaveBeenCalledOnce();expect(cache.seed).not.toHaveBeenCalled();
+  expect(read().records.some(row=>row.source==='actions'&&row.sourceId==='retained-action')).toBe(true);
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['current-public']);
+  expect(read().sources.proofs).toMatchObject({complete:true,status:'live',error:null});
+ });
+});
+it('updates held Proofs while Ledger is hidden and returns without a Proofs request',async()=>{
+ const held=heldMarket(parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['first'])));
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ let state!:ReturnType<typeof usePublicNetwork>;function Probe({active}:{active:boolean}){state=usePublicNetwork(active);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+  await act(async()=>root.render(<Probe active/>));await act(async()=>root.render(<Probe active={false}/>));
+  await act(async()=>held.select(parsePublicMarket(proofInput('2026-11-06T18:00:01Z',['second']))));
+  expect(state.records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['second']);
+  const records=state.records;await act(async()=>root.render(<Probe active/>));expect(state.records).toBe(records);
+  expect(network.read.mock.calls.map(([source])=>source)).toEqual(['actions','wallet','graph']);
+ }finally{act(()=>root.unmount());}
+});
+it('reuses the selected Market update when its publication acknowledgment reaches Ledger',async()=>{
+ const selected=parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['published']));heldMarket(selected);
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async read=>{
+  const records=read().records,proofs=read().sources.proofs;
+  await act(async()=>{for(const listener of publications.listeners)listener(selected);});
+  expect(read().records).toBe(records);expect(read().sources.proofs).toBe(proofs);
+  publications.hint='a'.repeat(64);await act(async()=>{for(const listener of publications.listeners)listener();});
+  expect(read().sources.proofs).toBe(proofs);expect(network.read).toHaveBeenCalledTimes(3);
+ });
+});
+it('preserves newer prepared Source membership when an older complete Market marker is still mounted',async()=>{
+ heldMarket(parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['withdrawn'])));
+ const fresh=parsePublicNetworkPage('proofs',proofInput('2026-11-06T18:00:02Z',['prepared-current']));
+ const snapshot={records:fresh.records,capturedAt:'2026-11-06T18:00:02Z',inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:[{source:'proofs' as const,complete:true,observedAt:Date.parse(fresh.observedAt!)}]};
+ network.read.mockRejectedValue(Error('NO_SOURCE_NEEDED'));let state!:ReturnType<typeof usePublicNetwork>;
+ function Probe(){state=usePublicNetwork(false,snapshot);return null;}const root=createRoot(document.createElement('div'));
+ try{await act(async()=>root.render(<Probe/>));expect(state.records.map(row=>row.sourceId)).toEqual(['prepared-current']);expect(network.read).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});
+it('accepts a newer publication before its Market marker advances without reviving the older marker cohort',async()=>{
+ const older=parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['withdrawn'])),held=heldMarket(older);
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async read=>{
+  const newer=parsePublicMarket(proofInput('2026-11-06T18:00:02Z',['published']));
+  await act(async()=>{for(const listener of publications.listeners)listener(newer);});
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published']);
+  await act(async()=>held.select(older));await act(async()=>read().refresh());
+  expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['published']);
+  await act(async()=>held.select(parsePublicMarket(proofInput('2026-11-06T18:00:03Z',[]))));
+  expect(read().records.filter(row=>row.source==='proofs')).toEqual([]);expect(network.read.mock.calls.filter(([source])=>source==='proofs')).toHaveLength(0);
+ });
+});
 it('updates other public sources when one is unavailable', async () => {
   network.read.mockImplementation(async (source: PublicSource) => { if (source === 'wallet') throw new Error('Unavailable'); return page(source, [source]); });
   await observe(async read => { expect(read().records).toHaveLength(3); expect(read().sources.wallet.status).toBe('error'); expect(read().sources.actions.status).toBe('live'); });

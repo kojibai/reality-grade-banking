@@ -17,7 +17,7 @@ import {PublicAssetTradeHost} from './PublicAssetTradeHost';
 import {profileCollectionPrices,profileCollectionSummary,profileCollectionCapitalization} from './profile-prices';
 import {fetchPublicProfile,profilePagePath,publicProfilePageError,selectHeldPublicProfile,publicProfileHasHeader,publicProfilesRevision,subscribePublicProfiles,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
 import {buildCheckoutRequest} from '../receiz/checkout-request';
-import {beginProfileAccountAction,beginProfileEdit,closeProfileEdit,attachProfileEdit,readProfileEdit,readProfileOwner,readProfileOwnerHeader,subscribeProfileActions,signProfileWithPbi} from '../receiz/profile-actions';
+import {beginProfileAccountAction,beginProfileEdit,beginProfileAssetCreation,closeProfileEdit,attachProfileEdit,readProfileEdit,readProfileOwner,readProfileOwnerHeader,subscribeProfileActions,signProfileWithPbi} from '../receiz/profile-actions';
 import type {usePublicMarket} from '../receiz/usePublicMarket';
 import {useMarketDisplaySource} from '../receiz/market-projection/display-source';
 import {CollectiblesIcon} from '../features/collectibles/CollectiblesIcon';
@@ -31,10 +31,10 @@ const ProfileCollectibles=lazy(()=>import('../features/collectibles/CollectionPa
 const emptyItems:PublicProfile['items']=[];
 const growthPeriodLabels:Record<ChartPeriod,string>={ALL:'All time','1D':'1 day','1W':'1 week','1M':'1 month','3M':'3 months','1Y':'1 year'};
 const originalsValueFormat=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-function EditHost(){
+function EditHost({active}:{active:boolean}){
  const edit=useSyncExternalStore(subscribeProfileActions,readProfileEdit,()=>null),slot=useRef<HTMLDivElement>(null);
- useLayoutEffect(()=>{if(edit)attachProfileEdit(edit.id,slot.current);return()=>{if(edit)attachProfileEdit(edit.id,null);};},[edit?.id]);
- return edit?<Sheet title="Edit profile" onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></Sheet>:null;
+ useLayoutEffect(()=>{if(edit)attachProfileEdit(edit.id,slot.current,active);return()=>{if(edit)attachProfileEdit(edit.id,null);};},[edit?.id,active]);
+ return edit?<Sheet title={edit.kind==='create-asset'?'Create an asset':'Edit profile'} className={edit.kind==='create-asset'?'sheet--asset-studio':''} active={edit.kind==='create-asset'?active:true} onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></Sheet>:null;
 }
 export function PublicProfilePage({username,source,active,initialProfile,collection}:{username:string;source:ReturnType<typeof usePublicMarket>;active:boolean;initialProfile?:PublicProfile;collection?:HeldCollection}){
  const [booking,setBooking]=useState<'unopened'|'open'|'closed'>('unopened');
@@ -81,9 +81,9 @@ export function PublicProfilePage({username,source,active,initialProfile,collect
  {collectionOpen&&publicCollection&&<Suspense fallback={<Sheet active={active} title="Collection" navigation="back" onClose={()=>setCollectionOpen(false)}><p className="body-copy small-copy"><InlineOpening label="Preparing the collection"/></p></Sheet>}><ProfileCollectibles collection={publicCollection} ownerName={profile.displayName} active={active} onClose={()=>setCollectionOpen(false)}/></Suspense>}
  {booking!=='unopened'&&profile.bookingEnabled&&<ProfileBooking key={profile.userId+':'+profile.username} userId={profile.userId} username={profile.username} owner={profile} active={active&&booking==='open'} onClose={()=>setBooking('closed')}/>}
  {growthOpen&&<ProfileGrowthPeek name={profile.displayName} total={totalReturn} currentValue={collectionSummary?.valueUsd} currentCapitalizationUsdCents={currentCapitalizationUsdCents} history={growth.history} calculationRows={growth.rows} originals={originals} unavailable={growth.unavailable} initialPeriod={growthPeriod} active={active} onClose={()=>setGrowthOpen(false)}/>}
- <div hidden={tab!=='assets'}>{collectionSummary?.valueUsd!==null&&collectionSummary?.valueUsd!==undefined&&<button className="profile-originals-value" aria-label="View originals value history" aria-haspopup="dialog" onClick={()=>setGrowthOpen(true)}><span><small>Originals value</small><strong>{originalsValueFormat.format(collectionSummary.valueUsd)}</strong></span><span>{items.length.toLocaleString()} displayed {items.length===1?'original':'originals'}</span></button>}<ProfileCollection key={profile.userId} profile={profile} items={items} active={active&&tab==='assets'} onMore={()=>void loadMore()} busy={more}/></div>
+ <div hidden={tab!=='assets'}>{collectionSummary?.valueUsd!==null&&collectionSummary?.valueUsd!==undefined&&<button className="profile-originals-value" aria-label="View originals value history" aria-haspopup="dialog" onClick={()=>setGrowthOpen(true)}><span><small>Originals value</small><strong>{originalsValueFormat.format(collectionSummary.valueUsd)}</strong></span><span>{items.length.toLocaleString()} displayed {items.length===1?'original':'originals'}</span></button>}<ProfileCollection key={profile.userId} profile={profile} items={items} active={active&&tab==='assets'} onMore={()=>void loadMore()} onCreate={isOwner?()=>beginProfileAssetCreation(profile):undefined} busy={more}/></div>
  <div hidden={tab!=='activity'}><ProfileActivity items={originals} hasMore={!!profile.nextCursor} onMore={()=>void loadMore()} busy={more} active={active&&tab==='activity'}/></div>
  {error&&<p className="profile-empty" role="status">{error==='PROFILE_CHANGED'?'This profile has changed. Reopen it to view its current collection.':'More assets could not be opened. Your current view remains available.'}</p>}
- {image&&active&&<PublicImageDialog title={image.title} url={image.url} onClose={()=>setImage(null)}/>}<EditHost/>{active&&<PublicAssetTradeHost/>}{insights!=='unopened'&&<Suspense fallback={<Sheet title="Profile insights" active={active&&insights==='open'} onClose={()=>setInsights('closed')}><InlineOpening label="Opening profile insights"/></Sheet>}><ProfileInsights key={profile.userId+':'+isOwner} profile={profile} isOwner={isOwner} active={active&&insights==='open'} onClose={()=>setInsights('closed')}/></Suspense>}
+ {image&&active&&<PublicImageDialog title={image.title} url={image.url} onClose={()=>setImage(null)}/>}<EditHost active={active}/>{active&&<PublicAssetTradeHost/>}{insights!=='unopened'&&<Suspense fallback={<Sheet title="Profile insights" active={active&&insights==='open'} onClose={()=>setInsights('closed')}><InlineOpening label="Opening profile insights"/></Sheet>}><ProfileInsights key={profile.userId+':'+isOwner} profile={profile} isOwner={isOwner} active={active&&insights==='open'} onClose={()=>setInsights('closed')}/></Suspense>}
  </article>;
 }

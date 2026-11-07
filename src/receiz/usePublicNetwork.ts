@@ -8,13 +8,26 @@ import {subscribePublicLedgerSync} from './public-ledger-sync';
 import {publicLedgerDisplayRows,readHeldPublicLedger,synchronizePublicLedger} from './public-ledger-continuity';
 import type {PublicLedgerFileReview} from './public-ledger-proof';
 import type {PublicNetworkCache} from './public-network-cache';
+import type {PublicMarketCatalog} from './public-market';
 
 export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
+type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;subscribePublicMarketCatalog?:(listener:()=>void)=>()=>void};
+function heldProofCatalog(){
+  if(typeof document==='undefined')return null;
+  try{const catalog=(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketCatalog?.();return catalog?.complete?catalog:null;}catch{return null;}
+}
 export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache) {
-  const [records, setRecords] = useState<PublicRecord[]>(()=>initialSnapshot?.records??[]), rows = useRef(records);
-  const [sources, setSources] = useState<Sources>(()=>{const initial=initialSources();for(const covered of initialSnapshot?.coverage??[])initial[covered.source]={status:'stale',cursor:null,complete:covered.complete,busy:false,error:null,observedAt:covered.observedAt};return initial;}), sourceState = useRef(sources);
+  const [initialProofs]=useState(()=>{
+    const catalog=heldProofCatalog(),at=Date.parse(catalog?.observedAt??''),preparedAt=initialSnapshot?.coverage.find(row=>row.source==='proofs'&&row.complete)?.observedAt;
+    // Prepared document coverage carries the actual Source capture. Unlike
+    // restored IDB receipt clocks, it can order this held Market projection.
+    if(preparedAt!==undefined&&(!Number.isFinite(at)||at<preparedAt))return null;
+    return catalog?{catalog,records:catalog.items.filter(item=>item.category==='proof').map(publicMarketRecord)}:null;
+  });
+  const [records, setRecords] = useState<PublicRecord[]>(()=>initialProofs?mergePublicRecords(initialSnapshot?.records.filter(row=>row.source!=='proofs')??[],initialProofs.records):initialSnapshot?.records??[]), rows = useRef(records);
+  const [sources, setSources] = useState<Sources>(()=>{const initial=initialSources();for(const covered of initialSnapshot?.coverage??[])initial[covered.source]={status:'stale',cursor:null,complete:covered.complete,busy:false,error:null,observedAt:covered.observedAt};if(initialProofs)initial.proofs={status:'live',cursor:null,complete:true,busy:false,error:null,observedAt:Date.now()};return initial;}), sourceState = useRef(sources);
   const [bootstrap, setBootstrap] = useState(!initialSnapshot), [capturedAt, setCapturedAt] = useState<string | null>(initialSnapshot?.capturedAt??null);
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);
@@ -23,13 +36,14 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
   const deferredRepairs=useRef(new Set<PublicSource>());
   const inspectionVersion=useRef(initialSnapshot?.inspectionVersion??0);
   const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
-  const proofRevision=useRef(0),publicationRefresh=useRef<Promise<void>|null>(null);
-  const proofObservedAt=useRef<number|null>(initialSnapshot?.coverage.find(row=>row.source==='proofs')?.observedAt??null);
+  const proofRevision=useRef(initialProofs?1:0),publicationRefresh=useRef<Promise<void>|null>(null);
+  const proofObservedAt=useRef<number|null>(initialProofs?(Number.isFinite(Date.parse(initialProofs.catalog.observedAt??''))?Date.parse(initialProofs.catalog.observedAt!):null):initialSnapshot?.coverage.find(row=>row.source==='proofs')?.observedAt??null);
+  const selectedProofCatalog=useRef(initialProofs?.catalog??null);
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);
   const retainedCache=useRef<Promise<PublicNetworkCache|null>|null>(null);
-  const [initialAnchors]=useState(()=>Object.fromEntries((initialSnapshot?.coverage??[]).filter(row=>row.complete).map(row=>[row.source,new Set(row.anchorIds??initialSnapshot!.records.filter(record=>record.source===row.source).map(record=>record.id))])) as Partial<Record<PublicSource,Set<string>>>);
+  const [initialAnchors]=useState(()=>({...Object.fromEntries((initialSnapshot?.coverage??[]).filter(row=>row.complete).map(row=>[row.source,new Set(row.anchorIds??initialSnapshot!.records.filter(record=>record.source===row.source).map(record=>record.id))])),...(initialProofs?{proofs:new Set(initialProofs.records.map(row=>row.id))}:{})}) as Partial<Record<PublicSource,Set<string>>>);
   const completeAnchors = useRef(initialAnchors);
   const historyCursors = useRef<Record<PublicSource, Set<string>>>({ actions: new Set(), wallet: new Set(), graph: new Set(), proofs: new Set() });
   // Source capture dates order public display membership only. An older or
@@ -47,7 +61,19 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     const removed=replace&&held.some(row=>row.source===source&&!incomingIds.has(row.id));
     const next = mergePublicRecords(removed ? held.filter(row => row.source !== source || incomingIds.has(row.id)) : held, incoming); rows.current = next; setRecords(next);
   };
+  // Market already selected this exact public cohort. Reuse it for Proofs;
+  // opening or returning to Ledger does not rediscover the same Originals.
+  const reuseHeldProofs=useCallback(()=>{
+    const catalog=heldProofCatalog();if(!catalog)return false;
+    if(selectedProofCatalog.current===catalog||!acceptsProofCapture(catalog.observedAt))return true;
+    selectedProofCatalog.current=catalog;proofRevision.current++;
+    const proofs=catalog.items.filter(item=>item.category==='proof').map(publicMarketRecord);
+    append('proofs',proofs,true);capture(catalog.observedAt);
+    update('proofs',{status:'live',complete:true,observedAt:Date.now(),cursor:null,busy:false,error:null});
+    completeAnchors.current.proofs=new Set(proofs.map(row=>row.id));return true;
+  },[acceptsProofCapture]);
   const performSourceRead = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
+    if(source==='proofs'&&phase==='head'&&reuseHeldProofs())return;
     const controller = lifetime.current, before = sourceState.current[source];
     if (!controller || controller.signal.aborted || before.busy || phase === 'older' && (before.complete || !before.cursor || before.error)) return;
     const existing = phase === 'head' && completeAnchors.current[source] ? completeAnchors.current[source]! : new Set(rows.current.filter(row => row.source === source).map(row => row.id));
@@ -88,7 +114,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     } catch (cause) {
       if (!controller.signal.aborted&&(source!=='proofs'||revision===proofRevision.current)) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
     } finally { if(repairCycle&&activeTradeRepair.current===repairCycle)activeTradeRepair.current=null; if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
-  }, [acceptsProofCapture]);
+  }, [acceptsProofCapture,reuseHeldProofs]);
   const readSource=useCallback((source:PublicSource,phase:'head'|'older')=>{
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return Promise.resolve();
     const held=sourceReads.current.get(source);if(held?.controller===controller&&sourceState.current[source].busy)return held.promise;
@@ -150,9 +176,9 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
         }
     };
     const restored=(async()=>{
-      const cache=!initialSnapshot&&rows.current.length?null:await(retainedCache.current??=loadPublicNetworkCache());
+      const cache=!initialSnapshot&&rows.current.length&&!initialProofs?null:await(retainedCache.current??=loadPublicNetworkCache());
       if(controller.signal.aborted)return false;
-      const needsSeed=!initialSnapshot&&(Math.max(inspectionVersion.current,cache?.inspectionVersion??0)<PUBLIC_NETWORK_INSPECTION_VERSION||!rows.current.length&&(!cache||PUBLIC_SOURCES.some(source=>!cache.coverage.some(item=>item.source===source&&item.complete))));
+      const needsSeed=!initialSnapshot&&(Math.max(inspectionVersion.current,cache?.inspectionVersion??0)<PUBLIC_NETWORK_INSPECTION_VERSION||(!rows.current.length||Boolean(initialProofs))&&(!cache||PUBLIC_SOURCES.some(source=>!cache.coverage.some(item=>item.source===source&&item.complete))));
       if(cache)restore(cache,null);setBootstrap(false);return needsSeed;
     })();
     activate.current=async()=>{
@@ -193,8 +219,14 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     };
     return()=>{controller.abort();if(lifetime.current===controller){lifetime.current=null;activate.current=null;}for(const source of PUBLIC_SOURCES)sourceState.current[source]={...sourceState.current[source],busy:false};};
   }, [refresh,adoptOriginal,readSource,initialSnapshot]);
+  useEffect(()=>{
+    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
+    const stop=marker?.subscribePublicMarketCatalog?.(reuseHeldProofs);reuseHeldProofs();return stop;
+  },[reuseHeldProofs]);
   useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
+    const held=heldProofCatalog(),heldAt=Date.parse(held?.observedAt??''),offeredAt=Date.parse(catalog?.observedAt??'');
+    if(held&&(!catalog||held===catalog||Number.isFinite(heldAt)&&(!Number.isFinite(offeredAt)||heldAt>=offeredAt))&&reuseHeldProofs())return;
     if(catalog){
       if(!acceptsProofCapture(catalog.observedAt))return;
       proofRevision.current++;
@@ -213,7 +245,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     const refreshProofs=(async()=>{if(inflight)await inflight;if(lifetime.current===controller&&!controller.signal.aborted)await readSource('proofs','head');})();
     publicationRefresh.current=refreshProofs;
     void refreshProofs.finally(()=>{if(publicationRefresh.current===refreshProofs)publicationRefresh.current=null;}).catch(()=>{});
-  }),[readSource,acceptsProofCapture]);
+  }),[readSource,acceptsProofCapture,reuseHeldProofs]);
   useEffect(()=>{
     if(!active)return;
     void activate.current?.();

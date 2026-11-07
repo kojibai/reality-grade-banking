@@ -69,23 +69,23 @@ function downloadSpies(){vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:s
 it('saves the existing local Ledger directly without a current-source, retained-source or discovery request',async()=>{
  const local={records:Array(601).fill({id:'local-only-test'}),sources:{},capturedAt:null},fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();vi.mocked(readRetainedPublicLedger).mockClear();vi.mocked(createLocalLedgerCrystal).mockClear();
- try{await act(async()=>root.render(<LedgerProofControls ledger={local as never}/>));await act(async()=>button(host,'Memory Crystal').click());
+ try{await act(async()=>root.render(<LedgerProofControls ledger={local as never}/>));await act(async()=>button(host,'Save Ledger').click());
   expect(createLocalLedgerCrystal).toHaveBeenCalledExactlyOnceWith(local);expect(readRetainedPublicLedger).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();
-  expect(host.textContent).toContain('all 601 locally held public records');expect(button(host,'Memory Crystal').disabled).toBe(false);
+  expect(host.textContent).toContain('all 601 locally held public records');expect(button(host,'Save Ledger').disabled).toBe(false);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('opens a verified local archive with its captured-history controls and no publication claim',async()=>{
  const archive={records:Array(601).fill({}),coverage:[]},opened={...values.older,kind:'archive',format:'crystal',archive,snapshot:undefined,imageSeal:{status:'verified',version:'v4',artifactSha256:'a'.repeat(64)}};
  vi.mocked(inspectPublicLedgerFile).mockResolvedValueOnce(opened as never);const onOpenArchive=vi.fn(),host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<LedgerProofControls ledger={{records:[],capturedAt:null,sources:{}}} onOpenArchive={onOpenArchive}/>));await openReview(host);
-  expect(host.textContent).toContain('601 locally held public records');expect(host.textContent).toContain('Ledger Crystal verified');expect(host.querySelector('input[type=checkbox]')).toBeNull();
-  await act(async()=>button(host,'Open captured Ledger').click());expect(onOpenArchive).toHaveBeenCalledWith(opened);
+  expect(host.textContent).toContain('601 locally held public records');expect(host.textContent).toContain('Saved Ledger verified');expect(host.querySelector('input[type=checkbox]')).toBeNull();
+  await act(async()=>button(host,'View saved Ledger').click());expect(onOpenArchive).toHaveBeenCalledWith(opened);
  }finally{act(()=>root.unmount());}
 });
 it('downloads the newer retained source when the service returns an older valid prefix',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
- try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);}
+ try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Save Ledger').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);}
  finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('can save a freshly verified original when optional browser storage is unavailable',async()=>{
@@ -93,7 +93,7 @@ it('can save a freshly verified original when optional browser storage is unavai
  vi.mocked(readRetainedPublicLedger).mockRejectedValue(Error('PUBLIC_LEDGER_LOCAL_STORAGE_UNAVAILABLE'));
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
- try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.older);}
+ try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Save Ledger').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.older);}
  finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('does not call publication confirmed when the public original cannot be reopened',async()=>{
@@ -134,7 +134,7 @@ it('does not save a conflicting source when retention refuses its continuity',as
  vi.mocked(retainPublicLedgerReview).mockRejectedValue(Error('PUBLIC_LEDGER_HISTORY_CONFLICT'));
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
- try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).not.toHaveBeenCalled();expect(host.textContent).toContain('Your retained history is unchanged');}
+ try{await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Save Ledger').click());expect(createPublicLedgerCrystal).not.toHaveBeenCalled();expect(host.textContent).toContain('Your retained history is unchanged');}
  finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('saves the reverified retained original before a pending current-source request can return 503',async()=>{
@@ -143,11 +143,11 @@ it('saves the reverified retained original before a pending current-source reque
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
   await act(async()=>root.render(<LedgerProofControls/>));
-  await act(async()=>button(host,'Memory Crystal').click());
+  await act(async()=>button(host,'Save Ledger').click());
   expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);
-  expect(button(host,'Memory Crystal').disabled).toBe(false);expect(host.textContent).toContain('Memory Crystal saved');
+  expect(button(host,'Save Ledger').disabled).toBe(false);expect(host.textContent).toContain('Ledger saved');
   await act(async()=>finish(Response.json({error:'not live'},{status:503})));
-  expect(host.textContent).toContain('Memory Crystal saved');expect(retainPublicLedgerReview).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('Ledger saved');expect(retainPublicLedgerReview).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('uses a fast canonical remote source when no original is retained',async()=>{
@@ -155,7 +155,7 @@ it('uses a fast canonical remote source when no original is retained',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({source:'transport-only'}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
-  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());
+  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Save Ledger').click());
   expect(openPublicLedgerSource).toHaveBeenCalledWith({source:'transport-only'});expect(retainPublicLedgerReview).toHaveBeenCalledWith(values.older);expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.older);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
@@ -164,8 +164,8 @@ it('keeps local controls available when both remote and retained originals are u
  const fetch=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'not live'},{status:503}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
-  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Memory Crystal').click());
-  expect(createPublicLedgerCrystal).not.toHaveBeenCalled();expect(button(host,'Memory Crystal').disabled).toBe(false);expect(button(host,'Open proof').disabled).toBe(false);expect(host.textContent).toContain('not available yet');
+  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>button(host,'Save Ledger').click());
+  expect(createPublicLedgerCrystal).not.toHaveBeenCalled();expect(button(host,'Save Ledger').disabled).toBe(false);expect(button(host,'Open saved Ledger').disabled).toBe(false);expect(host.textContent).toContain('not available yet');
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('refreshes only retained custody after a download without replacing the reviewed original or its consent',async()=>{
@@ -176,7 +176,7 @@ it('refreshes only retained custody after a download without replacing the revie
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
   await act(async()=>root.render(<LedgerProofControls/>));await openReview(host);await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
-  await act(async()=>button(host,'Memory Crystal').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);
+  await act(async()=>button(host,'Save Ledger').click());expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);
   await act(async()=>{finish(Response.json({source:'transport-only'}));await vi.waitFor(()=>expect(retainPublicLedgerReview).toHaveBeenCalledWith(extended));});
   expect(host.querySelector('.ledger-proof-review')?.textContent).toContain(values.older.artifactSha256);
   expect(host.querySelector<HTMLInputElement>('input[type=checkbox]')!.checked).toBe(true);expect(button(host,'Publish verified original').disabled).toBe(false);
@@ -188,8 +188,8 @@ it('keeps saving the held original if a background source fails the existing con
  const fetch=vi.spyOn(globalThis,'fetch').mockImplementation(async input=>String(input).includes('discovery=')?Response.json({entries:[]}):Response.json({source:'transport-only'}));
  const host=document.createElement('div'),root=createRoot(host);downloadSpies();
  try{
-  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>{button(host,'Memory Crystal').click();await vi.waitFor(()=>expect(retainPublicLedgerReview).toHaveBeenCalled());});
-  expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);expect(host.textContent).toContain('Memory Crystal saved');expect(button(host,'Open proof').disabled).toBe(false);
+  await act(async()=>root.render(<LedgerProofControls/>));await act(async()=>{button(host,'Save Ledger').click();await vi.waitFor(()=>expect(retainPublicLedgerReview).toHaveBeenCalled());});
+  expect(createPublicLedgerCrystal).toHaveBeenCalledWith(values.newer);expect(host.textContent).toContain('Ledger saved');expect(button(host,'Open saved Ledger').disabled).toBe(false);
  }finally{act(()=>root.unmount());fetch.mockRestore();}
 });
 it('opens a source link from the exact reverified retained digest without claiming remote publication',async()=>{
