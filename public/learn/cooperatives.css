@@ -38,3 +38,13 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.coop-form input:not([type=checkbox]),.coop-form select,.coop-form textarea,.coop-conversation :is(input:not([type=checkbox]),textarea),.coop-twin-slots select{font-size:16px}}
+
+/* One owner portrait is reused beside each native reply, including its first streamed words. */
+.coop-twin-avatar{display:block;width:28px;height:28px;flex:none;overflow:hidden;border-radius:50%;background:#edf2fa;border:1px solid #d8e2ef;box-shadow:0 2px 7px #14283f09}
+.coop-twin-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;max-width:100%;border-radius:inherit}
+.coop-twin-owner{width:44px;height:44px;border:1px solid #cfdaeb;box-shadow:0 4px 12px #14283f0a}
+.coop-twin-reply{position:relative;padding-left:42px}
+.coop-twin-reply>.coop-twin-avatar{position:absolute;top:15px;left:0}
+.coop-twin-message>.coop-twin-speaker{font-size:10px;font-weight:550;letter-spacing:.025em;text-transform:none;color:#607793}
+.coop-twin-reply p{margin-top:9px;line-height:1.8}
+@media(max-width:650px){.coop-twin-reply{padding-left:38px}.coop-twin-avatar{width:26px;height:26px}.coop-twin-owner{width:40px;height:40px}.coop-twin-reply>.coop-twin-avatar{top:16px}}

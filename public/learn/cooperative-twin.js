@@ -10,7 +10,12 @@ const hold=payload=>{state.pending=payload;try{if(payload)sessionStorage.setItem
 const publish=(follow=false)=>{for(const view of views){if(!view.root.isConnected){views.delete(view);continue;}view.render(follow);}};
 const publishDelta=row=>{for(const view of views){if(!view.root.isConnected){views.delete(view);continue;}view.renderDelta(row);}};
 function append(role,body,id){if(typeof body!=='string'||!body.trim()||state.messages.some(row=>row.id===id))return;state.messages.push({role,body,id,key:id});}
-function messageNode(row){const item=document.createElement('div');item.className='coop-twin-message '+(row.role==='user'?'coop-twin-own':'coop-twin-reply');const who=document.createElement('span'),body=document.createElement('p');who.textContent=row.role==='user'?'You':'BJ Klock’s AI representative';body.textContent=row.body;item.append(who,body);return item;}
+function messageNode(row,portrait){
+ const item=document.createElement('div');item.className='coop-twin-message '+(row.role==='user'?'coop-twin-own':'coop-twin-reply');
+ const who=document.createElement('span'),body=document.createElement('p');who.className='coop-twin-speaker';who.textContent=row.role==='user'?'You':'BJ’s AI Twin';body.textContent=row.body;
+ if(row.role!=='user'&&portrait){const avatar=document.createElement('span');avatar.className='coop-twin-avatar';avatar.setAttribute('aria-hidden','true');const image=portrait.cloneNode();image.removeAttribute('data-twin-portrait');image.width=28;image.height=28;avatar.append(image);item.append(avatar);}
+ item.append(who,body);return item;
+}
 const friendly=error=>error==='rate_limited'||error==='public_twin_guest_allowance_exhausted'?'This conversation has reached its current reply limit. Your request is retained; try the same request again later.':error==='calendar_booking_slot_unavailable'?'That time is no longer available. Choose another current time.':error==='world_agent_booking_disabled'||error==='world_profile_booking_unavailable'?'Booking is not enabled on the current native path. Keep the conversation here; no appointment has been claimed.':'The last reply was not confirmed. Use “Retry the same message” to recover it here. Your conversation is retained.';
 let preparing;
 async function continuity(){
@@ -102,14 +107,14 @@ async function send(payload){
 export function mountConversation(root){
  if(!root||mounted.has(root))return;mounted.add(root);
  const composer=root.querySelector('[data-twin-composer]'),draft=composer.elements.message,submit=composer.querySelector('button[type=submit]'),retry=root.querySelector('[data-twin-retry]'),status=root.querySelector('[data-twin-status]'),log=root.querySelector('[data-twin-messages]');
- const nodes=new Map();let renderedBooking=null;
+ const portrait=root.querySelector('[data-twin-portrait]'),nodes=new Map();let renderedBooking=null;
  const render=(follow=false)=>{
   const following=follow||log.scrollHeight-log.scrollTop-log.clientHeight<80;
   if(state.messages.length){
    log.querySelector('.coop-twin-intro')?.remove();
    const keys=new Set();let cursor=log.firstChild;
    for(const row of state.messages){
-    if(!row.body&&row.status==='interrupted')continue;keys.add(row.key);let node=nodes.get(row.key);if(!node){node=messageNode(row);nodes.set(row.key,node);}
+    if(!row.body&&row.status==='interrupted')continue;keys.add(row.key);let node=nodes.get(row.key);if(!node){node=messageNode(row,portrait);nodes.set(row.key,node);}
     if(cursor!==node)log.insertBefore(node,cursor);cursor=node.nextSibling;
     node.dataset.twinState=row.status??'accepted';if(row.source)node.dataset.twinSource=row.source;
     const body=node.querySelector('p');if(body.textContent!==row.body)body.textContent=row.body;

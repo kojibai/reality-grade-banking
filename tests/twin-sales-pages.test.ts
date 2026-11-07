@@ -20,7 +20,10 @@ it.each(['/your-twin/','/action/'])('publishes %s with both sides, native conver
  expect(doc.querySelector('iframe,canvas,video')).toBeNull();
  // The actual product walkthrough includes populated, local example artwork.
  // The authored story itself still uses its original vector visuals.
- for(const image of doc.querySelectorAll('main img')){
+ const portrait=doc.querySelector('[data-coop-twin] [data-twin-portrait]');
+ expect(portrait?.getAttribute('src')).toContain('https://receiz.com/api/storage/object?bucket=receiz-world-media&path=world%2Feecb99a0-9c6a-4e89-813b-f76331ea9c41%2Favatar%2F');
+ expect(doc.querySelectorAll('[data-twin-portrait]')).toHaveLength(1);
+ for(const image of doc.querySelectorAll('main img:not([data-twin-portrait])')){
   expect(image.closest('.product-screen')).not.toBeNull();
   expect(exampleAssets.map(asset=>asset.image)).toContain(image.getAttribute('src'));
  }

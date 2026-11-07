@@ -25,3 +25,21 @@ The remaining upstream wait was not changed in this checkout. Source inspection 
 - Local screenshots are under `output/playwright/`.
 
 These are local changes. The production timings above are a baseline, not a claim that the website has deployed or that the remaining native latency is fixed.
+
+## Twin portrait and native latency follow-up
+
+The marketing conversation now reuses the existing public BJ Twin portrait in a small circular image beside each response, beginning with the pending reply. The same image node remains through streaming, acceptance and history projection. Image loading is asynchronous and does not gate sending or text streaming. The conversation header carries the same portrait.
+
+The native Receiz follow-up removes duplicate work without sharing state across requests:
+
+- The public route precheck and streaming reply reuse the same complete context, keyed by the actual Request, owner username, visitor, thread and private owner identity.
+- The immutable owner ID is read from that same context instead of querying the profile head again.
+- The complete 32-message conversation window already read by the context is reused for reasoning; the public view retains its established eight-message shape.
+- Conversation memory, Twin promotion status and guest continuity run in parallel.
+- Final public-view alignment and guest-touch persistence run in parallel, after native accepted-reply settlement. Both still complete before the final accepted result is sent.
+
+No provider/model change, invented response, cross-request cache, permission bypass or booking shortcut was added. Text remains provisional until its native accepted receipt; complete memory, source proof, exact retry operations and calendar confirmations are preserved.
+
+Follow-up checks: 48 native route/booking/contact/cognition/isolation tests and 58 Bankeiz page/chat/relay tests passed. Receiz TypeScript passed with an 8 GiB heap after the default process exceeded its heap limit. The Bankeiz production build passed. Browser checks at 320, 390, 440 and 1280 pixels confirmed the 26–28 px reply portraits, loaded images and no horizontal overflow. The visual fixture used synthetic response text and the actual public Twin portrait, not a live performance measurement.
+
+The native fix is committed as `35bfb3bb1` on the isolated `kojib/public-twin-stream-latency` branch in `/private/tmp/receiz-public-twin-stream-latency`, keeping the unrelated Receiz work separate. No production deployment or updated live latency measurement was performed; the 13.516-second baseline remains the only live first-token measurement.
