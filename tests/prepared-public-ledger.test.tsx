@@ -3,9 +3,9 @@ import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {renderToString} from 'react-dom/server';
-import {createElement} from 'react';
+import {act,createElement} from 'react';
 import {hydrateRoot} from 'react-dom/client';
-import {describe,it,expect,vi,afterEach} from 'vitest';
+import {describe,it,expect,vi,beforeEach,afterEach} from 'vitest';
 import {renderPreparedDependentDocument} from '../server/prepared-dependent-documents';
 import {readPublicLedgerDocumentSeed} from '../src/receiz/public-ledger-document-seed';
 import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
@@ -17,6 +17,7 @@ const transaction={id:'wallet:existing',sourceId:'existing',source:'wallet',kind
 const cache={schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records:[transaction],capturedAt:'2026-11-03T00:01:00.000Z',inspectionVersion:5,coverage:[{source:'wallet',complete:true,anchorIds:['wallet:existing'],observedAt:1}]};
 const template='<!doctype html><html><head></head><body><div id="public-ledger-root"><p>Old first paint</p></div><script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{'/explore/':{content:'explore'},'/ledger/':{content:'old ledger'}},bank:{content:'bank'},styles:[]})+'</script></body></html>';
 function input(gzip=false){const rows=[member('old','Existing proof'),member(target,title)],membership={ok:true,transport:{generatedAt:'2026-11-04T20:19:15.000Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:2},publicOriginals:rows}},material=JSON.stringify({membership,...(gzip?{ledgerCacheGzipB64u:gzipSync(JSON.stringify(cache)).toString('base64url')}:{ledgerCache:cache})});return{material,generation:createHash('sha256').update(material).digest('hex'),path:'ledger/proofs',template};}
+beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);});
 afterEach(()=>{document.body.innerHTML='';vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('prepared public Ledger',()=>{
  it.each([false,true])('carries the new proof before JavaScript, keeps existing financial history and requires no reads (%s)',async gzip=>{
@@ -33,15 +34,18 @@ describe('prepared public Ledger',()=>{
  it('hydrates the held rows in place without reconstructing history or losing the selected proof',async()=>{
   const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));
   document.body.innerHTML=await renderPreparedDependentDocument(input());const seed=(await readPublicLedgerDocumentSeed())!,container=document.querySelector('#public-ledger-root')!,before=[...container.querySelectorAll('.public-ledger-row')];expect(before.length).toBe(2);
-  const errors:unknown[]=[],root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});
-  await new Promise(resolve=>setTimeout(resolve,30));expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.textContent).toContain(title);expect(fetch).not.toHaveBeenCalled();root.unmount();
+  const errors:unknown[]=[];let root!:ReturnType<typeof hydrateRoot>;
+  // Flush the actual hydration/effects; a fixed sleep can inspect untouched SSR.
+  await act(async()=>{root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});});
+  try{expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.textContent).toContain(title);expect(fetch).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
  });
  it('keeps prepared rows in place when the browser uses the WebKit date-time connector',async()=>{
   const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));
   document.body.innerHTML=await renderPreparedDependentDocument(input());const seed=(await readPublicLedgerDocumentSeed())!,container=document.querySelector('#public-ledger-root')!,before=[...container.querySelectorAll('.public-ledger-row')];
   const native=Date.prototype.toLocaleString;vi.spyOn(Date.prototype,'toLocaleString').mockImplementation(function(this:Date,...args){return native.apply(this,args).replace(/, (?=\d{1,2}:\d{2})/,' at ');});
-  const errors:unknown[]=[],root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});
-  try{await new Promise(resolve=>setTimeout(resolve,30));expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.querySelector('.public-ledger-event small')?.textContent).toContain(' at ');expect(fetch).not.toHaveBeenCalled();}finally{root.unmount();}
+  const errors:unknown[]=[];let root!:ReturnType<typeof hydrateRoot>;
+  await act(async()=>{root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});});
+  try{expect(errors).toEqual([]);expect([...container.querySelectorAll('.public-ledger-row')]).toEqual(before);expect(container.querySelector('.public-ledger-event small')?.textContent).toContain(' at ');expect(fetch).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}
  });
  it('does not mark retained legacy transactions as having completed a newer inspection',async()=>{
   const value=JSON.parse(input().material);value.ledgerCache.inspectionVersion=3;const material=JSON.stringify(value);document.body.innerHTML=await renderPreparedDependentDocument({...input(),material,generation:createHash('sha256').update(material).digest('hex')});expect((await readPublicLedgerDocumentSeed())?.snapshot.inspectionVersion).toBe(3);
