@@ -142,14 +142,14 @@ function observePendingPublicFamily(sourceDigest:string){
  if(familyObservers.has(sourceDigest))return;const controller=new AbortController();familyObservers.set(sourceDigest,controller);
  const wait=()=>new Promise<void>((resolve,reject)=>{const stop=()=>{clearTimeout(timer);reject(controller.signal.reason);},timer=setTimeout(()=>{controller.signal.removeEventListener('abort',stop);resolve();},2000);controller.signal.addEventListener('abort',stop,{once:true});});
  void(async()=>{let previousRelease:string|null=null;
-  for(let attempt=0;attempt<30&&!controller.signal.aborted;attempt++){
+  for(let attempt=0;attempt<120&&!controller.signal.aborted;attempt++){
    const entry=additions.get(sourceDigest);if(!entry)return;const receipt=entry.receipt??entry.sourceReceipt;if(receipt?.status!=='published'||receipt.publicFamilyStatus!=='pending')return;
    const response=await fetch(`/api/bank/public-profile/${entry.username}?view=release`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(8000)])});
    if(response.status===403||response.status===404){await response.body?.cancel();return;}
    if(response.ok){const released=readPublicShowcaseRelease(await response.json(),{userId:entry.owner.accountUid,username:entry.username});
     if(released){
-     if(released.artifactDigest===receipt.artifactDigest&&released.operationCount===receipt.operationCount){entry.sourceFamilySeen=true;if(entry.item.hasPbiSignature&&entry.signatureDeliveryHash===entry.item.pbiReceiptHash)entry.signatureFamilySeenHash=entry.item.pbiReceiptHash;changed();return;}
-     if(released.operationCount>=receipt.operationCount&&previousRelease!==released.revision){previousRelease=released.revision;await import('./public-profile.js').then(module=>module.fetchPublicProfile(entry.username));if(isAssetPublicationDeliveryConfirmed(entry.item.hasPbiSignature?admittedAssetPublicationSignatureDelivery(sourceDigest,entry.username):admittedAssetPublicationDelivery(sourceDigest,entry.username)))return;}
+     if(released.artifactDigest===receipt.artifactDigest&&released.operationCount===receipt.operationCount){entry.sourceFamilySeen=true;if(entry.item.hasPbiSignature&&entry.signatureDeliveryHash===entry.item.pbiReceiptHash&&entry.receipt?.status==='published'&&entry.receipt.artifactDigest===released.artifactDigest&&entry.receipt.operationCount===released.operationCount)entry.signatureFamilySeenHash=entry.item.pbiReceiptHash;changed();if(isAssetPublicationDeliveryConfirmed(entry.item.hasPbiSignature?admittedAssetPublicationSignatureDelivery(sourceDigest,entry.username):admittedAssetPublicationDelivery(sourceDigest,entry.username)))return;}
+     else if(released.operationCount>=receipt.operationCount&&previousRelease!==released.revision){previousRelease=released.revision;await import('./public-profile.js').then(module=>module.fetchPublicProfile(entry.username));if(isAssetPublicationDeliveryConfirmed(entry.item.hasPbiSignature?admittedAssetPublicationSignatureDelivery(sourceDigest,entry.username):admittedAssetPublicationDelivery(sourceDigest,entry.username)))return;}
     }
    }else await response.body?.cancel();
    await wait();
