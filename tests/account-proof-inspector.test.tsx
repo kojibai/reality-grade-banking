@@ -13,7 +13,7 @@ it('refuses an uploaded balance claim locally without account access, storage, o
     const input = host.querySelector('input')!;
     Object.defineProperty(input, 'files', { value: [new File(['{"verified":true,"balance":999999}'], 'claim.json')] });
     await act(async () => input.dispatchEvent(new Event('change', { bubbles: true })));
-    expect(host.textContent).toContain('could not be verified');
+    await vi.waitFor(() => expect(host.textContent).toContain('could not be verified'));
     expect(host.textContent).not.toContain('Account source verified');
     expect(network).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); network.mockRestore(); }

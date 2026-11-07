@@ -48,11 +48,11 @@ async function bounded(request:Request):Promise<string>{
  return Buffer.concat(chunks).toString('utf8');
 }
 async function render(input:RenderInput):Promise<string>{
- const bank=input.path==='bank',bankEntry=input.path==='bank-entry',market=publicMarketPreparedPath(input.path),module=bank||bankEntry||market?'public-market-document':'prepared-dependent-documents';
+ const bank=input.path==='bank',bankEntry=input.path==='bank-entry',market=publicMarketPreparedPath(input.path),profile=input.path.startsWith('profile/'),module=bank||bankEntry||market||profile?'public-market-document':'prepared-dependent-documents';
  const templatePath=market?input.path:input.path==='ledger'||input.path==='ledger/proofs'?'ledger':input.path==='feed'||input.path==='discover'?input.path:input.path.startsWith('receipt/')?'receipt':'explore';
  const [{readFile},runtime]=await Promise.all([import('node:fs/promises'),import(pathToFileURL(resolve('server/profile-runtime/'+module+'.mjs')).href)]);
  const value={...input,renderBuild:await publicRenderBuild(),template:bank?'':await readFile(bankEntry?'dist/index.html':'dist/'+templatePath+'/index.html','utf8')};
- return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):bankEntry?runtime.renderPreparedBankEntryDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
+ return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):bankEntry?runtime.renderPreparedBankEntryDocument(value satisfies PublicMarketRenderInput):profile?runtime.renderPreparedProfileDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
 }
 /** Public display rendering cannot store, promote, admit or sign anything. */
 export async function handlePreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{
@@ -135,6 +135,7 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
  if(url.searchParams.has('prepare')||url.pathname!=='/api/explore'&&url.searchParams.has('path'))return new Response(null,{status:404,headers});
  try{
   const prepared=await deps.prepared(request.method as 'GET'|'HEAD',selectedPath,build);
+  if(selectedPath.startsWith('profile/')&&prepared.status===403){await prepared.body?.cancel();return new Response(request.method==='HEAD'?null:'This profile is private.',{status:403,headers});}
   if(prepared.status===503&&prepared.headers.get('x-receiz-public-html-withdrawn')==='1'){await prepared.body?.cancel();return new Response(null,{status:503,headers:{...headers,'x-receiz-public-html-withdrawn':'1'}});}
   if(!prepared.ok||!/^text\/html(?:;|$)/i.test(prepared.headers.get('content-type')??'')){await prepared.body?.cancel();return new Response('Public collection preparation is unavailable. Please try again.',{status:503,headers});}
   const revision=prepared.headers.get(materialHeaders[0]),preparedBuild=prepared.headers.get(materialHeaders[1]),bodyHash=prepared.headers.get(materialHeaders[2]);

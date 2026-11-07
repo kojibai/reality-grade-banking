@@ -235,6 +235,29 @@ async function fromBuild(path) {
   // deployment cannot silently replace the runtime beneath an open account.
   const response = await verifiedFetch(path); await cache.put(path, response.clone()); return response;
 }
+// A new document navigation may open the current deployment's HTML. Installed
+// SDK/assets remain in their exact immutable cache; online HTML never replaces
+// that custody. This is one ordinary document GET, with no Source probe.
+async function navigationDocument(request, installedPath) {
+  if (request.signal.aborted) throw request.signal.reason;
+  const controller = new AbortController(), abort = () => controller.abort(request.signal.reason);
+  const timer = setTimeout(() => controller.abort(), 1500);
+  request.signal.addEventListener('abort', abort, { once: true });
+  let rejectAbort;
+  const cancelled = new Promise((_, reject) => { rejectAbort = () => reject(controller.signal.reason); controller.signal.addEventListener('abort', rejectAbort, { once: true }); });
+  try {
+    const response = await Promise.race([fetch(new Request(request, { cache: 'no-store', signal: controller.signal })), cancelled]);
+    if (controller.signal.aborted || !response.ok || !/^text\/html(?:;|$)/i.test(response.headers.get('content-type') || '') || response.url && new URL(response.url).origin !== self.location.origin) {
+      void response.body?.cancel().catch(() => {}); throw Error('NAVIGATION_DOCUMENT_UNAVAILABLE');
+    }
+    return response;
+  } catch (error) {
+    if (request.signal.aborted) throw request.signal.reason;
+    return fromBuild(installedPath);
+  } finally {
+    clearTimeout(timer); request.signal.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort);
+  }
+}
 self.addEventListener('install', event => { event.waitUntil(install()); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('receiz-bank-') && key !== CACHE || key.startsWith('bankeiz-public-pages-') && key !== PUBLIC_CACHE).map(key => caches.delete(key))))); });
 self.addEventListener('message', event => {
@@ -307,5 +330,6 @@ self.addEventListener('fetch', event => {
   const page = event.request.mode === 'navigate' && (PAGES[url.pathname] || (/^\/vault\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\/?$/i.test(url.pathname) && (PAGES['/vault/index.html'] || PAGES['/'])) || (/^\/pay\/[a-z0-9_]{3,24}\/?$/.test(url.pathname) && PAGES['/pay/checkout.html']) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/verify/']) || (/^\/asset\/[^/]+\/?$/.test(url.pathname) && PAGES['/explore/']));
   const nativeBuild = (url.pathname.startsWith('/native/') || url.pathname === '/proof-verifier/v129/verifier.js') && url.searchParams.size === 1 && url.searchParams.get('build') === RESOURCES[url.pathname]?.sha256;
   const path = page || (RESOURCES[url.pathname + url.search] ? url.pathname + url.search : nativeBuild ? url.pathname : undefined);
-  if (path) event.respondWith(fromBuild(path));
+  const heldEntry = url.pathname === '/' || url.pathname === '/index.html' || url.pathname.startsWith('/vault/') || url.pathname.startsWith('/discover/');
+  if (path) event.respondWith(page && !heldEntry ? navigationDocument(event.request, path) : fromBuild(path));
 });

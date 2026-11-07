@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {afterEach,expect,it,vi} from 'vitest';
 import {handlePreparedPublicMarket} from '../server/prepared-public-market';
-import {renderPublicMarketDocument} from '../server/public-market-document';
+import {renderPublicMarketDocument,renderPreparedProfileDocument} from '../server/public-market-document';
 import {readPublicMarketDocumentSeed} from '../src/receiz/public-market-document-seed';
 import {PUBLIC_DISPLAY_POLICY,preparePublicMarketRenderMaterial} from '../server/public-market-preparation';
 import {readPreparedPublicMaterial} from '../server/prepared-public-material';
@@ -20,6 +20,22 @@ const material=JSON.stringify({membership:input,snapshot:{ok:true,data:{schema:'
 const generation=createHash('sha256').update(material).digest('hex');
 const template='<!doctype html><html><head><title>Explore</title><link rel="stylesheet" href="/assets/explore-known.css"></head><body><div id="public-explore-root" data-public-runtime="explore"><p>Older build</p></div><script id="receiz-navigation" type="application/json">{}</script><script type="module" src="/assets/explore-known.js"></script></body></html>';
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();document.body.innerHTML='';});
+
+it('prepares a complete owner profile from the same selected family, without carrying a stale Explore seed or fetching a profile',async()=>{
+ const uid='creator-uid',createdAt='2026-01-01T00:00:00Z',rows=originals.map((row,index)=>({...row,ownerUserId:uid,receizId:row.id,ownerCreatedAt:createdAt,ownerIdentityCreatedAt:createdAt,pulse:index===0?'15000001':'15000000',createdAt:index===0?'2026-11-07T12:00:00Z':createdAt,
+  profileOriginal:{...row.profileOriginal,id:row.id,createdAt:index===0?'2026-11-07T12:00:00Z':createdAt,media:{kind:'image',src:'/cover.png'}}}));
+ const family=JSON.stringify({...JSON.parse(material),membership:{...input,transport:{...input.transport,publicOriginals:rows}}}),hash=createHash('sha256').update(family).digest('hex');
+ vi.stubGlobal('fetch',vi.fn(()=>{throw Error('PUBLICATION_PROFILE_LOOKUP_FORBIDDEN');}));
+ const html=await renderPreparedProfileDocument({material:family,generation:hash,path:'profile/artist',template:template.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"catalog":{"items":[{"id":"old-612"}]}}</script><script id="receiz-navigation"')});
+ const body=new DOMParser().parseFromString(html.replace(/<link\b[^>]*>/g,''),'text/html'),profile=JSON.parse(body.getElementById('public-profile-seed')!.textContent!);
+ expect(profile.stats.originals).toBe(52);expect(profile.items).toHaveLength(52);expect(profile.items[0].title).toBe('New accepted public Original');expect(profile.nextCursor).toBeNull();
+ expect(body.getElementById('public-market-seed')).toBeNull();expect(html).not.toContain('old-612');expect(fetch).not.toHaveBeenCalled();
+});
+
+it('keeps a saved owner privacy refusal through the Bank delivery adapter',async()=>{
+ const response=await handlePreparedPublicMarket(new Request('https://bankeiz.com/api/explore?path=profile/artist'),{prepared:async()=>new Response('private',{status:403}),render:vi.fn(),build:'bank-build'});
+ expect(response.status).toBe(403);expect(await response.text()).toBe('This profile is private.');
+});
 
 it('prepares the complete accepted collection with the genuine newest row in readable HTML before JavaScript',async()=>{
  const html=await renderPublicMarketDocument({material,generation,template});

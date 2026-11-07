@@ -3,6 +3,7 @@ import {act} from 'react';import {createRoot} from 'react-dom/client';import {af
 import {PublicCertificatePage} from '../src/features/certificates/PublicCertificatePage';
 import {formatMoney} from '../src/core/money';
 const clock=vi.hoisted(()=>({pulse:14000200}));vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
+vi.mock('../native/receiz/packages/receiz-sdk/src/v124Kai',async importOriginal=>({...await importOriginal<typeof import('../native/receiz/packages/receiz-sdk/src/v124Kai')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 vi.mock('../src/public-explorer/PublicAssetTradeHost',()=>({PublicAssetTradeHost:()=>null}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 const token='certificate-cold-live-test',seed={kind:'sigil',claimPulse:14000000,beat:2,stepIndex:3,creatorVerified:true};

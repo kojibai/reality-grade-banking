@@ -6,6 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {publicReadingLinks} from './public-reading-links.js';
 import {profileNavigationHtml} from './profile-navigation.js';
 import {handlePreparedPublicDocument} from './prepared-public-document.js';
+import {handlePreparedPublicMarket} from './prepared-public-market.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
 export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false){
@@ -24,7 +25,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}
-type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>};
+type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>;preparedProfile?:(request:Request)=>Promise<Response>};
 export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const url=new URL(request.url),username=url.pathname.replace(/\/$/,'')==='/api/profile'?profileUsername(url.searchParams.get('username')):profilePageUsername(url.pathname),headers={'Cache-Control':'no-store, no-transform','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff'};
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{...headers,Allow:'GET, HEAD'}});
@@ -33,7 +34,7 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  // Browser entry uses the complete existing document. Its public reader can
  // show local state immediately and resolve only missing metadata afterward.
  const browser=request.headers.get('accept')?.includes('text/html')&&!/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|slack/i.test(request.headers.get('user-agent')??'');
- const dependencies=deps??{profile:readPublicProfile,page:async()=>{
+ const dependencies:Dependencies=deps??{profile:readPublicProfile,preparedProfile:handlePreparedPublicMarket,page:async()=>{
   if(!browser)return(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8');
   // Deliver the already saved complete family through the same selector as
   // Explore. This opens no profile/Original Source and performs no HEAD or
@@ -41,6 +42,14 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   const selected=await handlePreparedPublicDocument(new Request(new URL('/api/explore?path=explore',url.origin),{signal:request.signal,headers:{accept:'text/html'}}));
   if(!selected.ok)throw Error('PROFILE_SAVED_FAMILY_UNAVAILABLE');return selected.text();
  },render:renderProfileDocument,prepareRender:prepareProfileDocument};
+ if(browser&&dependencies.preparedProfile){
+  const selectedUrl=new URL('/api/explore',url.origin);selectedUrl.searchParams.set('path','profile/'+username);
+  try{
+   const selected=await dependencies.preparedProfile(new Request(selectedUrl,{signal:request.signal,headers:{accept:'text/html'}}));
+   if(selected.ok||selected.status===403||selected.status===503&&selected.headers.get('x-receiz-public-html-withdrawn')==='1')return selected;
+   void selected.body?.cancel().catch(()=>{});
+  }catch(error){if(request.signal.aborted)throw error;}
+ }
  const renderer=browser?undefined:dependencies.prepareRender?.();void renderer?.catch(()=>{});
  const source=browser?null:dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
  let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}

@@ -12,6 +12,9 @@ import {parseMarketHistory} from '../src/receiz/market-projection/history';
 import {packMarketHistory} from '../src/receiz/market-projection/history-wire';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 import {PUBLIC_MARKET_PREPARED_PATHS} from '../src/receiz/prepared-public-page-path';
+import {selectHeldPublicProfile} from '../src/receiz/public-profile';
+import {profilePreviewHtml} from './profile-preview';
+import {renderPublicProfile} from './profile-document';
 
 export const publicMarketPreparedPaths=PUBLIC_MARKET_PREPARED_PATHS;
 export type PublicMarketRenderInput={material:string;generation:string;template:string;path?:string;renderBuild?:string};
@@ -67,6 +70,17 @@ export async function renderPublicMarketDocument({material,generation,template,p
  if(!replaced)throw Error('PUBLIC_MARKET_RENDER_TEMPLATE_INVALID');
  const aligned=alignPreparedPublicNavigation(html,path,content,generation,renderBuild);
  return aligned.replace('<script id="receiz-navigation"',()=>seedScript+'<script id="receiz-navigation"');
+}
+
+/** Publication prepares the exact owner document from the selected complete
+ * family. A browser GET only streams these saved bytes. */
+export async function renderPreparedProfileDocument({material,generation,template,path,renderBuild}:PublicMarketRenderInput):Promise<string>{
+ if(!path||!/^profile\/[a-z0-9_]{3,24}$/.test(path)||Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
+ const {catalog}=await prepare(material,generation),username=path.slice('profile/'.length),profile=selectHeldPublicProfile(username,catalog);
+ const items=catalog.items.filter(item=>item.category==='proof'&&item.ownerUsername===username);
+ if(!profile||profile.nextCursor||profile.stats.originals!==items.length||profile.items.length!==items.length||profile.items.some(item=>!items.some(row=>row.id===item.id)))throw Error('PUBLIC_PROFILE_RENDER_COMPLETE_REQUIRED');
+ const content=renderPublicProfile(profile),html=profilePreviewHtml(template,username,profile,undefined,content);
+ return alignPreparedPublicNavigation(html,path,undefined,generation,renderBuild);
 }
 
 /** Data-only public catalog for the existing background reader. This never
