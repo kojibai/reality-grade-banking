@@ -32,9 +32,10 @@ import {createHash} from 'node:crypto';import {gzipSync} from 'node:zlib';import
 const {profileFixture}=await import('./tests/fixtures/public-profile.js');
 const hasExploreRows=html=>/<[a-z][^>]*\\bclass="[^"]*\\basset-row\\b/i.test(html);
 const noExploreCatalog=(html,label)=>{assert.ok(!hasExploreRows(html),label+' must replace Explore rows.');assert.ok(!html.includes('id="public-market-seed"'),label+' must not carry the Explore seed.');assert.ok(!html.includes('bank.public-market.document.v1'),label+' must not carry the Explore catalog packet.');};
+const catalogScripts=html=>[...html.matchAll(/<script id="public-market-seed" type="application\\/json">[\\s\\S]*?<\\/script>/g)].map(match=>match[0]);
 const exploreTemplate=await readFile('dist/explore/index.html','utf8');
 assert.ok(hasExploreRows(exploreTemplate),'Preview smoke must use actual compiled Explore rows.');
-assert.ok(exploreTemplate.includes('id="public-market-seed"'),'Preview smoke must use the actual seeded Explore template.');
+const exploreSeeds=catalogScripts(exploreTemplate);assert.equal(exploreSeeds.length,1,'Preview smoke must use exactly one actual compiled catalog seed.');
 let calls=0,certificateCalls=0,materialCalls=0,profileStatus=200;
 const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:0,revision:'plain-node-display'},publicOriginals:[]}};
 const ledgerHeads={actions:{count:'0',lastSeq:'0'},wallet:{count:'0',lastKaiUpulse:null}},heldMaterial=JSON.stringify({publicDisplayPolicy:'bank.public-market.curated-display.v3',membership,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'unchanged-display-packet-not-decoded',heads:ledgerHeads}}),materialGeneration=createHash('sha256').update(heldMaterial).digest('hex');
@@ -68,7 +69,13 @@ const response=await profile.fetch(new Request('https://bankeiz.com/api/profile?
 assert.equal(response.status,200);const html=await response.text();
 assert.ok(html.trimEnd().endsWith('</html>'),'Browser receives a complete static document without Source settlement.');
 assert.ok(html.includes('id="public-explore-root"'));assert.ok(html.includes('id="receiz-navigation"'));
-assert.ok(html.includes('<main class="public-entry-placeholder">'),'Browser profile entry must show its own placeholder.');assert.ok(html.includes('<h1>Profile</h1>'));assert.ok(html.includes('@alexmorgan'));noExploreCatalog(html,'Browser profile entry');
+// Browser profiles reuse the selected complete family. Remove Explore's
+// visible rows, but keep its exact data so opening a profile needs no reread.
+// Crawler profiles and asset previews below still carry only their own seed.
+assert.ok(html.includes('<main class="public-entry-placeholder">'),'Browser profile entry must show its own placeholder.');assert.ok(html.includes('<h1>Profile</h1>'));assert.ok(html.includes('@alexmorgan'));
+assert.ok(!hasExploreRows(html),'Browser profile entry must replace Explore rows.');
+assert.ok(html.includes('data-public-profile-entry="alexmorgan"'),'Browser runtime must open the requested profile directly.');
+assert.deepEqual(catalogScripts(html),exploreSeeds,'Browser profile must carry exactly the unchanged selected complete catalog seed.');
 assert.ok(html.includes('href="https://bankeiz.com/alexmorgan/"'));
 assert.ok(!html.includes('id="public-profile-seed"'));assert.ok(!html.includes('id="public-profile-error"'));
 assert.ok(!html.includes('private@example.com'));assert.equal(calls,0,'Browser entry must not request a profile or start server rendering.');
@@ -91,7 +98,7 @@ assert.equal(certificateResponse.status,200);const certificate=await certificate
 assert.equal(certificate.state.item.livePulseSeed?.kind,'sigil','The deployed public certificate reader reuses its shipped Original pricing source.');
 assert.equal(certificate.state.note.remainingShareQuantityMicro,'2500000');assert.equal(certificateCalls,1);assert.equal(calls,3);
 console.log('PASS deployed certificate source with one public read and no quote/session work.');
-console.log('PASS plain Node API imports, actual compiled seeded-template profile/asset previews, profile HEAD, zero-read browser entry and exact crawler SSR/status refusals; no identity or financial operations.');`;
+console.log('PASS plain Node API imports, actual compiled seeded-template profile/asset previews, profile HEAD, zero-read direct profile entry with its unchanged complete catalog, and exact crawler SSR/status refusals; no identity or financial operations.');`;
 
  const result=spawnSync(process.execPath,['--input-type=module','-e',program],{cwd:stage,encoding:'utf8',timeout:30000});process.stdout.write(result.stdout??'');process.stderr.write(result.stderr??'');if(result.error)throw result.error;process.exitCode=result.status??1;
 }finally{await rm(stage,{recursive:true,force:true});}
