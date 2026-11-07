@@ -125,7 +125,19 @@ it('does not close a newly opened sheet when an older Close invitation save comp
  }finally{await act(async()=>{release();await pending;});}
 });
 
-it('copies just the reviewed invitation URL from its link disclosure without another account read or payment action',async()=>{const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const url=field('Reviewed invitation link').value;await click('Copy link');expect(f.copy).toHaveBeenCalledExactlyOnceWith(url);expect(invitationSnapshotDigest(url)).toMatch(/^[a-f0-9]{64}$/);expect(f.work().known()[0].status).toBe('link-copied');expect(f.load).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();});
+it('confirms the copied invitation URL immediately, resets the icon and adds no account read or payment action',async()=>{
+ const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const url=field('Reviewed invitation link').value;
+ let release!:()=>void;const pending=new Promise<void>(resolve=>{release=resolve;}),write=f.write.getMockImplementation()!;f.write.mockImplementationOnce(async(...args)=>{await pending;await write(...args);});
+ vi.useFakeTimers();
+ try{
+  await click('Copy link');expect(f.copy).toHaveBeenCalledExactlyOnceWith(url);expect(button('Link copied').querySelector('.lucide-check')).not.toBeNull();expect(button('Link copied').disabled).toBe(true);
+  expect(invitationSnapshotDigest(url)).toMatch(/^[a-f0-9]{64}$/);expect(f.work().known()[0].status).toBe('draft');
+  await act(async()=>{release();await pending;});expect(f.work().known()[0].status).toBe('link-copied');
+  await act(async()=>{vi.advanceTimersByTime(1600);});expect(button('Copy link').querySelector('.lucide-copy')).not.toBeNull();
+  f.copy.mockRejectedValueOnce(Error('Clipboard unavailable'));await click('Copy link');expect(button('Copy link').querySelector('.lucide-check')).toBeNull();
+  expect(f.load).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
+ }finally{release();vi.useRealTimers();}
+});
 
 it.each([
  ['email','supplier@example.com'],

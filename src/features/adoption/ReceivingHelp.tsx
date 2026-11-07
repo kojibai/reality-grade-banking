@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowLeft,ArrowRight,ArrowUpRight,Check,Copy,Landmark,Mail,Share2} from 'lucide-react';
 import {Sheet} from '../../components/Sheet';
+import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import {bankOperationDollars} from '../../receiz/bank-operations';
 import {formatMoney} from '../../core/money';
@@ -58,10 +59,11 @@ export function ReceivingHelp({identity,initial,savedDraft,onPay,onClose,active=
  };
  const review=async()=>{try{const invitation=invitationFor(draft,sender,senderUsername);if(await save({...draft,status:'draft'},invitation)){if(alive.current)setPage('ready');}}catch{setError('Check the amount or shorten your invitation before continuing.');}};
  const link=saved?.publishedDigest?invitationSnapshotUrl(saved.publishedDigest):'';
+ const {copied:linkCopied,confirm:confirmLinkCopy,clear:clearLinkCopy}=useCopyFeedback(link);
  const shareText=(value:ReceivingDraft)=>value.institution?institutionRequest(value.institution.name,value.institution.id):value.message;
  const copied=async(linkOnly=false)=>{
-  if(!saved||!link||running.current||sharing.current)return;const current=saved;sharing.current=true;setBusy(true);setError('');
-  try{await navigator.clipboard.writeText(linkOnly?link:shareText(current)+'\n\n'+link);if(!alive.current)return;if(await save({...current,status:'link-copied'}))setNotice('Invitation link copied.');}
+  if(!saved||!link||running.current||sharing.current)return;const current=saved;sharing.current=true;setBusy(true);setError('');if(linkOnly)clearLinkCopy();
+  try{await navigator.clipboard.writeText(linkOnly?link:shareText(current)+'\n\n'+link);if(!alive.current)return;if(linkOnly)confirmLinkCopy();if(await save({...current,status:'link-copied'}))setNotice('Invitation link copied.');}
   catch{if(alive.current){setShowLink(true);setError('Copy is unavailable. Select the invitation link below.');}}
   finally{sharing.current=false;if(alive.current)setBusy(false);}
  };
@@ -96,7 +98,7 @@ export function ReceivingHelp({identity,initial,savedDraft,onPay,onClose,active=
   </>:saved&&<><p className="eyebrow">Receiving invitation</p><h1 className="sheet-hero">Ready to share.</h1><div className="receiving-invitation-preview">{sender&&<p className="small-copy">From {sender}</p>}<p>{saved.message}</p>{saved.recipientName&&<p className="small-copy">To {saved.recipientName}</p>}{saved.institution&&<p><strong>{saved.institution.name}</strong><br/>The receiving standard, tools and evidence process.</p>}{saved.includeContext&&<p>{saved.amount&&formatMoney(bankOperationDollars(saved.amount))}{saved.amount&&saved.purpose?' · ':''}{saved.purpose}</p>}</div>
    <p className="body-copy small-copy">Invitation only. Your payment is reviewed and approved separately.</p>
    <div className="dual-actions"><button className="primary-button" type="button" disabled={busy||!link} onClick={()=>void copied()}><Copy size={17}/>Copy invitation</button>{typeof navigator.share==='function'&&<button className="secondary-button" type="button" disabled={busy||!link} onClick={()=>void share()}><Share2 size={17}/>Share invitation</button>}</div>
-   <details className="receiving-follow-through" open={showLink} onToggle={event=>setShowLink(event.currentTarget.open)}><summary>Invitation link</summary><div className="receiving-link-row"><label className="form-field receiving-link-field"><span>Reviewed invitation link</span><textarea value={link} readOnly rows={2} onFocus={event=>event.target.select()}/></label><button className="icon-button" type="button" aria-label="Copy link" title="Copy link" disabled={busy||!link} onClick={()=>void copied(true)}><Copy size={18}/></button></div></details>
+   <details className="receiving-follow-through" open={showLink} onToggle={event=>setShowLink(event.currentTarget.open)}><summary>Invitation link</summary><div className="receiving-link-row"><label className="form-field receiving-link-field"><span>Reviewed invitation link</span><textarea value={link} readOnly rows={2} onFocus={event=>event.target.select()}/></label><button className="icon-button" type="button" aria-label={linkCopied?'Link copied':'Copy link'} title={linkCopied?'Link copied':'Copy link'} disabled={busy||!link} onClick={()=>void copied(true)}><CopyFeedbackIcon copied={linkCopied} size={18}/></button></div></details>
    <button className="text-button" type="button" disabled={busy} onClick={()=>setPage('edit')}>Edit invitation</button>
    <details className="receiving-follow-through"><summary>Follow-through</summary><p className="body-copy small-copy">Record what the recipient tells you. Reported progress stays separate from verified evidence and payment approval.</p>
     <label className="form-field"><span>Recipient response · reported by you</span><select value={saved.reportedResponse??''} disabled={busy} onChange={event=>void save({...saved,reportedResponse:event.target.value?event.target.value as 'ready'|'declined':undefined})}><option value="">No response recorded</option><option value="ready">Recipient reported ready</option><option value="declined">Recipient reported declined</option></select></label>
