@@ -5,12 +5,12 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import capInput from '../public/receiz-public-capitalization.json';
 import historyInput from '../public/receiz-public-share-chart-history.json';
 import type {PublicMarketDocumentSeed} from '../src/receiz/public-market-document-seed';
-const state=vi.hoisted(()=>({delivery:vi.fn(),prepared:vi.fn(async()=>new Response(null,{status:503})),roots:[] as Root[],creates:0,hydrates:0}));
-vi.mock('../server/prepared-public-document',()=>({handlePreparedPublicDocument:state.delivery}));
+const state=vi.hoisted(()=>({delivery:vi.fn(),staticPage:vi.fn(),prepared:vi.fn(async(_request:Request)=>new Response(null,{status:503})),roots:[] as Root[],creates:0,hydrates:0}));
+vi.mock('node:fs/promises',()=>({readFile:state.staticPage}));
 vi.mock('../server/prepared-public-market',()=>({handlePreparedPublicMarket:state.prepared}));
 vi.mock('react-dom/client',async original=>{const actual=await original<typeof import('react-dom/client')>();return{...actual,createRoot:(...args:Parameters<typeof actual.createRoot>)=>{state.creates++;const root=actual.createRoot(...args);state.roots.push(root);return root;},hydrateRoot:(...args:Parameters<typeof actual.hydrateRoot>)=>{state.hydrates++;const root=actual.hydrateRoot(...args);state.roots.push(root);return root;}};});
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
-beforeEach(()=>{vi.resetModules();localStorage.clear();history.replaceState(null,'','/');document.body.innerHTML='<div id="root"><input value="Existing Bank draft"/><nav class="bottom-nav">Existing Bank navigation</nav></div><script id="receiz-navigation" type="application/json">{}</script>';state.delivery.mockReset();});
+beforeEach(()=>{vi.resetModules();localStorage.clear();history.replaceState(null,'','/');document.body.innerHTML='<div id="root"><input value="Existing Bank draft"/><nav class="bottom-nav">Existing Bank navigation</nav></div><script id="receiz-navigation" type="application/json">{}</script>';state.delivery.mockReset();state.staticPage.mockReset();state.prepared.mockReset();state.prepared.mockResolvedValue(new Response(null,{status:503}));});
 afterEach(async()=>{for(const root of state.roots.splice(0))await act(()=>root.unmount());state.creates=0;state.hydrates=0;vi.unstubAllGlobals();vi.restoreAllMocks();document.body.replaceChildren();localStorage.clear();});
 async function savedFamily(){
  const {parsePublicMarket}=await import('../src/receiz/public-market'),{parseMarketCapSource}=await import('../src/receiz/market-projection/source'),{publicMarketDocumentSeedScript}=await import('../src/receiz/public-market-document-seed');
@@ -21,19 +21,19 @@ async function savedFamily(){
  const script=publicMarketDocumentSeedScript(seed),html='<html><head><title>Explore</title></head><body><div id="public-explore-root" data-public-runtime="explore"><main>Saved Explore content</main></div>'+script+'<script id="receiz-navigation" type="application/json">{}</script></body></html>';
  return{seed,script,html};
 }
-it('opens the browser profile from the existing saved complete-family selector, carrying its exact seed without a profile or freshness read',async()=>{
- const saved=await savedFamily();state.delivery.mockResolvedValue(new Response(saved.html,{headers:{'content-type':'text/html','x-receiz-public-html-state':'current'}}));
+it('falls back to the compiled held family after one saved profile GET without a second remote lookup',async()=>{
+ const saved=await savedFamily();state.staticPage.mockResolvedValue(saved.html);
  const fetcher=vi.fn(()=>{throw Error('EXTRA_SOURCE_READ_FORBIDDEN');});vi.stubGlobal('fetch',fetcher);
  const {handleProfilePreview}=await import('../server/profile-preview');
  const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock?fbclid=share',{headers:{accept:'text/html','user-agent':'Profile browser'}})),body=await response.text();
- expect(response.status).toBe(200);expect(state.delivery).toHaveBeenCalledOnce();const request=state.delivery.mock.calls[0][0] as Request;
- expect(request.method).toBe('GET');expect(new URL(request.url).pathname).toBe('/api/explore');expect(new URL(request.url).searchParams.get('path')).toBe('explore');expect(request.headers.has('cookie')).toBe(false);
+ expect(response.status).toBe(200);expect(state.delivery).not.toHaveBeenCalled();expect(state.staticPage).toHaveBeenCalledExactlyOnceWith('dist/explore/index.html','utf8');expect(state.prepared).toHaveBeenCalledOnce();const request=state.prepared.mock.calls[0][0] as Request;
+ expect(request.method).toBe('GET');expect(new URL(request.url).pathname).toBe('/api/explore');expect(new URL(request.url).searchParams.get('path')).toBe('profile/bjklock');expect(request.headers.has('cookie')).toBe(false);
  expect(body).toContain(saved.script);expect(body).toContain('data-public-profile-entry="bjklock"');expect(body).not.toContain('Saved Explore content');expect(body).not.toContain('public-profile-error');expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([false,true])('renders all 613 Originals from the selected family without reading Source or replacing a newer held family (%s)',async newerHeld=>{
  const saved=await savedFamily();let delivered=saved.html;
  if(newerHeld){const {publicMarketDocumentSeedScript}=await import('../src/receiz/public-market-document-seed'),stale={...saved.seed,generation:'c'.repeat(64),catalog:{...saved.seed.catalog,items:saved.seed.catalog.items.slice(0,612),sourceCount:612}};delivered=delivered.replace(saved.script,publicMarketDocumentSeedScript(stale));}
- state.delivery.mockResolvedValue(new Response(delivered,{headers:{'content-type':'text/html','x-receiz-public-html-state':'current'}}));
+ state.staticPage.mockResolvedValue(delivered);
  vi.stubGlobal('Worker',undefined);const fetcher=vi.fn(()=>{throw Error('EXTRA_SOURCE_READ_FORBIDDEN');});vi.stubGlobal('fetch',fetcher);
  if(newerHeld){const {adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(saved.seed);}
  const explorer=await import('../src/public-explorer/PublicExplorer'),render=explorer.PublicExplorer,paints:unknown[]=[];vi.spyOn(explorer,'PublicExplorer').mockImplementation(props=>{if(props.initialSource)paints.push(props.initialSource.catalog);return render(props);});
