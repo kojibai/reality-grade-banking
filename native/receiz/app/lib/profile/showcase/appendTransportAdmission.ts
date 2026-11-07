@@ -1,15 +1,15 @@
-import {admitReceizProfileShowcaseSuccessorWithExactPredecessorContext,createReceizArtifactAdmissionEngine,
- inspectReceizBoundedProfileShowcaseV114,readReceizBoundedProfileShowcaseInspectionCarrier} from '../../../../packages/receiz-sdk/src/artifactAdmission';
+import {admitReceizProfileShowcaseSuccessorWithExactPredecessorContext,admitReceizProfileShowcaseSuccessorWithPredecessorContext,createReceizArtifactAdmissionEngine,
+ inspectReceizBoundedProfileShowcaseV114,readReceizBoundedProfileShowcaseInspectionCarrier,rederiveReceizBoundedProfileShowcaseCarrierFromAdmission} from '../../../../packages/receiz-sdk/src/artifactAdmission';
 import {verifyReceizArtifactWithCanonicalRoots} from '../../../../packages/receiz-sdk/src/artifactVerification';
 import {receizCurrentPinnedSignatureV4Roots} from '../../../../packages/receiz-sdk/src/verifier/roots';
 import {createReceizProfileShowcasePersistentMemoryStoreV114} from '../../../../packages/receiz-sdk/src/profileShowcasePersistentState';
 import {reconstructExactByteBlocks,type ExactByteBlockResolver} from '../../transport/exactByteBlocks';
-import type {ProfileShowcaseAppendTransport} from './completeSourceTransport';
+import {readProfileShowcaseAppendTransport,readProfileShowcaseCarrierTransport,type ProfileShowcaseAppendTransport} from './completeSourceTransport';
 import type {ReceizSignatureV4RootPublicKey} from '../../../../packages/receiz-sdk/src/verifier/signatureV4';
 
 /** Current append context only. Historical Original bodies and vault restore are
  * absent. SDK exact-predecessor admission remains the authority for the head. */
-export async function admitProfileShowcaseAppendTransport(input:{context:ProfileShowcaseAppendTransport;
+async function admitCompleteAppendTransport(input:{context:ProfileShowcaseAppendTransport;
  artifactId:string;resolveBlock:ExactByteBlockResolver;roots?:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>}){
  const roots=input.roots??receizCurrentPinnedSignatureV4Roots(),owner=input.artifactId.slice('profile-showcase:'.length);
  const file=(bytes:Uint8Array)=>new File([bytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
@@ -61,4 +61,49 @@ export async function admitProfileShowcaseAppendTransport(input:{context:Profile
  const io=createReceizProfileShowcasePersistentMemoryStoreV114();
  for(const node of input.context.witnessNodes)await io.writeNode(node);
  return {admission,carrier:current.carrier,io,resolveHistorical:historical};
+}
+
+/** A new device follows exact carrier coordinates back to its complete prefix.
+ * Reuse that prefix's SDK admission and node custody, then admit only the sparse
+ * successors. No historical child payload or imported media is reopened. */
+export async function admitProfileShowcaseAppendTransport(input:{context:ProfileShowcaseAppendTransport|Awaited<ReturnType<typeof readProfileShowcaseCarrierTransport>>;
+ artifactId:string;resolveBlock:ExactByteBlockResolver;roots?:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>;
+ predecessorTransports?:readonly import('./completeSourceTransport').ProfileShowcaseCompleteSourceTransport[]}){
+ if('children'in input.context)return admitCompleteAppendTransport({...input,context:input.context});
+ const suffix:Awaited<ReturnType<typeof readProfileShowcaseCarrierTransport>>[]=[],seen=new Set<string>();
+ let cursor=input.context;
+ while(cursor.singleTransition){
+  if(seen.has(cursor.transport.artifactDigest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
+  let predecessor=cursor.predecessor;
+  if(!predecessor&&input.predecessorTransports?.length){
+   // Older saved actions did not carry a wire parent. Header metadata only
+   // locates the exact parent named by this canonically inspected artifact.
+   const roots=input.roots??receizCurrentPinnedSignatureV4Roots(),artifact=new File([cursor.exactSealedArtifactBytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
+   const inspected=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(artifact,roots),ownerConstraint:input.artifactId.slice('profile-showcase:'.length),dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+   const carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspected);
+   if(inspected.artifactSha256!==cursor.transport.artifactDigest||carrier.artifactId!==input.artifactId)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_IDENTITY_MISMATCH');
+   if(carrier.receizProofHistory.parentRefs.length===1)predecessor=input.predecessorTransports.find(value=>value.artifactDigest===carrier.receizProofHistory.parentRefs[0]!.artifactDigest);
+  }
+  if(!predecessor)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
+  seen.add(cursor.transport.artifactDigest);suffix.push(cursor);
+  cursor=await readProfileShowcaseCarrierTransport(predecessor,input.resolveBlock);
+ }
+ if(seen.has(cursor.transport.artifactDigest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
+ const context=await readProfileShowcaseAppendTransport(cursor.transport,input.resolveBlock);
+ if(context.envelope.legacyPredecessor||context.envelope.checkpointBoundary)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
+ const prefix=await admitCompleteAppendTransport({...input,context}),lineage=new Map<number,string>();
+ const resolveHistorical=(count:number)=>lineage.get(count)??prefix.resolveHistorical(count);
+ let {admission,carrier}=prefix;
+ for(const current of suffix.reverse()){
+  const artifact=new File([current.exactSealedArtifactBytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
+  admission=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:admission,candidateArtifact:{artifact},resolveVerifiedHistoricalArtifactDigest:resolveHistorical});
+  if(admission.artifactSha256!==current.transport.artifactDigest)throw TypeError('PROFILE_SHOWCASE_COMPLETE_TRANSPORT_INVALID');
+  carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission);
+  if(carrier.artifactId!==input.artifactId)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_IDENTITY_MISMATCH');
+  const head=carrier['profile-showcase'];
+  for(const node of head.firstPaintWitnessNodes)await prefix.io.writeNode(node);
+  for(const node of head.stateTransitionWitnessNodes)await prefix.io.writeNode(node);
+  lineage.set(Number(head.resultingOperationCount),admission.artifactSha256);
+ }
+ return{admission,carrier,io:prefix.io,resolveHistorical};
 }

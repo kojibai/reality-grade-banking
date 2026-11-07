@@ -23,8 +23,8 @@ try {
   browser = await chromium.launch({headless: true, executablePath});
 
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7XkAAAAASUVORK5CYII=', 'base64');
-  async function pageFor(width, composer = false) {
-    const context = await browser.newContext({viewport: {width, height: 844}, isMobile: width < 600, hasTouch: width < 600, reducedMotion: 'reduce', serviceWorkers: 'block'});
+  async function pageFor(width, composer = false, reducedMotion = 'reduce') {
+    const context = await browser.newContext({viewport: {width, height: 844}, isMobile: width < 600, hasTouch: width < 600, reducedMotion, serviceWorkers: 'block'});
     const page = await context.newPage(), errors = [], forbidden = [];
     page.setDefaultTimeout(15_000);
     page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
@@ -54,6 +54,29 @@ try {
     assert.ok(Math.abs(bounds.x) <= 1 && Math.abs(bounds.y) <= 1 && Math.abs(bounds.width - bounds.viewportWidth) <= 1 && Math.abs(bounds.height - bounds.viewportHeight) <= 1, `Creation sheet must fill ${width}px viewport: ${JSON.stringify(bounds)}`);
     assert.equal(bounds.radius, '0px');
     assert.ok(bounds.overflow <= bounds.viewportWidth + 1, `No horizontal overflow at ${width}px`);
+  }
+
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const {page, context, clean} = await pageFor(390, true, reducedMotion);
+    try {
+      await page.goto(origin + '/tests/browser/asset-composer.html?delivery=controlled');
+      await page.getByLabel('Choose original', {exact: true}).setInputFiles({name: 'local-original.png', mimeType: 'image/png', buffer: png});
+      await page.getByLabel('Title', {exact: true}).fill('One held Original');
+      await page.getByRole('button', {name: 'Review original', exact: true}).click();
+      await page.getByRole('button', {name: 'Create asset', exact: true}).click();
+      await page.getByRole('status', {name: 'Delivering your Original', exact: true}).waitFor();
+      assert.equal(await page.getByRole('button', {name: 'Retry public delivery', exact: true}).count(), 0);
+      assert.equal(await page.getByRole('button', {name: 'Sign', exact: true}).isEnabled(), true);
+      const animation = await page.locator('.asset-seal-progress .inline-opening-trace i').first().evaluate(element => getComputedStyle(element).animationName);
+      assert.equal(animation, reducedMotion === 'reduce' ? 'none' : 'inline-opening-trace');
+      await fullscreen(page, 390);
+      await page.evaluate(() => window.composerFixture.finishDelivery());
+      await page.getByRole('status', {name: 'Delivering your Original', exact: true}).waitFor({state: 'detached'});
+      assert.equal(await page.getByRole('button', {name: 'Sign', exact: true}).isEnabled(), true);
+      assert.deepEqual(await page.evaluate(() => ({created: window.composerFixture.created, retried: window.composerFixture.retried})), {created: 1, retried: 0});
+      clean();
+      console.log(`PASS immediate held Original, animated first delivery, early Sign and automatic acknowledgment without retry: motion=${reducedMotion}`);
+    } finally { await context.close(); }
   }
 
   for (const width of [320, 390, 1280]) {

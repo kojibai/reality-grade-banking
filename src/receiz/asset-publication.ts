@@ -5,6 +5,16 @@ export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';sh
 type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 const deliveries=new Map<string,Promise<AssetPublicationReceipt>>();
+export type AssetPublicationAttempt={ownerReceizId:string;sourceDigest:string;active:boolean;publication?:AssetPublicationDelivery};
+const deliveryListeners=new Set<(attempt:AssetPublicationAttempt)=>void>();
+const deliveryKey=(ownerReceizId:string,sourceDigest:string)=>JSON.stringify([ownerReceizId,sourceDigest]);
+/** Display-only lifecycle of the existing attempt; observing never starts a delivery. */
+export const isAssetPublicationDeliveryActive=(ownerReceizId:string,sourceDigest:string)=>deliveries.has(deliveryKey(ownerReceizId,sourceDigest));
+/** Join only the already-running exact source attempt after local signing. */
+export function waitForAssetPublicationDelivery(ownerReceizId:string,sourceDigest:string):Promise<void>|undefined{return deliveries.get(deliveryKey(ownerReceizId,sourceDigest))?.then(()=>{});}
+export function subscribeAssetPublicationDeliveries(listener:(attempt:AssetPublicationAttempt)=>void){deliveryListeners.add(listener);return()=>{deliveryListeners.delete(listener);};}
+function notifyDelivery(attempt:AssetPublicationAttempt){for(const listener of deliveryListeners){try{listener(attempt);}catch{/* A display observer cannot change the publication outcome. */}}}
+const projectReceipt=(receipt:AssetPublicationReceipt):AssetPublicationDelivery=>receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 function canonical(value:unknown):string{
  if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;
@@ -55,7 +65,7 @@ export function createAssetPublication(dependencies:Dependencies){
   if(!latest||latest.sourceDigest!==held.state.sourceDigest)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
   held.state=latest;
   if(held.state.status==='published')return project(held.state,held.file);
-  const key=JSON.stringify([dependencies.ownerReceizId,held.state.sourceDigest]);
+  const key=deliveryKey(dependencies.ownerReceizId,held.state.sourceDigest);
   let delivery=deliveries.get(key);
   if(!delivery){
    delivery=(async()=>{
@@ -67,11 +77,14 @@ export function createAssetPublication(dependencies:Dependencies){
      if(!current||current.sourceDigest!==held.state.sourceDigest||current.intentDigest!==held.state.intentDigest)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
      // A later confirmed acknowledgment outranks a weaker retry response.
      if(current.status!=='published')await dependencies.write({...current,status:receipt.status,receipt},prior);
+     else receipt=current.receipt!;
     });
     return receipt;
    })();
    deliveries.set(key,delivery);
-   void delivery.finally(()=>{if(deliveries.get(key)===delivery)deliveries.delete(key);}).catch(()=>{/* The exact source and pending checkpoint remain durable. */});
+   notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:true});
+   const finished=(publication:AssetPublicationDelivery)=>{if(deliveries.get(key)===delivery)deliveries.delete(key);notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:false,publication});};
+   void delivery.then(receipt=>finished(projectReceipt(receipt)),()=>finished({status:'pending',code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}));
   }
   // Calling the publisher above starts delivery now. No timer, artificial delay,
   // or network acknowledgment sits between durable local truth and its display.

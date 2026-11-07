@@ -1192,6 +1192,34 @@
       "baseSha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
       "sha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
       "purpose": "Remove only the unused carrier/head derivation after genuine SDK successor admission. Preserve exact transport bytes, atomic commit admission, the consumed post-commit carrier, PBI ceremony, custody, identity, source and ownership checks."
+    },
+    {
+      "id": "bankeiz-original-delivery-continuity",
+      "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
+      "baseSha256": "0872f255264b584c6afd4f62e6b5cbcec17423bcd3096e1710fda76edc5a7250",
+      "sha256": "c8bf0ad8b4921db30ee2bff9d3b9bf521f98cba43c7bbcfa5a64b1caa810f74e",
+      "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
+    },
+    {
+      "id": "bankeiz-original-delivery-continuity",
+      "path": "receiz/app/lib/profile/showcase/appendTransportAdmission.ts",
+      "baseSha256": "7aaba3a27640b196ba19c9466e082dabde2d31af4d980fc617b156fe13234669",
+      "sha256": "ef8a918a65c8ce29103805e929ff46803e67e1956737c9356e1d5430591f09a3",
+      "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
+    },
+    {
+      "id": "bankeiz-original-delivery-continuity",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "40b2e496043a155c88a2fd384babe192949dcd2c99748368c791838ed55ec00f",
+      "sha256": "11034471002b7030a223b2fcf76ff3c4304b16fae5fddc98029173c337ea4753",
+      "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
+    },
+    {
+      "id": "bankeiz-original-delivery-continuity",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
+      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
     }
   ]
 }

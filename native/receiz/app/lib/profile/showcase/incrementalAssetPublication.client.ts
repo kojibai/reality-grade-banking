@@ -178,9 +178,8 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    if(local){const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(local),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,local.artifactSha256,local);
     const value={prior:{admission:local,carrier,io,resolveHistorical:async(count:number)=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,local.artifactSha256,count)}};remember(value);return value;}
    const context=await readContext((accepted as any).transport);
-   if(!("children"in context))throw TypeError("PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED");
    if(context.envelope.legacyPredecessor||context.envelope.checkpointBoundary)return null;
-   try{const admitted=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve});const value={context,prior:{...admitted,resolveHistorical:async(count:number)=>admitted.resolveHistorical(count)}};remember(value);return value;}
+   try{const admitted=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve,predecessorTransports:(accepted as any).predecessorTransports});const value={context,prior:{...admitted,resolveHistorical:async(count:number)=>admitted.resolveHistorical(count)}};remember(value);return value;}
    catch(error){if(error instanceof Error&&error.message==='PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED')return null;throw error;}
   };
   if(!heldHead){const next=await readHead();if(!next)return null;heldHead=next;}
@@ -225,7 +224,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
      ||childAdmission.artifactId!==child.reference.stableChildArtifactId||childAdmission.payloadSha256!==child.reference.contentDigest
      ||jcsCanonicalize(await readImportedSourceTransportReference(childBytes))!==jcsCanonicalize(opened.reference))throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
     input.assertCurrent();
-    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,child:{reference:child.reference,exactSealedArtifactBytes:childBytes}},custody.writeBlock,{exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
+    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,child:{reference:child.reference,exactSealedArtifactBytes:childBytes}},custody.writeBlock,{acceptedPredecessor:next.context?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
     const prepared=await readContext(transport,custody.resolveBlock),signer=await actor();input.assertCurrent();
     const body={action:'finalize',scope:scope(digest),transport,publicationSourceArtifactSha256:opened.reference.artifactSha256,
      publicationChildArtifactDigest:childAdmission.artifactSha256,publicationPredecessorArtifactDigest:prior.admission.artifactSha256,identityBinding:signer.binding};
@@ -240,7 +239,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    }
    heldHead=next;
   }
-  const {prior}=heldHead;input.assertCurrent();
+  const {prior,context:acceptedContext}=heldHead;input.assertCurrent();
   if(!opened.source.projection.pulse)throw TypeError('PROFILE_SHOWCASE_SOURCE_KAI_REQUIRED');
   const placement=await sealAndAdmitImportedSourcePlacement({source:opened.source,reference:opened.reference,ownerReceizId:input.owner,
    immutableVersion:opened.source.projection.pulse,seal:input.childSealer,authorshipProof});input.assertCurrent();
@@ -255,7 +254,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    const admitted=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,candidateArtifact:{artifact},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:admitted.artifactSha256,
     exactSealedArtifactBytes:new Uint8Array(await admitted.openedArtifact.sealedArtifact.artifact.arrayBuffer()),
-    child:{reference:authority.children[0]!.reference,exactSealedArtifactBytes:new Uint8Array(await placement.admission.openedArtifact.sealedArtifact.artifact.arrayBuffer())}},custody.writeBlock,{exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
+    child:{reference:authority.children[0]!.reference,exactSealedArtifactBytes:new Uint8Array(await placement.admission.openedArtifact.sealedArtifact.artifact.arrayBuffer())}},custody.writeBlock,{acceptedPredecessor:acceptedContext?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
    prepared=await readContext(transport,custody.resolveBlock);
    const signer=await actor();input.assertCurrent();
    const action=await enqueueSourceBoundPublicationAction(JSON.stringify({action:'finalize',scope:scope(transport.artifactDigest),transport,...association,identityBinding:signer.binding}),signer.custody);

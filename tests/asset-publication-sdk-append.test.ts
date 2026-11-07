@@ -210,6 +210,28 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  }finally{pendingGet.mockRestore();pendingAll.mockRestore();pendingPut.mockRestore();}
  expect({pendingOldReads,pendingScans,pendingActiveWrites}).toEqual({pendingOldReads:0,pendingScans:0,pendingActiveWrites:0});
 
+ // A genuinely new device has no retained SDK head or module memo. Follow the
+ // sparse head's exact immutable prefix coordinates, never old media bodies.
+ // Reproduce an older delivery descriptor without changing its exact accepted
+ // proof or any signed action. Its missing parent is already in header metadata.
+ const linkedContext=await r.showcaseTransport.readProfileShowcaseCarrierTransport((accepted as any).transport,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null);
+ expect(linkedContext.singleTransition).toBe(true);expect(linkedContext.predecessor).toBeDefined();
+ const exactAccepted=await acceptedHead.readCompleteSource(),changedChild=exactAccepted.children.find((child:any)=>child.reference.childArtifactDigest===linkedContext.child.reference.childArtifactDigest);
+ expect(changedChild).toBeDefined();
+ const oldWireTransport=await r.showcaseTransport.writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:exactAccepted.artifactDigest,
+  exactSealedArtifactBytes:exactAccepted.exactSealedArtifactBytes,child:changedChild},async(ref:{sha256:string},bytes:Uint8Array)=>{blocks.set(ref.sha256,bytes);},{exportImportedSource:async()=>{}});
+ accepted={...accepted,transport:oldWireTransport,predecessorTransports:[linkedContext.predecessor]};
+ const beforeEmptyDevice=acceptedHead.visibleChildren.length,emptyDeviceOldChildren=new Set<string>(acceptedHead.visibleChildren.map((child:any)=>child.reference.childArtifactDigest));
+ vi.stubGlobal('indexedDB',new IDBFactory());reads.length=0;
+ const emptyDeviceModule=await f.reloadRuntime(),emptyDevice=await open(false,emptyDeviceModule);
+ for(const title of ['First append from empty device','Second append from empty device']){
+  const fresh=await emptyDevice.prepare({kind:'image',title,description:'',longForm:'Exact known prefix, one new source',files:[{id:'photo',role:'primary',file:image}]});
+  const result=await emptyDevice.publish(fresh.artifact);expect(result.status,JSON.stringify(result)).toBe('published');
+ }
+ expect(acceptedHead.visibleChildren).toHaveLength(beforeEmptyDevice+2);
+ expect(reads.some(sha=>oldBodies.has(sha)),'a new device reuses prefix proof metadata without fetching settled media').toBe(false);
+ expect(reads.some(sha=>emptyDeviceOldChildren.has(sha)),'a new device never fetches settled Original bodies to extend their accepted prefix').toBe(false);
+
 // Includes real SDK sealing, receiver restart, two cold publisher restarts and
 // post-commit recovery. Keep this atomic lifecycle within a bounded CI budget.
 },120000);

@@ -23,3 +23,18 @@ it('extends the existing complete transport without opening historical child or 
  expect(reconstructed.exactSealedArtifactBytes).toEqual(nextBytes);
  expect(written.some(d=>forbidden.has(d))).toBe(false);
 },15000);
+
+it('carries the exact accepted predecessor coordinate without rewriting its source',async()=>{
+ const {runtime:r}=await conformanceOfflineFixture({composer:true}),api=r.showcaseTransport;
+ const blocks=new Map<string,Uint8Array>(),writes:string[]=[],write=async(ref:{sha256:string},bytes:Uint8Array)=>{writes.push(ref.sha256);blocks.set(ref.sha256,bytes);};
+ const bytes=new TextEncoder().encode('exact accepted prefix'),digest=(value:Uint8Array)=>createHash('sha256').update(value).digest('hex');
+ const prior=await api.writeProfileShowcaseCompleteSourceTransport({artifactDigest:digest(bytes),exactSealedArtifactBytes:bytes,witnessNodes:[],children:[]},write);
+ const settled=new Set(writes);writes.length=0;
+ const changed=new TextEncoder().encode('exact new transition');
+ const next=await api.writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest(changed),exactSealedArtifactBytes:changed},write,{acceptedPredecessor:prior});
+ const reopened=await api.readProfileShowcaseCarrierTransport(next,async(ref:{sha256:string})=>blocks.get(ref.sha256)!);
+ expect(reopened.predecessor).toEqual(prior);
+ expect(reopened.exactSealedArtifactBytes).toEqual(changed);
+ expect(writes.some(sha=>settled.has(sha)),'accepted source is linked, never resaved').toBe(false);
+ expect(next.root.contentByteLength).toBeLessThan(2048);
+},15000);

@@ -30,14 +30,17 @@ export type ProfileShowcaseAcceptedTransitionSource=Readonly<{artifactDigest:str
 /** Sparse APP delivery beneath an already accepted SDK prefix. This is not a
  * complete Source or an SDK format. Complete/export readers reject its mode. */
 export async function writeProfileShowcaseAcceptedTransitionTransport(source:ProfileShowcaseAcceptedTransitionSource,writeBlock:ExactByteBlockWriter,
- options:Readonly<{exportImportedSource?:(reference:ImportedProofSourceReference,write:ExactByteBlockWriter)=>Promise<void>}>={}){
+ options:Readonly<{acceptedPredecessor?:ProfileShowcaseCompleteSourceTransport;exportImportedSource?:(reference:ImportedProofSourceReference,write:ExactByteBlockWriter)=>Promise<void>}>={}){
+ // A known immutable prefix travels as its exact byte coordinate, never as a
+ // second copy of its carrier, children or media. Cold receivers can follow it.
+ const accepted=options.acceptedPredecessor?parseCompleteSourceTransport(structuredClone(options.acceptedPredecessor)):undefined;
  const suffix:ProfileShowcaseAcceptedTransitionSource[]=[],seen=new Set<object>();
  for(let current:ProfileShowcaseAcceptedTransitionSource|undefined=source;current;current=current.predecessor){
   if(seen.has(current)||!digest(current.artifactDigest)||!current.exactSealedArtifactBytes.length)invalid();seen.add(current);
   suffix.push({artifactDigest:current.artifactDigest,exactSealedArtifactBytes:current.exactSealedArtifactBytes.slice(),
    ...(current.child?{child:{reference:parseReference(current.child.reference),exactSealedArtifactBytes:current.child.exactSealedArtifactBytes.slice()}}:{})});
  }
- let predecessor:ProfileShowcaseCompleteSourceTransport|undefined;
+ let predecessor:ProfileShowcaseCompleteSourceTransport|undefined=accepted?{transportVersion:2,...accepted}:undefined;
  for(const current of suffix.reverse()){
   const carrier=await writeExactByteBlocks(blob(current.exactSealedArtifactBytes),writeBlock);
   if(current.child){const imported=await readImportedSourceTransportReference(current.child.exactSealedArtifactBytes);if(imported){

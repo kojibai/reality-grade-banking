@@ -21,7 +21,7 @@ it.each(['delayed','delivery-error'] as const)('finishes from the verified local
  const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:original.digest,byteLength:3,filename:original.filename,mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:3,contentByteLength:3,height:0}};
  try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));const button=[...host.querySelectorAll('button')].find(button=>button.textContent==='Sign')!;await act(async()=>button.click());expect(publish).toHaveBeenCalledOnce();
  await act(async()=>adoption.retainAssetPublicationAdmission({username:'artist',sourceReference:reference,firstPaint:{artifactDigest:'c'.repeat(64)},original:{id:'imported-local',assetTitle:original.title,showOnProfile:true,hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64),importedSource:{reference},media:{kind:'file',originalDownloadSha256Hex:original.digest,originalDownloadSrc:'/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)})}}},{identityDigest:'d'.repeat(64),accountUid:'owner'}));
- expect([...host.querySelectorAll('button')].find(button=>button.textContent==='Delivering your original…')?.disabled).toBe(true);
+ expect(host.querySelector('[role="status"][aria-label="Delivering your Original"]')).not.toBeNull();
  expect(host.textContent).toContain('Your Original is public on Receiz.');expect(host.textContent).not.toContain('Signing your Original');expect(host.textContent).not.toContain('Finish publishing');expect(host.textContent).toContain('Open your asset');
  if(mode==='delivery-error'){await act(async()=>{fail(Error('Background delivery unavailable'));await pending.catch(()=>{});});expect(host.querySelector('[role=alert]')).toBeNull();expect(host.textContent).toContain('Your Original is public on Receiz.');}
  }finally{await act(async()=>{finish({...original,pbiSigned:true});await pending.catch(()=>{});});act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
@@ -31,7 +31,7 @@ it('updates restored completion from the delivery acknowledgment without repeate
  const pending={...original,publication:{status:'pending'}},read=vi.fn(async()=>pending),retry=vi.fn(),identity={accountUsername:()=> 'artist',pendingAssetPublication:read,retryAssetPublication:retry} as unknown as OpenIdentity;
  const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:original.digest,byteLength:3,filename:original.filename,mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:3,contentByteLength:3,height:0}};
  const host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Global delivery has started.');
+ try{await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.textContent).toContain('Public delivery is awaiting confirmation.');
  await act(()=>adoption.retainAssetPublicationAdmission({username:'artist',sourceReference:reference,firstPaint:null,original:{id:'imported-local',assetTitle:original.title,showOnProfile:true,importedSource:{reference},media:{kind:'file',originalDownloadSha256Hex:original.digest,originalDownloadSrc:'/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)})}}},{identityDigest:'d'.repeat(64),accountUid:'owner'}));
  await act(()=>adoption.acknowledgeAssetPublication(original.digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1}));
  expect(host.textContent).toContain('Your Original is already public on Receiz and accruing value');expect(read).toHaveBeenCalledOnce();expect(retry).toHaveBeenCalledOnce();expect(host.textContent).toContain('Open your asset');
@@ -75,7 +75,7 @@ it('joins an existing delivery on reopen without sending or sealing it twice',as
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   await act(async()=>{await vi.waitFor(()=>expect(resuming).toBe(true));});
-  expect(host.textContent).toContain('Delivering your original');
+  expect(host.querySelector('[role="status"][aria-label="Delivering your Original"]')).not.toBeNull();
   expect(deliveries).toBe(1);expect(seals).toBe(1);
   await act(async()=>{complete({status:'published',artifactDigest:'e'.repeat(64),operationCount:2,visibleChildCount:1});await vi.waitFor(()=>expect(state?.status).toBe('published'));});
   expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(true);
@@ -90,7 +90,7 @@ it.each(['pending','rejected'] as const)('retains a %s saved delivery without au
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   expect(attempts).toBe(1);expect(host.textContent).toContain('Retry public delivery');expect(host.textContent).toContain('PROFILE_SHOWCASE_PUBLICATION_HTTP_503');
-  expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(false);
+  expect([...host.querySelectorAll('button')].find(button=>button.textContent==='Sign')?.disabled).toBe(false);
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));expect(attempts).toBe(1);
  }finally{act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
 });
@@ -102,7 +102,7 @@ it('does not leave the next identity busy or adopt a late delivery from the prev
  const nextIdentity={accountUsername:()=> 'another',pendingAssetPublication:async()=>next}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host),render=(identity:OpenIdentity)=><CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>;
  try{
-  await act(async()=>root.render(render(previousIdentity)));expect(host.textContent).toContain('Delivering your original');
+  await act(async()=>root.render(render(previousIdentity)));expect(host.querySelector('[role="status"][aria-label="Delivering your Original"]')).not.toBeNull();
   await act(async()=>root.render(render(nextIdentity)));
   expect(host.textContent).toContain('The next account’s Original');expect([...host.querySelectorAll('button')].find(button=>button.textContent==='Sign')?.disabled).toBe(false);
   await act(async()=>{finish(original);await delivery;});

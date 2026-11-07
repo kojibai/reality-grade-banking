@@ -47,7 +47,7 @@ export async function admitConnectedComposerSource(input:Readonly<{file:File;own
  * placement, causal append, custody and public projection. No parallel store. */
 type ConnectedAssetRuntimeInput=Readonly<{
  identity:Uint8Array;passphrase:string;account:Readonly<{uid:string;username:string}>;
- sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void;
+ sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission,context?:Readonly<{signing:boolean}>):Promise<void>|void;
 } >;
 export async function createConnectedAssetPublicationRuntime(input:ConnectedAssetRuntimeInput){
  input.assertCurrent();
@@ -86,8 +86,8 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
     input.assertCurrent();signedSources.set(opened.reference.artifactSha256,authorshipProof);
    }
    retainImportedProfileOriginalMaterial(original,username,opened.source);
-   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}));input.assertCurrent();
-   return(await publication()).publishOpened(opened,authorshipProof);
+   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
+   return(await publication()).publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
  return {
   async stage(file:File){return(await publication()).stage(file);},
@@ -151,11 +151,15 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
    }).then(async receipt=>{if(receipt.status==='published'){await rememberDeliveredSources(source);if(prepared)await incremental.acceptPublished(prepared);initialDeliveryAccepted=true;}return receipt;});
   deliveries.set(source.artifactDigest,result);return result;
  };
- return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)});return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof){
+ return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)});return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false){
   input.assertCurrent();const {source,reference}=opened,original=opened.original;
-  if(authorshipProof){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof));if(!result)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');input.assertCurrent();return result;}
+  const sourceResultKey=`original:${reference.artifactSha256}:${authorshipProof?.pbiReceiptHash??''}`,known=deliveries.get(sourceResultKey);if(known)return known;
+  const remember=(result:ProfileShowcasePublicProjectionPublicationResult)=>{if(result.status==='published')deliveries.set(sourceResultKey,Promise.resolve(result));return result;};
+  // Explicit signing only advances a current head. Ordinary first delivery may
+  // already carry the saved PBI; bootstrap that same signed placement once.
+  if(authorshipProof&&!allowBootstrap){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof));if(!result)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');input.assertCurrent();return remember(result);}
   const authorizeMarket=undefined;
-  if(!authorizeMarket){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened));if(result){input.assertCurrent();return result;}}
+  if(!authorizeMarket){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof));if(result){input.assertCurrent();return remember(result);}}
 
   await withProfileShowcaseCausalAppendLock(artifactId,async()=>{input.assertCurrent();await recoverAcceptedShowcasePredecessor({username,artifactId,vault,fetchImpl:input.fetchImpl,retainImportedSources:async(complete,fromAcceptedTransport)=>{
     // Only an exact server-accepted head (or a receipt from this runtime) may
@@ -167,7 +171,7 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
   const existing=await vault.resolveOriginalChildCustody(artifactId,original.id);
   const localAdmission=async(_firstPaint:ProfileShowcaseBoundedFirstPaint)=>{input.assertCurrent();retainImportedProfileOriginalMaterial(original,username,source);};
   if(!existing){
-   const placement=await sealAndAdmitImportedSourcePlacement({source,reference,ownerReceizId:owner,immutableVersion:profileShowcaseLiveKaiUpulse(),seal:childSealer});input.assertCurrent();
+   const placement=await sealAndAdmitImportedSourcePlacement({source,reference,ownerReceizId:owner,immutableVersion:profileShowcaseLiveKaiUpulse(),seal:childSealer,authorshipProof});input.assertCurrent();
    await publishComposerBoundedShowcaseIfAuthorized({importedPlacement:placement,renderedSealedArtifact:source.exactArtifact,username,
     actorId:admitted.actor.actorId,actorAdmission:admitted,showcaseArtifactId:artifactId,keyFile,passphrase:input.passphrase,routeProjection:placement.original,boundedVault:vault,sealDocument,childSealer,
     loadCompleteLegacyShowcase:()=>loadCompleteLegacyProfileShowcase({username,fetchPage:async cursor=>{input.assertCurrent();const response=await input.fetchImpl(`/api/profile/${username}/originals?source=inventory${cursor?`&cursor=${encodeURIComponent(cursor)}`:""}`);if(!response.ok)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_INVENTORY_PENDING");const body=await response.json();if(body.ok!==true||!Array.isArray(body.originals))throw new TypeError("PROFILE_SHOWCASE_CONNECTED_INVENTORY_PENDING");return{originals:body.originals,hasMore:body.page?.hasMore===true,nextCursor:body.page?.nextCursor??null};}}),
@@ -176,11 +180,11 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
   // With no accepted Source prefix, the genuine initial migration+append is
   // missing publication input. Its full bootstrap is never an append fallback.
   if(!initialDeliveryAccepted&&acceptedDelivery&&typeof acceptedDelivery==='object'&&'status'in acceptedDelivery&&acceptedDelivery.status==='unmigrated'){
-   const complete=await vault.exportCompleteSource(artifactId);if(!complete)throw TypeError('PROFILE_SHOWCASE_CONNECTED_COMPLETE_SOURCE_REQUIRED');const result=await deliver(complete);input.assertCurrent();if(result.status!=='published')deliveries.delete(complete.artifactDigest);return result;
+   const complete=await vault.exportCompleteSource(artifactId);if(!complete)throw TypeError('PROFILE_SHOWCASE_CONNECTED_COMPLETE_SOURCE_REQUIRED');const result=await deliver(complete);input.assertCurrent();if(result.status!=='published')deliveries.delete(complete.artifactDigest);return remember(result);
   }
   input.assertCurrent();const head=await vault.readPublicationHead(artifactId);if(!head)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_REQUIRED");
   const ensured=await ensureCurrentProfileShowcasePublicProjection(vault,artifactId,deliver,{readRoute:()=>{input.assertCurrent();return account;}});input.assertCurrent();
-  const pending=deliveries.get(head.artifactDigest),result=pending?await pending:{status:"pending"as const,code:ensured.code??"PROFILE_SHOWCASE_PUBLICATION_PENDING"};if(result.status!=="published")deliveries.delete(head.artifactDigest);return result;
+  const pending=deliveries.get(head.artifactDigest),result=pending?await pending:{status:"pending"as const,code:ensured.code??"PROFILE_SHOWCASE_PUBLICATION_PENDING"};if(result.status!=="published")deliveries.delete(head.artifactDigest);return remember(result);
  }};
 }
 
