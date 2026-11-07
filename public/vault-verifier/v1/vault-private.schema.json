@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bankeiz.com/vault-verifier/v1/vault-private.schema.json",
   "title": "Private Vault carrier",
-  "description": "Private authority-bearing transport. Structural validation alone proves no custody, account or holdings. Verify its canonical enclosing original, decrypt when protected, then admit every native source and the distinct child key. Never share this object as public evidence. Aggregate byte bounds, exact hashes, origin/RP binding and semantic financial checks are enforced by the included readers.",
+  "description": "Private proof-container transport. Structural validation alone proves no ownership, funding or current unspentness. Verify its canonical enclosing Original, decrypt when protected, then admit every carried Original and funded Note under its existing reader. A Note may carry its own scoped private key; the ordinary account key is not part of a new Vault. Existing account-custody source readers remain supported for historical Vaults. Never share private files as public evidence. Byte bounds, exact hashes, origin/RP binding and source admission are enforced by the included readers.",
   "oneOf": [
     {
       "type": "object",

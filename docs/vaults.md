@@ -1,61 +1,62 @@
-# Private vaults and shared proof
+# Private Vaults and independent recovery
 
-A Vault holds the actual supported money sources, asset originals and investment ownership certificates. Its private original carries its custody, contained sources and operation history. A separate public proof discloses selected holdings without carrying access authority.
+A Vault is a private, portable proof container. It carries complete funded Note images and owned Originals, including their existing proof and continuity. Creating a Vault creates no additional account and moves no ownership. Its saved contents open locally; no Bankeiz server is needed to discover what the file already carries.
 
-The native rules remain the rules for money, ownership, consent and once-only execution. Saving an image, changing a displayed amount or copying a source cannot create spendable value.
+## Create, add and save
 
-## Opening and recovery
+Open **Account settings → Your vaults → Create a vault**. Give it a name and choose whether to add passkey protection. Review and approve the local container.
 
-Open **Identity → Your vaults**. Create a named vault or open its complete private PNG. The default private original is a bearer credential: anyone with that file can use the Vault authority it contains. It contains the separate Vault key, never the ordinary account's signing key or Identity Record.
+- **Add money** opens the existing funded Note flow. Once that operation completes, its actual Note image, including scoped per-Note authority, is retained inside the Vault. Funding remains the existing Note operation; the Vault adds no new money or settlement rule.
+- **Add a Note** retains the exact supported, complete Note image. A funded Note's own source establishes its recorded value. A bare image or a funding record missing its required per-Note authority cannot stand in for the complete private Note.
+- **Add an original** retains the complete, already-owned Original. Its owner, contents, provenance and history remain intact. Storage in a Vault is not an ownership transfer, sale or second financial holding.
+- **Save private Vault** saves the complete current container as a canonical PNG Original. Open the saved file to inspect its contents. Save again after adding anything: an older file cannot carry a later addition.
 
-Optional passkey protection encrypts that private authority using the existing WebAuthn PRF protection. Opening a protected original requires its original PRF-compatible passkey at the registered relying-party origin. The saved original and access to that passkey are both necessary. An ordinary Identity Record cannot replace either one. Real-device support and replacement-device recovery depend on the authenticator/provider; synthetic qualification is not a claim that every provider supports recovery.
+The ordinary account signing key and Identity Record are never placed inside this container. A Note may carry its own narrowly scoped per-Note key, which authorizes only that Note under its existing contract.
 
-Before the first custody creation or a new financial operation, the interface requires saving and reopening the exact prepared private original. The encrypted local journal retains the exact requests and admitted outcomes. After an operation, save the updated private original to carry its new state to another device. A file saved before an action does not contain an unsaved later outcome.
+The displayed **Stored Notes** total is the recorded funded value carried by the saved Note sources. It is not another account balance or a statement that a historical Note remains unspent. Using a recovered Note still follows its existing receiving, consumption and continuity rules.
 
-## Value movement
+## Private original and optional protection
 
-- **Balance:** issue the existing funded Note from the owner into the Vault's separate custody. Reserve and Settlement retain their existing source rules.
-- **Card:** retain one exact checkout, reconcile that checkout, then move its admitted funded value. A checkout status alone is not money evidence. An unknown checkout creation must be reconciled before another request can replace it.
-- **Original:** move an admitted supported asset in kind. Its original, quantity, ownership and history remain connected.
-- **Investment:** move admitted Market ownership units in kind with their cost basis and source history. Depositing or returning those units is not a sale or a new purchase.
-- **Send or return:** review the exact source, amount and destination. Returning value targets the original owner's admitted account ID, including after a display-name change. Sending resolves a Receiz ID during preparation and binds the actual recipient in the approved request.
+Without passkey protection, the private PNG contains its complete private sources. Keep it private: a person holding it can recover those sources and any per-Note authority they contain.
 
-Every financial action reserves capacity for the complete resulting private source before an irreversible mutation. Retained stages use exact request digests and operation IDs. Lost responses remain pending; recovery checks or replays the same approved request. It does not invent a replacement transaction or report a successful movement from a transport response alone.
+Optional protection encrypts those same contents through the existing WebAuthn PRF path. Opening the protected original requires the original PRF-compatible passkey at its registered relying-party origin. Device and passkey-provider support govern whether that credential is available on another device. A new passkey or ordinary Identity Record cannot decrypt the protected file.
 
-The current release opens saved contents offline. Funding, custody changes, sending and returning use the connected financial contracts. Historical verification works offline; it does not establish present unspentness. Fully offline financial execution is a separate integration contract.
+**Save recovery original** is an explicit, separate choice for a protected Vault. It produces an unprotected private Original carrying the same exact sources. Keep that recovery copy in private custody, separately from the protected primary file. It can be opened by the included independent reader without Bankeiz availability, a login or the original passkey origin. Creating it does not remove protection from the primary Vault.
 
-## Public proof and QR
+## Recover the actual sources
 
-Select holdings under **Share proof**. The shared PNG contains the selected native witnesses and a holder signature. It carries no private key, phrase, login record or spendable bearer token. Its QR identifies the Vault and the exact public proof digest. Publishing the exact record is an explicit, separate choice; an unpublished QR locator cannot fetch an unpublished record.
+Open a saved private Vault to restore the container locally. Its source readers verify the canonical enclosing file, each owned Original and each supported Note. A complete funded Note includes its per-Note authority; the ordinary account's private signing key is not needed to inspect or recover these files.
 
-`/vault/<vault-id>/?proof=<sha256>` opens a dedicated public reader without mounting the ordinary account application. A recipient can also open the saved public original. The reader verifies its enclosing artifact before projecting the carried public evidence. Private originals are refused by the public evidence reader.
+Use the source's export control to recover its exact original bytes. The recovered Note or Original is the same supported source retained in the Vault, not a reconstructed amount, thumbnail or replacement financial object. A compatible implementation can then apply that source's existing rules. Recovering an Original does not change its owner; recovering a Note does not create a second credit.
 
-A public proof establishes the disclosed evidence at its recorded coordinate. A genuine old proof remains genuine; it does not assert that all holdings remain unspent today. Copying public evidence gives no authority to enter the account or Vault.
+Funding and any interrupted funding recovery remain in the existing Notes flow. Only a completed, admitted Note is added to the container. The Vault adds no financial request journal, transfer control or second recovery operation.
 
-## Independent inspection
+## Independent offline inspection
 
-The standalone browser reader is `/vault-verifier/v1/verify.html`. Save it for local use. Its complete reader, canonical artifact verification, native source admission and pinned issuer material are included. It makes no network requests and grants no authority. Open only files you intend to inspect; keep private originals private.
+The standalone browser reader is `/vault-verifier/v1/verify.html`. Save it with the private Original or recovery copy. Its canonical artifact verifier, Note and Original readers and pinned issuer material are included; it makes no network requests, signs nothing and grants no execution authority.
+
+After it opens a complete private container, choose **Save Note** or **Save Original** to recover an exact carried file. The reader reuses the admitted sources for these downloads. Keep the recovered files private; a funded Note retains its scoped authority.
 
 For machine-readable local inspection:
 
 ```sh
-node public/vault-verifier/v1/verify.mjs /path/to/vault.public.png
-node public/vault-verifier/v1/verify.mjs /path/to/vault.public-proof.json
 node public/vault-verifier/v1/verify.mjs /path/to/vault.private.png
+node public/vault-verifier/v1/verify.mjs /path/to/vault.recovery.private.png
+node public/vault-verifier/v1/verify.mjs /path/to/vault.recovery.private.png --extract /private/recovery
 ```
 
-Exit 0 means the carried evidence verified. Exit 1 means rejection. Exit 2 means a usage error or protected private contents that require the original passkey. A protected file whose outer artifact verifies is explicitly reported as unopened; the reader does not claim to have verified its encrypted contents. Output is allowlisted and omits keys, recovery phrases and private source bytes.
+Exit 0 means the carried evidence verified. Exit 1 means rejection. Exit 2 means a usage error or protected contents that require the original passkey. A protected file whose outer seal verifies is reported as unopened; encrypted contents are not reported as verified. Inspection output omits Note private keys, phrases and private source bytes.
 
-Rebuild the reader with `npm run vault:reader:build`. Its `build.json` records source and output hashes; `inspector.js.map` contains the corresponding bundled sources, with license notices beside the reader. Structural schemas describe interchange shapes; they do not replace cryptographic admission.
+The explicit `--extract` action first verifies the complete file, then saves exact sources under digest-based filenames with private permissions. It does not overwrite an existing output. Default inspection does not write private files.
+
+Rebuild with `npm run vault:reader:build`. `build.json` records the exact included inputs and output digests; the adjacent source map and license notices accompany the reader. Structural schemas describe the transport, while canonical admission verifies its proof.
+
+## Existing Vaults and public proofs
+
+Previously saved account-custody Vaults retain their original reader and financial contracts. Their existing sources, custody, history and operations are preserved. Existing public Vault proofs remain read-only selected evidence and carry no private access authority. The public route `/vault/<vault-id>/?proof=<sha256>` and independent reader continue to inspect that exact published proof family.
+
+New private proof containers do not create those child accounts, transfer investments or publish their contents. Sharing a private file shares its private sources; use the existing explicit public proof tools when the intention is public evidence.
 
 ## Performance and preservation
 
-Ordinary account startup does not import, open or inspect Vault contents. Vault code and its native reader load only on explicit entry. The public Vault route uses its own entry; the large independent inspection kit is not included in ordinary startup or offline-shell precaching.
-
-Existing signed originals and financial records are retained. Recovery appends admitted outcomes; it does not delete original ledger history or mutate a sealed source. A derived display/index is subordinate to that retained evidence. The connected Note funding repair separately preserves the prior index and verifies original-record fingerprints.
-
-## Verification boundaries
-
-Automated checks cover exact prepared-file reopening, optional protection, source substitution, identity mismatch, capacity before mutation, lost results, exact-request recovery, immutable public disclosure and credential-free inspection. Native test fixtures exercise actual cryptographic/source contracts; browser presentation fixtures do not grant financial authority.
-
-The approved production custody migration is applied, with existing balances, holdings, Ledger rows and funding functions verified unchanged. Application rollout remains separate. Local tests do not exercise real funds. Real Face ID and replacement-provider passkey recovery must be qualified on supported devices before making device-specific claims. See the [release verification record](verification/2026-10-24-vault-release.md) for the exact checks and scope.
+Ordinary account, Market and public page startup do not open Vault contents. Vaults load on explicit entry. During one unlocked lifetime, accepted unchanged sources are reused and only additions cross admission. Opening a saved file admits its complete carried evidence once, without rediscovering it through a server or rebuilding account history. The independent offline inspection kit is separate from ordinary application startup.

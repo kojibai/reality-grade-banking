@@ -9,6 +9,20 @@ import { unattestedResponse } from './fixtures/note-registration';
 import {atNoteStage} from '../src/receiz/note-stage';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const click = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find(b => b.textContent?.includes(label))!.click();
+test('hands a completed Note to local storage once without another creation or deposit',async()=>{
+ const note={noteId:'vault-note',rail:'reserve',amountUsdCents:'10000',image:new Uint8Array([1,2])},create=vi.fn(async()=>note),deposit=vi.fn(),retained=vi.fn(async()=>{});
+ const identity={offlineNotes:async()=>({savedNotes:async()=>[],pending:async()=>null,create,deposit})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} onCreated={retained}/>));await act(async()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));expect(retained).toHaveBeenCalledExactlyOnceWith(note);expect(create).toHaveBeenCalledOnce();expect(deposit).not.toHaveBeenCalled();}finally{act(()=>root.unmount());}
+});
+test('does not hand a late Note from a replaced identity to its current storage surface',async()=>{
+ let finish!:(note:unknown)=>void;const retained=vi.fn(async()=>{}),create=vi.fn(()=>new Promise(resolve=>{finish=resolve;})),api={savedNotes:async()=>[],pending:async()=>null,create};
+ const first={offlineNotes:async()=>api}as unknown as OpenIdentity,second={offlineNotes:async()=>({...api,create:vi.fn()})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<OfflineNotes identity={first} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} onCreated={retained}/>));await act(async()=>click(host,'Review note'));await act(async()=>click(host,'Create funded note'));
+  await act(async()=>root.render(<OfflineNotes identity={second} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} onCreated={retained}/>));await act(async()=>finish({noteId:'old-note',rail:'reserve',amountUsdCents:'10000',image:new Uint8Array([1])}));expect(retained).not.toHaveBeenCalled();expect(host.textContent).not.toContain('Your note is ready.');
+ }finally{act(()=>root.unmount());}
+});
 test('saving an older Note exports its sealed image without creating or depositing another Note',async()=>{
  const note={noteId:'saved-note',rail:'reserve',amountUsdCents:'200',image:new Uint8Array([1,2])},sealed=new Uint8Array([3,4]),create=vi.fn(),deposit=vi.fn(),exportImage=vi.fn().mockResolvedValue(sealed);
  const identity={offlineNotes:async()=>({savedNotes:async()=>[note],pending:async()=>null,create,deposit,exportImage})}as unknown as OpenIdentity;

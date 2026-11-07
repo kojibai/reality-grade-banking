@@ -17,6 +17,6 @@ export const docsPaths=[
  {title:'Create, own and exchange',summary:'Seal and sign an Original, move ownership, use shares and inspect the outcome.',slugs:['assets','publication','backing','ownership','market-trading','market-records','certificates','market-value']},
  {title:'Talk, plan and meet',summary:'Keep people, conversations, booking, meetings and their records together.',slugs:['messages','contacts','calendar-booking','meetings']},
  {title:'Put Business to work',summary:'Ask your agent, configure its work, connect the business and fund usage.',slugs:['agents','twin-workspace','business-setup','credits','agent-continuity']},
- {title:'Protect and carry value',summary:'Keep the original identity, separate Vault custody, Notes and recovery.',slugs:['identity','backup','vaults','notes','offline','security','permissions','disclosure']},
+ {title:'Protect and carry value',summary:'Keep your Identity Record, complete Notes, private Vaults and recovery originals.',slugs:['identity','backup','vaults','notes','offline','security','permissions','disclosure']},
  {title:'Understand, build and verify',summary:'Explore the sources, causal records, units, receiving laws and independent assessment.',slugs:['economy','banking','concepts','trust','reserve-settlement','verification','infrastructure','sdk','mcp','ai-skills','integrations','merchant-checkout','conformance','compatibility','glossary']},
 ];

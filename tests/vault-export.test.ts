@@ -1,12 +1,22 @@
 import {expect,it,vi} from 'vitest';
 import {insertPngTextChunks} from '../native/receiz/app/utils/pngChunks';
 import {createImageVault} from '../src/receiz/vault/carrier';
-import {exportVaultPrivateImage,openVaultImage} from '../src/receiz/vault/export';
+import {exportVaultPrivateImage,exportNoteVaultPrivateImage,isNoteVaultImage,openVaultImage} from '../src/receiz/vault/export';
 import {vaultCanonical} from '../src/receiz/vault/encoding';
 
 const png=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF0sAAAAASUVORK5CYII=','base64'));
 const vaultId='1e60455a-a57b-43c7-94a4-cff2ef45db4c';
 const carrier=createImageVault(new TextEncoder().encode('private complete original'),{id:vaultId,owner:{keyId:'a'.repeat(64),receizId:'owner.receiz.id'}});
+it('routes a Note-backed Vault separately while still requiring the canonical seal and exact carrier',async()=>{
+ const result=await exportNoteVaultPrivateImage(carrier,{name:'Private Notes',kaiUPulse:'14781781000000',holdings:1},{render:async()=>png,seal:async input=>({artifactBytes:input.bytes}),verify:async()=>true});
+ expect(isNoteVaultImage(result.bytes)).toBe(true);
+ expect(isNoteVaultImage(png)).toBe(false);
+ expect((await openVaultImage(result.bytes,async()=>true)).kind).toBe('note-private');
+ await expect(openVaultImage(result.bytes,async()=>false)).rejects.toThrow('SEAL_INVALID');
+ const ambiguous=insertPngTextChunks(result.bytes,[{keyword:'receiz.bank.vault.private.v1',text:vaultCanonical(carrier)}]);
+ expect(isNoteVaultImage(ambiguous)).toBe(false);
+ await expect(openVaultImage(ambiguous,async()=>true)).rejects.toThrow('FORMAT_INVALID');
+});
 it('seals the whole private carrier before reopening exact bytes and labels bearer custody accurately',async()=>{
  let rendered='';const seal=vi.fn(async(input:{bytes:Uint8Array})=>({artifactBytes:input.bytes}));
  const result=await exportVaultPrivateImage(carrier,{name:'Family reserve',kaiUPulse:'14781781000000',holdings:2},{render:async svg=>{rendered=svg;return png;},seal,verify:async()=>true});

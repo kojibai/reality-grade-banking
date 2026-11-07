@@ -4,7 +4,7 @@ import {readVaultCarrier,type VaultCarrier} from './carrier';
 import {vaultCanonical,vaultDigest} from './encoding';
 import type {VaultPublicRecord} from './public-record';
 
-const PRIVATE='receiz.bank.vault.private.v1',PUBLIC='receiz.bank.vault.public.v1',MAX=48*1024*1024;
+const PRIVATE='receiz.bank.vault.private.v1',NOTE_PRIVATE='receiz.bank.note-vault.private.v1',PUBLIC='receiz.bank.vault.public.v1',MAX=48*1024*1024;
 const json=(value:unknown)=>new TextEncoder().encode(vaultCanonical(value));
 type VerifiedPublic={record:VaultPublicRecord;recordSha256:string;vaultId:string;name:string;ownerReceizId:string;holdings:readonly unknown[];sealedAtKaiUPulse:string};
 export type VaultImagePorts={render(svg:string):Promise<Uint8Array>;seal(input:{bytes:Uint8Array;filename:string;mimeType:'image/png'}):Promise<{artifactBytes:Uint8Array}>;verify(bytes:Uint8Array):Promise<boolean>};
@@ -12,13 +12,19 @@ export type VaultImagePorts={render(svg:string):Promise<Uint8Array>;seal(input:{
 /** This reader admits the standard outer seal and closed carrier only. It
  * deliberately grants no custody: callers must independently admit every
  * enclosed native source before displaying holdings or opening authority. */
-export async function openVaultImage(input:Uint8Array,verify:(bytes:Uint8Array)=>Promise<boolean>):Promise<{kind:'private';value:VaultCarrier}|{kind:'public';value:unknown}>{
+export async function openVaultImage(input:Uint8Array,verify:(bytes:Uint8Array)=>Promise<boolean>):Promise<{kind:'private'|'note-private';value:VaultCarrier}|{kind:'public';value:unknown}>{
  const bytes=new Uint8Array(input);if(!bytes.length||bytes.length>MAX)throw Error('VAULT_IMAGE_CAPACITY');
  if(!await verify(bytes))throw Error('VAULT_IMAGE_SEAL_INVALID');
- const chunks=readPngTextChunks(bytes,{maxCompressedBytes:MAX,maxTextBytes:MAX}).filter(v=>v.keyword===PRIVATE||v.keyword===PUBLIC);
+ const chunks=readPngTextChunks(bytes,{maxCompressedBytes:MAX,maxTextBytes:MAX}).filter(v=>v.keyword===PRIVATE||v.keyword===NOTE_PRIVATE||v.keyword===PUBLIC);
  if(chunks.length!==1||new TextEncoder().encode(chunks[0].text).length>MAX)throw Error('VAULT_IMAGE_FORMAT_INVALID');
  const value=JSON.parse(chunks[0].text);
- return chunks[0].keyword===PRIVATE?{kind:'private',value:readVaultCarrier(value)}:{kind:'public',value};
+ return chunks[0].keyword===PUBLIC?{kind:'public',value}:{kind:chunks[0].keyword===NOTE_PRIVATE?'note-private':'private',value:readVaultCarrier(value)};
+}
+/** Routing hint only. Opening still verifies the enclosing seal and complete
+ * carried sources. An untrusted marker never supplies ownership or value. */
+export function isNoteVaultImage(bytes:Uint8Array):boolean{
+ if(!bytes.length||bytes.length>MAX)return false;
+ try{const chunks=readPngTextChunks(bytes,{maxCompressedBytes:MAX,maxTextBytes:MAX}).filter(v=>v.keyword===PRIVATE||v.keyword===NOTE_PRIVATE||v.keyword===PUBLIC);return chunks.length===1&&chunks[0].keyword===NOTE_PRIVATE;}catch{return false;}
 }
 async function seal(svg:string,keyword:string,value:unknown,filename:string,ports:VaultImagePorts){
  const captured=vaultCanonical(value),png=await ports.render(svg);
@@ -26,14 +32,16 @@ async function seal(svg:string,keyword:string,value:unknown,filename:string,port
  if(carried.length>MAX)throw Error('VAULT_IMAGE_CAPACITY');
  const result=await ports.seal({bytes:carried,filename,mimeType:'image/png'}),bytes=new Uint8Array(result.artifactBytes);
  const opened=await openVaultImage(bytes,ports.verify);
- if(opened.kind!==(keyword===PRIVATE?'private':'public')||vaultCanonical(opened.value)!==captured)throw Error('VAULT_IMAGE_SOURCE_CHANGED');
+ if(opened.kind!==(keyword===PRIVATE?'private':keyword===NOTE_PRIVATE?'note-private':'public')||vaultCanonical(opened.value)!==captured)throw Error('VAULT_IMAGE_SOURCE_CHANGED');
  return{bytes,filename,mimeType:'image/png' as const,digest:await vaultDigest(bytes),svg};
 }
-export async function exportVaultPrivateImage(value:VaultCarrier,details:{name:string;kaiUPulse:string;holdings:number},ports:VaultImagePorts){
+async function exportPrivate(value:VaultCarrier,details:{name:string;kaiUPulse:string;holdings:number},ports:VaultImagePorts,keyword:string){
  const carrier=readVaultCarrier(structuredClone(value)),id=carrier.header.id;
  const svg=drawVaultArtwork({vaultId:id,name:details.name,ownerReceizId:carrier.header.owner.receizId,sourceDigest:await vaultDigest(json(carrier)),kaiUPulse:details.kaiUPulse,kind:'private',protection:carrier.schema==='bank.vault.encrypted.v1'?'passkey':'image',publicUrl:vaultPublicUrl(id),holdings:details.holdings});
- return seal(svg,PRIVATE,carrier,`vault-${id}.private.png`,ports);
+ return seal(svg,keyword,carrier,`vault-${id}.private.png`,ports);
 }
+export const exportVaultPrivateImage=(value:VaultCarrier,details:{name:string;kaiUPulse:string;holdings:number},ports:VaultImagePorts)=>exportPrivate(value,details,ports,PRIVATE);
+export const exportNoteVaultPrivateImage=(value:VaultCarrier,details:{name:string;kaiUPulse:string;holdings:number},ports:VaultImagePorts)=>exportPrivate(value,details,ports,NOTE_PRIVATE);
 export async function exportVaultPublicImage(input:unknown,inspect:(value:unknown)=>Promise<VerifiedPublic>,ports:VaultImagePorts){
  const verified=await inspect(structuredClone(input));
  const svg=drawVaultArtwork({vaultId:verified.vaultId,name:verified.name,ownerReceizId:verified.ownerReceizId,sourceDigest:verified.recordSha256,kaiUPulse:verified.sealedAtKaiUPulse,kind:'public',publicUrl:vaultPublicUrl(verified.vaultId,verified.recordSha256),holdings:verified.holdings.length});

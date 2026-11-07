@@ -15,9 +15,9 @@ export function valueFlowArt(){return `<svg class="vp-value-art" data-value-flow
  <g class="vp-held-original"><path d="m85 92 146-23 25 19v174l-146 26-25-19Z" fill="url(#vp-flow-blue)" stroke="#8aa7ec"/><path d="m110 111 146-23v174l-146 26Z" fill="url(#vp-flow-image)" stroke="#fff" stroke-width="2"/><path d="m127 132 110-19m-110 31 73-13" stroke="#fff" stroke-width="2"/><g transform="translate(180 165)">${key('#315be3')}</g><path d="M135 251 231 112" stroke="#fff" stroke-width="13" stroke-opacity=".4"/></g>
  <g fill="none" stroke="#9eb4d8" stroke-width="1"><path d="M278 174h100c55 0 42-99 109-99h157"/><path d="M278 174h366"/><path d="M278 174h100c55 0 42 99 109 99h157"/></g>
  <g class="vp-flow-transfer"><rect x="290" y="164" width="30" height="21" rx="4" fill="#f5f8ff" stroke="#557bcf"/><path d="M297 174h15m-4-4 4 4-4 4" fill="none" stroke="#315be3"/></g>
- <g transform="translate(671 49)" fill="none" stroke="#5977aa" stroke-width="1.5"><circle cx="0" cy="0" r="11"/><path d="M-20 42V32a20 20 0 0 1 40 0v10"/></g>
- <g transform="translate(655 155)"><path d="m0 7 21-12 22 12v26l-22 12L0 33Z" fill="#e7eefc" stroke="#8ba5d1"/><path d="m0 7 21 13L43 7M21 20v25" fill="none" stroke="#8ba5d1"/></g>
- <g transform="translate(649 254)" fill="none" stroke="#5977aa" stroke-width="1.5"><path d="m0 8 24-12 24 12H0Zm0 37h48M5 37V16m13 21V16m13 21V16m12 21V16"/></g>
+ <g transform="translate(655 49)" fill="#f5f8ff" stroke="#5977aa" stroke-width="1.5"><path d="M0 0h30l13 13v39H0Z"/><path d="M30 0v13h13M8 24h27M8 32h27M8 40h16" fill="none"/><text x="21" y="68" text-anchor="middle" fill="#5977aa" stroke="none" font-family="system-ui,sans-serif" font-size="11">Note</text></g>
+ <g transform="translate(655 151)" fill="#f5f8ff" stroke="#5977aa" stroke-width="1.5"><path d="M0 0h30l13 13v39H0Z"/><path d="M30 0v13h13M7 44l9-14 8 9 6-7 7 12H7Z" fill="none"/><circle cx="13" cy="23" r="3"/><text x="21" y="68" text-anchor="middle" fill="#5977aa" stroke="none" font-family="system-ui,sans-serif" font-size="11">Original</text></g>
+ <g transform="translate(655 254)" fill="#f5f8ff" stroke="#5977aa" stroke-width="1.5"><path d="M0 0h30l13 13v39H0Z"/><path d="M30 0v13h13M9 28a13 13 0 1 1 0 8m0-8h9m-9 0v-9" fill="none"/><text x="21" y="68" text-anchor="middle" fill="#5977aa" stroke="none" font-family="system-ui,sans-serif" font-size="11">Recovery</text></g>
  </svg>`;}
 export function pbiContinuityArt(extended=false){
  const id=extended?'vp-pbi-source':'vp-pbi-check';
