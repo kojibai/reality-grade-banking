@@ -5,10 +5,10 @@ import {join,resolve} from 'node:path';
 import {expect,it} from 'vitest';
 
 const runner=resolve('scripts/vercel-npm.mjs');
-function fixture(build="node -e 'console.log(JSON.stringify({cache:process.env.npm_config_cache,pnpm:process.env.pnpm_config_cache_dir,kept:process.env.BANK_TEST_KEPT,invalid:Object.keys(process.env).filter(k=>k.toLowerCase()===\"npm_config_cache_dir\")}))'"){
+function fixture(build="node -e 'console.log(JSON.stringify({cache:process.env.npm_config_cache,pnpm:process.env.pnpm_config_cache_dir,kept:process.env.BANK_TEST_KEPT,invalid:Object.keys(process.env).filter(k=>k.toLowerCase().replaceAll(\"-\",\"_\")===\"npm_config_cache_dir\")}))'"){
  const directory=mkdtempSync(join(tmpdir(),'bank-build-env-'));
  writeFileSync(join(directory,'package.json'),JSON.stringify({private:true,scripts:{build}}));
- const env={...process.env,npm_config_cache_dir:'/unused/pnpm-cache',NPM_CONFIG_CACHE_DIR:'/unused/duplicate',npm_config_cache:join(directory,'npm-cache'),pnpm_config_cache_dir:'/keep/pnpm-cache',BANK_TEST_KEPT:'kept',npm_config_offline:'true',npm_config_audit:'false',npm_config_update_notifier:'false'};
+ const env={...process.env,npm_config_cache_dir:'/unused/pnpm-cache',NPM_CONFIG_CACHE_DIR:'/unused/duplicate','npm_config_cache-dir':'/unused/hyphen','NPM_CONFIG_CACHE-DIR':'/unused/hyphen-uppercase',npm_config_cache:join(directory,'npm-cache'),pnpm_config_cache_dir:'/keep/pnpm-cache',BANK_TEST_KEPT:'kept',npm_config_offline:'true',npm_config_audit:'false',npm_config_update_notifier:'false'};
  return{directory,env,run:(task:string)=>spawnSync(process.execPath,[runner,task],{cwd:directory,env,encoding:'utf8',timeout:20_000}),close:()=>rmSync(directory,{recursive:true,force:true})};
 }
 it('starts both Vercel npm commands without obsolete npm cache config, preserving valid configuration',()=>{

@@ -7,7 +7,7 @@ else{
  // Some builders expose another package manager's cache-dir as npm config.
  // npm does not support that option. Keep its real cache and all other config;
  // never reinterpret a pnpm cache directory as an npm cache.
- for(const key of Object.keys(env))if(key.toLowerCase()==='npm_config_cache_dir')delete env[key];
+ for(const key of Object.keys(env))if(key.toLowerCase().replaceAll('-','_')==='npm_config_cache_dir')delete env[key];
  const result=spawnSync('npm',args,{env,stdio:'inherit'});
  if(result.error){console.error(result.error.message);process.exitCode=1;}
  else if(result.signal)process.kill(process.pid,result.signal);
