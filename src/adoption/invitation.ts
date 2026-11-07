@@ -17,7 +17,7 @@ function institution(value:unknown):{id?:string;name:string}{
  return{...(value.id!==undefined?{id:value.id}:{}),name:value.name};
 }
 // Public profile aliases use these exact canonical handles; no account lookup or normalization.
-function read(value:unknown):ReceivingInvitation{
+export function readReceivingInvitationObject(value:unknown):ReceivingInvitation{
  object(value,['schema','message','senderName','senderUsername','recipientName','institution','amountUsdCents','purpose']);
  if(value.schema!=='bankeiz.receiving-invitation.v1'||!text(value.message,4000)||value.senderName!==undefined&&!text(value.senderName,120)||value.recipientName!==undefined&&!text(value.recipientName,200)||value.senderUsername!==undefined&&(typeof value.senderUsername!=='string'||!/^[a-z0-9_]{3,24}$/.test(value.senderUsername))||value.purpose!==undefined&&!text(value.purpose,500,true)||value.amountUsdCents!==undefined&&(typeof value.amountUsdCents!=='string'||!/^[1-9]\d{0,17}$/.test(value.amountUsdCents)))invalid();
  return{schema:'bankeiz.receiving-invitation.v1',message:value.message,...(value.senderName!==undefined?{senderName:value.senderName as string}:{}),...(value.senderUsername!==undefined?{senderUsername:value.senderUsername as string}:{}),...(value.recipientName!==undefined?{recipientName:value.recipientName as string}:{}),...(value.institution!==undefined?{institution:institution(value.institution)}:{}),...(value.amountUsdCents!==undefined?{amountUsdCents:value.amountUsdCents as string}:{}),...(value.purpose!==undefined?{purpose:value.purpose as string}:{})};
@@ -25,7 +25,7 @@ function read(value:unknown):ReceivingInvitation{
 function encode(bytes:Uint8Array):string{return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 
 export function receivingInvitationUrl(input:ReceivingInvitation):string{
- const value=read(input),bytes=encoder.encode(JSON.stringify(value));
+ const value=readReceivingInvitationObject(input),bytes=encoder.encode(JSON.stringify(value));
  // Check before base64 expansion as well as the complete fixed-destination link.
  if(bytes.byteLength>maxLink*3/4)invalid();const url=prefix+encode(bytes);if(url.length>maxLink)invalid();return url;
 }
@@ -35,7 +35,7 @@ export function readReceivingInvitation(hash:string):ReceivingInvitation|null{
   if(typeof hash!=='string'||!hash.startsWith('#invite=')||origin.length+'/receiving/'.length+hash.length>maxLink)return null;
   const encoded=hash.slice(8);if(!encoded||!/^[A-Za-z0-9_-]+$/.test(encoded))return null;
   const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),character=>character.charCodeAt(0));
-  if(encode(bytes)!==encoded)return null;return read(JSON.parse(decoder.decode(bytes)));
+  if(encode(bytes)!==encoded)return null;return readReceivingInvitationObject(JSON.parse(decoder.decode(bytes)));
  }catch{return null;}
 }
 

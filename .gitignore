@@ -12,6 +12,7 @@ node_modules/
 test-results/
 /public/proof-verifier/
 /server/receipt-runtime/*.mjs
+/server/invitation-runtime/*.mjs
 /server/asset-runtime/*.mjs
 
 /server/profile-runtime/*.mjs

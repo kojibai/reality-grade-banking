@@ -13,6 +13,10 @@
       "maxDuration": 30,
       "includeFiles": "{dist/receipt/index.html,scripts/social/fonts/*.ttf}"
     },
+    "api/invitation.ts": {
+      "maxDuration": 30,
+      "includeFiles": "{dist/invitation/index.html,scripts/social/fonts/*.ttf}"
+    },
     "api/asset.ts": {
       "maxDuration": 30,
       "includeFiles": "{dist/explore/index.html,public/receiz-public-market.json,public/receiz-public-sports.json,scripts/social/fonts/*.ttf}"
@@ -268,6 +272,18 @@
     {
       "source": "/receiving/",
       "destination": "/receiving/index.html"
+    },
+    {
+      "source": "/invitation/:digest([a-f0-9]{64})/og.png",
+      "destination": "/api/invitation?digest=:digest&image=1"
+    },
+    {
+      "source": "/invitation/:digest([a-f0-9]{64})/",
+      "destination": "/api/invitation?digest=:digest"
+    },
+    {
+      "source": "/invitation/:digest([a-f0-9]{64})",
+      "destination": "/api/invitation?digest=:digest"
     },
     {
       "source": "/invitation",

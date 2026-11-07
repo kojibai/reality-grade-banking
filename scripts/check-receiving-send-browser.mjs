@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {createServer as createHttpServer} from 'node:http';
 import {mkdir,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -7,10 +8,11 @@ import {createServer} from 'vite';
 import {build} from 'esbuild';
 import {chromium} from 'playwright';
 import {receivingContent} from './receiving-page.mjs';
-import {readReceivingInvitation} from '../src/adoption/invitation.ts';
+import {readReceivingInvitationObject} from '../src/adoption/invitation.ts';
 
 // Actual Send and receiving sheet. Only private draft storage is an in-memory
-// browser fixture; payment preparation/execution throws if accidentally used.
+// browser fixture and the public invitation POST is intercepted locally;
+// payment preparation/execution throws if accidentally used.
 const output=process.env.BANK_RECEIVING_BROWSER_OUTPUT??'/private/tmp/bankeiz-adoption-browser/send';
 const directory=await mkdtemp(join(tmpdir(),'bank-receiving-send-'));
 let server,browser;
@@ -39,16 +41,30 @@ try{
  await new Promise((yes,no)=>{server.once('error',no);server.listen(0,'127.0.0.1',yes);});const origin=`http://127.0.0.1:${server.address().port}`;
  browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});await mkdir(output,{recursive:true});const results=[];
  for(const [width,height]of[[390,844],[1440,1000]]){
-  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),requests=[],errors=[],network=[];page.on('pageerror',error=>errors.push(error.message));page.on('request',request=>network.push({path:new URL(request.url()).pathname,type:request.resourceType()}));await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===origin&&['/','/fixture.js','/fixture.css','/navigation.js'].includes(url.pathname))return route.continue();requests.push(url.origin+url.pathname);return route.abort();});
+  const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),requests=[],errors=[],network=[],publications=[];let publicationPreflights=0;
+  page.on('pageerror',error=>errors.push(error.message));page.on('request',request=>network.push({path:new URL(request.url()).pathname,type:request.resourceType()}));
+  await context.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());if(url.origin===origin&&['/','/fixture.js','/fixture.css','/navigation.js'].includes(url.pathname))return route.continue();
+   const digest=url.origin==='https://receiz.com'&&!url.search&&url.pathname.match(/^\/api\/public\/display-snapshots\/([a-f0-9]{64})$/)?.[1];
+   if(digest){
+    const headers={'access-control-allow-origin':origin,'access-control-allow-methods':'POST','access-control-allow-headers':'content-type','content-type':'application/json'};
+    if(request.method()==='OPTIONS'){publicationPreflights++;return route.fulfill({status:204,headers});}
+    assert.equal(request.method(),'POST','Invitation preparation must only publish its reviewed public display');const body=request.postData();assert.ok(body);assert.equal(createHash('sha256').update(body).digest('hex'),digest,'Published path must bind the actual reviewed bytes');
+    const payload=readReceivingInvitationObject(JSON.parse(body));assert.equal(JSON.stringify(payload),body,'The actual publication must use its strict canonical field projection');assert.equal(request.headers().authorization,undefined);assert.equal(request.headers().cookie,undefined);publications.push({digest,payload});return route.fulfill({status:200,headers,body:JSON.stringify({ok:true,sha256:digest})});
+   }
+   requests.push(url.origin+url.pathname);return route.abort();
+  });
   await page.goto(origin+'/#account/send');await page.getByRole('button',{name:'Review payment',exact:true}).waitFor();await page.getByRole('heading',{name:'Move money. Send it anywhere.',exact:true}).waitFor();await page.screenshot({path:join(output,`${width}-send.png`),fullPage:true});
   assert.equal(await page.getByRole('button',{name:'Help someone receive',exact:true}).isVisible(),false);await page.locator('summary').filter({hasText:'More receiving options'}).click();await page.screenshot({path:join(output,`${width}-receiving-disclosure.png`),fullPage:true});await page.getByRole('button',{name:'Help someone receive',exact:true}).click();await page.getByRole('heading',{name:'Keep your money moving.',exact:true}).waitFor();await page.screenshot({path:join(output,`${width}-options.png`),fullPage:true});
   assert.deepEqual(await page.evaluate(()=>window.counts),{status:1,connect:1,prepare:0,execute:0,draftLoads:0,draftWrites:0});
+  assert.equal(publications.length,0,'Opening receiving options must not publish anything');
   const retainedMessage='Keep this receiving path through the guide and back.',recipientName='Produce Team';
-  await page.getByRole('button',{name:/Prepare a receiving invitation/}).click();await page.getByPlaceholder('Recipient name or team',{exact:true}).fill(recipientName);await page.locator('.receiving-help textarea[maxlength="4000"]').fill(retainedMessage);await page.screenshot({path:join(output,`${width}-editor.png`),fullPage:true});await page.getByRole('button',{name:'Review invitation',exact:true}).click();await page.getByRole('heading',{name:'Ready to share.',exact:true}).waitFor();assert.ok((await page.locator('.receiving-invitation-preview').textContent()).includes('To '+recipientName));await page.screenshot({path:join(output,`${width}-invitation.png`),fullPage:true});
+  await page.getByRole('button',{name:/Prepare a receiving invitation/}).click();await page.getByPlaceholder('Recipient name or team',{exact:true}).fill(recipientName);await page.locator('.receiving-help textarea[maxlength="4000"]').fill(retainedMessage);await page.screenshot({path:join(output,`${width}-editor.png`),fullPage:true});assert.equal(publications.length,0,'Editing before preparation remains private');await page.getByRole('button',{name:'Prepare invitation',exact:true}).click();await page.getByRole('heading',{name:'Ready to share.',exact:true}).waitFor();assert.equal(publications.length,1,'Prepare publishes exactly once');assert.deepEqual(publications[0].payload,{schema:'bankeiz.receiving-invitation.v1',message:retainedMessage,senderName:'Restaurant',senderUsername:'restaurant',recipientName});assert.ok((await page.locator('.receiving-invitation-preview').textContent()).includes('To '+recipientName));await page.screenshot({path:join(output,`${width}-invitation.png`),fullPage:true});
   await page.getByRole('button',{name:'Copy invitation',exact:true}).click();await page.getByRole('status').filter({hasText:'Invitation link copied.'}).waitFor();const copied=await page.evaluate(()=>window.copied);assert.ok(copied.includes(retainedMessage));assert.ok(!copied.includes('supplier@example.com'));
-  const copiedUrl=copied.match(/https:\/\/bankeiz\.com\/invitation\/#invite=[A-Za-z0-9_-]+/)?.[0];assert.ok(copiedUrl,'Reviewed copy must carry the dedicated invitation link');assert.deepEqual(readReceivingInvitation(new URL(copiedUrl).hash),{schema:'bankeiz.receiving-invitation.v1',message:retainedMessage,senderName:'Restaurant',senderUsername:'restaurant',recipientName});
+  const copiedUrl=copied.match(/https:\/\/bankeiz\.com\/invitation\/[a-f0-9]{64}\//)?.[0];assert.ok(copiedUrl,'Reviewed copy must carry the prepared short invitation link');assert.equal(copiedUrl,'https://bankeiz.com/invitation/'+publications[0].digest+'/');assert.equal(publications.length,1,'Copy invitation reuses the prepared link');
   const copiedCounts=await page.evaluate(()=>window.counts);await page.locator('summary').filter({hasText:/^Invitation link$/}).click();await page.getByRole('button',{name:'Copy link',exact:true}).click();await page.waitForFunction(expected=>window.copied===expected,copiedUrl);await page.waitForFunction(()=>document.querySelector('.receiving-help')?.getAttribute('aria-busy')==='false');assert.equal(await page.evaluate(()=>window.copied),copiedUrl);assert.deepEqual(await page.evaluate(()=>window.counts),copiedCounts,'Copying the same link-copied state must not resave the draft');await page.screenshot({path:join(output,`${width}-copy-link.png`),fullPage:true});
   await page.getByRole('button',{name:'Share invitation',exact:true}).click();await page.getByRole('status').filter({hasText:'Sharing initiated.'}).waitFor();assert.deepEqual(await page.evaluate(()=>window.shared),{title:'Receiving money',text:retainedMessage,url:copiedUrl});
+  assert.equal(publications.length,1,'URL copy, full copy and native share must not republish');
   await page.locator('.receiving-back').click();const beforeNavigation=network.length,expectedCounts=await page.evaluate(()=>window.counts);
   const inspectPublic=async(returnKind)=>{
    await page.getByRole('link',{name:'Explore receiving options',exact:false}).click();await page.waitForURL(origin+'/receiving/');await page.getByRole('heading',{name:'Receive directly. Keep the proof.',exact:true}).waitFor();
@@ -63,9 +79,9 @@ try{
   const browserBackScroll=await inspectPublic('back'),nativeReturnScroll=await inspectPublic('bank-return');
   assert.deepEqual(network.slice(beforeNavigation),[],'Held public navigation must make no document, source, module or API request');
   await page.locator('.receiving-help-sheet [aria-label="Close"]').click();await page.waitForFunction(()=>document.activeElement?.textContent==='Help someone receive');await page.keyboard.press('Enter');await page.getByRole('button',{name:'Continue to payment',exact:true}).click();await page.waitForFunction(()=>document.activeElement?.textContent==='Help someone receive');assert.equal(await page.getByRole('combobox').inputValue(),'supplier@example.com');
-  assert.deepEqual(await page.evaluate(()=>window.counts),expectedCounts);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
-  results.push({width,height,noExtraPaymentReads:true,paymentActions:0,privateInvitation:true,reviewedPersonalization:true,invitationRoute:'/invitation/',copyAndNativeShare:true,urlOnlyCopyIcon:true,copyIconExtraWrites:0,keyboardAndClose:true,focusAfterClose:true,nestedSheetsSuspended:true,publicWheelScroll:{browserBack:browserBackScroll,nativeBankReturn:nativeReturnScroll},heldRootAndDraftRestored:true,navigationRequests:0,counts:expectedCounts,noOverflow:true,apiOrExternalRequests:0});await context.close();
+  assert.deepEqual(await page.evaluate(()=>window.counts),expectedCounts);assert.equal(publications.length,1,'Returning and reopening must retain the same publication');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
+  results.push({width,height,noExtraPaymentReads:true,paymentActions:0,privateRecipientExcluded:true,reviewedPersonalization:true,invitationRoute:'/invitation/<sha256>/',publicDisplayPublications:publications.length,publicationPreflights,publishedFields:Object.keys(publications[0].payload),copyAndNativeShare:true,urlOnlyCopyIcon:true,copyIconExtraWrites:0,copyShareReturnExtraPublications:0,keyboardAndClose:true,focusAfterClose:true,nestedSheetsSuspended:true,publicWheelScroll:{browserBack:browserBackScroll,nativeBankReturn:nativeReturnScroll},heldRootAndDraftRestored:true,navigationRequests:0,counts:expectedCounts,noOverflow:true,accountOrProfileApiReads:0,unexpectedExternalRequests:0});await context.close();
  }
- await writeFile(join(output,'report.json'),JSON.stringify({passed:true,scope:'Actual nested Send/Receiving sheets and held public router; real draft controller with controlled storage, browser scrolling and retained return; no financial execution',results},null,2)+'\n');console.log(JSON.stringify({passed:true,results}));
+ await writeFile(join(output,'report.json'),JSON.stringify({passed:true,scope:'Actual nested Send/Receiving sheets, canonical invitation publication and held public router; real draft controller with controlled storage and locally intercepted exact public display POST; no production write or financial execution',results},null,2)+'\n');console.log(JSON.stringify({passed:true,results}));
 }catch(error){await mkdir(output,{recursive:true});await writeFile(join(output,'report.json'),JSON.stringify({passed:false,scope:'Actual nested Send/Receiving sheets and held public router',error:error instanceof Error?error.message:String(error)},null,2)+'\n');throw error;}
 finally{await browser?.close();if(server){server.closeAllConnections();await new Promise(yes=>server.close(yes));}await rm(directory,{recursive:true,force:true});}

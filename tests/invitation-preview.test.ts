@@ -1,0 +1,47 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {Window} from 'happy-dom';
+import {createHash} from 'node:crypto';
+import type {ReceivingInvitation} from '../src/adoption/invitation';
+// @ts-expect-error Static public template is plain ESM.
+import {invitationContent} from '../scripts/receiving-page.mjs';
+const digest='a'.repeat(64),personal:ReceivingInvitation={schema:'bankeiz.receiving-invitation.v1',message:'Private reviewed message </script><script>bad()</script> $$ $&',senderName:'Alex & Morgan',senderUsername:'alex',recipientName:'Jordan <Team>',institution:{name:'Example institution',id:'example'},amountUsdCents:'25000',purpose:'Private invoice 1048'};
+const template=()=>`<!doctype html><html><head><title>Generic</title><meta name="description" content="Generic"><meta name="robots" content="index"><meta property="og:image" content="generic.png"><link rel="canonical" href="https://bankeiz.com/invitation/"></head><body>${invitationContent()}<script id="receiz-navigation" type="application/json">{"held":"unchanged"}</script><script src="/learn/learn.js"></script></body></html>`;
+afterEach(()=>vi.unstubAllGlobals());
+async function preview(){const mod=await import('../server/invitation-preview').catch(()=>null);expect(typeof mod?.handleInvitationPreview).toBe('function');return mod!;}
+it('serves a personalized brief on first paint from one exact display capture without profile, account or image work',async()=>{
+ const {handleInvitationPreview}=await preview(),read=vi.fn(async()=>personal),page=vi.fn(async()=>template()),image=vi.fn(),fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const response=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/`),{read,page,image}),html=await response.text();
+ expect(response.status).toBe(200);const window=new Window(),document=window.document;document.write(html);
+ expect(document.querySelector('[data-receiving-entry]')?.hasAttribute('hidden')).toBe(true);expect(document.querySelector('[data-receiving-invitation]')?.hasAttribute('hidden')).toBe(false);
+ expect(document.querySelector('[data-receiving-recipient]')?.textContent).toBe('Prepared for '+personal.recipientName);expect(document.querySelector('[data-receiving-sender]')?.textContent).toBe('From '+personal.senderName);expect(document.querySelector('[data-receiving-message]')?.textContent).toBe(personal.message);
+ expect(document.querySelector('[data-receiving-details]')?.textContent).toContain('$250.00');expect(document.querySelector('[data-receiving-details]')?.textContent).toContain(personal.purpose);
+ expect(document.querySelector('[data-receiving-sender-profile]')?.getAttribute('href')).toBe('/u/alex/');expect(document.querySelector('[data-receiving-institution-name]')?.getAttribute('value')).toBe('Example institution');
+ const seed=document.querySelector('#receiving-invitation-snapshot')!;expect(seed.getAttribute('data-digest')).toBe(digest);expect(JSON.parse(seed.textContent!)).toEqual(personal);expect(html.indexOf('id="receiving-invitation-snapshot"')).toBeLessThan(html.indexOf('id="receiz-navigation"'));
+ expect(document.querySelector('script:not([type="application/json"]):not([src])')).toBeNull();expect(html).toContain('{"held":"unchanged"}');expect(read).toHaveBeenCalledExactlyOnceWith(digest);expect(page).toHaveBeenCalledOnce();expect(image).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();await window.happyDOM.close();
+});
+it('exposes only names in personalized crawler metadata while keeping reviewed details in the page',async()=>{
+ const {handleInvitationPreview}=await preview(),response=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/`),{read:async()=>personal,page:async()=>template(),image:vi.fn()}),html=await response.text(),window=new Window();window.document.write(html);const head=window.document.head;
+ expect(head.querySelector('title')?.textContent).toBe('Jordan <Team>, your receiving invitation | Bankeiz');expect(head.querySelector('meta[property="og:title"]')?.getAttribute('content')).toContain('Jordan <Team>');expect(head.querySelector('meta[property="og:description"]')?.getAttribute('content')).toContain('Alex & Morgan');expect(head.querySelectorAll('meta[property="og:image"]')).toHaveLength(1);expect(head.querySelector('meta[name="twitter:card"]')?.getAttribute('content')).toBe('summary_large_image');
+ expect(head.querySelector('meta[property="og:image"]')?.getAttribute('content')).toBe(`https://bankeiz.com/invitation/${digest}/og.png`);expect(head.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(`https://bankeiz.com/invitation/${digest}/`);expect(head.querySelector('meta[name="robots"]')?.getAttribute('content')).toContain('noindex');
+ for(const text of [personal.message,personal.purpose,'25000','$250.00','Example institution'])expect(head.outerHTML).not.toContain(text);expect(head.outerHTML).not.toContain('generic.png');expect(response.headers.get('referrer-policy')).toBe('no-referrer');await window.happyDOM.close();
+});
+it('validates an opaque exact digest and GET or HEAD before any capture, template or image work',async()=>{
+ const {handleInvitationPreview}=await preview(),read=vi.fn(),page=vi.fn(),image=vi.fn(),deps={read,page,image};
+ for(const path of [`/invitation/${digest}/`,`/invitation/${digest}/og.png`,`/api/invitation?digest=${digest}`,`/api/invitation?digest=${digest}&image=1`]){const response=await handleInvitationPreview(new Request('https://bankeiz.com'+path,{method:'HEAD'}),deps);expect(response.status).toBe(200);expect(await response.text()).toBe('');}
+ for(const path of ['/invitation/bad/','/api/invitation','/api/invitation?digest=','/api/invitation?digest='+digest+'&digest='+digest,'/api/invitation?digest='+digest+'&image=2','/api/invitation?digest='+digest+'&name=Jordan',`/invitation/${digest}/?digest=${'b'.repeat(64)}`,`/invitation/${digest}/#invite=private`])expect((await handleInvitationPreview(new Request('https://bankeiz.com'+path),deps)).status).toBe(400);
+ expect((await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/`,{method:'POST'}),deps)).status).toBe(405);expect(read).not.toHaveBeenCalled();expect(page).not.toHaveBeenCalled();expect(image).not.toHaveBeenCalled();
+});
+it('renders the exact immutable branded invitation PNG using names only and no remote assets',async()=>{
+ const {invitationShareCardSvg,renderInvitationImage}=await import('../server/invitation-share-art').catch(()=>({invitationShareCardSvg:undefined,renderInvitationImage:undefined}));expect(typeof renderInvitationImage).toBe('function');
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);const svg=invitationShareCardSvg!(personal);expect(svg).toContain('Jordan &lt;Team&gt;');expect(svg).toContain('>From Alex &amp; Morgan</text>');for(const text of [personal.message,personal.purpose,'25000','$250.00','Example institution'])expect(svg).not.toContain(text);expect(svg).not.toContain('https://');
+ const png=await renderInvitationImage!(personal),view=new DataView(png.buffer,png.byteOffset,png.byteLength);expect([...png.slice(0,8)]).toEqual([137,80,78,71,13,10,26,10]);expect(view.getUint32(16)).toBe(1730);expect(view.getUint32(20)).toBe(909);expect(fetch).not.toHaveBeenCalled();
+});
+it('uses only its image renderer on the dedicated image request and returns honest unavailable or missing capture responses',async()=>{
+ const {handleInvitationPreview}=await preview(),read=vi.fn(async()=>personal),page=vi.fn(),image=vi.fn(async()=>new Uint8Array([1,2,3]));const response=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/og.png`),{read,page,image});expect(response.status).toBe(200);expect(response.headers.get('content-type')).toBe('image/png');expect(response.headers.get('cache-control')).toContain('immutable');expect(read).toHaveBeenCalledExactlyOnceWith(digest);expect(image).toHaveBeenCalledExactlyOnceWith(personal);expect(page).not.toHaveBeenCalled();
+ for(const [message,status]of [['INVITATION_NOT_FOUND',404],['INVITATION_READ_UNAVAILABLE',503]]as const){const failed=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/`),{read:async()=>{throw Error(message);},page:async()=>template(),image});expect(failed.status).toBe(status);expect(failed.headers.get('cache-control')).toBe('no-store');}
+});
+it('binds the production transport bytes to the short digest and never accepts another capture for that address',async()=>{
+ const {readReceivingInvitationObject}=await import('../src/adoption/invitation'),payload=JSON.stringify(readReceivingInvitationObject(personal)),sha=createHash('sha256').update(payload).digest('hex'),fetcher=vi.fn(async()=>new Response(payload));vi.stubGlobal('fetch',fetcher);
+ const {handleInvitationPreview}=await preview(),response=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${sha}/`),{page:async()=>template(),image:vi.fn()});expect(response.status).toBe(200);expect(await response.text()).toContain('data-digest="'+sha+'"');expect(fetcher).toHaveBeenCalledExactlyOnceWith('https://receiz.com/api/public/display-snapshots/'+sha,expect.objectContaining({credentials:'omit',cache:'force-cache'}));
+ const wrong=await handleInvitationPreview(new Request(`https://bankeiz.com/invitation/${digest}/`),{page:async()=>template(),image:vi.fn()});expect(wrong.status).toBe(503);expect(await wrong.text()).not.toContain(personal.recipientName);
+});

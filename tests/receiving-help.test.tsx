@@ -4,7 +4,9 @@ import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {ReceivingHelp,ReceivingWorkList,type ReceivingHelpInput} from '../src/features/adoption/ReceivingHelp';
 import {createReceivingWork,openReceivingWork,type ReceivingDraft,type ReceivingWork,type ReceivingWorkState} from '../src/adoption/workspace';
-import {readReceivingInvitation} from '../src/adoption/invitation';
+import {readReceivingInvitationObject} from '../src/adoption/invitation';
+import {saveInvitationSnapshot,invitationSnapshotDigest,invitationSnapshotUrl} from '../src/adoption/invitation-snapshot';
+vi.mock('../src/adoption/invitation-snapshot',async original=>({...await original<typeof import('../src/adoption/invitation-snapshot')>(),saveInvitationSnapshot:vi.fn()}));
 import type {OpenIdentity} from '../src/receiz/native-identity';
 
 // Keep the real schema, mutation queue and CAS controller; substitute only its
@@ -12,7 +14,7 @@ import type {OpenIdentity} from '../src/receiz/native-identity';
 vi.mock('../src/adoption/workspace',async original=>({...await original<typeof import('../src/adoption/workspace')>(),openReceivingWork:vi.fn()}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 let root:Root,host:HTMLDivElement;
-beforeEach(()=>{host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.mocked(openReceivingWork).mockReset();});
+beforeEach(()=>{host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.mocked(openReceivingWork).mockReset();vi.mocked(saveInvitationSnapshot).mockReset();});
 afterEach(async()=>{await act(()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
 const initial:ReceivingHelpInput={recipient:'supplier@example.com',recipientUserId:'immutable-recipient-id',recipientUsername:'supplier',amount:'4800.00',purpose:'Private invoice #1048'};
 function fixture(){
@@ -23,8 +25,9 @@ function fixture(){
  const identity={binding:{artifactSha256:'a'.repeat(64)},knownProfile:()=>({displayName:'Restaurant'}),knownOrganizer,organizer,messaging,walletSend,readWallet} as unknown as OpenIdentity;
  vi.mocked(openReceivingWork).mockImplementation(async binding=>{work=await createReceivingWork(binding,{load,save:write});return work;});
  const copy=vi.fn(async(_text:string)=>{}),share=vi.fn(async(_data:ShareData)=>{});vi.stubGlobal('navigator',{clipboard:{writeText:copy},share});
+ const publish=vi.mocked(saveInvitationSnapshot).mockImplementation(async value=>{const payload=JSON.stringify(readReceivingInvitationObject(value)),bytes=new TextEncoder().encode(payload);if(bytes.length>12*1024)throw Error('INVITATION_TOO_LARGE');const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(byte=>byte.toString(16).padStart(2,'0')).join('');return invitationSnapshotUrl(digest);});
  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No network'));
- return{identity,load,write,copy,share,fetch,knownContacts,knownOrganizer,organizer,messaging,walletSend,readWallet,onPay,onClose,
+ return{identity,load,write,copy,share,fetch,publish,knownContacts,knownOrganizer,organizer,messaging,walletSend,readWallet,onPay,onClose,
   work:()=>{if(!work)throw Error('Work has not been explicitly opened');return work;},
   render:(savedDraft?:ReceivingDraft)=>act(async()=>root.render(<ReceivingHelp identity={identity} initial={initial} savedDraft={savedDraft} onPay={onPay} onClose={onClose}/>)),
  };
@@ -33,8 +36,8 @@ function button(label:string){const result=[...host.querySelectorAll<HTMLButtonE
 async function click(label:string){await act(async()=>button(label).click());}
 function field(label:string){const parent=[...host.querySelectorAll('label')].find(node=>node.querySelector('span')?.textContent===label);expect(parent,`field ${label}`).toBeDefined();return parent!.querySelector<HTMLInputElement|HTMLTextAreaElement>('input,textarea')!;}
 async function input(label:string,value:string){const node=field(label),prototype=node instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;await act(async()=>{Object.getOwnPropertyDescriptor(prototype,'value')!.set!.call(node,value);node.dispatchEvent(new Event('input',{bubbles:true}));});}
-async function review(){await act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));}
-function reviewed(){return readReceivingInvitation(new URL(field('Reviewed invitation link').value).hash)!;}
+async function review(){await act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await vi.waitFor(async()=>{await act(async()=>{});expect(host.querySelector('.receiving-help')?.getAttribute('aria-busy')).toBe('false');});}
+function reviewed(){return readReceivingInvitationObject(vi.mocked(saveInvitationSnapshot).mock.calls.at(-1)![0]);}
 
 it('opens receiving options without storage, organizer discovery, network or financial work',async()=>{
  const f=fixture();await f.render();expect(host.textContent).toContain('Keep your money moving.');
@@ -53,11 +56,11 @@ it('reviews an addressed invitation with the held sender profile and explicitly 
  await input('Address invitation to','Alex · Accounts receivable');
  await act(async()=>field('Include amount and payment context').click());await input('Payment context','Invoice 1048');await review();
  expect(reviewed()).toMatchObject({senderName:'Restaurant',senderUsername:'restaurant',recipientName:'Alex · Accounts receivable',amountUsdCents:'480000',purpose:'Invoice 1048'});
- expect(new URL(field('Reviewed invitation link').value).pathname).toBe('/invitation/');expect(host.textContent).toContain('To Alex · Accounts receivable');
+ expect(invitationSnapshotDigest(field('Reviewed invitation link').value)).toMatch(/^[a-f0-9]{64}$/);expect(host.textContent).toContain('To Alex · Accounts receivable');
  expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example|immutable-recipient|Private invoice/);expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
 });
 it('keeps an oversized Unicode invitation editable instead of saving an unshareable reviewed link',async()=>{
- const f=fixture();await f.render();await click('Prepare a receiving invitation');await input('Invitation message','界'.repeat(4000));await review();
+ const f=fixture();await f.render();await click('Prepare a receiving invitation');await input('Invitation message','界'.repeat(4000));await input('Address invitation to','界'.repeat(200));await review();
  expect(host.querySelector('form')).not.toBeNull();expect(host.querySelector('[role=alert]')?.textContent).toContain('shorten');expect(f.write).not.toHaveBeenCalled();
 });
 it('shares only the amount and context explicitly selected and reviewed by the holder',async()=>{
@@ -122,7 +125,7 @@ it('does not close a newly opened sheet when an older Close invitation save comp
  }finally{await act(async()=>{release();await pending;});}
 });
 
-it('copies just the reviewed invitation URL from its link disclosure without another account read or payment action',async()=>{const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const url=field('Reviewed invitation link').value;await click('Copy link');expect(f.copy).toHaveBeenCalledExactlyOnceWith(url);expect(new URL(url).pathname).toBe('/invitation/');expect(f.work().known()[0].status).toBe('link-copied');expect(f.load).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();});
+it('copies just the reviewed invitation URL from its link disclosure without another account read or payment action',async()=>{const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const url=field('Reviewed invitation link').value;await click('Copy link');expect(f.copy).toHaveBeenCalledExactlyOnceWith(url);expect(invitationSnapshotDigest(url)).toMatch(/^[a-f0-9]{64}$/);expect(f.work().known()[0].status).toBe('link-copied');expect(f.load).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();});
 
 it.each([
  ['email','supplier@example.com'],
@@ -143,3 +146,7 @@ it.each([initial.recipient,initial.recipientUserId!])('does not publish an old p
 it.each([initial.recipient,initial.recipientUserId!])('does not publish an old private addressed coordinate adopted through the held draft list (%s)',async recipientName=>{
  const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const old={...f.work().known()[0]!,recipientName};await f.work().save(old);await act(async()=>root.render(null));await f.render();await act(async()=>{const list=host.querySelector<HTMLDetailsElement>('.receiving-work-list')!;list.open=true;list.dispatchEvent(new Event('toggle'));});await act(async()=>host.querySelector<HTMLButtonElement>('.receiving-work-row')!.click());expect(field('Address invitation to').value).toBe('');expect(field('Recipient').value).toBe(initial.recipient);expect(f.load).toHaveBeenCalledOnce();await review();expect(reviewed()).not.toHaveProperty('recipientName');expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example\.com|immutable-recipient-id/);expect(f.work().known()[0]).toMatchObject({recipient:initial.recipient,recipientUserId:initial.recipientUserId});expect(f.onPay).not.toHaveBeenCalled();expect(f.walletSend).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled();
 });
+
+it('prepares one short reviewed link, persists its acknowledged digest and reuses it for copy and share',async()=>{const f=fixture();await f.render();expect(f.publish).not.toHaveBeenCalled();await click('Prepare a receiving invitation');expect(f.publish).not.toHaveBeenCalled();expect(button('Prepare invitation')).toBeDefined();await review();const url=field('Reviewed invitation link').value,digest=invitationSnapshotDigest(url);expect(digest).toMatch(/^[a-f0-9]{64}$/);expect(url.length).toBeLessThan(105);expect(f.publish).toHaveBeenCalledOnce();expect(f.work().known()[0]).toMatchObject({publishedDigest:digest});await click('Copy link');expect(f.copy).toHaveBeenCalledWith(url);await click('Share invitation');expect(f.share).toHaveBeenCalledWith(expect.objectContaining({url}));expect(f.publish).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.walletSend).not.toHaveBeenCalled();});
+
+it('keeps a failed public invitation preparation editable and never starts a payment or automatically retries it',async()=>{const f=fixture();await f.render();await click('Prepare a receiving invitation');f.publish.mockRejectedValueOnce(Error('Public display source unavailable'));await review();expect(host.querySelector('form')).not.toBeNull();expect(field('Recipient').value).toBe(initial.recipient);expect(host.querySelector('[role=alert]')?.textContent).toContain('could not be prepared');expect(f.write).not.toHaveBeenCalled();expect(f.publish).toHaveBeenCalledOnce();expect(f.walletSend).not.toHaveBeenCalled();await review();expect(f.publish).toHaveBeenCalledTimes(2);expect(field('Reviewed invitation link')).toBeDefined();expect(f.work().known()[0].publishedDigest).toMatch(/^[a-f0-9]{64}$/);expect(f.load).toHaveBeenCalledOnce();});

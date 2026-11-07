@@ -1,7 +1,8 @@
 import {readReceivingInvitation,receivingInvitationUrl,institutionRequest,RECEIVING_MESSAGE,type ReceivingInvitation} from './invitation';
+import {initialInvitationSnapshot,invitationSnapshotDigest,invitationSnapshotUrl} from './invitation-snapshot';
 import {parsePaymentRequest} from '../receiz/payment-request';
 const mounted=new WeakSet<HTMLElement>();
-let retained:ReceivingInvitation|null=null,listening=false;
+let retained:ReceivingInvitation|null=null,retainedDigest:string|null=null,listening=false;
 const amount=(value:string)=>{const cents=BigInt(value);return '$'+(cents/100n).toLocaleString('en-US')+'.'+String(cents%100n).padStart(2,'0');};
 function field(root:HTMLElement,key:string){return root.querySelector<HTMLElement>(`[data-receiving-${key}]`)!;}
 function text(root:HTMLElement,key:string,value:string){const node=root.querySelector<HTMLElement>(`[data-receiving-${key}]`);if(node){node.textContent=value;node.hidden=!value;}}
@@ -20,12 +21,12 @@ async function copy(value:string,output:HTMLTextAreaElement,status:HTMLElement,c
 /** Page-local presentation only. No identity, account, delivery or payment read.
  * The static guide is already visible; invitation data stays in this module. */
 export function init(){
- if(!/^\/(?:receiving|invitation)\/?$/.test(location.pathname))return;
+ if(!/^\/(?:receiving|invitation(?:\/[a-f0-9]{64})?)\/?$/.test(location.pathname))return;
  const roots=[...document.querySelectorAll<HTMLElement>('[data-receiving]')];if(!roots.length)return;let invalid=false;
- if(location.hash.startsWith('#invite=')){retained=readReceivingInvitation(location.hash);invalid=!retained;history.replaceState(null,'',location.pathname+location.search);}
+ const shortLink=location.origin+location.pathname,shortDigest=invitationSnapshotDigest(shortLink);if(shortDigest){if(retainedDigest!==shortDigest){retained=initialInvitationSnapshot(shortLink);retainedDigest=shortDigest;invalid=!retained;}if(location.hash.startsWith('#invite='))history.replaceState(null,'',location.pathname+location.search);}else if(location.hash.startsWith('#invite=')){retained=readReceivingInvitation(location.hash);retainedDigest=null;invalid=!retained;history.replaceState(null,'',location.pathname+location.search);}
  if(!listening){listening=true;addEventListener('hashchange',()=>init());}
  for(const root of roots){paint(root,invalid);if(mounted.has(root))continue;mounted.add(root);
-  root.querySelector('[data-receiving-copy-link]')?.addEventListener('click',()=>{if(retained)void copy(receivingInvitationUrl(retained),field(root,'link-output') as HTMLTextAreaElement,field(root,'link-status'),'Invitation link copied.');});
+  root.querySelector('[data-receiving-copy-link]')?.addEventListener('click',()=>{if(retained)void copy(retainedDigest?invitationSnapshotUrl(retainedDigest):receivingInvitationUrl(retained),field(root,'link-output') as HTMLTextAreaElement,field(root,'link-status'),'Invitation link copied.');});
   field(root,'clear').addEventListener('click',()=>{retained=null;const linkOutput=root.querySelector<HTMLTextAreaElement>('[data-receiving-link-output]');if(linkOutput){linkOutput.value='';linkOutput.hidden=true;}text(root,'link-status','');paint(root);const heading=root.querySelector<HTMLElement>('[data-receiving-entry] h1,.receiving-hero h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}});
   const form=field(root,'response-form') as HTMLFormElement,input=field(root,'coordinate') as HTMLInputElement,button=field(root,'copy') as HTMLButtonElement,share=field(root,'share') as HTMLButtonElement,output=field(root,'response') as HTMLTextAreaElement,status=field(root,'status');let response='';
   const update=()=>{try{parsePaymentRequest(input.value.trim());response='You can pay me using these receiving details: '+input.value.trim()+'. Please review the recipient and amount before sending.';button.disabled=false;share.disabled=false;}catch{response='';button.disabled=true;share.disabled=true;}output.hidden=true;status.textContent='';};input.addEventListener('input',update);

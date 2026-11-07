@@ -4,7 +4,8 @@ import {Sheet} from '../../components/Sheet';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import {bankOperationDollars} from '../../receiz/bank-operations';
 import {formatMoney} from '../../core/money';
-import {RECEIVING_MESSAGE,receivingInvitationUrl,institutionRequest,type ReceivingInvitation} from '../../adoption/invitation';
+import {RECEIVING_MESSAGE,institutionRequest,type ReceivingInvitation} from '../../adoption/invitation';
+import {saveInvitationSnapshot,invitationSnapshotDigest,invitationSnapshotUrl} from '../../adoption/invitation-snapshot';
 import {openReceivingWork,type ReceivingDraft,type ReceivingWork} from '../../adoption/workspace';
 import './receiving-help.css';
 
@@ -49,14 +50,14 @@ export function ReceivingHelp({identity,initial,savedDraft,onPay,onClose,active=
  const alive=useRef(true),running=useRef(false),sharing=useRef(false);
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  const edit=(next:Partial<ReceivingDraft>)=>{setDraft(value=>({...value,...next,status:'draft'}));setSaved(null);setNotice('');};
- const save=async(next:ReceivingDraft)=>{
-  if(running.current)return false;running.current=true;setBusy(true);setError('');
-  try{const work=await workFor(identity);await work.save(next);if(alive.current){setDraft(next);setSaved(next);}return alive.current;}
-  catch{workByIdentity.delete(identity);if(alive.current)setError('This invitation could not be saved. Keep your draft here and try again.');return false;}
+ const save=async(next:ReceivingDraft,prepared?:ReceivingInvitation)=>{
+  if(running.current)return false;running.current=true;setBusy(true);setError('');let writing=false;
+  try{const work=await workFor(identity);if(prepared){const url=await saveInvitationSnapshot(prepared,fetch,next.publishedDigest);next={...next,publishedDigest:invitationSnapshotDigest(url)!};}writing=true;await work.save(next);if(alive.current){setDraft(next);setSaved(next);}return alive.current;}
+  catch(cause){if(writing)workByIdentity.delete(identity);if(alive.current)setError(prepared&&cause instanceof Error&&['RECEIVING_INVITATION_INVALID','INVITATION_TOO_LARGE'].includes(cause.message)?'Check the amount or shorten your invitation before continuing.':prepared?'This invitation link could not be prepared. Keep your draft here and try again.':'This invitation could not be saved. Keep your draft here and try again.');return false;}
   finally{running.current=false;if(alive.current)setBusy(false);}
  };
- const review=async()=>{try{receivingInvitationUrl(invitationFor(draft,sender,senderUsername));if(await save({...draft,status:'draft'})){if(alive.current)setPage('ready');}}catch{setError('Check the amount or shorten your invitation before continuing.');}};
- let link='';try{link=receivingInvitationUrl(invitationFor(saved??draft,sender,senderUsername));}catch{/* Review reports invalid optional payment context. */}
+ const review=async()=>{try{const invitation=invitationFor(draft,sender,senderUsername);if(await save({...draft,status:'draft'},invitation)){if(alive.current)setPage('ready');}}catch{setError('Check the amount or shorten your invitation before continuing.');}};
+ const link=saved?.publishedDigest?invitationSnapshotUrl(saved.publishedDigest):'';
  const shareText=(value:ReceivingDraft)=>value.institution?institutionRequest(value.institution.name,value.institution.id):value.message;
  const copied=async(linkOnly=false)=>{
   if(!saved||!link||running.current||sharing.current)return;const current=saved;sharing.current=true;setBusy(true);setError('');
@@ -90,7 +91,7 @@ export function ReceivingHelp({identity,initial,savedDraft,onPay,onClose,active=
     <label className="form-field"><span>Invitation message</span><textarea value={draft.message} maxLength={4000} rows={5} required onChange={event=>edit({message:event.target.value})}/></label>
     <label className="consent-option"><input type="checkbox" checked={draft.includeContext} onChange={event=>edit({includeContext:event.target.checked})}/><span>Include amount and payment context</span></label>
     {draft.includeContext&&<div className="receiving-context-fields"><label className="form-field"><span>Amount</span><input inputMode="decimal" value={draft.amount} maxLength={22} onChange={event=>edit({amount:event.target.value})}/></label><label className="form-field"><span>Payment context</span><input value={draft.purpose} maxLength={280} onChange={event=>edit({purpose:event.target.value})}/></label></div>}
-    <button className="primary-button" type="submit" disabled={busy}>Review invitation<ArrowRight size={17}/></button>
+    <p className="body-copy small-copy">Creates a shareable page from the details above. Its link preview shows the names you include.</p><button className="primary-button" type="submit" disabled={busy}>Prepare invitation<ArrowRight size={17}/></button>
    </fieldset></form>
   </>:saved&&<><p className="eyebrow">Receiving invitation</p><h1 className="sheet-hero">Ready to share.</h1><div className="receiving-invitation-preview">{sender&&<p className="small-copy">From {sender}</p>}<p>{saved.message}</p>{saved.recipientName&&<p className="small-copy">To {saved.recipientName}</p>}{saved.institution&&<p><strong>{saved.institution.name}</strong><br/>The receiving standard, tools and evidence process.</p>}{saved.includeContext&&<p>{saved.amount&&formatMoney(bankOperationDollars(saved.amount))}{saved.amount&&saved.purpose?' · ':''}{saved.purpose}</p>}</div>
    <p className="body-copy small-copy">Invitation only. Your payment is reviewed and approved separately.</p>

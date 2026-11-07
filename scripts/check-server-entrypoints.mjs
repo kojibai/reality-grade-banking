@@ -19,7 +19,7 @@ async function emit(source){
 }
 try{
  await writeFile(join(stage,'package.json'),'{"type":"module"}');await symlink(resolve(root,'node_modules'),join(stage,'node_modules'),'dir');
- for(const name of ['index','profile','asset','receipt','book','cooperatives','read','explore'])await emit(resolve(root,'api/'+name+'.ts'));
+ for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore'])await emit(resolve(root,'api/'+name+'.ts'));
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
@@ -44,7 +44,7 @@ globalThis.fetch=async(url,init)=>{
  assert.equal(String(url),'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2');
  assert.equal(init.credentials,'omit');calls++;return profileStatus===200?Response.json(profileFixture()):Response.json({error:'upstream private diagnostic'},{status:profileStatus});
 };
-for(const name of ['index','profile','asset','receipt','book','cooperatives','read','explore']){
+for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore']){
  const {default:api}=await import('./api/'+name+'.js');
  assert.equal(typeof api.fetch,'function',name+' must boot in plain Node');console.log('BOOT',name);
 }
