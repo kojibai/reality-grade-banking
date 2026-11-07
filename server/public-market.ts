@@ -23,7 +23,7 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership');
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
-  if(local.pathname===`${PREFIX}quotes`&&(!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterTrade').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(local.searchParams.get('afterTrade')??''))){const target=new URL('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');if(local.search)target.searchParams.set('afterTrade',local.searchParams.get('afterTrade')!);return target;}
+  if(local.pathname===`${PREFIX}quotes`&&(!local.search||local.searchParams.size===1&&(local.searchParams.getAll('afterTrade').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(local.searchParams.get('afterTrade')??'')||local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??'')))){const target=new URL('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');if(local.searchParams.has('afterTrade'))target.searchParams.set('afterTrade',local.searchParams.get('afterTrade')!);return target;}
   if(local.pathname===`${PREFIX}provenance`){
     const id=local.searchParams.get('collectibleId'),claim=local.searchParams.get('claimHash');
     if([...local.searchParams.keys()].some(key=>!['collectibleId','claimHash'].includes(key))||local.searchParams.getAll('collectibleId').length!==1||local.searchParams.getAll('claimHash').length!==1||!id||!/^rsc_[a-f0-9]{16}$/i.test(id)||!claim||!/^[a-f0-9]{64}$/i.test(claim))return null;
@@ -101,7 +101,7 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
         const publicInput = curatePublicCapitalization(input);
         for (const key of Object.keys(input)) delete input[key];
         Object.assign(input, publicInput);
-      } else if (input.data) { input.data = { schema: input.data.schema, liveMarkets: input.data.liveMarkets }; }
+      } else if (input.data) { input.data = { schema: input.data.schema, ...(typeof input.data.generatedAt==='string'&&Number.isFinite(Date.parse(input.data.generatedAt))?{generatedAt:input.data.generatedAt}:{}), ...(typeof input.data.serverPulse==='number'&&Number.isSafeInteger(input.data.serverPulse)&&input.data.serverPulse>=0||typeof input.data.serverPulse==='string'&&/^\d{1,24}$/.test(input.data.serverPulse)?{serverPulse:input.data.serverPulse}:{}), liveMarkets: input.data.liveMarkets }; }
       bytes = new TextEncoder().encode(JSON.stringify(input));
     }
     const current = { bytes, type, etag: response.headers.get('etag'), fetchedAt: Date.now(),...(profileHeads?{profileHeads}:{}) };

@@ -4,7 +4,7 @@ import {startPublicDocumentRuntime} from '../core/public-document-entry';
  * need not finish before the existing profile can become interactive. */
 export function startProfileDocumentRuntime(start:()=>void,doc:Document=document):()=>void{
  return startPublicDocumentRuntime('explore',start,doc,()=>{
-  const seed=doc.getElementById('public-profile-seed')??doc.getElementById('public-profile-error');
+  const seed=doc.getElementById('public-profile-seed')??doc.getElementById('public-profile-error')??(doc.getElementById('public-explore-root')?.hasAttribute('data-public-profile-entry')?doc.getElementById('public-market-seed'):null);
   return seed?.nextElementSibling?.id==='receiz-navigation';
  });
 }

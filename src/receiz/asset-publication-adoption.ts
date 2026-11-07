@@ -1,4 +1,4 @@
-import {parsePublicMarket,retainPublicMarket,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {parsePublicMarket,retainPublicMarket,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
@@ -7,18 +7,18 @@ import type {AssetPublicationReceipt} from './asset-publication';
 import type {ConnectedAssetLocalAdmission} from './asset-publication-runtime';
 type Owner=Readonly<{identityDigest:string;accountUid:string;isCurrent?():boolean;artwork?:Blob}>;
 type Row=Record<string,unknown>;
-type Addition={owner:{identityDigest:string;accountUid:string};username:string;sourceDigest:string;showcaseDigest:string|null;row:Row;item:PublicMarketItem;receipt?:AssetPublicationReceipt;sourceReceipt?:Extract<AssetPublicationReceipt,{status:'published'}>;signatureDeliveryHash?:string;marketSeen?:boolean;profileSeen?:boolean;artworkUrl?:string};
+type Addition={owner:{identityDigest:string;accountUid:string};username:string;sourceDigest:string;showcaseDigest:string|null;row:Row;item:PublicMarketItem;receipt?:AssetPublicationReceipt;sourceReceipt?:Extract<AssetPublicationReceipt,{status:'published'}>;sourceSeen?:boolean;signatureDeliveryHash?:string;marketSeen?:boolean;profileSeen?:boolean;artworkUrl?:string};
 const previews=new Map<string,{username:string;url:string}>();
-const KEY='bankeiz-admitted-public-assets-v1',additions=new Map<string,Addition>(),listeners=new Set<(catalog?:PublicMarketCatalog)=>void>();let restored=false;
+const KEY='bankeiz-admitted-public-assets-v1',additions=new Map<string,Addition>(),listeners=new Set<(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void>();let restored=false;
 const object=(value:unknown):Row=>value&&typeof value==='object'&&!Array.isArray(value)?value as Row:{};
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const changed=()=>{save();for(const listener of listeners)listener();};
-function save(){try{let rows=[...additions.values()].slice(-32).map(({owner,username,sourceDigest,showcaseDigest,row,receipt,sourceReceipt,signatureDeliveryHash,marketSeen,profileSeen})=>({owner,username,sourceDigest,showcaseDigest,row,receipt,sourceReceipt,signatureDeliveryHash,marketSeen,profileSeen}));while(rows.length&&JSON.stringify(rows).length>2_000_000)rows.shift();localStorage.setItem(KEY,JSON.stringify(rows));}catch{/* Exact source custody is independent of display retention. */}}
+function save(){try{let rows=[...additions.values()].slice(-32).map(({owner,username,sourceDigest,showcaseDigest,row,receipt,sourceReceipt,sourceSeen,signatureDeliveryHash,marketSeen,profileSeen})=>({owner,username,sourceDigest,showcaseDigest,row,receipt,sourceReceipt,sourceSeen,signatureDeliveryHash,marketSeen,profileSeen}));while(rows.length&&JSON.stringify(rows).length>2_000_000)rows.shift();localStorage.setItem(KEY,JSON.stringify(rows));}catch{/* Exact source custody is independent of display retention. */}}
 function restore(){if(restored)return;restored=true;try{const values:unknown=JSON.parse(localStorage.getItem(KEY)??'[]');if(!Array.isArray(values)||values.length>32)return;for(const raw of values){const v=object(raw),owner=object(v.owner);if(!hex(v.sourceDigest)||!(v.showcaseDigest===null||hex(v.showcaseDigest))||!hex(owner.identityDigest)||typeof owner.accountUid!=='string'||typeof v.username!=='string'||!/^[a-z0-9_]{3,24}$/.test(v.username))continue;const item=parsePublicMarket({ok:true,transport:{publicOriginals:[v.row]}}).items[0];if(!item||item.originalDigest!==v.sourceDigest||item.ownerUsername!==v.username)continue;
  // Older retention could copy the unsigned Source acknowledgment onto a signed
  // local row. Resume its saved native proof unless this exact append was seen.
  const signed=item.hasPbiSignature&&hex(item.pbiReceiptHash),confirmed=!signed||v.signatureDeliveryHash===item.pbiReceiptHash;
- additions.set(v.sourceDigest,{owner:{identityDigest:owner.identityDigest,accountUid:owner.accountUid},username:v.username,sourceDigest:v.sourceDigest,showcaseDigest:v.showcaseDigest,row:object(v.row),item,...(confirmed&&v.receipt&&object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{receipt:v.receipt as AssetPublicationReceipt}:{}),...(object(v.sourceReceipt).status==='published'&&hex(object(v.sourceReceipt).artifactDigest)?{sourceReceipt:v.sourceReceipt as Extract<AssetPublicationReceipt,{status:'published'}>}:object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{sourceReceipt:v.receipt as Extract<AssetPublicationReceipt,{status:'published'}>}:{}),...(signed&&confirmed?{signatureDeliveryHash:item.pbiReceiptHash}:{}),marketSeen:confirmed&&v.marketSeen===true,profileSeen:confirmed&&v.profileSeen===true});}}catch{/* Malformed display retention never admits an original. */}}
+ additions.set(v.sourceDigest,{owner:{identityDigest:owner.identityDigest,accountUid:owner.accountUid},username:v.username,sourceDigest:v.sourceDigest,showcaseDigest:v.showcaseDigest,row:object(v.row),item,...(confirmed&&v.receipt&&object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{receipt:v.receipt as AssetPublicationReceipt}:{}),...(object(v.sourceReceipt).status==='published'&&hex(object(v.sourceReceipt).artifactDigest)?{sourceReceipt:v.sourceReceipt as Extract<AssetPublicationReceipt,{status:'published'}>}:object(v.receipt).status==='published'&&hex(object(v.receipt).artifactDigest)?{sourceReceipt:v.receipt as Extract<AssetPublicationReceipt,{status:'published'}>}:{}),sourceSeen:v.sourceSeen===true||confirmed&&(v.marketSeen===true||v.profileSeen===true),...(signed&&confirmed?{signatureDeliveryHash:item.pbiReceiptHash}:{}),marketSeen:confirmed&&v.marketSeen===true,profileSeen:confirmed&&v.profileSeen===true});}}catch{/* Malformed display retention never admits an original. */}}
 function artwork(item:PublicMarketItem){const preview=item.originalDigest?previews.get(item.originalDigest):undefined;return preview&&item.artworkUrl!==preview.url?{...item,artworkUrl:preview.url}:item;}
 /** Only this module's exact locally created preview, bound to its public owner
  * and source. Remote artwork fields cannot introduce an arbitrary blob URL. */
@@ -46,9 +46,9 @@ function retainObservedShares(item:PublicMarketItem,entry:Addition,observed:Publ
  return shareInventory?{...item,shareInventory}:item;
 }
 /** Navigate the exact admitted Original; this display selector grants no trade authority. */
-export function admittedAssetPublicationItem(sourceDigest:string,username:string,accountUid?:string):PublicMarketItem|null{restore();const entry=additions.get(sourceDigest);return entry?.username===username&&(accountUid===undefined||entry.owner.accountUid===accountUid)?displayItem(entry):null;}
+export function admittedAssetPublicationItem(sourceDigest:string,username:string,accountUid?:string):PublicMarketItem|null{restore();const entry=additions.get(sourceDigest);return entry?.username===username&&!(entry.marketSeen&&entry.profileSeen)&&(accountUid===undefined||entry.owner.accountUid===accountUid)?displayItem(entry):null;}
 /** Delivery acknowledgment updates this display without rereading the account. */
-export function admittedAssetPublicationDelivery(sourceDigest:string,username:string):import('./asset-publication').AssetPublicationDelivery|null{restore();const entry=additions.get(sourceDigest);if(entry?.username!==username)return null;const receipt=entry.sourceReceipt??entry.receipt;if(!receipt)return null;return receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};}
+export function admittedAssetPublicationDelivery(sourceDigest:string,username:string):import('./asset-publication').AssetPublicationDelivery|null{restore();const entry=additions.get(sourceDigest);if(entry?.username!==username)return null;const receipt=entry.sourceReceipt??entry.receipt;if(receipt?.status==='published')return {status:'published',showcaseArtifactDigest:receipt.artifactDigest};if(entry.sourceSeen||entry.marketSeen||entry.profileSeen)return {status:'published'};return receipt?{status:receipt.status,code:receipt.code}:null;}
 /** Current signature delivery only. An earlier accepted Source receipt cannot
  * confirm a later signed intent; its native admission clears this receipt. */
 export function admittedAssetPublicationSignatureDelivery(sourceDigest:string,username:string):import('./asset-publication').AssetPublicationDelivery|null{restore();const entry=additions.get(sourceDigest);if(entry?.username!==username||!entry.item.hasPbiSignature||!hex(entry.item.pbiReceiptHash))return null;const receipt=entry.receipt;if(receipt?.status==='published')return {status:'published',showcaseArtifactDigest:receipt.artifactDigest};if(entry.signatureDeliveryHash===entry.item.pbiReceiptHash&&(entry.marketSeen||entry.profileSeen))return {status:'published'};return receipt?{status:receipt.status,code:receipt.code}:null;}
@@ -59,8 +59,8 @@ export function pendingAssetPublicationSignatures(identityDigest:string,accountU
 }
 /** Match the existing Create result: public observation or its accepted receipt
  * enables signing. A local pending preview alone is not an accepted head. */
-export function locallyPendingAssetPublication(sourceDigest:string,username:string):boolean{restore();const entry=additions.get(sourceDigest);return !!entry&&entry.username===username&&entry.sourceReceipt?.status!=='published'&&entry.receipt?.status!=='published'&&!entry.marketSeen&&!entry.profileSeen;}
-export function subscribeAssetPublicationAdmissions(listener:(catalog?:PublicMarketCatalog)=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
+export function locallyPendingAssetPublication(sourceDigest:string,username:string):boolean{restore();const entry=additions.get(sourceDigest);return !!entry&&entry.username===username&&entry.sourceReceipt?.status!=='published'&&entry.receipt?.status!=='published'&&!entry.sourceSeen&&!entry.marketSeen&&!entry.profileSeen;}
+export function subscribeAssetPublicationAdmissions(listener:(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
 /** Only the canonical runtime's local-admission callback calls this seam.
  * These are public display additions, never ownership or financial authority. */
 export function retainAssetPublicationAdmission(admission:ConnectedAssetLocalAdmission,owner:Owner):void{
@@ -94,15 +94,17 @@ function matches(item:PublicMarketItem,entry:Addition){return item.id===entry.it
 function drop(digest:string){additions.delete(digest);}
 /** Called only with a parsed membership response, before display/quote merges.
  * Cloning a displayed item cannot acknowledge remote publication. */
-export function acceptDiscoveredPublicAssets(catalog:PublicMarketCatalog):void{restore();let changed=false;for(const entry of additions.values())if(catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)&&(!entry.item.hasPbiSignature||item.ownerUsername===entry.username&&item.ownerIdentity?.userId===entry.owner.accountUid))&&!entry.marketSeen){entry.marketSeen=true;if(entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash))entry.signatureDeliveryHash=entry.item.pbiReceiptHash;changed=true;}if(changed){save();for(const listener of listeners)listener();}}
-export function acceptDiscoveredProfileAssets(profile:PublicProfile):void{restore();let changed=false;for(const entry of additions.values())if(entry.username===profile.username&&entry.owner.accountUid===profile.userId&&profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))&&!entry.profileSeen){entry.profileSeen=true;if(entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash))entry.signatureDeliveryHash=entry.item.pbiReceiptHash;changed=true;}if(changed){save();for(const listener of listeners)listener();}}
-/** Accepted discovery retires the display overlay independently per surface. */
+export function acceptDiscoveredPublicAssets(catalog:PublicMarketCatalog):void{restore();let changed=false;for(const entry of additions.values())if(catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)&&(!entry.item.hasPbiSignature||item.ownerUsername===entry.username&&item.ownerIdentity?.userId===entry.owner.accountUid))&&!entry.marketSeen){entry.marketSeen=true;entry.sourceSeen=true;if(entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash))entry.signatureDeliveryHash=entry.item.pbiReceiptHash;changed=true;}if(changed){save();for(const listener of listeners)listener();}}
+export function acceptDiscoveredProfileAssets(profile:PublicProfile):void{restore();let changed=false;for(const entry of additions.values())if(entry.username===profile.username&&entry.owner.accountUid===profile.userId&&profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))&&!entry.profileSeen){entry.profileSeen=true;entry.sourceSeen=true;if(entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash))entry.signatureDeliveryHash=entry.item.pbiReceiptHash;changed=true;}if(changed){save();for(const listener of listeners)listener();}}
+/** Accepted discovery retires the display overlay independently per surface.
+ * Keep the bounded observation locator until a durable receipt supersedes it;
+ * otherwise a later render/signature could regress a publicly observed Source. */
 export function mergeAdmittedPublicAssets(catalog:PublicMarketCatalog):PublicMarketCatalog{restore();let mutated=false;const fresh:PublicMarketItem[]=[];for(const entry of additions.values()){
- const observed=catalog.items.find(item=>matches(item,entry));if(!entry.marketSeen&&(!observed||entry.item.hasPbiSignature===true&&!catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))))fresh.push(retainObservedShares(displayItem(entry),entry,observed));if(entry.marketSeen&&entry.profileSeen&&(!entry.item.hasPbiSignature||entry.receipt?.status==='published')){drop(entry.sourceDigest);mutated=true;}
+ const observed=catalog.items.find(item=>matches(item,entry));if(!entry.marketSeen&&(!observed||entry.item.hasPbiSignature===true&&!catalog.items.some(item=>matches(item,entry)&&matchesSignature(item,entry))))fresh.push(retainObservedShares(displayItem(entry),entry,observed));if(entry.marketSeen&&entry.profileSeen&&entry.receipt?.status==='published'){drop(entry.sourceDigest);mutated=true;}
  }if(mutated)save();if(fresh.length)return {...catalog,items:[...fresh.reverse(),...catalog.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],sourceCount:catalog.sourceCount+fresh.filter(item=>!catalog.items.some(previous=>previous.id===item.id)).length,complete:false};
  let changed=false;const items=catalog.items.map(item=>{const next=artwork(item);if(next!==item)changed=true;return next;});return changed?{...catalog,items}:catalog;}
 export function mergeAdmittedProfileAssets(profile:PublicProfile):PublicProfile{restore();const fresh:PublicMarketItem[]=[];let mutated=false;for(const entry of additions.values()){
- if(entry.username!==profile.username||entry.owner.accountUid!==profile.userId)continue;const observed=profile.items.find(item=>matches(item,entry));if(!entry.profileSeen&&(!observed||entry.item.hasPbiSignature===true&&!profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)))){fresh.push(retainObservedShares(displayItem(entry,profile),entry,observed));};if(entry.marketSeen&&entry.profileSeen&&(!entry.item.hasPbiSignature||entry.receipt?.status==='published')){drop(entry.sourceDigest);mutated=true;}
+ if(entry.username!==profile.username||entry.owner.accountUid!==profile.userId)continue;const observed=profile.items.find(item=>matches(item,entry));if(!entry.profileSeen&&(!observed||entry.item.hasPbiSignature===true&&!profile.items.some(item=>matches(item,entry)&&matchesSignature(item,entry)))){fresh.push(retainObservedShares(displayItem(entry,profile),entry,observed));};if(entry.marketSeen&&entry.profileSeen&&entry.receipt?.status==='published'){drop(entry.sourceDigest);mutated=true;}
  }if(mutated)save();return fresh.length?{...profile,items:[...fresh.reverse(),...profile.items.filter(item=>!fresh.some(addition=>addition.id===item.id))],stats:{...profile.stats,originals:profile.stats.originals===null?null:profile.stats.originals+fresh.filter(item=>!profile.items.some(previous=>previous.id===item.id)).length}}:profile;}
 export function forgetAssetPublicationAdmissions(username?:string){restore();if(!username)sourceFiles.clear();else for(const [digest,entry]of additions)if(entry.username===username)sourceFiles.delete(digest);for(const[digest,preview]of previews)if(!username||preview.username===username){URL.revokeObjectURL(preview.url);previews.delete(digest);}for(const [digest,entry]of additions)if(!username||entry.username===username)drop(digest);changed();}
 
@@ -111,11 +113,25 @@ export function forgetAssetPublicationAdmissions(username?:string){restore();if(
 let discoveredPublicCatalog:PublicMarketCatalog|null=null;
 /** The exact accepted display projection may precede its first mounted owner. */
 export const retainedDiscoveredPublicCatalog=()=>discoveredPublicCatalog;
-export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog):void{if(catalog.complete)discoveredPublicCatalog=catalog;mergeAdmittedPublicAssets(catalog);for(const listener of listeners)listener(catalog);if(catalog.complete)retainPublicMarket(catalog);}
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown):void{const selected=snapshot?mergePublicQuotes(catalog,snapshot):catalog;if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected);}
+function publishDiscoveredPublicQuotes(snapshot:unknown):void{
+ const catalog=discoveredPublicCatalog;
+ if(catalog){const selected=mergePublicQuotes(catalog,snapshot);reusePublicMarketResponse(catalog,selected);discoveredPublicCatalog=selected;retainPublicMarket(catalog,snapshot,selected);}
+ // A stalled membership request cannot hold up a distinct available quote.
+ // Each existing consumer applies it to its own selected, exact public family.
+ for(const listener of listeners)listener(undefined,snapshot);
+}
 const publicationRefreshes=new Map<string,Promise<void>>();
 export function refreshAssetPublicationCatalog(sourceDigest:string):Promise<void>{
  const existing=publicationRefreshes.get(sourceDigest);if(existing)return existing;
- const read=import('./public-market.js').then(module=>module.fetchPublicMarket(undefined,sourceDigest)).then(publishDiscoveredPublicCatalog).catch(()=>{/* The admitted object remains visible; normal refresh retries the same hint. */}).finally(()=>publicationRefreshes.delete(sourceDigest));
+ const read=import('./public-market.js').then(async module=>{
+  // Membership and share observations have independent read lifetimes. Publish
+  // the accepted collection immediately; delayed/failed quotes cannot hide it.
+  let snapshot:unknown;
+  const membership=module.fetchPublicMarket(undefined,sourceDigest).then(catalog=>publishDiscoveredPublicCatalog(catalog,module.readRetainedPublicQuotes()?.snapshot??snapshot),()=>{});
+  const quotes=module.fetchPublicQuotes(undefined,undefined,sourceDigest).then(value=>{snapshot=value;publishDiscoveredPublicQuotes(value);},()=>{});
+  await Promise.all([membership,quotes]);
+ }).catch(()=>{/* The admitted object remains visible; normal refresh retries the same hint. */}).finally(()=>publicationRefreshes.delete(sourceDigest));
  publicationRefreshes.set(sourceDigest,read);return read;
 }
 

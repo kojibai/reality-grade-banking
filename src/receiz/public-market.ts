@@ -309,9 +309,71 @@ export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=as
   rememberPublicMarketResponse(catalog,input,exact);
   return catalog;
 }
-export async function fetchPublicQuotes(signal?: AbortSignal,afterTrade?:string): Promise<unknown> {
-  const response = await fetch('/api/bank/public-market/quotes'+(afterTrade&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(afterTrade)?'?afterTrade='+afterTrade:''), { signal, credentials: 'omit' });
-  if (!response.ok) throw new Error('Public quotes could not be refreshed.');
-  return validatePublicQuotes(await response.json());
+export interface PublicQuoteObservation {snapshot:unknown;receivedAt:number;}
+interface PublicQuoteRead {controller:AbortController;epoch:number;pending:Promise<unknown>;consumers:Set<symbol>;}
+const quoteReads=new Map<string,PublicQuoteRead>(),quoteListeners=new Set<()=>void>();
+let quoteEpoch=0,retainedQuotes:PublicQuoteObservation|null=null,pendingTrade:string|undefined,pendingPublication:string|undefined;
+export function readRetainedPublicQuotes():PublicQuoteObservation|null{return retainedQuotes;}
+export function subscribePublicQuotes(listener:()=>void):()=>void{quoteListeners.add(listener);return()=>{quoteListeners.delete(listener);};}
+const tradeNonce=(value?:string)=>value&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value)?value:undefined;
+const selectQuoteFields=(input:unknown,keys:readonly string[])=>{const source=record(input);return Object.fromEntries(keys.filter(key=>source[key]===null||typeof source[key]==='boolean'||typeof source[key]==='string'&&(source[key] as string).length<=8192||typeof source[key]==='number'&&Number.isFinite(source[key])).map(key=>[key,source[key]]));};
+/** Retain only the existing public quote operands, never account/owner payloads.
+ * Full inventory validation still occurs against the actual held public asset. */
+function publicQuoteObservation(input:unknown):unknown{
+ const envelope=record(input),data=record(envelope.data);
+ return{ok:true,data:{...selectQuoteFields(data,['schema','generatedAt','serverPulse']),liveMarkets:(data.liveMarkets as unknown[]).filter(raw=>record(raw).visibility==='public').map(raw=>{
+  const quote=record(raw),inventory=record(quote.shareInventory),selected=selectQuoteFields(quote,['itemId','assetId','visibility','priceUsd','changePct','quoteUsdPerPhi']);
+  if(Array.isArray(quote.chart))selected.chart=quote.chart.slice(-256).map(point=>selectQuoteFields(point,['value']));
+  if(Object.keys(inventory).length){const stock=selectQuoteFields(inventory,['schema','marketItemId','assetId','family','quantityScope','observedAtKaiUPulse','outstandingShareQuantityMicro','availableShareQuantityMicro','maxPurchaseShareQuantityMicro','availability','originalIssuedShareQuantityMicro','positionsMicro','certificatesMicro','reservedBuyMicro','nativeAssetId','issuanceSourceSha256','sourceHeadSha256','historyBasis']);
+   if(inventory.capacity)stock.capacity=selectQuoteFields(inventory.capacity,['askPriceUsdCents','hardCapUsdCents','openInterestUsdCents','maxSingleTradeUsdCents']);
+   const pointFields=['kaiUPulse','unitPriceUsdCents','outstandingShareQuantityMicro','availableShareQuantityMicro'];
+   if(inventory.releaseCapitalization)stock.releaseCapitalization=selectQuoteFields(inventory.releaseCapitalization,[...pointFields,'modelVersion']);
+   for(const key of ['history','capitalizationHistory'])if(Array.isArray(inventory[key])&&inventory[key].length<=10001)stock[key]=inventory[key].map(point=>selectQuoteFields(point,pointFields));
+   selected.shareInventory=stock;
+  }return selected;
+ })}};
+}
+function olderQuoteSnapshot(next:unknown,previous:unknown):boolean{
+ const a=record(record(next).data),b=record(record(previous).data),pulse=(value:unknown)=>typeof value==='string'&&/^\d{1,24}$/.test(value)?BigInt(value):typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?BigInt(value):null;
+ const ap=pulse(a.serverPulse),bp=pulse(b.serverPulse),at=Date.parse(String(a.generatedAt??'')),bt=Date.parse(String(b.generatedAt??''));
+ return bp!==null&&(ap===null||ap<bp)||Number.isFinite(bt)&&(!Number.isFinite(at)||at<bt);
+}
+/** One public request/decode per intent. Cancellation belongs to a consumer;
+ * a closing surface cannot cancel another surface's pending observation. */
+export async function fetchPublicQuotes(signal?:AbortSignal,afterTrade?:string,afterPublication?:string):Promise<unknown>{
+ if(signal?.aborted)return Promise.reject(new DOMException('The operation was aborted.','AbortError'));
+ if(afterPublication!==undefined&&(!/^[a-f0-9]{64}$/.test(afterPublication)||afterTrade!==undefined))throw Error('Unsupported publication freshness reference.');
+ const nonce=tradeNonce(afterTrade);if(nonce)pendingTrade=nonce;
+ if(afterPublication)pendingPublication=afterPublication;
+ const publication=afterPublication??(nonce?undefined:pendingPublication),trade=nonce??pendingTrade,key=publication?'publication:'+publication:trade??'';let read=quoteReads.get(key);
+ if(!read||read.controller.signal.aborted||read.epoch!==quoteEpoch){
+  const controller=new AbortController(),epoch=++quoteEpoch;
+  const query=publication?'?afterPublication='+publication:trade?'?afterTrade='+trade:'';
+  const pending=fetch('/api/bank/public-market/quotes'+query,{signal:controller.signal,credentials:'omit'}).then(async response=>{
+   if(!response.ok)throw new Error('Public quotes could not be refreshed.');
+   const value=validatePublicQuotes(await response.json());
+   if(!controller.signal.aborted&&epoch===quoteEpoch){
+    if(!retainedQuotes||!olderQuoteSnapshot(value,retainedQuotes.snapshot)){
+     retainedQuotes={snapshot:publicQuoteObservation(value),receivedAt:Date.now()};
+     if(publication&&pendingPublication===publication)pendingPublication=undefined;
+     if(!publication&&pendingTrade===trade)pendingTrade=undefined;
+     for(const listener of quoteListeners)listener();
+    }
+   }return retainedQuotes&&(epoch!==quoteEpoch||olderQuoteSnapshot(value,retainedQuotes.snapshot))?retainedQuotes.snapshot:value;
+  }).finally(()=>{if(quoteReads.get(key)?.epoch===epoch)quoteReads.delete(key);});
+  read={controller,epoch,pending,consumers:new Set()};quoteReads.set(key,read);
+ }
+ const shared=read,consumer=Symbol();shared.consumers.add(consumer);
+ return new Promise((resolve,reject)=>{
+  let settled=false;const finish=(callback:()=>void)=>{if(settled)return;settled=true;signal?.removeEventListener('abort',abort);shared.consumers.delete(consumer);callback();};
+  const abort=()=>finish(()=>{if(!shared.consumers.size)shared.controller.abort();reject(new DOMException('The operation was aborted.','AbortError'));});
+  signal?.addEventListener('abort',abort,{once:true});shared.pending.then(value=>finish(()=>resolve(value)),cause=>finish(()=>reject(cause)));
+ });
+}
+/** A fresh already-held Market read needs no second Ledger request. */
+export function preparePublicQuotes(signal?:AbortSignal):Promise<unknown>{
+ const age=retainedQuotes?Date.now()-retainedQuotes.receivedAt:Infinity;
+ if(!pendingTrade&&!pendingPublication&&retainedQuotes&&age>=0&&age<60_000)return signal?.aborted?Promise.reject(new DOMException('The operation was aborted.','AbortError')):Promise.resolve(retainedQuotes.snapshot);
+ return fetchPublicQuotes(signal);
 }
 export function formatPublicPrice(value: number | null): string { return value === null ? 'Value unavailable' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value); }

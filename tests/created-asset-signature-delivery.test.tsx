@@ -93,3 +93,31 @@ it('completes a pending signed Create result from the later exact public catalog
   expect(pending).toHaveBeenCalledOnce();expect(retry).not.toHaveBeenCalled();expect(publish).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();expect(request).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
+
+it.each([
+ {observation:'exact signature',uid:'owner',pbi:'e'.repeat(64),confirmed:true},
+ {observation:'another owner',uid:'another',pbi:'e'.repeat(64),confirmed:false},
+ {observation:'another PBI receipt',uid:'owner',pbi:'1'.repeat(64),confirmed:false},
+])('preserves admitted delivery selection for $observation when an older call returns pending',async({uid,pbi,confirmed})=>{
+ const digest=reference.artifactSha256,hash='e'.repeat(64),request=vi.spyOn(globalThis,'fetch');
+ adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,published('c'.repeat(64)));
+ adoption.retainAssetPublicationAdmission(signed(),owner);adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'SIGNATURE_DELIVERY_PENDING'},hash);
+ const saved:HeldDeposit={digest,filename:'asset.receizbundle',title:original.assetTitle,kind:'proof',status:'held-proof',pulse:original.pulse,bytes:new Uint8Array([1,2]),pbiSigned:true,publication:{status:'published',showcaseArtifactDigest:'c'.repeat(64)},marketPublication:{status:'pending',code:'SIGNATURE_DELIVERY_PENDING'}};
+ let finish!:(value:HeldDeposit)=>void;
+ const delivery=new Promise<HeldDeposit>(resolve=>{finish=resolve;}),publish=vi.fn(()=>delivery),pending=vi.fn(async()=>saved),retry=vi.fn(),create=vi.fn();
+ const identity={username:'artist',accountUsername:()=> 'artist',pendingAssetPublication:pending,publishAssetToMarket:publish,retryAssetPublication:retry,createComposedAsset:create} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Finish publishing')!.click());
+  await act(async()=>adoption.acceptDiscoveredPublicAssets(parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:original.assetTitle,ownerUsername:'artist',ownerUserId:uid,ownerCreatedAt:'2026-01-01T00:00:00Z',profileOriginal:{media:original.media,hasPbiSignature:true,pbiReceiptHash:pbi}}]}})));
+  expect(host.textContent?.includes('Bankeiz Market listing is confirmed.')).toBe(confirmed);
+  // This return was prepared before the newer admitted public observation.
+  await act(async()=>{finish({...saved,publication:{status:'pending'},marketPublication:{status:'pending',code:'SIGNATURE_DELIVERY_PENDING'}});await delivery;});
+  expect(host.textContent).toContain('Your Original is public on Receiz.');
+  expect(host.textContent?.includes('Bankeiz Market listing is confirmed.')).toBe(confirmed);
+  expect(host.textContent?.includes('Market listing delivery is pending.')).toBe(!confirmed);
+  expect(host.querySelector('h1')?.textContent).toBe(confirmed?'Your Original is signed and public.':'Your Original is signed.');
+  expect(pending).toHaveBeenCalledOnce();expect(publish).toHaveBeenCalledOnce();expect(retry).not.toHaveBeenCalled();expect(create).not.toHaveBeenCalled();expect(request).not.toHaveBeenCalled();
+ }finally{await act(async()=>{finish(saved);await delivery;});act(()=>root.unmount());}
+});

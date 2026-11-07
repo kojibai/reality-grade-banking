@@ -5,7 +5,7 @@ import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
-import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -69,10 +69,12 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
 }
 // The accepted public projection belongs to the document, even when its last
 // Market consumer is hidden or unmounted. The prepared receipt stays separate.
-subscribeAssetPublicationAdmissions(accepted=>{const before=readPublicCatalog(),selected=publishPublicCatalog(current=>{
- if(!accepted||!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
- return mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:compatibleShareInventory(item,prior?.shareInventory)};return prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports);
-});if(before&&selected&&!accepted)reusePublicMarketResponse(before,selected);if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,undefined,selected,before);lastRefreshAt=Date.now();lastRefreshFailed=false;}});
+subscribeAssetPublicationAdmissions((accepted,snapshot)=>{const before=readPublicCatalog(),selected=publishPublicCatalog(current=>{
+ if(!accepted)return snapshot&&current?mergePublicQuotes(current,snapshot):current;
+ if(!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
+ const updated=mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),sameSource=prior?.assetId===item.assetId&&prior.originalDigest===item.originalDigest,next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:mergeShareInventory(sameSource?compatibleShareInventory(item,prior?.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null)};return sameSource&&!item.chart.length&&prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports);
+ return snapshot?mergePublicQuotes(updated,snapshot):updated;
+});if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);lastRefreshAt=Date.now();lastRefreshFailed=false;}});
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
 if(typeof document!=='undefined'){void prepareCarriedBankCatalog().then(()=>{const prepared=preparedBankCatalogState();if(!prepared.bareCatalog&&!prepared.value&&!prepared.carried)return;const before=retainedCatalog;readPublicCatalog();if(before!==retainedCatalog)for(const listener of catalogListeners)listener();});exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
 let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
@@ -186,7 +188,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     latestQuotes.current=null;
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
     const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
-      if(!currentAttempt())return;const next=membership.value;if(!next?.complete)lastRefreshFailed=true;
+      if(!currentAttempt())return;const next=membership.value,quotes=readRetainedPublicQuotes()?.snapshot??latestQuotes.current;if(!next?.complete)lastRefreshFailed=true;
       const before=readPublicCatalog(),selected=setCatalog(current=>{
         if(!next||!next.complete&&current)return current;
         const previous=new Map(current?.items.map(item=>[item.id,item]));
@@ -195,10 +197,10 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
           const presented={...retainPublicMomentManifest(retainPublicArtwork(item,quoted),quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
           return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
         })},retainedSports);
-        if(latestQuotes.current)updated=mergePublicQuotes(updated,latestQuotes.current);
+        if(quotes)updated=mergePublicQuotes(updated,quotes);
         return updated;
       });
-      if(next?.complete&&selected&&selected!==before)retainPublicMarket(next,latestQuotes.current,selected,before);
+      if(next?.complete&&selected&&selected!==before)retainPublicMarket(next,quotes,selected,before);
       setStatus(next?.complete?'live':'stale');
       updateRefreshError({membership:next?.complete?null:membership.error??'The public collection is incomplete. Keeping the last complete collection.'});
     });

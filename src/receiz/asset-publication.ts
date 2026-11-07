@@ -5,11 +5,16 @@ export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';sh
 type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 const deliveries=new Map<string,Promise<AssetPublicationReceipt>>();
-export type AssetPublicationAttempt={ownerReceizId:string;sourceDigest:string;active:boolean;publication?:AssetPublicationDelivery};
+export type AssetPublicationAttemptTiming={attemptId:string;sourceDigest:string;phase:'source';sizeBytes:number;startedAtMs:number};
+export type AssetPublicationAttempt={ownerReceizId:string;sourceDigest:string;active:boolean;publication?:AssetPublicationDelivery;timing?:AssetPublicationAttemptTiming};
+const deliveryTimings=new Map<string,AssetPublicationAttemptTiming>();let deliverySequence=0;
 const deliveryListeners=new Set<(attempt:AssetPublicationAttempt)=>void>();
 const deliveryKey=(ownerReceizId:string,sourceDigest:string)=>JSON.stringify([ownerReceizId,sourceDigest]);
 /** Display-only lifecycle of the existing attempt; observing never starts a delivery. */
 export const isAssetPublicationDeliveryActive=(ownerReceizId:string,sourceDigest:string)=>deliveries.has(deliveryKey(ownerReceizId,sourceDigest));
+/** Only an actual running attempt has timing. Reading held or restored state
+ * never starts a clock or manufactures a new measurement. */
+export const assetPublicationDeliveryTiming=(ownerReceizId:string,sourceDigest:string)=>deliveryTimings.get(deliveryKey(ownerReceizId,sourceDigest));
 /** Join only the already-running exact source attempt after local signing. */
 export function waitForAssetPublicationDelivery(ownerReceizId:string,sourceDigest:string):Promise<void>|undefined{return deliveries.get(deliveryKey(ownerReceizId,sourceDigest))?.then(()=>{});}
 export function subscribeAssetPublicationDeliveries(listener:(attempt:AssetPublicationAttempt)=>void){deliveryListeners.add(listener);return()=>{deliveryListeners.delete(listener);};}
@@ -68,6 +73,8 @@ export function createAssetPublication(dependencies:Dependencies){
   const key=deliveryKey(dependencies.ownerReceizId,held.state.sourceDigest);
   let delivery=deliveries.get(key);
   if(!delivery){
+   const timing:AssetPublicationAttemptTiming=Object.freeze({attemptId:`source-${++deliverySequence}`,sourceDigest:held.state.sourceDigest,phase:'source',sizeBytes:held.file.size,startedAtMs:performance.now()});
+   deliveryTimings.set(key,timing);
    delivery=(async()=>{
     dependencies.assertOpen();let receipt:AssetPublicationReceipt;
     try{receipt=readReceipt(await dependencies.publish(held.file));}catch(error){receipt={status:'pending',code:error instanceof Error&&/^(?:PROFILE_SHOWCASE|IMPORTED_SOURCE|BANK_ASSET_PUBLICATION)_[A-Z0-9_]+$/.test(error.message)?error.message:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'};}
@@ -82,8 +89,8 @@ export function createAssetPublication(dependencies:Dependencies){
     return receipt;
    })();
    deliveries.set(key,delivery);
-   notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:true});
-   const finished=(publication:AssetPublicationDelivery)=>{if(deliveries.get(key)===delivery)deliveries.delete(key);notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:false,publication});};
+   notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:true,timing});
+   const finished=(publication:AssetPublicationDelivery)=>{if(deliveries.get(key)===delivery)deliveries.delete(key);if(deliveryTimings.get(key)===timing)deliveryTimings.delete(key);notifyDelivery({ownerReceizId:dependencies.ownerReceizId,sourceDigest:held.state.sourceDigest,active:false,publication,timing});};
    void delivery.then(receipt=>finished(projectReceipt(receipt)),()=>finished({status:'pending',code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}));
   }
   // Calling the publisher above starts delivery now. No timer, artificial delay,

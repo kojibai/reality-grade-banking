@@ -231,3 +231,35 @@ it('keeps observation-only signature completion headless even when display reten
  adoption.acceptDiscoveredPublicAssets(catalog);
  expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toEqual({status:'published'});
 });
+
+it.each(['market','profile'] as const)('completes pending Source delivery only for the exact Original observed in %s, without inventing a Showcase head',surface=>{
+ const digest=reference.artifactSha256;
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});
+ const observed=(hash:string)=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:original.assetTitle,ownerUsername:'artist',profileOriginal:{...original,media:{...original.media,originalDownloadSha256Hex:hash}}}]}});
+ const accept=(hash:string)=>surface==='market'?adoption.acceptDiscoveredPublicAssets(observed(hash)):adoption.acceptDiscoveredProfileAssets({...profile,items:observed(hash).items});
+ accept('e'.repeat(64));
+ expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toEqual({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});
+ accept(digest);
+ expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toEqual({status:'published'});
+ expect(adoption.admittedAssetPublicationDelivery(digest,'another')).toBeNull();
+});
+
+it('keeps observed Source delivery after both public surfaces retire its pending preview',()=>{
+ const digest=reference.artifactSha256;
+ adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});
+ const catalog=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:original.assetTitle,ownerUsername:'artist',profileOriginal:original}]}});
+ adoption.acceptDiscoveredPublicAssets(catalog);adoption.acceptDiscoveredProfileAssets({...profile,items:catalog.items});
+ expect(adoption.mergeAdmittedPublicAssets(catalog).items).toHaveLength(1);expect(adoption.mergeAdmittedProfileAssets({...profile,items:catalog.items}).items).toHaveLength(1);
+ expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toEqual({status:'published'});
+});
+
+it('keeps exact observed Source delivery while a later authorship append remains pending',()=>{
+ adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(reference.artifactSha256,{status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});
+ const catalog=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:artist:imported-new',receizId:'imported-new',title:original.assetTitle,ownerUsername:'artist',profileOriginal:original}]}});
+ adoption.acceptDiscoveredPublicAssets(catalog);
+ adoption.retainAssetPublicationAdmission({...admission,original:{...original,hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64)}},owner);
+ expect(adoption.admittedAssetPublicationDelivery(reference.artifactSha256,'artist')).toEqual({status:'published'});
+ expect(adoption.admittedAssetPublicationSignatureDelivery(reference.artifactSha256,'artist')).toBeNull();
+ expect(adoption.locallyPendingAssetPublication(reference.artifactSha256,'artist')).toBe(false);
+});

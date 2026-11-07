@@ -40,8 +40,12 @@ function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocum
  const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
  if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined);
  if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
- const content=<StrictMode><PublicExplorerRoot prepared={prepared} reconcilePath={reconcilePath}/></StrictMode>;
- const renderer=prepared?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!prepared)renderer.render(content);return renderer;
+ const profileEntry=!!prepared&&root.hasAttribute('data-public-profile-entry'),profilePath=profileEntry&&profilePageUsername(location.pathname)?location.pathname:undefined;
+ const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;
+ const content=<StrictMode><PublicExplorerRoot prepared={selected} path={profilePath} reconcilePath={reconcilePath}/></StrictMode>;
+ // A cold profile carries the selected family beside its entry placeholder;
+ // it has no server-rendered Explore tree to hydrate or briefly reveal.
+ const renderer=prepared&&!profileEntry?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!prepared||profileEntry)renderer.render(content);return renderer;
 }
 /** Raw prepared entries stay synchronous. A compressed static entry retains
  * its visible rows while the existing bounded, cached local decoder finishes. */

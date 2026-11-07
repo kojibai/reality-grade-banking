@@ -121,6 +121,18 @@ it('publishes fresh post-trade quotes into the same normal quote cache entry',as
  await request('/api/bank/public-market/quotes?afterTrade='+nonce);fetcher.mockClear();const result=await request('/api/bank/public-market/quotes');expect(result.data.liveMarkets[0].priceUsd).toBe(88);expect(fetcher).not.toHaveBeenCalled();
 });
 
+it('bypasses stale quotes for one exact publication without forwarding a trade or publication argument upstream',async()=>{
+ vi.resetModules();const {publicMarketMiddleware:freshMiddleware,resolvePublicMarketTarget:resolve}=await import('../server/public-market');
+ const digest='a'.repeat(64),url='/api/bank/public-market/quotes?afterPublication='+digest;
+ expect(resolve(url)?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');
+ for(const bad of [url+'&afterPublication='+digest,url+'&afterTrade=10000000-0000-4000-8000-000000000001',url+'&url=https://evil.test',url.replace(digest,'invalid')])expect(resolve(bad)).toBeNull();
+ const fetcher=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}})).mockResolvedValueOnce(Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[{itemId:'new',visibility:'public',priceUsd:20}]}}));vi.stubGlobal('fetch',fetcher);
+ const request=async(path:string)=>{let body='';await freshMiddleware({method:'GET',url:path,headers:{cookie:'private',authorization:'Bearer private'}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(v:Uint8Array)=>{body=new TextDecoder().decode(v);}}as unknown as ServerResponse,vi.fn());return JSON.parse(body);};
+ await request('/api/bank/public-market/quotes');const fresh=await request(url);expect(fresh.data.liveMarkets[0].itemId).toBe('new');
+ expect(String(fetcher.mock.calls[1][0])).toBe('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');expect(fetcher.mock.calls[1][1]).toMatchObject({cache:'no-store',credentials:'omit',redirect:'error'});
+ await request('/api/bank/public-market/quotes');expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
 it('carries bounded public lyrics in the existing membership response without private fields or another request',async()=>{const longForm={title:'Song lyrics',text:'Every word\nAlready carried',sha256Hex:'a'.repeat(64)},fetchSource=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'song',receizId:'song',title:'Song',profileOriginal:{longForm:{...longForm,privateField:'omit-this-field'},media:{kind:'audio'}}}]}}));vi.stubGlobal('fetch',fetchSource);let body='';await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/membership?afterPublication='+'f'.repeat(64),headers:{cookie:'secret'}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.longForm).toEqual(longForm);expect(body).not.toContain('omit-this-field');expect(fetchSource).toHaveBeenCalledTimes(1);});
 
 it('carries the exact description claim digest through the existing membership read without carrying the text or fetching again',async()=>{

@@ -223,7 +223,10 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
     const stop=marker?.subscribePublicMarketCatalog?.(reuseHeldProofs);reuseHeldProofs();return stop;
   },[reuseHeldProofs]);
-  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
+  useEffect(()=>subscribeAssetPublicationAdmissions((catalog,snapshot)=>{
+    // Quote-only settlement is already carried by the shared quote store and
+    // selected Market marker. It cannot request a second membership read.
+    if(!catalog&&snapshot)return;
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
     const held=heldProofCatalog(),heldAt=Date.parse(held?.observedAt??''),offeredAt=Date.parse(catalog?.observedAt??'');
     if(held&&(!catalog||held===catalog||Number.isFinite(heldAt)&&(!Number.isFinite(offeredAt)||heldAt>=offeredAt))&&reuseHeldProofs())return;

@@ -8,8 +8,8 @@ import {parsePublicMarket,type PublicMarketCatalog} from '../src/receiz/public-m
 const network = vi.hoisted(() => ({ read: vi.fn() }));
 const cache = vi.hoisted(() => ({ load: vi.fn(), seed: vi.fn(), save: vi.fn() }));
 const originals = vi.hoisted(() => ({ restore: vi.fn(), sync: vi.fn(), rows: vi.fn() }));
-const publications=vi.hoisted(()=>({hint:undefined as string|undefined,listeners:new Set<(catalog?:PublicMarketCatalog)=>void>()}));
-vi.mock('../src/receiz/asset-publication-adoption',async original=>({...await original<typeof import('../src/receiz/asset-publication-adoption')>(),assetPublicationFreshnessHint:()=>publications.hint,subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog)=>void)=>{publications.listeners.add(listener);return()=>publications.listeners.delete(listener);}}));
+const publications=vi.hoisted(()=>({hint:undefined as string|undefined,listeners:new Set<(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void>()}));
+vi.mock('../src/receiz/asset-publication-adoption',async original=>({...await original<typeof import('../src/receiz/asset-publication-adoption')>(),assetPublicationFreshnessHint:()=>publications.hint,subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void)=>{publications.listeners.add(listener);return()=>publications.listeners.delete(listener);}}));
 vi.mock('../src/receiz/public-ledger-continuity',()=>({readHeldPublicLedger:originals.restore,synchronizePublicLedger:originals.sync,publicLedgerDisplayRows:originals.rows}));
 vi.mock('../src/receiz/public-network', async original => ({ ...await original<typeof import('../src/receiz/public-network')>(), readPublicNetworkPage: network.read }));
 vi.mock('../src/receiz/public-network-cache', () => ({ loadPublicNetworkCache: cache.load, loadPublicNetworkSeed: cache.seed, savePublicNetworkCache: cache.save }));
@@ -150,6 +150,15 @@ it('refreshes only Ledger proofs when native publication is acknowledged, while 
   expect(read().records.map(row=>row.sourceId)).toContain('published-original');expect(network.read).toHaveBeenCalledTimes(5);expect(network.read.mock.calls.at(-1)?.[0]).toBe('proofs');
  });
  expect(publications.listeners.size).toBe(0);
+});
+it('does not rediscover proof membership when an independent publication quote settles',async()=>{
+ network.read.mockImplementation(async(source:PublicSource)=>page(source));
+ await observe(async()=>{
+  expect(network.read).toHaveBeenCalledTimes(4);publications.hint='a'.repeat(64);
+  const quotes={ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}};
+  await act(async()=>{for(const listener of publications.listeners)listener(undefined,quotes);});
+  expect(network.read).toHaveBeenCalledTimes(4);
+ });
 });
 it('adopts a confirmed public publication catalog immediately and ignores an older in-flight proof response',async()=>{
  let finish!:(value:ReturnType<typeof page>)=>void;network.read.mockImplementation((source:PublicSource)=>source==='proofs'?new Promise(resolve=>{finish=resolve;}):Promise.resolve(page(source,[source])));

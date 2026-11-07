@@ -49,13 +49,14 @@ it('keeps accepted membership B selected for Feed without borrowing prepared A p
  expect(host.textContent).toContain('Original qualified C');expect(host.textContent).not.toContain('Original accepted');expect(marker.publicDiscoveryDocument()?.generation).toBe('c'.repeat(64));
  const withdrawn=await seed([],'e'.repeat(64));await act(()=>adoptPublicMarketDocument(withdrawn,{state:'current',identity:reader.publicMarketIdentity()}));
  expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual([]);expect(host.textContent).not.toContain('Original qualified C');
- expect(fetcher.mock.calls.map(([path])=>String(path)).filter(path=>path.startsWith('/api/'))).toEqual(['/api/bank/public-market/membership?afterPublication='+ 'd'.repeat(64),'/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);
+ const publicationQuotes='/api/bank/public-market/quotes?afterPublication='+'d'.repeat(64);
+ expect(fetcher.mock.calls.map(([path])=>String(path)).filter(path=>path.startsWith('/api/'))).toEqual(['/api/bank/public-market/membership?afterPublication='+ 'd'.repeat(64),publicationQuotes,publicationQuotes,'/api/bank/public-market/membership','/api/bank/public-market/sports']);
 });
 it('retains accepted membership when publication resolves after its Market consumer unmounts',async()=>{
  const a=await seed(['old']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
- const fetcher=vi.fn(async()=>Response.json(membership(['accepted after unmount'])));vi.stubGlobal('fetch',fetcher);
+ const fetcher=vi.fn(async(_path:RequestInfo|URL)=>Response.json(membership(['accepted after unmount'])));vi.stubGlobal('fetch',fetcher);
  const adoption=await import('../src/receiz/asset-publication-adoption');await adoption.refreshAssetPublicationCatalog('d'.repeat(64));
- const source=await import('../src/public-feed/feed-source');expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual(['accepted after unmount']);expect(fetcher).toHaveBeenCalledOnce();
+ const source=await import('../src/public-feed/feed-source');expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual(['accepted after unmount']);expect(fetcher.mock.calls.map(([path])=>String(path))).toEqual(['/api/bank/public-market/membership?afterPublication='+'d'.repeat(64),'/api/bank/public-market/quotes?afterPublication='+'d'.repeat(64)]);
 });
 it('healthy public wakes preserve the held family deadline while explicit refresh and a failed retry remain immediate',async()=>{
  vi.useFakeTimers();const a=await seed(['held']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
@@ -91,7 +92,7 @@ it('reuses separately held sports when accepted Originals membership has no spor
  const {adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
  const fetcher=vi.fn(async(path:RequestInfo|URL)=>String(path).startsWith('/api/bank/public-market/membership?afterPublication=')?Response.json(membership(['new Original'])):new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);
  const adoption=await import('../src/receiz/asset-publication-adoption');await adoption.refreshAssetPublicationCatalog('d'.repeat(64));
- const source=await import('../src/public-feed/feed-source'),sports=await source.prepareFeedCollectibles();expect(sports).toEqual([card]);expect(sports[0]).toBe(card);expect(fetcher).toHaveBeenCalledOnce();
+ const source=await import('../src/public-feed/feed-source'),sports=await source.prepareFeedCollectibles();expect(sports).toEqual([card]);expect(sports[0]).toBe(card);expect(fetcher.mock.calls.map(([path])=>String(path))).toEqual(['/api/bank/public-market/membership?afterPublication='+'d'.repeat(64),'/api/bank/public-market/quotes?afterPublication='+'d'.repeat(64)]);
 });
 it('retries a failed legacy public refresh on wake before its ordinary deadline',async()=>{
  history.replaceState(null,'','/explore/');localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(membership(['held'])));let memberships=0;

@@ -1593,7 +1593,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         const delivery=openPublicationRuntime();void delivery.catch(()=>{});
         const username=presentationUsername??keyFile.owner.username,uid=accountUid??knownWallet?.wallet.userId;
         if(composed&&username&&uid){const native=await awaitImportPublication();await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted,artwork:artwork??admission.artwork});}});}
-        const receipt=await(await delivery).publish(file);lifetime.signal.throwIfAborted();if(!publicationDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');adoption.acknowledgeAssetPublication(publicationDigest,receipt);if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(publicationDigest);return receipt;},
+        const receipt=await(await delivery).publish(file);lifetime.signal.throwIfAborted();if(!publicationDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');adoption.acknowledgeAssetPublication(publicationDigest,receipt);if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(publicationDigest);return receipt;},
     });
     const result=localOnly?await publication.pending():composed?await publication.createLocal(intent):input?await publication.create(intent):await publication.resume();
     if(!result)throw Error('BANK_ASSET_PUBLICATION_NONE');
@@ -1624,7 +1624,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const signaturePbiReceiptHash=assetSigningFlights.get(digest)?.signaturePbiReceiptHash;
     if(!signaturePbiReceiptHash)throw Error('BANK_ASSET_SIGNATURE_ADMISSION_REQUIRED');
     const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt,signaturePbiReceiptHash);
-    if(receipt.status==='published')void adoption.refreshAssetPublicationCatalog(digest);
+    // A pending reply can follow accepted public Source (for example a cold
+    // saved-page repair). Reconcile its exact public observation as well.
+    if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(digest);
     return receipt;
     })();const flight:AssetSigningFlight={receipt:signing};assetSigningFlights.set(digest,flight);
     void signing.finally(()=>{if(assetSigningFlights.get(digest)===flight)assetSigningFlights.delete(digest);}).catch(()=>{});

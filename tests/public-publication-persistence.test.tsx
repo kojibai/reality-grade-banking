@@ -25,7 +25,7 @@ it('keeps already shared accepted B when the exact persisted Bank A finishes his
  const p=await probe(),adoption=await import('../src/receiz/asset-publication-adoption');await act(()=>adoption.refreshAssetPublicationCatalog('d'.repeat(64)));expect(p.read().historyCatalog?.items[0].id).toBe('accepted B');const heldB=p.read().historyCatalog;
  const reader=await import('../src/receiz/prepared-bank-catalog');await act(async()=>{disk.finish(a.response());await reader.prepareCarriedBankCatalog();});
  expect(p.read().historyCatalog).toBe(heldB);expect(p.read().status).toBe('stale');expect(reader.preparedBankCatalogState().value).toBeNull();expect(reader.preparedBankCatalogState().carried).toBeUndefined();
- const source=await import('../src/public-feed/feed-source');expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual(['accepted B']);expect(fetcher.mock.calls.filter(([path])=>String(path).startsWith('/api/'))).toHaveLength(1);
+ const source=await import('../src/public-feed/feed-source');expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual(['accepted B']);expect(fetcher.mock.calls.map(([path])=>String(path)).filter(path=>path.startsWith('/api/'))).toEqual(['/api/bank/public-market/membership?afterPublication='+'d'.repeat(64),'/api/bank/public-market/quotes?afterPublication='+'d'.repeat(64)]);
 });
 it('keeps cold Feed accepted B when the later Market owner loads and restores old persisted Bank A',async()=>{
  const disk=delayedCache(),a=await packet('persisted A'),fetcher=vi.fn(async(path:RequestInfo|URL)=>String(path)==='/api/bank/public-market/membership'?Response.json(membership('accepted B')):new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);
