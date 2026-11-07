@@ -1,5 +1,5 @@
 import {createPublicMaterialWindowReader} from './public-material-window.js';
-import {readPreparedPublicMaterial,recheckPreparedPublicMaterial} from './prepared-public-material.js';
+import {preparedPublicMaterialSelection} from './prepared-public-material.js';
 import {readPublicReferenceHistory} from './public-reference-history.js';
 import {readPublicReferenceBaseline} from './public-reference-baseline.js';
 import {compatibleShareInventory} from '../src/receiz/market-share-inventory.js';
@@ -22,7 +22,7 @@ const sources=new WeakMap<PartReader,{readers:Map<string,ReturnType<typeof creat
  * This cache holds immutable display bytes, never serialized SDK authority. */
 type ReferenceInput={material:string;generation:string;path?:string;readPart?:(generation:string)=>Promise<string>};
 export async function prepareSelectedPublicReferenceCatalog(input:ReferenceInput,includeSports=true){
- const port=input.readPart??readPreparedPublicMaterial;let cache=sources.get(port);if(!cache){cache={readers:new Map(),retainedParts:new Map()};sources.set(port,cache);}const {readers,retainedParts}=cache;let reader=readers.get(input.generation);if(!reader){reader=createPublicMaterialWindowReader({...input,readPart:port,retainedParts,...(port===readPreparedPublicMaterial?{recheckPart:recheckPreparedPublicMaterial}:{})});readers.set(input.generation,reader);while(readers.size>4){const oldest=readers.keys().next().value!,released=readers.get(oldest)!;readers.delete(oldest);released.releaseUnusedParts(id=>[...readers.values()].some(held=>held.usesPart(id)));}}
+ const selection=input.readPart?null:preparedPublicMaterialSelection({root:input.generation}),port=input.readPart??selection!.read;let cache=sources.get(port);if(!cache){cache={readers:new Map(),retainedParts:new Map()};sources.set(port,cache);}const {readers,retainedParts}=cache;let reader=readers.get(input.generation);if(!reader){reader=createPublicMaterialWindowReader({...input,readPart:port,retainedParts,...(selection?{recheckPart:selection.recheck}:{})});readers.set(input.generation,reader);while(readers.size>4){const oldest=readers.keys().next().value!,released=readers.get(oldest)!;readers.delete(oldest);released.releaseUnusedParts(id=>[...readers.values()].some(held=>held.usesPart(id)));}}
  // Existing app seeds carry the full current cohort. Open its immutable rows
  // once in the write-side renderer; never combine the unrelated financial
  // ledger into the Market material or replay canonical Source history here.

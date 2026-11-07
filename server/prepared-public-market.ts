@@ -1,9 +1,10 @@
+import type {HeldPublicOperandRequest,HeldPublicOperandResult} from './held-public-market-operands.js';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import type {PublicMarketRenderInput} from './public-market-document';
 import {preparedPublicPagePath,publicMarketPreparedPath} from '../src/receiz/prepared-public-page-path.js';
-import {readPreparedPublicMaterial} from './prepared-public-material.js';
+import {readPreparedPublicMaterial,preparedPublicMaterialSelection} from './prepared-public-material.js';
 import type {PublicSportsParts} from './public-sports-parts.js';
 import type {PublicOriginalPartInput,PublicOriginalParts} from './public-original-parts.js';
 import type {PublicHistoryTransitionInput,PublicHistoryTransitionResult} from './public-history-transition.js';
@@ -23,7 +24,7 @@ async function publicRenderBuild():Promise<string>{
 export type PreparedPublicPageRenderInput={material:string;generation:string;path:string;template:string};
 type RenderInput=Omit<PreparedPublicPageRenderInput,'template'>;
 type InputPreparation={selectionKey:string;history?:unknown;previousMaterial?:string;previousGeneration?:string;refreshMarket?:true;membershipGeneration?:string;membership?:Record<string,unknown>;changedQuotes?:Array<Record<string,unknown>>;currentLedgerHeads?:unknown;requestOptionsSha256?:string};
-type Dependencies={prepared:(method:'GET'|'HEAD',path:string,build:string)=>Promise<Response>;render:(input:RenderInput)=>Promise<string>;prepareInput?:(input:InputPreparation)=>Promise<{material:string;generation:string}>;prepareSportsParts?:(input:unknown)=>Promise<PublicSportsParts>|PublicSportsParts;prepareOriginalParts?:(input:PublicOriginalPartInput)=>Promise<PublicOriginalParts>|PublicOriginalParts;prepareHistoryTransition?:(input:PublicHistoryTransitionInput)=>Promise<PublicHistoryTransitionResult>;prepareOperand?:(input:PublicMarketOperandRequest,selected?:Readonly<Record<PublicMarketOperand,unknown>>)=>Promise<PublicMarketOperandResult>;readMaterial?:(generation:string)=>Promise<string>;build?:string};
+type Dependencies={prepareHeldOperand?:(input:HeldPublicOperandRequest,build:string)=>Promise<HeldPublicOperandResult>;prepared:(method:'GET'|'HEAD',path:string,build:string)=>Promise<Response>;render:(input:RenderInput)=>Promise<string>;prepareInput?:(input:InputPreparation)=>Promise<{material:string;generation:string}>;prepareSportsParts?:(input:unknown)=>Promise<PublicSportsParts>|PublicSportsParts;prepareOriginalParts?:(input:PublicOriginalPartInput)=>Promise<PublicOriginalParts>|PublicOriginalParts;prepareHistoryTransition?:(input:PublicHistoryTransitionInput)=>Promise<PublicHistoryTransitionResult>;prepareOperand?:(input:PublicMarketOperandRequest,selected?:Readonly<Record<PublicMarketOperand,unknown>>)=>Promise<PublicMarketOperandResult>;readMaterial?:(generation:string)=>Promise<string>;build?:string};
 async function readMaterial(generation:string):Promise<string>{return readPreparedPublicMaterial(generation);}
 async function prepareSportsParts(input:unknown):Promise<PublicSportsParts>{const module=await import(pathToFileURL(resolve('server/profile-runtime/public-page-preparation.mjs')).href) as typeof import('./public-page-preparation');return module.preparePublicSportsParts(input);}
 async function prepareOriginalParts(input:PublicOriginalPartInput):Promise<PublicOriginalParts>{
@@ -70,6 +71,11 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
   if(request.headers.get('content-type')?.split(';')[0].trim()!=='application/json')return new Response(null,{status:415,headers:jsonHeaders});
   try{
    const requestOptions=await bounded(request),input=JSON.parse(requestOptions);
+   if(input?.projectHeldOperand!==undefined){
+    if(!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','projectHeldOperand'].includes(key))||!['membership','quotes','sports','capitalization','history','preparedLedger','pricingMetadata'].includes(input.projectHeldOperand))return new Response(null,{status:400,headers:jsonHeaders});
+    const result=await(provided?.prepareHeldOperand??(await import('./held-public-market-operands.js')).prepareHeldPublicMarketOperand)(input,build),body=JSON.stringify(result);if(Buffer.byteLength(body)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
+    return new Response(streamedText(body),{headers:jsonHeaders});
+   }
    if(input?.projectOperand!==undefined){
     if(!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','projectOperand','operands'].includes(key))||!['membership','quotes','sports','capitalization','preparedLedger','history','pricing'].includes(input.projectOperand))return new Response(null,{status:400,headers:jsonHeaders});
     let selected:Record<PublicMarketOperand,unknown>|undefined,selectedText:Map<string,string>|undefined;
@@ -81,9 +87,9 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
    if(input?.historyTransition!==undefined){
     const transition=input.historyTransition;
     if(!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','historyTransition'].includes(key))||!transition||typeof transition!=='object'||Array.isArray(transition)||Object.keys(transition).some(key=>!['previousGeneration','currentGeneration','changedKeys','asOfPulse'].includes(key))||!DIGEST.test(transition.previousGeneration)||!DIGEST.test(transition.currentGeneration)||transition.previousGeneration===transition.currentGeneration||!Number.isSafeInteger(transition.asOfPulse)||transition.asOfPulse<0||transition.asOfPulse>1e10||transition.changedKeys!==undefined&&(!Array.isArray(transition.changedKeys)||transition.changedKeys.length>32||transition.changedKeys.some((key:unknown)=>typeof key!=='string'||!key||key.length>4096)||new Set(transition.changedKeys).size!==transition.changedKeys.length))return new Response(null,{status:400,headers:jsonHeaders});
-    const readPart=provided?.readMaterial??readMaterial,previousMaterial=await readPart(transition.previousGeneration),currentMaterial=await readPart(transition.currentGeneration);
-    const result=await(provided?.prepareHistoryTransition??prepareHistoryTransition)({...input,previousMaterial,currentMaterial,readPart});
-    if(await readPart(transition.previousGeneration)!==previousMaterial||await readPart(transition.currentGeneration)!==currentMaterial)throw Error('PUBLIC_MATERIAL_UNAVAILABLE');
+    const readPart=provided?.readMaterial??preparedPublicMaterialSelection({root:transition.currentGeneration,role:'history-transition'}).read,readPreviousPart=provided?.readMaterial??preparedPublicMaterialSelection({root:transition.previousGeneration,selection:transition.currentGeneration,role:'history-predecessor'}).read,previousMaterial=await readPreviousPart(transition.previousGeneration),currentMaterial=await readPart(transition.currentGeneration);
+    const result=await(provided?.prepareHistoryTransition??prepareHistoryTransition)({...input,previousMaterial,currentMaterial,readPart,readPreviousPart});
+    if(await readPreviousPart(transition.previousGeneration)!==previousMaterial||await readPart(transition.currentGeneration)!==currentMaterial)throw Error('PUBLIC_MATERIAL_UNAVAILABLE');
     const body=JSON.stringify({...result,build});if(Buffer.byteLength(body)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return new Response(streamedText(body),{headers:jsonHeaders});
    }
    if(input?.projectSports!==undefined){
@@ -129,6 +135,7 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
  if(url.searchParams.has('prepare')||url.pathname!=='/api/explore'&&url.searchParams.has('path'))return new Response(null,{status:404,headers});
  try{
   const prepared=await deps.prepared(request.method as 'GET'|'HEAD',selectedPath,build);
+  if(prepared.status===503&&prepared.headers.get('x-receiz-public-html-withdrawn')==='1'){await prepared.body?.cancel();return new Response(null,{status:503,headers:{...headers,'x-receiz-public-html-withdrawn':'1'}});}
   if(!prepared.ok||!/^text\/html(?:;|$)/i.test(prepared.headers.get('content-type')??'')){await prepared.body?.cancel();return new Response('Public collection preparation is unavailable. Please try again.',{status:503,headers});}
   const revision=prepared.headers.get(materialHeaders[0]),preparedBuild=prepared.headers.get(materialHeaders[1]),bodyHash=prepared.headers.get(materialHeaders[2]);
   if(!revision||!DIGEST.test(revision)||!preparedBuild||!/^[A-Za-z0-9._:-]{1,160}$/.test(preparedBuild)||preparedBuild!==build||!bodyHash||!DIGEST.test(bodyHash)||Number(prepared.headers.get('content-length'))>MAX){await prepared.body?.cancel();return new Response(null,{status:503,headers});}

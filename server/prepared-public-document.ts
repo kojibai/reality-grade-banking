@@ -18,7 +18,7 @@ export async function handlePreparedPublicDocument(request:Request,provided?:{pr
  const selected=new URL('/api/explore',url.origin);selected.searchParams.set('path',path);
  if(path.startsWith('ledger')&&url.searchParams.getAll('source').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('source')!))selected.searchParams.set('source',url.searchParams.get('source')!);
  let response:Response|undefined;
- try{response=await(provided?.prepared??handlePreparedPublicMarket)(new Request(selected,{method:request.method,signal:request.signal,headers:{accept:'text/html'}}));if(request.signal.aborted){await response.body?.cancel().catch(()=>{});throw request.signal.reason;}if(response.ok)return response;}
+ try{response=await(provided?.prepared??handlePreparedPublicMarket)(new Request(selected,{method:request.method,signal:request.signal,headers:{accept:'text/html'}}));if(request.signal.aborted){await response.body?.cancel().catch(()=>{});throw request.signal.reason;}if(response.ok||response.status===503&&response.headers.get('x-receiz-public-html-withdrawn')==='1')return response;}
  catch(error){if(request.signal.aborted)throw error;}
  await response?.body?.cancel().catch(()=>{});if(request.signal.aborted)throw request.signal.reason;
  let bytes:Uint8Array;try{bytes=await(provided?.entry??entry)(path);}catch(error){if(request.signal.aborted)throw error;return new Response('This public view is temporarily unavailable. Please try again.',{status:503,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});}if(request.signal.aborted)throw request.signal.reason;

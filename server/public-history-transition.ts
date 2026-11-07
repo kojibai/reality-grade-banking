@@ -8,7 +8,7 @@ import {buildMarketHistory} from '../src/receiz/market-projection/build-history.
 import {CHART_PERIODS,type ChartPeriod} from '../src/core/chart-history.js';
 import type {CapitalizationPoint} from '../src/receiz/market-projection/history.js';
 export type PublicHistoryTransitionRequest={selectionKey:string;historyTransition:{previousGeneration:string;currentGeneration:string;changedKeys?:readonly string[];asOfPulse:number}};
-export type PublicHistoryTransitionInput=PublicHistoryTransitionRequest&{previousMaterial:string;currentMaterial:string;readPart:(generation:string)=>Promise<string>};
+export type PublicHistoryTransitionInput=PublicHistoryTransitionRequest&{previousMaterial:string;currentMaterial:string;readPart:(generation:string)=>Promise<string>;readPreviousPart?:(generation:string)=>Promise<string>};
 export type PublicHistoryTransitionResult={schema:'bank.public-market.history-transition.v1';previousGeneration:string;currentGeneration:string;asOfPulse:number;patch:PublicHistoryPatch|null;changedPoints?:Readonly<Record<ChartPeriod,readonly CapitalizationPoint[]>>};
 /** Publication-side display computation only. The HTTP boundary selects both
  * exact roots through Source before this runs and rechecks before returning.
@@ -17,8 +17,8 @@ export type PublicHistoryTransitionResult={schema:'bank.public-market.history-tr
  * eliminates old history bodies from the returned storage transition. */
 export async function preparePublicHistoryTransition(input:PublicHistoryTransitionInput):Promise<PublicHistoryTransitionResult>{
  const {previousGeneration,currentGeneration,asOfPulse}=input.historyTransition;
- const current=await prepareSelectedPublicReferenceCatalog({material:input.currentMaterial,generation:currentGeneration,readPart:input.readPart}),priorReader=createPublicMaterialWindowReader({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPart});
- const priorCatalog=priorReader.root.history.pricing?await readPublicReferencePricing(priorReader,current.catalog,current.reader.root.sports):(await prepareSelectedPublicReferenceCatalog({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPart})).catalog;
+ const current=await prepareSelectedPublicReferenceCatalog({material:input.currentMaterial,generation:currentGeneration,readPart:input.readPart}),priorReader=createPublicMaterialWindowReader({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPreviousPart??input.readPart});
+ const priorCatalog=priorReader.root.history.pricing?await readPublicReferencePricing(priorReader,current.catalog,current.reader.root.sports):(await prepareSelectedPublicReferenceCatalog({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPreviousPart??input.readPart})).catalog;
  if(current.reader.root.selectionKey!==input.selectionKey||current.reader.root.marketPrepared.asOfPulse!==asOfPulse)throw Error('PUBLIC_HISTORY_TRANSITION_SELECTION_INVALID');
  const previous=await readPublicReferenceHistory(priorReader),generation=current.reader.root.capitalization;
  if(!generation||asOfPulse<previous.summary.serverPulse)throw Error('PUBLIC_HISTORY_TRANSITION_OPERANDS_REQUIRED');

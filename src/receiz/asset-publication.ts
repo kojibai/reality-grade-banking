@@ -1,7 +1,7 @@
 export type AssetCreationProgress={stage:'preparing'|'sealing'|'saving';ratio?:number};
-export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number}|{status:'pending'|'rejected';code:string};
+export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number;publicFamilyStatus?:'pending'|'ready'}|{status:'pending'|'rejected';code:string};
 export type AssetPublicationState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt};
-export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string};
+export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string;publicFamilyStatus?:'pending'|'ready'};
 type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 const deliveries=new Map<string,Promise<AssetPublicationReceipt>>();
@@ -19,7 +19,14 @@ export const assetPublicationDeliveryTiming=(ownerReceizId:string,sourceDigest:s
 export function waitForAssetPublicationDelivery(ownerReceizId:string,sourceDigest:string):Promise<void>|undefined{return deliveries.get(deliveryKey(ownerReceizId,sourceDigest))?.then(()=>{});}
 export function subscribeAssetPublicationDeliveries(listener:(attempt:AssetPublicationAttempt)=>void){deliveryListeners.add(listener);return()=>{deliveryListeners.delete(listener);};}
 function notifyDelivery(attempt:AssetPublicationAttempt){for(const listener of deliveryListeners){try{listener(attempt);}catch{/* A display observer cannot change the publication outcome. */}}}
-const projectReceipt=(receipt:AssetPublicationReceipt):AssetPublicationDelivery=>receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
+export const projectAssetPublicationReceipt=(receipt:AssetPublicationReceipt):AssetPublicationDelivery=>receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest,...(receipt.publicFamilyStatus?{publicFamilyStatus:receipt.publicFamilyStatus}:{})}:{status:receipt.status,code:receipt.code};
+export const isAssetPublicationDeliveryConfirmed=(delivery:AssetPublicationDelivery|undefined|null)=>delivery?.status==='published'&&delivery.publicFamilyStatus!=='pending';
+/** Source acceptance and a confirmed family cannot regress behind a late reply. */
+export function retainAssetPublicationDelivery(previous:AssetPublicationDelivery|undefined,next:AssetPublicationDelivery|undefined):AssetPublicationDelivery|undefined{
+ if(!next||previous?.status==='published'&&next.status!=='published'||isAssetPublicationDeliveryConfirmed(previous)&&!isAssetPublicationDeliveryConfirmed(next))return previous;
+ return next;
+}
+const projectReceipt=projectAssetPublicationReceipt;
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 function canonical(value:unknown):string{
  if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;
@@ -37,7 +44,7 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
 export const hasPendingAssetPublication=(value:unknown)=>readAssetPublicationState(value)?.status==='pending';
 function readReceipt(value:unknown):AssetPublicationReceipt{
  const receipt=value as AssetPublicationReceipt;
- if(!receipt)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
+ if(!receipt||'publicFamilyStatus'in receipt&&(receipt.status!=='published'||!['pending','ready'].includes(receipt.publicFamilyStatus!)))throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
  if(receipt.status==='published'){
   if(!hex(receipt.artifactDigest)||!Number.isSafeInteger(receipt.operationCount)||receipt.operationCount<0||!Number.isSafeInteger(receipt.visibleChildCount)||receipt.visibleChildCount<0)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
  }else if(!['pending','rejected'].includes(receipt.status)||typeof receipt.code!=='string'||!receipt.code)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
@@ -47,7 +54,7 @@ function readReceipt(value:unknown):AssetPublicationReceipt{
  * intent and original; retries only replay its existing Showcase placement. */
 export function createAssetPublication(dependencies:Dependencies){
  const digestIntent=async(intent:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(intent))))].map(v=>v.toString(16).padStart(2,'0')).join('');
- const project=(state:AssetPublicationState,file:File)=>({digest:state.sourceDigest,file,publication:state.receipt?.status==='published'?{status:'published' as const,showcaseArtifactDigest:state.receipt.artifactDigest}:{status:state.status,code:state.receipt&&'code'in state.receipt?state.receipt.code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}});
+ const project=(state:AssetPublicationState,file:File)=>({digest:state.sourceDigest,file,publication:state.receipt?projectReceipt(state.receipt):{status:state.status,code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}});
  const reopen=async(state:AssetPublicationState)=>{const file=await dependencies.restore(state.sourceDigest,state.filename,state.mimeType);dependencies.assertOpen();if(await digestIntent(await dependencies.readIntent(file))!==state.intentDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');return file;};
  async function create(intent?:unknown,localFirst=false):Promise<{digest:string;file:File;publication:AssetPublicationDelivery}>{
   dependencies.assertOpen();

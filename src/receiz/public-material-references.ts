@@ -66,7 +66,7 @@ export interface PublicMaterialHistory {
  readonly baselineChanges?:Readonly<Record<PublicMaterialChartPeriod,PublicMaterialIndex>>;
  readonly eventBaselineChanges?:PublicMaterialIndex;
  readonly observationBaselineChanges?:PublicMaterialIndex;
- readonly pricing?:Readonly<{metadata:string;byId:string|null;count:number}>;
+ readonly pricing?:Readonly<{metadata:string;byId:string|null;count:number;baseline?:string}>;
 }
 export interface PublicMaterialLedgerHeads {
  readonly actions:{readonly count:string;readonly seq:string;readonly hash:string|null};

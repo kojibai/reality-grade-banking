@@ -83,7 +83,9 @@ const {snapshot:publicationSnapshot,...publicationMembership}=membershipInput,pu
 for(const path of ['/explore/','/explore/images/']){
  const template=await readFile(`dist${path}index.html`,'utf8'),output=await renderPublicMarketDocument({material:publicationMaterial,generation:publicationGeneration,template,path:path.slice(1,-1)}),scripts=[...output.matchAll(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>/g)];
  assert.equal(scripts.length,1,`Prepared ${path} replaces the static seed exactly once.`);const seed=JSON.parse(scripts[0][1]);
- assert.equal(seed.generation,publicationGeneration);assert.equal(seed.path,path.slice(1,-1));assert.equal(seed.catalogGzip,undefined,'Accepted publication retains its existing raw seed contract.');assert.equal(JSON.stringify(seed.catalog),staticFamily,'Publication preserves the entire selected public family.');
+ assert.equal(seed.generation,publicationGeneration);assert.equal(seed.path,path.slice(1,-1));
+ if(seed.catalogGzip){assert.equal(seed.catalog,undefined);assert.ok(seed.catalogGzip.bytes<=32*1024*1024);const compressed=Buffer.from(seed.catalogGzip.gzipB64u,'base64url');assert.ok(compressed.length<=8*1024*1024);const bytes=gunzipSync(compressed,{maxOutputLength:32*1024*1024});assert.equal(bytes.length,seed.catalogGzip.bytes);seed.catalog=JSON.parse(bytes.toString('utf8'));}
+ assert.equal(JSON.stringify(seed.catalog),staticFamily,'Publication preserves the entire selected public family through the existing seed codec.');
  assert.ok(Buffer.byteLength(output)<=32*1024*1024,`Prepared ${path} retains the existing delivery capacity.`);assert.ok(output.includes(`src="${navigation.pages[path].entry}"`),'Publication preserves the exact compiled runtime facade.');
 }
 console.log('Verified accepted publication rendering from actual compiled Explorer/category templates with one full seed inside the existing delivery capacity.');

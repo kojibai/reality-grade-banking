@@ -9,13 +9,18 @@ import {profileFixture} from './fixtures/public-profile';
 
 const template='<html><head><title>Explore</title></head><body><div id="public-explore-root" data-public-runtime="explore"><main><style>.asset-row{display:block}</style><a class="asset-row">Borrowed Explore row</a></main></div><script id="public-market-seed" type="application/json">{"catalog":{"items":[{"id":"borrowed-explore-catalog"}]}}</script>\n<script id="receiz-navigation" type="application/json">{}</script></body></html>';
 function document(html:string){const page=new Window().document;page.write(html);return page;}
-function expectOwnEntry(page:ReturnType<typeof document>){expect(page.querySelector('#public-market-seed')).toBeNull();expect(page.querySelector('#public-explore-root .asset-row')).toBeNull();expect(page.querySelector('#public-explore-root')?.textContent).not.toContain('Borrowed Explore row');expect(page.querySelector('#receiz-navigation')).not.toBeNull();}
+function expectOwnEntry(page:ReturnType<typeof document>,carryFamily=false){
+ const seeds=page.querySelectorAll('#public-market-seed');
+ if(carryFamily){expect(seeds).toHaveLength(1);expect(seeds[0].outerHTML).toBe(document(template).querySelector('#public-market-seed')!.outerHTML);expect(page.querySelector('#public-explore-root')?.getAttribute('data-public-profile-entry')).toBe('alexmorgan');}
+ else expect(seeds).toHaveLength(0);
+ expect(page.querySelector('#public-explore-root .asset-row')).toBeNull();expect(page.querySelector('#public-explore-root')?.textContent).not.toContain('Borrowed Explore row');expect(page.querySelector('#receiz-navigation')).not.toBeNull();
+}
 beforeEach(()=>vi.stubGlobal('fetch',vi.fn(()=>{throw Error('Unexpected Source read');})));
 afterEach(()=>{expect(fetch).not.toHaveBeenCalled();vi.unstubAllGlobals();});
 
 it('opens the browser profile placeholder from a seeded Explore template without profile or rendering work',async()=>{
  const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn(),page=vi.fn(async()=>template),response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page,render,prepareRender}),html=await response.text(),view=document(html);
- expect(response.status).toBe(200);expectOwnEntry(view);expect(view.querySelector('#public-explore-root .public-entry-placeholder h1')?.textContent).toBe('Profile');expect(view.querySelector('#public-profile-seed')).toBeNull();expect(view.querySelector('#public-asset-seed')).toBeNull();expect(html.trimEnd()).toMatch(/<\/html>$/);
+ expect(response.status).toBe(200);expectOwnEntry(view,true);expect(view.querySelector('#public-explore-root .public-entry-placeholder h1')?.textContent).toBe('Profile');expect(view.querySelector('#public-profile-seed')).toBeNull();expect(view.querySelector('#public-asset-seed')).toBeNull();expect(html.trimEnd()).toMatch(/<\/html>$/);
  expect(profile).not.toHaveBeenCalled();expect(render).not.toHaveBeenCalled();expect(prepareRender).not.toHaveBeenCalled();expect(page).toHaveBeenCalledOnce();
 });
 

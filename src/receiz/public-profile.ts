@@ -1,3 +1,4 @@
+import type {PublicShowcaseRelease} from './public-showcase-release.js';
 import {publicProfileArtwork} from './profile-artwork.js';
 import {publicAccountDisplayName} from './account-name.js';
 import {curatePublicProfileHead,publicProfileHeaderDisplayBasis,readPublicProfileHeader,type PublicProfileHead,type PublicProfileHeader} from './public-profile-header.js';
@@ -17,7 +18,7 @@ export function profilePageUsername(path:string):string|null{
  const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);if(!match||!path.startsWith('/u/')&&reserved.has(match[1]))return null;return match[1];
 }
 export function publicProfileMovement(current:number|null,previous:number|null){return current!==null&&previous!==null&&Number.isFinite(current)&&Number.isFinite(previous)&&current>=0&&previous>0?(current/previous-1)*100:null;}
-export interface PublicProfile extends PublicProfileHeader {items:PublicMarketItem[];nextCursor:string|null;}
+export interface PublicProfile extends PublicProfileHeader {items:PublicMarketItem[];nextCursor:string|null;publicShowcaseRelease?:PublicShowcaseRelease;}
 export type {PublicProfileHeader} from './public-profile-header.js';
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():null;

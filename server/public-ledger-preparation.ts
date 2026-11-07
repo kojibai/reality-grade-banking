@@ -27,6 +27,13 @@ function unpack(gzipB64u:string):PublicNetworkCache{
  const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(bytes,{maxOutputLength:MAX_RAW}).toString('utf8')));if(cache.records.some(row=>row.origin!==undefined))throw Error('PUBLIC_LEDGER_CACHE_PRIVATE_SOURCE');return cache;
 }
 function bounded(value:unknown,limit=MAX_RAW):void{if(Buffer.byteLength(JSON.stringify(value))>limit)throw Error('PUBLIC_LEDGER_PREPARATION_CAPACITY');}
+/** Existing already-public financial display only. The shipped archive has
+ * no canonical head counters; leave them unknown instead of inventing them. */
+export function prepareHeldPublicLedgerDisplay(encoded:string){
+ const retained=unpack(encoded),snapshot={...retained,records:retained.records.filter(row=>row.source!=='proofs'),coverage:retained.coverage.filter(row=>row.source!=='proofs')},wire=Buffer.from(JSON.stringify(publicNetworkCacheWire(snapshot)));
+ if(wire.length>MAX_RAW)throw Error('PUBLIC_LEDGER_CACHE_CAPACITY');const bytes=gzipSync(wire,{level:6});if(bytes.length>MAX_GZIP)throw Error('PUBLIC_LEDGER_CACHE_CAPACITY');
+ return {schema:'bank.public-ledger.preparation.v1' as const,financialOnly:true as const,ledgerCacheGzipB64u:bytes.toString('base64url')};
+}
 /** Extend public display history through the existing SDK readers and held-ID
  * anchors. No Source, proof, identity or financial admission occurs here. The
  * saved public prefix survives; only unseen rows are read and merged. */

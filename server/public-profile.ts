@@ -1,4 +1,5 @@
 import {parsePublicProfile,parsePublicOriginal,profileUsername,type PublicProfile,type PublicProfileHeader} from '../src/receiz/public-profile.js';
+import {readPublicShowcaseRelease} from '../src/receiz/public-showcase-release.js';
 import {reuseShippedProfileShareHistory} from './profile-share-history.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
@@ -27,7 +28,8 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
    if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
    const input=await readBody(response);
    try{
-    const profile=parsePublicProfile(input,username);
+    const profile=parsePublicProfile(input,username),release=readPublicShowcaseRelease(response.headers.get('x-receiz-public-showcase-release'),profile);
+    if(release&&release.revision===response.headers.get('x-receiz-profile-public-collection-revision'))profile.publicShowcaseRelease=release;
     if(cursor&&cursor!=='all:'+profile.userId)throw new PublicProfileError('PROFILE_CHANGED',409);
     if(cursor&&profile.nextCursor)throw Error('PROFILE_COLLECTION_INCOMPLETE');
     return enrich(profile);
@@ -36,6 +38,29 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
  };
 }
 export const readPublicProfile=createPublicProfileReader();
+/** Explicit pending-publication observation only. Receiz returns selected
+ * display headers without opening Source, Account or the collection body. */
+export function createPublicShowcaseReleaseReader(fetchImpl:typeof fetch=(input,init)=>fetch(input,init)){
+ const pending=new Map<string,Promise<ReturnType<typeof readPublicShowcaseRelease>>>();
+ return(username:string):Promise<ReturnType<typeof readPublicShowcaseRelease>>=>{
+  if(!profileUsername(username))return Promise.reject(new PublicProfileError('PROFILE_USERNAME_INVALID',400));
+  const held=pending.get(username);if(held)return held;
+  const attempt=(async()=>{
+   const response=await fetchImpl(`https://receiz.com/api/profile/${username}?surface=public-route&representation=collection-v2`,{method:'HEAD',credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000)});
+   await response.body?.cancel().catch(()=>{});
+   if(response.status===204||response.status===405)return null;
+   if(!response.ok)throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);
+   const raw=response.headers.get('x-receiz-public-showcase-release');if(!raw)return null;
+   if(raw.length>1024)throw new PublicProfileError('PROFILE_RELEASE_INVALID',503);
+   let value:unknown;try{value=JSON.parse(raw);}catch{throw new PublicProfileError('PROFILE_RELEASE_INVALID',503);}
+   const uid=(value as {ownerUserId?:unknown})?.ownerUserId;
+   const release=typeof uid==='string'?readPublicShowcaseRelease(value,{userId:uid,username}):null;
+   if(!release||release.revision!==response.headers.get('x-receiz-profile-public-collection-revision'))throw new PublicProfileError('PROFILE_RELEASE_INVALID',503);
+   return release;
+  })();pending.set(username,attempt);void attempt.finally(()=>{if(pending.get(username)===attempt)pending.delete(username);}).catch(()=>{});return attempt;
+ };
+}
+export const readPublicShowcaseReleaseHead=createPublicShowcaseReleaseReader();
 /** Public metadata for a collection already held by the caller. The manifest
  * supplies its real viewer and account binding; it does not select membership. */
 export function createPublicProfileHeaderReader(fetchImpl:typeof fetch=fetch){
@@ -81,8 +106,9 @@ function readPublicPortrait(username:string){
 export async function handlePublicProfile(request:Request){
  const url=new URL(request.url),match=/^\/api\/bank\/public-profile\/([a-z0-9_]{3,24})$/.exec(url.pathname),headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,Allow:'GET'}});
- const view=url.searchParams.get('view'),portrait=view==='portrait',head=view==='head';
- if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait||head?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ const view=url.searchParams.get('view'),portrait=view==='portrait',head=view==='head',release=view==='release';
+ if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait||head||release?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ if(release)try{return Response.json(await readPublicShowcaseReleaseHead(match[1]),{headers});}catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  if(portrait)try{return Response.json(await readPublicPortrait(match[1]),{headers});}catch(cause){return Response.json({error:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  if(head)try{return Response.json(await readPublicProfileHeader(match[1]),{headers});}catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  try{return Response.json(await readPublicProfile(match[1],url.searchParams.get('cursor')??undefined),{headers});}

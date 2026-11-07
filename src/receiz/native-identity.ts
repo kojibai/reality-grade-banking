@@ -1,4 +1,4 @@
-import {waitForAssetPublicationDelivery} from './asset-publication';
+import {waitForAssetPublicationDelivery,projectAssetPublicationReceipt} from './asset-publication';
 import {keepsWalletCashComposition} from './wallet-cash-basis';
 import {currentWalletObservation,advanceCurrentWalletObservation} from './current-wallet-valuation';
 import {createNativeMessaging} from './native-messaging';
@@ -1637,7 +1637,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const receipt=publishAssetSignature(source.digest),flight=assetSigningFlights.get(source.digest)!;
     return flight.result=receipt.then(receipt=>{
       noteOpen();if(!receipt)return source;
-      const delivery:import('./asset-publication').AssetPublicationDelivery=receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
+      const delivery:import('./asset-publication').AssetPublicationDelivery=projectAssetPublicationReceipt(receipt);
       return {...source,pbiSigned:true,publication:source.publication?.status==='published'?source.publication:delivery,marketPublication:delivery};
     });
   }

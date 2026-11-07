@@ -58,7 +58,9 @@ export function renderSelectedPublicMarketState({catalog,history,asOfPulse,capit
 export async function renderPublicMarketDocument({material,generation,template,path='explore',renderBuild}:PublicMarketRenderInput):Promise<string>{
  if(Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
  if(!(publicMarketPreparedPaths as readonly string[]).includes(path))throw Error('PUBLIC_MARKET_RENDER_PATH_INVALID');
- const state=await prepare(material,generation),{content,seedScript}=renderSelectedPublicMarketState({...state,generation,path});
+ // Use the same supported compressed seed as the complete build document.
+ // Large accepted families must fit delivery without losing their held rows.
+ const state=await prepare(material,generation),{content,seedScript}=renderSelectedPublicMarketState({...state,generation,path,compressCatalog:compressedCatalog(state.catalog).bytes>1024*1024});
  let replaced=false;
  const withoutSeed=template.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
  const html=withoutSeed.replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
