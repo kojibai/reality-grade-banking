@@ -59,6 +59,10 @@ export async function handleCooperativeConversation(request,{fetch:transport=glo
  const ip=request.headers.get('x-vercel-forwarded-for');if(ip&&ip.length<128)nativeHeaders['X-Forwarded-For']=ip;
  try{
   if(request.method==='GET'){
+   // Guest continuity only needs this durable browser cookie. Loading the
+   // native profile here repeats the stream's own owner/availability checks
+   // and puts a full upstream read in front of the visitor's first message.
+   if(new URL(request.url).searchParams.get('continuity')==='1')return result(200,{ok:true,continuity:'guest'});
    const url=new URL(`/api/world/profile/${OWNER}`,ORIGIN);url.searchParams.set('visitorKey',who);url.searchParams.set('threadKey',thread);
    const response=await transport(url,{headers:nativeHeaders,signal:AbortSignal.timeout(20000)}),data=await response.json();
    if(!response.ok||data.ok!==true)return result(response.status>=400?response.status:502,{ok:false,error:typeof data.error==='string'?data.error:'RECEIZ_UNAVAILABLE'});

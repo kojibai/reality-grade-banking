@@ -92,5 +92,5 @@ it('warms one continuity bootstrap on composer focus and sends only on the expli
  vi.stubGlobal('fetch',async(url:string,init:RequestInit)=>{calls.push(init?.body?'message':url);if(init?.body)return Response.json({ok:true,world:{username:'bjklock'},reply:{message:'Native response',source:'upstream',memory:[]}});return new Promise<Response>(resolve=>{ready=resolve;});});
  // @ts-expect-error Public standalone module.
  const {mountConversation}=await import('../public/learn/cooperative-twin.js');mountConversation(document.querySelector('[data-coop-twin]'));const form=document.querySelector('[data-twin-composer]') as HTMLFormElement,draft=form.elements.namedItem('message') as HTMLTextAreaElement;
- expect(calls).toEqual([]);draft.focus();draft.value='Let’s talk';form.dispatchEvent(new Event('submit',{cancelable:true}));expect(calls).toEqual(['/api/cooperatives']);ready(Response.json({ok:true,world:{username:'bjklock'}}));await vi.waitFor(()=>expect(calls).toEqual(['/api/cooperatives','message']));
+ expect(calls).toEqual([]);draft.focus();draft.value='Let’s talk';form.dispatchEvent(new Event('submit',{cancelable:true}));expect(calls).toEqual(['/api/cooperatives?continuity=1']);ready(Response.json({ok:true,continuity:'guest'}));await vi.waitFor(()=>expect(calls).toEqual(['/api/cooperatives?continuity=1','message']));
 });

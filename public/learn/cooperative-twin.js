@@ -15,8 +15,8 @@ const friendly=error=>error==='rate_limited'||error==='public_twin_guest_allowan
 let preparing;
 async function continuity(){
  if(state.ready)return;if(preparing)return preparing;
- preparing=(async()=>{const response=await fetch('/api/cooperatives',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(45000)}),data=await response.json();
- if(!response.ok||data.ok!==true||data.world?.username!=='bjklock')throw Error('CONTINUITY_UNCONFIRMED');
+ preparing=(async()=>{const response=await fetch('/api/cooperatives?continuity=1',{credentials:'same-origin',headers:{Accept:'application/json'},signal:AbortSignal.timeout(45000)}),data=await response.json();
+ if(!response.ok||data.ok!==true||data.continuity!=='guest'&&data.world?.username!=='bjklock')throw Error('CONTINUITY_UNCONFIRMED');
  state.ready=true;})();
  try{await preparing;}finally{preparing=null;}
 }

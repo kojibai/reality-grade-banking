@@ -2,6 +2,14 @@ import {expect,it} from 'vitest';
 import {handleCooperativeConversation} from '../server/cooperative-conversation.mjs';
 const operation={clientOperationId:'test-cooperative-operation',quoteExpiresAt:new Date(Date.now()+600000).toISOString()};
 const request=(data:unknown,headers:Record<string,string>={})=>new Request('https://bankeiz.com/api/cooperatives',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://bankeiz.com',Cookie:'receiz_world_visitor=guest_existing_123456',...headers},body:JSON.stringify(data)});
+it('establishes guest continuity without loading the native profile or changing an existing visitor',async()=>{
+ let calls=0;const fetcher:typeof fetch=async()=>{calls++;throw Error('No native read belongs before the first message');};
+ const first=await handleCooperativeConversation(new Request('https://bankeiz.com/api/cooperatives?continuity=1'),{fetch:fetcher});
+ expect(first.status).toBe(200);expect(await first.json()).toEqual({ok:true,continuity:'guest'});expect(first.headers.get('cache-control')).toBe('no-store');
+ expect(first.headers.get('set-cookie')).toMatch(/^receiz_world_visitor=guest_[^;]+; Path=\/;.*HttpOnly; Secure$/);
+ const held=await handleCooperativeConversation(new Request('https://bankeiz.com/api/cooperatives?continuity=1',{headers:{Cookie:'receiz_world_visitor=guest_existing_123456'}}),{fetch:fetcher});
+ expect(held.headers.get('set-cookie')).toContain('receiz_world_visitor=guest_existing_123456;');expect(calls).toBe(0);
+});
 it('binds the visitor conversation to bjklock and preserves the original native operation and response',async()=>{
  let sent:Record<string,unknown>={},target='',cookie='';
  const native={ok:true,world:{username:'bjklock',memories:[]},reply:{message:'Tell me where payment holds up your next delivery.',memoryScope:'relationship',bookingSlots:[],bookingConfirmation:null}};
