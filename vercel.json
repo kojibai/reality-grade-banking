@@ -270,6 +270,14 @@
       "destination": "/receiving/index.html"
     },
     {
+      "source": "/invitation",
+      "destination": "/invitation/index.html"
+    },
+    {
+      "source": "/invitation/",
+      "destination": "/invitation/index.html"
+    },
+    {
       "source": "/receive",
       "destination": "/__bank_static_entry/bank/index.html"
     },

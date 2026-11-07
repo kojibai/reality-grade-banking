@@ -15,7 +15,7 @@ export const publicIllustrations=Object.freeze([
 ]);
 const byKey=new Map(publicIllustrations.map(scene=>[scene.key,scene]));
 export function publicIllustration(page){
- if(!page||page.kind==='account-notice')return null;
+ if(!page||page.kind==='account-notice'||page.invitation)return null;
  const path=page.path??'',slug=page.slug??'',key=page.key??'',text=(slug+' '+key+' '+(page.title??'')).toLowerCase();
  if(['/','/verify/','/ledger/','/receipt/','/explore/','/schemas/','/legal/','/fit/','/learn/guides/','/guide/'].includes(path)||/^\/(?:vault|u)\//.test(path)||['guides','fit'].includes(slug)||page.moments||page.bankingWalkthrough||page.twinSales&&key==='in-action')return null;
  const get=key=>byKey.get(key);

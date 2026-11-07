@@ -11,7 +11,13 @@ export function Sheet({ title, children, onClose, active = true, navigation = 'c
     if (!active) return;
     const dialog = ref.current;
     if (!returnFocus.current?.isConnected) { returnFocus.current = document.activeElement as HTMLElement | null; pointerReturn.current = !returnFocus.current?.matches(':focus-visible'); }
+    // React restores nested layout effects child first. Keep an already-open
+    // child above its parent when both retained panels return from a public page.
+    const children=[...dialog?.querySelectorAll<HTMLDialogElement>('dialog[open]')??[]];
+    const focus=document.activeElement as HTMLElement|null;
     dialog?.showModal();
+    for(const child of children){child.close();child.showModal();}
+    if(children.some(child=>focus&&child.contains(focus)))focus?.focus({preventScroll:true});
     const unlock = lockDocumentScroll();
     return () => {
       dialog?.close(); unlock();

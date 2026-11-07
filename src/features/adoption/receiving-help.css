@@ -38,3 +38,5 @@
 .receiving-editor-fields{padding:0;margin:0;border:0;min-width:0}
 @media(max-width:480px){.receiving-context-fields{grid-template-columns:1fr}.receiving-help .dual-actions{flex-direction:column}.receiving-invitation-preview{padding:20px}.receiving-option{padding:16px 12px;gap:11px}}
 @media(prefers-reduced-motion:reduce){.receiving-option{transition:none}}
+
+.receiving-link-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;margin-top:16px}.receiving-help .receiving-link-row .form-field{margin:0}.receiving-link-row .icon-button{align-self:center;margin-top:20px;flex:none}

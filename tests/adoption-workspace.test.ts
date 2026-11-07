@@ -72,3 +72,5 @@ it('bounds new drafts without evicting existing work and refuses malformed draft
  for(const changed of [{message:'x'.repeat(4001)},{recipient:'x'.repeat(255)},{includeContext:undefined},{institution:{name:'Bank',url:'https://foreign.example'}}])await expect(work.save({...draft(),...changed} as ReceivingDraft)).rejects.toThrow('RECEIVING_WORK_INVALID');
  expect(store.writes).toHaveLength(100);
 });
+
+it('retains an existing Unicode recipient name privately without a new draft field or format',async()=>{const store=storage(),work=await createReceivingWork(binding,store),addressed={...draft(),recipientName:'佐藤 Anaïs 👋'};await work.save(addressed);expect((await createReceivingWork(binding,store)).known()).toEqual([addressed]);expect(store.held()).toMatchObject({schema:'bankeiz.receiving-work.v1',revision:1});await expect(work.save({...addressed,recipientName:'x'.repeat(201)})).rejects.toThrow('RECEIVING_WORK_INVALID');expect(work.known()).toEqual([addressed]);});

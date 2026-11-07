@@ -12,7 +12,7 @@ it('quietly connects each institution to its own receiving guide without changin
  const card=document.querySelector('[data-institution-id="example-institution"]')!,link=card.querySelector('[data-receiving-institution]');
  expect(link?.textContent).toContain('Bring the standard to your institution');expect(link).not.toBeNull();
  const url=new URL(link!.getAttribute('href')!,'https://bankeiz.com'),payload=JSON.parse(Buffer.from(url.hash.slice('#invite='.length),'base64url').toString('utf8'));
- expect(url.pathname).toBe('/receiving/');expect(payload.institution).toEqual({name:'Example & Co. · Institution',id:'example-institution'});expect(payload.schema).toBe('bankeiz.receiving-invitation.v1');
+ expect(url.pathname).toBe('/invitation/');expect(payload.institution).toEqual({name:'Example & Co. · Institution',id:'example-institution'});expect(payload.schema).toBe('bankeiz.receiving-invitation.v1');
  expect(card.getAttribute('data-qualification')).toBe('FAIL');expect(card.textContent).toContain('Conformance not demonstrated');expect(document.querySelector('.isc-hero-moral')?.textContent).toBe('Prestige is not proof.');
  const unlisted=document.querySelector('[data-receiving-unlisted]');expect(unlisted?.getAttribute('href')).toBe('/receiving/');expect(unlisted?.textContent).toContain('Institution not listed');
 });

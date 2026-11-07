@@ -49,7 +49,7 @@ The two storage wrappers only introduce the nonfinancial `receiving-work-v1` fam
 - Review fixes retain an active assessment's scope and make each institutional
   Registry record directly addressable by its existing selected identifier.
 
-## Release checks
+## Initial suite qualification (`3f4b2a0f`)
 
 - `npm run build`: **passed**, including typecheck, frozen account-entry guard,
   complete offline closure, public navigation, accepted cold-paint projections,
@@ -86,3 +86,53 @@ requirements. A public-integration-contract PASS retains its actual scope.
 
 No real invitation, external message, funds movement or production evidence was
 sent during QA. No deployment is performed by this work.
+
+## Personal invitation refinement · November 7
+
+Send now leads with **Move money. Send it anywhere.** The existing ID/email
+payment remains primary. **More receiving options** stays collapsed beside Wallet
+access and explains receiving through another application or institution. The
+secondary invitation is useful when the recipient needs that receiving arrangement.
+
+New reviewed links open the dedicated static **`/invitation/`** page, addressed to
+the recipient with the already-held sender name and canonical public profile link.
+The sender explicitly chooses whether to include an amount and payment context.
+The page presents the independent receiving path, exact SDK acceptance sequence,
+receiving kit, current Note continuity contract and scoped institutional evidence.
+`/receiving/` remains the general public guide; previously shared links still work.
+
+The invitation page has generic noindex metadata and artwork. Personal details
+remain only in the reviewed fragment and page-local memory; the address and router
+history are scrubbed. No profile, account or Source lookup supplies personalization.
+Automatically carried contact names are excluded when they contain private email
+or match the immutable recipient ID, including older saved drafts. An explicit
+human-addressed name remains reviewable. Payment identity is never inferred from it.
+
+Existing Copy invitation and native Share stay intact. A small, labeled copy icon
+beside the URL copies only that link. The recipient page has the same URL-only
+copy action using the already-held invitation after address scrubbing. Clipboard
+failure exposes a selectable link; sharing or copying never starts a payment.
+
+The reproduced scroll freeze came from the nested ReceivingHelp sheet not receiving
+the existing Bank active state. Both sheets now release their own document locks
+on public navigation and return without remounting Send. A real browser also
+exposed React's child-first modal restoration promoting the parent over its child;
+Sheet restores existing child dialogs above their parent and preserves focus.
+No global router/cache logic, new request, timer or financial operation was added.
+
+Browser checks at **390 × 844** and **1440 × 1000** prove actual pointer and keyboard
+copy/share, URL-only copying, close focus, a **900 px** wheel scroll on the public
+guide, browser Back and native Bank return to the same held root and edited draft.
+Each viewport keeps **one** initial Wallet connection/status read and **one** private
+draft load; navigation adds **zero** document/module/API/Source requests and
+**zero** financial preparation or execution. The public invitation also passes at
+**390 × 844** and **1440 × 1100**, with the exact local URL reconstructed after
+scrubbing, visible invalid-link feedback, correct close focus and no overflow.
+
+The complete follow-up suite passed: **977 files; 6,190 tests passed and the same
+11 preexisting skips** (6,201 total), in 248.74 seconds. The final visual check
+additionally caught the general guide image above the personal brief; the
+invitation descriptor now excludes that decoration. Its addressed content leads
+first paint. The new public paths also retain matching profile aliases at
+`/u/receiving/` and `/u/invitation/`. Focused route, profile, imagery and guide
+checks cover those final boundaries.

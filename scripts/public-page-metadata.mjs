@@ -1,3 +1,4 @@
+import {receivingInvitationPage} from '../src/content/receiving-invitation-page.mjs';
 import {institutionScorecardPage} from '../src/content/institution-scorecard-page.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
@@ -26,6 +27,7 @@ export const publicOrigin = 'https://bankeiz.com';
 const standardSite='Reality-Grade Banking';
 const infrastructureSite='Receiz';
 export const publicPages = [
+ {...receivingInvitationPage,id:'receiving-invitation',title:receivingInvitationPage.title+' | Bankeiz',lines:['The next payment.','On your terms.'],caption:'Choose your receiving implementation. Keep the proof connected.',motif:'receipt'},
  {...institutionScorecardPage,id:'institution-scorecard',title:institutionScorecardPage.title,lines:['Reality-Grade Banking','Conformance Register.'],caption:'Money. Original proof. Continuous history.',motif:'badge',size:80},
  {path:'/build/',id:'build-independent-bank',siteName:standardSite,title:'Build your own bank. Receive the same money. | Reality-Grade Banking',description:'Build an independent bank, wallet or merchant receiver with Receiz. Explore complete Originals, legitimate transfers and the published receiving requirements.',lines:['Build your own bank.','Receive the same money.'],caption:'Different applications. The same necessary evidence.',motif:'code',size:75},
  {path:'/accept/',id:'accept-the-money',siteName:standardSite,title:'Accept the money. Keep it moving. | Reality-Grade Banking',description:'See the difference between a payment notification and independently verifiable financial value. Explore receiving, ownership and onward payments through working demonstrations.',lines:['Accept the money.','Keep it moving.'],caption:'The money carries its proof.',motif:'receipt'},

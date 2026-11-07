@@ -6,7 +6,7 @@ const rawHash=(value:unknown)=>'#invite='+Buffer.from(JSON.stringify(value),'utf
 
 it('carries the reviewed Unicode invitation in the fragment without a recipient coordinate or query',()=>{
  const url=new URL(receivingInvitationUrl(invitation));
- expect(url.origin+url.pathname).toBe('https://bankeiz.com/receiving/');expect(url.search).toBe('');
+ expect(url.origin+url.pathname).toBe('https://bankeiz.com/invitation/');expect(url.search).toBe('');
  expect(readReceivingInvitation(url.hash)).toEqual(invitation);
  const payload=JSON.parse(Buffer.from(url.hash.slice(8),'base64url').toString('utf8'));
  expect(Object.keys(payload)).toEqual(['schema','message','senderName','institution','amountUsdCents','purpose']);
@@ -39,4 +39,22 @@ it('prepares an institutional request using fixed destinations and a safe option
  expect(institutionRequest('An unlisted institution')).toContain('https://bankeiz.com/registry/');
  expect(text).not.toMatch(/already conforms|qualified receiver|payment sent|guaranteed/i);
  expect(()=>institutionRequest('Bank','https://evil.example')).toThrow();
+});
+
+it('carries a reviewed addressed name and canonical held sender profile without adding private routing data',()=>{
+ const addressed={...invitation,recipientName:'佐藤 Anaïs 👋',senderUsername:'mira_123'},url=new URL(receivingInvitationUrl(addressed));expect(url.pathname).toBe('/invitation/');expect(readReceivingInvitation(url.hash)).toEqual(addressed);expect(url.search).toBe('');expect(readReceivingInvitation(new URL('https://bankeiz.com/receiving/'+url.hash).hash)).toEqual(addressed);
+ const legacy=new URL('https://bankeiz.com/receiving/'+rawHash(invitation));expect(readReceivingInvitation(legacy.hash)).toEqual(invitation);expect(readReceivingInvitation(new URL(receivingInvitationUrl(invitation)).hash)).toEqual(invitation);
+});
+it('validates personalization fields without guessing or normalizing sender identity',()=>{
+ for(const recipientName of ['', '   ', 'x'.repeat(201),'\u0000name','\ud800']){const changed={...invitation,recipientName};expect(()=>receivingInvitationUrl(changed)).toThrow('RECEIVING_INVITATION_INVALID');expect(readReceivingInvitation(rawHash(changed))).toBeNull();}
+ for(const senderUsername of ['', 'ab','x'.repeat(25),'Mira','@mira','mira.name','https://bankeiz.com/mira/','mira ','ｍｉｒａ']){const changed={...invitation,senderUsername};expect(()=>receivingInvitationUrl(changed)).toThrow('RECEIVING_INVITATION_INVALID');expect(readReceivingInvitation(rawHash(changed))).toBeNull();}
+ const largest={...invitation,recipientName:'名'.repeat(200),senderUsername:'a'.repeat(24)};expect(readReceivingInvitation(new URL(receivingInvitationUrl(largest)).hash)).toEqual(largest);
+});
+it('refuses accessor or nested authority fields in newly personalized invitations',()=>{
+ const getter={...invitation};Object.defineProperty(getter,'recipientName',{get:()=> 'Private getter',enumerable:true});expect(()=>receivingInvitationUrl(getter)).toThrow('RECEIVING_INVITATION_INVALID');
+ for(const changed of [{recipientName:{name:'Ana'}},{senderUsername:{username:'mira'}},{senderVerified:true},{recipientUserId:'private-user-id'},{recipientEmail:'private@example.test'}]){expect(()=>receivingInvitationUrl({...invitation,...changed} as ReceivingInvitation)).toThrow('RECEIVING_INVITATION_INVALID');expect(readReceivingInvitation(rawHash({...invitation,...changed}))).toBeNull();}
+});
+
+it('continues to read a maximum-sized legacy receiving link while bounding every new invitation URL',()=>{
+ const base={schema:'bankeiz.receiving-invitation.v1' as const,message:''},legacyPrefix='https://bankeiz.com/receiving/#invite=',targetBytes=Math.floor((12*1024-legacyPrefix.length)*3/4),available=targetBytes-Buffer.byteLength(JSON.stringify(base)),message='漢'.repeat(Math.floor(available/3))+'x'.repeat(available%3),old={...base,message},hash=rawHash(old);expect(message.length).toBeLessThanOrEqual(4000);expect((legacyPrefix+hash.slice(8)).length).toBe(12*1024);expect(readReceivingInvitation(hash)).toEqual(old);expect(()=>receivingInvitationUrl(old)).toThrow('RECEIVING_INVITATION_INVALID');
 });

@@ -29,7 +29,7 @@ function fixture(){
   render:(savedDraft?:ReceivingDraft)=>act(async()=>root.render(<ReceivingHelp identity={identity} initial={initial} savedDraft={savedDraft} onPay={onPay} onClose={onClose}/>)),
  };
 }
-function button(label:string){const result=[...host.querySelectorAll<HTMLButtonElement>('button')].find(node=>node.textContent===label||node.querySelector('strong')?.textContent===label);expect(result,`button ${label}`).toBeDefined();return result!;}
+function button(label:string){const result=[...host.querySelectorAll<HTMLButtonElement>('button')].find(node=>node.textContent===label||node.getAttribute('aria-label')===label||node.querySelector('strong')?.textContent===label);expect(result,`button ${label}`).toBeDefined();return result!;}
 async function click(label:string){await act(async()=>button(label).click());}
 function field(label:string){const parent=[...host.querySelectorAll('label')].find(node=>node.querySelector('span')?.textContent===label);expect(parent,`field ${label}`).toBeDefined();return parent!.querySelector<HTMLInputElement|HTMLTextAreaElement>('input,textarea')!;}
 async function input(label:string,value:string){const node=field(label),prototype=node instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;await act(async()=>{Object.getOwnPropertyDescriptor(prototype,'value')!.set!.call(node,value);node.dispatchEvent(new Event('input',{bubbles:true}));});}
@@ -37,7 +37,7 @@ async function review(){await act(async()=>host.querySelector('form')!.dispatchE
 function reviewed(){return readReceivingInvitation(new URL(field('Reviewed invitation link').value).hash)!;}
 
 it('opens receiving options without storage, organizer discovery, network or financial work',async()=>{
- const f=fixture();await f.render();expect(host.textContent).toContain('Receive it. Keep it moving.');
+ const f=fixture();await f.render();expect(host.textContent).toContain('Keep your money moving.');
  expect(openReceivingWork).not.toHaveBeenCalled();expect(f.load).not.toHaveBeenCalled();expect(f.write).not.toHaveBeenCalled();expect(f.knownOrganizer).not.toHaveBeenCalled();expect(f.knownContacts).not.toHaveBeenCalled();
  for(const operation of [f.fetch,f.organizer,f.messaging,f.walletSend,f.readWallet,f.onPay])expect(operation).not.toHaveBeenCalled();
 });
@@ -47,6 +47,14 @@ it('saves only on explicit review and excludes private recipient, amount and con
  expect(f.load).toHaveBeenCalledOnce();expect(f.write).toHaveBeenCalledOnce();expect(f.work().known()[0]).toMatchObject({...initial,message:'Ready to pay. Please review this receiving path.',status:'draft',includeContext:false});
  expect(reviewed()).toEqual({schema:'bankeiz.receiving-invitation.v1',message:'Ready to pay. Please review this receiving path.',senderName:'Restaurant'});
  expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example|immutable-recipient|1048|4800/);expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
+});
+it('reviews an addressed invitation with the held sender profile and explicitly shared payment details',async()=>{
+ const f=fixture();f.identity.username='restaurant';await f.render();await click('Prepare a receiving invitation');
+ await input('Address invitation to','Alex · Accounts receivable');
+ await act(async()=>field('Include amount and payment context').click());await input('Payment context','Invoice 1048');await review();
+ expect(reviewed()).toMatchObject({senderName:'Restaurant',senderUsername:'restaurant',recipientName:'Alex · Accounts receivable',amountUsdCents:'480000',purpose:'Invoice 1048'});
+ expect(new URL(field('Reviewed invitation link').value).pathname).toBe('/invitation/');expect(host.textContent).toContain('To Alex · Accounts receivable');
+ expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example|immutable-recipient|Private invoice/);expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
 });
 it('keeps an oversized Unicode invitation editable instead of saving an unshareable reviewed link',async()=>{
  const f=fixture();await f.render();await click('Prepare a receiving invitation');await input('Invitation message','界'.repeat(4000));await review();
@@ -112,4 +120,26 @@ it('does not close a newly opened sheet when an older Close invitation save comp
   await act(async()=>{release();await pending;});
   expect(f.onClose).toHaveBeenCalledOnce();expect(host.querySelector('[aria-label="Newly opened sheet"]')?.textContent).toBe('New sheet remains open');expect(f.onPay).not.toHaveBeenCalled();
  }finally{await act(async()=>{release();await pending;});}
+});
+
+it('copies just the reviewed invitation URL from its link disclosure without another account read or payment action',async()=>{const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const url=field('Reviewed invitation link').value;await click('Copy link');expect(f.copy).toHaveBeenCalledExactlyOnceWith(url);expect(new URL(url).pathname).toBe('/invitation/');expect(f.work().known()[0].status).toBe('link-copied');expect(f.load).toHaveBeenCalledOnce();expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();});
+
+it.each([
+ ['email','supplier@example.com'],
+ ['linked account ID','immutable-recipient-id'],
+ ['email embedded in a contact label','Supplier <supplier@example.com>'],
+])('does not auto-publish a held contact name containing its private %s',async(_kind,name)=>{
+ const f=fixture(),contact={id:'held-contact',fullName:name,email:initial.recipient,linkedUserId:initial.recipientUserId,username:initial.recipientUsername};f.knownContacts.mockReturnValue([contact] as never[]);await f.render();await click('Prepare a receiving invitation');
+ const select=host.querySelector<HTMLSelectElement>('select')!;await act(async()=>{select.value=contact.id;select.dispatchEvent(new Event('change',{bubbles:true}));});
+ expect(field('Address invitation to').value).toBe('');expect(field('Recipient').value).toBe(initial.recipient);await review();expect(reviewed()).not.toHaveProperty('recipientName');expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example\.com|immutable-recipient-id/);expect(f.work().known()[0]).toMatchObject({recipient:initial.recipient,recipientUserId:initial.recipientUserId});expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
+});
+it.each([initial.recipient,initial.recipientUserId!])('keeps a private initial recipient coordinate out of the addressed public name (%s)',async recipientName=>{
+ const f=fixture();await act(async()=>root.render(<ReceivingHelp identity={f.identity} initial={{...initial,recipientName}} onPay={f.onPay} onClose={f.onClose}/>));await click('Prepare a receiving invitation');expect(field('Address invitation to').value).toBe('');await input('Address invitation to','Supplier accounts receivable');await review();expect(reviewed().recipientName).toBe('Supplier accounts receivable');expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example\.com|immutable-recipient-id/);expect(f.fetch).not.toHaveBeenCalled();expect(f.onPay).not.toHaveBeenCalled();
+});
+
+it.each([initial.recipient,initial.recipientUserId!])('does not publish an old private addressed coordinate when opening savedDraft (%s)',async recipientName=>{
+ const f=fixture(),old:ReceivingDraft={...initial,id:'old-private-draft',recipientName,purpose:initial.purpose??'',message:'Receive this payment with its proof.',includeContext:false,status:'draft',followUp:true};await f.render(old);expect(field('Address invitation to').value).toBe('');expect(field('Recipient').value).toBe(initial.recipient);await review();expect(reviewed()).not.toHaveProperty('recipientName');expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example\.com|immutable-recipient-id/);expect(f.onPay).not.toHaveBeenCalled();expect(f.walletSend).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled();
+});
+it.each([initial.recipient,initial.recipientUserId!])('does not publish an old private addressed coordinate adopted through the held draft list (%s)',async recipientName=>{
+ const f=fixture();await f.render();await click('Prepare a receiving invitation');await review();const old={...f.work().known()[0]!,recipientName};await f.work().save(old);await act(async()=>root.render(null));await f.render();await act(async()=>{const list=host.querySelector<HTMLDetailsElement>('.receiving-work-list')!;list.open=true;list.dispatchEvent(new Event('toggle'));});await act(async()=>host.querySelector<HTMLButtonElement>('.receiving-work-row')!.click());expect(field('Address invitation to').value).toBe('');expect(field('Recipient').value).toBe(initial.recipient);expect(f.load).toHaveBeenCalledOnce();await review();expect(reviewed()).not.toHaveProperty('recipientName');expect(JSON.stringify(reviewed())).not.toMatch(/supplier@example\.com|immutable-recipient-id/);expect(f.work().known()[0]).toMatchObject({recipient:initial.recipient,recipientUserId:initial.recipientUserId});expect(f.onPay).not.toHaveBeenCalled();expect(f.walletSend).not.toHaveBeenCalled();expect(f.fetch).not.toHaveBeenCalled();
 });

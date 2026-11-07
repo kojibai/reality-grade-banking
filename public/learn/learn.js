@@ -151,7 +151,7 @@
   history.scrollRestoration = 'manual';
   const currentScroll = () => document.body.style.position==='fixed' ? Math.max(0,-parseFloat(document.body.style.top)||0) : scrollY;
   // Invitation fragments are carried by their local reader, never history metadata.
-  const historyUrl=value=>{const url=new URL(value,location.origin);return /^\/(?:receiving|conformance)\/?$/.test(url.pathname)&&url.hash.startsWith('#invite=')?url.pathname+url.search:value;};
+  const historyUrl=value=>{const url=new URL(value,location.origin);return /^\/(?:receiving|invitation|conformance)\/?$/.test(url.pathname)&&url.hash.startsWith('#invite=')?url.pathname+url.search:value;};
   const snapshot = () => ({ url: historyUrl(location.pathname + location.search + location.hash), scroll: currentScroll() });
   let displayedUrl=snapshot().url;
   const rememberPosition = (url,scroll) => {

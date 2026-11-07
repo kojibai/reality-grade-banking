@@ -1,8 +1,8 @@
 export const RECEIVING_MESSAGE='I’m ready to pay you. Here’s how to receive the money and use it for your next payment, with its proof and ownership intact.';
 
 /** Reviewed presentation only: this invitation is not payment or receiving authority. */
-export type ReceivingInvitation={schema:'bankeiz.receiving-invitation.v1';message:string;senderName?:string;institution?:{id?:string;name:string};amountUsdCents?:string;purpose?:string};
-const origin='https://bankeiz.com',prefix=origin+'/receiving/#invite=',maxLink=12*1024;
+export type ReceivingInvitation={schema:'bankeiz.receiving-invitation.v1';message:string;senderName?:string;senderUsername?:string;recipientName?:string;institution?:{id?:string;name:string};amountUsdCents?:string;purpose?:string};
+const origin='https://bankeiz.com',prefix=origin+'/invitation/#invite=',maxLink=12*1024;
 const encoder=new TextEncoder(),decoder=new TextDecoder('utf-8',{fatal:true});
 function invalid():never{throw Error('RECEIVING_INVITATION_INVALID');}
 function object(value:unknown,fields:readonly string[]):asserts value is Record<string,unknown>{
@@ -16,10 +16,11 @@ function institution(value:unknown):{id?:string;name:string}{
  object(value,['id','name']);if(!text(value.name,200)||value.id!==undefined&&(typeof value.id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(value.id)))invalid();
  return{...(value.id!==undefined?{id:value.id}:{}),name:value.name};
 }
+// Public profile aliases use these exact canonical handles; no account lookup or normalization.
 function read(value:unknown):ReceivingInvitation{
- object(value,['schema','message','senderName','institution','amountUsdCents','purpose']);
- if(value.schema!=='bankeiz.receiving-invitation.v1'||!text(value.message,4000)||value.senderName!==undefined&&!text(value.senderName,120)||value.purpose!==undefined&&!text(value.purpose,500,true)||value.amountUsdCents!==undefined&&(typeof value.amountUsdCents!=='string'||!/^[1-9]\d{0,17}$/.test(value.amountUsdCents)))invalid();
- return{schema:'bankeiz.receiving-invitation.v1',message:value.message,...(value.senderName!==undefined?{senderName:value.senderName as string}:{}),...(value.institution!==undefined?{institution:institution(value.institution)}:{}),...(value.amountUsdCents!==undefined?{amountUsdCents:value.amountUsdCents as string}:{}),...(value.purpose!==undefined?{purpose:value.purpose as string}:{})};
+ object(value,['schema','message','senderName','senderUsername','recipientName','institution','amountUsdCents','purpose']);
+ if(value.schema!=='bankeiz.receiving-invitation.v1'||!text(value.message,4000)||value.senderName!==undefined&&!text(value.senderName,120)||value.recipientName!==undefined&&!text(value.recipientName,200)||value.senderUsername!==undefined&&(typeof value.senderUsername!=='string'||!/^[a-z0-9_]{3,24}$/.test(value.senderUsername))||value.purpose!==undefined&&!text(value.purpose,500,true)||value.amountUsdCents!==undefined&&(typeof value.amountUsdCents!=='string'||!/^[1-9]\d{0,17}$/.test(value.amountUsdCents)))invalid();
+ return{schema:'bankeiz.receiving-invitation.v1',message:value.message,...(value.senderName!==undefined?{senderName:value.senderName as string}:{}),...(value.senderUsername!==undefined?{senderUsername:value.senderUsername as string}:{}),...(value.recipientName!==undefined?{recipientName:value.recipientName as string}:{}),...(value.institution!==undefined?{institution:institution(value.institution)}:{}),...(value.amountUsdCents!==undefined?{amountUsdCents:value.amountUsdCents as string}:{}),...(value.purpose!==undefined?{purpose:value.purpose as string}:{})};
 }
 function encode(bytes:Uint8Array):string{return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 
@@ -30,6 +31,7 @@ export function receivingInvitationUrl(input:ReceivingInvitation):string{
 }
 export function readReceivingInvitation(hash:string):ReceivingInvitation|null{
  try{
+  // Retain the legacy receiving-page fragment bound, including old maximum-sized links.
   if(typeof hash!=='string'||!hash.startsWith('#invite=')||origin.length+'/receiving/'.length+hash.length>maxLink)return null;
   const encoded=hash.slice(8);if(!encoded||!/^[A-Za-z0-9_-]+$/.test(encoded))return null;
   const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),character=>character.charCodeAt(0));

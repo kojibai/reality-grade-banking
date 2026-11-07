@@ -1,0 +1,2 @@
+// One generic static document. Addressed invitation details stay in its local fragment reader.
+export const receivingInvitationPage=Object.freeze({slug:'invitation',path:'/invitation/',title:'Your receiving invitation',description:'Review a receiving invitation, choose your own conforming application or institution, or use Bankeiz. Keep the payment and its proof connected.',invitation:true,noindex:true,sections:[]});
