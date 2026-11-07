@@ -43,3 +43,11 @@ No provider/model change, invented response, cross-request cache, permission byp
 Follow-up checks: 48 native route/booking/contact/cognition/isolation tests and 58 Bankeiz page/chat/relay tests passed. Receiz TypeScript passed with an 8 GiB heap after the default process exceeded its heap limit. The Bankeiz production build passed. Browser checks at 320, 390, 440 and 1280 pixels confirmed the 26–28 px reply portraits, loaded images and no horizontal overflow. The visual fixture used synthetic response text and the actual public Twin portrait, not a live performance measurement.
 
 The native fix is committed as `35bfb3bb1` on the isolated `kojib/public-twin-stream-latency` branch in `/private/tmp/receiz-public-twin-stream-latency`, keeping the unrelated Receiz work separate. No production deployment or updated live latency measurement was performed; the 13.516-second baseline remains the only live first-token measurement.
+
+## Final adoption on the requested Receiz main worktree
+
+The user identified `/Users/bjklock/Kai-Turah/receiz/.worktrees/receiz-bankeiz-assets-main` as the required commit destination and will push both repositories personally. That newer main already carries a direct resolved-context/owner/memory handoff and early imported-memory preparation. The older branch implementation was therefore adapted instead of replacing those newer paths with a second request cache. Main's complete booking availability, meeting publication, private-memory isolation and prepared source-memory behavior are preserved.
+
+The final main change reads the 32-message recent source window during reply preparation (ordinary public reads retain eight), keeps the established 20-message reasoning selection, preserves all held recent messages in the accepted reply, and runs independent final view alignment and guest continuity persistence together after usage acceptance and meeting publication. The added regression proves the first real text is delivered without a second context, memory or imported-source read.
+
+The six pre-existing Market files in that worktree remain outside the commit. No repository is pushed or deployed by this task; a new production first-token measurement remains pending the user's release.
