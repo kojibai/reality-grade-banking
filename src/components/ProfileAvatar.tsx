@@ -7,5 +7,5 @@ export const ProfileAvatar=memo(function ProfileAvatar({src,name,account,fallbac
  const url=useMemo(()=>profileAvatarUrl(src),[src]),[failed,setFailed]=useState<string|null>(null);
  const seal=useMemo(()=>profileAvatarUrl(fallbackSrc)??(!url||failed===url?account?publicProfileAvatar({...account,avatarUrl:null}):null:null),[fallbackSrc,url,failed,account]),image=url&&failed!==url?url:seal&&failed!==seal?seal:null;
  const initials=fallback??(name.trim().split(/\s+/).slice(0,2).map(word=>word[0]).join('').toUpperCase()||'ID');
- return <span className={'profile-avatar '+className} aria-hidden="true"><span>{image?null:initials}</span>{image&&<img key={image} src={image} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" draggable={false} onError={()=>setFailed(image)}/>}</span>;
+ return <span className={'profile-avatar '+className} aria-hidden="true"><span>{image?null:initials}</span>{image&&<img key={image} src={image} alt="" loading={eager?'eager':'lazy'} decoding={eager?'sync':'async'} referrerPolicy="no-referrer" draggable={false} onError={()=>setFailed(image)}/>}</span>;
 });
