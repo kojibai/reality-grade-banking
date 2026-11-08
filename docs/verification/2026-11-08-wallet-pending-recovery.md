@@ -17,12 +17,12 @@ The UI offers one cancel action, retains unknown status on failure, and permits 
 - Bankeiz production CLI passed, including generated-preview, public-entry, source-archive, offline and conformance checks.
 - Frozen account entry: 63 passed. Isolated and combined-main TypeScript checks passed.
 - Receiz focused route/source tests: 63 passed. The actual dirty-profile reader returned its existing complete 613-Original projection without the refused raw scan.
-- Disposable PostgreSQL contracts passed both Send/cancel race winners, late-Send refusal, exact request conflicts, writer-source preservation and witnessed-observation trigger boundaries. No production migration or financial operation was performed by the agent.
+- Disposable PostgreSQL contracts passed both Send/cancel race winners, late-Send refusal, exact request conflicts, writer-source preservation and witnessed-observation trigger boundaries. These original qualification checks performed no production migration or financial operation. The migration was subsequently applied on November 8, as recorded below; no production payment, trade or cancellation was executed.
 
 Browser access remained disabled in the tool host after the user enabled the setting. The new cancellation flow therefore has component and real-PostgreSQL evidence, but no completed browser click-through. GitHub CI and live deployment are separate, unclaimed checks.
 
 ## Rollout boundary
 
-Apply the Receiz migration `20261108180000_wallet_pending_cancellation.sql`, release Receiz, then release Bankeiz. Until the migration and route are present, cancellation refuses to clear the request. Publishing Bankeiz alone cannot close an existing production request.
+The Receiz migration is now applied in production as `20261108185400_wallet_pending_cancellation.sql`. Postchecks confirmed the exact nonce guard, unchanged original writer body outside that guard, service-only grants, RLS and zero cancellation rows. The local Receiz migration filenames now match actual production history. Release Receiz, then release Bankeiz. Until the backend route is deployed, cancellation refuses to clear the request. Publishing Bankeiz alone cannot close an existing production request.
 
 Full funding-ancestry joins and the generated Receiz ID length mismatch are separate outstanding work. This change does not claim to complete either one.
