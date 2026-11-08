@@ -17,11 +17,51 @@ The Source-gated homepage in ffc29835 and duplicate prepared-document navigation
 - When distinct data is genuinely absent, use its existing bounded reader and keep available state visible. Do not turn its request into an unrelated page-opening or account-entry requirement.
 - Public display is not financial authority. Preserve installed SDK admission, integrity, ownership, identity, custody, consumption, conflict and transaction checks for new input and financial actions. Do not replace these with permissive mocks.
 
+## The public Showcase display law
+
+Accepted public Showcase membership determines which public Originals Bankeiz displays. The installed SDK remains responsible for proof admission and financial authority. These are separate responsibilities: rendering an already-held public Original must not reopen its Source or acquire another server verdict. A displayed Original does not by itself establish available shares, balances or permission to transact.
+
+Use this order:
+
+1. Open the existing static interface with the complete selected public family already carried or retained by the reader. Reuse its object references, owner bindings, header, artwork, compatible inventory and history.
+2. Project Profile, Explore, Market, Feed and Ledger from that shared collection. Preserve explicit privacy refusals and exact handle/account UID bindings. Do not introduce an independent per-page eligibility list.
+3. Receive genuinely new accepted input through the existing SDK publication/discovery path. Preserve the accepted prefix and apply the supported transition. Publish and retain the selected successor for the shared consumers; a failed persistence attempt must not erase their current view.
+4. Fetch only genuinely missing operands through their existing bounded reader, independently of opening the available page. An unseen remote addition still has to reach the device; proof authority does not imply possession of bytes the device never received.
+
+Never make an available public view conditional on any of the following:
+
+| Prohibited pattern | Why it breaks the contract |
+| --- | --- |
+| Awaiting a prepared HTML GET/HEAD, profile manifest or Source freshness check before sending browser entry | A remote lookup blocks display of data already held. |
+| Returning early from membership refresh merely because an older saved family exists | The stale prefix stays selected even though Showcase already contains a successor. |
+| Service-worker renewal of a prepared page before opening installed or held bytes | Installed navigation inherits an unnecessary network delay or failure. |
+| Reconstructing or reverifying accepted history to display one new Original | It repeats work and can exceed transport/runtime limits; apply the supported append/transition to retained operands. |
+| A database table, API success, cache timestamp or rendered page acting as proof authority | It substitutes delivery/projection state for the installed SDK's integrity and custody laws. |
+| Deleting the complete held catalog to repair a page's wrong content or seed | The page template and the reader's held proof collection are distinct. Fix the template boundary without discarding accepted data. |
+| Replacing a custom portrait/banner with generated defaults to avoid an image request | Deterministic defaults do not reproduce an uploaded image. Carry or reuse its exact supported public bytes. |
+| Hiding available content until a timer, animation or unrelated image finishes | It introduces an artificial wait. First-frame styling must be inline and yield immediately to the ready profile. |
+
+The November 2026 regression had a complete Receiz collection with 1,686 Originals, including 613 for bjklock, while Bankeiz carried 1,685 and 612. The missing Original was already public; the display-opening and refresh gates did not advance the held list. Commits `d97b9b81` and `d96e830f` removed those gates, refreshed the existing input through its membership-only operator, and carried exact custom artwork. The transferable lesson is to trace the actual selected collection and delivered entry, not infer success from a preparation helper passing.
+
+## First-frame and media continuity
+
+Browser entry may need a brief local parsing/module-startup interval. That interval must show an intentional, accessible, inline-styled shell; never raw browser-default text, a hidden page, a minimum-duration splash or a fake completion claim. Start the real profile as soon as its held seed and runtime are available. Do not keep the shell for visual effect.
+
+Generate default portrait/banner artwork locally from the existing deterministic coordinates. Preserve exact custom image bytes when carried; a URL alone is not the image bytes. Prepare the existing bounded Feed neighbors before they enter the viewport, prioritize the current image, and keep the existing mount/memory bounds. Do not download or mount the entire collection to solve a single image flash.
+
 ## Verification before changing this behavior
 
 Run the relevant static-entry and held-navigation regressions, including `tests/public-delivery-output.test.ts`, `tests/pwa-prepared-documents.test.ts`, `tests/discover-held-navigation.test.ts`, the held Feed/Discover/Explorer runtime tests and `tests/public-navigation-retained-bank-entry.test.ts`. Entry or shared identity/storage changes also require `npm run test:account-entry-freeze`. Never rewrite assertions to authorize a new Source wait or a remounted wallet.
 
 Test actual compiled HTML entry modules as well as source components: Vite can remove exports used only by the external navigation loader. `tests/public-runtime-build-exports.test.ts` verifies the real HTML facade contract. Browser verification must cover first category entry, stalled/unavailable Source, no duplicate document/data reads when held, and return to the exact retained Bank root and bottom navigation.
+
+Before claiming end-to-end completion, verify both the held view and its next transition:
+
+- Test actual compiled browser Profile, Explore, Market and Ledger with API responses stalled. Confirm the expected full count, newest asset ID/digest and compatible inventory; do not substitute an owner-only local view for anonymous public rendering.
+- Test a later accepted Showcase addition, shared-surface adoption, persistence, and cold reopen against an older shipped seed. Include empty withdrawals, privacy/UID changes, thinner inputs, failed storage and superseded responses.
+- Test worker first navigation without a previously visited page and runtime return to the exact retained Bank root. Keep zero-read, no-remount and history-prefix assertions intact.
+- Verify custom image bytes and offscreen Feed preparation in the actual browser. A source-level `loading` attribute alone does not prove the image is decoded before it is seen.
+- Run the relevant regressions: `profile-prepared-family`, `profile-held-market`, `public-held-reuse-alignment`, `public-membership-persistence`, `public-market-seed-history-continuity`, `public-delivery-output`, `pwa-prepared-documents`, `pwa-held-public-navigation`, and the held navigation suites. Qualify the exact committed production build separately from other agents' uncommitted code.
 
 Keep local, committed, deployed and live-verified results separate. A source test or local commit is not evidence that production has updated.
 

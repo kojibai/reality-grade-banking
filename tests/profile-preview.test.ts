@@ -105,3 +105,15 @@ it('starts the same profile module asynchronously while preserving its complete 
  expect(result).toContain('<script id="receiz-navigation" type="application/json">{}</script>');
 });
 it('keeps inline identity artwork out of preload and social-image tags',()=>{const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.avatarUrl='data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C%2Fsvg%3E';profile.bannerUrl=profile.avatarUrl;const result=profilePreviewHtml(html,'alexmorgan',profile),head=result.split('</head>')[0];expect(head).not.toMatch(/(?:href|content)="data:image/);expect(result).toContain('public-profile-seed');profile.avatarUrl='https://receiz.com/avatar.png';expect(profilePreviewHtml(html,'alexmorgan',profile)).toContain('<meta property="og:image" content="https://receiz.com/avatar.png">');});
+
+it('styles the first profile frame inline without hiding it or delaying the existing runtime',async()=>{
+ const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender});
+ const body=await response.text(),style=body.match(/<style data-profile-opening-style>([\s\S]*?)<\/style>/)?.[1];
+ expect(style).toContain('[data-profile-opening]');expect(style).toContain('font-family:Inter');expect(style).toContain('background:#FCFBF8');
+ expect(body.indexOf('data-profile-opening-style')).toBeLessThan(body.indexOf('</head>'));
+ expect(body).toContain('<main class="public-entry-placeholder" data-profile-opening>');expect(body).toContain('aria-label="Bankeiz home"');expect(body).toContain('@alexmorgan');
+ expect(style).not.toMatch(/display:none|visibility:hidden|opacity:0|animation-delay|infinite/);expect(style).toContain('prefers-reduced-motion:no-preference');expect(body).not.toContain('setTimeout');expect(body).not.toContain('animationend');
+ for(const work of [profile,render,prepareRender])expect(work).not.toHaveBeenCalled();
+ const settled=profilePreviewHtml(html,'alexmorgan',null,undefined,'<article>Held profile</article>');expect(settled).not.toContain('data-profile-opening');
+});

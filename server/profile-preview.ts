@@ -1,3 +1,4 @@
+import {bankMarkSvg} from '../branding/bank-mark.mjs';
 import {isShareTrackingKey} from './share-tracking.js';
 import {publicProfileSocialImage,profilePagePath,profilePageUsername,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
 import {readPublicProfile,PublicProfileError} from './public-profile.js';
@@ -7,6 +8,19 @@ import {publicReadingLinks} from './public-reading-links.js';
 import {profileNavigationHtml} from './profile-navigation.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
+// This first-frame shell is present before module/CSS delivery. It never
+// hides content, waits for a timer, or delays mounting the held profile.
+const profileOpeningStyle=`<style data-profile-opening-style>
+[data-profile-opening]{box-sizing:border-box;display:grid;grid-template-rows:40px 1fr 40px;min-height:100dvh;max-width:1160px;margin:0 auto;padding:28px 24px;background:#FCFBF8;color:#172B45;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+[data-profile-opening] *{box-sizing:border-box}[data-profile-opening] nav{display:flex;align-items:center;justify-content:space-between;min-height:40px;gap:24px}[data-profile-opening] a{color:#244DCB;font-size:14px;text-decoration:none}[data-profile-opening] a:focus-visible{outline:3px solid #809df0;outline-offset:4px}[data-profile-opening] .profile-opening-brand{display:inline-flex;color:#172B45}[data-profile-opening] svg{width:34px;height:34px}
+[data-profile-opening] section{align-self:center;width:100%;max-width:440px;margin:40px auto;text-align:center}[data-profile-opening] .profile-opening-emblem{position:relative;display:grid;place-items:center;width:104px;height:104px;margin:0 auto 42px;border:1px solid #ceddf5;border-radius:32px;background:linear-gradient(145deg,#fff 3%,#f3f7ff 48%,#dce9ff);box-shadow:inset 0 1px 1px #fff,0 16px 44px #244dcb12;color:#244DCB}
+[data-profile-opening] .profile-opening-emblem:before{content:"";position:absolute;inset:-12px;border:1px solid #e5ebf7;border-radius:42px}[data-profile-opening] .profile-opening-emblem:after{content:"";position:absolute;inset:-25px;border:1px solid #eff1f6;border-radius:54px}[data-profile-opening] .profile-opening-emblem svg{width:52px;height:52px;filter:drop-shadow(0 2px 0 #ffffff)}
+[data-profile-opening] .profile-opening-label{margin:0 0 12px;color:#8797af;font-size:10px;line-height:1.5;letter-spacing:2.6px;font-weight:600;text-transform:uppercase}[data-profile-opening] p{margin:18px auto 0;max-width:300px;font-size:14px;line-height:1.65;color:#667386;overflow-wrap:anywhere}
+[data-profile-opening] .profile-opening-handle{display:inline-block;max-width:100%;margin-top:0;padding:5px 13px;border:1px solid #e3e9f4;border-radius:30px;background:#f5f7fb;color:#5b7192;font-size:13px;line-height:1.5}
+@media(prefers-reduced-motion:no-preference){[data-profile-opening] .profile-opening-emblem{animation:profile-opening-arrive 180ms cubic-bezier(.2,.8,.2,1)}}
+@keyframes profile-opening-arrive{from{transform:translateY(2px) scale(.98);box-shadow:inset 0 1px 1px #fff,0 8px 24px #244dcb08}to{transform:none;box-shadow:inset 0 1px 1px #fff,0 16px 44px #244dcb12}}
+@media(min-width:720px){[data-profile-opening]{min-height:calc(100dvh - 32px);margin:16px auto;border-radius:24px;padding:36px 44px}}
+</style>`;
 export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false){
  const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${username}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(username);
  const socialImage=profile?publicProfileSocialImage(profile):null;
@@ -15,11 +29,11 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
  const images=[...new Set([profile?.bannerUrl,profile?.avatarUrl,...(profile?.items.slice(0,2).map(item=>item.artworkUrl)??[])].filter((value):value is string=>!!value&&!value.startsWith('data:')))];
  const hints=images.map((src,index)=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}${index<2?' fetchpriority="high"':''}>`).join('');
  const navigationSeed=html.includes('<script id="receiz-navigation"');
- const initial=content??`<main class="public-entry-placeholder"><a href="/explore/">Explore</a><h1>${escape(name)}</h1><p>@${username}</p><p>${escape(description)}</p></main>`;
+ const initial=content??`<main class="public-entry-placeholder" data-profile-opening><nav aria-label="Profile navigation"><a class="profile-opening-brand" href="/" aria-label="Bankeiz home">${bankMarkSvg}</a><a href="/explore/">Explore</a></nav><section><div class="profile-opening-emblem" aria-hidden="true">${bankMarkSvg}</div><h1 class="profile-opening-label">${escape(profile?name:'Public profile')}</h1><p class="profile-opening-handle">@${escape(username)}</p><p>${escape(profile?description:'Originals and public activity.')}</p></section></main>`;
  const family=carryFamily?html.match(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>/)?.[0]??'':'';
  const withoutSeed=html.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
  return profilePageTemplate(withoutSeed)
- .replace('</head>',()=>tags+hints+(profile?publicReadingLinks('profile',username):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>(family?start.replace('>',` data-public-profile-entry="${username}">`):start)+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>family+seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
+ .replace('</head>',()=>tags+hints+(content===undefined?profileOpeningStyle:'')+(profile?publicReadingLinks('profile',username):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>(family?start.replace('>',` data-public-profile-entry="${username}">`):start)+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>family+seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(/* @vite-ignore */ path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}

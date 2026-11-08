@@ -72,7 +72,7 @@ assert.ok(html.includes('id="public-explore-root"'));assert.ok(html.includes('id
 // Browser profiles reuse the selected complete family. Remove Explore's
 // visible rows, but keep its exact data so opening a profile needs no reread.
 // Crawler profiles and asset previews below still carry only their own seed.
-assert.ok(html.includes('<main class="public-entry-placeholder">'),'Browser profile entry must show its own placeholder.');assert.ok(html.includes('<h1>Profile</h1>'));assert.ok(html.includes('@alexmorgan'));
+assert.ok(html.includes('<main class="public-entry-placeholder" data-profile-opening>'),'Browser profile entry must show its own inline-styled first frame.');assert.ok(html.includes('<h1 class="profile-opening-label">Public profile</h1>'));assert.ok(html.includes('@alexmorgan'));
 assert.ok(!hasExploreRows(html),'Browser profile entry must replace Explore rows.');
 assert.ok(html.includes('data-public-profile-entry="alexmorgan"'),'Browser runtime must open the requested profile directly.');
 assert.deepEqual(catalogScripts(html),exploreSeeds,'Browser profile must carry exactly the unchanged selected complete catalog seed.');
