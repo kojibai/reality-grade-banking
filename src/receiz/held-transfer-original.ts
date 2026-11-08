@@ -16,7 +16,7 @@ export function assertTransferOriginalRecord(raw:unknown,record:PublicRecord){
 /** Selected source read only. Accepted sends already retain these exact
  * originals. A genuinely missing source uses the existing authenticated reader
  * once and stays in the existing encrypted, identity-bound operation store. */
-export function createHeldTransferOriginalReader(input:{assertOpen():void;accountUid():string|null;readSends():Promise<unknown>;readSaved(id:string):Promise<unknown>;save(id:string,source:unknown,previous:unknown):Promise<void>;readMissing(id:string):Promise<unknown>;exportOriginal(input:import('./record-proof-export').RecordProofExportInput):Promise<File>}){
+export function createHeldTransferOriginalReader(input:{assertOpen():void;accountUid():string|null;readSends():Promise<unknown>;readSaved(id:string):Promise<unknown>;save(id:string,source:unknown,previous:unknown):Promise<void>;readMissing(id:string):Promise<unknown>;readOriginal(input:import('./record-proof-export').RecordProofExportInput):Promise<File|null>}){
  const held=new Map<string,Promise<{raw:unknown;file:File}>>();
  return async(record:PublicRecord)=>{
   input.assertOpen();const id=ledgerOriginalTransferId(record);if(!id)return null;
@@ -35,7 +35,7 @@ export function createHeldTransferOriginalReader(input:{assertOpen():void;accoun
     const {inspectTransferOriginal}=await import('./transfer-original-proof');const proof=await inspectTransferOriginal(raw);input.assertOpen();
     if(input.accountUid()!==uid)throw Error('TRANSFER_ORIGINAL_ACCOUNT_MISMATCH');
     if(!checkpoint&&!saved){await input.save(id,raw,null);input.assertOpen();}
-    const file=await input.exportOriginal({bytes,recordHash:proof.receiptDigest,filename:`transfer-${id}.receiz-original.json`,mimeType:'application/json'});input.assertOpen();return{raw:JSON.parse(exact),file};
+    const file=await input.readOriginal({bytes,recordHash:proof.receiptDigest,filename:`transfer-${id}.receiz-original.json`,mimeType:'application/json'});input.assertOpen();if(!file)throw Error('ORIGINAL_NOT_SUPPLIED');return{raw:JSON.parse(exact),file};
    })();held.set(id,pending);while(held.size>4)held.delete(held.keys().next().value!);void pending.catch(()=>{if(held.get(id)===pending)held.delete(id);});
   }
   const value=await pending;input.assertOpen();const source=assertTransferOriginalRecord(value.raw,record),uid=input.accountUid();

@@ -22,8 +22,9 @@ export function createRecordProofExports(ports:Ports){
   if(state?.schema!=='bankeiz.local-record-export.v1'||state.recordHash!==source.recordHash||state.payloadSha256!==attempt.payloadSha256||state.filename!==source.filename||state.mimeType!==source.mimeType||!a||!HEX.test(a.digest)||!name(a.filename)||!mime(a.mimeType)||!Number.isSafeInteger(a.size)||a.size<=0||a.size>MAX)throw Error('RECORD_PROOF_CHECKPOINT_INVALID');
   const bytes=await ports.restore(a.digest);ports.assertOpen();if(bytes.length!==a.size||await hash(bytes)!==a.digest)throw Error('RECORD_PROOF_SOURCE_MISMATCH');ports.assertOpen();return new File([new Uint8Array(bytes)],a.filename,{type:a.mimeType});
  }
- async function settle(key:string,attempt:Attempt){
+ async function settle(key:string,attempt:Attempt,existingOnly=false){
   ports.assertOpen();const previous=await ports.read(key);ports.assertOpen();if(previous!==null&&previous!==undefined)return restore(previous,attempt);
+  if(existingOnly)throw Error('ORIGINAL_NOT_SUPPLIED');
   if(!attempt.sealed){
    const sealed=await ports.seal({bytes:new Uint8Array(attempt.source.bytes),filename:attempt.source.filename,mimeType:attempt.source.mimeType});ports.assertOpen();
    if(!sealed?.verification?.ok||!(sealed.artifactBytes instanceof Uint8Array)||!sealed.artifactBytes.length||sealed.artifactBytes.length>MAX||!name(sealed.filename)||!mime(sealed.mimeType))throw Error('RECORD_PROOF_SEAL_INVALID');
@@ -35,12 +36,16 @@ export function createRecordProofExports(ports:Ports){
   try{await ports.write(key,next,previous);}catch(error){ports.assertOpen();const accepted=await ports.read(key);ports.assertOpen();if(accepted===null||accepted===undefined)throw error;return restore(accepted,attempt);}
   ports.assertOpen();return new File([new Uint8Array(sealed.bytes)],sealed.filename,{type:sealed.mimeType});
  }
- return{async export(input:RecordProofExportInput):Promise<File>{
+ async function select(input:RecordProofExportInput,existingOnly=false):Promise<File>{
   ports.assertOpen();const snapshot={bytes:input.bytes,filename:input.filename,mimeType:input.mimeType,recordHash:input.recordHash};
   if(!(snapshot.bytes instanceof Uint8Array)||!snapshot.bytes.length||snapshot.bytes.length>MAX||!name(snapshot.filename)||!mime(snapshot.mimeType)||(snapshot.recordHash!==undefined&&!HEX.test(snapshot.recordHash)))throw Error('RECORD_PROOF_INPUT_INVALID');
   const copied={...snapshot,bytes:new Uint8Array(snapshot.bytes)},payloadSha256=await hash(copied.bytes);ports.assertOpen();const source={...copied,recordHash:copied.recordHash??payloadSha256};const key=await hash(new TextEncoder().encode(JSON.stringify({recordHash:source.recordHash,payloadSha256,filename:source.filename,mimeType:source.mimeType})));ports.assertOpen();
   let attempt=attempts.get(key);if(!attempt){attempt={source,payloadSha256};attempts.set(key,attempt);}if(attempt.file){attempts.delete(key);attempts.set(key,attempt);return attempt.file;}if(attempt.work)return attempt.work;
-  const selected=attempt,work=(ports.exclusive?ports.exclusive(key,()=>settle(key,selected)):settle(key,selected)).then(file=>{ports.assertOpen();selected.file=file;return file;});selected.work=work;
+  const selected=attempt,work=(ports.exclusive?ports.exclusive(key,()=>settle(key,selected,existingOnly)):settle(key,selected,existingOnly)).then(file=>{ports.assertOpen();selected.file=file;return file;});selected.work=work;
   void work.finally(()=>{if(selected.work===work){selected.work=undefined;if(selected.file){selected.source.bytes=new Uint8Array();selected.sealed=undefined;selected.digest=undefined;trimCompleted();}else if(!selected.sealed)attempts.delete(key);}}).catch(()=>{});return work;
- }};
+ }
+ return{export:(input:RecordProofExportInput)=>select(input),
+  /** File saving can only reopen already-retained bytes. It must never turn
+   * a missing historical Original into a newly sealed display export. */
+  read:(input:RecordProofExportInput)=>select(input,true)};
 }

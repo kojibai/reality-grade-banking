@@ -1,0 +1,66 @@
+{
+  "id": "transfer:e8cb37b488de16493acbd226",
+  "kind": "chat_transfer",
+  "createdAt": "2026-11-08T02:09:24.661+00:00",
+  "kaiUpulse": "15045683728999",
+  "pulse": 15045683,
+  "proofBundle": {
+    "proofCapsule": {
+      "v": "KPV-1",
+      "upulse": "15045683728999",
+      "pulse": 15045683,
+      "chakraDay": "Solar Plexus",
+      "kaiKlok": "6:24 \u2022 D21/M5 \u2022 Flamora \u2022 Integration Ark",
+      "kaiSignature": "16afc72902048c23d52faf10ff39f70350762b778fefb7bca85269ddd351a298",
+      "phiKey": "1P1gtzJmeDf5BZ8ZCYDdicMMrZg8TREeEF",
+      "verifierSlug": "15045683-16afc72902"
+    },
+    "capsuleHash": "807efe1a51d35ea8135d4d2237376ce70e917a67072476e2999811e608565c22",
+    "verifierUrl": "https://receiz.com/verify",
+    "verifier": "local",
+    "verificationVersion": "wallet-ledger-v1",
+    "verifiedAtPulse": 15045683,
+    "proofHints": {
+      "source": "wallet_ledger_v1",
+      "eventId": "transfer:e8cb37b488de16493acbd226",
+      "eventKind": "chat_transfer",
+      "createdAt": "2026-11-08T02:09:24.661+00:00"
+    },
+    "bundleHash": "b5d7b6636e91b730bcad9a2ad5698ef0c3232ab03a0db8dad211d333f1ba863e"
+  },
+  "transferId": "tx:2e824422d7b1adca7a6ecf3e",
+  "conversationId": "conv:c99529b9c68ca086f1ee6120",
+  "messageId": "msg:0221ea312a4f5052d4e14b29",
+  "sender": {
+    "userId": "17pdGpS2K2syQFTo1gVQPb7xKNHAo9Pg1a",
+    "username": "17pdGpS2K2syQFTo1gVQPb7xKNHAo9Pg1a",
+    "displayName": "17pdGpS2K2syQFTo1gVQPb7xKNHAo9Pg1a",
+    "createdAt": "2026-02-03T07:28:07.33764+00:00",
+    "kaiSignature": "12453bae54a82cc948ef5bd0ae8b01cec272874abce1fae21b1b5316d5aefe65"
+  },
+  "recipient": {
+    "userId": "13aLm8TJTDzfNnYU3HV8JYqDA8uE1GLLya",
+    "username": "13aLm8TJTDzfNnYU3HV8JYqDA8uE1GLLya",
+    "displayName": "13aLm8TJTDzfNnYU3HV8JYqDA8uE1GLLya",
+    "createdAt": "2026-02-28T05:39:22.622917+00:00",
+    "kaiSignature": "0858353ba3b76c21d3e82cb34ad426e73e82ad7c9b1db425ae65d22f24527b13"
+  },
+  "amountPhiMicro": "1408585694",
+  "amountUsdCents": "10000000",
+  "usdPerPhiMicrocents": "7099319582",
+  "valueReceipt": {
+    "settledUsdCents": "0",
+    "phiUsdCents": "10000000",
+    "fundingSource": "sovereign",
+    "fundingRule": "settled_first_then_phi",
+    "certificateSharesMicro": null
+  },
+  "receiz": {
+    "ts": "2026-11-07 21:09",
+    "slug": "20261107_2109",
+    "code": "62E2508A",
+    "pulse": "15045683",
+    "ms": "1794103764661",
+    "anchorId": "7bccc282"
+  }
+}

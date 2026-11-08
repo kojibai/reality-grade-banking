@@ -31,9 +31,15 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   }
   if(local.pathname===`${PREFIX}record`){
     if([...local.searchParams.keys()].some(key=>key!=='path')||local.searchParams.getAll('path').length!==1)return null;
-    const path=local.searchParams.get('path');if(!path?.startsWith('/v/'))return null;const safe=safeReceizPublicUrl(path,'proof');if(!safe)return null;
-    const proof=new URL(safe),parts=proof.pathname.split('/'),anchor=proof.searchParams.get('a')??'',ms=proof.searchParams.get('ms')??'',tz=proof.searchParams.get('tz');
-    if([...proof.searchParams.keys()].some(key=>!['a','ms','tz'].includes(key))||!/^[a-f0-9]{8}$/i.test(anchor)||!/^\d{10,17}$/.test(ms)||!Number.isSafeInteger(Number(ms))||!/^[a-f0-9]{8}$/i.test(parts[3]??'')||tz!==null&&(!/^-?\d{1,4}$/.test(tz)||Number(tz)<-840||Number(tz)>840))return null;
+    const path=local.searchParams.get('path');if(!path?.startsWith('/v/')||path.length>8192)return null;
+    const proof=new URL(path,'https://receiz.com'),parts=proof.pathname.split('/'),anchor=proof.searchParams.get('a')??'',ms=proof.searchParams.get('ms')??'',tz=proof.searchParams.get('tz');
+    if(proof.origin!=='https://receiz.com'||proof.hash||[...proof.searchParams.keys()].some(key=>proof.searchParams.getAll(key).length!==1))return null;
+    const payloadToken=proof.searchParams.get('p');
+    if(payloadToken){
+      if([...proof.searchParams.keys()].some(key=>!['a','ms','tz','p'].includes(key))||payloadToken.length>18000||!/^\/v\/\d{8}_\d{4}\/[a-z0-9]{8,32}\/\d{1,24}$/i.test(proof.pathname)||ms!==''&&!/^\d{1,17}$/.test(ms)||anchor!==''&&!/^[a-f0-9]{8}$/i.test(anchor)||tz!==null&&(!/^-?\d{1,4}$/.test(tz)||Number(tz)<-840||Number(tz)>840))return null;
+      return proof;
+    }
+    if(!safeReceizPublicUrl(path,'proof')||[...proof.searchParams.keys()].some(key=>!['a','ms','tz'].includes(key))||!/^[a-f0-9]{8}$/i.test(anchor)||!/^\d{10,17}$/.test(ms)||!Number.isSafeInteger(Number(ms))||!/^[a-f0-9]{8}$/i.test(parts[3]??'')||tz!==null&&(!/^-?\d{1,4}$/.test(tz)||Number(tz)<-840||Number(tz)>840))return null;
     const query=new URLSearchParams({a:anchor,ms,p:parts[4],c:parts[3]});if(tz!==null)query.set('tz',tz);return new URL(`/api/receiz/download?${query}`,'https://receiz.com');
   }
   if (![`${PREFIX}original`,`${PREFIX}resource`].includes(local.pathname) || [...local.searchParams.keys()].some(key => key !== 'path') || local.searchParams.getAll('path').length !== 1) return null;
@@ -54,9 +60,16 @@ async function readBounded(response: Response): Promise<Uint8Array> {
   const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } return bytes;
 }
 async function loadPublicResponse(target: URL,afterPublication?:string): Promise<CachedResponse> {
+  // Receipt codecs belong to an explicit file request, never API startup or
+  // ordinary public navigation. The existing native exporter owns the file.
+  if(target.pathname.startsWith('/v/')){
+    const [{decodeSharePayload},{buildWalletLedgerReceiptDownloadHrefFromPayload}]=await Promise.all([import('../native/receiz/app/utils/shareBundleCodec.js'),import('../native/receiz/app/lib/transactions/walletLedgerLinks.js')]);
+    const payload=decodeSharePayload(target.searchParams.get('p')!);if(!payload||typeof payload!=='object'||Array.isArray(payload))throw Error('Native receipt payload is unavailable.');
+    const parts=target.pathname.split('/');target=new URL(buildWalletLedgerReceiptDownloadHrefFromPayload({payload:payload as Record<string,unknown>,slug:parts[2],code:parts[3],pulse:parts[4],ms:target.searchParams.get('ms'),anchorId:target.searchParams.get('a'),presentation:'public-proof'}),'https://receiz.com');
+  }
   const cacheTarget=new URL(target);if(cacheTarget.pathname==='/api/market/public-snapshot')cacheTarget.searchParams.delete('afterTrade');
   const key = cacheTarget.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:key;
-  const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/profile/showcase/imported-source';
+  const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/transactions/moment-card'||target.pathname==='/api/profile/showcase/imported-source';
   if (!afterPublication && !original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
   const inflight = pending.get(pendingKey); if (inflight) return inflight;
   const epoch=(epochs.get(key)??0)+1;epochs.set(key,epoch);

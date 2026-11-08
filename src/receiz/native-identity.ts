@@ -486,12 +486,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     return held?.sourceDigest===sourceDigest?held:null;
   }
   let recordProofExports:Promise<ReturnType<typeof import('./record-proof-export').createRecordProofExports>>|undefined;
-  function sealRecordExport(input:import('./record-proof-export').RecordProofExportInput):Promise<File>{
+  function sealRecordExport(input:import('./record-proof-export').RecordProofExportInput,existingOnly=false):Promise<File>{
     noteOpen();if(!(input.bytes instanceof Uint8Array)||input.bytes.length>32*1024*1024)throw Error('RECORD_PROOF_INPUT_INVALID');const source={bytes:new Uint8Array(input.bytes),filename:input.filename,mimeType:input.mimeType,recordHash:input.recordHash};recordProofExports??=Promise.all([import('./record-proof-export'),import('./identity-vault')]).then(([{createRecordProofExports},storage])=>createRecordProofExports({
       assertOpen:noteOpen,read:key=>storage.loadRecordProofExport(binding,key),write:(key,value,expected)=>storage.saveRecordProofExport(binding,key,value,expected),retain:bytes=>storage.saveOfflineNoteBlob(binding,bytes),restore:digest=>storage.loadOfflineNoteBlob(binding,digest),
       seal:async source=>{noteOpen();const result=await(await ownedSealer()).seal(source);noteOpen();return result;},
       exclusive:async(key,work)=>await(typeof navigator!=='undefined'&&navigator.locks?navigator.locks.request(`bankeiz-record-export:${binding.artifactSha256}:${key}`,()=>work()):work()),
-    })).catch(error=>{recordProofExports=undefined;throw error;});return recordProofExports.then(exports=>exports.export(source));
+    })).catch(error=>{recordProofExports=undefined;throw error;});return recordProofExports.then(exports=>existingOnly?exports.read(source):exports.export(source));
   }
   let calendarProof:import('./account-proof').VerifiedAccountProof|null= null;
   let localCalendarEvents:import('./organizer-types').OrganizerEvent[]=[];
@@ -2193,7 +2193,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   readHeldLedgerOriginal.transferOriginal=async record=>{
     noteOpen();if(!transferOriginalReader){const [{createHeldTransferOriginalReader},storage]=await Promise.all([import('./held-transfer-original'),import('./identity-vault')]);noteOpen();
       transferOriginalReader??=createHeldTransferOriginalReader({assertOpen:noteOpen,accountUid:()=>accountUid??carriedAccountUid??knownWallet?.wallet.userId??null,
-        readSends:()=>storage.loadWalletSendState(binding),readSaved:id=>storage.loadWalletOriginal(binding,id),save:(id,source,previous)=>storage.saveWalletOriginal(binding,id,source,previous),exportOriginal:sealRecordExport,
+        readSends:()=>storage.loadWalletSendState(binding),readSaved:id=>storage.loadWalletOriginal(binding,id),save:(id,source,previous)=>storage.saveWalletOriginal(binding,id,source,previous),readOriginal:input=>sealRecordExport(input,true),
         readMissing:async id=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;if(!uid||clientAccounts.get(current)?.accountUid!==uid)throw Error('TRANSFER_ORIGINAL_ACCOUNT_MISMATCH');return current.request('/api/connect/transfers?transferId='+encodeURIComponent(id),{method:'GET'});},
       });
     }return transferOriginalReader(record);

@@ -54,3 +54,9 @@ it('never evicts a sealed pending retention retry while trimming completed files
  const f=await fixture();f.failWrite(true);await expect(f.controller.export(input())).rejects.toThrow('STORAGE_UNAVAILABLE');f.failWrite(false);
  for(let i=1;i<=5;i++)await f.controller.export({...input(),recordHash:String(i).repeat(64)});await f.controller.export(input());expect(f.seal).toHaveBeenCalledTimes(6);expect(f.ports.retain).toHaveBeenCalledTimes(6);
 });
+
+it('read-only file saving never invokes a sealer or writes when an artifact is missing',async()=>{
+ const f=await fixture();await expect(f.controller.read(input())).rejects.toThrow('ORIGINAL_NOT_SUPPLIED');expect(f.seal).not.toHaveBeenCalled();expect(f.ports.retain).not.toHaveBeenCalled();expect(f.ports.write).not.toHaveBeenCalled();
+ const created=await f.controller.export(input()),seals=f.seal.mock.calls.length,writes=f.ports.write.mock.calls.length,held=await f.fresh().read(input());
+ expect(new Uint8Array(await held.arrayBuffer())).toEqual(new Uint8Array(await created.arrayBuffer()));expect(f.seal).toHaveBeenCalledTimes(seals);expect(f.ports.write).toHaveBeenCalledTimes(writes);
+});

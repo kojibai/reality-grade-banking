@@ -28,7 +28,7 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if (action.kind === 'account-proof') body = <AccountProofPanel identity={identity}/>;
   else if (action.kind === 'business') body = <BusinessUpgradePanel identity={identity} onOpenAssistant={onOpenAssistant} active={active}/>;
   else if (action.kind === 'profile') body = <IdentityProfile active={active} vaultsEntry={action.vaults} onVaultsEntryConsumed={onVaultsEntryConsumed} identity={identity} onForget={onForget} onRefresh={onRefresh} />;
-  else if (action.kind === 'currency') body = <CreateAsset active={active} identity={identity} onRefresh={onRefresh} onClose={onClose} />;
+  else if (action.kind === 'currency') body = <CreateAsset marketItems={marketItems} active={active} identity={identity} onRefresh={onRefresh} onClose={onClose} />;
   else if(action.kind==='market-trade') body=<MarketTradeFlow key={`${identity.binding?.artifactSha256}:${action.marketItemId}:${action.side}`} identity={identity} wallet={wallet} intent={{itemId:action.marketItemId,side:action.side,title:marketItems.find(item=>item.id===action.marketItemId)?.title??'Proof object'}} onRefresh={onRefresh}/>;
   else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;

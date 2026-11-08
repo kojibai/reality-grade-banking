@@ -1,3 +1,5 @@
+import {hasLedgerNativeRecord} from '../../receiz/ledger-native-record';
+import {ledgerNativeInspectionMatches} from '../../receiz/ledger-offline-proof';
 import {ledgerOriginalTransferId} from '../../receiz/held-transfer-original';
 import type {HeldLedgerOriginalReader} from '../../receiz/held-ledger-original';
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
@@ -16,9 +18,9 @@ export function LedgerProofDetails({record,sourceReader}:{record:PublicRecord;so
  const [localReport,setReport]=useState<OfflineProofReport|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[capsule,setCapsule]=useState<Record<string,unknown>|null>(null),[material,setMaterial]=useState<Record<string,unknown>|null>(null),[retainedState,setRetained]=useState(false);
  const pending=useRef<AbortController|null>(null),epoch=useRef(0),working=useRef(false);
  const shared=useSyncExternalStore(subscribeProofInspections,()=>retainedProofInspection(record.evidence.artifactDigest),()=>null);
- const report=shared?.report??(localReport&&(localReport.artifactSha256===record.evidence.artifactDigest?.toLowerCase()||!!sourceReader?.transferOriginal&&localReport.transferOriginal?.transferId===ledgerOriginalTransferId(record))?localReport:null),retained=shared?.retained??retainedState;
+ const report=shared?.report??(localReport&&(localReport.artifactSha256===record.evidence.artifactDigest?.toLowerCase()||ledgerNativeInspectionMatches(record,localReport,sourceReader)||!!sourceReader?.transferOriginal&&localReport.transferOriginal?.transferId===ledgerOriginalTransferId(record))?localReport:null),retained=shared?.retained??retainedState;
  useEffect(()=>{epoch.current++;working.current=false;pending.current?.abort();setReport(null);setCapsule(null);setMaterial(null);setBusy(false);setMessage('');setRetained(false);return()=>{epoch.current++;pending.current?.abort();};},[record.id,record.evidence.artifactDigest,sourceReader]);
- const available=!!sourceReader?.transferOriginal&&!!ledgerOriginalTransferId(record)||!!report||!!sourceReader&&!!record.evidence.artifactDigest||typeof record.details?.originalUrl==='string'&&!!record.evidence.artifactDigest;
+ const available=hasLedgerNativeRecord(record)||!!sourceReader?.transferOriginal&&!!ledgerOriginalTransferId(record)||!!report||!!sourceReader&&!!record.evidence.artifactDigest||typeof record.details?.originalUrl==='string'&&!!record.evidence.artifactDigest;
  const bundle=report?.verification.bundle as Record<string,unknown>|undefined;
  const publicSignals=report?.groth16?.publicSignals;
  const continuity=report?.verification.assetContinuity as {state?:unknown}|undefined;

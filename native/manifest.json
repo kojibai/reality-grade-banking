@@ -7374,6 +7374,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/transactions/walletLedgerLinks.ts",
+      "sha256": "707c34b93634670ee0cf5ad4b1ba42ddd946f5dd0bb5c49de2b77911fe2bcc91",
+      "bytes": 9280,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/transport/blobCustodyTransactions.client.ts",
       "sha256": "13c923eca7f52d00dbbc4097eb83915d7b51d82be2b3e0a5a64129d78f443403",
       "bytes": 857,
@@ -7869,6 +7875,13 @@
       "sha256": "b3e37a059debfe96c0888183bf312701b4f038be4f7bc1b4e063228b6b275a79",
       "bytes": 2175,
       "mode": 420
+    },
+    {
+      "path": "receiz/app/utils/shareBundleCodec.ts",
+      "sha256": "b899e1c32f87769dda8315e728bc8891b3ac69dfb16d0235ed6882bf0d4c5803",
+      "bytes": 4753,
+      "mode": 420,
+      "baseSha256": "33ba3944962ef615db16567f0dfc0dc409e3c29e04257cd0346e40e1ba662a9b"
     },
     {
       "path": "receiz/app/utils/signerKeyId.ts",
@@ -17453,6 +17466,22 @@
       "baseSha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
       "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
       "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
+    },
+    {
+      "id": "bankeiz-native-ledger-receipt-walletLedgerLinks",
+      "path": "receiz/app/lib/transactions/walletLedgerLinks.ts",
+      "baseSha256": "a7cf72bdbe9766c085c6e872095c68764adb8c2adc1c548ba90b94e8610de405",
+      "sha256": "f50ae59b3cc8be41bff011d1ae501d3ff68dddca235ace85e8d3af92bb707925",
+      "purpose": "Reuse unchanged Receiz v129 transaction receipt export and bounded share codec. No SDK verifier, roots, custody or financial operation changes. Resolve its existing codec import within the preferred-source extraction.",
+      "upstreamCommit": "8b6bb6788"
+    },
+    {
+      "id": "bankeiz-native-ledger-receipt-shareBundleCodec",
+      "path": "receiz/app/utils/shareBundleCodec.ts",
+      "baseSha256": null,
+      "sha256": "33ba3944962ef615db16567f0dfc0dc409e3c29e04257cd0346e40e1ba662a9b",
+      "purpose": "Reuse unchanged Receiz v129 transaction receipt export and bounded share codec. No SDK verifier, roots, custody or financial operation changes.",
+      "upstreamCommit": "8b6bb6788"
     }
   ],
   "historicalValuation": {
@@ -17461,7 +17490,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false

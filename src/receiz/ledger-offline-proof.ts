@@ -1,3 +1,4 @@
+import {hasLedgerNativeRecord,ledgerNativeRecord,assertLedgerNativeRecord} from './ledger-native-record';
 import type {HeldLedgerOriginalReader} from './held-ledger-original';
 import type {PublicRecord} from './public-network';
 import {ledgerInspectionDocument} from './ledger-inspection';
@@ -7,7 +8,7 @@ import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {ORIGINAL_PNG_MAX_BYTES} from './original-capacity';
 import {zipSync} from 'fflate';
-import {admittedProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
+import {admittedProofInspection,retainPrivateProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
 import {offlineProofVerifierDigest} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {assertTransferOriginalRecord,ledgerOriginalTransferId} from './held-transfer-original';
@@ -23,12 +24,41 @@ const privateInspections=new WeakMap<HeldLedgerOriginalReader,WeakMap<File,Promi
 const privateReaders=new WeakMap<OfflineProofReport,HeldLedgerOriginalReader>();
 const transferExports=new WeakMap<OfflineProofReport,{reader:HeldLedgerOriginalReader;file:File}>();
 const originalDownloads=new WeakMap<OfflineProofReport,{digest:string;file:Promise<File>}>();
+const nativeReports=new WeakMap<OfflineProofReport,{key:string;file:File;reader?:HeldLedgerOriginalReader}>();
+const nativePublic=new Map<string,Promise<OriginalResult>>(),nativePrivate=new WeakMap<object,Map<string,Promise<OriginalResult>>>();
+const nativeKey=(record:PublicRecord)=>JSON.stringify([record.authority,record.id,record.sourceId,record.kind,record.time,record.pulse,record.kaiUpulse,record.amountUsdCents,record.valueOperands,record.evidence,record.details,record.sourceUrl]);
+export function ledgerNativeInspectionMatches(record:PublicRecord,report:OfflineProofReport,reader?:HeldLedgerOriginalReader){const entry=nativeReports.get(report);return !!entry&&entry.reader===(record.authority==='public-source-projection'?undefined:reader)&&entry.key===nativeKey(record);}
+
+async function inspectNativeRecord(record:PublicRecord,signal?:AbortSignal,reader?:HeldLedgerOriginalReader):Promise<OriginalResult>{
+ reader?.assertOpen?.();const reference=ledgerNativeRecord(record);if(!reference)throw Error('ORIGINAL_NOT_SUPPLIED');
+ const key=nativeKey(record),isPublic=record.authority==='public-source-projection';let scope=nativePublic;
+ if(!isPublic){const owner=reader??record;scope=nativePrivate.get(owner)??new Map();nativePrivate.set(owner,scope);}
+ let pending=scope.get(key);if(!pending){pending=(async()=>{
+  const verifier=await loadOfflineProofVerifier();signal?.throwIfAborted();const cacheKey='native-receipt:'+await verifier.sha256Hex(key);
+  let bytes=isPublic?await cached(cacheKey):null;
+  if(!bytes){const response=await fetch(`/api/bank/public-market/record?path=${encodeURIComponent(reference.path)}`,{credentials:'omit',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});if(!response.ok)throw Error('ORIGINAL_READ_UNAVAILABLE');bytes=await readPublicLedgerBytes(response,MAX);}
+  const report=await verifier.inspectArtifact(bytes,reference.filename);signal?.throwIfAborted();assertLedgerNativeRecord(bytes,reference,report.verification);
+  const file=new File([new Uint8Array(bytes)],reference.filename,{type:'image/png'});reader?.assertOpen?.();nativeReports.set(report,{key,file,reader:isPublic?undefined:reader});
+  const saved=isPublic?await retain(cacheKey,bytes):false;signal?.throwIfAborted();
+  if(isPublic)retainProofInspection(report,bytes,reference.filename,saved,true);else{
+   // Private bytes remain scoped to their selected reader/record and never
+   // enter anonymous media/IDB retention. The canonical report owns its bytes.
+   retainPrivateProofInspection(report,bytes,reference.filename);
+   // The existing admission map supplies the kit; no financial authority or
+   // private Original is inferred from a public projection.
+  }
+  return{report,retained:saved};
+ })();scope.set(key,pending);while(scope.size>24)scope.delete(scope.keys().next().value!);void pending.catch(()=>{if(scope.get(key)===pending)scope.delete(key);});}
+ const result=await pending;reader?.assertOpen?.();signal?.throwIfAborted();return result;
+}
+
 export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js?build='+offlineProofVerifierDigest,location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
 function database(){return new Promise<IDBDatabase>((resolve,reject)=>{try{const r=indexedDB.open('bankeiz.public-proof-inspection.v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('originals');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}catch(error){reject(error);}});}
 async function cached(digest:string):Promise<Uint8Array|null>{let db:IDBDatabase|undefined;try{db=await database();return await new Promise((resolve,reject)=>{const r=db!.transaction('originals').objectStore('originals').get(digest);r.onsuccess=()=>resolve(r.result instanceof Uint8Array?r.result:null);r.onerror=()=>reject(r.error);});}catch{return null;}finally{db?.close();}}
 async function retain(digest:string,bytes:Uint8Array){let db:IDBDatabase|undefined;try{db=await database();await new Promise<void>((resolve,reject)=>{const tx=db!.transaction('originals','readwrite'),store=tx.objectStore('originals'),r=store.getAll();r.onsuccess=()=>{const all=r.result as Uint8Array[];if(all.reduce((n,b)=>n+b.length,0)+bytes.length>64*1024*1024){tx.abort();return;}store.put(bytes,digest);};tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});return true;}catch{return false;}finally{db?.close();}}
 export async function inspectLedgerOriginal(record:PublicRecord,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader){
  const original=record.details?.originalUrl,digest=record.evidence.artifactDigest;
+ if(!digest&&hasLedgerNativeRecord(record))return inspectNativeRecord(record,signal,sourceReader);
  if(!digest&&ledgerOriginalTransferId(record)&&sourceReader?.transferOriginal){
   const file=await sourceReader.transferOriginal(record);signal?.throwIfAborted();if(!file)throw Error('ORIGINAL_NOT_SUPPLIED');
   let scope=privateInspections.get(sourceReader);if(!scope){scope=new WeakMap();privateInspections.set(sourceReader,scope);}
@@ -87,6 +117,7 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  * is reused. No resealing, proof reconstruction or history verification runs. */
 export async function downloadLedgerOriginal(record:PublicRecord,report?:OfflineProofReport|null,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader):Promise<File>{
  const expected=record.evidence.artifactDigest?.toLowerCase();
+ if(!expected&&hasLedgerNativeRecord(record)){sourceReader?.assertOpen?.();const selected=report??(await inspectLedgerOriginal(record,signal,sourceReader)).report;signal?.throwIfAborted();if(!ledgerNativeInspectionMatches(record,selected,sourceReader)||!admittedProofInspection(selected))throw Error('ORIGINAL_INSPECTION_REQUIRED');return nativeReports.get(selected)!.file;}
  if(!expected&&ledgerOriginalTransferId(record)&&sourceReader?.transferOriginal){
   const selected=report??(await inspectLedgerOriginal(record,signal,sourceReader)).report;
   const file=await selectedTransferExport(record,selected,sourceReader);signal?.throwIfAborted();return file;

@@ -1,10 +1,13 @@
-import { mkdtemp, mkdir, readFile, writeFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
 import { expect, it } from 'vitest';
+import event from './fixtures/public-transaction-event.json';
+import {parsePublicNetworkPage} from '../src/receiz/public-network';
+import {ledgerNativeRecord} from '../src/receiz/ledger-native-record';
 
 it('boots the emitted API graph in plain Node and forwards enrollment and public-proof requests without Vite resolution', async () => {
   const root = resolve('.'), output = await mkdtemp(join(tmpdir(), 'bankeiz-node-api-')), visited = new Set<string>();
@@ -46,5 +49,17 @@ it('boots the emitted API graph in plain Node and forwards enrollment and public
       console.log('plain-node-api-ok');
     `], { encoding: 'utf8', stdio: 'pipe' });
     expect(result).toContain('plain-node-api-ok');
+    // Opening the API above needs no receipt codec dependency. An explicit
+    // native receipt request has its declared installed fflate dependency and
+    // must also run in emitted plain Node, without Vite extension rewriting.
+    await mkdir(join(output,'node_modules'),{recursive:true});await symlink(resolve('node_modules/fflate'),join(output,'node_modules/fflate'));
+    const receipt=ledgerNativeRecord(parsePublicNetworkPage('wallet',{ok:true,events:[event]}).records[0])!;
+    const download=execFileSync(process.execPath,['--input-type=module','--eval',`
+      import assert from 'node:assert/strict';
+      const {default:api}=await import(${JSON.stringify(entry)});
+      globalThis.fetch=async(url,options)=>{const target=new URL(url);assert.equal(target.pathname,'/api/transactions/moment-card');assert.equal(target.searchParams.get('presentation'),'public-proof');assert.ok(target.searchParams.get('walletLedgerReceipt'));assert.equal(options.credentials,'omit');return new Response(new Uint8Array([137,80,78,71]),{headers:{'Content-Type':'image/png'}});};
+      const result=await api.fetch(new Request('https://bank.example/api/bank/public-market/record?path='+encodeURIComponent(${JSON.stringify(receipt.path)})));
+      assert.equal(result.status,200);assert.deepEqual([...new Uint8Array(await result.arrayBuffer())],[137,80,78,71]);console.log('plain-node-native-receipt-ok');
+    `],{encoding:'utf8',stdio:'pipe'});expect(download).toContain('plain-node-native-receipt-ok');
   } finally { await rm(output, { recursive: true, force: true }); }
 });

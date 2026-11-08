@@ -68,6 +68,7 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  const capsule=select(bundle.proofCapsule,['v','upulse','pulse','chakraDay','kaiKlok','kaiSignature','phiKey','verifierSlug']);
  if(Object.keys(capsule).length)proof.proofCapsule=capsule;
  if(Object.keys(proof).length)result.proofBundle=proof;
+ const valueReceipt=select(source.valueReceipt,['settledUsdCents','phiUsdCents','fundingSource','fundingRule','certificateSharesMicro']);if(Object.keys(valueReceipt).length)result.valueReceipt=valueReceipt;
  const moment=select(source.receiz,['ts','slug','code','pulse','ms','anchorId']);if(Object.keys(moment).length)result.receiz=moment;
  const chart=select(source.marketAssetChart,['live','pv','premiumX','momentX','usdPerPhi','changePct','liveValueLabel','sourceValueLabel']);
  const points=object(source.marketAssetChart).chart;

@@ -1,12 +1,13 @@
 /** An owner-scoped read of exact retained bytes. This is a locator, never
  * proof admission. Callers must use the canonical reader before exporting. */
 export type HeldLedgerOriginalReader=((digest:string)=>Promise<File|null>)&{
+ assertOpen?:()=>void;
  transferOriginal?:(record:import('./public-network').PublicRecord)=>Promise<File|null>;
 };
 type Source={bytes:Uint8Array;filename:string;role?:string};
 export function createHeldLedgerOriginalReader(input:{assertOpen():void;read(digest:string):Promise<Source|null>}):HeldLedgerOriginalReader{
  const held=new Map<string,Promise<File|null>>();
- return async digest=>{
+ const reader:HeldLedgerOriginalReader=async digest=>{
   input.assertOpen();if(!/^[a-f0-9]{64}$/.test(digest))throw Error('PROOF_SOURCE_INVALID');
   let pending=held.get(digest);
   if(!pending){
@@ -23,4 +24,5 @@ export function createHeldLedgerOriginalReader(input:{assertOpen():void;read(dig
   }
   const file=await pending;input.assertOpen();return file;
  };
+ reader.assertOpen=input.assertOpen;return reader;
 }

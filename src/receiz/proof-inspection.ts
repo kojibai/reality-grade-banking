@@ -20,6 +20,11 @@ export function retainProofInspection(report:ProofInspection,bytes:Uint8Array,fi
  while(originals.size&&(originals.size>=16||[...originals.values()].reduce((sum,item)=>sum+item.bytes.length,0)+bytes.length>MAX))originals.delete(originals.keys().next().value!);
  originals.set(digest,entry);admitted.set(report,entry);for(const listener of listeners)listener();return entry;
 }
+/** Canonically inspected private bytes remain bound to their report, without
+ * entering shared public media or anonymous persistence. */
+export function retainPrivateProofInspection(report:ProofInspection,bytes:Uint8Array,filename:string){
+ const entry={report,bytes:bytes.slice(),filename,retained:true,publiclyAvailable:false};admitted.set(report,entry);return entry;
+}
 /** Observe work already requested by the user. Subscribers never start IO or
  * verification; another inspector can await the same successful publication. */
 export function trackProofInspection<T>(digest:string,work:Promise<T>):Promise<T>{
@@ -48,5 +53,5 @@ export function retainOpenedProofInspection(opened:ReceizOpenedArtifact,bytes:Ui
  const sourceHistory=ledgerSourceHistoryFromPayload(payload.bytes,payload.mimeType);
  const report:ProofInspection={...sourceHistory,schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
  if(publish)return retainProofInspection(report,bytes,filename);
- const entry={report,bytes:bytes.slice(),filename,retained:true,publiclyAvailable:false};admitted.set(report,entry);return entry;
+ return retainPrivateProofInspection(report,bytes,filename);
 }

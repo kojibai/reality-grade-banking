@@ -12,3 +12,10 @@ export function retainCreatedAssetResult(current:HeldDeposit|null,next:HeldDepos
 export function createdAssetHasHeldSignature(result:HeldDeposit,item:PublicMarketItem|null,username:string|null|undefined,accountUid:string|null|undefined){
  return !!accountUid&&!!item&&item.originalDigest===result.digest&&item.ownerUsername===username&&item.hasPbiSignature===true&&typeof item.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/.test(item.pbiReceiptHash)&&(item.ownerIdentity?.userId??item.admittedOwnerUserId)===accountUid;
 }
+
+/** Reuse the exact already-held owner/source membership for editor display.
+ * This does not acknowledge publication or supply signing/financial authority. */
+export function createdAssetHeldItem(result:HeldDeposit,items:readonly PublicMarketItem[],username:string|null|undefined,accountUid:string|null|undefined):PublicMarketItem|null{
+ if(!username||!accountUid)return null;
+ return items.find(item=>item.originalDigest===result.digest&&item.ownerUsername===username&&(item.ownerIdentity?.userId??item.admittedOwnerUserId)===accountUid)??null;
+}

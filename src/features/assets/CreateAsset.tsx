@@ -12,15 +12,16 @@ import {admittedAssetPublicationItem,admittedAssetPublicationDelivery,admittedAs
 import {retainPublicAsset} from '../../receiz/public-asset-page';
 import {AssetComposer} from './AssetComposer';
 import {CreatedAssetResult} from './CreatedAssetResult';
-import {createdAssetHasHeldSignature,retainCreatedAssetResult} from './created-asset-state';
+import {createdAssetHeldItem,createdAssetHasHeldSignature,retainCreatedAssetResult} from './created-asset-state';
 import {createSealTimeEstimator,type AssetDeliveryTiming} from './asset-progress-estimate';
 import './asset-studio.css';
 import './asset-creation-studio.css';
 import type {BackedPublicationState} from '../../receiz/backed-asset-publication';
 import {assetPublicationDeliveryTiming,isAssetPublicationDeliveryActive,subscribeAssetPublicationDeliveries,retainAssetPublicationDelivery,type AssetPublicationAttempt} from '../../receiz/asset-publication';
 const ImportOriginal=lazy(()=>import('../deposit/LiveDeposit').then(module=>({default:module.LiveDeposit})));
-export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{active?:boolean;identity:OpenIdentity;onRefresh():void;onClose():void}){
+export function CreateAsset({identity,onRefresh,onClose,active:visible=true,marketItems=[]}:{marketItems?:readonly import('../../receiz/public-market').PublicMarketItem[];active?:boolean;identity:OpenIdentity;onRefresh():void;onClose():void}){
  const username=identity.accountUsername?.()??identity.username,accountUid=identity.walletReceivingAddress?.();
+ const heldItems=useRef(marketItems),restoredCompletion=useRef<string|null>(null);heldItems.current=marketItems;
  const heldProfile=useSyncExternalStore(subscribePublicProfiles,()=>username?retainedPublicProfile(username):null,()=>null);
  const [draft,setDraft]=useState<AssetComposerDraft>({title:'',description:'',kind:'moment',longForm:'',files:[]}),[link,setLink]=useState(''),[settings,setSettings]=useState({symbol:'',units:'1000'}),[funded,setFunded]=useState(false),[backing,setBacking]=useState('');
  const [reviewing,setReviewing]=useState(false),[importing,setImporting]=useState(false);
@@ -39,14 +40,18 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
    if(!stillCurrent())return;
    if(backed.status==='fulfilled'&&backed.value?.state&&backed.value.state.stage!=='published'){setBackedState(backed.value.state);setFunded(true);setResultBacked(true);if(backed.value.deposit)setResult(backed.value.deposit);}
    else if(ordinary.status==='fulfilled'&&ordinary.value){
-    setResult(ordinary.value);
+    // A previous creation already carried by this account's shared Showcase
+    // belongs in Assets. Do not restore its completion sheet on a later visit,
+    // including a retained PWA. Keep its existing exact delivery recovery below.
+    const completedVisit=!!createdAssetHeldItem(ordinary.value,heldItems.current,username,accountUid);
+    if(!completedVisit){restoredCompletion.current=ordinary.value.digest;setResult(ordinary.value);}
     // Continue only this saved, unsigned delivery once, including an earlier
     // refusal whose accepted receipt was not returned. Its existing publisher
     // reuses the exact retained append and persists the returned acknowledgment.
     // Opening an empty editor or a newly created result starts no extra delivery.
     if((ordinary.value.publication?.status==='pending'||ordinary.value.publication?.status==='rejected')&&!ordinary.value.pbiSigned&&identity.retryAssetPublication){
      running.current=true;setBusy(true);
-     try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){setResult(current=>retainCreatedAssetResult(current,settled));onRefresh();}}
+     try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){if(!completedVisit&&restoredCompletion.current===ordinary.value.digest)setResult(current=>retainCreatedAssetResult(current,settled));onRefresh();}}
      catch(cause){if(stillCurrent())setError(cause instanceof Error?cause.message:'Your original remains saved. Try delivery again.');}
      finally{if(current){running.current=false;if(stillCurrent())setBusy(false);}}
     }
@@ -56,7 +61,7 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
   return()=>{current=false;active.current=false;};
  },[identity]);
  useEffect(()=>{if(!busy||result)return;const started=performance.now();setElapsed(0);const timer=setInterval(()=>setElapsed(Math.floor((performance.now()-started)/1000)),1000);return()=>clearInterval(timer);},[busy,!!result]);
- async function create(){if(running.current)return;running.current=true;const at=++revision.current;sealEstimate.current.reset();setBusy(true);setProgress({stage:'preparing'});setError('');try{
+ async function create(){if(running.current)return;restoredCompletion.current=null;running.current=true;const at=++revision.current;sealEstimate.current.reset();setBusy(true);setProgress({stage:'preparing'});setError('');try{
   const selected=result?null:composerDraftWithLink(draft,link);
   const definition=selected?composerDefinition(selected,settings):null;
   if(result&&!identity.retryAssetPublication)throw Error('Reopen your saved asset before retrying delivery.');
@@ -64,7 +69,7 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
   if(active.current&&at===revision.current){if(value)setResult(current=>retainCreatedAssetResult(current,value));onRefresh();}
  }catch(cause){if(active.current&&at===revision.current)setError(cause instanceof Error&&cause.message==='COMPOSER_LINK_INVALID'?'Enter a valid HTTP or HTTPS link.':cause instanceof Error&&cause.message==='COMPOSER_LINK_CLAIM_CAPACITY'?'Shorten the description or link to fit within 2,000 characters.':cause instanceof Error&&cause.message.startsWith('COMPOSER_')?'Check your original, cover and file sizes before creating this asset.':cause instanceof Error?cause.message:'Your asset could not be created. Your selected files remain here.');}finally{if(at===revision.current){running.current=false;if(active.current){setBusy(false);setProgress(null);}}}}
  useEffect(()=>{if(!result)return;const digest=result.digest,username=identity.accountUsername?.()??identity.username;if(!username)return;const admitted=()=>{if(!active.current)return;const item=admittedAssetPublicationItem(digest,username),delivery=admittedAssetPublicationDelivery(digest,username),signatureDelivery=admittedAssetPublicationSignatureDelivery(digest,username);if(!item&&!delivery&&!signatureDelivery)return;if(item?.hasPbiSignature&&signingRunning.current&&!signatureTiming.current)signatureTiming.current={attemptId:`signature:${++signatureAttempt.current}`,sourceDigest:digest,phase:'signature',sizeBytes:result.bytes.byteLength,startedAtMs:performance.now()};setResult(current=>current?.digest===digest?{...current,...(item?.hasPbiSignature?{pbiSigned:true}:{}),...(delivery?{publication:retainAssetPublicationDelivery(current.publication,delivery)}:{}),...(signatureDelivery?{marketPublication:retainAssetPublicationDelivery(current.marketPublication,signatureDelivery)}:{})}:current);if(signatureDelivery?.status==='published')setBusy(false);};admitted();return subscribeAssetPublicationAdmissions(admitted);},[identity,result?.digest,result?.pbiSigned]);
- async function publishMarket(){if(!result||signingRunning.current)return;signingRunning.current=true;const at=revision.current;signatureTiming.current=undefined;setSigning(true);setError('');try{const signed=await identity.publishAssetToMarket(result);if(active.current&&at===revision.current){
+ async function publishMarket(){if(!result||signingRunning.current)return;restoredCompletion.current=null;signingRunning.current=true;const at=revision.current;signatureTiming.current=undefined;setSigning(true);setError('');try{const signed=await identity.publishAssetToMarket(result);if(active.current&&at===revision.current){
   const username=identity.accountUsername?.()??identity.username??'',sourceDelivery=admittedAssetPublicationDelivery(signed.digest,username),signatureDelivery=admittedAssetPublicationSignatureDelivery(signed.digest,username);
   // Public admission may finish before this older delivery call returns.
   // Keep the held Source confirmation and select only the current PBI append.
@@ -79,7 +84,10 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
   }catch(cause){if(active.current&&at===revision.current)setError(cause instanceof Error?cause.message:'Your Original could not be saved. Its held proof is unchanged.');}
   finally{if(savingOriginal.current===attempt)savingOriginal.current=null;}
  }
- const publicItem=result&&username?(admittedAssetPublicationItem(result.digest,username,accountUid??undefined)??(!accountUid||heldProfile?.userId===accountUid?heldProfile?.items.find(item=>item.originalDigest===result.digest):null)??null):null;
+ const publicItem=result&&username?(admittedAssetPublicationItem(result.digest,username,accountUid??undefined)??(!accountUid||heldProfile?.userId===accountUid?heldProfile?.items.find(item=>item.originalDigest===result.digest):null)??createdAssetHeldItem(result,marketItems,username,accountUid)):null;
+ // The carried catalog can finish local decoding after checkpoint restore.
+ // Retire only that old completion, never a result created in this visit.
+ useEffect(()=>{if(result&&restoredCompletion.current===result.digest&&createdAssetHeldItem(result,marketItems,username,accountUid)){restoredCompletion.current=null;setResult(null);setError('');}},[result?.digest,marketItems,username,accountUid]);
  const heldSigned=!!result&&createdAssetHasHeldSignature(result,publicItem,username,accountUid);
  useEffect(()=>{if(heldSigned)setResult(current=>current&&!current.pbiSigned?{...current,pbiSigned:true}:current);},[heldSigned,result?.digest]);
  const shownResult=result&&heldSigned&&!result.pbiSigned?{...result,pbiSigned:true}:result;
@@ -87,12 +95,12 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
  // Original and its optional signature remain in Assets; an unfinished draft
  // or interrupted source delivery keeps its existing recovery path.
  useEffect(()=>{
-  if(visible||!shownResult||shownResult.publication?.status!=='published'&&shownResult.marketPublication?.status!=='published')return;
+  if(visible||!shownResult||!shownResult.pbiSigned&&!createdAssetHeldItem(shownResult,marketItems,username,accountUid)&&shownResult.publication?.status!=='published'&&shownResult.marketPublication?.status!=='published')return;
   revision.current++;running.current=false;signingRunning.current=false;signatureTiming.current=undefined;
   setResult(null);setDeliveryAttempt(null);setBusy(false);setSigning(false);setError('');setProgress(null);
   setDraft({title:'',description:'',kind:'moment',longForm:'',files:[]});setLink('');setSettings({symbol:'',units:'1000'});
   setReviewing(false);setImporting(false);setFunded(false);setBacking('');setBackedState(null);setResultBacked(false);
- },[visible,shownResult?.digest,shownResult?.publication?.status,shownResult?.marketPublication?.status]);
+ },[visible,shownResult?.digest,shownResult?.pbiSigned,shownResult?.publication?.status,shownResult?.marketPublication?.status,marketItems,username,accountUid]);
  const delivering=!!result&&(busy||(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.active:!!identity.binding&&isAssetPublicationDeliveryActive(identity.binding.artifactOwnerReceizId,result.digest)));
  const sourceTiming=result?(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.timing:identity.binding?assetPublicationDeliveryTiming(identity.binding.artifactOwnerReceizId,result.digest):undefined):undefined;
  if(result)return <CreatedAssetResult result={shownResult!} settings={settings} busy={signing} deliveryActive={delivering} deliveryTiming={result.pbiSigned?signatureTiming.current:sourceTiming} allowLocalSigning={!resultBacked} error={error} username={username} publicItem={publicItem} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
