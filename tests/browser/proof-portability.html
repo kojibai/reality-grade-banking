@@ -22,6 +22,9 @@ document.querySelector('#run').onclick=async()=>{
   const originalDigest=await proofDigest(original.bytes),getAll=IDBObjectStore.prototype.getAll;
   let selected;try{IDBObjectStore.prototype.getAll=function(){throw Error('A selected original must not scan all sources');};selected=await loadDepositSources(binding,{requireComplete:true,originalsOnly:true,digests:[originalDigest,originalDigest,'a'.repeat(64)]});}finally{IDBObjectStore.prototype.getAll=getAll;}
   check(selected.length===1&&await proofDigest(selected[0].bytes)===originalDigest,'Selected originals use exact keyed reads, deduplicate and preserve encrypted bytes without scanning');
+  const receiptDigest=await proofDigest(receipt.bytes);let archived,missing;
+  try{IDBObjectStore.prototype.getAll=function(query,...rest){if(typeof query!=='string')throw Error('A selected archive must not scan retained history');return getAll.call(this,query,...rest);};archived=await loadProofArchive(binding,receiptDigest);missing=await loadProofArchive(binding,'a'.repeat(64));}finally{IDBObjectStore.prototype.getAll=getAll;}
+  check(archived.length===1&&await proofDigest(archived[0].bytes)===receiptDigest&&missing.length===0,'Selected archived originals use one exact owner-bound key without reading unrelated history');
   let wrongSelection=false;try{await loadDepositSources({artifactSha256:'f'.repeat(64)},{requireComplete:true,digests:[originalDigest]});}catch{wrongSelection=true;}check(wrongSelection,'Selected-source reads refuse another identity');
   const payment={kind:'payment-receipt',filename:'payment.receiz-payment.json',bytes:bytes('test-only-no-financial-admission')};
   await retainProofBatch(binding,[payment]);check((await loadProofArchive(binding)).some(row=>row.kind==='payment-receipt'&&new TextDecoder().decode(row.bytes)==='test-only-no-financial-admission'),'Payment receipts retain and reopen through the same encrypted proof archive');

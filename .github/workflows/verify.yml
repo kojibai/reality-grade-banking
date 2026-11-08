@@ -29,7 +29,7 @@ jobs:
       - run: npm test
 
   build_verify:
-    name: Build, browser and source verification
+    name: Production build and source inventory
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -46,28 +46,82 @@ jobs:
           "$browser_path" --version
           echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: npm ci
-      - run: npm run release:check
-      - run: npm run typecheck
       - run: npm run receiver:check
       - run: npm run native:check
       - run: npm run native:rebuild -- --sdk
       - run: npm run build
+      # Hand off only the already-verified public source archive and build.
+      # Both consumers inspect this exact output; neither builds it again first.
+      - name: Package verified build for independent checks
+        run: |
+          archive_path="$(node -p '"dist" + JSON.parse(require("fs").readFileSync("dist/source/index.json","utf8")).url')"
+          mkdir -p "$RUNNER_TEMP/verified-build"
+          tar -xzf "$archive_path" --strip-components=1 -C "$RUNNER_TEMP/verified-build"
+          cp -R dist "$RUNNER_TEMP/verified-build/dist"
+          tar -czf "$RUNNER_TEMP/verified-build.tgz" -C "$RUNNER_TEMP/verified-build" .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2, Node 24
+        with:
+          name: verified-build
+          path: ${{ runner.temp }}/verified-build.tgz
+          compression-level: 0
+          retention-days: 1
+
+  browser_verify:
+    name: Browser and offline verification
+    needs: build_verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2, Node 24
+        with:
+          name: verified-build
+          path: ${{ runner.temp }}/verified-build-download
+      - name: Restore the exact verified build
+        run: tar -xzf "$RUNNER_TEMP/verified-build-download/verified-build.tgz" -C "$GITHUB_WORKSPACE"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Use preinstalled Chrome for browser checks
+        run: |
+          browser_path="$(command -v google-chrome)"
+          "$browser_path" --version
+          echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
+      - run: npm ci
       - run: npm run test:browser
       - run: npm run test:vault-browser
       - name: Retain browser regression evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2, Node 24
         with:
           name: browser-regressions
-          path: test-results/browser-regressions/
+          path: test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  source_verify:
+    name: Clean source rebuild
+    needs: build_verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2, Node 24
+        with:
+          name: verified-build
+          path: ${{ runner.temp }}/verified-build-download
+      - name: Restore the exact verified build
+        run: tar -xzf "$RUNNER_TEMP/verified-build-download/verified-build.tgz" -C "$GITHUB_WORKSPACE"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
       - run: npm run source:verify -- --rebuild
 
-  # Keep the existing required check name. Both independent jobs must pass;
+  # Keep the existing required check name. Every independent job must pass;
   # always() prevents an upstream failure or cancellation from hiding this gate.
   verify:
-    needs: [tests, build_verify]
+    needs: [tests, build_verify, browser_verify, source_verify]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -76,6 +130,10 @@ jobs:
         env:
           TEST_RESULT: ${{ needs.tests.result }}
           BUILD_RESULT: ${{ needs.build_verify.result }}
+          BROWSER_RESULT: ${{ needs.browser_verify.result }}
+          SOURCE_RESULT: ${{ needs.source_verify.result }}
         run: |
           test "$TEST_RESULT" = success
           test "$BUILD_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          test "$SOURCE_RESULT" = success

@@ -40,12 +40,13 @@ function carriedGroth16(value:unknown):Record<string,unknown>|null{
 
 /** Project the SDK's successful, digest-matched open. Decode public proof
  * structure only; this does not run cryptography or reconstruct proof data. */
-export function retainOpenedProofInspection(opened:ReceizOpenedArtifact,bytes:Uint8Array,filename:string,digest:string){
+export function retainOpenedProofInspection(opened:ReceizOpenedArtifact,bytes:Uint8Array,filename:string,digest:string,publish=true){
  if(opened.sealedArtifact.artifactSha256.toLowerCase()!==digest.toLowerCase())throw Error('SELECTED_RECORD_DIGEST_MISMATCH');
  const verification=opened.verification as unknown as Record<string,unknown>,bundle=verification?.bundle as Record<string,unknown>|undefined;
  if(verification?.ok!==true||(verification.integrity as {ok?:boolean}|undefined)?.ok!==true||!bundle)return null;
  const payload=opened.verifiedPayload;
  const sourceHistory=ledgerSourceHistoryFromPayload(payload.bytes,payload.mimeType);
  const report:ProofInspection={...sourceHistory,schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
- return retainProofInspection(report,bytes,filename);
+ if(publish)return retainProofInspection(report,bytes,filename);
+ const entry={report,bytes:bytes.slice(),filename,retained:true,publiclyAvailable:false};admitted.set(report,entry);return entry;
 }

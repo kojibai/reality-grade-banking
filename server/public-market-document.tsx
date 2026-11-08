@@ -44,16 +44,25 @@ async function prepare(material:string,generation:string){
 /** Project an already selected complete public family through the existing
  * Explorer. Build fallback and accepted-publication preparation share this
  * display-only renderer; it performs no reads or navigation selection. */
-export function renderSelectedPublicMarketState({catalog,history,asOfPulse,capitalization,generation,path='explore',compressCatalog=false,profileUsername}:PublicMarketSelectedState){
+function selectedPublicMarketPresentation({catalog,history,asOfPulse,generation,path='explore',profileUsername}:PublicMarketSelectedState){
  if(!/^[a-f0-9]{64}$/.test(generation))throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
  if(!(publicMarketPreparedPaths as readonly string[]).includes(path))throw Error('PUBLIC_MARKET_RENDER_PATH_INVALID');
  if(!catalog.complete||catalog.items.length>10000)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
  if(profileUsername&&(profilePageUsername(profilePagePath(profileUsername))!==profileUsername||!selectHeldPublicProfile(profileUsername,catalog)))throw Error('PUBLIC_PROFILE_RENDER_COMPLETE_REQUIRED');
  if(!Number.isSafeInteger(asOfPulse)||asOfPulse<history.summary.serverPulse||asOfPulse<0||asOfPulse>1e10)throw Error('PUBLIC_MARKET_RENDER_STATE_REQUIRED');
  const format=new Intl.DateTimeFormat().resolvedOptions();
- const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount:Math.min(50,catalog.items.length),asOfPulse,format:{locale:format.locale,timeZone:format.timeZone},history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
+ const documentFormat={locale:format.locale,timeZone:format.timeZone},visibleCount=Math.min(50,catalog.items.length);
  const source={catalog,historyCatalog:catalog,pulse:asOfPulse,quoteStatus:'stale' as const,sportsStatus:catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}};
- const content=renderToString(<PublicDocumentCapabilitiesContext.Provider value={{intersectionObserver:false}}><PublicDocumentFormatContext.Provider value={seed.format}><PublicExplorer active={false} initialPath={profileUsername?profilePagePath(profileUsername):'/'+path+'/'} initialSource={source} initialVisibleCount={seed.visibleCount} initialAsOfPulse={asOfPulse} initialHistory={history}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>,{identifierPrefix:'public-explore-'});
+ const content=renderToString(<PublicDocumentCapabilitiesContext.Provider value={{intersectionObserver:false}}><PublicDocumentFormatContext.Provider value={documentFormat}><PublicExplorer active={false} initialPath={profileUsername?profilePagePath(profileUsername):'/'+path+'/'} initialSource={source} initialVisibleCount={visibleCount} initialAsOfPulse={asOfPulse} initialHistory={history}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>,{identifierPrefix:'public-explore-'});
+ return {content,format:documentFormat,visibleCount};
+}
+/** Profile fragments reuse the identical presentation without serializing the
+ * complete family/history into a seed that their caller would discard. */
+export function renderSelectedPublicMarketContent(input:PublicMarketSelectedState){return selectedPublicMarketPresentation(input).content;}
+export function renderSelectedPublicMarketState(input:PublicMarketSelectedState){
+ const {catalog,history,asOfPulse,capitalization,generation,path='explore',compressCatalog=false}=input;
+ const {content,format,visibleCount}=selectedPublicMarketPresentation(input);
+ const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format,history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
  return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog):undefined)};
 }
 /** Called by accepted-publication preparation, never by the cold visitor. The

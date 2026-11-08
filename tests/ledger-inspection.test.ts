@@ -63,3 +63,15 @@ it('keeps core receipt controls available when optional multibyte context exceed
  const link=receiptLink(record);expect(link).not.toBeNull();
  const receipt=readReceiptLink(link!);expect(receipt.title).toBe(record.title);expect(receipt.value?.amountUsdCents).toBe('4225');expect(receipt.contextOmitted).toBe(true);
 });
+
+it('preserves the existing Wallet verifier URL through cache and receipt without widening public URL permissions',()=>{
+ const proofBundle={...event.proofBundle,verifierUrl:'https://receiz.com/verify'};
+ const row=parsePublicNetworkPage('wallet',{ok:true,events:[{...event,proofBundle}]}).records[0];
+ expect(row.details?.proofBundle).toMatchObject({verifierUrl:proofBundle.verifierUrl});
+ const cached=parsePublicNetworkCache({schema:'receiz.bank.public-ledger-cache.v1',authority:'public-source-projection',records:[row],coverage:[]}).records[0];
+ expect(readReceiptLink(receiptLink(cached)!).details?.proofBundle).toEqual(cached.details?.proofBundle);
+ for(const verifierUrl of ['https://evil.test/verify','https://receiz.com/verify?token=private','https://receiz.com/verify#secret','https://user:secret@receiz.com/verify']){
+  const denied=parsePublicNetworkPage('wallet',{ok:true,events:[{...event,proofBundle:{...proofBundle,verifierUrl}}]}).records[0];
+  expect(denied.details?.proofBundle).not.toHaveProperty('verifierUrl');
+ }
+});

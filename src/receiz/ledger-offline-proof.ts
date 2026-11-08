@@ -1,3 +1,4 @@
+import type {HeldLedgerOriginalReader} from './held-ledger-original';
 import type {PublicRecord} from './public-network';
 import {ledgerInspectionDocument} from './ledger-inspection';
 import {ledgerValueForRecord} from './ledger-value';
@@ -6,7 +7,7 @@ import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from './public-
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {ORIGINAL_PNG_MAX_BYTES} from './original-capacity';
 import {zipSync} from 'fflate';
-import {admittedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
+import {admittedProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
 import {offlineProofVerifierDigest} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 
@@ -16,15 +17,34 @@ declare global{var ReceizOfflineVerifier:OfflineProofVerifier;}
 const BASE='/proof-verifier/v129/',MAX=24*1024*1024;
 let runtime:Promise<OfflineProofVerifier>|undefined;
 const inspections=new Map<string,Promise<{report:OfflineProofReport;retained:boolean}>>();
+type OriginalResult={report:OfflineProofReport;retained:boolean};
+const privateInspections=new WeakMap<HeldLedgerOriginalReader,WeakMap<File,Promise<OriginalResult>>>();
+const privateReaders=new WeakMap<OfflineProofReport,HeldLedgerOriginalReader>();
 const originalDownloads=new WeakMap<OfflineProofReport,{digest:string;file:Promise<File>}>();
 export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js?build='+offlineProofVerifierDigest,location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
 function database(){return new Promise<IDBDatabase>((resolve,reject)=>{try{const r=indexedDB.open('bankeiz.public-proof-inspection.v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('originals');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}catch(error){reject(error);}});}
 async function cached(digest:string):Promise<Uint8Array|null>{let db:IDBDatabase|undefined;try{db=await database();return await new Promise((resolve,reject)=>{const r=db!.transaction('originals').objectStore('originals').get(digest);r.onsuccess=()=>resolve(r.result instanceof Uint8Array?r.result:null);r.onerror=()=>reject(r.error);});}catch{return null;}finally{db?.close();}}
 async function retain(digest:string,bytes:Uint8Array){let db:IDBDatabase|undefined;try{db=await database();await new Promise<void>((resolve,reject)=>{const tx=db!.transaction('originals','readwrite'),store=tx.objectStore('originals'),r=store.getAll();r.onsuccess=()=>{const all=r.result as Uint8Array[];if(all.reduce((n,b)=>n+b.length,0)+bytes.length>64*1024*1024){tx.abort();return;}store.put(bytes,digest);};tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});return true;}catch{return false;}finally{db?.close();}}
-export async function inspectLedgerOriginal(record:PublicRecord,signal?:AbortSignal){
+export async function inspectLedgerOriginal(record:PublicRecord,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader){
  const original=record.details?.originalUrl,digest=record.evidence.artifactDigest;
  if(!/^[a-f0-9]{64}$/i.test(digest??''))throw Error('ORIGINAL_NOT_SUPPLIED');
- const key=digest!.toLowerCase(),pending=inspections.get(key);if(pending)return pending;
+ const key=digest!.toLowerCase();
+ // Only an explicit owner's selected download may open private custody. Keep
+ // its admission out of anonymous inspection/media caches and shared IDB.
+ if(sourceReader){
+  const file=await sourceReader(key);signal?.throwIfAborted();
+  if(file){
+   let scope=privateInspections.get(sourceReader);if(!scope){scope=new WeakMap();privateInspections.set(sourceReader,scope);}
+   let work=scope.get(file);if(!work){work=(async()=>{
+    const {openCanonicalProofFile}=await import('./proof-capture');
+    const opened=await openCanonicalProofFile(file),bytes=new Uint8Array(await file.arrayBuffer());
+    const entry=retainOpenedProofInspection(opened,bytes,file.name,key,false);
+    if(!entry)throw Error('ORIGINAL_INSPECTION_REQUIRED');privateReaders.set(entry.report,sourceReader);return{report:entry.report,retained:true};
+   })();scope.set(file,work);void work.catch(()=>scope!.delete(file));}
+   const result=await work;signal?.throwIfAborted();await sourceReader(key);signal?.throwIfAborted();return result;
+  }
+ }
+ const pending=inspections.get(key);if(pending)return pending;
  const work=(async()=>{const existing=await reuseProofInspection(key);signal?.throwIfAborted();if(existing)return {report:existing.report,retained:existing.retained};
  if(typeof original!=='string'||!safeReceizPublicUrl(original,'original'))throw Error('ORIGINAL_NOT_SUPPLIED');
  return trackProofInspection(key,inspectOriginal(record,signal));})();
@@ -44,14 +64,16 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
 /** Save the actual canonical Original, independently of its optional verifier
  * kit. A selected mutable byte view is checked once, then its immutable File
  * is reused. No resealing, proof reconstruction or history verification runs. */
-export async function downloadLedgerOriginal(record:PublicRecord,report?:OfflineProofReport|null,signal?:AbortSignal):Promise<File>{
+export async function downloadLedgerOriginal(record:PublicRecord,report?:OfflineProofReport|null,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader):Promise<File>{
  const expected=record.evidence.artifactDigest?.toLowerCase();
  if(!expected||!/^[a-f0-9]{64}$/.test(expected))throw Error('ORIGINAL_NOT_SUPPLIED');
- const selected=report??(await inspectLedgerOriginal(record,signal)).report;signal?.throwIfAborted();
+ const selected=report??(await inspectLedgerOriginal(record,signal,sourceReader)).report;signal?.throwIfAborted();
+ const ownerReader=privateReaders.get(selected);
+ if(ownerReader&&(ownerReader!==sourceReader||!await ownerReader(expected)))throw Error('ORIGINAL_INSPECTION_REQUIRED');signal?.throwIfAborted();
  const admitted=admittedProofInspection(selected);
  if(!admitted||selected.artifactSha256!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');
  const held=originalDownloads.get(selected);
- if(held){if(held.digest!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');const file=await held.file;signal?.throwIfAborted();return file;}
+ if(held){if(held.digest!==expected)throw Error('ORIGINAL_INSPECTION_REQUIRED');const file=await held.file;if(ownerReader&&!await ownerReader(expected))throw Error('ORIGINAL_INSPECTION_REQUIRED');signal?.throwIfAborted();return file;}
  const bytes=new Uint8Array(admitted.bytes),filename=admitted.filename,size=selected.artifactBytes;
  const file=(async()=>{
   const sha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');
@@ -59,17 +81,17 @@ export async function downloadLedgerOriginal(record:PublicRecord,report?:Offline
   return new File([bytes],filename,{type:'application/octet-stream'});
  })();
  originalDownloads.set(selected,{digest:expected,file});void file.catch(()=>{if(originalDownloads.get(selected)?.file===file)originalDownloads.delete(selected);});
- const result=await file;signal?.throwIfAborted();return result;
+ const result=await file;if(ownerReader&&!await ownerReader(expected))throw Error('ORIGINAL_INSPECTION_REQUIRED');signal?.throwIfAborted();return result;
 }
 /** Exact original is admitted only through canonical inspection or SDK open.
  * A caller-supplied JSON report cannot substitute for its bytes. */
-export async function downloadLedgerEvidence(record:PublicRecord,report?:OfflineProofReport|null):Promise<Uint8Array>{
+export async function downloadLedgerEvidence(record:PublicRecord,report?:OfflineProofReport|null,sourceReader?:HeldLedgerOriginalReader):Promise<Uint8Array>{
  // A verification kit must carry the actual selected Original. A display
  // record or Wallet hash capsule must never become an incomplete proof kit.
- const selected=report??(await inspectLedgerOriginal(record)).report;
+ const selected=report??(await inspectLedgerOriginal(record,undefined,sourceReader)).report;
  const admitted=admittedProofInspection(selected);
  if(!admitted||selected.artifactSha256!==record.evidence.artifactDigest?.toLowerCase())throw Error('ORIGINAL_INSPECTION_REQUIRED');
- const original=await downloadLedgerOriginal(record,selected);
+ const original=await downloadLedgerOriginal(record,selected,undefined,sourceReader);
  const verifierReady=loadOfflineProofVerifier();
  // Observe metadata failure immediately while preserving verifier-first error
  // precedence. Neither preparation can admit an original or skip its hashes.
@@ -83,5 +105,6 @@ export async function downloadLedgerEvidence(record:PublicRecord,report?:Offline
  files['original.receiz']=new Uint8Array(await original.arrayBuffer());files['proof-inspection.json']=encode({...selected,verificationMaterial:verifier.materials});
  files['availability.json']=encode({sealedOriginal:true,originalFilename:original.name,artifactSha256:selected.artifactSha256,groth16:selected.groth16?'carried in original':'not carried by this verified original',missing:[],privateWitnesses:'Not needed for verification; signing keys and private witnesses are not exported.'});
  const hashes:Record<string,unknown>={};for(const [name,bytes]of Object.entries(files))hashes[name]={sha256:await verifier.sha256Hex(bytes),bytes:bytes.length};files['hashes.json']=encode(hashes);
+ if(sourceReader)await downloadLedgerOriginal(record,selected,undefined,sourceReader);
  return zipSync(Object.fromEntries(Object.entries(files).map(([name,bytes])=>[name,[bytes,{level:0}]])),{level:0});
 }

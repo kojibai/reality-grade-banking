@@ -63,7 +63,7 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
  // These are public proof fields, never arbitrary metadata or custody data.
  if(typeof bundle.groth16Proof==='string'&&bundle.groth16Proof.length<=65536&&bundle.groth16Proof.startsWith('g16:'))proof.groth16Proof=bundle.groth16Proof;
  const verifierUrl=typeof bundle.verifierUrl==='string'?bundle.verifierUrl:null;
- if(verifierUrl&&verifierUrl.length<=8192){try{const url=new URL(verifierUrl);if(url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&/^\/[tv]\//.test(url.pathname)&&[...url.searchParams.keys()].every(key=>['a','ms','c','p','tz','r'].includes(key)))proof.verifierUrl=verifierUrl;}catch{/* Unsupported locator. */}}
+ if(verifierUrl&&verifierUrl.length<=8192){try{const url=new URL(verifierUrl);if(url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&(/^\/[tv]\//.test(url.pathname)||/^\/verify\/?$/.test(url.pathname)&&!url.search)&&[...url.searchParams.keys()].every(key=>['a','ms','c','p','tz','r'].includes(key)))proof.verifierUrl=verifierUrl;}catch{/* Unsupported locator. */}}
  const hints=select(bundle.proofHints,['source','eventId','eventKind','createdAt']);if(Object.keys(hints).length)proof.proofHints=hints;
  const capsule=select(bundle.proofCapsule,['v','upulse','pulse','chakraDay','kaiKlok','kaiSignature','phiKey','verifierSlug']);
  if(Object.keys(capsule).length)proof.proofCapsule=capsule;

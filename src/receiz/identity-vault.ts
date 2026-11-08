@@ -678,10 +678,10 @@ export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, d
  * checkpoints. These bytes never establish balances or device custody. */
 type PortableProof = import('./proof-library').ProofSource;
 const proofArchivePrefix = (binding: { artifactSha256: string }) => `proof-archive|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|`;
-async function retainedOperationRows(prefix: string): Promise<PrivateBankOperation[]> {
+async function retainedOperationRows(prefix: string, digest?:string): Promise<PrivateBankOperation[]> {
   const db = await database();
   try { return await new Promise((resolve, reject) => {
-    const read = db.transaction('operations').objectStore('operations').getAll(IDBKeyRange.bound(prefix, prefix + '\uffff'));
+    const read = db.transaction('operations').objectStore('operations').getAll(digest===undefined?IDBKeyRange.bound(prefix, prefix + '\uffff'):prefix+digest);
     read.onsuccess = () => resolve(read.result); read.onerror = () => reject(read.error);
   }); } finally { db.close(); }
 }
@@ -699,9 +699,10 @@ function openProofFrame(bytes: Uint8Array): PortableProof {
     || typeof meta.filename !== 'string' || !meta.filename || meta.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(meta.filename)) throw Error('PROOF_ARCHIVE_INVALID');
   return { kind: meta.kind, filename: meta.filename, bytes: bytes.slice(4 + size) };
 }
-export async function loadProofArchive(binding: { artifactSha256: string }): Promise<PortableProof[]> {
+export async function loadProofArchive(binding: { artifactSha256: string }, digest?:string): Promise<PortableProof[]> {
+  if(digest!==undefined&&!/^[a-f0-9]{64}$/.test(digest))throw Error('PROOF_SOURCE_INVALID');
   const saved = await held(); if (!saved) throw Error('PROOF_IDENTITY_CLOSED'); await sameSavedIdentity(saved, binding);
-  const prefix = proofArchivePrefix(binding), rows = await retainedOperationRows(prefix), result: PortableProof[] = [];
+  const prefix = proofArchivePrefix(binding), rows = await retainedOperationRows(prefix,digest), result: PortableProof[] = [];
   if (rows.length > 1000) throw Error('PROOF_BACKUP_CAPACITY');
   for (const row of rows) {
     const clear = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(row.key) }, saved.wrappingKey, row.bytes));

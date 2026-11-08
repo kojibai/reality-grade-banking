@@ -101,7 +101,7 @@ try {
   const operandBytes=await Promise.all(['market','sports','capitalization','share-chart-history'].map(name=>readFile(`public/receiz-public-${name}.json`,'utf8')));
   const [market,sports,capitalizationInput,historyInput]=operandBytes.map(JSON.parse);
   readingCatalog=mergePublicSports(parsePublicMarket(market,market.snapshot),sports);
-  const [{renderSelectedPublicMarketState,publicMarketPreparedPaths},{parseMarketHistory},{parseMarketCapSource}]=await Promise.all([server.ssrLoadModule('/server/public-market-document.tsx'),server.ssrLoadModule('/src/receiz/market-projection/history.ts'),server.ssrLoadModule('/src/receiz/market-projection/source.ts')]);
+  const [{renderSelectedPublicMarketState,renderSelectedPublicMarketContent,publicMarketPreparedPaths},{parseMarketHistory},{parseMarketCapSource}]=await Promise.all([server.ssrLoadModule('/server/public-market-document.tsx'),server.ssrLoadModule('/src/receiz/market-projection/history.ts'),server.ssrLoadModule('/src/receiz/market-projection/source.ts')]);
   const history=parseMarketHistory(historyInput),capitalization=parseMarketCapSource(capitalizationInput),asOfPulse=Math.max(history.summary.serverPulse,capitalization.serverPulse),hash=createHash('sha256').update('bank.public-market.static.v1');
   for(const bytes of operandBytes)hash.update('\0').update(bytes);
   const generation=hash.digest('hex');
@@ -115,7 +115,7 @@ try {
   let profileCount=0,profileBytes=0;
   for(const username of new Set(readingCatalog.items.filter(item=>item.category==='proof'&&item.ownerUsername).map(item=>item.ownerUsername))){
     if(profilePageUsername(profilePagePath(username))!==username||!selectHeldPublicProfile(username,readingCatalog))continue;
-    const {content}=renderSelectedPublicMarketState({catalog:readingCatalog,history,capitalization,asOfPulse,generation,profileUsername:username});
+    const content=renderSelectedPublicMarketContent({catalog:readingCatalog,history,capitalization,asOfPulse,generation,profileUsername:username});
     const html='<!-- bank.profile.document.v1 '+generation+' '+username+' -->'+content;
     await writeFile(profileDirectory+'/'+username+'.html',html);profileCount++;profileBytes+=Buffer.byteLength(html);
   }

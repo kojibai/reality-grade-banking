@@ -1,3 +1,4 @@
+import {parsePublicMarket} from '../src/receiz/public-market';
 // @vitest-environment happy-dom
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
@@ -5,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {afterEach,expect,it,vi} from 'vitest';
 import {handlePreparedPublicMarket} from '../server/prepared-public-market';
-import {renderPublicMarketDocument,renderPreparedProfileDocument} from '../server/public-market-document';
+import {renderPublicMarketDocument,renderPreparedProfileDocument,renderSelectedPublicMarketContent,renderSelectedPublicMarketState} from '../server/public-market-document';
 import {readPublicMarketDocumentSeed} from '../src/receiz/public-market-document-seed';
 import {PUBLIC_DISPLAY_POLICY,preparePublicMarketRenderMaterial} from '../server/public-market-preparation';
 import {readPreparedPublicMaterial} from '../server/prepared-public-material';
@@ -189,4 +190,14 @@ it('prepares chart state once before rendering multiple saved views with the ide
  expect(prepareMarket).toHaveBeenCalledOnce();expect(read).toHaveBeenCalledTimes(4);
  const unprepared=JSON.stringify({membership:input,snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}}});
  await expect(renderPublicMarketDocument({material:unprepared,generation:createHash('sha256').update(unprepared).digest('hex'),template})).rejects.toThrow('PUBLIC_MARKET_RENDER_STATE_REQUIRED');
+});
+
+it('renders identical held profile HTML without serializing an unused full catalog seed',()=>{
+ const rows=originals.map(row=>({...row,ownerUsername:'serialization_artist',ownerUserId:'serialization-creator-uid',receizId:row.id,pulse:'15000000',ownerCreatedAt:'2026-01-01T00:00:00Z',profileOriginal:{...row.profileOriginal,id:row.id}}));
+ const original=parsePublicMarket({...input,transport:{...input.transport,publicOriginals:rows}}),history=parseMarketHistory(shippedHistory);
+ let serializations=0;const catalog={...original,toJSON(){serializations++;return original;}};
+ const state={catalog,history,asOfPulse:history.summary.serverPulse,generation,profileUsername:'serialization_artist'};
+ const content=renderSelectedPublicMarketContent(state);expect(serializations).toBe(0);
+ const complete=renderSelectedPublicMarketState(state);expect(serializations).toBe(1);expect(content).toBe(complete.content);
+ expect(content).toContain('profile-identity');expect(content).toContain('Historical');
 });
