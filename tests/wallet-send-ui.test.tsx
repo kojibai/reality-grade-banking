@@ -13,7 +13,7 @@ it('ignores an old identity outcome after the recovery panel switches identities
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<WalletSendRecovery identity={oldId} onRefresh={refresh}/>));
-  await act(async()=>host.querySelector('button')!.click());expect(oldApi.resolve).toHaveBeenCalledWith(true);
+  await act(async()=>host.querySelector('button')!.click());expect(oldApi.resolve).toHaveBeenCalledWith(true,'old-nonce');
   await act(async()=>root.render(<WalletSendRecovery identity={newId} onRefresh={refresh}/>));
   await act(async()=>finish({status:'recorded',clientNonce:'old-nonce',transferId:'old-transfer'}));
   expect(host.textContent).toContain('new-nonce');expect(host.textContent).not.toContain('old-nonce');expect(refresh).not.toHaveBeenCalled();
@@ -79,4 +79,24 @@ it('does not present the full Send amount as a card charge while the shortfall i
  const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');
  const pending={status:'funding',clientNonce:'nonce',stage:'reviewing',recipientLabel:'@receiver',amountUsdCents:'1000'},api={status:async()=>pending,resumeFunding:async()=>pending,discard:vi.fn()},host=document.createElement('div'),root=createRoot(host);
  try{await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api}as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="unresolved-card" onRefresh={()=>{}}>Fields</WalletSendOperation>));expect(host.querySelector('h1')?.textContent).not.toContain('Pay $10.00');expect(host.querySelector('iframe')).toBeNull();expect(host.textContent).toContain('Back to send');}finally{act(()=>root.unmount());}
+});
+it('cancels the saved request through its exact nonce and returns to a fresh review without resending',async()=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');let pending:any={status:'unknown',clientNonce:'saved-nonce'};
+ const api={status:vi.fn(async()=>pending),cancel:vi.fn(async(approved,nonce)=>{expect(approved).toBe(true);expect(nonce).toBe('saved-nonce');return pending={status:'not-sent',clientNonce:nonce,reason:'wallet_transfer_cancelled'};}),execute:vi.fn(),resolve:vi.fn()};
+ const host=document.createElement('div'),root=createRoot(host);try{
+  await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api} as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="cancel" onRefresh={()=>{}}>Send fields</WalletSendOperation>));
+  const cancel=[...host.querySelectorAll('button')].filter(b=>b.textContent==='Cancel unconfirmed payment');expect(cancel).toHaveLength(1);
+  await act(async()=>cancel[0].click());expect(host.textContent).toContain('Payment cancelled.');expect(host.textContent).toContain('cannot send later');
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent?.includes('Review again'))!.click());expect(host.textContent).toContain('Send fields');expect(host.textContent).toContain('Review payment');expect(api.execute).not.toHaveBeenCalled();expect(api.resolve).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
+it('keeps the pending request recoverable when cancellation is unavailable and allows the same cancel button to retry',async()=>{
+ const {WalletSendOperation}=await import('../src/features/account/WalletSendOperation');let pending:any={status:'unknown',clientNonce:'pending-nonce'};
+ const cancel=vi.fn().mockRejectedValueOnce(Error('HTTP_503')).mockImplementation(async()=>pending={status:'not-sent',clientNonce:'pending-nonce',reason:'wallet_transfer_cancelled'});
+ const api={status:async()=>pending,cancel,resolve:vi.fn()},host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<WalletSendOperation identity={{walletSend:async()=>api} as unknown as OpenIdentity} input={()=>({recipient:'receiver',amountUsdCents:'1000'})} inputKey="cancel-outage" onRefresh={()=>{}}>Fields</WalletSendOperation>));
+  const button=()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent==='Cancel unconfirmed payment')!;
+  await act(async()=>button().click());expect(pending.status).toBe('unknown');expect(host.textContent).not.toContain('Payment cancelled.');expect(button().disabled).toBe(false);
+  await act(async()=>button().click());expect(host.textContent).toContain('Payment cancelled.');expect(cancel).toHaveBeenCalledTimes(2);expect(cancel.mock.calls.every(args=>args[0]===true&&args[1]==='pending-nonce')).toBe(true);
+ }finally{act(()=>root.unmount());}
 });

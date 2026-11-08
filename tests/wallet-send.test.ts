@@ -15,6 +15,36 @@ function fixture(){
  const options={ownerReceizId:'sender.receiz.id',assertOpen(){},assertNoOtherPending:async()=>{},lock:async<T,>(f:()=>Promise<T>)=>f(),store:{read:async()=>state,write:writes},connect:async()=>({accountUid:sender,client:{request,connect:{transfer:sdkTransfer}}})};
  return{options,request,sdkTransfer,writes,calls,get state(){return state;},get record(){return record;},set record(value:any){record=value;}};
 }
+const cancellation=(body:any)=>({ok:true,found:false,submission:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_transfer_cancelled'},cancellation:{senderUserId:sender,recipientUserId:body.recipientUserId,conversationId:body.conversationId,amountUsdCents:'1000',clientNonce:body.clientNonce}});
+it('closes the exact unknown request only after durable cancellation and permits another reviewed payment',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async()=>{throw Error('server failed');});
+ const api=createWalletSend(f.options),review=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});await api.execute(review,review.digest);
+ const body=structuredClone(f.state.current.body),request=f.request.getMockImplementation()!;
+ f.request.mockImplementation(async(path,options)=>path==='/api/connect/transfers/cancel'?(expect(options.body).toEqual(body),cancellation(body)):request(path,options));
+ await expect(api.cancel()).rejects.toThrow('CONSENT_REQUIRED');await expect(api.cancel(true,sender)).rejects.toThrow('ATTEMPT_CHANGED');
+ expect(await api.cancel(true,body.clientNonce)).toEqual({status:'not-sent',clientNonce:body.clientNonce,reason:'wallet_transfer_cancelled'});
+ expect((await createWalletSend(f.options).status())?.status).toBe('not-sent');expect(f.sdkTransfer).toHaveBeenCalledOnce();
+ const next=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});expect(next.clientNonce).not.toBe(body.clientNonce);
+});
+it.each(['missing','sender','recipient','amount','nonce','conversation'])('cannot clear an unknown request from a %s cancellation response',async(field)=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async()=>{throw Error('response unavailable');});const api=createWalletSend(f.options),review=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});await api.execute(review,review.digest);
+ const body=f.state.current.body,before=structuredClone(f.state),raw=cancellation(body);
+ if(field==='missing')delete (raw as any).cancellation;else (raw.cancellation as any)[{sender:'senderUserId',recipient:'recipientUserId',amount:'amountUsdCents',nonce:'clientNonce',conversation:'conversationId'}[field]!]='different';
+ const request=f.request.getMockImplementation()!;f.request.mockImplementation(async(path,options)=>path==='/api/connect/transfers/cancel'?raw:request(path,options));
+ await expect(api.cancel(true,body.clientNonce)).rejects.toThrow();expect(f.state).toEqual(before);expect(f.sdkTransfer).toHaveBeenCalledOnce();
+});
+it('recovers a lost cancellation response by read only and never replays the payment',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async()=>{throw Error('server failed');});const api=createWalletSend(f.options),review=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});await api.execute(review,review.digest);
+ const body=f.state.current.body;f.request.mockImplementation(async(path)=>{if(path==='/api/connect/transfers/cancel')throw Error('reply lost');return cancellation(body);});
+ await expect(api.cancel(true)).rejects.toThrow('reply lost');expect(f.state.current.status).toBe('unknown');
+ expect(await api.resolve(true,body.clientNonce)).toMatchObject({status:'not-sent',reason:'wallet_transfer_cancelled'});expect(f.sdkTransfer).toHaveBeenCalledOnce();
+});
+it('keeps the actual recorded payment when Send won the cancellation race',async()=>{
+ const f=fixture();f.sdkTransfer.mockImplementation(async()=>{throw Error('response unavailable');});const api=createWalletSend(f.options),review=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});await api.execute(review,review.digest);
+ f.request.mockResolvedValue(syntheticWalletRecord(f.state.current.body,sender));
+ expect((await api.cancel(true,review.clientNonce))?.status).toBe('recorded');expect(f.sdkTransfer).toHaveBeenCalledOnce();
+});
+it('allows only the exact protected cancellation POST path',async()=>{const{permittedNativePath}=await import('../src/receiz/native-transport');expect(permittedNativePath('/api/connect/transfers/cancel','POST')).toBe(true);for(const p of ['/api/connect/transfers/cancel?user=foreign','/api/connect/transfers/cancel/other','https://other.test/api/connect/transfers/cancel'])expect(permittedNativePath(p,'POST')).toBe(false);expect(permittedNativePath('/api/connect/transfers/cancel','GET')).toBe(false);});
 it('uses the SDK transfer with the exact retained nonce and resolves response loss by GET only',async()=>{
  const f=fixture(),api=createWalletSend(f.options),review=await api.prepare({recipient:'@Receiver',amountUsdCents:'1000'});
  expect(f.state).toBeNull();expect(f.sdkTransfer).not.toHaveBeenCalled();expect(review.quote.settledUsdCents).toBe('250');

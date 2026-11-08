@@ -54,6 +54,13 @@ function recorded(raw:unknown,c:Checkpoint){
  if(c.review.note!==undefined&&original.carried.some(value=>value.note!==c.review.note||value.noteVisibility!=='public'))throw Error('BANK_WALLET_NOTE_MISMATCH');
  return{status:'recorded' as const,clientNonce:c.body.clientNonce,transferId:t.id};
 }
+function cancelled(raw:unknown,c:Checkpoint):boolean{
+ const value=object(raw),closed=value.cancellation,submission=value.submission;
+ return value.ok===true&&value.found===false&&submission?.status==='not-submitted'&&submission.clientNonce===c.body.clientNonce
+  &&submission.error==='wallet_transfer_cancelled'&&closed?.clientNonce===c.body.clientNonce
+  &&closed.senderUserId===c.review.accountUid&&closed.recipientUserId===c.body.recipientUserId
+  &&closed.conversationId===c.body.conversationId&&closed.amountUsdCents===c.review.amountUsdCents;
+}
 /** The installed SDK's connected Wallet operation. These retained HTTP originals
  * are observations, never native financial-root receipts or edge commits. */
 export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;assertNoOtherPending(continuingFundingNonce?:string):Promise<void>;onRecorded?(response:unknown,accountUid:string):Promise<void>;afterRecorded?(response:unknown,accountUid:string):Promise<void>;lock<T>(operation:()=>Promise<T>):Promise<T>;store:{read():Promise<unknown>;write(next:WalletSendState,previous:unknown):Promise<void>};connect(readOnly?:boolean):Promise<{client:WalletClient;accountUid:string}>;funding?:{begin(amount:string,referenceId:string,context?:CheckoutContext):Promise<CardCheckout>;check(checkout:CardCheckout,beforeCredit:()=>Promise<void>):Promise<CardDepositStatus>}}){
@@ -69,7 +76,8 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    if(r.cardFundingLimitUsdCents!==undefined&&(!integer(r.cardFundingLimitUsdCents)||BigInt(r.cardFundingLimitUsdCents)>10000000n))throw Error('BANK_WALLET_FUNDING_INVALID');
    if(r.fundingPreference!==undefined&&r.fundingPreference!=='card'||r.checkoutContext&&!validCheckoutContext(r.checkoutContext,r.clientNonce,r.booking))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if(r.recipientAvatarUrl!==undefined&&profileAvatarUrl(r.recipientAvatarUrl)!==r.recipientAvatarUrl)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-   quote(r.quote,r.amountUsdCents);if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'&&!['wallet_insufficient_funds','wallet_funding_changed','invalid_token','insufficient_scope','access_denied','public_note_unavailable','card_unpaid','card_expired','card_cancelled','calendar_booking_closed','merchant_counter_closed','merchant_counter_payment_mismatch'].includes(c.reason))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+   quote(r.quote,r.amountUsdCents);if(c.status==='recorded')recorded(c.record,c as Checkpoint);if(c.status==='not-sent'&&!['wallet_transfer_cancelled','wallet_insufficient_funds','wallet_funding_changed','invalid_token','insufficient_scope','access_denied','public_note_unavailable','card_unpaid','card_expired','card_cancelled','calendar_booking_closed','merchant_counter_closed','merchant_counter_payment_mismatch'].includes(c.reason))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
+   if(c.status==='not-sent'&&c.reason==='wallet_transfer_cancelled'&&!cancelled(c.record,c as Checkpoint))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if(c.reason==='calendar_booking_closed'&&!r.booking)throw Error('BANK_WALLET_CHECKPOINT_INVALID');if(['merchant_counter_closed','merchant_counter_payment_mismatch'].includes(c.reason)&&parseFixedSalePaymentNote(r.note)?.clientNonce!==r.clientNonce)throw Error('BANK_WALLET_CHECKPOINT_INVALID');
    if((c.status==='funding'||r.fundingPreference==='card')&&!c.funding)throw Error('BANK_WALLET_FUNDING_INVALID');
    if(c.funding){const f=object(c.funding);
@@ -97,6 +105,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
  async function lookup(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,response?:unknown):Promise<WalletSendOutcome>{
   input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
   const raw=await context.client.request(`/api/connect/transfers?clientNonce=${encodeURIComponent(s.current.body.clientNonce)}`,{method:'GET'});input.assertOpen();
+  if(cancelled(raw,s.current)){const next:WalletSendState={...s,current:{...s.current,status:'not-sent',reason:'wallet_transfer_cancelled',record:raw}};await input.store.write(next,s);input.assertOpen();return outcome(next.current);}
   if(object(raw).ok===true&&object(raw).found===false){const value=object(raw);if(s.current.review.booking&&sameBookingCheckout(value.booking,s.current.review.booking)&&value.submission?.status==='not-submitted'&&value.submission.clientNonce===s.current.body.clientNonce&&value.submission.error==='calendar_booking_closed'){const next:WalletSendState={...s,current:{...s.current,status:'not-sent',reason:'calendar_booking_closed'}};await input.store.write(next,s);input.assertOpen();return outcome(next.current);}return{status:'unknown',clientNonce:s.current.body.clientNonce};}
   return retainRecorded(s,raw,recorded(raw,s.current),response);
  }
@@ -215,6 +224,16 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   });},
   async cancelFunding(clientNonce?:string):Promise<void>{return input.lock(async()=>{const s=await read();if(!s||s.current.status!=='funding'||clientNonce!==undefined&&s.current.body.clientNonce!==clientNonce)throw Error('BANK_WALLET_FUNDING_NOT_PENDING');await input.store.write({...s,current:{...s.current,status:'not-sent',reason:'card_cancelled'}},s);});},
   async resolve(approved=false,clientNonce?:string):Promise<WalletSendOutcome|null>{return input.lock(async()=>{const s=await read();if(clientNonce!==undefined&&(!s||s.current.body.clientNonce!==clientNonce))throw Error('BANK_WALLET_ATTEMPT_CHANGED');if(!s)return null;if(s.current.status!=='unknown')return outcome(s.current);if(!approved)throw Error('BANK_WALLET_RECOVERY_CONSENT_REQUIRED');return lookup(s,await input.connect(true));});},
+  async cancel(approved=false,clientNonce?:string):Promise<WalletSendOutcome|null>{return input.lock(async()=>{
+   const s=await read();if(clientNonce!==undefined&&(!s||s.current.body.clientNonce!==clientNonce))throw Error('BANK_WALLET_ATTEMPT_CHANGED');
+   if(!s)return null;if(s.current.status!=='unknown')return outcome(s.current);
+   if(!approved)throw Error('BANK_WALLET_CANCELLATION_CONSENT_REQUIRED');
+   if(s.current.review.booking)throw Error('BANK_WALLET_BOOKING_CANCELLATION_REQUIRED');
+   const context=await input.connect();input.assertOpen();if(context.accountUid!==s.current.review.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
+   const raw=await context.client.request('/api/connect/transfers/cancel',{method:'POST',body:s.current.body});input.assertOpen();
+   if(cancelled(raw,s.current)){const next:WalletSendState={...s,current:{...s.current,status:'not-sent',reason:'wallet_transfer_cancelled',record:raw}};await input.store.write(next,s);input.assertOpen();return outcome(next.current);}
+   return retainRecorded(s,raw,recorded(raw,s.current));
+  });},
   async exportRecord(){const s=await read();if(!s||s.current.status!=='recorded')throw Error('BANK_WALLET_RECORDED_RESULT_REQUIRED');return{bytes:new TextEncoder().encode(JSON.stringify({schema:s.schema,authority:s.authority,current:s.current})),filename:`wallet-${s.current.body.clientNonce}.receiz-wallet-observation.json`};},
   async retainedResult(clientNonce:string){if(!uuid(clientNonce))throw Error('BANK_WALLET_NONCE_INVALID');const s=await read(),c=s&&[s.current,...s.history].find(c=>c.body.clientNonce===clientNonce);if(!c)return null;
    const result=outcome(c);let receipt:WalletSendReceipt|null=null;

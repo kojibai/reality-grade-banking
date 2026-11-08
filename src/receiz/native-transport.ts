@@ -18,6 +18,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/connect/market/shares/trade/cancel': 'POST',
   '/api/connect/transfers': 'POST',
   '/api/connect/transfers/public-note': 'POST',
+  '/api/connect/transfers/cancel': 'POST',
   '/api/chat/conversations': 'POST',
   '/api/connect/payments/checkout': 'POST',
   '/api/connect/payments/session': 'GET',

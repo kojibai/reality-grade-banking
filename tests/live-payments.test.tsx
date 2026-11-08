@@ -144,3 +144,21 @@ it('confirms receiving-ID copies inside the button, resets after repeat copies, 
   expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(host.textContent).toContain('Select and copy your receiving ID');
  }finally{act(()=>root.unmount());vi.useRealTimers();}
 });
+
+it('fills Send with the chosen directory person before pointer focus can dismiss the suggestion',async()=>{
+ const person={kind:'user',userId:'22222222-2222-4222-8222-222222222222',username:'receiz_pbahqdfouqyxgsifc',displayName:'Recipient'},prepare=vi.fn().mockRejectedValue(Error('Stop before payment review')),execute=vi.fn(),search=vi.fn(async()=>[person]);
+ const identity={walletSend:async()=>({status:async()=>null,prepare,execute,discard:vi.fn()}),messaging:async()=>({accountUid:'11111111-1111-4111-8111-111111111111',knownConversations:()=>[{members:[person],lastMessageAt:'2026-11-08T12:00:00Z'}],search})}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{
+  await act(async()=>root.render(<LiveSend identity={identity} wallet={null} onClose={()=>{}}/>));
+  const field=recipientField(host),amount=host.querySelector<HTMLInputElement>('input[aria-label="Amount to send"]')!;
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(amount,'1');amount.dispatchEvent(new Event('input',{bubbles:true}));field.focus();});
+  const option=host.querySelector<HTMLElement>('[role=option]')!;expect(option).not.toBeNull();
+  await act(async()=>option.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0})));
+  await act(async()=>field.blur());
+  await act(async()=>option.click());
+  expect(field.value).toBe(person.username);
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Review payment')!.click());
+  expect(prepare).toHaveBeenCalledExactlyOnceWith({recipient:person.userId,amountUsdCents:'100',note:''});expect(execute).not.toHaveBeenCalled();expect(search).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});

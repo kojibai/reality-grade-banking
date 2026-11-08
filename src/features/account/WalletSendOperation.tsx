@@ -9,12 +9,12 @@ import {identityRecordCopy} from '../../content/identity-record-copy.mjs';
 import {formatMoney,formatUnits} from '../../core/money';
 import {ReceizCardCheckout} from '../deposit/ReceizCardCheckout';
 
-export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIdentity;onRefresh?:()=>void}){
+export function WalletSendRecovery({identity,onRefresh=()=>{},pendingActions=true}:{identity:OpenIdentity;onRefresh?:()=>void;pendingActions?:boolean}){
  const [outcome,setOutcome]=useState<WalletSendOutcome|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),generation=useRef(0),running=useRef(false);
  useEffect(()=>{generation.current++;let current=true;running.current=false;setBusy(false);setOutcome(null);setError('');void identity.walletSend?.().then(api=>api.status()).then(value=>{if(current)setOutcome(value??null);}).catch(()=>{if(current)setError('Saved payment details could not be opened. Keep this device and retry.');});return()=>{current=false;generation.current++;};},[identity]);
- async function act(action:'read'|'save'){
+ async function act(action:'read'|'save'|'cancel'){
   if(running.current||!identity.walletSend)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');
-  try{const api=await identity.walletSend();if(action==='read'){const next=await api.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
+  try{const api=await identity.walletSend();if(action==='read'||action==='cancel'){const next=action==='cancel'?await api.cancel(true,outcome?.clientNonce):await api.resolve(true,outcome?.clientNonce);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
    else{const original=await api.exportRecord();if(ticket!==generation.current)return;if(!identity.sealRecordExport)throw Error('RECORD_PROOF_EXPORT_UNAVAILABLE');const file=await identity.sealRecordExport({bytes:original.bytes,filename:original.filename,mimeType:'application/json'});if(ticket!==generation.current)return;const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}
   catch{if(ticket===generation.current)setError('The payment record could not be opened. The original request stays saved; checking never sends another payment.');}
   finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
@@ -23,7 +23,7 @@ export function WalletSendRecovery({identity,onRefresh=()=>{}}:{identity:OpenIde
  if(outcome?.status==='funding')return <details className="identity-import"><summary>Pending payment</summary><p className="body-copy small-copy">Complete your card payment to send {formatMoney(outcome.amountUsdCents)} to {outcome.recipientLabel}.</p><a className="secondary-button" href="/#account/send">Resume payment</a></details>;
  return <details className="identity-import"><summary>Wallet payment record</summary>
   {outcome&&<><p className="body-copy small-copy" role="status">{outcome.status==='recorded'?'Wallet recorded this payment. Its complete response and original transaction record are saved on this device.':outcome.status==='not-sent'?'Wallet refused this request before a payment was submitted.':'The payment result is not confirmed. Check the saved reference before another payment.'}</p><code className="proof-coordinate">{outcome.clientNonce}</code>
-  {outcome.status==='unknown'&&<><p className="body-copy small-copy">This reads your original payment reference. It does not submit or repeat the payment.</p><button className="secondary-button" disabled={busy} onClick={()=>void act('read')}>{busy?'Checking…':'Check payment outcome'}</button></>}
+  {outcome.status==='unknown'&&pendingActions&&<><p className="body-copy small-copy">Check the exact request, or cancel it before starting another payment. Cancellation preserves any payment already recorded.</p><button className="secondary-button" disabled={busy} onClick={()=>void act('read')}>{busy?'Checking…':'Check payment outcome'}</button><button className="secondary-button" disabled={busy} onClick={()=>void act('cancel')}>Cancel unconfirmed payment</button></>}
   {outcome.status==='recorded'&&<button className="secondary-button" disabled={busy} onClick={()=>void act('save')}>Save payment record</button>}</>}
   {error&&<p className="error-message" role="status">{error}</p>}
  </details>;
@@ -47,7 +47,11 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children,
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  async function check(){if(running.current||!api.current)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');
-  try{const next=outcome?.status==='funding'?await api.current.resumeFunding():await api.current.resolve(true);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
+  try{const next=outcome?.status==='funding'?await api.current.resumeFunding():await api.current.resolve(true,outcome?.clientNonce);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
+  catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
+ }
+ async function cancel(){if(running.current||!api.current||outcome?.status!=='unknown')return;const ticket=generation.current;running.current=true;setBusy(true);setError('');setFailure(null);
+  try{const next=await api.current.cancel(true,outcome.clientNonce);if(ticket===generation.current){setOutcome(next);if(next?.status==='recorded')onRefresh();}}
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  async function backToSend(){
@@ -68,7 +72,7 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children,
    {busy&&<p className="body-copy small-copy" role="status">Confirming your payment…</p>}
    {diagnostics}</section>;
  }
- if(outcome)return <WalletPaymentResult outcome={outcome} busy={busy} onCheck={()=>void check()} onAgain={()=>{setOutcome(null);setApproved(false);}}>{identity&&<WalletSendRecovery key={outcome.status} identity={identity} onRefresh={onRefresh}/>} {diagnostics}</WalletPaymentResult>;
+ if(outcome)return <WalletPaymentResult outcome={outcome} busy={busy} onCheck={()=>void check()} onCancel={()=>void cancel()} onAgain={()=>{setOutcome(null);setApproved(false);}}>{identity&&<WalletSendRecovery key={outcome.status} identity={identity} onRefresh={onRefresh} pendingActions={false}/>} {diagnostics}</WalletPaymentResult>;
  if(review)return <WalletPaymentReview review={review} approved={approved} busy={busy} onApprove={setApproved} onSend={()=>void send()} onEdit={()=>{api.current?.discard(review);held.current=null;setReview(null);setApproved(false);}}>{diagnostics}</WalletPaymentReview>;
  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18}/><p>Review the recipient and amount before approving your payment.</p></div><details className="transaction-proof-details"><summary>Wallet access</summary><p className="small-copy">{identityRecordCopy(BANK_WALLET_SEND_CONSENT)}</p></details>
   {secondaryAction&&<fieldset className="native-operation-fields" disabled={busy}>{secondaryAction}</fieldset>}<button className="primary-button" disabled={busy||!ready} onClick={()=>void prepare()}>{busy?'Checking payment…':'Review payment'}<ArrowRight size={17}/></button>{diagnostics}</>;
@@ -88,11 +92,12 @@ export function WalletPaymentReview({review,approved,busy,onApprove,onSend,onEdi
   <button className="secondary-button" disabled={busy} onClick={onEdit}>Edit details</button>{children}</section>;
 }
 
-export function WalletPaymentResult({outcome,busy,onCheck,onAgain,children}:{outcome:WalletSendOutcome;busy:boolean;onCheck():void;onAgain():void;children?:ReactNode}){return <section className="native-operation-result" aria-live="polite">
+export function WalletPaymentResult({outcome,busy,onCheck,onCancel,onAgain,children}:{outcome:WalletSendOutcome;busy:boolean;onCheck():void;onCancel?():void;onAgain():void;children?:ReactNode}){return <section className="native-operation-result" aria-live="polite">
   {outcome.status==='recorded'&&<div className="status-icon success"><Check size={30}/></div>}
-  <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?'Payment not sent.':'Confirming your payment.'}</h1>
-  <p className="body-copy">{outcome.status==='recorded'?'Wallet recorded your payment. Its transaction record is saved on this device, and your account and Ledger are refreshing.':outcome.status==='not-sent'?'Wallet did not submit this payment. Check your available value and review again.':'Your exact request is saved. Checking its original reference will not send another payment.'}</p>
+  <h1 className="sheet-hero">{outcome.status==='recorded'?'Payment sent.':outcome.status==='not-sent'?(outcome.reason==='wallet_transfer_cancelled'?'Payment cancelled.':'Payment not sent.'):'Confirming your payment.'}</h1>
+  <p className="body-copy">{outcome.status==='recorded'?'Wallet recorded your payment. Its transaction record is saved on this device, and your account and Ledger are refreshing.':outcome.status==='not-sent'?(outcome.reason==='wallet_transfer_cancelled'?'This request is closed and cannot send later. You can review another payment.':'Wallet did not submit this payment. Check your available value and review again.'):'Your exact request is saved. Check its outcome or cancel it safely before starting another payment.'}</p>
   {outcome.status==='unknown'?<button className="primary-button" disabled={busy} onClick={onCheck}>{busy?'Checking outcome…':'Check payment outcome'}</button>:<button className="secondary-button" onClick={onAgain}> {outcome.status==='recorded'?'Send another payment':'Review again'}</button>}
+  {outcome.status==='unknown'&&onCancel&&<button className="secondary-button" disabled={busy} onClick={onCancel}>Cancel unconfirmed payment</button>}
   {children}
  </section>;
 }
