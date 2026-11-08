@@ -45,7 +45,7 @@ The November 2026 regression had a complete Receiz collection with 1,686 Origina
 
 ## First-frame and media continuity
 
-Browser entry may need a brief local parsing/module-startup interval. That interval must show an intentional, accessible, inline-styled shell; never raw browser-default text, a hidden page, a minimum-duration splash or a fake completion claim. Start the real profile as soon as its held seed and runtime are available. Do not keep the shell for visual effect.
+For a known public profile, the initial response must already contain the real profile HTML rendered from the same carried catalog. Prepare that presentation during the existing build/state preparation, reuse the existing profile components and keep the complete catalog in its one shared carrier. The browser hydrates that page while local decoding and module startup finish; it must not show a seal, splash, loading replica or timed intermediate screen. No Source lookup or runtime profile rendering belongs before those bytes. A genuinely missing profile can use the existing bounded reader without erasing available page chrome.
 
 Generate default portrait/banner artwork locally from the existing deterministic coordinates. Preserve exact custom image bytes when carried; a URL alone is not the image bytes. Prepare the existing bounded Feed neighbors before they enter the viewport, prioritize the current image, and keep the existing mount/memory bounds. Do not download or mount the entire collection to solve a single image flash.
 

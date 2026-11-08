@@ -25,8 +25,8 @@ it('opens the complete held profile without checking a prepared-page API',async(
  const saved=await savedFamily();state.staticPage.mockResolvedValue(saved.html);
  const fetcher=vi.fn(()=>{throw Error('EXTRA_SOURCE_READ_FORBIDDEN');});vi.stubGlobal('fetch',fetcher);
  const {handleProfilePreview}=await import('../server/profile-preview');
- const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock?fbclid=share',{headers:{accept:'text/html','user-agent':'Profile browser'}})),body=await response.text();
- expect(response.status).toBe(200);expect(state.delivery).not.toHaveBeenCalled();expect(state.staticPage).toHaveBeenCalledExactlyOnceWith('dist/explore/index.html','utf8');expect(state.prepared).not.toHaveBeenCalled();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock?fbclid=share',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:state.delivery,page:()=>state.staticPage('dist/explore/index.html','utf8')}),body=await response.text();
+ expect(response.status).toBe(200);expect(state.delivery).not.toHaveBeenCalled();expect(state.staticPage).toHaveBeenCalledWith('dist/explore/index.html','utf8');expect(state.prepared).not.toHaveBeenCalled();
  expect(body).toContain(saved.script);expect(body).toContain('data-public-profile-entry="bjklock"');expect(body).not.toContain('Saved Explore content');expect(body).not.toContain('public-profile-error');expect(fetcher).not.toHaveBeenCalled();
 });
 it.each([false,true])('renders all 613 Originals from the selected family without reading Source or replacing a newer held family (%s)',async newerHeld=>{
@@ -37,7 +37,7 @@ it.each([false,true])('renders all 613 Originals from the selected family withou
  if(newerHeld){const {adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(saved.seed);}
  const explorer=await import('../src/public-explorer/PublicExplorer'),render=explorer.PublicExplorer,paints:unknown[]=[];vi.spyOn(explorer,'PublicExplorer').mockImplementation(props=>{if(props.initialSource)paints.push(props.initialSource.catalog);return render(props);});
  const main=await import('../src/public-explorer/main'),{handleProfilePreview}=await import('../server/profile-preview');
- const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}})),body=await response.text(),bank=document.getElementById('root')!,draft=bank.querySelector('input');
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:state.delivery,page:()=>state.staticPage('dist/explore/index.html','utf8')}),body=await response.text(),bank=document.getElementById('root')!,draft=bank.querySelector('input');
  const parsed=new DOMParser().parseFromString(body,'text/html'),host=document.importNode(parsed.getElementById('public-explore-root')!,true);document.getElementById('receiz-navigation')!.remove();document.body.append(host);for(const id of ['public-market-seed','receiz-navigation'])document.body.append(document.importNode(parsed.getElementById(id)!,true));
  history.replaceState(null,'','/bjklock/');const documents=await import('../src/receiz/public-market-document-seed'),selected=documents.readPublicMarketDocumentSeed()!;
  await act(async()=>{main.mountPublicDocument(host);});
@@ -65,4 +65,17 @@ it('appends later complete Showcase membership to the held profile and shared vi
  const source=await import('../src/public-feed/feed-source');expect((await source.prepareFeedItems()).length).toBe(613);
  const marker=document.getElementById('receiz-navigation') as HTMLElement&{publicMarketCatalog:()=>unknown};expect(marker.publicMarketCatalog()).toBe(latest.historyCatalog);
  expect(prior.catalog.items).toHaveLength(612);expect(state.prepared).not.toHaveBeenCalled();expect(fetcher).toHaveBeenCalledOnce();
+});
+
+it('serves and hydrates the real 613-Original profile from the same carried family without a seal or Source reads',async()=>{
+ const saved=await savedFamily(),{renderSelectedPublicMarketState}=await import('../server/public-market-document'),{publicMarketDocumentHistory}=await import('../src/receiz/public-market-document-seed');
+ const rendered=renderSelectedPublicMarketState({catalog:saved.seed.catalog,history:publicMarketDocumentHistory(saved.seed)!,capitalization:saved.seed.capitalization,asOfPulse:saved.seed.asOfPulse,generation:saved.seed.generation,profileUsername:'bjklock'});
+ state.staticPage.mockImplementation(async(path:string)=>path==='dist/explore/index.html'?saved.html:`<!-- bank.profile.document.v1 ${saved.seed.generation} bjklock -->${rendered.content}`);
+ vi.stubGlobal('Worker',undefined);const fetcher=vi.fn(()=>{throw Error('EXTRA_SOURCE_READ_FORBIDDEN');});vi.stubGlobal('fetch',fetcher);
+ const {handleProfilePreview}=await import('../server/profile-preview'),response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Profile browser'}}),{profile:state.delivery,page:async()=>saved.html,profileContent:async()=>`<!-- bank.profile.document.v1 ${saved.seed.generation} bjklock -->${rendered.content}`}),body=await response.text();
+ const parsed=new DOMParser().parseFromString(body,'text/html'),host=document.importNode(parsed.getElementById('public-explore-root')!,true);
+ expect(host.querySelector('h1')?.textContent).toBe('BJ Klock');expect(host.textContent).toContain('613 displayed originals');expect(host.querySelector('a[href="/asset/profile%3Abjklock%3Anew-original/"]')).not.toBeNull();expect(body).not.toContain('profile-opening');expect(body).toContain(saved.script);
+ document.getElementById('receiz-navigation')!.remove();document.body.append(host);for(const id of ['public-market-seed','receiz-navigation'])document.body.append(document.importNode(parsed.getElementById(id)!,true));history.replaceState(null,'','/bjklock/');
+ const header=host.querySelector('.profile-hero'),errors=vi.spyOn(console,'error'),main=await import('../src/public-explorer/main');
+ await act(()=>main.mountPublicDocument(host));expect(host.querySelector('.profile-hero')).toBe(header);expect(state.hydrates).toBe(1);expect(state.creates).toBe(0);expect(host.textContent).toContain('613 displayed originals');expect(errors).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
 });

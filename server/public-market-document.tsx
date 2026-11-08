@@ -12,13 +12,13 @@ import {parseMarketHistory} from '../src/receiz/market-projection/history';
 import {packMarketHistory} from '../src/receiz/market-projection/history-wire';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 import {PUBLIC_MARKET_PREPARED_PATHS} from '../src/receiz/prepared-public-page-path';
-import {selectHeldPublicProfile} from '../src/receiz/public-profile';
+import {profilePagePath,profilePageUsername,selectHeldPublicProfile} from '../src/receiz/public-profile';
 import {profilePreviewHtml} from './profile-preview';
 import {renderPublicProfile} from './profile-document';
 
 export const publicMarketPreparedPaths=PUBLIC_MARKET_PREPARED_PATHS;
 export type PublicMarketRenderInput={material:string;generation:string;template:string;path?:string;renderBuild?:string};
-export type PublicMarketSelectedState={catalog:PublicMarketDocumentSeed['catalog'];history:ReturnType<typeof parseMarketHistory>;asOfPulse:number;capitalization?:PublicMarketDocumentSeed['capitalization']|null;generation:string;path?:string;compressCatalog?:boolean};
+export type PublicMarketSelectedState={catalog:PublicMarketDocumentSeed['catalog'];history:ReturnType<typeof parseMarketHistory>;asOfPulse:number;capitalization?:PublicMarketDocumentSeed['capitalization']|null;generation:string;path?:string;compressCatalog?:boolean;profileUsername?:string};
 const prepared=new Map<string,Promise<{catalog:ReturnType<typeof parsePublicMarket>;history:ReturnType<typeof parseMarketHistory>;asOfPulse:number;capitalization:ReturnType<typeof parseMarketCapSource>|null}>>();
 const compressedCatalogs=new WeakMap<PublicMarketDocumentSeed['catalog'],{gzipB64u:string;bytes:number}>();
 function compressedCatalog(catalog:PublicMarketDocumentSeed['catalog']){
@@ -44,15 +44,16 @@ async function prepare(material:string,generation:string){
 /** Project an already selected complete public family through the existing
  * Explorer. Build fallback and accepted-publication preparation share this
  * display-only renderer; it performs no reads or navigation selection. */
-export function renderSelectedPublicMarketState({catalog,history,asOfPulse,capitalization,generation,path='explore',compressCatalog=false}:PublicMarketSelectedState){
+export function renderSelectedPublicMarketState({catalog,history,asOfPulse,capitalization,generation,path='explore',compressCatalog=false,profileUsername}:PublicMarketSelectedState){
  if(!/^[a-f0-9]{64}$/.test(generation))throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
  if(!(publicMarketPreparedPaths as readonly string[]).includes(path))throw Error('PUBLIC_MARKET_RENDER_PATH_INVALID');
  if(!catalog.complete||catalog.items.length>10000)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
+ if(profileUsername&&(profilePageUsername(profilePagePath(profileUsername))!==profileUsername||!selectHeldPublicProfile(profileUsername,catalog)))throw Error('PUBLIC_PROFILE_RENDER_COMPLETE_REQUIRED');
  if(!Number.isSafeInteger(asOfPulse)||asOfPulse<history.summary.serverPulse||asOfPulse<0||asOfPulse>1e10)throw Error('PUBLIC_MARKET_RENDER_STATE_REQUIRED');
  const format=new Intl.DateTimeFormat().resolvedOptions();
  const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount:Math.min(50,catalog.items.length),asOfPulse,format:{locale:format.locale,timeZone:format.timeZone},history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
  const source={catalog,historyCatalog:catalog,pulse:asOfPulse,quoteStatus:'stale' as const,sportsStatus:catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}};
- const content=renderToString(<PublicDocumentCapabilitiesContext.Provider value={{intersectionObserver:false}}><PublicDocumentFormatContext.Provider value={seed.format}><PublicExplorer active={false} initialPath={'/'+path+'/'} initialSource={source} initialVisibleCount={seed.visibleCount} initialAsOfPulse={asOfPulse} initialHistory={history}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>,{identifierPrefix:'public-explore-'});
+ const content=renderToString(<PublicDocumentCapabilitiesContext.Provider value={{intersectionObserver:false}}><PublicDocumentFormatContext.Provider value={seed.format}><PublicExplorer active={false} initialPath={profileUsername?profilePagePath(profileUsername):'/'+path+'/'} initialSource={source} initialVisibleCount={seed.visibleCount} initialAsOfPulse={asOfPulse} initialHistory={history}/></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>,{identifierPrefix:'public-explore-'});
  return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog):undefined)};
 }
 /** Called by accepted-publication preparation, never by the cold visitor. The

@@ -72,13 +72,15 @@ assert.ok(html.includes('id="public-explore-root"'));assert.ok(html.includes('id
 // Browser profiles reuse the selected complete family. Remove Explore's
 // visible rows, but keep its exact data so opening a profile needs no reread.
 // Crawler profiles and asset previews below still carry only their own seed.
-assert.ok(html.includes('<main class="public-entry-placeholder" data-profile-opening>'),'Browser profile entry must show its own inline-styled first frame.');assert.ok(html.includes('<h1 class="profile-opening-label">Public profile</h1>'));assert.ok(html.includes('@alexmorgan'));
+assert.ok(html.includes('class="public-profile-page"'),'Browser profile entry must show actual profile page chrome.');assert.ok(!html.includes('profile-opening'),'Browser entry must not carry a seal or splash.');assert.ok(html.includes('@alexmorgan'));
 assert.ok(!hasExploreRows(html),'Browser profile entry must replace Explore rows.');
 assert.ok(html.includes('data-public-profile-entry="alexmorgan"'),'Browser runtime must open the requested profile directly.');
 assert.deepEqual(catalogScripts(html),exploreSeeds,'Browser profile must carry exactly the unchanged selected complete catalog seed.');
 assert.ok(html.includes('href="https://bankeiz.com/alexmorgan/"'));
 assert.ok(!html.includes('id="public-profile-seed"'));assert.ok(!html.includes('id="public-profile-error"'));
 assert.ok(!html.includes('private@example.com'));assert.equal(calls,0,'Browser entry must not request a profile or start server rendering.');
+const ownResponse=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=bjklock',{headers:{accept:'text/html','user-agent':'Browser smoke check'}})),ownHtml=await ownResponse.text();
+assert.equal(ownResponse.status,200);assert.ok(ownHtml.includes('data-public-profile-rendered="true"'),'Compiled bjklock profile must be served before its runtime starts.');const ownInput=JSON.parse(await readFile('public/receiz-public-market.json','utf8')),ownCount=ownInput.transport.publicOriginals.filter(row=>row.ownerUsername==='bjklock').length;assert.ok(ownHtml.includes(ownCount+'<!-- --> displayed <!-- -->originals')||ownHtml.includes(ownCount+' displayed originals'));assert.ok(ownHtml.includes('class="profile-asset"'));assert.ok(!ownHtml.includes('profile-opening'));assert.equal(calls,0);
 const crawler=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{headers:{accept:'text/html','user-agent':'Twitterbot'}}));
 assert.equal(crawler.status,200);const crawlerHtml=await crawler.text();
 assert.ok(crawlerHtml.includes('Alex Morgan | Bankeiz'));assert.ok(crawlerHtml.includes('id="public-profile-seed"'));assert.ok(crawlerHtml.includes('class="profile-hero"'));noExploreCatalog(crawlerHtml,'Crawler profile entry');

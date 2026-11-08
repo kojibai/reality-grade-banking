@@ -43,9 +43,10 @@ function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocum
  const profileEntry=!!prepared&&root.hasAttribute('data-public-profile-entry'),profilePath=profileEntry&&profilePageUsername(location.pathname)?location.pathname:undefined;
  const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;
  const content=<StrictMode><PublicExplorerRoot prepared={selected} path={profilePath} reconcilePath={reconcilePath}/></StrictMode>;
- // A cold profile carries the selected family beside its entry placeholder;
- // it has no server-rendered Explore tree to hydrate or briefly reveal.
- const renderer=prepared&&!profileEntry?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!prepared||profileEntry)renderer.render(content);return renderer;
+ // Hydrate the actual profile prepared from this exact carried family.
+ // A newer held selection replaces an older document without reviving it.
+ const hydrate=!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared);
+ const renderer=hydrate?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!hydrate)renderer.render(content);return renderer;
 }
 /** Raw prepared entries stay synchronous. A compressed static entry retains
  * its visible rows while the existing bounded, cached local decoder finishes. */

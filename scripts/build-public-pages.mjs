@@ -38,7 +38,7 @@ import {protectionPage,protectionContent} from './vault-protection-page.mjs';
 import {businessPage,businessContent} from './business-page.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {directoryContent,fitContent} from './business-fit-pages.mjs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, unlink } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
@@ -105,6 +105,20 @@ try {
   for(const bytes of operandBytes)hash.update('\0').update(bytes);
   const generation=hash.digest('hex');
   for(const path of publicMarketPreparedPaths)explorerStates.set('/'+path+'/',renderSelectedPublicMarketState({catalog:readingCatalog,history,capitalization,asOfPulse,generation,path,compressCatalog:true}));
+  // First paint is the real existing profile, prepared from this same catalog.
+  // Keep the complete catalog in its one shared carrier, never one copy per
+  // owner. A visit reads only its HTML fragment beside the existing template.
+  const profileDirectory='server/profile-runtime/profile-pages';await mkdir(profileDirectory,{recursive:true});
+  for(const file of await readdir(profileDirectory))if(file.endsWith('.html'))await unlink(profileDirectory+'/'+file);
+  const {profilePagePath,profilePageUsername,selectHeldPublicProfile}=await server.ssrLoadModule('/src/receiz/public-profile.ts');
+  let profileCount=0,profileBytes=0;
+  for(const username of new Set(readingCatalog.items.filter(item=>item.category==='proof'&&item.ownerUsername).map(item=>item.ownerUsername))){
+    if(profilePageUsername(profilePagePath(username))!==username||!selectHeldPublicProfile(username,readingCatalog))continue;
+    const {content}=renderSelectedPublicMarketState({catalog:readingCatalog,history,capitalization,asOfPulse,generation,profileUsername:username});
+    const html='<!-- bank.profile.document.v1 '+generation+' '+username+' -->'+content;
+    await writeFile(profileDirectory+'/'+username+'.html',html);profileCount++;profileBytes+=Buffer.byteLength(html);
+  }
+  console.log('Prerendered '+profileCount+' actual public profiles from the held catalog ('+(profileBytes/1048576).toFixed(1)+' MiB); no Source reads or duplicate catalog carriers.');
   assetPaths=readingCatalog.items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
   const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/server/prepared-dependent-documents.tsx'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
   readingWriter=reading.writePublicReadingPages;readingLinks=readingMetadata.publicReadingLinks;

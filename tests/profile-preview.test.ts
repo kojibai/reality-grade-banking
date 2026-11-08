@@ -106,14 +106,20 @@ it('starts the same profile module asynchronously while preserving its complete 
 });
 it('keeps inline identity artwork out of preload and social-image tags',()=>{const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.avatarUrl='data:image/svg+xml;charset=utf-8,%3Csvg%3E%3C%2Fsvg%3E';profile.bannerUrl=profile.avatarUrl;const result=profilePreviewHtml(html,'alexmorgan',profile),head=result.split('</head>')[0];expect(head).not.toMatch(/(?:href|content)="data:image/);expect(result).toContain('public-profile-seed');profile.avatarUrl='https://receiz.com/avatar.png';expect(profilePreviewHtml(html,'alexmorgan',profile)).toContain('<meta property="og:image" content="https://receiz.com/avatar.png">');});
 
-it('styles the first profile frame inline without hiding it or delaying the existing runtime',async()=>{
- const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn();
- const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender});
- const body=await response.text(),style=body.match(/<style data-profile-opening-style>([\s\S]*?)<\/style>/)?.[1];
- expect(style).toContain('[data-profile-opening]');expect(style).toContain('font-family:Inter');expect(style).toContain('background:#FCFBF8');
- expect(body.indexOf('data-profile-opening-style')).toBeLessThan(body.indexOf('</head>'));
- expect(body).toContain('<main class="public-entry-placeholder" data-profile-opening>');expect(body).toContain('aria-label="Bankeiz home"');expect(body).toContain('@alexmorgan');
- expect(style).not.toMatch(/display:none|visibility:hidden|opacity:0|animation-delay|infinite/);expect(style).toContain('prefers-reduced-motion:no-preference');expect(body).not.toContain('setTimeout');expect(body).not.toContain('animationend');
- for(const work of [profile,render,prepareRender])expect(work).not.toHaveBeenCalled();
- const settled=profilePreviewHtml(html,'alexmorgan',null,undefined,'<article>Held profile</article>');expect(settled).not.toContain('data-profile-opening');
+it('shows the existing page chrome without a seal when a compiled public profile is genuinely absent',async()=>{
+ const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn(),profileContent=vi.fn(async()=>null);
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender,profileContent});
+ const body=await response.text();expect(body).toContain('class="app-header"');expect(body).toContain('<h1>@alexmorgan</h1>');
+ expect(body).not.toMatch(/profile-opening|data-profile-opening|public-entry-placeholder|animationend|setTimeout/);
+ for(const work of [profile,render,prepareRender])expect(work).not.toHaveBeenCalled();expect(profileContent).toHaveBeenCalledExactlyOnceWith('alexmorgan');
+});
+it('serves the exact already-rendered profile with its unchanged catalog and no runtime profile lookup',async()=>{
+ const generation='b'.repeat(64),pageHtml=html.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"schema":"bank.public-market.document.v1","generation":"'+generation+'"}</script><script id="receiz-navigation"'),content='<article class="public-profile-page"><h1>Alex Morgan</h1><p>613 displayed originals</p></article>',profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn();
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>pageHtml,render,prepareRender,profileContent:async()=>`<!-- bank.profile.document.v1 ${generation} alexmorgan -->${content}`});
+ const body=await response.text();expect(body).toContain(content);expect(body).toContain('data-public-profile-rendered="true"');expect(body).toContain('id="public-market-seed"');expect(body).not.toContain('profile-opening');for(const work of [profile,render,prepareRender])expect(work).not.toHaveBeenCalled();
+});
+it.each(['owner','generation'])('does not attach a compiled profile with a different %s to the carried family',async mismatch=>{
+ const generation='b'.repeat(64),pageHtml=html.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"schema":"bank.public-market.document.v1","generation":"'+generation+'"}</script><script id="receiz-navigation"');
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile:vi.fn(),page:async()=>pageHtml,profileContent:async()=>`<!-- bank.profile.document.v1 ${mismatch==='generation'?'c'.repeat(64):generation} ${mismatch==='owner'?'another':'alexmorgan'} --><article>Wrong compiled profile</article>`});
+ const body=await response.text();expect(body).not.toContain('Wrong compiled profile');expect(body).not.toContain('data-public-profile-rendered');expect(body).toContain('@alexmorgan');
 });

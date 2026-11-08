@@ -15,9 +15,10 @@ it('keeps function packaging globs within the Vercel schema length limit',()=>{
  const config=JSON.parse(readFileSync('vercel.json','utf8'));
  for(const [name,entry]of Object.entries(config.functions) as Array<[string,Record<string,unknown>]>)for(const key of ['includeFiles','excludeFiles'])if(entry[key]!==undefined){expect(typeof entry[key],name+'.'+key).toBe('string');expect((entry[key] as string).length,name+'.'+key).toBeLessThanOrEqual(256);}
 });
-it('retains the exact prepared public entry and data packaging selection',async()=>{
+it('retains public entry and data packaging while keeping profile-only HTML out of Explore',async()=>{
  const {createRequire}=await import('node:module'),{braceExpand}=createRequire(import.meta.url)('minimatch'),config=JSON.parse(readFileSync('vercel.json','utf8'));
- expect(braceExpand(config.functions['api/explore.ts'].includeFiles).sort()).toEqual(['dist/index.html','dist/explore/**','dist/market-cap/index.html','dist/ledger/**','dist/feed/index.html','dist/discover/index.html','server/profile-runtime/**','public/receiz-public-market.json','public/receiz-public-capitalization.json','public/receiz-public-ledger.json.gz.bin','public/receiz-public-share-chart-history.json','public/receiz-public-sports.json'].sort());
+ expect(braceExpand(config.functions['api/explore.ts'].includeFiles).sort()).toEqual(['dist/index.html','dist/explore/**','dist/market-cap/index.html','dist/ledger/**','dist/feed/index.html','dist/discover/index.html','server/profile-runtime/*','server/profile-runtime/share-history/**','public/receiz-public-market.json','public/receiz-public-capitalization.json','public/receiz-public-ledger.json.gz.bin','public/receiz-public-share-chart-history.json','public/receiz-public-sports.json'].sort());
+ expect(config.functions['api/explore.ts'].excludeFiles).toBe('server/profile-runtime/profile-pages/**');expect(config.functions['api/profile.ts'].includeFiles).toContain('server/profile-runtime/**');
 });
 
 it('serves both canonical Discover links from the existing static alias without a Source gate',()=>{
