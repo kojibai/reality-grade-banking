@@ -1,6 +1,8 @@
 /** An owner-scoped read of exact retained bytes. This is a locator, never
  * proof admission. Callers must use the canonical reader before exporting. */
-export type HeldLedgerOriginalReader=(digest:string)=>Promise<File|null>;
+export type HeldLedgerOriginalReader=((digest:string)=>Promise<File|null>)&{
+ transferOriginal?:(record:import('./public-network').PublicRecord)=>Promise<File|null>;
+};
 type Source={bytes:Uint8Array;filename:string;role?:string};
 export function createHeldLedgerOriginalReader(input:{assertOpen():void;read(digest:string):Promise<Source|null>}):HeldLedgerOriginalReader{
  const held=new Map<string,Promise<File|null>>();

@@ -67,3 +67,11 @@ canonical PNG payload. Other original formats retain their 24 MiB wrapper
 limit. These are application reading budgets, not protocol validity rules.
 Archive, expansion, signature and continuity checks remain unchanged. A file
 within a reading budget still has to pass the complete canonical verifier.
+
+Transfer Original exports
+The existing SDK record-export carrier retains the stored transfer Original and
+its issued Receiz v2 receipt. Its canonical seal verifies the exported bytes;
+the included receipt inspection checks the existing payload and receipt binding.
+The export is retained once and restored unchanged. It does not rerun a payment,
+prove an historical sender signature, or supply funding predecessors identified
+only by hashes. Inspect the reported scope and carried continuity.

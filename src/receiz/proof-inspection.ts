@@ -3,7 +3,7 @@ import {ledgerSourceHistoryFromPayload} from './ledger-source-payload';
 import type {LedgerProofHistory} from './ledger-proof-history';
 import type {ReceizOpenedArtifact} from '@receiz/sdk';
 
-export type ProofInspection={schema:string;sdk:string;artifactSha256:string;artifactBytes:number;payloadSha256:string;payloadBytes:number;payloadFilename:string;payloadMimeType:string;verification:Record<string,unknown>;groth16:Record<string,unknown>|null;verificationMaterial?:Record<string,unknown>;scope:string;proofHistory?:LedgerProofHistory;causalLineage?:LedgerCausalLineage};
+export type ProofInspection={transferOriginal?:import('./transfer-original-proof').TransferOriginalInspection;exportedRecord?:'transfer-original';schema:string;sdk:string;artifactSha256:string;artifactBytes:number;payloadSha256:string;payloadBytes:number;payloadFilename:string;payloadMimeType:string;verification:Record<string,unknown>;groth16:Record<string,unknown>|null;verificationMaterial?:Record<string,unknown>;scope:string;proofHistory?:LedgerProofHistory;causalLineage?:LedgerCausalLineage};
 type OriginalInspection={report:ProofInspection;bytes:Uint8Array;filename:string;retained:boolean;publiclyAvailable:boolean};
 const originals=new Map<string,OriginalInspection>(),pending=new Map<string,Promise<OriginalInspection|null>>(),listeners=new Set<()=>void>();
 const admitted=new WeakMap<ProofInspection,OriginalInspection>(),MAX=64*1024*1024;

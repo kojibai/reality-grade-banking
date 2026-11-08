@@ -839,6 +839,10 @@ export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteSta
 export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);
 
 export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
+const walletOriginalFamily=(id:string)=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id))throw Error('TRANSFER_ORIGINAL_ID_INVALID');return 'wallet-original:'+id;};
+export const loadWalletOriginal=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,walletOriginalFamily(id));
+export const saveWalletOriginal=(binding:{artifactSha256:string},id:string,source:unknown,expected:unknown)=>saveNoteState(binding,walletOriginalFamily(id),source,expected);
+
 export const loadHostedCheckoutState=(binding:{artifactSha256:string})=>loadNoteState(binding,'hosted-checkouts');
 export const loadMerchantCounterState=(binding:{artifactSha256:string})=>loadNoteState(binding,'merchant-counter');
 export const saveMerchantCounterState=(binding:{artifactSha256:string},next:import('./merchant-counter-state').MerchantCounterState,expected:unknown)=>saveNoteState(binding,'merchant-counter',next,expected);

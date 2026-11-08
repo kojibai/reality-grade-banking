@@ -1,0 +1,92 @@
+{
+  "ok": true,
+  "found": true,
+  "transfer": {
+    "id": "40000000-0000-4000-8000-000000000001",
+    "clientNonce": "30000000-0000-4000-8000-000000000001",
+    "conversationId": "20000000-0000-4000-8000-000000000001",
+    "messageId": "40000000-0000-4000-8000-000000000001",
+    "senderUserId": "10000000-0000-4000-8000-000000000001",
+    "recipientUserId": "10000000-0000-4000-8000-000000000002",
+    "amountPhiMicro": "10000000",
+    "amountUsdCents": "1000",
+    "usdPerPhiMicrocents": "100000000",
+    "createdAt": "2026-11-07T12:00:00.000Z"
+  },
+  "source": {
+    "transfer": {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "client_nonce": "30000000-0000-4000-8000-000000000001",
+      "conversation_id": "20000000-0000-4000-8000-000000000001",
+      "message_id": "40000000-0000-4000-8000-000000000001",
+      "sender_user_id": "10000000-0000-4000-8000-000000000001",
+      "recipient_user_id": "10000000-0000-4000-8000-000000000002",
+      "amount_phi_micro": "10000000",
+      "amount_usd_cents": "1000",
+      "usd_per_phi_microcents": "100000000",
+      "metadata": {
+        "transferId": "40000000-0000-4000-8000-000000000001",
+        "senderUserId": "10000000-0000-4000-8000-000000000001",
+        "recipientUserId": "10000000-0000-4000-8000-000000000002",
+        "amountUsdCents": "1000",
+        "amountPhiMicro": "10000000",
+        "usdPerPhiMicrocents": "100000000"
+      },
+      "created_at": "2026-11-07T12:00:00.000Z"
+    },
+    "message": {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "conversation_id": "20000000-0000-4000-8000-000000000001",
+      "sender_user_id": "10000000-0000-4000-8000-000000000001",
+      "body": "Synthetic transfer Original",
+      "wallet_transfer": {
+        "transferId": "40000000-0000-4000-8000-000000000001",
+        "senderUserId": "10000000-0000-4000-8000-000000000001",
+        "recipientUserId": "10000000-0000-4000-8000-000000000002",
+        "amountUsdCents": "1000",
+        "amountPhiMicro": "10000000",
+        "usdPerPhiMicrocents": "100000000"
+      },
+      "receiz_receipt": {
+        "version": 2,
+        "primitive": "receiz.chat.receipt.v2",
+        "kind": "message",
+        "scopeId": "40000000-0000-4000-8000-000000000001",
+        "sealId": "cabba9f5",
+        "payloadDigest": "c27cc820e0f6b3052d6279b1d20ff3ee8db3d24f217001e0661e8cb33a5bbd59",
+        "digest": "cabba9f51588c613f14acc5714b302571c684f752ac5faf226b84899710e6ebe",
+        "originDigest": "c27cc820e0f6b3052d6279b1d20ff3ee8db3d24f217001e0661e8cb33a5bbd59",
+        "resealCount": 0,
+        "sealedAt": "2026-11-07T12:00:00.000Z",
+        "receizedBy": "10000000-0000-4000-8000-000000000001",
+        "payloadEncoding": "jcs-v1",
+        "digestNonce": "07070707070707070707070707070707",
+        "previousDigest": null
+      },
+      "sealed_original": {
+        "messageId": "40000000-0000-4000-8000-000000000001",
+        "conversationId": "20000000-0000-4000-8000-000000000001",
+        "senderUserId": "10000000-0000-4000-8000-000000000001",
+        "senderKind": "user",
+        "senderAiId": null,
+        "senderDisplay": null,
+        "body": "Synthetic transfer Original",
+        "walletTransfer": {
+          "transferId": null,
+          "senderUserId": "10000000-0000-4000-8000-000000000001",
+          "recipientUserId": "10000000-0000-4000-8000-000000000002",
+          "amountUsdCents": "1000",
+          "amountPhiMicro": "10000000",
+          "usdPerPhiMicrocents": "100000000"
+        },
+        "createdAt": "2026-11-07T12:00:00.000Z",
+        "version": 1,
+        "primitive": "receiz.chat.message.original.v1",
+        "receiptDigest": "cabba9f51588c613f14acc5714b302571c684f752ac5faf226b84899710e6ebe",
+        "payloadDigest": "c27cc820e0f6b3052d6279b1d20ff3ee8db3d24f217001e0661e8cb33a5bbd59",
+        "originDigest": "c27cc820e0f6b3052d6279b1d20ff3ee8db3d24f217001e0661e8cb33a5bbd59"
+      },
+      "created_at": "2026-11-07T12:00:00.000Z"
+    }
+  }
+}

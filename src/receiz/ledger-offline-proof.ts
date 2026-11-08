@@ -10,6 +10,7 @@ import {zipSync} from 'fflate';
 import {admittedProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
 import {offlineProofVerifierDigest} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
+import {assertTransferOriginalRecord,ledgerOriginalTransferId} from './held-transfer-original';
 
 export type OfflineProofReport=ProofInspection;
 export type OfflineProofVerifier={materials:Record<string,unknown>;pngOriginalMaxBytes:number;originalReadCapacity(prefix:Uint8Array):number;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
@@ -20,6 +21,7 @@ const inspections=new Map<string,Promise<{report:OfflineProofReport;retained:boo
 type OriginalResult={report:OfflineProofReport;retained:boolean};
 const privateInspections=new WeakMap<HeldLedgerOriginalReader,WeakMap<File,Promise<OriginalResult>>>();
 const privateReaders=new WeakMap<OfflineProofReport,HeldLedgerOriginalReader>();
+const transferExports=new WeakMap<OfflineProofReport,{reader:HeldLedgerOriginalReader;file:File}>();
 const originalDownloads=new WeakMap<OfflineProofReport,{digest:string;file:Promise<File>}>();
 export function loadOfflineProofVerifier(){return runtime??=import(/* @vite-ignore */ new URL(BASE+'verifier.js?build='+offlineProofVerifierDigest,location.origin).href).then(()=>globalThis.ReceizOfflineVerifier).catch(error=>{runtime=undefined;throw error;});}
 function database(){return new Promise<IDBDatabase>((resolve,reject)=>{try{const r=indexedDB.open('bankeiz.public-proof-inspection.v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('originals');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);}catch(error){reject(error);}});}
@@ -27,6 +29,20 @@ async function cached(digest:string):Promise<Uint8Array|null>{let db:IDBDatabase
 async function retain(digest:string,bytes:Uint8Array){let db:IDBDatabase|undefined;try{db=await database();await new Promise<void>((resolve,reject)=>{const tx=db!.transaction('originals','readwrite'),store=tx.objectStore('originals'),r=store.getAll();r.onsuccess=()=>{const all=r.result as Uint8Array[];if(all.reduce((n,b)=>n+b.length,0)+bytes.length>64*1024*1024){tx.abort();return;}store.put(bytes,digest);};tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);});return true;}catch{return false;}finally{db?.close();}}
 export async function inspectLedgerOriginal(record:PublicRecord,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader){
  const original=record.details?.originalUrl,digest=record.evidence.artifactDigest;
+ if(!digest&&ledgerOriginalTransferId(record)&&sourceReader?.transferOriginal){
+  const file=await sourceReader.transferOriginal(record);signal?.throwIfAborted();if(!file)throw Error('ORIGINAL_NOT_SUPPLIED');
+  let scope=privateInspections.get(sourceReader);if(!scope){scope=new WeakMap();privateInspections.set(sourceReader,scope);}
+  let work=scope.get(file);if(!work){work=(async()=>{
+   const [{openCanonicalProofFile},{inspectTransferOriginal}]=await Promise.all([import('./proof-capture'),import('./transfer-original-proof')]);
+   const opened=await openCanonicalProofFile(file),raw=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(opened.verifiedPayload.bytes));
+   assertTransferOriginalRecord(raw,record);const transferOriginal=await inspectTransferOriginal(raw);
+   const entry=retainOpenedProofInspection(opened,new Uint8Array(await file.arrayBuffer()),file.name,opened.sealedArtifact.artifactSha256,false);
+   if(!entry)throw Error('ORIGINAL_INSPECTION_REQUIRED');
+   Object.assign(entry.report,{transferOriginal,exportedRecord:'transfer-original',scope:'SDK-verified export of the retained transfer Original and its existing receipt. '+transferOriginal.scope});
+   transferExports.set(entry.report,{reader:sourceReader,file});return{report:entry.report,retained:true};
+  })();scope.set(file,work);void work.catch(()=>scope!.delete(file));}
+  const result=await work;signal?.throwIfAborted();await selectedTransferExport(record,result.report,sourceReader);signal?.throwIfAborted();return result;
+ }
  if(!/^[a-f0-9]{64}$/i.test(digest??''))throw Error('ORIGINAL_NOT_SUPPLIED');
  const key=digest!.toLowerCase();
  // Only an explicit owner's selected download may open private custody. Keep
@@ -50,6 +66,11 @@ export async function inspectLedgerOriginal(record:PublicRecord,signal?:AbortSig
  return trackProofInspection(key,inspectOriginal(record,signal));})();
  inspections.set(key,work);void work.finally(()=>{if(inspections.get(key)===work)inspections.delete(key);}).catch(()=>{});return work;
 }
+async function selectedTransferExport(record:PublicRecord,report:OfflineProofReport,reader?:HeldLedgerOriginalReader){
+ const entry=transferExports.get(report);
+ if(!entry||entry.reader!==reader||!reader?.transferOriginal||record.evidence.artifactDigest||!admittedProofInspection(report)||!report.transferOriginal||report.transferOriginal.transferId!==ledgerOriginalTransferId(record))throw Error('ORIGINAL_INSPECTION_REQUIRED');
+ const file=await reader.transferOriginal(record);if(file!==entry.file)throw Error('ORIGINAL_INSPECTION_REQUIRED');return file;
+}
 async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  const original=record.details!.originalUrl as string,digest=record.evidence.artifactDigest;
  const verifier=await loadOfflineProofVerifier();signal?.throwIfAborted();
@@ -66,6 +87,10 @@ async function inspectOriginal(record:PublicRecord,signal?:AbortSignal){
  * is reused. No resealing, proof reconstruction or history verification runs. */
 export async function downloadLedgerOriginal(record:PublicRecord,report?:OfflineProofReport|null,signal?:AbortSignal,sourceReader?:HeldLedgerOriginalReader):Promise<File>{
  const expected=record.evidence.artifactDigest?.toLowerCase();
+ if(!expected&&ledgerOriginalTransferId(record)&&sourceReader?.transferOriginal){
+  const selected=report??(await inspectLedgerOriginal(record,signal,sourceReader)).report;
+  const file=await selectedTransferExport(record,selected,sourceReader);signal?.throwIfAborted();return file;
+ }
  if(!expected||!/^[a-f0-9]{64}$/.test(expected))throw Error('ORIGINAL_NOT_SUPPLIED');
  const selected=report??(await inspectLedgerOriginal(record,signal,sourceReader)).report;signal?.throwIfAborted();
  const ownerReader=privateReaders.get(selected);
@@ -90,7 +115,7 @@ export async function downloadLedgerEvidence(record:PublicRecord,report?:Offline
  // record or Wallet hash capsule must never become an incomplete proof kit.
  const selected=report??(await inspectLedgerOriginal(record,undefined,sourceReader)).report;
  const admitted=admittedProofInspection(selected);
- if(!admitted||selected.artifactSha256!==record.evidence.artifactDigest?.toLowerCase())throw Error('ORIGINAL_INSPECTION_REQUIRED');
+ if(!admitted)throw Error('ORIGINAL_INSPECTION_REQUIRED');
  const original=await downloadLedgerOriginal(record,selected,undefined,sourceReader);
  const verifierReady=loadOfflineProofVerifier();
  // Observe metadata failure immediately while preserving verifier-first error
