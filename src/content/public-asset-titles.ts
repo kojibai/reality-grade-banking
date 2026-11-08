@@ -1,5 +1,10 @@
 // Generated from the existing public snapshot. Display metadata only; no request or proof authority.
 export const publicAssetTitles:Readonly<Record<string,readonly [string,string,string]>>={
+ "profile:bjklock:imported-b6e0a5ed5144996d77f458ae6762a8fbcdf478894274782e82248a66a8e1e1c4": [
+  "imported-b6e0a5ed5144996d77f458ae6762a8fbcdf478894274782e82248a66a8e1e1c4",
+  "a6a32bfb27ad40a69d5eb481be4df34cf90a92a428e88bbe2c1b52a3312a05fc",
+  "The Money Is Ready. The Banks Can Catch Up."
+ ],
  "profile:bjklock:imported-b69c12eaabfb7e5e2a3875c936a728f2670c007d7ad191471388da23c78e73d4": [
   "imported-b69c12eaabfb7e5e2a3875c936a728f2670c007d7ad191471388da23c78e73d4",
   "ea1ac75145e828fdf2873ce40790d566579b32a967093ff457c6aa4c21a8621f",

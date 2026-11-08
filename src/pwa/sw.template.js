@@ -139,6 +139,8 @@ async function publicDocument(request, path, installedPath) {
         if (cache && publicRequests.get(path) === sequence) await cache.delete(key.href).catch(() => {});
         cached = undefined;
       }
+      // Opening an installed public view needs no prepared-page renewal.
+      if (installedPath && !source) return fromBuild(installedPath);
     }
     if (path === 'bank-entry') {
       // Only the private Root may retain a previously checked local display

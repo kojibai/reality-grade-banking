@@ -1,4 +1,4 @@
-import {untilAborted,preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,readPreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
+import {untilAborted,preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
 import {readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import {retainPublicMomentManifest} from './public-asset-manifest';
@@ -9,7 +9,7 @@ import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, re
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
-import {mergeAdmittedPublicAssets,subscribeAssetPublicationAdmissions,retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
+import {mergeAdmittedPublicAssets,subscribeAssetPublicationAdmissions,retainedDiscoveredPublicCatalog,publishDiscoveredPublicCatalog} from './asset-publication-adoption';
 function adoptCatalog(catalog:PublicMarketCatalog|null){const next=mergeAdmittedPublicAssets(catalog??{items:[],complete:false,revision:'local-admission',observedAt:null,sourceCount:0});return catalog||next.items.length?next:null;}
 export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 // Public workspaces share the settled source already in this document. Optional
@@ -21,7 +21,7 @@ const catalogListeners=new Set<()=>void>();
 const subscribeCatalog=(listener:()=>void)=>{catalogListeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{catalogListeners.delete(listener);unsubscribe();};};
 const inactiveCatalog=()=>()=>{};
 function restorePublicCatalog(): PublicMarketCatalog | null {
-  const carried=readPublicMarketDocumentSeed();if(carried){preparedDocument=true;rememberPublicOriginalLocators(carried.catalog);return carried.catalog;}
+  const carried=readPublicMarketDocumentSeed();if(carried){preparedDocument=true;if(!lastRefreshAt)lastRefreshAt=Date.now();rememberPublicOriginalLocators(carried.catalog);return carried.catalog;}
   retainedSports=readStoredPublicSportsInput();
   try { const saved = localStorage.getItem(PUBLIC_MARKET_CACHE_KEY); const input = saved ? JSON.parse(saved) : null; const catalog = input ? parsePublicMarket(input, input.snapshot) : null; if (!catalog) return null; rememberPublicMarketResponse(catalog,input);rememberPublicOriginalLocators(catalog); const disk=mergePublicSports(catalog,retainedSports);reusePublicMarketResponse(catalog,disk);restoredDiskCatalog=disk;if(catalog.complete&&!lastRefreshAt&&typeof location!=='undefined'&&location.pathname==='/')lastRefreshAt=Date.now();return disk; } catch { return null; }
 }
@@ -167,19 +167,11 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       else setSportsStatus(retainedSports?'retained':'missing');
     }).finally(()=>{if(sportsRunning.current===cards)sportsRunning.current=null;});
   },[setCatalog]);
-  const refresh = useCallback(async (quotesOnly=false,existingFallback=false) => {
+  const refresh = useCallback(async (quotesOnly=false) => {
     if(quotesOnly){await refreshQuotes(pendingMarketChange.current);return;}
     if (running.current) return;
     lastRefreshAt=Date.now();lastRefreshFailed=false;
-    if(!existingFallback&&readPublicCatalog()===(preparedBankCatalogState().value??preparedBankCatalogState().carried)?.seed.catalog&&preparedBankCatalogEnabled()){
-      const prepared=await readPreparedBankCatalog();
-      if(prepared){sportsFailed.current=false;setStatus(prepared.receipt.state==='current'?'live':'stale');setQuoteStatus(prepared.receipt.state==='current'?'fresh':'stale');setSportsStatus(prepared.seed.catalog.items.some(item=>item.category==='sports')?(prepared.receipt.state==='current'?'fresh':'retained'):'missing');updateRefreshError({membership:null,quotes:null});return;}
-      const held=preparedBankCatalogState();
-      const retained=held.value??held.carried;
-      if(retained){lastRefreshFailed=true;setStatus('stale');setQuoteStatus('stale');setSportsStatus(retained.seed.catalog.items.some(item=>item.category==='sports')?'retained':'missing');updateRefreshError({membership:held.error});return;}
-      void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
-    }
-    void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});
+    if(!readPublicCatalog()?.complete){void prepareShippedSports().catch(()=>{});void prepareShippedCatalog().catch(()=>{});}
     // Prepare pricing operands beside discovery, before an object is opened.
     // The overview and direct-object paths share this same read and cache.
     void prepareMarketDisplaySource();
@@ -208,6 +200,24 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     await Promise.allSettled([membershipAttempt,quotesAttempt]);
     if (running.current === controller) running.current = null;
   }, [refreshQuotes,refreshSports,updateRefreshError]);
+  useEffect(()=>{
+    if(active||!displayActive||!prepareProfileDisplay)return;
+    if(!lastRefreshAt)lastRefreshAt=Date.now();
+    let controller:AbortController|null=null;
+    // Opening a held profile never rediscovers its collection. Subsequent
+    // public additions use the same discovery deadline as the other views.
+    const append=()=>{
+      if(document.visibilityState!=='visible'||controller||Date.now()-lastRefreshAt<refreshInterval)return;
+      controller=new AbortController();const request=controller,family=adoptedCarried;
+      lastRefreshAt=Date.now();
+      void fetchPublicMarket(request.signal).then(catalog=>{
+        if(!request.signal.aborted&&family===adoptedCarried)publishDiscoveredPublicCatalog(catalog);
+      }).catch(()=>{}).finally(()=>{if(controller===request)controller=null;});
+    };
+    const timer=setInterval(append,refreshInterval);
+    window.addEventListener('online',append);document.addEventListener('visibilitychange',append);
+    return()=>{clearInterval(timer);window.removeEventListener('online',append);document.removeEventListener('visibilitychange',append);controller?.abort();};
+  },[active,displayActive,prepareProfileDisplay]);
   useEffect(()=>{if(!active)return;const changed=(event:Event)=>{const nonce=(event as CustomEvent<{clientNonce?:unknown}>).detail?.clientNonce;if(typeof nonce!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(nonce))return;pendingMarketChange.current=nonce;void refresh(true);};addEventListener('bankeiz:market-shares-changed',changed);return()=>removeEventListener('bankeiz:market-shares-changed',changed);},[active,refresh]);
   useEffect(() => {
     if (!active) return;
@@ -229,10 +239,10 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       if(age<0||age>=refreshInterval)void refresh();
     }else if(bank&&!(prepared.phase==='fallback'&&!prepared.value)&&readPublicCatalog()?.revision!=='local-admission'){
       void refresh();
-    }else if(!preparedDocument||bank){
+    }else{
     void prepareShippedSports().then(()=>{if(alive&&retainedSports)setSportsStatus(current=>current==='fresh'?current:'retained');}).catch(()=>{});
     void prepareShippedCatalog().catch(()=>{});
-    void refresh(false,true);
+    void refresh();
     }
     let timer:ReturnType<typeof setTimeout>;
     const poll=()=>{const age=Date.now()-lastRefreshAt;if(lastRefreshAt>0&&age>=0&&age<refreshInterval){timer=setTimeout(poll,refreshInterval-age);return;}if(document.visibilityState==='visible'&&!preparedBankCatalogState().bootstrapping)void refresh();timer=setTimeout(poll,refreshInterval);};

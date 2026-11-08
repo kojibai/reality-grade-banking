@@ -4,7 +4,7 @@ import{createHash,webcrypto}from'node:crypto';
 import{runInNewContext}from'node:vm';
 import{transformSync}from'esbuild';
 import{expect,it}from'vitest';
-// Reuse the existing CacheStorage/network fixture with the real unchanged
+// Reuse the existing CacheStorage/network fixture with the real
 // worker and real WebCrypto. No SDK, account or financial code is imported.
 const original=readFileSync('tests/pwa-prepared-documents.test.ts','utf8');
 const measured=original.slice(original.indexOf('const origin='),original.indexOf("\nit('delivers")).replace('function platform(){','function platform(){let cacheOpens=0;').replace('open:async(name:string)=>{','open:async(name:string)=>{cacheOpens++;').replace('return {worker,stores,network,requests,','return {cacheOpens:()=>cacheOpens,worker,stores,network,requests,');
@@ -32,13 +32,13 @@ it('still qualifies helper GET and HEAD after local historical navigation, witho
  const b=fixture.prepared('<html>Complete held B</html>');f.env.api(async request=>request.method==='HEAD'?new Response(null,{headers:b.headers}):b.clone());
  const response=(await f.worker.load('/explore/'))!;expect(response.headers.get('x-receiz-public-html-state')).toBe('current');expect(await response.text()).toBe('<html>Complete held B</html>');const head=(await f.worker.load('/explore/',{method:'HEAD'}))!;expect(head.headers.get('x-receiz-public-html-state')).toBe('current');expect(f.env.reads().slice(before).map(r=>r.method)).toEqual(['HEAD','HEAD']);
 });
-it.each(['tampered','wrong build','truncated']as const)('refuses %s disk bytes and uses the existing bounded reader/fallback',async(kind)=>{
+it.each(['tampered','wrong build','truncated']as const)('refuses %s disk bytes and uses the exact installed fallback without Source',async(kind)=>{
  const f=await held(),store=[...f.env.stores.entries()].find(([name])=>name.startsWith('bankeiz-public-pages-'))![1],[key,saved]=[...store.entries()][0],headers=new Headers(saved.headers);
  if(kind==='wrong build')headers.set('x-receiz-public-render-build','f'.repeat(64));if(kind==='truncated')headers.set('content-length','999');store.set(key,new Response(kind==='tampered'?'<html>Altered</html>':'<html>Complete held B</html>',{headers}));
- const worker=f.env.worker(),before=f.env.reads().length;f.env.api(async()=>new Response(null,{status:503}));expect(await(await worker.load('/explore/',{navigate:true}))!.text()).toBe('<html>Explore A</html>');expect(f.env.reads().length).toBeGreaterThan(before);
+ const worker=f.env.worker(),before=f.env.reads().length;f.env.api(async()=>new Response(null,{status:503}));expect(await(await worker.load('/explore/',{navigate:true}))!.text()).toBe('<html>Explore A</html>');expect(f.env.reads()).toHaveLength(before);expect(store.has(key)).toBe(false);
 });
-it('uses the existing complete qualified reader when no held body exists',async()=>{
- const env=fixture.platform(),worker=env.worker();await worker.install();env.api(async()=>fixture.prepared('<html>New C</html>'));const response=(await worker.load('/feed/',{navigate:true}))!;expect(await response.text()).toBe('<html>New C</html>');expect(response.headers.get('x-receiz-public-html-state')).toBe('current');expect(env.reads().map(r=>r.method)).toEqual(['GET']);
+it('opens the installed Feed without a qualified-reader wait when no visited body exists',async()=>{
+ const env=fixture.platform(),worker=env.worker();await worker.install();env.api(async()=>fixture.prepared('<html>New C</html>'));const response=(await worker.load('/feed/',{navigate:true}))!;expect(await response.text()).toBe('<html>Feed A</html>');expect(response.headers.has('x-receiz-public-html-state')).toBe(false);expect(env.reads()).toHaveLength(0);
 });
 it('preserves cancellation and excludes account and financial API requests from either public cache path',async()=>{
  const f=await held(),before=f.env.reads().length,stop=new AbortController();stop.abort();await expect(f.worker.load('/explore/',{navigate:true,signal:stop.signal})).rejects.toMatchObject({name:'AbortError'});

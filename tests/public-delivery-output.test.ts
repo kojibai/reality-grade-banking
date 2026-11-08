@@ -7,9 +7,9 @@ it('stages byte-identical immutable documents outside canonical prepared routes 
  expect(await readFile(join(output,'assets/app.js'),'utf8')).toBe('unchanged app');expect(await readFile(join(output,'learn/index.html'),'utf8')).toBe('unchanged guide');
  }finally{await rm(root,{recursive:true,force:true});}
 });
-it('keeps the cold Bank entrance static while canonical public views retain their prepared wrapper',()=>{
+it('opens Bank and public views from their existing static documents without a prepared-page gate',()=>{
  const v=JSON.parse(readFileSync('vercel.json','utf8')),route=(source:string)=>v.rewrites.find((r:{source:string})=>r.source===source)?.destination;
- expect(v.outputDirectory).toBe('dist-public');expect(route('/')).toBe('/__bank_static_entry/bank/index.html');expect(route('/explore/')).toBe('/api/explore?path=explore&entry=1');expect(route('/index.html')).toBe('/__bank_static_entry/bank/index.html');expect(route('/explore/index.html')).toBe('/__bank_static_entry/explore/index.html');expect(route('/receive/')).toBe('/__bank_static_entry/bank/index.html');expect(route('/auth/receiz/callback')).toBe('/__bank_static_entry/bank/index.html');expect(v.functions['api/explore.ts'].includeFiles).toContain('dist/index.html');
+ expect(v.outputDirectory).toBe('dist-public');expect(route('/')).toBe('/__bank_static_entry/bank/index.html');expect(route('/explore/')).toBe('/__bank_static_entry/explore/index.html');expect(route('/index.html')).toBe('/__bank_static_entry/bank/index.html');expect(route('/explore/index.html')).toBe('/__bank_static_entry/explore/index.html');expect(route('/receive/')).toBe('/__bank_static_entry/bank/index.html');expect(route('/auth/receiz/callback')).toBe('/__bank_static_entry/bank/index.html');expect(v.functions['api/explore.ts'].includeFiles).toContain('dist/index.html');
 });
 it('keeps function packaging globs within the Vercel schema length limit',()=>{
  const config=JSON.parse(readFileSync('vercel.json','utf8'));

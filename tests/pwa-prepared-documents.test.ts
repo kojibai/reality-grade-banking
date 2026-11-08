@@ -31,7 +31,7 @@ function prepared(body:string|null='<html>New accepted public state</html>',extr
 async function installed(){const env=platform(),worker=env.worker();await worker.install();return {env,worker};}
 
 it('delivers a complete same-render public append online without changing installed runtime or readiness',async()=>{
- const {env,worker}=await installed();env.api(async()=>prepared());const response=await worker.load('/explore/',{navigate:true});expect(await response!.text()).toBe('<html>New accepted public state</html>');expect(response!.headers.get('x-receiz-public-html-state')).toBe('current');
+ const {env,worker}=await installed();env.api(async()=>prepared());const response=await worker.load('/explore/');expect(await response!.text()).toBe('<html>New accepted public state</html>');expect(response!.headers.get('x-receiz-public-html-state')).toBe('current');
  expect(await env.stores.get('receiz-bank-A')!.get(origin+'/explore/index.html')!.clone().text()).toBe('<html>Explore A</html>');expect(await worker.status()).toMatchObject({ready:true,required:7,cached:7});expect(worker.forced()).toBe(false);
  expect(env.reads().map(request=>[new URL(request.url).searchParams.get('path'),new URL(request.url).searchParams.get('build'),request.credentials])).toEqual([['explore',renderA,'omit']]);
 });
@@ -140,7 +140,7 @@ it('restores an evicted static entrance only from exact immutable build bytes an
 });
 it('keeps Root HEAD and the existing prepared Bank data endpoint outside worker interception',async()=>{
  const {env,worker}=await installed();expect(await worker.load('/',{method:'HEAD'})).toBeUndefined();expect(await worker.load('/api/explore?path=bank')).toBeUndefined();expect(env.reads()).toHaveLength(0);
- env.api(async()=>prepared('<html>Existing qualified public collection</html>'));const response=await worker.load('/explore/',{navigate:true});expect(await response!.text()).toBe('<html>Existing qualified public collection</html>');expect(env.reads().map(request=>new URL(request.url).searchParams.get('path'))).toEqual(['explore']);
+ env.api(async()=>prepared('<html>Existing qualified public collection</html>'));const response=await worker.load('/explore/',{navigate:true});expect(await response!.text()).toBe('<html>Explore A</html>');expect(env.reads()).toHaveLength(0);
 });
 
 it('opens Discover from the immutable static closure without any Source qualification, even when Source stalls',async()=>{
@@ -150,4 +150,12 @@ it('opens Discover from the immutable static closure without any Source qualific
  expect(response!.headers.has('x-receiz-public-html-state')).toBe(false);
  env.network.delete(origin+'/discover/index.html');
  expect(await(await worker.load('/discover/',{navigate:true}))!.text()).toBe('<html>Discover A</html>');expect(env.reads()).toHaveLength(0);
+});
+
+it('opens installed public views with no prepared API wait when no visited-page projection exists',async()=>{
+ const {env,worker}=await installed();env.api(async()=>new Promise<Response>(()=>{}));
+ for(const [path,title]of [['/explore/','Explore'],['/explore/music/','Explore'],['/market-cap/','Explore'],['/ledger/','Ledger'],['/feed/','Feed']]){
+  expect(await(await worker.load(path,{navigate:true}))!.text()).toBe('<html>'+title+' A</html>');
+ }
+ expect(env.reads()).toHaveLength(0);
 });

@@ -131,107 +131,107 @@
     },
     {
       "source": "/explore",
-      "destination": "/api/explore?path=explore&entry=1"
+      "destination": "/__bank_static_entry/explore/index.html"
     },
     {
       "source": "/explore/",
-      "destination": "/api/explore?path=explore&entry=1"
+      "destination": "/__bank_static_entry/explore/index.html"
     },
     {
       "source": "/ledger",
-      "destination": "/api/explore?path=ledger&entry=1"
+      "destination": "/__bank_static_entry/ledger/index.html"
     },
     {
       "source": "/ledger/",
-      "destination": "/api/explore?path=ledger&entry=1"
+      "destination": "/__bank_static_entry/ledger/index.html"
     },
     {
       "source": "/ledger/proofs",
-      "destination": "/api/explore?path=ledger/proofs&entry=1"
+      "destination": "/__bank_static_entry/ledger/proofs/index.html"
     },
     {
       "source": "/ledger/proofs/",
-      "destination": "/api/explore?path=ledger/proofs&entry=1"
+      "destination": "/__bank_static_entry/ledger/proofs/index.html"
     },
     {
       "source": "/explore/music",
-      "destination": "/api/explore?path=explore/music&entry=1"
+      "destination": "/__bank_static_entry/explore/music/index.html"
     },
     {
       "source": "/explore/music/",
-      "destination": "/api/explore?path=explore/music&entry=1"
+      "destination": "/__bank_static_entry/explore/music/index.html"
     },
     {
       "source": "/explore/images",
-      "destination": "/api/explore?path=explore/images&entry=1"
+      "destination": "/__bank_static_entry/explore/images/index.html"
     },
     {
       "source": "/explore/images/",
-      "destination": "/api/explore?path=explore/images&entry=1"
+      "destination": "/__bank_static_entry/explore/images/index.html"
     },
     {
       "source": "/explore/videos",
-      "destination": "/api/explore?path=explore/videos&entry=1"
+      "destination": "/__bank_static_entry/explore/videos/index.html"
     },
     {
       "source": "/explore/videos/",
-      "destination": "/api/explore?path=explore/videos&entry=1"
+      "destination": "/__bank_static_entry/explore/videos/index.html"
     },
     {
       "source": "/explore/books",
-      "destination": "/api/explore?path=explore/books&entry=1"
+      "destination": "/__bank_static_entry/explore/books/index.html"
     },
     {
       "source": "/explore/books/",
-      "destination": "/api/explore?path=explore/books&entry=1"
+      "destination": "/__bank_static_entry/explore/books/index.html"
     },
     {
       "source": "/explore/essays",
-      "destination": "/api/explore?path=explore/essays&entry=1"
+      "destination": "/__bank_static_entry/explore/essays/index.html"
     },
     {
       "source": "/explore/essays/",
-      "destination": "/api/explore?path=explore/essays&entry=1"
+      "destination": "/__bank_static_entry/explore/essays/index.html"
     },
     {
       "source": "/explore/moments",
-      "destination": "/api/explore?path=explore/moments&entry=1"
+      "destination": "/__bank_static_entry/explore/moments/index.html"
     },
     {
       "source": "/explore/moments/",
-      "destination": "/api/explore?path=explore/moments&entry=1"
+      "destination": "/__bank_static_entry/explore/moments/index.html"
     },
     {
       "source": "/explore/collectibles",
-      "destination": "/api/explore?path=explore/collectibles&entry=1"
+      "destination": "/__bank_static_entry/explore/collectibles/index.html"
     },
     {
       "source": "/explore/collectibles/",
-      "destination": "/api/explore?path=explore/collectibles&entry=1"
+      "destination": "/__bank_static_entry/explore/collectibles/index.html"
     },
     {
       "source": "/explore/documents",
-      "destination": "/api/explore?path=explore/documents&entry=1"
+      "destination": "/__bank_static_entry/explore/documents/index.html"
     },
     {
       "source": "/explore/documents/",
-      "destination": "/api/explore?path=explore/documents&entry=1"
+      "destination": "/__bank_static_entry/explore/documents/index.html"
     },
     {
       "source": "/market-cap",
-      "destination": "/api/explore?path=market-cap&entry=1"
+      "destination": "/__bank_static_entry/market-cap/index.html"
     },
     {
       "source": "/market-cap/",
-      "destination": "/api/explore?path=market-cap&entry=1"
+      "destination": "/__bank_static_entry/market-cap/index.html"
     },
     {
       "source": "/feed",
-      "destination": "/api/explore?path=feed&entry=1"
+      "destination": "/__bank_static_entry/feed/index.html"
     },
     {
       "source": "/feed/",
-      "destination": "/api/explore?path=feed&entry=1"
+      "destination": "/__bank_static_entry/feed/index.html"
     },
     {
       "source": "/discover",
@@ -243,11 +243,11 @@
     },
     {
       "source": "/explorer",
-      "destination": "/api/explore?path=explore&entry=1"
+      "destination": "/__bank_static_entry/explore/index.html"
     },
     {
       "source": "/explorer/",
-      "destination": "/api/explore?path=explore&entry=1"
+      "destination": "/__bank_static_entry/explore/index.html"
     },
     {
       "source": "/build",

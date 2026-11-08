@@ -60,11 +60,11 @@ it('retains accepted membership when publication resolves after its Market consu
 });
 it('healthy public wakes preserve the held family deadline while explicit refresh and a failed retry remain immediate',async()=>{
  vi.useFakeTimers();const a=await seed(['held']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
- const fetcher=vi.fn(async()=>new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);const p=await probe();await act(()=>p.root.render(<p.Probe active/>));
+ const fetcher=vi.fn(async(_path:RequestInfo|URL)=>new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);const p=await probe();await act(()=>p.root.render(<p.Probe active/>));
  await act(async()=>{document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('online'));});expect(fetcher).not.toHaveBeenCalled();
  await act(async()=>vi.advanceTimersByTimeAsync(59999));await act(async()=>window.dispatchEvent(new Event('online')));expect(fetcher).not.toHaveBeenCalled();
- await act(async()=>p.read().refresh());expect(fetcher).toHaveBeenCalledOnce();expect(p.read().historyCatalog?.items.map(item=>item.id)).toEqual(['held']);
- await act(async()=>window.dispatchEvent(new Event('online')));expect(fetcher).toHaveBeenCalledTimes(2);
+ await act(async()=>p.read().refresh());expect(fetcher.mock.calls.map(([path])=>String(path))).toEqual(['/api/bank/public-market/quotes','/api/bank/public-market/membership','/api/bank/public-market/sports']);expect(p.read().historyCatalog?.items.map(item=>item.id)).toEqual(['held']);
+ await act(async()=>window.dispatchEvent(new Event('online')));expect(fetcher.mock.calls.filter(([path])=>String(path)==='/api/bank/public-market/membership')).toHaveLength(2);expect(fetcher.mock.calls.some(([path])=>String(path).startsWith('/api/explore'))).toBe(false);
 });
 
 it('reuses an unchanged admitted public projection by reference so its genuine prepared provenance survives',async()=>{

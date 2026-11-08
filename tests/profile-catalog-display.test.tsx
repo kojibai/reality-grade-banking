@@ -27,13 +27,13 @@ it('publishes delayed bare-cache membership to the profile display without a pul
  expect(view.read().quoteStatus).toBe('stale');expect(held?.items[0]).toMatchObject({authority:'projection-only',canTrade:false});
  await act(()=>view.root.render(<view.Probe visible={false}/>));await act(()=>view.root.render(<view.Probe/>));expect(view.read().historyCatalog).toBe(held);expect(disk.jsonReads).toHaveBeenCalledOnce();expect(fetcher).not.toHaveBeenCalled();
 });
-it('uses the shipped membership once after a genuine local miss, without Sports, Source or Market polling',async()=>{
+it('opens shipped membership once after a local miss and checks later additions without Sports or quote polling',async()=>{
  const disk=localCache(null),fetcher=vi.fn(async(path:RequestInfo|URL)=>String(path)==='/receiz-public-market.json'?Response.json(membership('shipped public C')):new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);const view=await display();
  await act(async()=>{await vi.waitFor(()=>expect(view.host.textContent).toBe('shipped public C'),{timeout:300,interval:1});});
  expect(fetcher.mock.calls.map(([path])=>String(path))).toEqual(['/receiz-public-market.json']);const held=view.read().historyCatalog;expect(held?.complete).toBe(true);expect(disk.jsonReads).not.toHaveBeenCalled();
  await act(async()=>{window.dispatchEvent(new Event('online'));document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('focus'));await vi.advanceTimersByTimeAsync(61_000);});
- expect(view.read().historyCatalog).toBe(held);expect(fetcher).toHaveBeenCalledOnce();
- await act(()=>view.root.render(<view.Probe visible={false}/>));await act(()=>view.root.render(<view.Probe/>));expect(view.read().historyCatalog).toBe(held);expect(fetcher).toHaveBeenCalledOnce();
+ expect(view.read().historyCatalog).toBe(held);expect(fetcher.mock.calls.map(([path])=>String(path))).toEqual(['/receiz-public-market.json','/api/bank/public-market/membership']);
+ await act(()=>view.root.render(<view.Probe visible={false}/>));await act(()=>view.root.render(<view.Probe/>));expect(view.read().historyCatalog).toBe(held);expect(fetcher).toHaveBeenCalledTimes(2);
 });
 it('paints complete synchronous local membership on the first frame with zero network or duplicate body reads',async()=>{
  localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(membership('held local B')));const disk=localCache(Response.json(membership('old disk A')),true),fetcher=vi.fn().mockRejectedValue(Error('NO_NETWORK_NEEDED'));vi.stubGlobal('fetch',fetcher);const view=await display();

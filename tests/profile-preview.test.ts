@@ -3,19 +3,6 @@ import {handleProfilePreview,profilePreviewHtml} from '../server/profile-preview
 import {parsePublicProfile} from '../src/receiz/public-profile';
 import {profileFixture} from './fixtures/public-profile';
 const html='<html><head><title>Explore</title><meta name="description" content="old"><link rel="canonical" href="https://bankeiz.com/explore/"></head><body><div id="public-explore-root"><main>Old collection</main></div><script id="receiz-navigation" type="application/json">{}</script></body></html>';
-it('streams the saved complete owner document before its body finishes, without a profile, renderer or whole-catalog read',async()=>{
- const profile=vi.fn(),page=vi.fn(),render=vi.fn(),prepareRender=vi.fn();let release!:()=>void;
- const body=new ReadableStream<Uint8Array>({start(controller){controller.enqueue(new TextEncoder().encode('<html>613 saved Originals'));release=()=>{controller.enqueue(new TextEncoder().encode('</html>'));controller.close();};}});
- const saved=new Response(body,{headers:{'x-receiz-public-html-state':'current'}}),preparedProfile=vi.fn(async(request:Request)=>{expect(new URL(request.url).searchParams.get('path')).toBe('profile/bjklock');return saved;});
- const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page,render,prepareRender,preparedProfile});
- expect(response).toBe(saved);const reader=response.body!.getReader();expect(new TextDecoder().decode((await reader.read()).value)).toContain('613');release();expect(new TextDecoder().decode((await reader.read()).value)).toBe('</html>');
- expect(preparedProfile).toHaveBeenCalledOnce();for(const work of [profile,page,render,prepareRender])expect(work).not.toHaveBeenCalled();
-});
-it.each([403,503])('preserves a saved profile privacy refusal (%s) without restoring an old public catalog',async status=>{
- const profile=vi.fn(),page=vi.fn(),saved=new Response('withdrawn',{status,headers:status===503?{'x-receiz-public-html-withdrawn':'1'}:{}});
- const response=await handleProfilePreview(new Request('https://bankeiz.com/bjklock/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page,preparedProfile:async()=>saved});
- expect(response).toBe(saved);expect(page).not.toHaveBeenCalled();expect(profile).not.toHaveBeenCalled();
-});
 it('serves an escaped public profile seed as inline HTML',()=>{
  const profile=parsePublicProfile(profileFixture(),'alexmorgan');profile.bio='</script><script>alert(1)</script>';
  const result=profilePreviewHtml(html,'alexmorgan',profile);expect(result).toContain('public-profile-seed');expect(result).toContain('Alex Morgan | Bankeiz');expect(result).toContain('https://bankeiz.com/alexmorgan/');expect(result).not.toContain('</script><script>alert');
