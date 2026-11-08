@@ -1,4 +1,5 @@
 import {profileUsernameLabel} from '../../receiz/account-name';
+import {parseReceivingUsername,receivingUsernameSearch} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
 import {useEffect,useId,useMemo,useState} from 'react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {ChatPerson,NativeMessaging} from '../../receiz/native-messaging';
@@ -11,7 +12,7 @@ export function RecipientInput({identity,value,onChange,onSelect,allowEmail=fals
  const [connection,setConnection]=useState<{identity:OpenIdentity;api:NativeMessaging;contacts:ChatPerson[]}|null>(null);
  const [result,setResult]=useState<{api:NativeMessaging;query:string;people:ChatPerson[]}|null>(null),[searching,setSearching]=useState(false);
  const emailEntry=allowEmail&&value.trim().indexOf('@')>0;
- const api=connection&&connection.identity===identity?connection.api:null,q=emailEntry?'':peopleSearchQuery(value);
+ const api=connection&&connection.identity===identity?connection.api:null,q=emailEntry?'':peopleSearchQuery(receivingUsernameSearch(parseReceivingUsername(value)??value));
  useEffect(()=>{
   if(!identity||!started||!identity.messaging)return;
   const pending=new AbortController();
@@ -30,8 +31,8 @@ export function RecipientInput({identity,value,onChange,onSelect,allowEmail=fals
  },[focused,api,q]);
  const people=useMemo(()=>api&&!emailEntry?peopleSuggestions(connection!.contacts,result?.api===api&&result.query===q?result.people:[],value,api.accountUid):[],[api,connection,result,q,value,emailEntry]);
  const visible=focused&&(people.length>0||searching);
- const choose=(person:ChatPerson)=>{onSelect({userId:person.userId,username:person.username!,...(person.displayName?{displayName:person.displayName}:{})});setFocused(false);setHighlight(-1);};
+ const choose=(person:ChatPerson)=>{onSelect({userId:person.userId,username:person.receivingUsername??person.username!,...(person.displayName?{displayName:person.displayName}:{})});setFocused(false);setHighlight(-1);};
  return <div className="bank-recipient"><label className="form-field" htmlFor={id}><span>Recipient</span><input id={id} role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={visible?id+'-options':undefined} aria-activedescendant={visible&&highlight>=0&&people[highlight]?id+'-'+highlight:undefined} value={value} onFocus={()=>{setFocused(true);setStarted(true);}} onBlur={()=>setFocused(false)} onChange={event=>{setFocused(true);setHighlight(-1);onChange(event.target.value);}} onKeyDown={event=>{if(event.key==='Escape'){setFocused(false);setHighlight(-1);}else if(event.key==='ArrowDown'&&people.length){event.preventDefault();setFocused(true);setHighlight(index=>(index+1)%people.length);}else if(event.key==='ArrowUp'&&people.length){event.preventDefault();setHighlight(index=>(index<=0?people.length:index)-1);}else if(event.key==='Enter'&&visible&&highlight>=0&&people[highlight]){event.preventDefault();choose(people[highlight]);}}} placeholder={allowEmail?'Receiz ID or email':'Receiz ID'} autoComplete="off" spellCheck={false} maxLength={allowEmail?254:160}/></label>
- {visible&&<div className="bank-recipient-options"><span className="bank-recipient-caption">{q?'People':'Recent contacts'}</span><ul role="listbox" id={id+'-options'} aria-label="Recipient suggestions">{people.map((person,index)=><li key={person.userId} id={id+'-'+index} role="option" aria-selected={highlight===index} onMouseDown={event=>{if(event.button===0){event.preventDefault();choose(person);}}} onClick={()=>choose(person)}><ProfileAvatar account={person} className="bank-recipient-avatar" src={person.avatarUrl} name={person.displayName||person.username||'Receiz account'}/><span><strong>{person.displayName||person.username}</strong><small>@{profileUsernameLabel(person.username)}</small></span></li>)}</ul>{searching&&<span className="bank-recipient-caption" role="status">Finding people…</span>}</div>}
+ {visible&&<div className="bank-recipient-options"><span className="bank-recipient-caption">{q?'People':'Recent contacts'}</span><ul role="listbox" id={id+'-options'} aria-label="Recipient suggestions">{people.map((person,index)=><li key={person.userId} id={id+'-'+index} role="option" aria-selected={highlight===index} onMouseDown={event=>{if(event.button===0){event.preventDefault();choose(person);}}} onClick={()=>choose(person)}><ProfileAvatar account={person} className="bank-recipient-avatar" src={person.avatarUrl} name={person.displayName||person.username||'Receiz account'}/><span><strong>{person.displayName||person.username}</strong><small>@{profileUsernameLabel(person.receivingUsername??person.username)}</small></span></li>)}</ul>{searching&&<span className="bank-recipient-caption" role="status">Finding people…</span>}</div>}
  </div>;
 }

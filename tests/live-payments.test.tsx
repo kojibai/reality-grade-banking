@@ -162,3 +162,18 @@ it('fills Send with the chosen directory person before pointer focus can dismiss
   expect(prepare).toHaveBeenCalledExactlyOnceWith({recipient:person.userId,amountUsdCents:'100',note:''});expect(execute).not.toHaveBeenCalled();expect(search).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());host.remove();}
 });
+
+it('Receive displays and copies the complete held name while the old public locator remains internal',async()=>{
+ const full='pbahqdfouqyxgsifcy',legacy='receiz_'+full.slice(0,17),copy=vi.fn().mockResolvedValue(undefined),host=document.createElement('div'),root=createRoot(host);
+ vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
+ const prepareReceivingUsername=vi.fn(async()=>legacy);
+ const identity={username:'receiz_'+full,accountUsername:()=>legacy,prepareReceivingUsername}as unknown as OpenIdentity;
+ try{
+  await act(async()=>root.render(<LiveReceive identity={identity}/>));
+  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe(full);
+  expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe('https://bankeiz.com/?to='+full);
+  await act(async()=>host.querySelector<HTMLButtonElement>('button[aria-label="Copy Receiz ID"]')!.click());
+  expect(copy).toHaveBeenLastCalledWith(full);expect(prepareReceivingUsername).toHaveBeenCalledOnce();
+  expect(identity.username).toBe('receiz_'+full);expect(identity.accountUsername?.()).toBe(legacy);
+ }finally{act(()=>root.unmount());}
+});

@@ -23,3 +23,7 @@ it('accepts the public Receiz ID or username carried by a Receive QR',()=>{
  expect(()=>parsePaymentRequest('javascript:alert(1)')).toThrow();
  expect(()=>parsePaymentRequest('evil.example')).toThrow();
 });
+
+it('preserves a complete prefixed receiving name and its prefix-free form in scanned input',()=>{
+ for(const name of ['receiz_pbahqdfouqyxgsifcy','pbahqdfouqyxgsifcy'])expect(parsePaymentRequest(name).recipient).toBe(name);
+});

@@ -1,4 +1,5 @@
 import {parseFixedSalePaymentNote} from './fixed-checkout';
+import {parseReceivingUsername,receivingUsernameSearch,selectReceivingUsername} from '../../native/receiz/app/lib/profile/receivingUsername.js';
 import {bookingOverrides} from './booking-link';
 import {readBookingCheckoutContext,readBookingTransferOriginal,sameBookingCheckout,type BookingCheckoutContext} from './checkout-state';
 import {readWalletTransferOriginal} from './wallet-transfer-original';
@@ -171,8 +172,8 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    if(options?.fundingPreference!==undefined&&options.fundingPreference!=='card')throw Error('BANK_WALLET_FUNDING_INVALID');
    if(options?.fundingPreference==='card'){if(!input.funding)throw Error('BANK_WALLET_FUNDING_UNAVAILABLE');parseDepositDollars(dollars(value.amountUsdCents));}
    if(options?.checkoutContext&&!validCheckoutContext(options.checkoutContext,options.clientNonce,booking))throw Error('BANK_WALLET_CHECKPOINT_INVALID');
-   const email=recipientEmail(value.recipient),alias=email??value.recipient.trim().replace(/\.receiz\.id$/i,'').replace(/^@/,'').toLowerCase();
-   if(!email&&!/^[a-z0-9_]{3,24}$/.test(alias)&&!uuid(alias))throw Error('Enter a Receiz ID or email.');
+   const email=recipientEmail(value.recipient),alias=email??parseReceivingUsername(value.recipient)??value.recipient.trim().toLowerCase();
+   if(!email&&!parseReceivingUsername(alias)&&!uuid(alias))throw Error('Enter a Receiz ID or email.');
    if(email&&(options?.conversationId!==undefined||booking))throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
    const context=await input.connect();input.assertOpen();if(!uuid(context.accountUid))throw Error('BANK_WALLET_IDENTITY_CHANGED');
    if(uuid(alias)&&alias===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
@@ -180,9 +181,9 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    // it never submits a payment, creates a conversation or changes funding.
    const quoteRead=context.client.request(`/api/connect/transfers?amountUsd=${dollars(value.amountUsdCents)}`,{method:'GET'}).then(value=>({value}),error=>({error}));
    let userId:string|undefined=email?undefined:alias,label=alias,avatarUrl:string|null=null;
-   if(!email&&!uuid(alias)){const found=object(await context.client.request(`/api/chat/users/search?q=${encodeURIComponent(alias)}`,{method:'GET'}));input.assertOpen();
-    const matches=found.ok===true&&Array.isArray(found.users)?found.users.filter((u:Json)=>u.kind==='user'&&typeof u.username==='string'&&u.username.toLowerCase()===alias&&uuid(u.userId)):[];
-    if(matches.length!==1)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');userId=matches[0].userId;label=`@${matches[0].username}`;avatarUrl=profileAvatarUrl(matches[0].avatarUrl);
+   if(!email&&!uuid(alias)){const found=object(await context.client.request(`/api/chat/users/search?q=${encodeURIComponent(receivingUsernameSearch(alias))}`,{method:'GET'}));input.assertOpen();
+    const match=found.ok===true&&Array.isArray(found.users)?selectReceivingUsername(found.users.filter((u:Json)=>u&&typeof u==='object'&&typeof u.username==='string'&&typeof u.userId==='string'&&typeof u.kind==='string'),alias):null;
+    if(!match)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');userId=match.userId;label=`@${match.username}`;avatarUrl=profileAvatarUrl(match.avatarUrl);
    }
    if(userId===context.accountUid)throw Error('BANK_WALLET_RECIPIENT_UNAVAILABLE');
    const quoted=await quoteRead;if('error'in quoted)throw quoted.error;const raw=object(quoted.value);input.assertOpen();if(raw.ok!==true||raw.senderUserId!==context.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');if(note&&raw.capabilities?.publicTransferNotes!==true)throw Error('BANK_WALLET_PUBLIC_NOTE_UNAVAILABLE');

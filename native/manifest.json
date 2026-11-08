@@ -6895,6 +6895,12 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/receivingUsername.ts",
+      "sha256": "58d11d1743fe5a44b60e6a72b1d3a73fb69786e0b929c4767e3281fcbfb8f19a",
+      "bytes": 3144,
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/routeHydration.ts",
       "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22",
       "bytes": 83795,
@@ -17490,6 +17496,13 @@
       "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
       "purpose": "Reuse the existing native verified saved-PBI selector for source-only creation recovery without authorizing, publishing or resealing. Preserve the native proof, owner binding, outbox, signing order and publication path.",
       "sourceCommit": "eb0ba0c0299754aaa4d349ec7b25425c1ce554a5"
+    },
+    {
+      "id": "bankeiz-full-receiving-name",
+      "path": "receiz/app/lib/profile/receivingUsername.ts",
+      "baseSha256": null,
+      "sha256": "58d11d1743fe5a44b60e6a72b1d3a73fb69786e0b929c4767e3281fcbfb8f19a",
+      "purpose": "Reuse the exact Receiz receiving-name projection and optional-prefix Send selector over retained identity names. Existing account IDs, proof history and execution authority remain unchanged."
     }
   ],
   "historicalValuation": {
