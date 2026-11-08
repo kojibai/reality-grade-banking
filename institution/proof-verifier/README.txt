@@ -14,18 +14,21 @@ This archive is evidence, not permission to move value.
    No npm install, Receiz login, server, API key or connection is needed.
    Any canonical verification failure or selected-digest mismatch exits 1.
 
-3. If no sealed original was supplied, inspect the exact carried Wallet capsule:
+3. To inspect record.json separately, check its carried Wallet capsule:
      node verify.mjs record.json
    This checks its SHA-256 hashes over canonical JCS JSON. It does not establish
    authenticity, a Groth16 proof, spendability, or an enclosing sealed original.
-   Missing originals are not reconstructed from hashes or newly resealed.
+   This is not a substitute for inspecting original.receiz. A complete Bankeiz
+   verification kit requires that exact original; missing originals are not
+   reconstructed from hashes or newly resealed.
 
 CONTENTS
 record.json: selected Ledger/History projection and value operands. The projection
   is context, not signature authority. Private account contents stay in your
   local download and are not added to shared receipt URLs.
-original.receiz (when available): exact sealed original bytes, unchanged.
-proof-inspection.json (when available): complete canonical verification output,
+original.receiz: required exact sealed original bytes, unchanged, including all
+  proof bundle, signatures and continuity already carried by that object.
+proof-inspection.json: complete canonical verification output,
   carried proof bundle, signatures, certificates, continuity/anchor/package data,
   decoded Groth16 proof and public signals, payload digest and verification keys.
 verification-material.json: pinned document-seal and KaiSigil Groth16 verification

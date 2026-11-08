@@ -3,6 +3,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {resolve,relative} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {bankMarkSvg} from '../branding/bank-mark.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function writeChanged(path,bytes){
  try{if((await readFile(path)).equals(Buffer.from(bytes)))return;}catch(error){if(error.code!=='ENOENT')throw error;}
@@ -15,7 +16,7 @@ export async function buildProofVerifier(directory='public/proof-verifier/v129')
  for(const name of ['verify.mjs','verify.html','README.txt'])files[name]=await readFile(`institution/proof-verifier/${name}`);
  // One local HTML file carries the exact runtime inline: opening it requires
  // neither a module server nor browser access to adjacent file URLs.
- files['verify.html']=Buffer.from(new TextDecoder().decode(files['verify.html']).replace('<script src="verifier.js"></script>',()=>'<script>'+new TextDecoder().decode(files['verifier.js']).replaceAll('</script','<\\/script')+'</script>'));
+ files['verify.html']=Buffer.from(new TextDecoder().decode(files['verify.html']).replace('<!--BANK_MARK-->',bankMarkSvg).replace('<script src="verifier.js"></script>',()=>'<script>'+new TextDecoder().decode(files['verifier.js']).replaceAll('</script','<\\/script')+'</script>'));
  files['LICENSE.txt']=await readFile('LICENSE');files['NOTICE.txt']=await readFile('NOTICE');files['THIRD_PARTY_NOTICES.md']=await readFile('THIRD_PARTY_NOTICES.md');
  // Notice text accompanies the bundled dependency code and embedded sources.
  for(const [name,path]of [['snarkjs-GPL-3.0.txt','public/native/licenses/snarkjs-0.7.6-GPL-3.0.txt'],['ffjavascript-GPL-3.0.txt','public/native/licenses/ffjavascript-0.3.1-GPL-3.0.txt'],['wasmcurves-GPL-3.0.txt','public/native/licenses/wasmcurves-0.2.2-GPL-3.0.txt'],['wasmbuilder-GPL-3.0.txt','public/native/licenses/wasmbuilder-0.0.16-GPL-3.0.txt'],['fflate-MIT.txt','public/native/licenses/fflate-0.8.3-MIT.txt'],['noble-hashes-MIT.txt','public/native/licenses/noble-hashes-2.3.0-MIT.txt'],['hash-wasm-MIT.txt','public/native/licenses/hash-wasm-4.12.0-MIT.txt']])files[name]=await readFile(path);

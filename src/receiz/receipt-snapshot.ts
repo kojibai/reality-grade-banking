@@ -1,6 +1,6 @@
 import {cachedReceiptSnapshot,retainReceiptSnapshot} from './receipt-snapshot-cache';
 import {BANK_PUBLIC_ORIGIN} from './config';
-import {readLedgerReceipt,type LedgerReceipt} from './ledger-receipts';
+import {readLedgerReceipt,readReceiptLink,readPublicLedgerSelection,type LedgerReceipt} from './ledger-receipts';
 const MAX_BYTES=8*1024*1024;
 const endpoint=(digest:string)=>`https://receiz.com/api/public/display-snapshots/${digest}`;
 const valid=(digest:string)=>/^[a-f0-9]{64}$/.test(digest);
@@ -48,4 +48,19 @@ export function initialReceiptSnapshot(link:string):LedgerReceipt|null{
  const seed=document.getElementById('receipt-snapshot');if(seed?.getAttribute('data-digest')!==digest)return null;
  try{return readLedgerReceipt(JSON.parse(seed.textContent??''));}catch{return null;}
 }
-export function receiptLedgerUrl(receipt:LedgerReceipt){return `${BANK_PUBLIC_ORIGIN}/ledger/#record=${encodeURIComponent(receipt.source+':'+receipt.id)}`;}
+function publicReceiptHref(link:string){try{const url=new URL(link,BANK_PUBLIC_ORIGIN);if(url.origin!==BANK_PUBLIC_ORIGIN&&(typeof location==='undefined'||url.origin!==location.origin))return null;const path=url.pathname+url.search+url.hash,canonical=BANK_PUBLIC_ORIGIN+path;if(receiptSnapshotDigest(canonical))return canonical;const search=url.search?url.searchParams:new URLSearchParams(url.hash.slice(1));return url.pathname==='/receipt/'&&search.size===1&&(search.has('r')||!url.search&&search.has('p'))?canonical:null;}catch{return null;}}
+export function receiptLedgerUrl(receipt:LedgerReceipt,sourceHref?:string){const source=sourceHref?publicReceiptHref(sourceHref):null;return `${BANK_PUBLIC_ORIGIN}/ledger/#record=${encodeURIComponent(receipt.source+':'+receipt.id)}${source?'&receipt='+encodeURIComponent(source):''}`;}
+let selectedReceipt:{key:string;source:string|null;receipt:LedgerReceipt}|null=null,selectionEpoch=0;
+/** One selected, already shareable receipt by reference. Never copy the private
+ * in-app context into public caches, indexes, archive rows or server state. */
+export function retainReceiptLedgerSelection(receipt:LedgerReceipt,sourceHref:string){selectionEpoch++;selectedReceipt={key:receipt.source+':'+receipt.id,source:publicReceiptHref(sourceHref),receipt};}
+export function receiptLedgerSource(link:string){try{const url=new URL(link,BANK_PUBLIC_ORIGIN),params=new URLSearchParams(url.hash.slice(1));return readPublicLedgerSelection(link)&&params.getAll('receipt').length===1&&params.get('receipt')!.length<=40000?publicReceiptHref(params.get('receipt')!):null;}catch{return null;}}
+export function initialLedgerReceipt(link:string):LedgerReceipt|null{
+ const selection=readPublicLedgerSelection(link);if(!selection)return null;const source=receiptLedgerSource(link);
+ if(selectedReceipt?.key===selection.key&&(!source||selectedReceipt.source===source))return selectedReceipt.receipt;
+ if(!source)return null;try{const receipt=initialReceiptSnapshot(source)??readReceiptLink(source);if(receipt.source+':'+receipt.id!==selection.key)return null;selectionEpoch++;selectedReceipt={key:selection.key,source,receipt};return receipt;}catch{return null;}
+}
+export async function readLedgerReceiptSelection(link:string):Promise<LedgerReceipt|null>{
+ const held=initialLedgerReceipt(link);if(held)return held;const selection=readPublicLedgerSelection(link),source=receiptLedgerSource(link),digest=source&&receiptSnapshotDigest(source);if(!selection||!digest)return null;
+ const epoch=++selectionEpoch,receipt=await readReceiptSnapshot(digest);if(receipt.source+':'+receipt.id!==selection.key)throw Error('RECEIPT_SELECTION_MISMATCH');if(selectionEpoch===epoch)selectedReceipt={key:selection.key,source,receipt};return receipt;
+}

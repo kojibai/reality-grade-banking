@@ -166,3 +166,19 @@ it('paints the share-inclusive total and all six matching intervals before disco
   expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
+
+
+it('pauses the held Market worker between bottom-bar visits without cloning its catalog and history again',async()=>{
+ vi.useFakeTimers();clock.pulse=14720000;publishMarketDisplaySource(parseMarketCapSource(sourceFile));const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const catalog=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:0,revision:'held-return'},publicOriginals:[]}}),workers:WorkerStub[]=[];
+ class WorkerStub{onmessage:((event:any)=>void)|null=null;messages:any[]=[];terminate=vi.fn();constructor(){workers.push(this);}postMessage(message:any){this.messages.push(message);}}
+ vi.stubGlobal('Worker',WorkerStub);const root=createRoot(document.createElement('div'));let state!:ReturnType<typeof useMarketCapitalization>;
+ function Probe({active}:{active:boolean}){state=useMarketCapitalization('ALL',active,catalog,false);return null;}
+ try{
+  await act(()=>root.render(<Probe active={false}/>));expect(workers).toHaveLength(0);
+  await act(()=>root.render(<Probe active/>));expect(workers).toHaveLength(1);const worker=workers[0],points=state.points;
+  const first=worker.messages.find(message=>message.source);expect(first.catalog).toBe(catalog);act(()=>worker.onmessage!({data:{id:first.id,retained:true}}));
+  await act(()=>root.render(<Probe active={false}/>));const at=worker.messages.length;act(()=>window.dispatchEvent(new Event('focus')));expect(worker.terminate).not.toHaveBeenCalled();expect(worker.messages).toHaveLength(at);
+  clock.pulse++;await act(()=>root.render(<Probe active/>));expect(workers).toHaveLength(1);expect(worker.messages.filter(message=>message.source)).toHaveLength(1);expect(worker.messages.at(-1)).toMatchObject({marketTick:true});expect(worker.messages.at(-1).pulse).toBeGreaterThanOrEqual(clock.pulse);expect(state.points).toBe(points);expect(fetcher).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());expect(workers[0].terminate).toHaveBeenCalledOnce();}
+});

@@ -109,3 +109,21 @@ it('does not leave the next identity busy or adopt a late delivery from the prev
   expect(host.textContent).toContain('The next account’s Original');expect(host.textContent).not.toContain('An existing Original');
  }finally{await act(async()=>{finish(original);await delivery;});act(()=>root.unmount());adoption.forgetAssetPublicationAdmissions();}
 });
+
+
+it('reuses the exact held profile signature on reopen and retains it after an older unsigned delivery settles',async()=>{
+ const {parsePublicProfile,retainPublicProfile,forgetPublicProfile}=await import('../src/receiz/public-profile'),{profileFixture}=await import('./fixtures/public-profile');
+ const raw=profileFixture();raw.profile.profile.username='artist';raw.profile.profile.userId='owner';
+ const profile=parsePublicProfile(raw,'artist');profile.items[0]={...profile.items[0],originalDigest:original.digest,ownerUsername:'artist',ownerIdentity:{...profile.items[0].ownerIdentity!,userId:'owner',username:'artist'},hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64)};
+ let finish!:(value:unknown)=>void;const delivery=new Promise(resolve=>{finish=resolve;}),read=vi.fn(async()=>({...original,publication:{status:'pending'}})),retry=vi.fn(()=>delivery),publish=vi.fn();
+ const identity={accountUsername:()=> 'artist',walletReceivingAddress:()=> 'owner',pendingAssetPublication:read,retryAssetPublication:retry,publishAssetToMarket:publish}as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  retainPublicProfile(profile);
+  await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
+  expect(host.textContent).toContain('Your Original is signed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(false);
+  await act(async()=>{finish(original);await delivery;});
+  expect(host.textContent).toContain('Your Original is signed.');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Sign')).toBe(false);
+  expect(read).toHaveBeenCalledOnce();expect(retry).toHaveBeenCalledOnce();expect(publish).not.toHaveBeenCalled();
+ }finally{finish(original);await act(()=>root.unmount());forgetPublicProfile('artist');}
+});

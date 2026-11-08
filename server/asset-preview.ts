@@ -1,3 +1,6 @@
+import {createHash} from 'node:crypto';
+import {gunzipSync} from 'node:zlib';
+import type {PublicFirstFrame} from '../src/core/public-document-format';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
 import type {PublicMarketItem} from '../src/receiz/public-market';
 import {parsePublicMarket,safeReceizArtworkUrl} from '../src/receiz/public-market';
@@ -12,7 +15,8 @@ import {profileAvatarUrl} from '../src/receiz/profile-avatar';
 import {profilePagePath,profileUsername} from '../src/receiz/public-profile';
 import {readPublicOriginal} from './public-profile';
 import {publicReadingLinks} from './public-reading-links.js';
-type Dependencies={page():Promise<string>;item(id:string):Promise<PublicMarketItem|null>;image(item:PublicMarketItem):Promise<Uint8Array>};
+type AssetFirstFrame={schema:'bank.public-asset.first-frame.v1';item:PublicMarketItem|null;frame:PublicFirstFrame;content:string};
+type Dependencies={document?:(id:string)=>Promise<AssetFirstFrame|null>;page():Promise<string>;item(id:string):Promise<PublicMarketItem|null>;image(item:PublicMarketItem):Promise<Uint8Array>};
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 import {isShareTrackingKey} from './share-tracking.js';
 let catalog:Promise<Map<string,PublicMarketItem>>|undefined;
@@ -42,7 +46,7 @@ export function createLiveAssetResolver(read:typeof readReceizPublicMarketSource
  };
 }
 const resolveLiveAsset=createLiveAssetResolver(readReceizPublicMarketSource,readPublicOriginal);
-export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|null){
+export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|null,document?:AssetFirstFrame|null){
  const path=assetPagePath(id),canonical='https://bankeiz.com'+path,title=(item?.title??'Public asset')+' | Bankeiz',description=(item?.summary||'Inspect this asset, its media, ownership, valuation and original evidence.').replace(/[\x00-\x1f\x7f]/g,' ').slice(0,300),image=canonical+'og.png';
  const embed=publicAssetEmbed(item),kind=embed?.kind,discovery=embed?`<link rel="alternate" type="application/json+oembed" href="${escape('https://bankeiz.com/oembed?'+new URLSearchParams({url:canonical,format:'json'}))}" title="${escape(item!.title)}">`:'';
  const mediaTags=embed?`<meta name="twitter:player" content="${escape(embed.playerUrl)}"><meta name="twitter:player:width" content="${embed.width}"><meta name="twitter:player:height" content="${embed.height}">${embed.stream?`<meta property="og:${kind}" content="${escape(embed.stream.url)}"><meta property="og:${kind}:secure_url" content="${escape(embed.stream.url)}"><meta name="twitter:player:stream" content="${escape(embed.stream.url)}">${embed.stream.mimeType?`<meta property="og:${kind}:type" content="${escape(embed.stream.mimeType)}"><meta name="twitter:player:stream:content_type" content="${escape(embed.stream.mimeType)}">`:''}`:''}`:'';
@@ -56,7 +60,12 @@ export function assetPreviewHtml(html:string,id:string,item:PublicMarketItem|nul
  const seed=item?`<script id="public-asset-seed" type="application/json">${JSON.stringify(item).replaceAll('<','\\u003c')}</script>`:'';
  const initial=`<main class="public-entry-placeholder"><nav aria-label="Asset navigation"><a href="/" aria-label="Bankeiz home">${bankMarkSvg}</a><a href="/explore/">Explore</a><a href="/learn/proof-objects/">About ownership</a></nav><p>${item?escape(marketContentLabel(item)):'Public source'}</p><h1>${escape(item?.title??'Asset')}</h1>${ownerByline}${cover}<p>${escape(description)}</p>${item?.sourceUrl?`<a href="${escape(item.sourceUrl)}">Original public source ↗</a>`:''}</main>`;
  const withoutSeed=html.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
- return withoutSeed.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'').replace('</head>',()=>tags+mediaTags+discovery+coverHint+portraitHint+(item?publicReadingLinks('asset',id):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)(?:<main[^>]*>\s*(<style>[\s\S]*?<\/style>))?[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,style,end)=>start+(style??'')+initial+end).replace('<script id="receiz-navigation"',()=>seed+'<script id="receiz-navigation"');
+ return withoutSeed.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'').replace('</head>',()=>tags+mediaTags+discovery+coverHint+portraitHint+(item?publicReadingLinks('asset',id):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)(?:<main[^>]*>\s*(<style>[\s\S]*?<\/style>))?[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,style,end)=>(document?start.replace('>',` data-public-first-frame="${escape(JSON.stringify(document.frame))}"${item?' data-public-asset-rendered':''}>`):start)+(style??'')+(document?.content??initial)+end).replace('<script id="receiz-navigation"',()=>seed+'<script id="receiz-navigation"');
+}
+async function readAssetFirstFrame(id:string):Promise<AssetFirstFrame|null>{
+ const {readFile}=await import('node:fs/promises'),key=createHash('sha256').update(id).digest('hex');
+ try{const bytes=await readFile('server/asset-runtime/pages/'+key+'.json.gz').catch(error=>{if(error.code!=='ENOENT')throw error;return readFile('server/asset-runtime/pages/empty.json.gz');}),value=JSON.parse(gunzipSync(bytes).toString('utf8')) as AssetFirstFrame;
+ return value.schema==='bank.public-asset.first-frame.v1'&&(value.item===null||value.item.id===id)&&typeof value.content==='string'?value:null;}catch{return null;}
 }
 export async function handleAssetPreview(request:Request,dependencies?:Dependencies):Promise<Response>{
  const headers=new Headers({'Cache-Control':'public, max-age=60, s-maxage=300','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'});
@@ -74,7 +83,11 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  if(player){headers.set('X-Robots-Tag','noindex, nofollow');headers.set('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; img-src https://receiz.com; media-src https://receiz.com; frame-ancestors *; base-uri 'none'; form-action 'none'");}
  // HEAD probes neither parse the catalog nor read HTML, load fonts or render PNG.
  if(request.method==='HEAD')return new Response(null,{headers});
- const deps=dependencies??{page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),item:assetPreviewItem,image:async(item:PublicMarketItem)=>(await import('./asset-preview-render')).renderAssetImage(item)};
- try{if(!image&&!player){const [item,html]=await Promise.all([deps.item(id),deps.page()]);return new Response(assetPreviewHtml(html,id,item),{headers});}const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}
+ const deps=dependencies??{document:readAssetFirstFrame,page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),item:assetPreviewItem,image:async(item:PublicMarketItem)=>(await import('./asset-preview-render')).renderAssetImage(item)};
+ try{if(!image&&!player){
+  const browser=request.headers.get('accept')?.includes('text/html')&&!/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|slack/i.test(request.headers.get('user-agent')??'');
+  if(browser&&deps.document){const [document,html]=await Promise.all([deps.document(id),deps.page()]);return new Response(assetPreviewHtml(html,id,document?.item??null,document),{headers});}
+  const [item,html]=await Promise.all([deps.item(id),deps.page()]);return new Response(assetPreviewHtml(html,id,item),{headers});}
+const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}
  catch{headers.set('Cache-Control','no-store');return new Response('The public asset preview is temporarily unavailable.',{status:503,headers});}
 }

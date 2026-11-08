@@ -1,5 +1,6 @@
+import {PublicDocumentPulseContext} from '../core/public-document-format';
 import {InlineOpening} from '../components/InlineOpening';
-import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
+import {useContext,useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 import {flushSync} from 'react-dom';
 import {Sheet} from '../components/Sheet';
 import {attachPublicAssetTrade, beginPublicAssetTrade, closePublicAssetTrade, readPublicAssetTrade, requestPublicAssetBankRuntime, subscribePublicAssetTrade} from '../receiz/public-asset-trade';
@@ -12,7 +13,8 @@ import './public-asset-trade.css';
 export function PublicAssetTradeHost() {
   const intent = useSyncExternalStore(subscribePublicAssetTrade, readPublicAssetTrade, () => null);
   const [error, setError] = useState(''), [attempt, setAttempt] = useState(0);
-  const [checkpoint, setCheckpoint] = useState(publicPurchaseAtLocation);
+  const firstFrame=useContext(PublicDocumentPulseContext)!==undefined;
+  const [checkpoint, setCheckpoint] = useState(()=>firstFrame||typeof location==='undefined'?null:publicPurchaseAtLocation());
   const id = intent?.id;
   const slot = useCallback((element: HTMLDivElement | null) => {if (id !== undefined) attachPublicAssetTrade(id, element);}, [id]);
   useEffect(() => {
@@ -30,6 +32,7 @@ export function PublicAssetTradeHost() {
   useEffect(() => () => {queueMicrotask(() => {if (id !== undefined && readPublicAssetTrade()?.id === id && !readPublicAssetTrade()?.slot) closePublicAssetTrade(id);});}, [id]);
   useEffect(() => {
     const read = () => setCheckpoint(publicPurchaseAtLocation());
+    if(firstFrame)read();
     for (const name of ['popstate', 'hashchange', 'receiz-bank:surface', 'bankeiz:public-purchase-checkpoint']) addEventListener(name, read);
     return () => {for (const name of ['popstate', 'hashchange', 'receiz-bank:surface', 'bankeiz:public-purchase-checkpoint']) removeEventListener(name, read);};
   }, []);

@@ -19,7 +19,7 @@ it('opens complete selected details, value operands and original evidence for an
  expect(host.textContent).toContain('Alex');expect(host.textContent).toContain('Sam');expect(host.textContent).toContain('3456789');expect(host.textContent).toContain('wallet-ledger-v1');
  expect(host.querySelector('a[aria-label="Open original source"]')?.getAttribute('href')).toContain('receiz.com/t/');
  expect(host.querySelector('a[aria-label="Open full receipt"]')?.getAttribute('href')).toContain('/receipt/#r=');
- expect(host.querySelector('button[aria-label="Download record details"]')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();
+ expect(host.querySelector('button[aria-label="Download original proof"]')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();
 });
 it('keeps missing economic data explicit for actions rather than showing zero or a verified badge',()=>{
  const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'action',actionKind:'record',summary:'Sealed action'}]}).records[0];

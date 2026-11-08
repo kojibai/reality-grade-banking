@@ -1,4 +1,5 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {PublicDocumentPulseContext} from '../../core/public-document-format';
+import {useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import type {PublicMarketItem} from '../public-market';
 import {publicAssetPulseSeed,publicAssetCardHistory,projectPublicAssetPeriods,type PublicAssetPeriods} from './asset';
@@ -6,7 +7,7 @@ import {prepareMarketDisplaySource,useMarketDisplaySource} from './display-sourc
 const samplePulse=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 /** A local display clock advances retained deterministic inputs; it creates no events or rights. */
 export function usePublicAssetPeriods(item:PublicMarketItem){
- const source=useMarketDisplaySource(),[pulse,setPulse]=useState(samplePulse);
+ const initialPulse=useContext(PublicDocumentPulseContext),source=useMarketDisplaySource(),[pulse,setPulse]=useState(()=>initialPulse??samplePulse());
  const held=useRef<PublicAssetPeriods|null>(null);
  const row=useMemo(()=>publicAssetPulseSeed(item,source)??publicAssetCardHistory(item),[source,item.id,item.assetId,item.category,item.pulse,item.livePulseSeed,item.valuationBinding,item.sportsValuation]);
  const supported=!!row;

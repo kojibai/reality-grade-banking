@@ -8,4 +8,5 @@ export default async function prepareAssetRuntime(){
  // them. Tests cannot depend on ignored files left by a prior production build.
  await buildProfileShareHistory();
  execFileSync(process.execPath,['scripts/build-asset-preview.mjs'],{stdio:'inherit'});
+ execFileSync(process.execPath,['scripts/build-profile-preview.mjs'],{stdio:'inherit'});
 }

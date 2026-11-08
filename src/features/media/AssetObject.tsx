@@ -1,4 +1,5 @@
-import {useEffect,useId,useRef,useState,type PointerEvent,type ReactNode,type TouchEvent} from 'react';
+import {PublicDocumentCapabilitiesContext} from '../../core/public-document-format';
+import {useContext,useEffect,useId,useRef,useState,type PointerEvent,type ReactNode,type TouchEvent} from 'react';
 import {RotateCcw,RotateCw} from 'lucide-react';
 import './asset-object.css';
 
@@ -17,7 +18,8 @@ function protectsControl(target:EventTarget|null,stage:Element):boolean {
 
 /** A display surface only. Proof content is mounted on demand by its owner. */
 export function AssetObject({front,renderBack,label='Proof object',className='',onSideChange}:AssetObjectProps){
-  const [back,setBack]=useState(false),[inView,setInView]=useState(()=>typeof IntersectionObserver==='undefined'),[pageVisible,setPageVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
+  const capabilities=useContext(PublicDocumentCapabilitiesContext);
+ const [back,setBack]=useState(false),[inView,setInView]=useState(()=>(capabilities?.intersectionObserver??typeof IntersectionObserver!=='undefined')===false),[pageVisible,setPageVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
   const root=useRef<HTMLElement>(null),gesture=useRef<{id:number;x:number;y:number;at:number}|null>(null),suppressClickUntil=useRef(0),backId=useId();
   useEffect(()=>{
     const visible=()=>setPageVisible(!document.hidden);document.addEventListener('visibilitychange',visible);visible();

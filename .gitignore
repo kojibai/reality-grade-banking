@@ -38,3 +38,5 @@ test-results/
 /public/registry/
 
 /server/profile-runtime/profile-pages/
+
+/server/asset-runtime/pages/

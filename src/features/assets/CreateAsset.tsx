@@ -1,4 +1,4 @@
-import {lazy,Suspense,useEffect,useRef,useState} from 'react';
+import {lazy,Suspense,useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import {InlineOpening} from '../../components/InlineOpening';
 import {ArrowRight,ChevronRight,Landmark,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
@@ -7,11 +7,12 @@ import {composerDefinition,composerDraftWithLink,type AssetComposerDraft} from '
 import {AmountInput} from '../../components/AmountInput';
 import {NativeOperation} from '../account/NativeOperation';
 import {bankOperationDollars} from '../../receiz/bank-operations';
-import {retainedPublicProfile} from '../../receiz/public-profile';
+import {retainedPublicProfile,subscribePublicProfiles} from '../../receiz/public-profile';
 import {admittedAssetPublicationItem,admittedAssetPublicationDelivery,admittedAssetPublicationSignatureDelivery,subscribeAssetPublicationAdmissions} from '../../receiz/asset-publication-adoption';
 import {retainPublicAsset} from '../../receiz/public-asset-page';
 import {AssetComposer} from './AssetComposer';
 import {CreatedAssetResult} from './CreatedAssetResult';
+import {createdAssetHasHeldSignature,retainCreatedAssetResult} from './created-asset-state';
 import {createSealTimeEstimator,type AssetDeliveryTiming} from './asset-progress-estimate';
 import './asset-studio.css';
 import './asset-creation-studio.css';
@@ -19,6 +20,8 @@ import type {BackedPublicationState} from '../../receiz/backed-asset-publication
 import {assetPublicationDeliveryTiming,isAssetPublicationDeliveryActive,subscribeAssetPublicationDeliveries,retainAssetPublicationDelivery,type AssetPublicationAttempt} from '../../receiz/asset-publication';
 const ImportOriginal=lazy(()=>import('../deposit/LiveDeposit').then(module=>({default:module.LiveDeposit})));
 export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{active?:boolean;identity:OpenIdentity;onRefresh():void;onClose():void}){
+ const username=identity.accountUsername?.()??identity.username,accountUid=identity.walletReceivingAddress?.();
+ const heldProfile=useSyncExternalStore(subscribePublicProfiles,()=>username?retainedPublicProfile(username):null,()=>null);
  const [draft,setDraft]=useState<AssetComposerDraft>({title:'',description:'',kind:'moment',longForm:'',files:[]}),[link,setLink]=useState(''),[settings,setSettings]=useState({symbol:'',units:'1000'}),[funded,setFunded]=useState(false),[backing,setBacking]=useState('');
  const [reviewing,setReviewing]=useState(false),[importing,setImporting]=useState(false);
  const [result,setResult]=useState<HeldDeposit|null>(null),[busy,setBusy]=useState(false),[signing,setSigning]=useState(false),[error,setError]=useState('');
@@ -43,7 +46,7 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
     // Opening an empty editor or a newly created result starts no extra delivery.
     if((ordinary.value.publication?.status==='pending'||ordinary.value.publication?.status==='rejected')&&!ordinary.value.pbiSigned&&identity.retryAssetPublication){
      running.current=true;setBusy(true);
-     try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){setResult(settled);onRefresh();}}
+     try{const settled=await identity.retryAssetPublication();if(stillCurrent()&&settled){setResult(current=>retainCreatedAssetResult(current,settled));onRefresh();}}
      catch(cause){if(stillCurrent())setError(cause instanceof Error?cause.message:'Your original remains saved. Try delivery again.');}
      finally{if(current){running.current=false;if(stillCurrent())setBusy(false);}}
     }
@@ -58,22 +61,24 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true}:{ac
   const definition=selected?composerDefinition(selected,settings):null;
   if(result&&!identity.retryAssetPublication)throw Error('Reopen your saved asset before retrying delivery.');
   const value=result&&resultBacked?await(await identity.backedAssetPublication()).resume():result?await identity.retryAssetPublication!():await identity.createComposedAsset(definition!,selected!,value=>{if(active.current){sealEstimate.current.update(value,performance.now());setProgress(value);}});
-  if(active.current){if(value)setResult(value);onRefresh();}
+  if(active.current){if(value)setResult(current=>retainCreatedAssetResult(current,value));onRefresh();}
  }catch(cause){if(active.current)setError(cause instanceof Error&&cause.message==='COMPOSER_LINK_INVALID'?'Enter a valid HTTP or HTTPS link.':cause instanceof Error&&cause.message==='COMPOSER_LINK_CLAIM_CAPACITY'?'Shorten the description or link to fit within 2,000 characters.':cause instanceof Error&&cause.message.startsWith('COMPOSER_')?'Check your original, cover and file sizes before creating this asset.':cause instanceof Error?cause.message:'Your asset could not be created. Your selected files remain here.');}finally{running.current=false;if(active.current){setBusy(false);setProgress(null);}}}
  useEffect(()=>{if(!result)return;const digest=result.digest,username=identity.accountUsername?.()??identity.username;if(!username)return;const admitted=()=>{if(!active.current)return;const item=admittedAssetPublicationItem(digest,username),delivery=admittedAssetPublicationDelivery(digest,username),signatureDelivery=admittedAssetPublicationSignatureDelivery(digest,username);if(!item&&!delivery&&!signatureDelivery)return;if(item?.hasPbiSignature&&signingRunning.current&&!signatureTiming.current)signatureTiming.current={attemptId:`signature:${++signatureAttempt.current}`,sourceDigest:digest,phase:'signature',sizeBytes:result.bytes.byteLength,startedAtMs:performance.now()};setResult(current=>current?.digest===digest?{...current,...(item?.hasPbiSignature?{pbiSigned:true}:{}),...(delivery?{publication:retainAssetPublicationDelivery(current.publication,delivery)}:{}),...(signatureDelivery?{marketPublication:retainAssetPublicationDelivery(current.marketPublication,signatureDelivery)}:{})}:current);if(signatureDelivery?.status==='published')setBusy(false);};admitted();return subscribeAssetPublicationAdmissions(admitted);},[identity,result?.digest,result?.pbiSigned]);
  async function publishMarket(){if(!result||signingRunning.current)return;signingRunning.current=true;signatureTiming.current=undefined;setSigning(true);setError('');try{const signed=await identity.publishAssetToMarket(result);if(active.current){
   const username=identity.accountUsername?.()??identity.username??'',sourceDelivery=admittedAssetPublicationDelivery(signed.digest,username),signatureDelivery=admittedAssetPublicationSignatureDelivery(signed.digest,username);
   // Public admission may finish before this older delivery call returns.
   // Keep the held Source confirmation and select only the current PBI append.
-  setResult(current=>({...signed,publication:retainAssetPublicationDelivery(current?.digest===signed.digest?current.publication:undefined,retainAssetPublicationDelivery(sourceDelivery??undefined,signed.publication)),marketPublication:retainAssetPublicationDelivery(current?.digest===signed.digest?current.marketPublication:undefined,retainAssetPublicationDelivery(signatureDelivery??undefined,signed.marketPublication))}));
+  setResult(current=>retainCreatedAssetResult(current,{...signed,publication:retainAssetPublicationDelivery(current?.digest===signed.digest?current.publication:undefined,retainAssetPublicationDelivery(sourceDelivery??undefined,signed.publication)),marketPublication:retainAssetPublicationDelivery(current?.digest===signed.digest?current.marketPublication:undefined,retainAssetPublicationDelivery(signatureDelivery??undefined,signed.marketPublication))}));
  }}catch(cause){if(active.current&&!admittedAssetPublicationItem(result.digest,identity.accountUsername?.()??identity.username??'')?.hasPbiSignature)setError(cause instanceof Error&&cause.message==='passkey_cancelled'?'Signing was cancelled. Your original remains saved.':cause instanceof Error?cause.message:'Your original remains saved. Try signing again.');}finally{signingRunning.current=false;if(active.current)setSigning(false);}}
  function save(){if(!result)return;const url=URL.createObjectURL(new Blob([new Uint8Array(result.bytes)])),link=document.createElement('a');link.href=url;link.download=result.filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
- const username=identity.accountUsername?.()??identity.username;
- const publicItem=result&&username?(admittedAssetPublicationItem(result.digest,username)??retainedPublicProfile(username)?.items.find(item=>item.originalDigest===result.digest)??null):null;
+ const publicItem=result&&username?(admittedAssetPublicationItem(result.digest,username,accountUid??undefined)??(!accountUid||heldProfile?.userId===accountUid?heldProfile?.items.find(item=>item.originalDigest===result.digest):null)??null):null;
+ const heldSigned=!!result&&createdAssetHasHeldSignature(result,publicItem,username,accountUid);
+ useEffect(()=>{if(heldSigned)setResult(current=>current&&!current.pbiSigned?{...current,pbiSigned:true}:current);},[heldSigned,result?.digest]);
+ const shownResult=result&&heldSigned&&!result.pbiSigned?{...result,pbiSigned:true}:result;
  const delivering=!!result&&(busy||(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.active:!!identity.binding&&isAssetPublicationDeliveryActive(identity.binding.artifactOwnerReceizId,result.digest)));
  const sourceTiming=result?(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.timing:identity.binding?assetPublicationDeliveryTiming(identity.binding.artifactOwnerReceizId,result.digest):undefined):undefined;
- if(result)return <CreatedAssetResult result={result} settings={settings} busy={signing} deliveryActive={delivering} deliveryTiming={result.pbiSigned?signatureTiming.current:sourceTiming} allowLocalSigning={!resultBacked} error={error} username={username} publicItem={publicItem} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
- async function adoptBacked(completed?:HeldDeposit|null){const current=await(await identity.backedAssetPublication()).pending(!completed);if(active.current){setResultBacked(true);setBackedState(current.state);if(completed??current.deposit){setResult(completed??current.deposit);onRefresh();}}}
+ if(result)return <CreatedAssetResult result={shownResult!} settings={settings} busy={signing} deliveryActive={delivering} deliveryTiming={result.pbiSigned?signatureTiming.current:sourceTiming} allowLocalSigning={!resultBacked} error={error} username={username} publicItem={publicItem} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
+ async function adoptBacked(completed?:HeldDeposit|null){const current=await(await identity.backedAssetPublication()).pending(!completed);if(active.current){setResultBacked(true);setBackedState(current.state);if(completed??current.deposit){setResult(previous=>retainCreatedAssetResult(previous,(completed??current.deposit)!));onRefresh();}}}
  async function resumeBacked(){if(running.current)return;running.current=true;setBusy(true);setError('');try{const completed=await(await identity.backedAssetPublication()).resume();await adoptBacked(completed);onRefresh();}catch(cause){if(active.current)setError(cause instanceof Error?cause.message:'Your original creation remains saved. Try again when connected.');}finally{running.current=false;if(active.current)setBusy(false);}}
  if(backedState&&!result&&backedState.stage!=='published'){
   if(backedState.stage==='source-held'){const saved=backedState.intent as {definition:ReturnType<typeof composerDefinition>;amountUsdCents:string};return <><NativeOperation identity={identity} operations={async()=>(await identity.backedAssetPublication()).operations()} input={()=>({kind:'fund-asset',definition:saved.definition,fundingRule:'reserve-first-then-settlement',amountUsdCents:saved.amountUsdCents})} inputKey={backedState.intentDigest} title="Asset creation" confirmLabel="Create funded asset" onRefresh={onRefresh} onResult={()=>adoptBacked()}><h1 className="sheet-hero">Continue your asset.</h1><p className="body-copy">{saved.definition.name}. Your original and selected files are saved. Review its backing to continue.</p></NativeOperation><button className="secondary-button" onClick={()=>void identity.backedAssetPublication().then(api=>api.cancel()).then(()=>{setBackedState(null);setResultBacked(false);})}>Cancel creation</button></>;}

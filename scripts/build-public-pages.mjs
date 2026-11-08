@@ -2,6 +2,7 @@ import {build as buildReceivingRuntime} from 'esbuild';
 import {receivingContent,invitationContent} from './receiving-page.mjs';
 import {receivingInvitationPage} from '../src/content/receiving-invitation-page.mjs';
 import {createHash} from 'node:crypto';
+import {gzipSync} from 'node:zlib';
 import {merchantPage,merchantContent} from './merchant-page.mjs';
 import {matterPage,matterContent} from './matter-page.mjs';
 import {bookingGuidePage,bookingGuideContent,renderBookingExamples} from './booking-guide.mjs';
@@ -82,7 +83,7 @@ const economyCss=await readFile('public/learn/economy.css','utf8');
 const cooperativeCss=await readFile('public/learn/cooperatives.css','utf8');
 const protectionCss=await readFile('public/learn/vault-protection.css','utf8');
 const valueHead = originalsAssets.head + `<link rel="stylesheet" href="${valueAssets.cssUrl}"><script src="${valueAssets.jsUrl}" defer></script>`;
-let bankHtml,certificateShell,feedState,discoveryState,bookingExamples,paymentExamples,readingWriter,readingCatalog,readingLedger,readingLinks;
+let bankHtml,verificationFrame,bookingFrame,certificateShell,feedState,discoveryState,bookingExamples,paymentExamples,readingWriter,readingCatalog,readingLedger,readingLinks;
 let assetPaths=[];
 const explorerStates=new Map(),ledgerStates=new Map();
 const publicPages = {};
@@ -119,6 +120,16 @@ try {
     await writeFile(profileDirectory+'/'+username+'.html',html);profileCount++;profileBytes+=Buffer.byteLength(html);
   }
   console.log('Prerendered '+profileCount+' actual public profiles from the held catalog ('+(profileBytes/1048576).toFixed(1)+' MiB); no Source reads or duplicate catalog carriers.');
+  const frames=await server.ssrLoadModule('/server/public-first-frames.tsx'),format=new Intl.DateTimeFormat().resolvedOptions(),frame={locale:format.locale,timeZone:format.timeZone,pulse:asOfPulse};
+  verificationFrame=frames.renderVerificationFirstFrame();
+  bookingFrame=frames.renderBookingFirstFrame(readingCatalog.items.find(item=>item.category==='proof'&&profilePageUsername(profilePagePath(item.ownerUsername??'')))?.ownerUsername??'bankeiz');
+  const assetDirectory='server/asset-runtime/pages';await mkdir(assetDirectory,{recursive:true});
+  for(const file of await readdir(assetDirectory))if(/\.json(?:\.gz)?$/.test(file))await unlink(assetDirectory+'/'+file);
+  for(const item of [null,...readingCatalog.items]){
+    const key=item?createHash('sha256').update(item.id).digest('hex'):'empty';
+    await writeFile(assetDirectory+'/'+key+'.json.gz',gzipSync(JSON.stringify({schema:'bank.public-asset.first-frame.v1',item,frame,content:frames.renderAssetFirstFrame(item,frame)}),{level:6}));
+  }
+  console.log('Prepared actual asset, verification and booking first frames from the existing held inputs.');
   assetPaths=readingCatalog.items.map(item=>`/asset/${encodeURIComponent(item.id)}/`);
   const [reading,ledger,readingMetadata,ledgerBytes]=await Promise.all([server.ssrLoadModule('/scripts/public-reading-pages.mjs'),server.ssrLoadModule('/server/prepared-dependent-documents.tsx'),server.ssrLoadModule('/server/public-reading-links.ts'),readFile('public/receiz-public-ledger.json.gz.bin')]);
   readingWriter=reading.writePublicReadingPages;readingLinks=readingMetadata.publicReadingLinks;
@@ -166,6 +177,7 @@ publicPages['/schemas/'] = {
 const runtimeDocuments = new Map();
 for (const runtime of ['ledger','explore','verify','conformance','receipt','feed','discover']) {
   const path = `/${runtime}/`; let html = await readFile(`dist${path}index.html`, 'utf8');
+  if(runtime==='verify')html=html.replace(`<div id="root">${publicEntryFallback(path)}</div>`,()=>`<div id="root" data-public-verify-rendered>${verificationFrame}</div>`);
   if(runtime==='feed')html=applyFeedState(html,feedState);
   if(runtime==='discover')html=applyDiscoveryState(html,discoveryState);
   if(runtime==='ledger'){const state=ledgerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_LEDGER_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
@@ -177,8 +189,8 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
     return readFile('dist'+match[1], 'utf8');
   }))).join('\n');
   const pageHead = head.replace(/<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
-  publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
-  runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root">',`<div id="public-${runtime}-root" data-public-runtime="${runtime}">`));
+  publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='verify'?verificationFrame:runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
+  runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root"',`<div id="public-${runtime}-root" data-public-runtime="${runtime}"`));
 }
 // The direct Proofs entry uses the same retained Ledger and runtime. Only its
 // current category, readable rows and seed path differ; navigation stays exact.
@@ -202,6 +214,12 @@ for(const path of ['/market-cap/',...assetCategories.map(category=>category.path
  const head=applyPublicMetadata(`<head>${base.head}</head>`,metadata,socialImages.images[path]).slice(6,-7);
  publicPages[path]={...base,title:metadata.title,head,content};
  runtimeDocuments.set(path,`<!doctype html><html lang="en"><head>${head}<script type="module" src="${base.entry}"></script></head><body><div id="public-explore-root" data-public-runtime="explore">${state.content}</div>${state.seedScript}</body></html>`);
+}
+{
+ let html=await readFile('dist/booking/index.html','utf8');
+ html=html.replace('<div id="root"></div>',()=>`<div id="root" data-public-booking-rendered>${bookingFrame}</div>`);
+ for(const match of [...html.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)]){if(!/^\/assets\/[\w.-]+\.css$/.test(match[1]))throw Error('BOOKING_STYLESHEET_INVALID');const css=await readFile('dist'+match[1],'utf8');html=html.replace(match[0],()=>`<style data-public-page-style="booking">${css}</style>`);}
+ await writeFile('dist/booking/index.html',html);
 }
 const bankStyles = [...bankHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]);
 const styleManifest = JSON.parse(await readFile('dist/.vite/manifest.json','utf8'));

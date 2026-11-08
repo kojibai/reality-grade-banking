@@ -110,6 +110,6 @@ it('formats the complete JSON only when its disclosure is opened, while keeping 
  const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'selected',actionKind:'record',summary:'Selected original',pulse:1}]}).records[0];
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);act(()=>root.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
  const disclosure=host.querySelector<HTMLDetailsElement>('.ledger-exact-json')!;
- expect(disclosure.querySelector('pre')).toBeNull();expect(host.querySelector('[aria-label="Download record details"]')).not.toBeNull();
+ expect(disclosure.querySelector('pre')).toBeNull();expect(host.querySelector('[aria-label="Download original proof"]')).not.toBeNull();
  act(()=>{disclosure.open=true;disclosure.dispatchEvent(new Event('toggle'));});expect(JSON.parse(disclosure.querySelector('pre')!.textContent!)).toMatchObject({id:'selected',title:'Selected original'});
 });

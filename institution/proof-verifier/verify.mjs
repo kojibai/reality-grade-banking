@@ -9,8 +9,8 @@ try{
  const file=await open(path,'r'),prefix=new Uint8Array(8);try{await file.read(prefix,0,8,0);}finally{await file.close();}
  if(size>verifier.originalReadCapacity(prefix))throw Error('PROOF_INSPECTION_CAPACITY');
  const bytes=new Uint8Array(await readFile(path));if(bytes.length!==size)throw Error('LOCAL_FILE_CHANGED');
- if(path.endsWith('.json')&&!expected){
-  const record=JSON.parse(new TextDecoder().decode(bytes));
+ let record;if(path.split(/[\\/]/).at(-1)==='record.json')try{record=JSON.parse(new TextDecoder().decode(bytes));}catch{/* Canonical artifact below. */}
+ if(record?.schema==='bankeiz.ledger-inspection.v1'&&!expected){
   console.log(JSON.stringify(await verifier.inspectWalletCapsule(record.details?.proofBundle),null,2));
  }else{
   const result=await verifier.inspectArtifact(bytes,path.split('/').at(-1));

@@ -32,6 +32,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
   // A selected complete family still replaces every display operand together.
   const appliedPrepared=useRef(display?.seed??null),newPrepared=!!family&&appliedPrepared.current!==family.seed,visibleHistory=newPrepared?family!.history:history,fullSource=display?.capitalization??(newPrepared?family!.capitalization:retainedMarketDisplaySource()??fallbackSource);
   const heldHistory=useRef(visibleHistory),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
+  const visible=useRef(active);visible.current=active;
   const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
   const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
   heldHistory.current=visibleHistory;
@@ -81,8 +82,11 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     return () => { controller.abort(); clearInterval(interval); };
   }, [sourceActive,bank,!!family,preparedState.phase,preparedState.bootstrapping]);
   useEffect(() => {
-    if (!active || typeof Worker === 'undefined') return;
+    // A hidden retained panel pauses updates, not its already-owned inputs.
+    // Reopening must not clone the whole catalog/history onto the UI thread.
+    if (typeof Worker === 'undefined') return;
     const start=()=>{
+    if(!visible.current)return;
     worker.current?.terminate();worker.current=null;workerInputs.current=null;busy.current=false;++request.current;
     let instance: Worker; try { instance = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }); } catch { return; } worker.current = instance;
     instance.onmessage = event => {
@@ -112,7 +116,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     const focus=()=>{if(document.visibilityState==='visible'&&(busy.current||!worker.current))start();};
     document.addEventListener('visibilitychange',visibility);window.addEventListener('pageshow',pageshow);window.addEventListener('focus',focus);
     return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;workerInputs.current=null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',pageshow);window.removeEventListener('focus',focus); };
-  }, [dispatch,active,acceptCalculation]);
+  }, [dispatch,acceptCalculation]);
   useEffect(() => {
     if (!fullSource || !active || !heldHistory.current) {latestInput.current=null;queued.current=null;busy.current=false;worker.current?.postMessage({id:++request.current,cancel:true});return;}
     // Finish the current complete publication, then process the latest request.

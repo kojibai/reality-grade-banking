@@ -10,3 +10,9 @@ it('carries repeated public evidence styles once while preserving every destinat
  for(const [path,page]of Object.entries(pages))expect(decode(packed.pages[path].head)).toBe(page.head);
  expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify({pages}).length/3);
 });
+it('shares rules repeated across differently factored chunks without changing CSS bytes or cascade order',()=>{
+ const shared='.carried-proof{--caption:"a } and \\\" b";background-image:url("data:image/svg+xml,%3Csvg%3E");'+('padding:12px;margin:4px;border:1px solid #dfe5ed;'.repeat(40))+'}',first='.first{color:navy}'+shared+'.last{color:blue}',second='.second{color:green}'+shared+'.last{color:red}';
+ const original={pages:{'/one/':{head:'<style>'+first+'</style>',content:''},'/two/':{head:'<style>'+second+'</style>',content:''}},bank:{head:'',content:'',styles:['/first.css'],css:{'/first.css':first}}},packed=compactNavigation(original),decode=(value:any)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ expect(decode(packed.pages['/one/'].head)).toBe(original.pages['/one/'].head);expect(decode(packed.pages['/two/'].head)).toBe(original.pages['/two/'].head);expect(decode((packed.bank.css as Record<string,unknown>)['/first.css'])).toBe(first);
+ expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.6);expect(packed.styles.filter(part=>part===shared)).toHaveLength(1);
+});

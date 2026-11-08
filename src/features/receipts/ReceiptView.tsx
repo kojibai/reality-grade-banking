@@ -1,15 +1,16 @@
+import {PublicDocumentFormatContext,PublicDocumentPulseContext} from '../../core/public-document-format';
 import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
 import {BankMark} from '../../components/BankMark';
 import {LedgerExecutionRecords} from '../ledger/LedgerExecutionRecords';
 import {ledgerPaymentReference,ledgerRecordTitle,ledgerPaymentRole,groupLedgerPaymentRecords} from '../../receiz/ledger-payment-records';
-import {useEffect,useMemo,useState} from 'react';
+import {useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {ArrowLeft,ArrowUpRight,FileText,Link2,Share2} from 'lucide-react';
 import {openReceiptShare} from './openReceiptShare';
-import {initialReceiptSnapshot,readReceiptSnapshot,receiptSnapshotDigest,receiptLedgerUrl} from '../../receiz/receipt-snapshot';
+import {initialReceiptSnapshot,readReceiptSnapshot,receiptSnapshotDigest,receiptLedgerUrl,retainReceiptLedgerSelection} from '../../receiz/receipt-snapshot';
 import {copySavedReceiptLink} from '../../receiz/receipt-sharing';
 import type {PublicRecord} from '../../receiz/public-network';
 import type {LedgerValueIndex} from '../../receiz/ledger-value';
-import {completeLedgerReceipt,readReceiptLink,readLocalReceiptContext,releaseLocalReceiptContext,type LedgerReceipt} from '../../receiz/ledger-receipts';
+import {completeLedgerReceipt,receiptDisplayRecord,readReceiptLink,readLocalReceiptContext,releaseLocalReceiptContext,type LedgerReceipt} from '../../receiz/ledger-receipts';
 import {formatMoney} from '../../core/money';
 import {ledgerValueLabel,type LedgerValueDisplay} from '../../receiz/ledger-value';
 import {LedgerInspector} from '../ledger/LedgerInspector';
@@ -19,35 +20,37 @@ import {LedgerValueChange} from '../ledger/LedgerValueChange';
 import {LedgerFundingTrace} from '../ledger/LedgerFundingTrace';
 import './receipt.css';
 function ReceiptLiveValue({active,record,value,valueSource}:{active:boolean;record:PublicRecord;value:LedgerValueDisplay;valueSource:LedgerValueIndex|null}){
- const {pulse}=useKaiKlok(active&&Boolean(valueSource||record.valueOperands?.cardValuation));
+ const {pulse}=useKaiKlok(active&&Boolean(valueSource||record.valueOperands?.cardValuation),useContext(PublicDocumentPulseContext));
  const currentValue=useMemo(()=>ledgerCurrentAssetValue(record,valueSource,pulse),[record,valueSource,pulse]);
  if(!currentValue)return null;
  return <div className="receipt-live-value"><div><span>Current live value</span><strong>{formatMoney(currentValue.amountUsdCents!)}</strong><small>☤KAI {BigInt(currentValue.pulse!).toLocaleString('en-US')}</small></div><LedgerValueChange value={value} currentValue={currentValue}/></div>;
 }
-export function ReceiptView({onBack,active=true}:{onBack():void;active?:boolean}){
- const [localContext]=useState(()=>readLocalReceiptContext(location.href));
+export function ReceiptView({onBack,active=true,initialReceipt,initialHref}:{onBack():void;active?:boolean;initialReceipt?:LedgerReceipt;initialHref?:string}){
+ const href=initialHref??(typeof location==='undefined'?'':location.href),format=useContext(PublicDocumentFormatContext),frame=useContext(PublicDocumentPulseContext)!==undefined,startedWithFrame=useRef(frame);
+ const [localContext,setLocalContext]=useState(()=>frame?null:readLocalReceiptContext(href));
+ useEffect(()=>{if(!frame&&startedWithFrame.current){startedWithFrame.current=false;setLocalContext(readLocalReceiptContext(href));}},[frame,href]);
  useEffect(()=>()=>releaseLocalReceiptContext(localContext),[localContext]);
- const [receipt,setReceipt]=useState<LedgerReceipt|null>(()=>{const seed=initialReceiptSnapshot(location.href);if(seed)return seed;try{return readReceiptLink(location.href);}catch{return null;}}),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inspectionOpen,setInspectionOpen]=useState(false);
- useEffect(()=>{if(receipt)return;let live=true;const digest=receiptSnapshotDigest(location.href);if(digest){readReceiptSnapshot(digest).then(value=>{if(live)setReceipt(value);},()=>{if(live)setError('This receipt is temporarily unavailable. Your saved original is unchanged.');});}else setError('This receipt link is incomplete or unsupported. Ask the sender for the original link.');return()=>{live=false;};},[receipt]);
- const record=useMemo(()=>localContext?.record??(receipt?{id:`${receipt.source}:${receipt.id}`,sourceId:receipt.id,source:receipt.source,kind:receipt.kind,title:receipt.title,detail:receipt.detail,time:receipt.time,actor:null,amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,kaiUpulse:receipt.kaiUpulse,sender:receipt.sender,recipient:receipt.recipient,sourceUrl:receipt.sourceUrl,evidence:receipt.evidence,valueOperands:receipt.valueOperands,details:receipt.details??undefined,authority:receipt.authority}:null),[receipt,localContext]);
+ const [receipt,setReceipt]=useState<LedgerReceipt|null>(()=>{if(initialReceipt)return initialReceipt;const seed=initialReceiptSnapshot(href);if(seed)return seed;try{return readReceiptLink(href);}catch{return null;}}),[error,setError]=useState(''),[notice,setNotice]=useState(''),[inspectionOpen,setInspectionOpen]=useState(false);
+ useEffect(()=>{if(receipt)return;let live=true;const digest=receiptSnapshotDigest(href);if(digest){readReceiptSnapshot(digest).then(value=>{if(live)setReceipt(value);},()=>{if(live)setError('This receipt is temporarily unavailable. Your saved original is unchanged.');});}else setError('This receipt link is incomplete or unsupported. Ask the sender for the original link.');return()=>{live=false;};},[receipt]);
+ const record=useMemo(()=>localContext?.record??(receipt?receiptDisplayRecord(receipt):null),[receipt,localContext]);
  const executionRecords=useMemo(()=>{
   const reference=record?ledgerPaymentReference(record):null,related=reference?localContext?.relations?.get(`transfer:${reference}`):undefined;
   return record&&related?groupLedgerPaymentRecords([record,...related.filter(other=>other.id!==record.id)]).find(group=>group.record===record)?.executionRecords??[]:[];
  },[record,localContext]);
- const {copied,confirm}=useCopyFeedback(location.href);
- const copy=async()=>{if(!receipt)return;try{await copySavedReceiptLink(localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,location.href);confirm();setNotice('');}catch{setNotice('The receipt link could not be copied. Try again.');}};
- const share=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(location.href)?undefined:location.href,()=>{confirm();setNotice('');},receiptSnapshotDigest(location.href)?location.href:undefined);};
+ const {copied,confirm}=useCopyFeedback(href);
+ const copy=async()=>{if(!receipt)return;try{await copySavedReceiptLink(localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,href);confirm();setNotice('');}catch{setNotice('The receipt link could not be copied. Try again.');}};
+ const share=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(href)?undefined:href,()=>{confirm();setNotice('');},receiptSnapshotDigest(href)?href:undefined);};
  if(error)return <main className="receipt-page"><div className="receipt-error"><FileText size={30}/><h1>Receipt unavailable.</h1><p>{error}</p><button onClick={onBack}>Return to bank<ArrowLeft size={16}/></button></div></main>;
  if(!receipt)return null;
  const proof=/proof|market.asset/i.test(receipt.kind),value:LedgerValueDisplay=localContext?.value??receipt.value??{basis:receipt.amountUsdCents===null?'unavailable':'payment',amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,considerationUsdCents:null},amount=value.amountUsdCents===null?'Recorded':formatMoney(value.amountUsdCents),label=proof?'Proof receipt':'Activity receipt';
  return <main className="receipt-page"><header className="receipt-header"><button onClick={onBack} className="receipt-back" aria-label="Return to ledger"><ArrowLeft size={18}/></button><a href="/" className="receipt-brand" aria-label="Bankeiz home"><BankMark/></a><div className="receipt-header-actions"><button onClick={()=>void copy()} className="receipt-copy" aria-label={copied?'Receipt link copied':'Copy receipt link'} title="Copy receipt link"><CopyFeedbackIcon copied={copied}/></button><button onClick={()=>void share()} aria-label="Share receipt" title="Share receipt"><Share2 size={17}/></button></div></header>
  <article className="transaction-receipt" aria-label={label}><div className="receipt-topline"><span>{label}</span><span><FileText size={14}/>Source record</span></div>
- <div className="receipt-value"><span className="receipt-symbol"><ArrowUpRight size={25} strokeWidth={1.25}/></span><p>{ledgerPaymentRole(record!)==='movement'?ledgerRecordTitle(record!):ledgerPaymentRole(record!)==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'Value not supplied':ledgerValueLabel(value)}</p><h1 style={{fontSize:`clamp(18px, min(10.5vw, ${Math.min(64,700/amount.length)}px), 64px)`}}>{amount}</h1>{receipt.time&&<time>{new Date(receipt.time).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</time>}</div>
+ <div className="receipt-value"><span className="receipt-symbol"><ArrowUpRight size={25} strokeWidth={1.25}/></span><p>{ledgerPaymentRole(record!)==='movement'?ledgerRecordTitle(record!):ledgerPaymentRole(record!)==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'Value not supplied':ledgerValueLabel(value)}</p><h1 style={{fontSize:`clamp(18px, min(10.5vw, ${Math.min(64,700/amount.length)}px), 64px)`}}>{amount}</h1>{receipt.time&&<time>{new Date(receipt.time).toLocaleString(format?.locale,{timeZone:format?.timeZone,month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</time>}</div>
  <dl className="receipt-facts">{receipt.sender&&<div><dt>From</dt><dd title={receipt.sender}>{receipt.sender}</dd></div>}{receipt.recipient&&<div><dt>To</dt><dd title={receipt.recipient}>{receipt.recipient}</dd></div>}{value.considerationUsdCents!==null&&<div><dt>Consideration</dt><dd>{formatMoney(value.considerationUsdCents)}</dd></div>}<div><dt>Reference</dt><dd className="receipt-mono" title={receipt.id}>{receipt.id}</dd></div><div><dt>Event ☤KAI</dt><dd className="receipt-mono">{receipt.pulse??'Not carried by source'}</dd></div>{receipt.kaiUpulse&&<div><dt>Event ☤µKAI</dt><dd className="receipt-mono">{receipt.kaiUpulse}</dd></div>}{value.amountUsdCents!==null&&value.pulse&&value.pulse!==receipt.pulse&&value.basis!=='payment'&&<div><dt>Value at ☤KAI</dt><dd className="receipt-mono">{value.pulse}</dd></div>}</dl>
  <ReceiptLiveValue active={active} record={record!} value={value} valueSource={localContext?.valueSource??null}/>
  <LedgerExecutionRecords records={executionRecords} valueSource={localContext?.valueSource??null} relations={localContext?.relations??new Map()}/>
  <div className="receipt-provenance"><LedgerFundingTrace record={record!} relations={localContext?.relations}/></div>
- <a className="receipt-ledger-link" href={receiptLedgerUrl(receipt)}>View in Ledger<ArrowUpRight size={13}/></a>
+ <a className="receipt-ledger-link" href={receiptLedgerUrl(receipt,href)} onClick={event=>{if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey)retainReceiptLedgerSelection(receipt,href);}}>View in Ledger<ArrowUpRight size={13}/></a>
  <footer className="receipt-source"><Link2 size={17} strokeWidth={1.5}/><div><strong>The record stays connected.</strong><p>{receipt.sourceUrl?'Inspect the original source and its supported claims.':'This link carries the selected ledger entry.'}</p></div>{receipt.sourceUrl&&<a href={receipt.sourceUrl} target="_blank" rel="noreferrer" aria-label="Inspect original receipt" title="Inspect original receipt"><ArrowUpRight size={18}/></a>}</footer>
  <details className="receipt-inspection" onToggle={event=>setInspectionOpen(event.currentTarget.open)}><summary>Inspect full record</summary>{receipt.contextOmitted&&!localContext&&<p className="receipt-context-note">This link carries the core receipt. Additional source context remains in the Ledger.</p>}{inspectionOpen&&<LedgerInspector receiptMode inApp relations={localContext?.relations} record={record!} value={value} valueSource={localContext?.valueSource??null} valuation={localContext?.valuation??receipt.valuation}/>}</details>
  </article><p className="receipt-caption">This shareable display record is not independently verified. A calculated protocol value is separate from a completed sale price and available account funds.</p><p className="receipt-status" role="status">{notice}</p><div className="receipt-signature"><a href="/learn/reality-grade-banking/">Reality-grade banking</a></div></main>;

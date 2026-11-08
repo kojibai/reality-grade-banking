@@ -138,7 +138,7 @@ it('uses the complete short-route initial data on its first render without a sec
  const writeText=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText}});
  try{
   const host=mount('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('.receipt-value h1')?.textContent).toBe('$27.00');
-  expect(host.querySelector('.receipt-ledger-link')?.getAttribute('href')).toBe('https://bankeiz.com/ledger/#record=wallet%3Aseeded-receipt');
+  const destination=new URL(host.querySelector('.receipt-ledger-link')!.getAttribute('href')!),selection=new URLSearchParams(destination.hash.slice(1));expect(destination.pathname).toBe('/ledger/');expect(selection.get('record')).toBe('wallet:seeded-receipt');expect(selection.get('receipt')).toBe('https://bankeiz.com/receipt/'+digest+'/');
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy receipt link"]')!.click());
   expect(writeText).toHaveBeenCalledExactlyOnceWith('https://bankeiz.com/receipt/'+digest+'/');expect(host.querySelector('[aria-label="Receipt link copied"]')).not.toBeNull();
   expect(document.querySelector('.receipt-share-panel')).toBeNull();expect(fetch).not.toHaveBeenCalled();

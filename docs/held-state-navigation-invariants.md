@@ -45,6 +45,28 @@ The November 2026 regression had a complete Receiz collection with 1,686 Origina
 
 ## First-frame and media continuity
 
+### First-frame implementation contract
+
+Show everything the held data supports immediately; attach interactivity afterward. Use the existing presentation components for both the first HTML and the interactive view. Prepare reusable public presentation during the existing build or accepted state transition. Keep data-dependent work bounded to the selected object, and keep each existing seed once. A replica, splash, timer, extra catalog, Source request or identity operation must not stand between available data and its real interface.
+
+- Asset entry paints the selected Original's actual layout, owner, artwork and carried values. It does not resolve the whole catalog or reopen the proof to display it.
+- Receipt entry renders the exact receipt already carried or resolved by its existing reader. Reuse its schema, evidence distinctions and formatting; do not fetch it again during hydration.
+- Receipt → Ledger carries the selected shareable receipt into the existing view immediately. A stale or unhydrated global projection cannot hide that selected record. Keep it separate from public archives, coverage, totals and canonical history; prefer the exact matching canonical row when available. Only a genuinely missing short receipt uses its existing reader. Refuse mismatched record/source links and late selection overwrites.
+- Verification entry paints the real reader and file picker. SDK verification begins through its existing reader; HTML never claims a verification result.
+- Booking preserves its static normal entry. Paint the real booking frame and any held host data immediately; genuinely missing availability and confirmation use their existing reader and command. Do not add a server lookup to its normal static route.
+- A known PBI signature remains visible for the exact Original and owner when a creation result is reopened or an older delivery completes. Preserve the held signature and delivery state without signing again or treating a public projection as transaction authority.
+- Opening the held in-app Market must not await a new public document, source refresh or historical preparation. Retain its root and supported data; new input updates the existing view.
+
+Qualification requires compiled HTML with JavaScript unavailable, blocked-API browser startup, hydration without replacing the first-frame DOM, exact source/owner refusals, and signing/delivery race regressions. Preserve account entry and the SDK's verification, custody and action boundaries. Run the production CLI and relevant complete tests before release.
+
+### Proof download and offline-kit contract
+
+A transaction proof download returns the exact enclosing source artifact, including its existing proof bundle, signatures, packages and carried continuity. Reuse already admitted source bytes; do not reseal a projection, reconstruct history or weaken verification. The inspector's display JSON and Wallet hash capsules are not substitutes for that artifact. Copying display details remains a separate explicit operation.
+
+A verification kit must include the selected digest-bound original, the canonical offline verifier, its public verification material and complete corresponding sources, browser and Node entry points, instructions, licenses and a checked file inventory. If the original or a required verifier resource is absent or changed, refuse the complete-kit download. Do not silently deliver an archive without its proof. Test the extracted ZIP's actual verifier with network disabled and altered-source refusal. Its verdict covers the claims and continuity carried by the object; it does not establish current spendability or invent missing predecessors.
+
+The older `wallet-ledger-v1` capsule format contains SHA-256/JCS consistency fields. An event ID, `bundleHash`, `capsuleHash`, generated `kaiSignature` or public URL does not supply a missing enclosing artifact. Trace the exact accepted transaction source before claiming that every historical transaction has an offline-verifiable original. Keep such missing-source gaps explicit until their original source is recovered.
+
 For a known public profile, the initial response must already contain the real profile HTML rendered from the same carried catalog. Prepare that presentation during the existing build/state preparation, reuse the existing profile components and keep the complete catalog in its one shared carrier. The browser hydrates that page while local decoding and module startup finish; it must not show a seal, splash, loading replica or timed intermediate screen. No Source lookup or runtime profile rendering belongs before those bytes. A genuinely missing profile can use the existing bounded reader without erasing available page chrome.
 
 Generate default portrait/banner artwork locally from the existing deterministic coordinates. Preserve exact custom image bytes when carried; a URL alone is not the image bytes. Prepare the existing bounded Feed neighbors before they enter the viewport, prioritize the current image, and keep the existing mount/memory bounds. Do not download or mount the entire collection to solve a single image flash.

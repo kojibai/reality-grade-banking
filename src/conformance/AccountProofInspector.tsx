@@ -10,7 +10,7 @@ import { accountProofError } from '../receiz/account-proof-errors';
 /** Local-only verification. This component has no identity, permission,
  * admission-write, account-import, or financial command entry point. */
 export function AccountProofReader({routeDigest}:{routeDigest?:string|null}={}) {
-  const [initialDigest]=useState(()=>accountProofRoute(location.pathname));
+  const [initialDigest]=useState(()=>routeDigest!==undefined?routeDigest:typeof location==='undefined'?null:accountProofRoute(location.pathname));
   const digest=routeDigest===undefined?initialDigest:routeDigest;
   const [proof, setProof] = useState<VerifiedAccountProof | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [snapshot, setSnapshot] = useState<VerifiedAccountProof | null>(null), [newest, setNewest] = useState<VerifiedAccountProof | null>(null);

@@ -64,19 +64,24 @@ export async function downloadLedgerOriginal(record:PublicRecord,report?:Offline
 /** Exact original is admitted only through canonical inspection or SDK open.
  * A caller-supplied JSON report cannot substitute for its bytes. */
 export async function downloadLedgerEvidence(record:PublicRecord,report?:OfflineProofReport|null):Promise<Uint8Array>{
- const admitted=report?admittedProofInspection(report):null;
- if(report&&(!admitted||report.artifactSha256!==record.evidence.artifactDigest?.toLowerCase()))throw Error('ORIGINAL_INSPECTION_REQUIRED');
+ // A verification kit must carry the actual selected Original. A display
+ // record or Wallet hash capsule must never become an incomplete proof kit.
+ const selected=report??(await inspectLedgerOriginal(record)).report;
+ const admitted=admittedProofInspection(selected);
+ if(!admitted||selected.artifactSha256!==record.evidence.artifactDigest?.toLowerCase())throw Error('ORIGINAL_INSPECTION_REQUIRED');
+ const original=await downloadLedgerOriginal(record,selected);
  const verifierReady=loadOfflineProofVerifier();
  // Observe metadata failure immediately while preserving verifier-first error
  // precedence. Neither preparation can admit an original or skip its hashes.
  const buildReady=(async()=>{try{return {response:await fetch(BASE+'build.json',{credentials:'omit'})};}catch(error){return {error};}})();
  const verifier=await verifierReady,files:Record<string,Uint8Array>={},encode=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v,null,2));
  const result=await buildReady;if('error' in result)throw result.error;const buildResponse=result.response;if(!buildResponse.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const build=await buildResponse.json() as {sdk:string;files:Record<string,{sha256:string;bytes:number}>};
- if(build.sdk!=='129.0.0'||!build.files||Object.keys(build.files).length>30)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
+ const required=['verifier.js','verifier.js.map','verify.mjs','verify.html','README.txt','verification-material.json','LICENSE.txt','NOTICE.txt','THIRD_PARTY_NOTICES.md'];
+ if(build.sdk!=='129.0.0'||!build.files||Object.keys(build.files).length>30||required.some(name=>!Object.hasOwn(build.files,name))||build.files['verifier.js'].sha256!==offlineProofVerifierDigest)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
  await Promise.all(Object.entries(build.files).map(async([name,entry])=>{if(!/^[a-zA-Z0-9_.-]+$/.test(name)||entry.bytes>8*1024*1024)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');const path=name==='verifier.js.map'?name+'.bin':name;const r=await fetch(BASE+path,{credentials:'omit'});if(!r.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const bytes=await readPublicLedgerBytes(r,8*1024*1024);if(bytes.length!==entry.bytes||await verifier.sha256Hex(bytes)!==entry.sha256)throw Error('OFFLINE_VERIFIER_INTEGRITY');files[name]=bytes;}));
  files['build.json']=encode(build);files['record.json']=encode(ledgerInspectionDocument(record,ledgerValueForRecord(record)));
- if(report){if(await verifier.sha256Hex(admitted!.bytes)!==report.artifactSha256)throw Error('ORIGINAL_INSPECTION_REQUIRED');files['original.receiz']=admitted!.bytes.slice();files['proof-inspection.json']=encode({...report,verificationMaterial:verifier.materials});}
- files['availability.json']=encode({sealedOriginal:!!report,groth16:report?.groth16?'carried in original':'not supplied in a verified original',missing:report?[]:['Complete signed original bytes for this record. A hash capsule alone cannot supply them.'],privateWitnesses:'Not needed for verification; signing keys and private witnesses are not exported.'});
+ files['original.receiz']=new Uint8Array(await original.arrayBuffer());files['proof-inspection.json']=encode({...selected,verificationMaterial:verifier.materials});
+ files['availability.json']=encode({sealedOriginal:true,originalFilename:original.name,artifactSha256:selected.artifactSha256,groth16:selected.groth16?'carried in original':'not carried by this verified original',missing:[],privateWitnesses:'Not needed for verification; signing keys and private witnesses are not exported.'});
  const hashes:Record<string,unknown>={};for(const [name,bytes]of Object.entries(files))hashes[name]={sha256:await verifier.sha256Hex(bytes),bytes:bytes.length};files['hashes.json']=encode(hashes);
  return zipSync(Object.fromEntries(Object.entries(files).map(([name,bytes])=>[name,[bytes,{level:0}]])),{level:0});
 }

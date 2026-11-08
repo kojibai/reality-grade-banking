@@ -22,7 +22,7 @@ it('opens the actual booking frame on the first tap and reads offered times whil
   expect(request).not.toHaveBeenCalled();
   act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Book a time with Alex Morgan"]')!.click());
   expect(host.querySelector<HTMLDialogElement>('dialog')?.open).toBe(true);
-  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
+  expect(host.querySelector('.booking-panel .booking-lead')?.textContent).toBe('Good things start\nwith a little time.');expect(host.querySelector('.booking-panel [aria-label="Preparing this calendar"]')).toBeNull();
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Alex Morgan');
   expect(request).toHaveBeenCalledOnce();
   await act(async()=>{gate.ready();});
@@ -40,9 +40,9 @@ it('keeps the same profile frame while the first offered times are still in flig
   await act(async()=>root.render(<PublicProfilePage username="alexmorgan" initialProfile={profile} source={source} active/>));
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Book a time with Alex Morgan"]')!.click());
   expect(host.querySelector('.booking-panel')?.textContent??'').toContain('Alex Morgan');
-  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
+  expect(host.querySelector('.booking-panel .booking-lead')?.textContent).toBe('Good things start\nwith a little time.');expect(host.querySelector('.booking-panel [aria-label="Preparing this calendar"]')).toBeNull();
   expect(host.querySelector('.booking-panel')?.textContent??'').not.toMatch(/Opening|Preparing/);
-  expect(host.querySelector('.booking-panel [role="status"]')?.getAttribute('aria-label')).toBe('Preparing this calendar');
+  expect(host.querySelector('.booking-panel .booking-lead')?.textContent).toBe('Good things start\nwith a little time.');expect(host.querySelector('.booking-panel [aria-label="Preparing this calendar"]')).toBeNull();
   expect(host.querySelector('[data-slot-start]')).toBeNull();expect(request).toHaveBeenCalledOnce();
   await act(async()=>resolve(Response.json({ok:false},{status:503})));
   await vi.waitFor(()=>expect(host.querySelector('[role="alert"]')?.textContent).toContain('temporarily unavailable'));

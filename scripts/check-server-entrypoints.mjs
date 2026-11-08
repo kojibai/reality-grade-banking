@@ -21,8 +21,12 @@ try{
  await writeFile(join(stage,'package.json'),'{"type":"module"}');await symlink(resolve(root,'node_modules'),join(stage,'node_modules'),'dir');
  for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore'])await emit(resolve(root,'api/'+name+'.ts'));
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
+ await emit(resolve(root,'tests/browser/first-frame-receipt.mjs'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
+ await cp(resolve(root,'server/asset-runtime/pages'),resolve(stage,'server/asset-runtime/pages'),{recursive:true});
+ await cp(resolve(root,'server/receipt-runtime'),resolve(stage,'server/receipt-runtime'),{recursive:true});
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
+ await mkdir(resolve(stage,'dist/receipt'),{recursive:true});await copyFile(resolve(root,'dist/receipt/index.html'),resolve(stage,'dist/receipt/index.html'));
  const included=config.functions?.['api/index.ts']?.includeFiles??'';
  for(const name of ['market','sports'])if(!included.includes(`public/receiz-public-${name}.json`))throw Error('CERTIFICATE_DEPLOYED_PUBLIC_SOURCE_MISSING:'+name);
  await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports','share-chart-history'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
@@ -91,9 +95,11 @@ const {default:asset}=await import('./api/asset.js'),market=JSON.parse(await rea
 assert.equal(typeof assetId,'string');
 const assetResponse=await asset.fetch(new Request('https://bankeiz.com/api/asset?asset='+encodeURIComponent(assetId),{headers:{accept:'text/html','user-agent':'Browser smoke check'}}));
 assert.equal(assetResponse.status,200);const assetHtml=await assetResponse.text(),assetSeeds=[...assetHtml.matchAll(/<script id="public-asset-seed" type="application\\/json">([\\s\\S]*?)<\\/script>/g)];
-assert.equal(assetSeeds.length,1,'Asset preview carries exactly its own selected asset seed.');const selectedAsset=JSON.parse(assetSeeds[0][1]);assert.equal(selectedAsset.id,assetId);
+assert.equal(assetSeeds.length,1,'Asset preview carries exactly its own selected asset seed.');const selectedAsset=JSON.parse(assetSeeds[0][1]);assert.equal(selectedAsset.id,assetId);assert.ok(assetHtml.includes('data-public-asset-rendered'));assert.ok(assetHtml.includes('class="public-asset-page"'));assert.ok(!assetHtml.includes('<main class="public-entry-placeholder">'));
 const escape=value=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-assert.ok(assetHtml.includes('<h1>'+escape(selectedAsset.title)+'</h1>'),'Asset preview renders its selected title.');assert.ok(assetHtml.includes('aria-label="Asset navigation"'));assert.ok(!assetHtml.includes('id="public-profile-seed"'));noExploreCatalog(assetHtml,'Asset preview');assert.equal(calls,3,'A shipped asset preview must not request a profile or catalog.');
+assert.ok(assetHtml.replaceAll('&#x27;','&#39;').includes('<h1>'+escape(selectedAsset.title)+'</h1>'),'Asset preview renders its selected title.');assert.ok(assetHtml.includes('aria-label="Asset navigation"'));assert.ok(!assetHtml.includes('id="public-profile-seed"'));noExploreCatalog(assetHtml,'Asset preview');assert.equal(calls,3,'A shipped asset preview must not request a profile or catalog.');
+const {firstFrameReceiptPath}=await import('./tests/browser/first-frame-receipt.mjs'),{default:receiptApi}=await import('./api/receipt.js');
+const receiptResponse=await receiptApi.fetch(new Request('https://bankeiz.com'+firstFrameReceiptPath)),receiptHtml=await receiptResponse.text();assert.equal(receiptResponse.status,200);assert.ok(receiptHtml.includes('data-public-receipt-rendered'));assert.ok(receiptHtml.includes('class="transaction-receipt"'));assert.ok(receiptHtml.includes('$125.00'));assert.equal(calls,3,'Carried receipt HTML must not reread a Source or account.');
 const {default:bank}=await import('./api/index.js');
 const certificateResponse=await bank.fetch(new Request('https://bankeiz.com/api/bank/native/api/market/share-certificates/share_deployed_certificate_test'));
 assert.equal(certificateResponse.status,200);const certificate=await certificateResponse.json();

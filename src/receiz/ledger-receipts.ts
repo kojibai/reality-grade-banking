@@ -16,6 +16,9 @@ export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amoun
  return record.source==='actions'?'actions':'proofs';
 }
 export interface LedgerReceipt {schema:'bankeiz.ledger-receipt.v1';id:string;kind:string;title:string;source:PublicRecord['source'];authority:PublicRecord['authority'];detail:string;amountUsdCents:string|null;pulse:string|null;kaiUpulse:string|null;time:string|null;sender:string|null;recipient:string|null;sourceUrl:string|null;evidence:Record<string,string>;value:LedgerValueDisplay|null;details:LedgerFields|null;valueOperands:LedgerValueOperands;valuation:LedgerFields|null;contextOmitted:boolean;}
+/** The receipt's carried display only. This does not admit an event, establish
+ * public-feed coverage or change its original account/public authority label. */
+export function receiptDisplayRecord(receipt:LedgerReceipt):PublicRecord{return{id:`${receipt.source}:${receipt.id}`,sourceId:receipt.id,source:receipt.source,kind:receipt.kind,title:receipt.title,detail:receipt.detail,time:receipt.time,actor:null,amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,kaiUpulse:receipt.kaiUpulse,sender:receipt.sender,recipient:receipt.recipient,sourceUrl:receipt.sourceUrl,evidence:receipt.evidence,valueOperands:receipt.valueOperands,details:receipt.details??undefined,authority:receipt.authority};}
 export function safeReceiptSourceUrl(input:unknown):string|null{
  if(typeof input!=='string'||input.length>24000)return null;
  try{const url=new URL(input,'https://receiz.com');return url.origin==='https://receiz.com'&&!url.username&&!url.password&&!url.hash&&/^\/[tv]\/\d{8}_\d{4}\/[A-Z0-9]{8,32}\/[1-9]\d{0,23}\/?$/i.test(url.pathname)&&[...url.searchParams.keys()].every(key=>['a','ms','c','p','tz','r'].includes(key)&&url.searchParams.getAll(key).length===1)?url.href:null;}catch{return null;}

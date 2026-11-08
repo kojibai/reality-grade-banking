@@ -1,0 +1,3 @@
+// Fixed carried display specimen from the existing receipt encoder.
+// This fixture claims no verified payment, identity or available funds.
+export const firstFrameReceiptPath="/receipt/?r=AQFLZZBBa8MwDIX_StE5gWxsMHoru-8ydhpjKI7CNBzbSDZdCfnvk9bRHmqMbfk9Pj_rHWYWrf0suFA_Sj4qSV_wtFCq0EH4wvpZBZPOJFYfdgFFmKadUCAu7jlijOSH0sbIodfcJFBfJH9TqJyTSTbv7h-HwfeHp8EHdKnFeF7gEOnHtFdc_q_XrVsBl9xSfdPp2dIo7C-MEZW9vgYtLSq540KHkJPyRIKe4QpxvMOVkomwX2FiLRFPL9YCI_xF2TqwD3Jhp99YPOZmjO2cdUZ7--MX";
