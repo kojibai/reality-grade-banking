@@ -11,6 +11,8 @@ Account entry is frozen to the exact working creation path preserved in `tests/f
 
 Public rendering and navigation must follow [docs/held-state-navigation-invariants.md](docs/held-state-navigation-invariants.md). Read it before changing public delivery, saved HTML, worker navigation or runtime handoff. Static entry and already-held public views must not wait for Source freshness or duplicate document/catalog reads. Repair accepted publication and its saved projections at the state transition; never compensate by blocking page opening.
 
+Bankeiz integration and its documentation use the installed SDK, MCP and AI skill contracts. Receiz backend storage operations and operational records belong only in the Receiz repository.
+
 Read the coordinated installed `@receiz/sdk`, `@receiz/mcp-server` and `@receiz/ai-skills` contracts before changing public state flow. Apply their performance, offline-first, causal-sync and cross-app-state rules. Do not invent a second authority, history engine or database gate for data the reader already holds.
 
 Public Showcase rendering has one mandatory flow: **held accepted data → immediate display → existing SDK transition for genuinely new input → shared successor and retention**. Before changing it, read the public Showcase display law and prohibited-pattern table in [docs/held-state-navigation-invariants.md](docs/held-state-navigation-invariants.md).
