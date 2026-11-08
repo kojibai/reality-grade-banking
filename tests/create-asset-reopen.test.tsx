@@ -46,25 +46,19 @@ it('downloads the SDK-selected sealed file rather than the composer manifest',as
  }finally{act(()=>v.root.unmount());create.mockRestore();revoke.mockRestore();click.mockRestore();}
 });
 
-it.each([false,true])('does not restore an old completed Showcase result in a later creation visit, signed=%s',async signed=>{
- const uid='owner-account',item={originalDigest:original.digest,ownerUsername:'artist',ownerIdentity:{userId:uid,username:'artist',createdAt:'2026-01-01T00:00:00Z'},hasPbiSignature:signed,pbiReceiptHash:signed?'b'.repeat(64):undefined} as import('../src/receiz/public-market').PublicMarketItem;
- let finish!:(value:unknown)=>void;const pending=new Promise(resolve=>{finish=resolve;}),retry=vi.fn(()=>pending),identity={walletReceivingAddress:()=>uid,accountUsername:()=> 'artist',pendingAssetPublication:async()=>({...original,publication:{status:'pending'}}),retryAssetPublication:retry}as unknown as OpenIdentity;
- const host=document.createElement('div'),root=createRoot(host);
- try{
-  await act(async()=>root.render(<CreateAsset identity={identity} marketItems={[item]} onRefresh={()=>{}} onClose={()=>{}}/>));
-  expect(host.querySelector('.creation-complete')).toBeNull();expect(host.querySelector('.asset-creation--studio')).not.toBeNull();
-  await act(async()=>{finish(original);await pending;});expect(host.querySelector('.creation-complete')).toBeNull();expect(retry).toHaveBeenCalledOnce();
-  act(()=>root.unmount());const next=createRoot(host);try{await act(async()=>next.render(<CreateAsset identity={identity} marketItems={[item]} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.querySelector('.creation-complete')).toBeNull();}finally{act(()=>next.unmount());}
- }finally{finish(original);await pending;}
+// Source recovery, not a public-catalog hiding rule, decides whether an old
+// creation belongs in the editor. A completed checkpoint never reopens bytes.
+it.each(['signed','dismissed'] as const)('opens an enabled fresh editor from a %s source checkpoint, without retrying delivery',async status=>{
+ const {createAssetPublication}=await import('../src/receiz/asset-publication');let state:any={schema:'bank.asset-publication.v1',ownerReceizId:'artist.receiz.id',sourceDigest:original.digest,intentDigest:'b'.repeat(64),filename:original.filename,mimeType:'application/json',status:'pending',...(status==='signed'?{pbiReceiptHash:'c'.repeat(64)}:{creationDismissed:true})};
+ const restore=vi.fn(async()=>{throw Error('COMPLETED_SOURCE_MUST_NOT_REOPEN');}),retry=vi.fn(),readSignature=vi.fn(),api=createAssetPublication({ownerReceizId:'artist.receiz.id',assertOpen(){},lock:async run=>run(),read:async()=>state,write:async next=>{state=next;},restore,readSignature,readIntent:async()=>({}),seal:vi.fn(),retain:vi.fn(),publish:vi.fn()});
+ const identity={pendingAssetPublication:()=>api.pending(),retryAssetPublication:retry,accountUsername:()=> 'artist'} as unknown as OpenIdentity,v=view(identity);
+ try{await v.render();expect(v.host.querySelector('fieldset')?.disabled).toBe(false);await act(()=>v.host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(v.host.querySelector('.asset-creation')?.getAttribute('data-creation-step')).toBe('review');await v.render(false);await v.render();expect(v.host.querySelector('.creation-complete')).toBeNull();expect(retry).not.toHaveBeenCalled();expect(restore).not.toHaveBeenCalled();expect(readSignature).not.toHaveBeenCalled();}finally{act(()=>v.root.unmount());}
 });
-it('keeps an interrupted result when the held membership belongs to another owner',async()=>{
- const item={originalDigest:original.digest,ownerUsername:'artist',ownerIdentity:{userId:'different-owner'}} as import('../src/receiz/public-market').PublicMarketItem,identity={walletReceivingAddress:()=> 'owner',accountUsername:()=> 'artist',pendingAssetPublication:async()=>original}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- try{await act(async()=>root.render(<CreateAsset identity={identity} marketItems={[item]} onRefresh={()=>{}} onClose={()=>{}}/>));expect(host.querySelector('.creation-complete')).not.toBeNull();}finally{act(()=>root.unmount());}
+it('keeps Next immediately usable while read-only legacy signature recovery is unresolved',async()=>{
+ let finish!:(value:null)=>void;const pending=new Promise<null>(resolve=>{finish=resolve;}),retry=vi.fn(),identity={accountUsername:()=> 'artist',pendingAssetPublication:()=>pending,retryAssetPublication:retry} as unknown as OpenIdentity,v=view(identity);
+ try{await v.render();expect(v.host.querySelector('fieldset')?.disabled).toBe(false);await act(()=>v.host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(v.host.querySelector('.asset-creation')?.getAttribute('data-creation-step')).toBe('review');await act(async()=>{finish(null);await pending;});expect(v.host.querySelector('fieldset')?.disabled).toBe(false);expect(retry).not.toHaveBeenCalled();}finally{finish(null);act(()=>v.root.unmount());}
 });
-
-it('retires a restored PWA completion when held membership finishes decoding, without waiting for a pending response',async()=>{
- const uid='owner-account',item={originalDigest:original.digest,ownerUsername:'artist',ownerIdentity:{userId:uid}} as import('../src/receiz/public-market').PublicMarketItem;
- let finish!:(value:unknown)=>void;const pending=new Promise(resolve=>{finish=resolve;}),identity={walletReceivingAddress:()=>uid,accountUsername:()=> 'artist',pendingAssetPublication:async()=>({...original,publication:{status:'pending'}}),retryAssetPublication:()=>pending}as unknown as OpenIdentity,host=document.createElement('div'),root=createRoot(host);
- const render=(items:import('../src/receiz/public-market').PublicMarketItem[])=>root.render(<CreateAsset identity={identity} marketItems={items} onRefresh={()=>{}} onClose={()=>{}}/>);
- try{await act(async()=>render([]));expect(host.querySelector('.creation-complete')).not.toBeNull();await act(async()=>render([item]));expect(host.querySelector('.creation-complete')).toBeNull();expect(host.querySelector('.asset-creation--studio')).not.toBeNull();await act(async()=>{finish(original);await pending;});expect(host.querySelector('.creation-complete')).toBeNull();}finally{finish(original);await pending;act(()=>root.unmount());}
+it('records a finished creation visit at its exact source when Done or X closes it',async()=>{
+ const dismiss=vi.fn(async()=>{}),identity={accountUsername:()=> 'artist',pendingAssetPublication:async()=>original,dismissAssetCreation:dismiss}as unknown as OpenIdentity,v=view(identity);
+ try{await v.render();expect(dismiss).not.toHaveBeenCalled();await v.render(false);expect(dismiss).toHaveBeenCalledExactlyOnceWith(original.digest);await v.render();expect(v.host.querySelector('.creation-complete')).toBeNull();expect(v.host.querySelector('fieldset')?.disabled).toBe(false);}finally{act(()=>v.root.unmount());}
 });

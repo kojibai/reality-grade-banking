@@ -7016,8 +7016,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "11034471002b7030a223b2fcf76ff3c4304b16fae5fddc98029173c337ea4753",
-      "bytes": 23478,
+      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
+      "bytes": 24255,
       "mode": 420
     },
     {
@@ -17482,6 +17482,14 @@
       "sha256": "33ba3944962ef615db16567f0dfc0dc409e3c29e04257cd0346e40e1ba662a9b",
       "purpose": "Reuse unchanged Receiz v129 transaction receipt export and bounded share codec. No SDK verifier, roots, custody or financial operation changes.",
       "upstreamCommit": "8b6bb6788"
+    },
+    {
+      "id": "bank-native-pbi-read-only-source-recovery",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "11034471002b7030a223b2fcf76ff3c4304b16fae5fddc98029173c337ea4753",
+      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
+      "purpose": "Reuse the existing native verified saved-PBI selector for source-only creation recovery without authorizing, publishing or resealing. Preserve the native proof, owner binding, outbox, signing order and publication path.",
+      "sourceCommit": "eb0ba0c0299754aaa4d349ec7b25425c1ce554a5"
     }
   ],
   "historicalValuation": {
@@ -17490,7 +17498,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -18162,7 +18170,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "11034471002b7030a223b2fcf76ff3c4304b16fae5fddc98029173c337ea4753"
+      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",

@@ -1,8 +1,8 @@
 export type AssetCreationProgress={stage:'preparing'|'sealing'|'saving';ratio?:number};
 export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number;publicFamilyStatus?:'pending'|'ready'}|{status:'pending'|'rejected';code:string};
-export type AssetPublicationState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt};
+export type AssetPublicationState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;creationDismissed?:true};
 export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string;publicFamilyStatus?:'pending'|'ready'};
-type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;publish(source:File):Promise<AssetPublicationReceipt>};
+type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;readSignature?(source:File):Promise<{pbiReceiptHash:string}|null>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 const deliveries=new Map<string,Promise<AssetPublicationReceipt>>();
 export type AssetPublicationAttemptTiming={attemptId:string;sourceDigest:string;phase:'source';sizeBytes:number;startedAtMs:number};
@@ -38,6 +38,17 @@ export async function acknowledgePublishedAssetSource(dependencies:Pick<Dependen
   await dependencies.write({...state,status:'published',receipt},prior);dependencies.assertOpen();
  });
 }
+/** The native admission has already verified and durably retained this PBI
+ * append. Carry its exact source-bound result through creation recovery. */
+export async function retainAssetCreationSignature(d:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,digest:string,pbiReceiptHash:string){
+ if(!/^[a-f0-9]{64}$/.test(digest)||!/^[a-f0-9]{64}$/.test(pbiReceiptHash))throw Error('BANK_ASSET_SIGNATURE_STATE_INVALID');
+ d.assertOpen();await d.lock(async()=>{d.assertOpen();const prior=await d.read(),state=readAssetPublicationState(prior,d.ownerReceizId);if(!state||state.sourceDigest!==digest||state.pbiReceiptHash===pbiReceiptHash)return;await d.write({...state,pbiReceiptHash},prior);d.assertOpen();});
+}
+/** Finishing an editor visit does not acknowledge public delivery or remove
+ * the retained source. A different/newer creation can never be dismissed. */
+export async function dismissAssetCreation(d:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,digest:string){
+ d.assertOpen();await d.lock(async()=>{d.assertOpen();const prior=await d.read(),state=readAssetPublicationState(prior,d.ownerReceizId);if(!state||state.sourceDigest!==digest||state.creationDismissed)return;await d.write({...state,creationDismissed:true},prior);d.assertOpen();});
+}
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 function canonical(value:unknown):string{
  if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;
@@ -48,6 +59,7 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
  if(value===null||value===undefined)return null;
  const state=value as AssetPublicationState;
  if(!state||state.schema!=='bank.asset-publication.v1'||typeof state.ownerReceizId!=='string'||ownerReceizId&&state.ownerReceizId!==ownerReceizId||!hex(state.intentDigest)||!hex(state.sourceDigest)||typeof state.filename!=='string'||!state.filename||typeof state.mimeType!=='string'||!state.mimeType||!['pending','published','rejected'].includes(state.status))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
+ if(state.pbiReceiptHash!==undefined&&!hex(state.pbiReceiptHash)||state.creationDismissed!==undefined&&state.creationDismissed!==true)throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  if(state.receipt)readReceipt(state.receipt);
  if(state.status==='published'&&state.receipt?.status!=='published'||state.status==='rejected'&&state.receipt?.status!=='rejected')throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  return state;
@@ -65,15 +77,20 @@ function readReceipt(value:unknown):AssetPublicationReceipt{
  * intent and original; retries only replay its existing Showcase placement. */
 export function createAssetPublication(dependencies:Dependencies){
  const digestIntent=async(intent:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(intent))))].map(v=>v.toString(16).padStart(2,'0')).join('');
- const project=(state:AssetPublicationState,file:File)=>({digest:state.sourceDigest,file,publication:state.receipt?projectReceipt(state.receipt):{status:state.status,code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}});
+ const project=(state:AssetPublicationState,file:File)=>({digest:state.sourceDigest,file,...(state.pbiReceiptHash?{pbiSigned:true}:{}),publication:state.receipt?projectReceipt(state.receipt):{status:state.status,code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}});
  const reopen=async(state:AssetPublicationState)=>{const file=await dependencies.restore(state.sourceDigest,state.filename,state.mimeType);dependencies.assertOpen();if(await digestIntent(await dependencies.readIntent(file))!==state.intentDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');return file;};
- async function create(intent?:unknown,localFirst=false):Promise<{digest:string;file:File;publication:AssetPublicationDelivery}>{
+ async function create(intent?:unknown,localFirst=false):Promise<{digest:string;file:File;publication:AssetPublicationDelivery;pbiSigned?:boolean}>{
   dependencies.assertOpen();
   const intentDigest=intent===undefined?null:await digestIntent(intent);
   const held=await dependencies.lock(async()=>{
    dependencies.assertOpen();const prior=await dependencies.read();let state=readAssetPublicationState(prior,dependencies.ownerReceizId),file:File;
    if(!state&&intentDigest===null)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');
-   if(intentDigest!==null&&state&&state.intentDigest!==intentDigest&&state.status==='pending')throw Error('BANK_ASSET_PUBLICATION_PENDING');
+   if(intentDigest!==null&&state&&state.intentDigest!==intentDigest&&state.status==='pending'){
+    // A completed visit can retain an unreturned delivery acknowledgment.
+    // Reconcile that exact predecessor only on explicit Create, never opening.
+    if(state.pbiReceiptHash||state.creationDismissed)return{resume:true as const};
+    throw Error('BANK_ASSET_PUBLICATION_PENDING');
+   }
    if(state&&(intentDigest===null||state.intentDigest===intentDigest)){file=await reopen(state);}
    else{
     if(!intentDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');
@@ -84,6 +101,7 @@ export function createAssetPublication(dependencies:Dependencies){
    }
    return {state,file};
   });
+  if('resume' in held){const previous=await create();if(previous.publication.status!=='published')throw Error('BANK_ASSET_PUBLICATION_PENDING');return create(intent,localFirst);}
   const latest=readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId);
   if(!latest||latest.sourceDigest!==held.state.sourceDigest)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
   held.state=latest;
@@ -119,5 +137,5 @@ export function createAssetPublication(dependencies:Dependencies){
   if(!current||current.sourceDigest!==held.state.sourceDigest)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
   return project(current,held.file);
  }
- return{create,createLocal:(intent:unknown)=>create(intent,true),resumeLocal:()=>create(undefined,true),resume:()=>create(),pending:async()=>{dependencies.assertOpen();const state=readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId);if(!state||state.status==='published')return null;return project(state,await reopen(state));}};
+ return{create,createLocal:(intent:unknown)=>create(intent,true),resumeLocal:()=>create(undefined,true),resume:()=>create(),pending:async()=>{dependencies.assertOpen();const state=readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId);if(!state||state.status==='published'||state.pbiReceiptHash||state.creationDismissed)return null;const file=await reopen(state),signature=await dependencies.readSignature?.(file);if(signature){await retainAssetCreationSignature(dependencies,state.sourceDigest,signature.pbiReceiptHash);return null;}return project(state,file);}};
 }

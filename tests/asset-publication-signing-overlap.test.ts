@@ -92,4 +92,8 @@ it.each(['before-runtime-publish','during-finalize'] as const)('signs locally wh
  const recovered=await api.resume();
  expect(recovered.publication.status).toBe('published');expect(finalizations).toBe(beforeReplay);
  expect(ceremonies).toBe(1);expect(sourceSeals).toBe(1);expect(publishCalls).toBe(2);
+ // Cold read-only recovery verifies the already-saved native PBI result.
+ // No authorization, head read, publication, or Source resealing is allowed.
+ const readOnly=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:async()=>{throw Error('RECOVERY_NETWORK_FORBIDDEN');},sealDocument:async()=>{throw Error('RECOVERY_SEAL_FORBIDDEN');}});
+ expect(await readOnly.readSignedSource(prepared.artifact)).toEqual({pbiReceiptHash:localPbiReceipt});expect(ceremonies).toBe(1);
 },60000);

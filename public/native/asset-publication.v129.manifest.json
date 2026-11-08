@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "5497193c85cf7d2c721dae8e44918bfbbb79c32780c1cb71e89288152a6e191b",
-  "sourceTreeSha256": "f061e9e846eba84a22bc7de12d7d5fc197897024d5acb68cc6b3b153f864e7ba",
+  "moduleSha256": "3809b32c729df843c31107b9829c0606b7216ee8d56d0c31126e216f553cf3b3",
+  "sourceTreeSha256": "0a35c0fd62d6cdaf6ae2c3a82e8b62e031c8fd2e8e702d7f610da373c42d318d",
   "inputs": 518,
-  "bytes": 3042131,
+  "bytes": 3042588,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1221,6 +1221,30 @@
       "baseSha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
       "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
       "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
+    },
+    {
+      "id": "bankeiz-native-ledger-receipt-walletLedgerLinks",
+      "path": "receiz/app/lib/transactions/walletLedgerLinks.ts",
+      "baseSha256": "a7cf72bdbe9766c085c6e872095c68764adb8c2adc1c548ba90b94e8610de405",
+      "sha256": "f50ae59b3cc8be41bff011d1ae501d3ff68dddca235ace85e8d3af92bb707925",
+      "purpose": "Reuse unchanged Receiz v129 transaction receipt export and bounded share codec. No SDK verifier, roots, custody or financial operation changes. Resolve its existing codec import within the preferred-source extraction.",
+      "upstreamCommit": "8b6bb6788"
+    },
+    {
+      "id": "bankeiz-native-ledger-receipt-shareBundleCodec",
+      "path": "receiz/app/utils/shareBundleCodec.ts",
+      "baseSha256": null,
+      "sha256": "33ba3944962ef615db16567f0dfc0dc409e3c29e04257cd0346e40e1ba662a9b",
+      "purpose": "Reuse unchanged Receiz v129 transaction receipt export and bounded share codec. No SDK verifier, roots, custody or financial operation changes.",
+      "upstreamCommit": "8b6bb6788"
+    },
+    {
+      "id": "bank-native-pbi-read-only-source-recovery",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "11034471002b7030a223b2fcf76ff3c4304b16fae5fddc98029173c337ea4753",
+      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
+      "purpose": "Reuse the existing native verified saved-PBI selector for source-only creation recovery without authorizing, publishing or resealing. Preserve the native proof, owner binding, outbox, signing order and publication path.",
+      "sourceCommit": "eb0ba0c0299754aaa4d349ec7b25425c1ce554a5"
     }
   ],
   "browserDefines": {

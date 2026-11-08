@@ -87,3 +87,15 @@ it('refreshes shared public state after an unconfirmed Source and signature deli
   expect(p.ceremonies).toBe(1);expect(p.sourceReads).toBe(1);expect(p.publishers).toEqual(['owner']);
  }finally{identity.dispose();}
 });
+
+it('persists the native PBI result even while delivery is unconfirmed, then cold pending reads no longer reopen or retry it',async()=>{
+ p.publicationStatus='pending';const identity=await openCanonicalIdentity(new Uint8Array([1]),'','synthetic.receiz',true);
+ try{
+  p.state={schema:'bank.asset-publication.v1',ownerReceizId:'owner.receiz.id',intentDigest:'c'.repeat(64),sourceDigest:'b'.repeat(64),filename:'original.receizbundle',mimeType:'application/json',status:'pending'};
+  const source={digest:'b'.repeat(64),filename:'original.receizbundle',title:'Already signed',kind:'proof',status:'held-proof',pulse:'100',bytes:new Uint8Array([1,2]),publication:{status:'pending'}} as HeldDeposit;
+  expect((await identity.publishAssetToMarket(source)).pbiSigned).toBe(true);
+  expect(p.state).toMatchObject({status:'pending',pbiReceiptHash:'e'.repeat(64)});const reads=p.sourceReads,tokens=p.tokens.length,ceremonies=p.ceremonies;
+  expect(await identity.pendingAssetPublication?.()).toBeNull();expect(p.sourceReads).toBe(reads);expect(p.tokens).toHaveLength(tokens);expect(p.ceremonies).toBe(ceremonies);
+  await identity.dismissAssetCreation?.(source.digest);expect(p.state).toMatchObject({creationDismissed:true,pbiReceiptHash:'e'.repeat(64)});
+ }finally{identity.dispose();}
+});
