@@ -59,3 +59,12 @@ it('returns the durably held Original while delivery is in flight, starts immedi
  complete({status:'published',artifactDigest:'b'.repeat(64),operationCount:2,visibleChildCount:1});
  expect((await retry).publication.status).toBe('published');expect(seals).toBe(1);expect(publications).toBe(1);
 });
+
+it('settles a stale creation from its exact canonical signed acknowledgment before cold reopening',async()=>{
+ const {acknowledgePublishedAssetSource}=await import('../src/receiz/asset-publication');const f=fixture();f.fail=true;await f.api.create(intent);expect((await f.api.pending())?.digest).toBe(digest);
+ let state=structuredClone(f.state),writes=0;const ports={ownerReceizId:owner,assertOpen(){},lock:async<T>(run:()=>Promise<T>)=>run(),read:async()=>state,write:async(next:AssetPublicationState,previous:unknown)=>{expect(state).toEqual(previous);state=structuredClone(next);writes++;}};
+ const receipt={status:'published' as const,artifactDigest:'d'.repeat(64),operationCount:5,visibleChildCount:2};await acknowledgePublishedAssetSource(ports,digest,receipt);
+ expect(state).toMatchObject({status:'published',sourceDigest:digest,receipt});expect(writes).toBe(1);
+ await acknowledgePublishedAssetSource(ports,digest,{status:'pending',code:'OLD_REPLY'});await acknowledgePublishedAssetSource(ports,'f'.repeat(64),receipt);expect(writes).toBe(1);
+ const cold=createAssetPublication({...ports,seal:async()=>{throw Error('COLD_SEAL_FORBIDDEN');},retain:async()=>digest,restore:async()=>{throw Error('PUBLISHED_REOPEN_FORBIDDEN');},readIntent:async()=>intent,publish:async()=>{throw Error('COLD_PUBLICATION_FORBIDDEN');}});expect(await cold.pending()).toBeNull();
+});

@@ -1560,7 +1560,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const native=await awaitImportPublication();
       // Stream and retain the selected bytes while the existing local signer opens.
       const signer=openDocumentSealer();void signer.catch(()=>{});
-      intent={composer:await native.prepareConnectedComposerContent({draft:selected,ownerReceizId:binding.artifactOwnerReceizId,assertCurrent:noteOpen})};await signer;
+      const {prepareCreatedAssetPrimary}=await import('./created-asset-file');
+      const sealedDraft=await prepareCreatedAssetPrimary({draft:selected,assertCurrent:noteOpen,seal:async source=>{onProgress?.({stage:'sealing'});return(await ownedSealer()).seal(source);}});
+      intent={composer:await native.prepareConnectedComposerContent({draft:sealedDraft,ownerReceizId:binding.artifactOwnerReceizId,assertCurrent:noteOpen})};await signer;
     }
     const publication=createAssetPublication({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
       lock:async run=>{if(!navigator.locks)throw Error('BANK_ASSET_PUBLICATION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run());},
@@ -1626,6 +1628,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const signaturePbiReceiptHash=assetSigningFlights.get(digest)?.signaturePbiReceiptHash;
     if(!signaturePbiReceiptHash)throw Error('BANK_ASSET_SIGNATURE_ADMISSION_REQUIRED');
     const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt,signaturePbiReceiptHash);
+    if(receipt.status==='published'){
+      const {acknowledgePublishedAssetSource}=await import('./asset-publication'),{loadAssetPublicationState,saveAssetPublicationState}=await import('./identity-vault');noteOpen();
+      await acknowledgePublishedAssetSource({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),lock:async run=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())},digest,receipt);noteOpen();
+    }
     // A pending reply can follow accepted public Source (for example a cold
     // saved-page repair). Reconcile its exact public observation as well.
     if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(digest);

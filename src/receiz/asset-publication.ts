@@ -27,6 +27,17 @@ export function retainAssetPublicationDelivery(previous:AssetPublicationDelivery
  return next;
 }
 const projectReceipt=projectAssetPublicationReceipt;
+/** A later canonical signed-publication acknowledgment also includes its exact
+ * Original. Settle only that saved creation so cold reopening cannot restore an
+ * older pending checkpoint; a different/newer creation is never overwritten. */
+export async function acknowledgePublishedAssetSource(dependencies:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,sourceDigest:string,value:AssetPublicationReceipt):Promise<void>{
+ const receipt=readReceipt(value);if(receipt.status!=='published')return;
+ dependencies.assertOpen();await dependencies.lock(async()=>{
+  dependencies.assertOpen();const prior=await dependencies.read(),state=readAssetPublicationState(prior,dependencies.ownerReceizId);dependencies.assertOpen();
+  if(!state||state.sourceDigest!==sourceDigest||state.status==='published')return;
+  await dependencies.write({...state,status:'published',receipt},prior);dependencies.assertOpen();
+ });
+}
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 function canonical(value:unknown):string{
  if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;
