@@ -6896,8 +6896,8 @@
     },
     {
       "path": "receiz/app/lib/profile/receivingUsername.ts",
-      "sha256": "58d11d1743fe5a44b60e6a72b1d3a73fb69786e0b929c4767e3281fcbfb8f19a",
-      "bytes": 3144,
+      "sha256": "9921445c27f8b1d64f84d51d1a863e020fabd306fbe3779d6a9bf5a839da55f1",
+      "bytes": 3575,
       "mode": 420
     },
     {
@@ -17501,7 +17501,7 @@
       "id": "bankeiz-full-receiving-name",
       "path": "receiz/app/lib/profile/receivingUsername.ts",
       "baseSha256": null,
-      "sha256": "58d11d1743fe5a44b60e6a72b1d3a73fb69786e0b929c4767e3281fcbfb8f19a",
+      "sha256": "9921445c27f8b1d64f84d51d1a863e020fabd306fbe3779d6a9bf5a839da55f1",
       "purpose": "Reuse the exact Receiz receiving-name projection and optional-prefix Send selector over retained identity names. Existing account IDs, proof history and execution authority remain unchanged."
     }
   ],
@@ -17511,7 +17511,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
+    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false

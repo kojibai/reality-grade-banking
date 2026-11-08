@@ -1,6 +1,6 @@
 import type {PublicShowcaseRelease} from './public-showcase-release.js';
 import {publicProfileArtwork} from './profile-artwork.js';
-import {publicAccountDisplayName} from './account-name.js';
+import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {curatePublicProfileHead,publicProfileHeaderDisplayBasis,readPublicProfileHeader,type PublicProfileHead,type PublicProfileHeader} from './public-profile-header.js';
 import {copyPublicProfileHeader,storedPublicHead,retainStoredPublicHead,retainStoredPublicHeader,forgetStoredPublicHead} from './public-head-cache.js';
 import {afterPublicNavigationReady} from '../core/public-document-entry.js';
@@ -35,7 +35,7 @@ function publicOriginalItems(rows:unknown[],p:Record<string,unknown>,collection=
  const originals=rows.filter(row=>object(row).showOnProfile===true).map(value=>{
   const row=object(value),market=object(row.marketPreview),media=row.media===null?null:object(row.media),id=text(row.id,128),long=object(row.longForm);
   if(collection&&typeof row.hasLongForm!=='boolean')throw Error('PROFILE_COLLECTION_READER_METADATA_INVALID');
-  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,ownerDisplayName:displayName,ownerUserId:p.userId,ownerCreatedAt:p.createdAt,
+  return {id:`profile:${username}:${id}`,receizId:id,title:text(row.claim,8192)??text(long.title,500)??'Original',summary:text(row.claim,8192)??'',ownerUsername:username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{ownerReceivingUsername:p.receivingUsername}:{}),ownerDisplayName:displayName,ownerUserId:p.userId,ownerCreatedAt:p.createdAt,
    canonicalHref:`https://receiz.com/${username}/verified/${encodeURIComponent(id??'')}`,verifyHref:row.verifyUrl??row.verifyPath,pulse:row.pulse,createdAt:row.createdAt,valueUsd:market.priceUsd,livePulseSeed:market.livePulseSeed,
    profileOriginal:{...row,media,hasLongForm:typeof row.hasLongForm==='boolean'?row.hasLongForm:Boolean(long.text),longForm:row.longForm}};
  });
@@ -181,7 +181,7 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
  const matching=previous?.userId===owner.userId?previous:null,head=matchingHead(owner.userId,owner.createdAt);
  const ordered=matching&&basis?.items===catalog.items?matching.items:items.slice().sort(compareProfileOriginals),known=!!head||!!matching&&basis?.header===true;
  const images=head?{avatarUrl:head.avatarUrl,bannerUrl:head.bannerUrl}:known?{avatarUrl:matching!.avatarUrl,bannerUrl:matching!.bannerUrl}:publicProfileArtwork({...owner,avatarUrl:items.find(item=>item.ownerAvatarUrl)?.ownerAvatarUrl});
- const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:owner.userId,username,displayName:items[0].ownerDisplayName??username,bio:null,location:null,websiteUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:owner.createdAt,...(known&&matching?matching:{}),...head,...images,
+ const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:owner.userId,username,...(items[0].ownerReceivingUsername?{receivingUsername:items[0].ownerReceivingUsername}:{}),displayName:items[0].ownerDisplayName??username,bio:null,location:null,websiteUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:owner.createdAt,...(known&&matching?matching:{}),...head,...images,
  ...(matching?.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:matching.pbiReceiptHash}:{}),stats:{...(head?.stats??matching?.stats??{views:null,plays:null,seconds:null,completion:null}),originals:catalog.complete?ordered.length:matching?.stats.originals??null},items:ordered,nextCursor:catalog.complete?null:'all:'+owner.userId};
  if(head){selectedHeaders.set(profile,head);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);}if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:known});selections.set(username,{base:previous,profile,head:carried});return profile;
 }

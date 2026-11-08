@@ -1,3 +1,4 @@
+import {publicProfileUsername} from './account-name.js';
 import {browserPreparedBankCache,type PreparedBankCache} from './prepared-bank-cache.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 import {curatePublicProfileHead,type PublicProfileHead,type PublicProfileHeader} from './public-profile-header.js';
@@ -17,7 +18,7 @@ export function copyPublicProfileHeader(input:unknown,username?:string):PublicPr
  const statKeys=['originals','views','plays','seconds','completion'] as const;if(statKeys.some(key=>stats[key]!==null&&(typeof stats[key]!=='number'||!Number.isFinite(stats[key])||Number(stats[key])<0)))return null;
  const links=(value:unknown,max:number)=>Array.isArray(value)&&value.length<=max?value.flatMap(raw=>{const row=object(raw),url=publicLink(row.url);return typeof row.label==='string'&&!!row.label.trim()&&row.label.length<=80&&url?[{label:row.label,url}]:[];}):null;
  const social=links(p.socialLinks,5),custom=links(p.links,20);if(!social||!custom)return null;
- return{schema:'bankeiz.public-profile.v1',userId:p.userId,username:p.username,displayName:p.displayName,bio:p.bio as string|null,location:p.location as string|null,createdAt:p.createdAt as string|null,websiteUrl:p.websiteUrl===null?null:publicLink(p.websiteUrl),avatarUrl:p.avatarUrl===null?null:profileAvatarUrl(p.avatarUrl),bannerUrl:p.bannerUrl===null?null:profileAvatarUrl(p.bannerUrl),authorshipVerified:p.authorshipVerified,pbiReceiptHash:hash as string|null,socialLinks:social,links:custom,...(typeof p.bookingEnabled==='boolean'?{bookingEnabled:p.bookingEnabled}:{}),stats:Object.fromEntries(statKeys.map(key=>[key,stats[key]])) as PublicProfileHeader['stats']};
+ return{schema:'bankeiz.public-profile.v1',userId:p.userId,username:p.username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(p.username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:p.displayName,bio:p.bio as string|null,location:p.location as string|null,createdAt:p.createdAt as string|null,websiteUrl:p.websiteUrl===null?null:publicLink(p.websiteUrl),avatarUrl:p.avatarUrl===null?null:profileAvatarUrl(p.avatarUrl),bannerUrl:p.bannerUrl===null?null:profileAvatarUrl(p.bannerUrl),authorshipVerified:p.authorshipVerified,pbiReceiptHash:hash as string|null,socialLinks:social,links:custom,...(typeof p.bookingEnabled==='boolean'?{bookingEnabled:p.bookingEnabled}:{}),stats:Object.fromEntries(statKeys.map(key=>[key,stats[key]])) as PublicProfileHeader['stats']};
 }
 const owner=(value:StoredPublicHead)=>value.head?value.head.profile:value.header!;
 const prefix='receiz-bank-public-head-v1:',schema='bankeiz.public-head-cache.v1',limit=1024*1024;

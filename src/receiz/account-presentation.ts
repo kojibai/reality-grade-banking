@@ -1,9 +1,10 @@
-import {publicAccountDisplayName} from './account-name.js';
+import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 /** Public display coordinates only. Account birth is carried by the account;
  * a conversation, appointment or file export date must never replace it. */
-export type AccountPresentation={userId?:string;username?:string|null;displayName?:string|null;createdAt?:string;creationKaiMicroPulse?:string;creationKaiSource?:string;displayNameSource?:'custom'|'username'|'creation-pulse';authorshipVerified?:boolean;authorshipPbiReceiptHash?:string;authorshipPbiSignedAt?:string;authorshipPbiSignedKaiMicroPulse?:string};
+export type AccountPresentation={userId?:string;username?:string|null;receivingUsername?:string;displayName?:string|null;createdAt?:string;creationKaiMicroPulse?:string;creationKaiSource?:string;displayNameSource?:'custom'|'username'|'creation-pulse';authorshipVerified?:boolean;authorshipPbiReceiptHash?:string;authorshipPbiSignedAt?:string;authorshipPbiSignedKaiMicroPulse?:string};
 export function accountCreationPresentation(value:Readonly<Record<string,unknown>>):Partial<AccountPresentation>{
  const out:Partial<AccountPresentation>={};
+ if(typeof value.receivingUsername==='string'&&typeof value.username==='string'&&publicProfileUsername(value.username,value.receivingUsername)===value.receivingUsername)out.receivingUsername=value.receivingUsername;
  if(typeof value.createdAt==='string'&&value.createdAt.length<=64&&Number.isFinite(Date.parse(value.createdAt)))out.createdAt=value.createdAt;
  if(typeof value.creationKaiMicroPulse==='string'&&/^[1-9][0-9]{0,29}$/.test(value.creationKaiMicroPulse))out.creationKaiMicroPulse=value.creationKaiMicroPulse;
  if(value.creationKaiSource==='sealed-receiz-identity'||value.creationKaiSource==='legacy-profile-genesis-recovery')out.creationKaiSource=value.creationKaiSource;

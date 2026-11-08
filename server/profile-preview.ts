@@ -1,3 +1,4 @@
+import {publicProfileUsername} from '../src/receiz/account-name.js';
 import {bankMarkSvg} from '../branding/bank-mark.mjs';
 import {isShareTrackingKey} from './share-tracking.js';
 import {publicProfileSocialImage,profilePagePath,profilePageUsername,profileUsername,type PublicProfile} from '../src/receiz/public-profile.js';
@@ -9,8 +10,9 @@ import {profileNavigationHtml} from './profile-navigation.js';
 import {fullReceivingProfileName,fullReceivingProfilePath,readPublicProfileAlias} from './profile-alias.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
-export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false){
- const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${username}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(username);
+export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false,compiledPublicName?:string){
+ const publicUsername=publicProfileUsername(username,profile?.receivingUsername??compiledPublicName);
+ const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${publicUsername}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(publicUsername);
  const socialImage=profile?publicProfileSocialImage(profile):null;
  const tags=`<title>${escape(title)}</title><meta name="description" content="${escape(description)}"><meta name="robots" content="${profile?'index,follow,max-image-preview:large':'noindex,follow'}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="profile"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${canonical}">${socialImage?`<meta property="og:image" content="${escape(socialImage)}"><meta name="twitter:image" content="${escape(socialImage)}">`:''}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}">`;
  const seed=profile?`<script id="public-profile-seed" type="application/json">${JSON.stringify(profile).replaceAll('<','\\u003c')}</script>`:error?`<script id="public-profile-error" type="application/json">${JSON.stringify({username,code:error,at:Date.now()})}</script>`:'';
@@ -54,10 +56,10 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const source=browser?null:dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
  let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
  if(!source){
-  const content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24}) -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
+  const content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
   const selected=match&&match[1]===generation&&match[2]===username?content!.slice(match[0].length):undefined;
   if(!selected&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
-  return new Response(profilePreviewHtml(html,username,null,undefined,selected,true),{headers});
+  return new Response(profilePreviewHtml(html,username,null,undefined,selected,true,selected?match?.[3]:undefined),{headers});
  }
  // Crawlers keep one exact public profile, its rendered body and refusal status.
  const result=await source,status=result.error instanceof PublicProfileError?result.error.status:result.error?503:200,code=status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE';

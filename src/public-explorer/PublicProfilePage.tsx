@@ -1,3 +1,4 @@
+import {publicProfileUsername} from '../receiz/account-name';
 import {InlineOpening} from '../components/InlineOpening';
 import {CopyFeedbackIcon,useCopyFeedback} from '../components/CopyFeedback';
 import {PublicImageDialog} from '../features/media/ProofMedia';
@@ -74,7 +75,7 @@ export function PublicProfilePage({username,source,active,initialProfile,collect
  const completeProfile=!!profile&&!profile.nextCursor,currentCapitalizationUsdCents=useMemo(()=>growthOpen&&completeProfile?profileCollectionCapitalization(items):null,[growthOpen,completeProfile,items]);
  const growth=useProfileGrowth(originals,pricingSource,source.pulse??receizKaiNow().pulse,active&&!!profile&&!profile.nextCursor,growthOpen,source.historyCatalog??source.catalog);
  async function loadMore(){if(!profile?.nextCursor||more)return;const previous=profile;setMore(true);setError('');try{const next=await fetchPublicProfile(username,previous.nextCursor!);if(next.userId!==previous.userId)throw Error('PROFILE_CHANGED');retainPublicProfile(next);}catch(cause){const message=cause instanceof Error?cause.message:'PROFILE_UNAVAILABLE';setError(message);}finally{setMore(false);}}
- const url=(typeof location==='undefined'?'https://bankeiz.com':location.origin)+profilePagePath(username),copy=()=>{void navigator.clipboard.writeText(url).then(()=>confirm()).catch(()=>{clear();setError('The link could not be copied.');});};
+ const url=(typeof location==='undefined'?'https://bankeiz.com':location.origin)+profilePagePath(publicProfileUsername(profile?.username??username,profile?.receivingUsername)),copy=()=>{void navigator.clipboard.writeText(url).then(()=>confirm()).catch(()=>{clear();setError('The link could not be copied.');});};
  const share=async()=>{if(!profile)return;try{if(navigator.share)await navigator.share({title:profile.displayName,url});else copy();}catch(cause){if(!(cause instanceof Error&&cause.name==='AbortError'))copy();}};
  const profileError=publicProfilePageError(username,source.historyCatalog??source.catalog)||error;
  if(!profile)return <section className="public-profile-page profile-unavailable"><h1>{profileError==='PROFILE_PRIVATE'?'Private profile':profileError==='PROFILE_NOT_FOUND'?'Profile not found':'Profile'}</h1><p>{profileError?'This public profile is not available.':<InlineOpening label="Preparing the public profile"/>}</p>{profileError&&<button className="text-button" onClick={()=>{setError('');setRetry(value=>value+1);}}>Try again</button>}<a className="source-link" href="/explore/">Explore public assets<ArrowUpRight size={15}/></a></section>;

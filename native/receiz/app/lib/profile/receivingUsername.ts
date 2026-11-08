@@ -41,3 +41,10 @@ export function legacyReceivingUsername(input: string): string | null {
   const parsed = parseReceivingUsername(input), name = parsed && receivingUsernameSearch(parsed);
   return name && /^[a-z0-9]{18}$/.test(name) ? `receiz_${name.slice(0,17)}` : null;
 }
+
+/** Public name decoration only; retain the internal canonical locator. */
+export function publicProfileUsername(username:string,receivingUsername?:string|null):string {
+ if(receivingUsername&&/^[a-z0-9]{18}$/.test(receivingUsername)
+  &&receivingUsernameForIdentity(username,`receiz_${receivingUsername}`)===receivingUsername)return receivingUsername;
+ return /^receiz_[a-z0-9]{18}$/.test(username)?username.slice(7):username;
+}

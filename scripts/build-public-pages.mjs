@@ -116,7 +116,8 @@ try {
   for(const username of new Set(readingCatalog.items.filter(item=>item.category==='proof'&&item.ownerUsername).map(item=>item.ownerUsername))){
     if(profilePageUsername(profilePagePath(username))!==username||!selectHeldPublicProfile(username,readingCatalog))continue;
     const content=renderSelectedPublicMarketContent({catalog:readingCatalog,history,capitalization,asOfPulse,generation,profileUsername:username});
-    const html='<!-- bank.profile.document.v1 '+generation+' '+username+' -->'+content;
+    const receivingUsername=selectHeldPublicProfile(username,readingCatalog)?.receivingUsername;
+    const html='<!-- bank.profile.document.v1 '+generation+' '+username+(receivingUsername?' '+receivingUsername:'')+' -->'+content;
     await writeFile(profileDirectory+'/'+username+'.html',html);profileCount++;profileBytes+=Buffer.byteLength(html);
   }
   console.log('Prerendered '+profileCount+' actual public profiles from the held catalog ('+(profileBytes/1048576).toFixed(1)+' MiB); no Source reads or duplicate catalog carriers.');

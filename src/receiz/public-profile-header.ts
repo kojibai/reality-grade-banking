@@ -1,7 +1,7 @@
-import {publicAccountDisplayName} from './account-name.js';
+import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicProfileArtwork} from './profile-artwork.js';
 export interface PublicProfileHeader {
- schema:'bankeiz.public-profile.v1';userId:string;username:string;displayName:string;bio:string|null;location:string|null;
+ schema:'bankeiz.public-profile.v1';userId:string;username:string;receivingUsername?:string;displayName:string;bio:string|null;location:string|null;
  websiteUrl:string|null;avatarUrl:string|null;bannerUrl:string|null;socialLinks:{label:string;url:string}[];links:{label:string;url:string}[];
  authorshipVerified:boolean;pbiReceiptHash:string|null;createdAt:string|null;bookingEnabled?:boolean;
  stats:{originals:number|null;views:number|null;plays:number|null;seconds:number|null;completion:number|null};
@@ -10,7 +10,7 @@ const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():null;
 const number=(v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 function link(v:unknown){const raw=text(v,8192);if(!raw)return null;try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null;}catch{return null;}}
-const profileFields=['userId','username','displayName','displayNameSource','bio','location','websiteUrl','avatarUrl','bannerUrl','socialXUrl','socialInstagramUrl','socialYoutubeUrl','socialLinkedinUrl','socialGithubUrl','authorshipVerified','authorshipPbiReceiptHash','authorshipPbiSignedAt','authorshipPbiSignedKaiMicroPulse','createdAt','updatedAt','creationKaiMicroPulse','creationKaiSource','showSchedulerButton','isPrivate'] as const;
+const profileFields=['userId','username','receivingUsername','displayName','displayNameSource','bio','location','websiteUrl','avatarUrl','bannerUrl','socialXUrl','socialInstagramUrl','socialYoutubeUrl','socialLinkedinUrl','socialGithubUrl','authorshipVerified','authorshipPbiReceiptHash','authorshipPbiSignedAt','authorshipPbiSignedKaiMicroPulse','createdAt','updatedAt','creationKaiMicroPulse','creationKaiSource','showSchedulerButton','isPrivate'] as const;
 const statsFields=['originals','originalViews','streams','witnessedSeconds','streamCompletionRatePct'] as const;
 /** Select the already anonymous, accepted Source header. No Original bodies,
  * owner-only fields or authority are added to the public display handoff. */
@@ -40,7 +40,7 @@ export function readPublicProfileHeader(input:unknown,expectedUsername?:string):
  * scope and exact account binding; this performs no admission or lookup. */
 export function projectProfileHeaderFields(p:Record<string,unknown>,stats:Record<string,unknown>={},unavailable=false):PublicProfileHeader{
  const username=String(p.username),images=publicProfileArtwork(p),hash=text(p.authorshipPbiReceiptHash,64);
- return{schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
+ return{schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
  socialLinks:[['X','socialXUrl'],['Instagram','socialInstagramUrl'],['YouTube','socialYoutubeUrl'],['LinkedIn','socialLinkedinUrl'],['GitHub','socialGithubUrl']].flatMap(([label,key])=>{const url=link(p[key]);return url?[{label,url}]:[];}),links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const row=object(value),label=text(row.label,80),url=link(row.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[],
  authorshipVerified:p.authorshipVerified===true&&!!hash&&/^[a-f0-9]{64}$/i.test(hash),pbiReceiptHash:hash&&/^[a-f0-9]{64}$/i.test(hash)?hash:null,createdAt:text(p.createdAt,64),
  stats:{originals:number(stats.originals),views:unavailable?null:number(stats.originalViews),plays:unavailable?null:number(stats.streams),seconds:unavailable?null:number(stats.witnessedSeconds),completion:unavailable?null:number(stats.streamCompletionRatePct)}};

@@ -1,6 +1,6 @@
 import {curatePublicProfileHead,readPublicProfileHeads,type PublicProfileHead} from './public-profile-header.js';
 import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
-import {publicAccountDisplayName} from './account-name.js';
+import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
 import {readPublicShareInventory,mergeShareInventory,compatibleShareInventory} from './market-share-inventory.js';
 import type {PublicShareInventory} from './market-share-inventory.js';
@@ -49,7 +49,7 @@ export interface PublicMarketItem {
   sealedCopies?:{collectibleId:string;claimHash:string;sealedAt:string;ownerUsername:string|null;ownerDisplayName:string|null;ownerProfileUrl:string|null}[];
   localValuationPulse?:number;
   valuationBinding?:{itemId:string;assetId:string};
-  ownerUsername: string | null; ownerDisplayName: string | null; ownerProfileUrl: string | null;
+  ownerUsername: string | null; ownerReceivingUsername?:string; ownerDisplayName: string | null; ownerProfileUrl: string | null;
   ownerAvatarUrl?:string|null;
   /** Local admission's existing owner UID for presentation after overlay retirement. */
   admittedOwnerUserId?:string;
@@ -196,7 +196,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       proofManifestSource:readPublicAssetManifestSource(profile),
       pulse: typeof source.pulse === 'string' && /^\d{1,24}$/.test(source.pulse) ? source.pulse : null,livePulseSeed:publicMarketPulseSeed(source.livePulseSeed,source.pulse),valuationBinding:{itemId:id,assetId},
       sealedAt: sealedAt && Number.isFinite(Date.parse(sealedAt)) ? sealedAt : null,
-      ownerUsername, ownerDisplayName, ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
+      ownerUsername,...(typeof source.ownerReceivingUsername==='string'&&ownerUsername&&publicProfileUsername(ownerUsername,source.ownerReceivingUsername)===source.ownerReceivingUsername?{ownerReceivingUsername:source.ownerReceivingUsername}:{}), ownerDisplayName, ownerProfileUrl: ownerUsername ? `https://receiz.com/${encodeURIComponent(ownerUsername)}` : null,
       ...(source.ownerAvatarUrl!==undefined?{ownerAvatarUrl:profileAvatarUrl(source.ownerAvatarUrl)}:{}),
       ...(ownerUserId&&ownerUsername&&ownerCreatedAt&&Number.isFinite(Date.parse(ownerCreatedAt))?{ownerIdentity:{userId:ownerUserId,username:ownerUsername,createdAt:ownerCreatedAt}}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
