@@ -20,6 +20,9 @@ export function useNativeAccount(custody = nativeCustody) {
   const [opening, setOpening] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null), [observedAt, setObservedAt] = useState<string | null>(null);
   const [syncPending, setSyncPending] = useState(false);
   const refreshQueued=useRef(false);
+  // A native admitted observation supersedes an earlier read, including its
+  // eventual error. Local Kai valuation alone does not acknowledge a remote read.
+  const observationRevision=useRef(0);
   const lastRead=useRef<{at:number;failed:boolean}|null>(null);
   const held = useRef<OpenIdentity | null>(null), generation = useRef(0), pending = useRef(false), openingOperation = useRef(false), hasObservation = useRef(false);
   const publishObservation = useCallback((known: WalletObservation) => {
@@ -56,9 +59,9 @@ export function useNativeAccount(custody = nativeCustody) {
     try {
       do{
         refreshQueued.current=false;
-        const attempt={at:Date.now(),failed:false};lastRead.current=attempt;
-        try{const value=await current.readWallet();if(ticket===generation.current&&!refreshQueued.current){const observed=current.knownWallet?.();hasObservation.current=true;setWallet(value);setObservedAt(observed?.observedAt??new Date().toISOString());setWalletHistory(observed?.history??[]);setHistoryComplete(hasSettledAccountView(observed??null));setError(null);setSyncPending(false);}}
-        catch(cause){attempt.failed=true;if(ticket===generation.current&&!refreshQueued.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
+        const attempt={at:Date.now(),failed:false},revision=observationRevision.current;lastRead.current=attempt;
+        try{const value=await current.readWallet();if(ticket===generation.current&&!refreshQueued.current&&revision===observationRevision.current){const observed=current.knownWallet?.();hasObservation.current=true;setWallet(value);setObservedAt(observed?.observedAt??new Date().toISOString());setWalletHistory(observed?.history??[]);setHistoryComplete(hasSettledAccountView(observed??null));setError(null);setSyncPending(false);}}
+        catch(cause){attempt.failed=true;if(ticket===generation.current&&!refreshQueued.current&&revision===observationRevision.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
       }while(ticket===generation.current&&held.current===current&&refreshQueued.current);
     }
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
@@ -126,7 +129,7 @@ export function useNativeAccount(custody = nativeCustody) {
     const delay=()=>{const age=lastRead.current?Date.now()-lastRead.current.at:60_000;return lastRead.current&&!lastRead.current.failed&&age>=0&&age<60_000?60_000-age:60_000;};
     let timer=setTimeout(function poll(){wake();timer=setTimeout(poll,delay());},delay());
     const localTimer = setInterval(() => { if (foreground()) void refreshLocal(); }, 1_000);
-    const repaint = () => { const current=held.current,known = current?.knownWallet?.(); if (current) setReceivedNotes(current.knownReceivedNotes?.()??[]); if (known) { hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
+    const repaint = () => { const current=held.current,known = current?.knownWallet?.(); if (current) setReceivedNotes(current.knownReceivedNotes?.()??[]); if (known) { observationRevision.current++; hasObservation.current=true; setWallet(known.wallet); setObservedAt(known.observedAt); setWalletHistory(known.history ?? []); setHistoryComplete(hasSettledAccountView(known)); setError(null); setSyncPending(false); } };
     const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
     addEventListener('bankeiz:wallet-send-recorded',paymentRecorded);
     addEventListener('bankeiz:account-observation', repaint);

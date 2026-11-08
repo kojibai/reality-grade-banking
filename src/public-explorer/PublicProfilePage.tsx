@@ -6,6 +6,7 @@ import {receizKaiNow} from '@receiz/sdk';
 import {ArrowDownRight,ArrowUpRight,BarChart3,CalendarDays,ChevronLeft,ChevronRight,Pencil,Share2} from 'lucide-react';
 import {ProfileAvatar} from '../components/ProfileAvatar';
 import {Sheet} from '../components/Sheet';
+import {AssetCreationSheet} from '../features/assets/AssetCreationSheet';
 import {ProfileIdentity} from './ProfileIdentity';
 import {ProfileBooking} from './ProfileBooking';
 import {ProfileCollection} from './ProfileCollection';
@@ -34,7 +35,8 @@ const originalsValueFormat=new Intl.NumberFormat('en-US',{style:'currency',curre
 function EditHost({active}:{active:boolean}){
  const edit=useSyncExternalStore(subscribeProfileActions,readProfileEdit,()=>null),slot=useRef<HTMLDivElement>(null);
  useLayoutEffect(()=>{if(edit)attachProfileEdit(edit.id,slot.current,active);return()=>{if(edit)attachProfileEdit(edit.id,null);};},[edit?.id,active]);
- return edit?<Sheet title={edit.kind==='create-asset'?'Create an asset':'Edit profile'} className={edit.kind==='create-asset'?'sheet--asset-studio':''} active={edit.kind==='create-asset'?active:true} onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></Sheet>:null;
+ if(!edit)return null;
+ return edit.kind==='create-asset'?<AssetCreationSheet active={active} onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></AssetCreationSheet>:<Sheet title="Edit profile" onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></Sheet>;
 }
 export function PublicProfilePage({username,source,active,initialProfile,collection}:{username:string;source:ReturnType<typeof usePublicMarket>;active:boolean;initialProfile?:PublicProfile;collection?:HeldCollection}){
  const [booking,setBooking]=useState<'unopened'|'open'|'closed'>('unopened');

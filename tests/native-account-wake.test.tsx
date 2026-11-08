@@ -70,6 +70,19 @@ it('queues a fresh post-transaction read behind a pre-transaction refresh and sk
  await act(async()=>{finish(observation('999').wallet);});
  expect(identity.readWallet).toHaveBeenCalledTimes(2);expect(read().wallet?.totalUsdCents).toBe('75');expect(frames.some(frame=>frame.wallet?.totalUsdCents==='999')).toBe(false);
 });
+
+it.each(['failure','success'])('does not let an older read %s replace a newer admitted account observation',async outcome=>{
+ const identity=held();let finish!:(value:WalletObservation['wallet'])=>void,fail!:(cause:Error)=>void;
+ vi.mocked(identity.readWallet).mockReturnValue(new Promise((resolve,reject)=>{finish=resolve;fail=reject;}));
+ const {read,frames}=await mount(identity);await act(async()=>wake('focus'));
+ const next={...observation('450'),observedAt:'2026-10-18T12:01:00Z'};identity.setKnown(next);
+ await act(async()=>window.dispatchEvent(new Event('bankeiz:account-observation')));
+ expect(read().wallet).toBe(next.wallet);expect(read().error).toBeNull();
+ await act(async()=>{if(outcome==='failure')fail(Error('OLDER_REQUEST_503'));else finish(observation('100').wallet);});
+ expect(read().wallet).toBe(next.wallet);expect(read().observedAt).toBe(next.observedAt);expect(read().error).toBeNull();expect(read().syncPending).toBe(false);
+ expect(frames.slice(frames.findIndex(frame=>frame.wallet===next.wallet)).every(frame=>frame.wallet===next.wallet&&!frame.error)).toBe(true);
+ expect(identity.readWallet).toHaveBeenCalledOnce();
+});
 it('refreshes for an identity-held recorded Send event even with no Send sheet mounted',async()=>{
  const identity=held();await mount(identity);
  await act(async()=>window.dispatchEvent(new CustomEvent('bankeiz:wallet-send-recorded',{detail:{identityDigest:'b'.repeat(64),accountUid:'owner'}})));

@@ -35,6 +35,11 @@ it('uses only the named Host static stylesheet closure, preserving private lazy 
  expect(()=>bankOwnedStyles(allStyles,{...manifest,host:{...manifest.host,css:['../private.css']}})).toThrow('PUBLIC_TRADE_STYLESHEET_INVALID');
 });
 
+it('keeps the shared profile creator styles public while suspending unrelated Bank styles',()=>{
+ const creator={name:'AssetCreationSheet',file:'assets/creator.js',css:['assets/creator.css'],imports:['sheet']};
+ expect(bankOwnedStyles([...allStyles,'/assets/creator.css','/assets/private.css'],{...manifest,creator})).toEqual(['/assets/bank.css','/assets/private.css']);
+});
+
 it('keeps the already loaded Host closure enabled through the actual Bank→Feed router even when its module is cached',async()=>{
  const f=await setup(),bank=f.document.getElementById('root'),input=bank!.querySelector('input'),hostStyle=f.document.querySelector<TestStyleElement>('style[data-bank-stylesheet="/assets/host.css"]');
  f.api.navigate('/feed/');await Promise.resolve();

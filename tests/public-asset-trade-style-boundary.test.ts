@@ -2,6 +2,14 @@ import {build} from 'esbuild';
 import {bundleCssFiles,scopeProductCss} from '../scripts/scope-product-css.mjs';
 import {expect,it} from 'vitest';
 
+it('carries the complete canonical creation frame into the public profile without importing Bank application code',async()=>{
+ const built=await build({entryPoints:['src/features/assets/AssetCreationSheet.tsx'],bundle:true,write:false,outdir:'output/style-boundary-unused',metafile:true,format:'esm',platform:'browser',packages:'external'});
+ const inputs=Object.keys(built.metafile!.inputs),css=built.outputFiles!.find(file=>file.path.endsWith('.css'))!.text;
+ for(const path of ['moment-composer.css','asset-composer.css','asset-studio.css','asset-creation-studio.css'])expect(inputs.some(input=>input.endsWith('/'+path))).toBe(true);
+ for(const selector of ['.sheet.sheet--asset-studio','.asset-canvas','.asset-canvas-dock','.asset-creation--studio .moment-form-fields','.asset-composer input[type=file]'])expect(css).toContain(selector);
+ expect(inputs).not.toContain('src/App.tsx');expect(inputs).not.toContain('src/features/assets/CreateAsset.tsx');expect(inputs).not.toContain('src/styles/app.css');
+});
+
 it('builds canonical purchase controls with the lazy public trade host, without relying on the Bank entry stylesheet',async()=>{
  // Inspect the actual host's CSS dependency closure without executing account,
  // SDK or trade code. Other JS imports remain external to this style-only build.

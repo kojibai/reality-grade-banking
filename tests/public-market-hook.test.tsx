@@ -79,6 +79,19 @@ it('updates known public quotes even when membership is temporarily unavailable'
   network.quotes.mockResolvedValueOnce(quoteInput()).mockResolvedValueOnce(quoteInput(28));
   await observe(async read => { await act(async () => { await read().refresh(); }); expect(read().catalog?.items[0].priceUsd).toBe(28); expect(read().status).toBe('stale'); });
 });
+
+it.each(['late failure','late success','earlier failure'])('keeps a newer complete discovery and its status through an %s from another membership attempt',async outcome=>{
+ let finish!:(value:ReturnType<typeof parsePublicMarket>)=>void,fail!:(cause:Error)=>void;
+ network.membership.mockReturnValue(new Promise((resolve,reject)=>{finish=resolve;fail=reject;}));network.quotes.mockResolvedValue(quoteInput());
+ const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');
+ await observe(async read=>{
+  if(outcome==='earlier failure'){await act(async()=>fail(Error('OLD_MEMBERSHIP_503')));expect(read().error).toContain('OLD_MEMBERSHIP_503');}
+  await act(async()=>publishDiscoveredPublicCatalog(parsePublicMarket(sourceInput(['a','b','new-original']))));
+  if(outcome==='late failure')await act(async()=>fail(Error('OLD_MEMBERSHIP_503')));
+  else if(outcome==='late success')await act(async()=>finish(parsePublicMarket(sourceInput(['a','b']))));
+  expect(read().catalog?.items.map(item=>item.id)).toEqual(['a','b','new-original']);expect(read().error).toBeNull();expect(read().status).toBe('live');expect(network.membership).toHaveBeenCalledOnce();
+ });
+});
 it('applies available object quotes without waiting for an unrelated card inventory response',async()=>{
  network.membership.mockResolvedValue(parsePublicMarket(sourceInput()));network.quotes.mockResolvedValue(quoteInput(28));
  vi.stubGlobal('fetch',vi.fn(async input=>input==='/api/bank/public-market/sports'?new Promise<Response>(()=>{}):new Response('',{status:404})));

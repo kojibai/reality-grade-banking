@@ -18,6 +18,7 @@ import { LiveOwnership } from '../assets/LiveOwnership';
 import { LiveExchange } from '../market/LiveExchange';
 import type { PublicMarketItem } from '../../receiz/public-market';
 import { CreateAsset } from '../assets/CreateAsset';
+import {AssetCreationSheet} from '../assets/AssetCreationSheet';
 import { IdentityProfile } from './IdentityProfile';
 export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, cardResumeSessionId, onCardResumeConsumed, onOpenAssistant = onClose, onVaultsEntryConsumed, active = true, marketItems = [], onOpen }: { onOpen?:(action:UIAction)=>void; onOpenAssistant?:()=>void;onVaultsEntryConsumed?:()=>void; cardResumeSessionId?:string|null;onCardResumeConsumed?:()=>void;marketItems?: PublicMarketItem[]; active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
   useEffect(()=>{if(action.kind==='send'&&cardResumeSessionId)onCardResumeConsumed?.();},[action.kind,cardResumeSessionId,onCardResumeConsumed]);
@@ -38,5 +39,5 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} onRefresh={onRefresh} marketItems={marketItems} onTrade={onOpen?(side,marketItemId)=>onOpen({kind:'market-trade',side,marketItemId}):undefined} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
   else if (action.kind === 'bridge') body = <LiveOwnership identity={identity} mode="send" initialDigest={action.assetId} onRefresh={onRefresh} />;
   else body = <div className="empty-state"><h3>Automatic transfers are not available yet.</h3><p>You can review and approve each transfer from Send.</p></div>;
-  return <Sheet className={action.kind==='currency'?'sheet--asset-studio':''} active={active} title={titles[action.kind] ?? 'Your asset'} onClose={onClose}>{body}</Sheet>;
+  return action.kind==='currency'?<AssetCreationSheet active={active} onClose={onClose}>{body}</AssetCreationSheet>:<Sheet active={active} title={titles[action.kind] ?? 'Your asset'} onClose={onClose}>{body}</Sheet>;
 }

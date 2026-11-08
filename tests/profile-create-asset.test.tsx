@@ -28,7 +28,7 @@ it('opens the exact existing creator in place for the held owner and closes back
   await act(()=>render());const page=host.querySelector('.public-profile-page'),button=host.querySelector<HTMLButtonElement>('[aria-label="Create an asset"]')!,url=location.href;
   expect(button.title).toBe('Create an asset');expect(button.getAttribute('aria-haspopup')).toBe('dialog');expect(owner.pendingAssetPublication).not.toHaveBeenCalled();
   await act(async()=>{button.focus();button.click();});
-  const creator=host.querySelector('.asset-creation');expect(creator).not.toBeNull();expect(host.querySelector('dialog.sheet--asset-studio h2')?.textContent).toBe('Create an asset');expect(owner.pendingAssetPublication).toHaveBeenCalledOnce();
+  const creator=host.querySelector('.asset-creation');expect(creator).not.toBeNull();expect(host.querySelector('dialog.sheet--asset-studio h2')?.textContent).toBe('New original');expect(owner.pendingAssetPublication).toHaveBeenCalledOnce();
   expect(host.querySelector('.public-profile-page')).toBe(page);expect(location.href).toBe(url);expect(fetch).not.toHaveBeenCalled();expect(navigate).not.toHaveBeenCalled();expect(runtime).not.toHaveBeenCalled();expect(refresh).not.toHaveBeenCalled();
   await act(()=>render(false));expect(host.querySelector('.asset-creation')).toBe(creator);expect(host.querySelector<HTMLDialogElement>('dialog.sheet--asset-studio')?.open).toBe(false);
   await act(()=>render());expect(host.querySelector('.asset-creation')).toBe(creator);expect(owner.pendingAssetPublication).toHaveBeenCalledOnce();

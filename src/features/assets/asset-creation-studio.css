@@ -76,7 +76,7 @@
 .asset-creation--studio>.native-operation-review,.asset-creation--studio>.native-operation-result{max-width:600px;margin-inline:auto;padding:20px 22px}
 .asset-creation--studio>.note-box,.asset-creation--studio>.primary-button{max-width:556px;margin-inline:auto}
 .asset-creation-backing{max-width:600px;margin:auto;padding:0 22px}
-.sheet--asset-studio>.sheet-body>.creation-complete{max-width:600px;margin:20px auto;padding:0 22px 30px}
+.sheet--asset-studio .creation-complete{max-width:600px;margin:20px auto;padding:0 22px 30px}
 .asset-camera__footer .asset-camera__status{background:transparent;color:inherit;padding:0;margin:0 0 12px}
 .asset-camera__hint{font-size:10px;color:#8190a4;margin:14px 0 0}
 .asset-camera__error{font-size:12px;line-height:1.6;color:#b44359;margin:0 0 14px}

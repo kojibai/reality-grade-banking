@@ -16,6 +16,9 @@ export const PUBLIC_MARKET_CACHE_KEY = 'receiz-bank-public-discovery-v2';
 // browser storage can be too small for the complete collection and card input.
 let restoredDiskCatalog:PublicMarketCatalog|null=null;
 let retainedCatalog:PublicMarketCatalog|null=null,retainedSports:unknown=null,restored=false,preparedDocument=false,lastRefreshAt=0,lastRefreshFailed=false;
+// Complete discovery can also arrive through the existing publication path.
+// Its selection supersedes older membership attempts, including their errors.
+let membershipRevision=0;
 const refreshInterval=60_000;
 const catalogListeners=new Set<()=>void>();
 const subscribeCatalog=(listener:()=>void)=>{catalogListeners.add(listener);const unsubscribe=subscribePreparedBankCatalog(listener);return()=>{catalogListeners.delete(listener);unsubscribe();};};
@@ -74,7 +77,7 @@ subscribeAssetPublicationAdmissions((accepted,snapshot)=>{const before=readPubli
  if(!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
  const updated=mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),sameSource=prior?.assetId===item.assetId&&prior.originalDigest===item.originalDigest,next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:mergeShareInventory(sameSource?compatibleShareInventory(item,prior?.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null)};return sameSource&&!item.chart.length&&prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports);
  return snapshot?mergePublicQuotes(updated,snapshot):updated;
-});if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);lastRefreshAt=Date.now();lastRefreshFailed=false;}});
+});if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);membershipRevision++;lastRefreshAt=Date.now();lastRefreshFailed=false;}});
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
 if(typeof document!=='undefined'){void prepareCarriedBankCatalog().then(()=>{const prepared=preparedBankCatalogState();if(!prepared.bareCatalog&&!prepared.value&&!prepared.carried)return;const before=retainedCatalog;readPublicCatalog();if(before!==retainedCatalog)for(const listener of catalogListeners)listener();});exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
 let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
@@ -131,6 +134,11 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     Object.assign(refreshErrors.current,next);
     setError([refreshErrors.current.membership,refreshErrors.current.quotes].filter(Boolean).join(' ')||null);
   },[]);
+  const observedMembershipRevision=useRef(membershipRevision);
+  useEffect(()=>{
+    if(observedMembershipRevision.current===membershipRevision)return;
+    observedMembershipRevision.current=membershipRevision;setStatus('live');updateRefreshError({membership:null});
+  },[catalog,updateRefreshError]);
   const running = useRef<AbortController | null>(null);
   const sportsRunning=useRef<AbortController|null>(null),sportsFailed=useRef(false);
   const pendingMarketChange=useRef<string|undefined>(undefined);
@@ -176,7 +184,8 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     // The overview and direct-object paths share this same read and cache.
     void prepareMarketDisplaySource();
     const controller = new AbortController(); running.current = controller; const attempt = ++generation.current;
-    const currentAttempt=()=>!controller.signal.aborted&&attempt===generation.current;
+    const admittedRevision=membershipRevision;
+    const currentAttempt=()=>!controller.signal.aborted&&attempt===generation.current&&admittedRevision===membershipRevision;
     latestQuotes.current=null;
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
     const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{

@@ -4,6 +4,9 @@ import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {PublicObjectRow} from '../src/features/market/PublicObjectRow';
 import {parsePublicMarket,publicMediaArtworkUrl} from '../src/receiz/public-market';
+import {Investments} from '../src/features/assets/Investments';
+import {parseMarketPortfolio} from '../src/receiz/market-portfolio';
+import {portfolioFixture,portfolioUid} from './fixtures/market-portfolio';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const decoded=vi.hoisted(()=>({urls:[] as string[]}));
 vi.mock('../src/features/media/ProofPdfReader',async()=>{
@@ -31,6 +34,26 @@ it('prefers an explicit document cover over the receipt without decoding the PDF
   expect(host.querySelector('img')?.getAttribute('src')).toBe('https://receiz.com'+cover);
   expect(host.querySelector('.proof-pdf-preview')).toBeNull();
  }finally{act(()=>root.unmount());}
+});
+
+it('reuses the Market PDF cover in Investments and its reopened detail without another PDF decode or fetch',async()=>{
+ vi.stubGlobal('IntersectionObserver',class{constructor(private notify:(rows:unknown[])=>void){}observe(){this.notify([{isIntersecting:true}]);}disconnect(){}});
+ const fetcher=vi.spyOn(globalThis,'fetch'),host=document.createElement('div'),root=createRoot(host),value={...documentItem(),id:'profile:artist:work'},input=portfolioFixture();input.positions=input.positions.slice(0,1);
+ const portfolio=parseMarketPortfolio(input,portfolioUid);
+ try{
+  await act(async()=>root.render(<PublicObjectRow item={value} onOpen={()=>{}}/>));
+  await vi.waitFor(()=>expect(host.querySelector('.proof-pdf-preview img')).not.toBeNull());
+  const cover=host.querySelector('img')!.getAttribute('src');expect(decoded.urls).toHaveLength(1);
+  const render=()=>root.render(<Investments portfolio={portfolio} items={[value]} active pulse={15000000} history={null} onTrade={()=>{}}/>);
+  await act(render);expect(host.querySelector('.investment-row .proof-pdf-preview img')?.getAttribute('src')).toBe(cover);
+  for(let i=0;i<2;i++){
+   await act(()=>host.querySelector<HTMLButtonElement>('.investment-row')!.click());
+   expect(host.querySelector('dialog .investment-detail-heading .proof-pdf-preview img')?.getAttribute('src')).toBe(cover);
+   await act(render);expect(host.querySelector('dialog .investment-detail-heading img')?.getAttribute('src')).toBe(cover);
+   await act(()=>host.querySelector<HTMLButtonElement>('dialog [aria-label="Close"]')!.click());
+  }
+  expect(host.querySelector('img[src*="/api/receiz/download"]')).toBeNull();expect(decoded.urls).toHaveLength(1);expect(fetcher).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());fetcher.mockRestore();}
 });
 it('uses the same source-carried cover field for PDF and generic document offerings',()=>{
  for(const kind of ['pdf','file'])expect(publicMediaArtworkUrl({kind,epubCoverSrc:'/artwork/document-cover.webp',receiptDownloadSrc:receipt})).toBe('https://receiz.com/artwork/document-cover.webp');
