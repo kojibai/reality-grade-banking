@@ -6,6 +6,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {publicReadingLinks} from './public-reading-links.js';
 import {profileNavigationHtml} from './profile-navigation.js';
+import {fullReceivingProfileName,fullReceivingProfilePath,readPublicProfileAlias} from './profile-alias.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
 export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false){
@@ -26,12 +27,18 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(/* @vite-ignore */ path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}
-type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>;profileContent?:(username:string)=>Promise<string|null>};
+type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>;profileContent?:(username:string)=>Promise<string|null>;alias?:(username:string)=>Promise<string|null>};
 export async function handleProfilePreview(request:Request,deps?:Dependencies){
- const url=new URL(request.url),username=url.pathname.replace(/\/$/,'')==='/api/profile'?profileUsername(url.searchParams.get('username')):profilePageUsername(url.pathname),headers={'Cache-Control':'no-store, no-transform','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff'};
+ const url=new URL(request.url),username=url.pathname.replace(/\/$/,'')==='/api/profile'?profileUsername(url.searchParams.get('username'))??fullReceivingProfileName(url.searchParams.get('username')):profilePageUsername(url.pathname)??fullReceivingProfilePath(url.pathname),headers={'Cache-Control':'no-store, no-transform','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff'};
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{...headers,Allow:'GET, HEAD'}});
  if(!username||url.hash||[...url.searchParams.keys()].some(key=>!isShareTrackingKey(key)&&(key!=='username'||url.searchParams.getAll(key).length!==1))||url.searchParams.has('username')&&url.searchParams.get('username')!==username)return new Response('Profile not found.',{status:404,headers});
- if(request.method==='HEAD')return new Response(null,{headers});
+ const resolveAlias=async()=>{
+  try{const canonical=await(deps?.alias??readPublicProfileAlias)(username);if(!canonical)return new Response('Profile not found.',{status:404,headers});
+   if(canonical!==username){if(!profileUsername(canonical))throw Error('PROFILE_ALIAS_UNAVAILABLE');const tracking=new URLSearchParams([...url.searchParams].filter(([key])=>isShareTrackingKey(key))),suffix=tracking.size?'?'+tracking:'';return new Response(null,{status:307,headers:{...headers,Location:profilePagePath(canonical)+suffix}});}
+   return null;
+  }catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
+ };
+ if(request.method==='HEAD'){if(username.length===25)return await resolveAlias()??new Response(null,{status:404,headers});return new Response(null,{headers});}
  // Browser entry uses the complete existing document. Its public reader can
  // show local state immediately and resolve only missing metadata afterward.
  const browser=request.headers.get('accept')?.includes('text/html')&&!/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|slack/i.test(request.headers.get('user-agent')??'');
@@ -42,12 +49,14 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   profileContent:async name=>{try{return await(await import('node:fs/promises')).readFile('server/profile-runtime/profile-pages/'+name+'.html','utf8');}catch{return null;}},
   render:renderProfileDocument,prepareRender:prepareProfileDocument};
  const compiled=browser?dependencies.profileContent?.(username).catch(()=>null):undefined;
+ if(!browser&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
  const renderer=browser?undefined:dependencies.prepareRender?.();void renderer?.catch(()=>{});
  const source=browser?null:dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
  let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
  if(!source){
   const content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24}) -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
   const selected=match&&match[1]===generation&&match[2]===username?content!.slice(match[0].length):undefined;
+  if(!selected&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
   return new Response(profilePreviewHtml(html,username,null,undefined,selected,true),{headers});
  }
  // Crawlers keep one exact public profile, its rendered body and refusal status.
