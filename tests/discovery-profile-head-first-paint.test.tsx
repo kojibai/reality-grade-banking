@@ -12,7 +12,15 @@ import {buildDiscoveryIndex,orderDiscoveryItems} from '../src/public-discover/di
 import sharp from 'sharp';
 const head=(i:number)=>({profile:{userId:'owner-'+i,username:'person_'+i,displayName:'Person '+i,isPrivate:false,createdAt:'2026-11-09T13:00:00Z',avatarUrl:null},viewer:{canView:true},stats:{originals:0,originalViews:0,streams:0,witnessedSeconds:0,streamCompletionRatePct:0}});
 it('the actual Discover writer keeps eighty-two profiles while rendering twenty header-only people with bounded local portraits and no request',async()=>{
- const heads=Array.from({length:82},(_,i)=>head(i)),membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:1,revision:'held'},publicOriginals:[{id:'one',receizId:'one',title:'Existing Original',profileOriginal:{media:null}}],publicProfileHeads:heads}},before=JSON.stringify(membership),fetcher=vi.fn(()=>{throw Error('No network belongs in first paint');});vi.stubGlobal('fetch',fetcher);
+ const pixels=Buffer.alloc(192*192*3);
+ let value=314159;
+ for(let i=0;i<pixels.length;i++){value=(Math.imul(value,1664525)+1013904223)>>>0;pixels[i]=value>>>24;}
+ const portrait='data:image/png;base64,'+(await sharp(pixels,{raw:{width:192,height:192,channels:3}}).png().toBuffer()).toString('base64');
+ expect(portrait.length).toBeGreaterThan(88_607);
+ const heads=Array.from({length:82},(_,i)=>head(i));
+ Object.assign(heads[0].profile,{avatarUrl:portrait});
+ const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:1,revision:'held'},publicOriginals:[{id:'one',receizId:'one',title:'Existing Original',profileOriginal:{media:null}}],publicProfileHeads:heads}};
+ const before=JSON.stringify(membership),fetcher=vi.fn(()=>{throw Error('No network belongs in first paint');});vi.stubGlobal('fetch',fetcher);
  const previous=process.cwd(),root=await mkdtemp(join(tmpdir(),'discover-header-paint-'));
  const modules={'/src/public-discover/Discover.tsx':{Discover},'/src/public-discover/discovery-index.ts':{orderDiscoveryItems,buildDiscoveryIndex},'/src/receiz/public-market.ts':{parsePublicMarket},'/src/public-explorer/PublicOwnerAvatar.tsx':{publicOwnerSealAvatar},'/src/receiz/profile-artwork.ts':{publicProfileAvatar}};
  try{
@@ -20,7 +28,11 @@ it('the actual Discover writer keeps eighty-two profiles while rendering twenty 
   const prepared=await renderDiscoveryState({ssrLoadModule:async(path:string)=>{expect(path in modules).toBe(true);return modules[path as keyof typeof modules];}});
   const people=buildDiscoveryIndex([],prepared.seedHeads).people;expect(people).toHaveLength(20);expect(people.every(p=>p.items.length===0&&p.avatarUrl?.startsWith('data:image/webp;base64,'))).toBe(true);
   expect(prepared.content.match(/href="\/person_\d+\//g)).toHaveLength(20);expect(prepared.content).not.toContain('data:image/svg+xml');expect(prepared.content.length+JSON.stringify(prepared.seedHeads).length).toBeLessThan(100000);
-  expect((await sharp(Buffer.from(prepared.seedHeads[0].avatarFallback!.split(',')[1],'base64')).metadata()).width).toBe(80);
+  expect(prepared.content).not.toContain(portrait);
+  const custom=people.find(person=>person.username==='person_0')!.avatarUrl!;
+  expect(custom.length).toBeLessThan(8000);
+  expect((await sharp(Buffer.from(custom.split(',')[1],'base64')).metadata()).width).toBe(80);
+  expect((await sharp(Buffer.from(prepared.seedHeads[1].avatarFallback!.split(',')[1],'base64')).metadata()).width).toBe(80);
   expect(prepared.seed.map((row:{id:string})=>row.id)).toEqual(['one']);expect(await readFile(join(root,'public/receiz-public-market.json'),'utf8')).toBe(before);expect(fetcher).not.toHaveBeenCalled();
  }finally{process.chdir(previous);await rm(root,{recursive:true,force:true});vi.unstubAllGlobals();}
 });

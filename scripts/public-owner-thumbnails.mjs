@@ -20,13 +20,31 @@ export async function publicOwnerThumbnails(items,server){
  }));
 }
 
-/** Header-only people use the same canonical artwork and bounded local image
- * preparation as Original owners. Preserve the source header and custom URL. */
-export async function publicProfileHeadThumbnails(heads,server){
- const {publicProfileAvatar}=await server.ssrLoadModule('/src/receiz/profile-artwork.ts');
- return Promise.all(heads.map(async head=>{
-  if(head.profile.avatarUrl)return head;
-  const work=thumbnail(publicProfileAvatar(head.profile),80);
-  return work?{...head,avatarFallback:await work}:head;
+const inlineRaster = /^data:image\/(?:png|jpeg|gif|webp|avif);base64,([a-z0-9+/=]+)$/i;
+const peoplePortraitWidth = 80;
+
+/** The inline portrait belongs to the selected header. Prepare a compact
+ * display copy for Discover. The shared catalog retains the original bytes. */
+async function compactCustomPortrait(avatarUrl) {
+ if (typeof avatarUrl !== 'string' || avatarUrl.length <= 2048) return null;
+ const match = inlineRaster.exec(avatarUrl);
+ if (!match) return null;
+ const input = Buffer.from(match[1], 'base64');
+ const pixels = sharp(input, {limitInputPixels: 16_000_000})
+  .autoOrient().resize(peoplePortraitWidth, peoplePortraitWidth, {fit: 'cover'});
+ const bytes = await pixels.webp({quality: 65, effort: 4}).toBuffer().catch(() => null);
+ return bytes ? 'data:image/webp;base64,' + bytes.toString('base64') : null;
+}
+
+/** Prepare the visible People portraits from existing header data. */
+export async function publicProfileHeadThumbnails(heads, server) {
+ const {publicProfileAvatar} = await server.ssrLoadModule('/src/receiz/profile-artwork.ts');
+ return Promise.all(heads.map(async head => {
+  if (head.profile.avatarUrl) {
+   const avatarUrl = await compactCustomPortrait(head.profile.avatarUrl);
+   return avatarUrl ? {...head, profile: {...head.profile, avatarUrl}} : head;
+  }
+  const work = thumbnail(publicProfileAvatar(head.profile), peoplePortraitWidth);
+  return work ? {...head, avatarFallback: await work} : head;
  }));
 }
