@@ -7,6 +7,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {publicReadingLinks} from './public-reading-links.js';
 import {profileNavigationHtml} from './profile-navigation.js';
+import {legacyReceivingUsername} from '../native/receiz/app/lib/profile/receivingUsername.js';
 import {fullReceivingProfileName,fullReceivingProfilePath,readPublicProfileAlias} from './profile-alias.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
@@ -60,20 +61,41 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   let routeName=username,content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
   let selected=match&&match[1]===generation&&match[2]===routeName?content!.slice(match[0].length):undefined;
   const fullName=fullReceivingProfileName(username)?.replace(/^receiz_/,'');
+  const readSaved=async (name:string)=>{
+   if(!dependencies.missingDocument)return null;
+   try{
+    const saved=await dependencies.missingDocument(name);
+    if(saved.ok||saved.status===403||saved.headers.get('x-receiz-public-html-withdrawn')==='1')return saved;
+    await saved.body?.cancel();
+   }catch{if(request.signal.aborted)throw request.signal.reason;}
+   return null;
+  };
+  let savedPublicName=false;
   if(!selected&&fullName){
-   const resolved=await resolveAlias();
-   if(resolved?.status===307){
-    routeName=profilePageUsername(new URL(resolved.headers.get('location')!,url).pathname)??username;
-    content=await dependencies.profileContent?.(routeName).catch(()=>null);
+   // Try the already compiled alias fragment by its exact carried full
+   // name. The derived short key is only a local file locator.
+   const legacy=legacyReceivingUsername(fullName);
+   if(legacy){
+    content=await dependencies.profileContent?.(legacy).catch(()=>null);
     match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/);
-    if(match&&match[1]===generation&&match[2]===routeName&&match[3]===fullName)selected=content!.slice(match[0].length);
-   }else if(resolved)return resolved;
+    if(match&&match[1]===generation&&match[2]===legacy&&match[3]===fullName){routeName=legacy;selected=content!.slice(match[0].length);}
+   }
+   // New profiles are served by their complete name in the existing saved
+   // delivery. This keeps a separate Receiz alias HEAD off the ready path.
+   if(!selected&&username===fullName&&dependencies.missingDocument){
+    savedPublicName=true;
+    const saved=await readSaved(fullName);if(saved)return saved;
+   }
+   if(!selected){
+    const resolved=await resolveAlias();
+    if(resolved?.status===307){
+     routeName=profilePageUsername(new URL(resolved.headers.get('location')!,url).pathname)??username;
+    }else if(resolved)return resolved;
+   }
   }
-  // A genuinely absent compiled profile consumes its existing producer-saved
-  // document as the response itself. Never render a handle/loading sequence
-  // first, never check Source, and never consult this path for held HTML.
-  if(!selected&&dependencies.missingDocument){
-   try{const saved=await dependencies.missingDocument(routeName);if(saved.ok||saved.status===403||saved.headers.get('x-receiz-public-html-withdrawn')==='1')return saved;await saved.body?.cancel();}catch{if(request.signal.aborted)throw request.signal.reason;}
+  // An uncompiled profile consumes the producer-saved document itself.
+  if(!selected&&(!savedPublicName||routeName!==username)){
+   const saved=await readSaved(routeName);if(saved)return saved;
   }
   return new Response(profilePreviewHtml(html,routeName,null,undefined,selected,true,fullName??(selected?match?.[3]:undefined)),{headers});
  }
