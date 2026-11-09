@@ -34,7 +34,7 @@ export function readHeldFeedCatalog():PublicMarketCatalog|null{
  // even before the optional shared Market selection module has loaded.
  if((!selected?.complete||selected===replacedPreparedCatalog)&&family?.catalog===replacedPreparedCatalog&&preparedCatalog&&preparedGeneration===null)return preparedCatalog;
  const catalog=selected?.complete?selected:family?.catalog.complete?family.catalog:null;
- return catalog?reusePreparedFeedCatalog(catalog,family?.catalog===catalog&&/^[a-f0-9]{64}$/.test(family.generation)?family.generation:null):null;
+ return catalog?reusePreparedFeedCatalog(catalog,family?.catalog===catalog&&/^[a-f0-9]{64}$/.test(family.generation)?family.generation:null):preparedCatalog;
 }
 export function readPreparedFeedCatalog(root:Element,path:'feed'|'discover'){
  const element=root.querySelector('#public-market-seed');if(!element)return null;
@@ -79,6 +79,7 @@ export function prepareFeedItems(signal?:AbortSignal,refresh=false):Promise<Publ
    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
    replacedPreparedCatalog=marker?.publicMarketDocument?.()?.catalog??preparedCatalog;reusePreparedFeedCatalog(catalog,null);return held!;
   }
+  if(catalog.complete&&!preparedCatalog){reusePreparedFeedCatalog(catalog,null);return held!;}
   held=held?(preparedCatalog?completeFeedItems(held,catalog.items):appendFeedItems(held,catalog.items)):orderFeedItems(catalog.items);return held;
  });pending=work;void work.finally(()=>{if(pending===work)pending=null;}).catch(()=>{});}
  const work=pending;if(!signal)return work;

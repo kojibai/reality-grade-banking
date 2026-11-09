@@ -13,7 +13,8 @@ async function previousSeed(){try{return JSON.parse(await readFile(new URL('../p
 async function seedMembershipOnly(args,{buildMembershipOnlyPublicMarketState,readReceizPublicMarketSource,parsePublicMarket}){
  const local=name=>args.find(arg=>arg.startsWith('--'+name+'-file='))?.slice(name.length+8),read=(kind,file)=>file?readFile(file,'utf8').then(JSON.parse):readReceizPublicMarketSource(kind,undefined,{fresh:true});
  const held=name=>readFile(new URL('../public/receiz-public-'+name+'.json',import.meta.url),'utf8').then(JSON.parse);
- const [membership,snapshot,previous,sports,capitalization,history,shareHistory]=await Promise.all([read('membership',local('membership')),read('quotes',local('quotes')),previousSeed(),held('sports'),held('capitalization'),held('chart-history'),held('share-chart-history')]);
+ const selected=args.includes('--selected'),membershipWork=read('membership',local('membership'));
+ const [membership,snapshot,previous,sports,capitalization,history,shareHistory]=await Promise.all([membershipWork,selected?membershipWork.then(input=>input.snapshot):read('quotes',local('quotes')),previousSeed(),held('sports'),held('capitalization'),held('chart-history'),held('share-chart-history')]);
  if(!previous)throw Error('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
  const state=await buildMembershipOnlyPublicMarketState({membership,snapshot,previous,sports,capitalization,history,shareHistory}),source=state.source,bytes=JSON.stringify(source),historyBytes=JSON.stringify(state.history),shareHistoryBytes=JSON.stringify(state.shareHistory),catalog=parsePublicMarket(source,source.snapshot);
  if([bytes,historyBytes,shareHistoryBytes].some(value=>Buffer.byteLength(value)>32*1024*1024))throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
@@ -50,7 +51,7 @@ await writeFile(new URL('../public/receiz-public-capitalization.json', import.me
 }
 if(process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.url){
  const args=process.argv.slice(2);
- if(args.some(arg=>arg!=='--membership-only'&&!/^--(?:membership|quotes)-file=.+/.test(arg))||args.length&&!args.includes('--membership-only'))throw Error('Use --membership-only with optional --membership-file= and --quotes-file= inputs.');
+ if(args.some(arg=>arg!=='--membership-only'&&arg!=='--selected'&&!/^--(?:membership|quotes)-file=.+/.test(arg))||args.length&&!args.includes('--membership-only'))throw Error('Use --membership-only with optional --membership-file= and --quotes-file= inputs.');
  const membershipOnly=args.includes('--membership-only');
  await seedRuntime(runtime=>membershipOnly?seedMembershipOnly(args,runtime):seedFullPublicMarket(runtime));
  if(!membershipOnly)await import('./seed-market-history.mjs');

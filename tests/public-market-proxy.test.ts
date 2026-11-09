@@ -2,6 +2,9 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { publicMarketMiddleware, resolvePublicMarketTarget } from '../server/public-market';
 afterEach(() => vi.unstubAllGlobals());
+const selectedRevision='a'.repeat(64);
+const selectedHeaders={'x-receiz-public-material-revision':selectedRevision,etag:'"'+selectedRevision+'"'};
+
 it('preserves an Original download purchase refusal without forwarding upstream fields, credentials or caching it as a source',async()=>{
  const fetchSource=vi.fn<typeof fetch>(async()=>Response.json({ok:false,error:'payment_required',privateField:'do-not-copy'},{status:402}));vi.stubGlobal('fetch',fetchSource);
  const path='/api/profile/originals/download?receizId=creator-paid-image&kind=original',url='/api/bank/public-market/original?path='+encodeURIComponent(path);
@@ -14,7 +17,7 @@ it('preserves an Original download purchase refusal without forwarding upstream 
  let status=0;await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/quotes',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:(code:number)=>{status=code;},end:vi.fn()}as unknown as ServerResponse,vi.fn());expect(status).toBe(503);
 });
 it('allows only fixed public Receiz contracts with bounded query arguments', () => {
-  expect(resolvePublicMarketTarget('/api/bank/public-market/membership')?.href).toBe('https://receiz.com/api/market/public-membership');
+  expect(resolvePublicMarketTarget('/api/bank/public-market/membership')?.href).toBe('https://receiz.com/api/market/public-membership?representation=selected');
   expect(resolvePublicMarketTarget('/api/bank/public-market/quotes')?.href).toBe('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');
   expect(resolvePublicMarketTarget('/api/bank/public-market/membership?url=https://evil.test')).toBeNull();
   expect(resolvePublicMarketTarget('/api/bank/public-market/secret')).toBeNull();
@@ -44,7 +47,7 @@ it('reads only public GET data and never forwards cookies or bearer authority', 
   const coordinate='/v/20261018_1200/AB12CD34/14700000#material=rmc1%3A'+'c'.repeat(64);
   const livePulseSeed={kind:'sigil',claimPulse:14700000,beat:2,stepIndex:3,creatorVerified:true,kaiSignature:'alice',userPhiKey:'public-object-model'};
   const artworkUrl='https://receiz.com/api/profile/originals/media?receizId=a&slot=audioCover',proof={circuit:'Poseidon',groth16Id:'groth16-public',poseidon:'proof-public'},attachment={id:'proof-row',name:'Proof row',src:'/v/20261018_1200/AB12CD34/14700000',downloadName:'source.txt',sha256Hex:'e'.repeat(64)};
-  const fetchSource = vi.fn(async () => new Response(JSON.stringify({ ok: true, transport: { generatedAt: 'now', publicMembership: {}, wallet: { private: true }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', ownerAvatarUrl:'https://receiz.com/artwork/alice.png',pulse:'14700000',livePulseSeed:{...livePulseSeed,unrelated:'omit-this-field'}, profileOriginal: { code:'AB12CD34',pulse:'14700000',verifyPath:coordinate,proof:{...proof,privateSession:'omit-this-field'},claimHashHex:'f'.repeat(64),pbiReceiptHash:'1'.repeat(64),attachments:[{...attachment,privateSession:'omit-this-field'}],longForm: { text: 'Full work' }, media: { kind:'audio',audioDistribution:{releaseTitle:'Actual release title',privateSession:'omit-this-field'},audioCoverSrc:artworkUrl,videoPosterSrc:'https://private.example/omit-this-field',sha256Hex:'c'.repeat(64),originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original',material:{sealedArtifactSha256Hex:'d'.repeat(64),proofObjectUrl:coordinate} } } }] } }), { headers: { 'Content-Type': 'application/json' } }));
+  const fetchSource = vi.fn(async () => new Response(JSON.stringify({ ok: true, transport: { generatedAt: 'now', publicMembership: {revision:selectedRevision}, wallet: { private: true }, publicOriginals: [{ id: 'a', receizId: 'a', title: 'A', ownerAvatarUrl:'https://receiz.com/artwork/alice.png',pulse:'14700000',livePulseSeed:{...livePulseSeed,unrelated:'omit-this-field'}, profileOriginal: { code:'AB12CD34',pulse:'14700000',verifyPath:coordinate,proof:{...proof,privateSession:'omit-this-field'},claimHashHex:'f'.repeat(64),pbiReceiptHash:'1'.repeat(64),attachments:[{...attachment,privateSession:'omit-this-field'}],longForm: { text: 'Full work' }, media: { kind:'audio',audioDistribution:{releaseTitle:'Actual release title',privateSession:'omit-this-field'},audioCoverSrc:artworkUrl,videoPosterSrc:'https://private.example/omit-this-field',sha256Hex:'c'.repeat(64),originalDownloadSrc: '/api/profile/originals/download?receizId=a&kind=original',material:{sealedArtifactSha256Hex:'d'.repeat(64),proofObjectUrl:coordinate} } } }] } }), { headers: { 'Content-Type': 'application/json',...selectedHeaders } }));
   vi.stubGlobal('fetch', fetchSource);
   let body = '', status = 0;
   const res = { setHeader: vi.fn(), writeHead: (code: number) => { status = code; }, end: (bytes: Uint8Array) => { body = new TextDecoder().decode(bytes); } } as unknown as ServerResponse;
@@ -101,11 +104,12 @@ it('keeps the native public card face and reverse fields in the same response wi
 });
 it('uses a bounded publication hint to bypass a stale membership response without forwarding the hint upstream',async()=>{
  const digest='9'.repeat(64),url='/api/bank/public-market/membership?afterPublication='+digest;
- expect(resolvePublicMarketTarget(url)?.href).toBe('https://receiz.com/api/market/public-membership');
+ expect(resolvePublicMarketTarget(url)?.href).toBe('https://receiz.com/api/market/public-membership?representation=selected');
  for(const bad of [url+'&afterPublication='+digest,url+'&url=https://evil.test',url.replace(digest,'not-a-digest')])expect(resolvePublicMarketTarget(bad)).toBeNull();
- const fetcher=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[]}})).mockResolvedValue(Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'publication-new',receizId:'publication-new',title:'A new work'}]}}));vi.stubGlobal('fetch',fetcher);
+ const before=()=>Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[]}},{headers:selectedHeaders});
+ const fetcher=vi.fn<typeof fetch>().mockImplementationOnce(async()=>before()).mockImplementationOnce(async()=>before()).mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[{id:'publication-new',receizId:'publication-new',title:'A new work'}]}},{headers:selectedHeaders}));vi.stubGlobal('fetch',fetcher);
  const request=async(path:string)=>{let body='';await publicMarketMiddleware({method:'GET',url:path,headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());return JSON.parse(body);};
- await request('/api/bank/public-market/membership?afterPublication='+'8'.repeat(64));await request('/api/bank/public-market/membership');const fresh=await request(url);expect(fresh.transport.publicOriginals[0].id).toBe('publication-new');expect(fetcher.mock.calls.at(-1)?.[0].toString()).toBe('https://receiz.com/api/market/public-membership');expect(fetcher.mock.calls.at(-1)?.[1]).toMatchObject({cache:'no-store'});
+ await request('/api/bank/public-market/membership?afterPublication='+'8'.repeat(64));await request('/api/bank/public-market/membership');const fresh=await request(url);expect(fresh.transport.publicOriginals[0].id).toBe('publication-new');expect(fetcher.mock.calls.at(-1)?.[0].toString()).toBe('https://receiz.com/api/market/public-membership?representation=selected');expect(fetcher.mock.calls.at(-1)?.[1]).toMatchObject({cache:'no-store'});
 });
 it('allows a bounded post-trade freshness reference without widening the upstream destination',async()=>{
  const nonce='10000000-0000-4000-8000-000000000001',path='/api/bank/public-market/quotes?afterTrade='+nonce;
@@ -133,12 +137,22 @@ it('bypasses stale quotes for one exact publication without forwarding a trade o
  await request('/api/bank/public-market/quotes');expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
-it('carries bounded public lyrics in the existing membership response without private fields or another request',async()=>{const longForm={title:'Song lyrics',text:'Every word\nAlready carried',sha256Hex:'a'.repeat(64)},fetchSource=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'song',receizId:'song',title:'Song',profileOriginal:{longForm:{...longForm,privateField:'omit-this-field'},media:{kind:'audio'}}}]}}));vi.stubGlobal('fetch',fetchSource);let body='';await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/membership?afterPublication='+'f'.repeat(64),headers:{cookie:'secret'}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.longForm).toEqual(longForm);expect(body).not.toContain('omit-this-field');expect(fetchSource).toHaveBeenCalledTimes(1);});
+it('carries bounded public lyrics in the existing membership response without private fields or another request',async()=>{const longForm={title:'Song lyrics',text:'Every word\nAlready carried',sha256Hex:'a'.repeat(64)},fetchSource=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[{id:'song',receizId:'song',title:'Song',profileOriginal:{longForm:{...longForm,privateField:'omit-this-field'},media:{kind:'audio'}}}]}},{headers:selectedHeaders}));vi.stubGlobal('fetch',fetchSource);let body='';await publicMarketMiddleware({method:'GET',url:'/api/bank/public-market/membership?afterPublication='+'f'.repeat(64),headers:{cookie:'secret'}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.longForm).toEqual(longForm);expect(body).not.toContain('omit-this-field');expect(fetchSource).toHaveBeenCalledTimes(1);});
 
 it('carries the exact description claim digest through the existing membership read without carrying the text or fetching again',async()=>{
  vi.resetModules();const {publicMarketMiddleware:fresh}=await import('../server/public-market');
  const claim='A complete sealed description.\nΦ stays with the source.',expected=Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(claim))).toString('hex');
- const fetcher=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{},publicOriginals:[{id:'claim-projection',receizId:'claim-projection',title:'Exact description',profileOriginal:{claim,claimHashHex:null}}]}}));vi.stubGlobal('fetch',fetcher);
+ const fetcher=vi.fn(async()=>Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[{id:'claim-projection',receizId:'claim-projection',title:'Exact description',profileOriginal:{claim,claimHashHex:null}}]}},{headers:selectedHeaders}));vi.stubGlobal('fetch',fetcher);
  let body='';await fresh({method:'GET',url:'/api/bank/public-market/membership',headers:{}}as IncomingMessage,{setHeader:vi.fn(),writeHead:vi.fn(),end:(bytes:Uint8Array)=>{body=new TextDecoder().decode(bytes);}}as unknown as ServerResponse,vi.fn());
  expect(JSON.parse(body).transport.publicOriginals[0].profileOriginal.claimHashHex).toBe(expected);expect(body).not.toContain(claim);expect(fetcher).toHaveBeenCalledOnce();
+});
+it('forwards the already-held selection on a cold server and delivers304 without opening the catalog body',async()=>{
+ vi.resetModules();const {publicMarketMiddleware:read}=await import('../server/public-market');
+ const etag='"'+'d'.repeat(64)+'"',fetcher=vi.fn<typeof fetch>(async()=>new Response(null,{status:304,headers:{etag}}));
+ vi.stubGlobal('fetch',fetcher);
+ let status=0;const end=vi.fn();
+ await read({method:'GET',url:'/api/bank/public-market/membership',headers:{'if-none-match':etag}}as IncomingMessage,
+  {setHeader:vi.fn(),writeHead:(value:number)=>{status=value;},end}as unknown as ServerResponse,vi.fn());
+ expect(status).toBe(304);expect(end).toHaveBeenCalledWith();
+ expect(fetcher).toHaveBeenCalledOnce();expect(fetcher.mock.calls[0]?.[1]).toMatchObject({headers:{'If-None-Match':etag},credentials:'omit'});
 });

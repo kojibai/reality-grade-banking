@@ -8,7 +8,10 @@ else{
  // npm does not support that option. Keep its real cache and all other config;
  // never reinterpret a pnpm cache directory as an npm cache.
  for(const key of Object.keys(env))if(key.toLowerCase().replaceAll('-','_')==='npm_config_cache_dir')delete env[key];
- const result=spawnSync('npm',args,{env,stdio:'inherit'});
+ const capture=task==='build'&&env.VERCEL_ENV==='production'
+  ?spawnSync(process.execPath,['scripts/seed-public-market.mjs','--membership-only','--selected'],{env,stdio:'inherit'})
+  :null;
+ const result=capture&&(capture.status!==0||capture.signal||capture.error)?capture:spawnSync('npm',args,{env,stdio:'inherit'});
  if(result.error){console.error(result.error.message);process.exitCode=1;}
  else if(result.signal)process.kill(process.pid,result.signal);
  else process.exitCode=result.status??1;

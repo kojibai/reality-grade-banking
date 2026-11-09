@@ -21,7 +21,7 @@ export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:reado
   const existing=people.get(profile.username);
   if(existing?.items.some(item=>item.ownerIdentity?.userId!==profile.userId))continue;
   people.set(profile.username,{username:profile.username,receivingUsername:profile.receivingUsername,
-   name:profile.displayName,avatarUrl:profile.avatarUrl,items:existing?.items??[]});
+   name:profile.displayName,avatarUrl:!head.profile.avatarUrl&&existing?.items[0]?.ownerAvatarFallback?null:profile.avatarUrl,items:existing?.items??[]});
  }
  return {items,people:[...people.values()],entries:new Map(items.map(item=>[item.id,normalize(`${item.title} ${item.summary} ${item.ownerDisplayName??''} @${item.ownerUsername??''}`)]))};
 }

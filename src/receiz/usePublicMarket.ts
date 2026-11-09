@@ -5,7 +5,7 @@ import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '@receiz/sdk';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
-import { fetchPublicMarket, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket,observePublicMarketMembership, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -188,9 +188,15 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const currentAttempt=()=>!controller.signal.aborted&&attempt===generation.current&&admittedRevision===membershipRevision;
     latestQuotes.current=null;
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
-    const membershipAttempt = fetchPublicMarket(controller.signal).then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
+    const previousMembership=readPublicCatalog();
+    const membershipRead=previousMembership?.complete&&/^[a-f0-9]{64}$/.test(previousMembership.revision)
+      ?observePublicMarketMembership(previousMembership.revision).then(next=>next??previousMembership)
+      :fetchPublicMarket(controller.signal);
+    const membershipAttempt = membershipRead.then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
       if(!currentAttempt())return;const next=membership.value,quotes=readRetainedPublicQuotes()?.snapshot??latestQuotes.current;if(!next?.complete)lastRefreshFailed=true;
-      const before=readPublicCatalog(),selected=setCatalog(current=>{
+      const before=readPublicCatalog();
+      if(next?.complete&&next===before){setStatus('live');updateRefreshError({membership:null});return;}
+      const selected=setCatalog(current=>{
         if(!next||!next.complete&&current)return current;
         const previous=new Map(current?.items.map(item=>[item.id,item]));
         let updated=mergePublicSports({...next,items:next.items.map(item=>{

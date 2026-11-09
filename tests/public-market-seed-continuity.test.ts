@@ -47,3 +47,11 @@ it('refuses an incomplete membership instead of replacing the shipped complete s
 it('imports the CLI driver without opening a Vite app host or requiring application sources',async()=>{
  const root=await mkdtemp(join(tmpdir(),'bank-seed-driver-import-'));try{await mkdir(join(root,'scripts'));await symlink(resolve('node_modules'),join(root,'node_modules'),'dir');const script=join(root,'scripts/seed-public-market.mjs');await copyFile(new URL('../scripts/seed-public-market.mjs',import.meta.url),script);const result=await promisify(execFile)(process.execPath,['--input-type=module','-e','globalThis.fetch=()=>{throw Error("Unexpected seed fetch")};await import('+JSON.stringify(pathToFileURL(script).href)+');console.log("Driver import settled without app inputs");']);expect(result.stdout).toContain('Driver import settled without app inputs');}finally{await rm(root,{recursive:true,force:true});}
 });
+
+it('retains the exact held full receiving name for the same owner and Original, without guessing a missing character',()=>{
+ const full='mxbzkeil5wvisanfxz',old={...row('one'),ownerUsername:'receiz_'+full.slice(0,17),ownerReceivingUsername:full},thin={...old};delete (thin as Partial<typeof old>).ownerReceivingUsername;
+ const previous={...membership([old]),snapshot:snapshot([])};
+ const build=(r:unknown)=>buildMembershipOnlyPublicMarketSeed({membership:membership([r]),snapshot:snapshot([]),previous});
+ expect(parsePublicMarket(build(thin)).items[0].ownerReceivingUsername).toBe(full);
+ for(const changed of [{...thin,ownerUserId:'another-owner'},{...thin,receizId:'different-Original'},{...thin,ownerUsername:'renamed'}])expect(parsePublicMarket(build(changed)).items[0].ownerReceivingUsername).toBeUndefined();
+});

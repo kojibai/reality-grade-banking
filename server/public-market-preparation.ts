@@ -85,11 +85,11 @@ export async function preparePublicMarketRenderMaterial(input:PublicMarketMateri
  * guards retain compatible observations, artwork and receipt bases; nothing
  * here opens an Original or creates financial authority. */
 type SeedQuote=Record<string,unknown>&{itemId:string};
-type SeedTransport={publicOriginals:Array<{id:string;profileOriginal:Record<string,unknown>}>;publicProfileHeads?:Array<{profile:Record<string,unknown>}>};
+type SeedTransport={publicOriginals:Array<{id:string;profileOriginal:Record<string,unknown>;ownerReceivingUsername?:string}>;publicProfileHeads?:Array<{profile:Record<string,unknown>}>};
 export function buildMembershipOnlyPublicMarketSeed({membership:input,snapshot,previous}:{membership:Record<string,unknown>;snapshot:unknown;previous?:Record<string,unknown>}){
  validatePublicQuotes(snapshot);
  const offered=new Set(((input.transport as SeedTransport)?.publicProfileHeads??[]).map(head=>head?.profile?.userId+':'+head?.profile?.username));
- const membership=curatePublicMarketMembership({...input}),current=parsePublicMarket(membership),prior=previous?parsePublicMarket(previous,previous.snapshot):null;
+ const membership=curatePublicMarketMembership({...input}),prior=previous?parsePublicMarket(previous,previous.snapshot):null,current=retainPublicProfileHeaders(parsePublicMarket(membership),prior);
  if(!current.complete||prior&&!prior.complete)throw new Error('The public source did not return its complete collection; seed not replaced.');
  const known=new Map(prior?.items.map(item=>[item.id,item])??[]),items=new Map(current.items.map(item=>[item.id,item]));
  const carried={...current,items:current.items.map(item=>({...item,shareInventory:compatibleShareInventory(item,known.get(item.id)?.shareInventory)}))};
@@ -101,9 +101,9 @@ export function buildMembershipOnlyPublicMarketSeed({membership:input,snapshot,p
  // guards, never the thinner raw observation that arrived beside it.
  const completeQuotes={...combined,data:{...combined.data,liveMarkets:combined.data.liveMarkets.map(row=>{const quote={...row};delete quote.shareInventory;const inventory=selectedItems.get(row.itemId)?.shareInventory;if(inventory)quote.shareInventory=inventory;return quote;})}};
  const rows=new Map((membership.transport as SeedTransport).publicOriginals.map(row=>[row.id,row]));
- for(const item of current.items){const previousItem=known.get(item.id),retained=retainPublicMomentManifest(retainPublicArtwork(item,previousItem),previousItem),profile=rows.get(item.id)!.profileOriginal;if(retained.artworkUrl!==item.artworkUrl)profile.artworkUrl=retained.artworkUrl;if(retained.proofManifestSource?.recordCardMediaSha256Hex!==item.proofManifestSource?.recordCardMediaSha256Hex)profile.recordCardMediaSha256Hex=retained.proofManifestSource!.recordCardMediaSha256Hex;}
+ for(const item of current.items){const previousItem=known.get(item.id),retained=retainPublicMomentManifest(retainPublicArtwork(item,previousItem),previousItem),row=rows.get(item.id)!,profile=row.profileOriginal;if(item.ownerReceivingUsername)row.ownerReceivingUsername=item.ownerReceivingUsername;if(retained.artworkUrl!==item.artworkUrl)profile.artworkUrl=retained.artworkUrl;if(retained.proofManifestSource?.recordCardMediaSha256Hex!==item.proofManifestSource?.recordCardMediaSha256Hex)profile.recordCardMediaSha256Hex=retained.proofManifestSource!.recordCardMediaSha256Hex;}
  // An offered but refused/ambiguous header is distinct from absent metadata.
- const eligiblePrior=prior?{...prior,publicProfileHeads:prior.publicProfileHeads?.filter(head=>!offered.has(head.profile.userId+':'+head.profile.username))}:null,headers=retainPublicProfileHeaders(current,eligiblePrior).publicProfileHeads;
+ const eligiblePrior=prior?{...prior,publicProfileHeads:prior.publicProfileHeads?.filter(head=>!offered.has(head.profile.userId+':'+head.profile.username))}:null,headers=retainPublicProfileHeaders(parsePublicMarket(membership),eligiblePrior).publicProfileHeads;
  return {...membership,transport:{...(membership.transport as SeedTransport),...(headers?{publicProfileHeads:headers}:{})},snapshot:publicMarketSeedQuotes(completeQuotes,new Set(items.keys())) as {data:{liveMarkets:SeedQuote[]}}};
 }
 

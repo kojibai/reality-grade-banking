@@ -9,11 +9,11 @@ import {ProfileAvatar} from '../components/ProfileAvatar';
 import {PublicOwnerAvatar} from '../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectibleArtwork';
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
-import {safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
+import {observePublicMarketMembership,safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
 import {profilePagePath} from '../receiz/public-profile';
 import {appendFeedItems,feedKind,feedText,refreshFeedItems} from '../public-feed/feed-items';
-import {subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
-import {readPreparedBankCatalog,preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/prepared-bank-catalog';
+import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
+import {preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/prepared-bank-catalog';
 import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
 import './discover.css';
@@ -33,38 +33,32 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
  {kind==='collectible'&&image?<PublicCollectibleArtwork item={item} eager={eager}/>:kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:image?<img src={image} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
-export function Discover({seed,active=true}:{seed:PublicMarketItem[];active?:boolean}){
+export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];seedHeads?:PublicMarketCatalog['publicProfileHeads'];active?:boolean}){
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
  const publicationAt=useRef(-Infinity),selectedCatalog=useRef<PublicMarketCatalog|null>(null);
  const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const scrollTools=useScrollReveal(active,'.discover-search');
- const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?.publicProfileHeads),[items,catalog?.publicProfileHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
+ const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?.publicProfileHeads??seedHeads),[items,catalog?.publicProfileHeads,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
  useEffect(()=>{
   if(!active)return;
   const abort=new AbortController();
   const adopt=(next:PublicMarketCatalog|null)=>{
-   if(!next?.complete||next===selectedCatalog.current)return;
+   if(!next?.complete||next===selectedCatalog.current||Date.parse(next.observedAt??'')<Date.parse(selectedCatalog.current?.observedAt??''))return;
    selectedCatalog.current=next;
    setCatalog(next);
    setItems(held=>completeFeedItems(held,next.items));
   };
   const sync=()=>{
    const state=preparedBankCatalogState();
-   adopt((state.value??state.carried)?.seed.catalog??null);
+   adopt((state.value??state.carried)?.seed.catalog??state.bareCatalog??null);
   };
   const unsubscribe=subscribePreparedBankCatalog(sync);
   const held=readHeldFeedCatalog();
+  adopt(retainedDiscoveredPublicCatalog());
   sync();
   if(!selectedCatalog.current)adopt(held);
-  if(!held&&!selectedCatalog.current&&!document.getElementById('public-market-seed')){
-   void readPreparedBankCatalog().then(next=>{
-    if(abort.signal.aborted||next||selectedCatalog.current)return;
-    return prepareFeedItems(abort.signal).then(found=>{
-     if(!abort.signal.aborted&&!selectedCatalog.current)setItems(previous=>appendFeedItems(previous,found));
-    });
-   }).catch(()=>{});
-  }else if(!selectedCatalog.current){
+  if(!selectedCatalog.current){
    void prepareFeedItems(abort.signal).then(found=>{
     if(!abort.signal.aborted){
      adopt(readHeldFeedCatalog());
@@ -72,15 +66,24 @@ export function Discover({seed,active=true}:{seed:PublicMarketItem[];active?:boo
     }
    }).catch(()=>{});
   }
-  return()=>{abort.abort();unsubscribe();};
+  const observer=setInterval(()=>{
+   if(document.visibilityState!=='visible')return;
+   const revision=selectedCatalog.current?.revision??'';
+   void observePublicMarketMembership(revision).then(next=>{
+    if(!abort.signal.aborted&&next?.complete&&selectedCatalog.current?.revision===revision&&next.revision!==revision)publishDiscoveredPublicCatalog(next);
+   }).catch(()=>{});
+  },60_000);
+  return()=>{abort.abort();unsubscribe();clearInterval(observer);};
  },[active]);
  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
   // Undefined notifications are local admission/delivery changes. This surface
   // adopts only a dated public response, never the pending local overlay.
-  if(!catalog)return;const observedAt=Date.parse(catalog.observedAt??'');if(!Number.isFinite(observedAt)||observedAt<=publicationAt.current)return;
+  if(!catalog?.complete||catalog.revision===selectedCatalog.current?.revision)return;
+  const observedAt=Date.parse(catalog.observedAt??'');
+  if(!/^[a-f0-9]{64}$/.test(catalog.revision)&&(!Number.isFinite(observedAt)||observedAt<Math.max(publicationAt.current,Date.parse(selectedCatalog.current?.observedAt??'')||-Infinity)))return;
   publicationAt.current=observedAt;
-  if(catalog.complete){selectedCatalog.current=catalog;setCatalog(catalog);}
-  setItems(held=>refreshFeedItems(held,catalog.items));
+  selectedCatalog.current=catalog;setCatalog(catalog);
+  setItems(held=>/^[a-f0-9]{64}$/.test(catalog.revision)?completeFeedItems(held,catalog.items):refreshFeedItems(held,catalog.items));
  }),[]);
  useEffect(()=>{setShown(20);},[query,filter]);
  useEffect(()=>{if(!active||shown>=results.items.length||!more.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{rootMargin:'500px'});observer.observe(more.current);return()=>observer.disconnect();},[active,shown,results.items.length]);

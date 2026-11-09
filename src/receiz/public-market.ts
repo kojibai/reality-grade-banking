@@ -209,6 +209,13 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
 /** A thinner public refresh cannot erase metadata already held for the same
  * still-public account. An absent/rebound owner never inherits another head. */
 export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:PublicMarketCatalog|null|undefined):PublicMarketCatalog{
+ if(!previous)return catalog;
+ const known=new Map(previous.items.map(item=>[item.id,item]));let changed=false;
+ const items=catalog.items.map(item=>{
+  const prior=known.get(item.id),full=prior?.ownerReceivingUsername;
+  if(!item.ownerReceivingUsername&&full&&item.assetId===prior.assetId&&item.ownerIdentity?.userId&&item.ownerIdentity.userId===prior.ownerIdentity?.userId&&item.ownerUsername&&item.ownerUsername===prior.ownerUsername&&publicProfileUsername(item.ownerUsername,full)===full){changed=true;return{...item,ownerReceivingUsername:full};}return item;
+ });
+ if(changed)catalog={...catalog,items};
  if(!previous?.publicProfileHeads?.length)return catalog;
  const keys=new Set(catalog.publicProfileHeads?.map(head=>head.profile.userId+':'+head.profile.username)),owners=new Set(catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId+':'+item.ownerIdentity.username]:[]));
  const retained=previous.publicProfileHeads.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username)&&owners.has(head.profile.userId+':'+head.profile.username));
@@ -301,13 +308,36 @@ export function retainPublicMarket(catalog:PublicMarketCatalog,snapshot?:unknown
  held.response=null;held.retained=true;if(snapshot)held.snapshot=snapshot;if(quotes)held.quotes=quotes;
  if(exact)void preparedPublicCatalogCache!.write(exact,()=>{if(!saved&&previous!==undefined)try{if(localStorage.getItem('receiz-bank-public-discovery-v2')===previous)localStorage.removeItem('receiz-bank-public-discovery-v2');}catch{/* A newer or unavailable copy stays untouched. */}}).catch(()=>{/* Optional display retention never gates the selected response. */});
 }
-export async function fetchPublicMarket(signal?: AbortSignal,afterPublication=assetPublicationFreshnessHint()): Promise<PublicMarketCatalog> {
-  const response = await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''), { signal, credentials: 'omit' });
-  if (!response.ok) throw new Error('The public Market could not be refreshed.');
+type PublicMembershipResponse={catalog:PublicMarketCatalog;etag:string|null};
+let selectedPublicMembership:PublicMembershipResponse|null=null;
+let publicMembershipEpoch=0;
+const publicMembershipReads=new Map<string,Promise<PublicMarketCatalog|null>>();
+async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint(),heldRevision?:string):Promise<PublicMarketCatalog|null>{
+  const prior=selectedPublicMembership,epoch=++publicMembershipEpoch;
+  const etag=heldRevision&&/^[a-f0-9]{64}$/.test(heldRevision)?'"'+heldRevision+'"':prior?.etag;
+  const response=await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''),{signal,credentials:'omit',headers:etag&&!afterPublication?{'If-None-Match':etag}:undefined});
+  if(response.status===304)return heldRevision?null:prior?.catalog??null;
+  if(!response.ok)throw new Error('The public Market could not be refreshed.');
   const exact=preparedPublicCatalogCache&&/^application\/json(?:;|$)/i.test(response.headers.get('content-type')??'')?response.clone():null;
-  const input = await response.json(); const catalog = parsePublicMarket(input,input?.snapshot); rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
+  const input=await response.json(),catalog=parsePublicMarket(input,input?.snapshot);
+  rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
   rememberPublicMarketResponse(catalog,input,exact);
+  if(catalog.complete&&epoch===publicMembershipEpoch)selectedPublicMembership={catalog,etag:response.headers.get('etag')};
+  return catalog.revision===heldRevision?null:catalog;
+}
+export async function fetchPublicMarket(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint()):Promise<PublicMarketCatalog>{
+  const catalog=await readPublicMembership(signal,afterPublication);
+  if(!catalog)throw Error('The public Market could not be refreshed.');
   return catalog;
+}
+/** Conditional background observation only. A held generation needs no new
+ * body or presentation work. Sharing the read cannot cancel another surface. */
+export function observePublicMarketMembership(revision:string):Promise<PublicMarketCatalog|null>{
+  const current=publicMembershipReads.get(revision);if(current)return current;
+  const read=readPublicMembership(AbortSignal.timeout(90000),undefined,revision);
+  publicMembershipReads.set(revision,read);
+  void read.finally(()=>{if(publicMembershipReads.get(revision)===read)publicMembershipReads.delete(revision);}).catch(()=>{});
+  return read;
 }
 export interface PublicQuoteObservation {snapshot:unknown;receivedAt:number;}
 interface PublicQuoteRead {controller:AbortController;epoch:number;pending:Promise<unknown>;consumers:Set<symbol>;}

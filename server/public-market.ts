@@ -21,7 +21,7 @@ const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
 export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   const local = new URL(requestUrl, 'http://localhost');
-  if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership');
+  if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership?representation=selected');
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
   if(local.pathname===`${PREFIX}quotes`&&(!local.search||local.searchParams.size===1&&(local.searchParams.getAll('afterTrade').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(local.searchParams.get('afterTrade')??'')||local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??'')))){const target=new URL('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');if(local.searchParams.has('afterTrade'))target.searchParams.set('afterTrade',local.searchParams.get('afterTrade')!);return target;}
@@ -60,7 +60,7 @@ async function readBounded(response: Response): Promise<Uint8Array> {
   catch (error) { await reader.cancel().catch(() => {}); throw error; }
   const bytes = new Uint8Array(length); let offset = 0; for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; } return bytes;
 }
-async function loadPublicResponse(target: URL,afterPublication?:string): Promise<CachedResponse> {
+async function loadPublicResponse(target: URL,afterPublication?:string,ifNoneMatch?:string): Promise<CachedResponse> {
   // Receipt codecs belong to an explicit file request, never API startup or
   // ordinary public navigation. The existing native exporter owns the file.
   if(target.pathname.startsWith('/v/')){
@@ -69,13 +69,16 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
     const parts=target.pathname.split('/');target=new URL(buildWalletLedgerReceiptDownloadHrefFromPayload({payload:payload as Record<string,unknown>,slug:parts[2],code:parts[3],pulse:parts[4],ms:target.searchParams.get('ms'),anchorId:target.searchParams.get('a'),presentation:'public-proof'}),'https://receiz.com');
   }
   const cacheTarget=new URL(target);if(cacheTarget.pathname==='/api/market/public-snapshot')cacheTarget.searchParams.delete('afterTrade');
-  const key = cacheTarget.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:key;
+  const key = cacheTarget.href, previous = cache.get(key),pendingKey=afterPublication?key+":after:"+afterPublication:ifNoneMatch?key+':held:'+ifNoneMatch:key;
   const original = target.pathname === '/api/profile/originals/download' || target.pathname.startsWith('/api/proof-material/packages/')||target.pathname==='/api/receiz/download'||target.pathname==='/api/transactions/moment-card'||target.pathname==='/api/profile/showcase/imported-source';
-  if (!afterPublication && !original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
+  const membership=target.pathname.endsWith('/public-membership');
+  if (!membership && !afterPublication && !original && previous && Date.now() - previous.fetchedAt < 60_000) return previous;
   const inflight = pending.get(pendingKey); if (inflight) return inflight;
   const epoch=(epochs.get(key)??0)+1;epochs.set(key,epoch);
   const attempt = (async () => {
-    const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&previous?.etag ? { 'If-None-Match': previous.etag } : {} });
+    const conditional=ifNoneMatch??previous?.etag;
+    const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&conditional ? { 'If-None-Match': conditional } : {} });
+    if(response.status===304&&ifNoneMatch&&previous?.etag!==ifNoneMatch)return {bytes:new Uint8Array(),type:'application/json',etag:ifNoneMatch,fetchedAt:Date.now()};
     if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; if(epochs.get(key)===epoch)cache.set(key, current); return current; }
     if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
     if (!response.ok) throw new Error(`Receiz public source returned ${response.status}.`);
@@ -92,6 +95,8 @@ async function loadPublicResponse(target: URL,afterPublication?:string): Promise
         for(const key of Object.keys(input))delete input[key];Object.assign(input,projected);
       } else if (target.pathname.endsWith('public-membership')) {
         const raw=input?.transport?.publicProfileHeads;if(Array.isArray(raw)&&raw.every((head:Record<string,unknown>)=>{const profile=head?.profile as Record<string,unknown>|undefined,viewer=head?.viewer as Record<string,unknown>|undefined,stats=head?.stats as Record<string,unknown>|undefined;return profile?.isPrivate===false&&typeof profile.userId==='string'&&typeof profile.username==='string'&&viewer?.canView===true&&viewer.isOwner===false&&viewer.isSignedIn===false&&viewer.canEdit===false&&Number.isSafeInteger(stats?.originals)&&Number(stats?.originals)>=0&&Number.isSafeInteger(stats?.signedOriginals)&&Number(stats?.signedOriginals)>=0&&Number(stats?.signedOriginals)<=Number(stats?.originals);}))profileHeads=raw.map(({profile,viewer,stats}:Record<string,unknown>)=>({profile,viewer,stats}));
+        const selected=response.headers.get('x-receiz-public-material-revision');
+        if(!selected||!/^[a-f0-9]{64}$/.test(selected)||input.transport?.publicMembership?.revision!==selected)throw Error('The selected public collection is unavailable.');
         curatePublicMarketMembership(input);
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
@@ -128,7 +133,14 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   response.setHeader('X-Content-Type-Options', 'nosniff'); response.setHeader('Cache-Control', 'no-store');
   if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }); response.end(); return; }
   const target = resolvePublicMarketTarget(request.url); if (!target) { response.writeHead(400); response.end(); return; }
-  try { const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??new URL(request.url,'http://localhost').searchParams.get('afterTrade')??undefined); response.setHeader('Content-Type', result.type); response.writeHead(200); response.end(result.bytes); }
+  try { const conditional=request.headers?.['if-none-match'];
+   const selected=target.pathname.endsWith('/public-membership')&&typeof conditional==='string'&&/^"[a-f0-9]{64}"$/.test(conditional)?conditional:undefined;
+   const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??new URL(request.url,'http://localhost').searchParams.get('afterTrade')??undefined,selected); response.setHeader('Content-Type', result.type);
+   if(target.pathname.endsWith('/public-membership')&&result.etag){
+     response.setHeader('ETag',result.etag);
+     if(request.headers?.['if-none-match']===result.etag){response.writeHead(304);response.end();return;}
+   }
+   response.writeHead(200); response.end(result.bytes); }
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */

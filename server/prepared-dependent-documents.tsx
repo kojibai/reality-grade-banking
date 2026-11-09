@@ -72,7 +72,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
   const compressed=compressedCatalog(catalog),script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}},compressed.large?compressed.packet:undefined);
   // Feed keeps its existing complete cohort reader. Passive Discover retains
   // the producer's full source-bound seed beside the legacy 12-item hydration seed.
-  const clean=template.replace(/<script id="public-(?:feed|discovery)-seed" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;
+  const clean=template.replace(/<script id="public-(?:feed-seed|discovery-(?:seed|heads))" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;
   let html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+(path==='feed'?script:'')+end;});
   if(!replaced)throw Error('PUBLIC_DISCOVERY_PREPARED_TEMPLATE_INVALID');
   if(path==='discover')html=html.replace('<script id="receiz-navigation"',()=>legacySeed+script+'<script id="receiz-navigation"');
