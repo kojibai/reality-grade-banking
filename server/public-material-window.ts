@@ -81,5 +81,11 @@ export function createPublicMaterialWindowReader({material,generation,readPart,r
   if(index.root&&(await node(index.root)).count!==index.count)invalid();await visit(index.root,null,null);if(values.length!==index.count)invalid();return immutable(values);
  }
  async function indexValues(index:PublicMaterialIndex):Promise<readonly unknown[]>{return Promise.all((await indexEntries(index)).map(([,id])=>load(id)));}
- return Object.freeze({root,generation,window,readPart:load,readSelectedPart:async(id:string)=>{if(recheckPart&&parts.has(id)){await recheckPart(id);return load(id);}return load(id,await readPart(id));},membershipRow,indexEntries,indexValues,usesPart:(id:string)=>usedParts.has(id),releaseUnusedParts:(retainedByAnotherReader:(id:string)=>boolean)=>{for(const id of usedParts)if(!retainedByAnotherReader(id))parts.delete(id);}});
+ async function profileHeads():Promise<readonly unknown[]>{
+  const rootId=root.membership.headsByOwner;if(!rootId)return [];
+  const selected=await node(rootId),values=await indexEntries({root:rootId,count:selected.count}),heads:unknown[]=[];
+  for(const [uid,id]of values){const head=curatePublicProfileHead(await load(id));if(!head||head.profile.userId!==uid)invalid();heads.push(head);}
+  return immutable(heads);
+ }
+ return Object.freeze({root,generation,window,profileHeads,readPart:load,readSelectedPart:async(id:string)=>{if(recheckPart&&parts.has(id)){await recheckPart(id);return load(id);}return load(id,await readPart(id));},membershipRow,indexEntries,indexValues,usesPart:(id:string)=>usedParts.has(id),releaseUnusedParts:(retainedByAnotherReader:(id:string)=>boolean)=>{for(const id of usedParts)if(!retainedByAnotherReader(id))parts.delete(id);}});
 }

@@ -115,6 +115,8 @@ Keep local, committed, deployed and live-verified results separate. A source tes
 
 ## Profile header continuity
 
+Public profile admission does not require an Original. Retain and render the selected owner-header index, including accounts with zero Originals, independently of row windows or an older retained membership baseline. A missing saved entry is unknown delivery, never a privacy withdrawal. Only explicit owner-bound privacy policy may refuse it. The admitted owner's initial profile reuses its signed birth and the runtime's existing receiving-Account binding; a different connected Account ID cannot turn that held header into a blank page. Generated profile names are projected completely before the profile-name length limit, without changing the Identity Seal or account keys.
+
 The accepted anonymous Market transport carries each public profile header once per immutable owner, alongside that owner's Originals. Keep its banner, portrait, profile PBI receipt and other public header fields through the existing cache and saved-document serialization. Header-only transitions participate in display selection even when membership is unchanged. A header's statistics never replace the currently selected complete membership count.
 
 An owner-bound held collection must not trigger a separate profile manifest lookup. Missing header metadata is unknown, not an unsigned profile or an invitation to sign again. A thinner refresh cannot erase an available header for the same still-public owner. Actual privacy, handle and UID changes retain their existing refusal boundaries.

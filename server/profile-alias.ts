@@ -14,8 +14,9 @@ export async function readPublicProfileAlias(username:string,fetchImpl:typeof fe
  if(response.status===307){
   const location=response.headers.get('location');if(!location)throw Error('PROFILE_ALIAS_UNAVAILABLE');
   const canonical=new URL(location,target);
-  if(canonical.origin!==target.origin||canonical.pathname!==`/api/profile/${expected}`||canonical.search!==target.search||canonical.hash)throw Error('PROFILE_ALIAS_UNAVAILABLE');
-  return expected;
+  const name=canonical.pathname.slice('/api/profile/'.length);
+  if(canonical.origin!==target.origin||!canonical.pathname.startsWith('/api/profile/')||!profileUsername(name)||canonical.pathname!==`/api/profile/${name}`||canonical.pathname!==`/api/profile/${expected}`&&response.headers.get('x-receiz-profile-alias')!==username||canonical.search!==target.search||canonical.hash)throw Error('PROFILE_ALIAS_UNAVAILABLE');
+  return name;
  }
  if(response.ok&&profileUsername(username))return username;
  throw Error('PROFILE_ALIAS_UNAVAILABLE');

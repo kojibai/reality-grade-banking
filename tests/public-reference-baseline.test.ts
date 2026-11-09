@@ -19,3 +19,9 @@ it('rechecks an already parsed baseline after withdrawal and uses only the remai
  const root={...remaining.root,membership:{...remaining.root.membership,baseline:before.root.membership.baseline,baselineChanges:remaining.index([[before.key(rows[0]),'null']])},snapshot:{...remaining.root.snapshot,baseline:before.root.snapshot.baseline}},material=JSON.stringify(root);
  const result=await prepareSelectedPublicReferenceCatalog({material,generation:createHash('sha256').update(material).digest('hex'),readPart},false);expect(calls).toContain(before.baseline);expect(result.catalog.items).toHaveLength(49);expect(result.catalog.items.some(row=>row.assetId===rows[0].receizId)).toBe(false);
 });
+
+it('includes a current empty profile header even when the retained row baseline predates that Account',async()=>{
+ const f=family(),uid='new-owner',head=f.put({profile:{userId:uid,username:'new_owner',isPrivate:false,createdAt:'2026-11-09T00:00:00Z'},viewer:{canView:true},stats:{originals:0}}),root={...f.root,membership:{...f.root.membership,headsByOwner:f.index([[uid,head]]).root}},material=JSON.stringify(root);
+ const result=await prepareSelectedPublicReferenceCatalog({material,generation:createHash('sha256').update(material).digest('hex'),readPart:f.readPart},false);
+ expect(result.catalog.publicProfileHeads?.map(h=>h.profile.username)).toEqual(['new_owner']);expect(result.catalog.items).toHaveLength(rows.length);expect(f.generations.some(id=>f.reads.has(id))).toBe(false);
+});

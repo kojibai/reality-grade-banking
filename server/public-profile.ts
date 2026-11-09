@@ -28,20 +28,25 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
    // Read the admitted collection once; the UI windows its already-held rows.
    const target=new URL(`https://receiz.com/api/profile/${username}?surface=public-route&representation=collection-v2`),legacy=legacyReceivingUsername(username);
    const options={credentials:'omit',redirect:legacy?'manual':'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}} as const;
-   let canonical=username,response=await fetchImpl(target.href,options);
+   let aliasOwner:string|null=null,aliasAccepted=false,canonical=username,response=await fetchImpl(target.href,options);
    if(legacy&&response.status===307){
     const location=response.headers.get('location'),resolved=location?new URL(location,target):null;await response.body?.cancel();
-    if(!resolved||resolved.origin!==target.origin||resolved.pathname!==`/api/profile/${legacy}`||resolved.search!==target.search||resolved.hash)throw new PublicProfileError('PROFILE_ALIAS_UNAVAILABLE',503);
-    canonical=legacy;response=await fetchImpl(resolved.href,{...options,redirect:'error'});
+    const resolvedName=resolved?.pathname.slice('/api/profile/'.length);
+    aliasOwner=response.headers.get('x-receiz-profile-owner');
+    aliasAccepted=response.headers.get('x-receiz-profile-alias')===username&&!!aliasOwner&&/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(aliasOwner);
+    if(!resolved||resolved.origin!==target.origin||!resolvedName||!profileUsername(resolvedName)||resolved.pathname!==`/api/profile/${resolvedName}`||resolved.pathname!==`/api/profile/${legacy}`&&!aliasAccepted||resolved.search!==target.search||resolved.hash)throw new PublicProfileError('PROFILE_ALIAS_UNAVAILABLE',503);
+    canonical=resolvedName;response=await fetchImpl(resolved.href,{...options,redirect:'error'});
    }
    if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
    const input=await readBody(response);
    try{
     const profile=parsePublicProfile(input,canonical),release=readPublicShowcaseRelease(response.headers.get('x-receiz-public-showcase-release'),profile);
-    if(canonical!==username&&publicProfileUsername(profile.username,profile.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1'))throw new PublicProfileError('PROFILE_IDENTITY_MISMATCH',503);
+    if(aliasAccepted&&profile.userId!==aliasOwner)throw new PublicProfileError('PROFILE_IDENTITY_MISMATCH',503);
+    if(canonical!==username&&!aliasAccepted&&publicProfileUsername(profile.username,profile.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1'))throw new PublicProfileError('PROFILE_IDENTITY_MISMATCH',503);
     if(release&&release.revision===response.headers.get('x-receiz-profile-public-collection-revision'))profile.publicShowcaseRelease=release;
     if(cursor&&cursor!=='all:'+profile.userId)throw new PublicProfileError('PROFILE_CHANGED',409);
     if(cursor&&profile.nextCursor)throw Error('PROFILE_COLLECTION_INCOMPLETE');
+    if(aliasAccepted)profile.resolvedReceivingUsername=username.replace(/^receiz_/,'');
     return enrich(profile);
    }catch(cause){if(cause instanceof PublicProfileError)throw cause;throw new PublicProfileError(cause instanceof Error?cause.message:'PROFILE_UNAVAILABLE',cause instanceof Error&&cause.message==='PROFILE_PRIVATE'?403:503);}
   })();pending.set(key,attempt);void attempt.finally(()=>{if(pending.get(key)===attempt)pending.delete(key);}).catch(()=>{});return attempt;

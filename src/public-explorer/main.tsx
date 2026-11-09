@@ -16,12 +16,12 @@ import '../styles/tokens.css';
 import '../styles/app.css';
 import '../styles/features.css';
 import {publicRuntimeRoot,usePublicRuntimeActive} from '../core/public-runtime';
-type ExplorerDocument={asset?:PublicMarketItem;frame?:PublicFirstFrame;prepared:PublicMarketDocumentSeed|null;path?:string;reconcilePath?:boolean};
-function PublicExplorerRoot({prepared,path,reconcilePath=false,asset,frame}:ExplorerDocument){
- const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared||!!asset),entryPath=prepared?path??'/'+prepared.path+'/':undefined;
+type ExplorerDocument={asset?:PublicMarketItem;frame?:PublicFirstFrame;profileSource?:boolean;prepared:PublicMarketDocumentSeed|null;path?:string;reconcilePath?:boolean};
+function PublicExplorerRoot({prepared,path,reconcilePath=false,asset,frame,profileSource=false}:ExplorerDocument){
+ const active=usePublicRuntimeActive('explore'),[initial,setInitial]=useState(!!prepared||!!asset||profileSource),entryPath=prepared?path??'/'+prepared.path+'/':undefined;
  useEffect(()=>{setInitial(false);if(!reconcilePath||!entryPath||entryPath===location.pathname)return;let alive=true;queueMicrotask(()=>{if(alive)dispatchEvent(new Event('receiz-bank:surface'));});return()=>{alive=false;};},[]);
- const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined,preparedSource=prepared||asset?{catalog:prepared?.catalog??null,historyCatalog:prepared?.catalog??null,pulse:prepared?.asOfPulse??frame!.pulse,quoteStatus:'stale' as const,sportsStatus:prepared?.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
- return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?(prepared?.format??frame):undefined}><PublicDocumentPulseContext.Provider value={initial&&asset?frame?.pulse:undefined}><PublicExplorer active={active&&!initial} initialPath={prepared?path??'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsset={initial?asset:undefined} initialAsOfPulse={initial?(prepared?.asOfPulse??frame?.pulse):undefined}/></PublicDocumentPulseContext.Provider></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;
+ const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined,preparedSource=profileSource?{catalog:null,historyCatalog:null,pulse:frame!.pulse,quoteStatus:'stale' as const,sportsStatus:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:prepared||asset?{catalog:prepared?.catalog??null,historyCatalog:prepared?.catalog??null,pulse:prepared?.asOfPulse??frame!.pulse,quoteStatus:'stale' as const,sportsStatus:prepared?.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
+ return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?(profileSource?frame:prepared?.format??frame):undefined}><PublicDocumentPulseContext.Provider value={initial&&(asset||profileSource)?frame?.pulse:undefined}><PublicExplorer active={active&&!initial} initialPath={profileSource?path:prepared?path??'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsset={initial?asset:undefined} initialAsOfPulse={initial?(profileSource?frame?.pulse:prepared?.asOfPulse??frame?.pulse):undefined}/></PublicDocumentPulseContext.Provider></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;
 }
 const roots=new WeakMap<HTMLElement,Root>();
 const preparingRoots=new WeakMap<HTMLElement,Promise<Root|undefined>>();
@@ -34,7 +34,7 @@ export function mountHeldPublicDocument(root:HTMLElement,held:PublicMarketDocume
  return roots.get(root)!;
 }
 function publicDocumentSeedElement(root:HTMLElement){
- const sibling=document.getElementById('public-market-seed'),source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&sibling.nextElementSibling?.id==='receiz-navigation'?sibling:null);
+ const sibling=document.getElementById('public-market-seed'),source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&(sibling.nextElementSibling?.id==='receiz-navigation'||sibling.nextElementSibling?.id==='public-profile-seed'&&sibling.nextElementSibling.nextElementSibling?.id==='receiz-navigation')?sibling:null);
  return source;
 }
 function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocumentSeed|null,reconcilePath=false){
@@ -44,11 +44,12 @@ function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocum
  if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
  const profileEntry=!!prepared&&root.hasAttribute('data-public-profile-entry'),profilePath=profileEntry&&profilePageUsername(location.pathname)?location.pathname:undefined;
  const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;
- const id=root.hasAttribute('data-public-asset-rendered')?assetPageId(location.pathname):null,frame=id?readPublicFirstFrame(root):null,asset=id&&frame?assetPageSeed(id)??undefined:undefined;
- const content=<StrictMode><PublicExplorerRoot prepared={selected} path={profilePath} reconcilePath={reconcilePath} asset={asset} frame={frame??undefined}/></StrictMode>;
+ const profileSource=root.hasAttribute('data-public-profile-source');
+ const id=root.hasAttribute('data-public-asset-rendered')?assetPageId(location.pathname):null,frame=id||profileSource?readPublicFirstFrame(root):null,asset=id&&frame?assetPageSeed(id)??undefined:undefined;
+ const content=<StrictMode><PublicExplorerRoot prepared={selected} path={profileSource?'/'+root.dataset.publicProfileEntry+'/':profilePath} reconcilePath={reconcilePath} asset={asset} frame={frame??undefined} profileSource={profileSource&&!!frame}/></StrictMode>;
  // Hydrate the actual profile prepared from this exact carried family.
  // A newer held selection replaces an older document without reviving it.
- const hydrate=!!asset||!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared);
+ const hydrate=!!asset||profileSource&&!!frame||!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared);
  const renderer=hydrate?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!hydrate)renderer.render(content);return renderer;
 }
 /** Raw prepared entries stay synchronous. A compressed static entry retains

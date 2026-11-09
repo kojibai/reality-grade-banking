@@ -11,12 +11,14 @@ import {legacyReceivingUsername} from '../native/receiz/app/lib/profile/receivin
 import {fullReceivingProfileName,fullReceivingProfilePath,readPublicProfileAlias} from './profile-alias.js';
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function profilePageTemplate(html:string){return profileNavigationHtml(html).replace(/<script\b[^>]*>/gi,tag=>/\btype="module"/.test(tag)&&/\bsrc="(?:\/assets\/explore-[^"]+\.js|\/src\/public-explorer\/main\.tsx)"/.test(tag)&&! /\basync(?:\s|>)/.test(tag)?tag.replace('type="module"','type="module" async'):tag).replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*(?:rel="canonical"|data-public-reading="(?:html|text)")[^>]*>/gi,'').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi,'');}
-export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false,compiledPublicName?:string){
+export function profilePreviewHtml(html:string,username:string,profile:PublicProfile|null,error?:string,content?:string,carryFamily=false,compiledPublicName?:string,carryProfile=false){
  const publicUsername=publicProfileUsername(username,profile?.receivingUsername??compiledPublicName);
  const name=profile?.displayName??'Profile',title=name+' | Bankeiz',description=profile?.bio??`Explore @${publicUsername}'s public assets and activity.`,canonical='https://bankeiz.com'+profilePagePath(publicUsername);
  const socialImage=profile?publicProfileSocialImage(profile):null;
  const tags=`<title>${escape(title)}</title><meta name="description" content="${escape(description)}"><meta name="robots" content="${profile?'index,follow,max-image-preview:large':'noindex,follow'}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="profile"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${canonical}">${socialImage?`<meta property="og:image" content="${escape(socialImage)}"><meta name="twitter:image" content="${escape(socialImage)}">`:''}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}">`;
- const seed=profile&&!carryFamily?`<script id="public-profile-seed" type="application/json">${JSON.stringify(profile).replaceAll('<','\\u003c')}</script>`:error?`<script id="public-profile-error" type="application/json">${JSON.stringify({username,code:error,at:Date.now()})}</script>`:'';
+ const frameMarker=content?.match(/^<!-- bank\.profile\.frame ([A-Za-z0-9_-]{1,1024}) -->/);
+ const frame=frameMarker?Buffer.from(frameMarker[1],'base64url').toString('utf8'):null;if(frameMarker)content=content!.slice(frameMarker[0].length);
+ const seed=profile&&(!carryFamily||carryProfile)?`<script id="public-profile-seed" type="application/json">${JSON.stringify(profile).replaceAll('<','\\u003c')}</script>`:error?`<script id="public-profile-error" type="application/json">${JSON.stringify({username,code:error,at:Date.now()})}</script>`:'';
  const images=[...new Set([profile?.bannerUrl,profile?.avatarUrl,...(profile?.items.slice(0,2).map(item=>item.artworkUrl)??[])].filter((value):value is string=>!!value&&!value.startsWith('data:')))];
  const hints=images.map((src,index)=>`<link rel="preload" as="image" href="${escape(src)}" referrerpolicy="no-referrer"${src.includes('/api/proof-material/packages/')?' crossorigin="anonymous"':''}${index<2?' fetchpriority="high"':''}>`).join('');
  const navigationSeed=html.includes('<script id="receiz-navigation"');
@@ -26,7 +28,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
  const family=carryFamily?html.match(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>/)?.[0]??'':'';
  const withoutSeed=html.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
  return profilePageTemplate(withoutSeed)
- .replace('</head>',()=>tags+hints+(profile?publicReadingLinks('profile',username):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>(family?start.replace('>',` data-public-profile-entry="${username}"${content?' data-public-profile-rendered="true"':''}>`):start)+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>family+seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
+ .replace('</head>',()=>tags+hints+(profile?publicReadingLinks('profile',username):'')+'</head>').replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_whole,start,end)=>(family||profile&&content?start.replace('>',` data-public-profile-entry="${username}"${content?' data-public-profile-rendered="true"':''}${profile&&(!carryFamily||carryProfile)?' data-public-profile-source="true"':''}${frame?' data-public-first-frame="'+escape(frame)+'"':''}>`):start)+initial+end).replace(navigationSeed?'<script id="receiz-navigation"':'</body>',()=>family+seed+(navigationSeed?'<script id="receiz-navigation"':'</body>'));
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(/* @vite-ignore */ path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}
@@ -86,6 +88,17 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
     savedPublicName=true;
     const saved=await readSaved(fullName);if(saved)return saved;
    }
+   if(!selected&&dependencies.render&&dependencies.missingDocument){
+    // Unknown aliases use the same owner-bound public response as crawlers.
+    // Do not resolve a name with HEAD and then read an unbound name separately.
+    try{
+     const profile=await dependencies.profile(username),content=await dependencies.render(profile);
+     return new Response(profilePreviewHtml(html,profile.username,profile,undefined,content,true,undefined,true),{headers});
+    }catch(error){
+     const status=error instanceof PublicProfileError?error.status:503;
+     return new Response(profilePreviewHtml(html,username,null,status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE'),{status,headers});
+    }
+   }
    if(!selected){
     const resolved=await resolveAlias();
     if(resolved?.status===307){
@@ -96,6 +109,17 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   // An uncompiled profile consumes the producer-saved document itself.
   if(!selected&&(!savedPublicName||routeName!==username)){
    const saved=await readSaved(routeName);if(saved)return saved;
+  }
+  if(!selected&&dependencies.missingDocument&&dependencies.render){
+   // Only an absent saved view reaches the existing exact public reader.
+   // Return its actual profile in the first response, never successive shells.
+   try{
+    const profile=await dependencies.profile(routeName),content=await dependencies.render(profile);
+    return new Response(profilePreviewHtml(html,profile.username,profile,undefined,content,true,undefined,true),{headers});
+   }catch(error){
+    const status=error instanceof PublicProfileError?error.status:503;
+    return new Response(profilePreviewHtml(html,routeName,null,status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE'),{status,headers});
+   }
   }
   return new Response(profilePreviewHtml(html,routeName,null,undefined,selected,true,fullName??(selected?match?.[3]:undefined)),{headers});
  }

@@ -18,7 +18,7 @@ export function profilePageUsername(path:string):string|null{
  const match=/^\/(?:u\/)?([a-z0-9_]+)\/?$/.exec(path);if(!match||!profileUsername(match[1])||!path.startsWith('/u/')&&reserved.has(match[1]))return null;return match[1];
 }
 export function publicProfileMovement(current:number|null,previous:number|null){return current!==null&&previous!==null&&Number.isFinite(current)&&Number.isFinite(previous)&&current>=0&&previous>0?(current/previous-1)*100:null;}
-export interface PublicProfile extends PublicProfileHeader {items:PublicMarketItem[];nextCursor:string|null;publicShowcaseRelease?:PublicShowcaseRelease;}
+export interface PublicProfile extends PublicProfileHeader {items:PublicMarketItem[];nextCursor:string|null;resolvedReceivingUsername?:string;publicShowcaseRelease?:PublicShowcaseRelease;}
 export type {PublicProfileHeader} from './public-profile-header.js';
 const object=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,unknown>:{};
 const text=(v:unknown,max=4096)=>typeof v==='string'&&v.trim()&&v.length<=max?v.trim():null;
@@ -84,7 +84,7 @@ export function heldPublicProfileUsername(username:string,catalog:PublicMarketCa
   if(canonical===username)exact=true;
   if(publicProfileUsername(canonical,receiving)===name)candidates.set(uid,canonical);
  };
- for(const profile of held.values())consider(profile.username,profile.userId,profile.receivingUsername);
+ for(const profile of held.values()){consider(profile.username,profile.userId,profile.receivingUsername);if(profile.resolvedReceivingUsername===name)candidates.set(profile.userId,profile.username);}
  for(const head of catalog?.publicProfileHeads??[])consider(String(head.profile.username),String(head.profile.userId),head.profile.receivingUsername as string|undefined);
  for(const item of catalog?.items??[])if(item.category==='proof'&&item.ownerIdentity?.username===item.ownerUsername)consider(item.ownerUsername!,item.ownerIdentity.userId,item.ownerReceivingUsername);
  return !exact&&candidates.size===1?[...candidates.values()][0]:username;
@@ -153,7 +153,7 @@ export function retainedPublicProfile(username:string):PublicProfile|null{
  username=heldPublicProfileUsername(username);
  const previous=held.get(username);if(previous)return previous;
  if(typeof document==='undefined')return null;
- try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&value.username===username&&typeof value.userId==='string'&&Array.isArray(value.items)){const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
+ try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&(value.username===username||/^(?:receiz_)?[a-z0-9]{18}$/.test(username)&&value.resolvedReceivingUsername===username.replace(/^receiz_/,''))&&profileUsername(value.username)&&typeof value.userId==='string'&&Array.isArray(value.items)){const header=copyPublicProfileHeader(value,value.username);if(header)qualifiedReaderHeaders.set(value,header);const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
 }
 /** A held Market row already supplies this public display binding. It does
  * not become profile PBI, owner authority, or an anonymous private account. */
@@ -233,7 +233,7 @@ export function fetchPublicProfile(username:string,cursor?:string,priority:Reque
  const attempt=(async()=>{const response=await fetch(`/api/bank/public-profile/${username}${cursor?'?cursor='+encodeURIComponent(cursor):''}`,{credentials:'omit',redirect:'error',cache:'no-store',priority,signal:AbortSignal.timeout(30_000)});
   if(!response.ok){if([403,404,409].includes(response.status)&&(profileReadEpoch.get(username)??0)===epoch&&held.get(username)===selected)refusePublicProfile(username,response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_CHANGED');throw Error(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':response.status===409?'PROFILE_CHANGED':'PROFILE_UNAVAILABLE');}
   if((profileReadEpoch.get(username)??0)!==epoch||held.get(username)!==selected){await response.body?.cancel().catch(()=>{});const current=retainedPublicProfile(username);if(current)return current;throw Error('PROFILE_CHANGED');}
-  const value=await response.json() as PublicProfile;if(value.schema!=='bankeiz.public-profile.v1'||value.username!==username&&publicProfileUsername(value.username,value.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1')||typeof value.userId!=='string'||!Array.isArray(value.items)||value.items.length>10_000)throw Error('PROFILE_RESPONSE_INVALID');
+  const value=await response.json() as PublicProfile;if(value.schema!=='bankeiz.public-profile.v1'||value.username!==username&&value.resolvedReceivingUsername!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1')&&publicProfileUsername(value.username,value.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1')||typeof value.userId!=='string'||!Array.isArray(value.items)||value.items.length>10_000)throw Error('PROFILE_RESPONSE_INVALID');
   if((profileReadEpoch.get(username)??0)!==epoch||held.get(username)!==selected){const current=retainedPublicProfile(username);if(current)return current;throw Error('PROFILE_CHANGED');}
   const direct=copyPublicProfileHeader(value,value.username);if(direct&&(!selected||selected.userId!==direct.userId||!selected.createdAt||!direct.createdAt||selected.createdAt===direct.createdAt))qualifiedReaderHeaders.set(value,direct);
   acceptDiscoveredProfileAssets(value);if(!cursor)return retainPublicProfile(value);return mergeAdmittedProfileAssets(value);

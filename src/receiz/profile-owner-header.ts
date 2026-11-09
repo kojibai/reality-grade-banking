@@ -11,14 +11,16 @@ export function readVerifiedOwnerProfileHeader(identity:OpenIdentity,userId:stri
   ||history.authority!=='verified-identity-portable-state'||!history.keyId||history.keyId!==binding?.keyId
   ||!history.owner?.uid||history.owner.uid!==binding?.identityOwnerReceizId)return null;
  const state=object(history.verifiedState),account=object(state.account),username=identity.accountUsername?.()||identity.username;
- if(state.schema!=='receiz.account.state.v3'||account.userId!==userId||typeof username!=='string'||parseReceivingUsername(username)!==username)return null;
+ if(state.schema!=='receiz.account.state.v3'||typeof username!=='string'||parseReceivingUsername(username)!==username)return null;
+ const genesis=freshGenesisProfile(identity,state);
+ // Connection may bind the device's signed birth to its receiving Account.
+ // Reuse that admitted runtime binding; never infer it from the public name.
+ if(account.userId!==userId&&(!genesis||identity.walletReceivingAddress?.()!==userId))return null;
  const candidates=[object(object(state.profileView).profile),object(state.profile)].filter(profile=>profile.userId===userId&&profile.username===username);
  if(candidates.some(profile=>profile.isPrivate===true))return null;
  const profile=candidates.find(profile=>profile.isPrivate===false);
  if(profile)return projectProfileHeaderFields(profile);
- if(identity.knownWallet?.()?.source!=='account-genesis')return null;
- const genesis=freshGenesisProfile(identity,state);
- if(genesis?.userId!==userId||genesis.username!==username)return null;
+ if(!genesis||genesis.username!==username)return null;
  const receivingUsername=receivingUsernameForIdentity(username,identity.username??'');
- return projectProfileHeaderFields({...genesis,receivingUsername},{originals:0});
+ return projectProfileHeaderFields({...genesis,userId,receivingUsername},{originals:0});
 }

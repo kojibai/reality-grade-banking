@@ -85,8 +85,8 @@ assert.ok(!hasExploreRows(html),'Browser profile entry must replace Explore rows
 assert.ok(html.includes('data-public-profile-entry="alexmorgan"'),'Browser runtime must open the requested profile directly.');
 assert.deepEqual(catalogScripts(html),exploreSeeds,'Browser profile must carry exactly the unchanged selected complete catalog seed.');
 assert.ok(html.includes('href="https://bankeiz.com/alexmorgan/"'));
-assert.ok(!html.includes('id="public-profile-seed"'));assert.ok(!html.includes('id="public-profile-error"'));
-assert.ok(!html.includes('private@example.com'));assert.equal(calls,0,'Browser entry must not request a profile or start server rendering.');
+assert.ok(html.includes('id="public-profile-seed"'),'A genuinely missing profile must carry its exact public response.');assert.ok(html.includes('class="profile-hero"'),'The first response must contain the real profile.');assert.ok(!html.includes('id="public-profile-error"'));
+assert.ok(!html.includes('private@example.com'));assert.equal(calls,1,'A genuinely absent profile uses its existing exact reader once.');calls=0;
 const ownResponse=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=bjklock',{headers:{accept:'text/html','user-agent':'Browser smoke check'}})),ownHtml=await ownResponse.text();
 assert.equal(ownResponse.status,200);assert.ok(ownHtml.includes('data-public-profile-rendered="true"'),'Compiled bjklock profile must be served before its runtime starts.');const ownInput=JSON.parse(await readFile('public/receiz-public-market.json','utf8')),ownCount=ownInput.transport.publicOriginals.filter(row=>row.ownerUsername==='bjklock').length;assert.ok(ownHtml.includes(ownCount+'<!-- --> displayed <!-- -->originals')||ownHtml.includes(ownCount+' displayed originals'));assert.ok(ownHtml.includes('class="profile-asset"'));assert.ok(!ownHtml.includes('profile-opening'));assert.equal(calls,0);
 const fullDefault='mxbzkeil5wvisanfxz',namedEntry=await profile.fetch(new Request('https://bankeiz.com/api/profile?username=receiz_'+fullDefault.slice(0,17),{headers:{accept:'text/html','user-agent':'Browser smoke check'}})),namedHtml=await namedEntry.text();
@@ -112,7 +112,7 @@ assert.equal(certificateResponse.status,200);const certificate=await certificate
 assert.equal(certificate.state.item.livePulseSeed?.kind,'sigil','The deployed public certificate reader reuses its shipped Original pricing source.');
 assert.equal(certificate.state.note.remainingShareQuantityMicro,'2500000');assert.equal(certificateCalls,1);assert.equal(calls,3);
 console.log('PASS deployed certificate source with one public read and no quote/session work.');
-console.log('PASS plain Node API imports, actual compiled seeded-template profile/asset previews, profile HEAD, zero-read direct profile entry with its unchanged complete catalog, and exact crawler SSR/status refusals; no identity or financial operations.');`;
+console.log('PASS plain Node API imports, actual compiled seeded-template profile/asset previews, profile HEAD, zero-read held profile entry and exact missing-profile first response with its unchanged complete catalog, and exact crawler SSR/status refusals; no identity or financial operations.');`;
 
  const result=spawnSync(process.execPath,['--input-type=module','-e',program],{cwd:stage,encoding:'utf8',timeout:30000});process.stdout.write(result.stdout??'');process.stderr.write(result.stderr??'');if(result.error)throw result.error;process.exitCode=result.status??1;
 }finally{await rm(stage,{recursive:true,force:true});}

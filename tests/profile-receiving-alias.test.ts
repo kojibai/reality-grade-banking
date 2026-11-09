@@ -36,3 +36,27 @@ it('serves a newly saved public profile by its full name with a single delivery 
  expect(alias).not.toHaveBeenCalled();
  expect(profile).not.toHaveBeenCalled();
 });
+
+it('resolves a renamed complete identity only with the exact same-origin alias confirmation',async()=>{
+ const response=()=>new Response(null,{status:307,headers:{location:'https://receiz.com/api/profile/cadence?surface=public-route&representation=collection-v2','x-receiz-profile-alias':full}});
+ expect(await readPublicProfileAlias(full,vi.fn(async()=>response())as typeof fetch)).toBe('cadence');
+ await expect(readPublicProfileAlias('receiz_'+full,vi.fn(async()=>response())as typeof fetch)).rejects.toThrow('PROFILE_ALIAS_UNAVAILABLE');
+});
+it('an unsaved profile returns its actual public view in the first response',async()=>{
+ const {profileFixture}=await import('./fixtures/public-profile'),{parsePublicProfile}=await import('../src/receiz/public-profile');
+ const value=parsePublicProfile(profileFixture(),'alexmorgan'),read=vi.fn(async()=>value),render=vi.fn(async()=>'<article class="profile-hero"><h1>Alex Morgan</h1></article>');
+ const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html'}}),{page:async()=>html,profile:read,render,profileContent:async()=>null,missingDocument:async()=>new Response(null,{status:503})});
+ expect(response.status).toBe(200);const body=await response.text();expect(body).toContain('<h1>Alex Morgan</h1>');expect(body).not.toContain('data-profile-opening');expect(read).toHaveBeenCalledExactlyOnceWith('alexmorgan');expect(render).toHaveBeenCalledOnce();
+});
+it('the existing public reader preserves a confirmed renamed alias through its canonical profile response',async()=>{
+ const {createPublicProfileReader}=await import('../server/public-profile'),{profileFixture}=await import('./fixtures/public-profile');const input=profileFixture();input.profile.profile.userId='01234567-0123-4123-8123-0123456789ab';
+ const read=createPublicProfileReader(vi.fn(async(url:RequestInfo|URL)=>String(url).includes('/'+full+'?')?new Response(null,{status:307,headers:{location:'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2','x-receiz-profile-alias':full,'x-receiz-profile-owner':'01234567-0123-4123-8123-0123456789ab'}}):Response.json(input))as typeof fetch,async p=>p);
+ const result=await read(full);expect(result.username).toBe('alexmorgan');expect(result.resolvedReceivingUsername).toBe(full);
+ const {retainPublicProfile,heldPublicProfileUsername}=await import('../src/receiz/public-profile');retainPublicProfile(result);expect(heldPublicProfileUsername(full)).toBe('alexmorgan');
+});
+
+it('a confirmed renamed alias refuses a canonical response for a different immutable Account',async()=>{
+ const {createPublicProfileReader}=await import('../server/public-profile'),{profileFixture}=await import('./fixtures/public-profile');
+ const read=createPublicProfileReader(vi.fn(async(url:RequestInfo|URL)=>String(url).includes('/'+full+'?')?new Response(null,{status:307,headers:{location:'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2','x-receiz-profile-alias':full,'x-receiz-profile-owner':'01234567-0123-4123-8123-0123456789ab'}}):Response.json(profileFixture()))as typeof fetch,async p=>p);
+ await expect(read(full)).rejects.toThrow('PROFILE_IDENTITY_MISMATCH');
+});

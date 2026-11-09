@@ -1,13 +1,15 @@
 import {renderToString} from 'react-dom/server';
 import {receizKaiNow} from '@receiz/sdk';
-import {PublicProfilePage} from '../src/public-explorer/PublicProfilePage';
-import {BankMark} from '../src/components/BankMark';
-import {ProfileFooter} from '../src/public-explorer/ProfileFooter';
-import type {PublicProfile} from '../src/receiz/public-profile';
+import {PublicExplorer} from '../src/public-explorer/PublicExplorer';
+import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext,PublicDocumentPulseContext} from '../src/core/public-document-format';
+import {profilePagePath,retainPublicProfile,type PublicProfile} from '../src/receiz/public-profile';
 
-/** The existing profile components render the first document too. There is no
- * placeholder profile and no second, separately styled server-side design. */
+/** Use the same public view and freeze its first display coordinate. A profile
+ * genuinely absent from the saved family needs no replica or opening screen. */
 export function renderPublicProfile(profile:PublicProfile):string{
- const source={catalog:null,historyCatalog:null,pulse:receizKaiNow().pulse,quoteStatus:'stale' as const,sportsStatus:'loading' as const,status:'loading' as const,error:null,refresh:async()=>{}};
- return renderToString(<div className="console public-explorer is-profile"><a className="explorer-skip" href="#explorer-main">Skip to explorer</a><header className="app-header"><a className="bank-home-mark" href="/" aria-label="Bankeiz home"><BankMark/></a><div className="header-tools"><a className="avatar explorer-account" href="/" aria-label="Open your account">ID</a></div></header><main className="main-panel" id="explorer-main"><div><PublicProfilePage username={profile.username} initialProfile={profile} source={source} active={false}/></div><ProfileFooter/></main></div>,{identifierPrefix:'public-explore-'});
+ const {locale,timeZone}=new Intl.DateTimeFormat().resolvedOptions(),frame={locale,timeZone,pulse:receizKaiNow().pulse};
+ retainPublicProfile(profile);
+ const source={catalog:null,historyCatalog:null,pulse:frame.pulse,quoteStatus:'stale' as const,sportsStatus:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}};
+ const content=renderToString(<PublicDocumentCapabilitiesContext.Provider value={{intersectionObserver:false}}><PublicDocumentFormatContext.Provider value={frame}><PublicDocumentPulseContext.Provider value={frame.pulse}><PublicExplorer active={false} initialPath={profilePagePath(profile.username)} initialSource={source} initialAsOfPulse={frame.pulse}/></PublicDocumentPulseContext.Provider></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>,{identifierPrefix:'public-explore-'});
+ return `<!-- bank.profile.frame ${Buffer.from(JSON.stringify(frame)).toString('base64url')} -->`+content;
 }
