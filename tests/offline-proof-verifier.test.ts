@@ -2,10 +2,9 @@ import {beforeAll,expect,it,vi} from 'vitest';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
 import type {OfflineProofVerifier} from '../src/receiz/ledger-offline-proof';
 let verifier:OfflineProofVerifier;
-beforeAll(async()=>{execFileSync(process.execPath,['scripts/build-proof-verifier.mjs'],{stdio:'pipe'});await import(/* @vite-ignore */ pathToFileURL(resolve('public/proof-verifier/v129/verifier.js')).href);verifier=globalThis.ReceizOfflineVerifier;});
+beforeAll(async()=>{await import(/* @vite-ignore */ pathToFileURL(resolve('public/proof-verifier/v129/verifier.js')).href);verifier=globalThis.ReceizOfflineVerifier;});
 it('ships complete corresponding sources, pinned suite keys, public trust roots and no runtime dependency imports',()=>{
  const module=readFileSync('public/proof-verifier/v129/verifier.js','utf8'),map=JSON.parse(readFileSync('public/proof-verifier/v129/verifier.js.map','utf8'));
  const html=readFileSync('public/proof-verifier/v129/verify.html','utf8');expect(html).not.toContain('<script src="verifier.js">');expect((html.match(/<script>/g)??[]).length).toBe(2);expect(html).toContain("'wasm-unsafe-eval'");

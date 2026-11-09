@@ -4,14 +4,13 @@ import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {unzipSync} from 'fflate';
-import {afterEach,beforeAll,expect,it,vi} from 'vitest';
+import {afterEach,expect,it,vi} from 'vitest';
 import {verifyReceizArtifact} from '@receiz/sdk';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 const NativeURL=URL,source=new Uint8Array(readFileSync('public/proofs/sealed-essay.png'));
 const sha=(v:Uint8Array)=>createHash('sha256').update(v).digest('hex');
 // A genuine public canonical fixture qualifies export/kit transport, not the
 // presence of a production transaction's missing source.
-beforeAll(()=>execFileSync(process.execPath,['scripts/build-proof-verifier.mjs'],{stdio:'pipe'}));
 async function setup(){
  vi.resetModules();let open!:()=>void,fail!:(error:Error)=>void;const wait=new Promise<void>((resolve,reject)=>{open=resolve;fail=reject;}),tag=crypto.randomUUID();
  let markStarted!:()=>void;const entered=new Promise<void>(resolve=>markStarted=resolve);vi.stubGlobal('__bankKitLoadStarted',markStarted);

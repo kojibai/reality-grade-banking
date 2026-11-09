@@ -20,7 +20,8 @@ it.each(['accepted','transport-error'] as const)('shows the held Original during
  const api=createAssetPublication({ownerReceizId:owner,assertOpen(){},lock:async run=>run(),read:async()=>state,write:async next=>{state=structuredClone(next);},seal,retain:async()=>digest,restore,readIntent:async()=>intent,publish});
  const pending=vi.fn(async()=>null),retry=vi.fn(async()=>{const value=await api.resume();return{...held,publication:value.publication};});
  const held={digest,bytes:new Uint8Array([1,2,3]),filename:file.name,title:intent.title,kind:'proof' as const,status:'held-proof' as const,pulse:'1'};
- const identity={binding:{artifactOwnerReceizId:owner},accountUsername:()=> 'artist',pendingAssetPublication:pending,retryAssetPublication:retry,createComposedAsset:async()=>({...held,publication:(await api.createLocal(intent)).publication})} as unknown as OpenIdentity;
+ const createComposedAsset=vi.fn(async()=>({...held,publication:(await api.createLocal(intent)).publication}));
+ const identity={binding:{artifactOwnerReceizId:owner},accountUsername:()=> 'artist',pendingAssetPublication:pending,retryAssetPublication:retry,createComposedAsset} as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host),button=(label:string)=>[...host.querySelectorAll('button')].find(value=>value.textContent===label);
  vi.stubGlobal('fetch',fetch);
  try{
@@ -28,7 +29,10 @@ it.each(['accepted','transport-error'] as const)('shows the held Original during
   const input=host.querySelector<HTMLInputElement>('[aria-label="Title"]')!;
   await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,intent.title);input.dispatchEvent(new Event('input',{bubbles:true}));});
   await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());
-  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Create asset"]')!.click());
+  await act(async()=>{
+   host.querySelector<HTMLButtonElement>('[aria-label="Create asset"]')!.click();
+   await createComposedAsset.mock.results[0].value;
+  });
   expect(host.querySelector('h1')?.textContent).toBe('Your Original is sealed.');
   expect(button('Retry public delivery')).toBeUndefined();
   expect(host.querySelector('[role="status"][aria-label="Delivering your Original"]')).not.toBeNull();
@@ -67,14 +71,18 @@ it.each(['approved','cancelled'] as const)('keeps first delivery independent of 
   await unsignedResponse;await signedResponse;
   return{...source,pbiSigned:true,publication:{status:'published' as const},marketPublication:{status:'published' as const}};
  });
- const pending=vi.fn(async()=>null),retry=vi.fn(),identity={binding:{artifactOwnerReceizId:owner},accountUsername:()=> 'artist',pendingAssetPublication:pending,retryAssetPublication:retry,createComposedAsset:async()=>({...held,publication:(await api.createLocal(intent)).publication}),publishAssetToMarket:sign}as unknown as OpenIdentity;
+ const createComposedAsset=vi.fn(async()=>({...held,publication:(await api.createLocal(intent)).publication}));
+ const pending=vi.fn(async()=>null),retry=vi.fn(),identity={binding:{artifactOwnerReceizId:owner},accountUsername:()=> 'artist',pendingAssetPublication:pending,retryAssetPublication:retry,createComposedAsset,publishAssetToMarket:sign}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host),button=(label:string)=>[...host.querySelectorAll('button')].find(value=>value.textContent===label);
  try{
   await act(async()=>root.render(<CreateAsset identity={identity} onRefresh={()=>{}} onClose={()=>{}}/>));
   const input=host.querySelector<HTMLInputElement>('[aria-label="Title"]')!;
   await act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,intent.title);input.dispatchEvent(new Event('input',{bubbles:true}));});
   await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());
-  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Create asset"]')!.click());
+  await act(async()=>{
+   host.querySelector<HTMLButtonElement>('[aria-label="Create asset"]')!.click();
+   await createComposedAsset.mock.results[0].value;
+  });
   expect(button('Sign')?.disabled).toBe(false);const signing=button('Sign')!;
   await act(async()=>{signing.click();signing.click();});
   expect(sign).toHaveBeenCalledOnce();expect(button('Retry public delivery')).toBeUndefined();

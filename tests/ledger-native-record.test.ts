@@ -1,4 +1,4 @@
-import {afterEach,beforeAll,expect,it,vi} from 'vitest';
+import {afterEach,expect,it,vi} from 'vitest';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -15,7 +15,6 @@ import {receiptLink,readReceiptLink,receiptDisplayRecord} from '../src/receiz/le
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
 const NativeURL=URL,bytes=new Uint8Array(readFileSync('tests/fixtures/public-transaction-native.png'));
 const row=()=>parsePublicNetworkPage('wallet',{ok:true,events:[event]}).records[0];
-beforeAll(()=>execFileSync(process.execPath,['scripts/build-proof-verifier.mjs'],{stdio:'pipe'}));
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 async function setup(source=bytes){
  vi.resetModules();vi.stubGlobal('location',{origin:'https://bankeiz.com'});
