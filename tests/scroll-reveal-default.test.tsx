@@ -16,3 +16,18 @@ it('preserves the existing Market and Discover threshold for consumers without a
   scroll(190);expect(host.firstElementChild?.getAttribute('data-away')).toBe('false');
  }finally{act(()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();}
 });
+
+it('restores visible controls at the top when a retained page reopens without another scroll event',()=>{
+ let y=0;vi.spyOn(window,'scrollY','get').mockImplementation(()=>y);
+ vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>{callback(0);return 0;});vi.stubGlobal('cancelAnimationFrame',()=>{});
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ function Probe({active}:{active:boolean}){const tools=useScrollReveal(active,'.default-search');return <div data-away={tools.away}><input className="default-search"/></div>;}
+ try{
+  act(()=>root.render(<Probe active/>));
+  act(()=>{y=500;window.dispatchEvent(new Event('scroll'));});
+  expect(host.firstElementChild?.getAttribute('data-away')).toBe('true');
+  act(()=>root.render(<Probe active={false}/>));y=0;
+  act(()=>root.render(<Probe active/>));
+  expect(host.firstElementChild?.getAttribute('data-away')).toBe('false');
+ }finally{act(()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();}
+});

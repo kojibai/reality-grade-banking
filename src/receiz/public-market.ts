@@ -75,6 +75,16 @@ export function publicOriginalCreator(input:unknown):PublicMarketItem['originalC
  const value=record(input);if(value.isPrivate===true)return;const username=text(value.username,64),displayName=text(value.displayName,128),userId=text(value.userId,128);
  if(!username&&!displayName&&!userId)return;return{userId,username:username&&/^[a-zA-Z0-9_-]{1,64}$/.test(username)?username:null,displayName};
 }
+/** Reuse a known profile alias only when this public Original explicitly
+ * identifies that owner as its creator. The source identity remains unchanged. */
+export function publicProfileOriginalCreator(input:unknown,ownerInput:unknown):PublicMarketItem['originalCreator']{
+ const original=record(input),creator=publicOriginalCreator(original.originalCreator);if(!creator)return;
+ if(original.ownershipKind!=='creator'||original.ownershipRole!==undefined&&original.ownershipRole!=='creator'||!creator.userId||!creator.username||!/^receiz_[a-z0-9]{17,18}$/.test(creator.username)||creator.userId!==creator.username+'.receiz.id')return creator;
+ const imported=record(original.importedSource),identity=record(imported.sourceIdentity),owner=record(ownerInput);
+ if(imported.ownerReceizId!==creator.userId||identity.genesisOwnerReceizId!==creator.userId||!text(owner.ownerUserId,128))return creator;
+ const alias=publicOriginalCreator({userId:creator.userId,username:owner.ownerUsername,displayName:owner.ownerDisplayName});
+ return alias?.username?{...creator,username:publicProfileUsername(alias.username,text(owner.ownerReceivingUsername,64)),displayName:creator.displayName&&creator.displayName!==creator.username?creator.displayName:alias.displayName??creator.displayName}:creator;
+}
 export function publicOriginalProvenance(input:unknown):PublicMarketItem['sourceProvenance']{
  const value=record(input),identity=record(value.sourceIdentity??input),sourceArtifactSha256=text(value.sourceArtifactSha256,64),payloadSha256=text(value.payloadSha256,64);
  if(!sourceArtifactSha256||!/^[a-f0-9]{64}$/i.test(sourceArtifactSha256))return;const result:NonNullable<PublicMarketItem['sourceProvenance']>={sourceArtifactSha256:sourceArtifactSha256.toLowerCase()};
@@ -180,8 +190,9 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const book=publicBookSource(source),publicUsername = text(source.ownerUsername, 64);
     const ownerUsername = publicUsername && /^[a-zA-Z0-9_-]{1,64}$/.test(publicUsername) ? publicUsername : null;
     const ownerUserId=text(source.ownerUserId,64),ownerCreatedAt=text(source.ownerCreatedAt,64),rawOwnerName=text(source.ownerDisplayName,128);
+    const originalCreator=publicProfileOriginalCreator(profile,source);
     const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
-    items.push({ id, assetId, title,...(publicOriginalCreator(profile.originalCreator)?{originalCreator:publicOriginalCreator(profile.originalCreator)}:{}),...(publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)?.sourceArtifactSha256===digest?.toLowerCase()?{sourceProvenance:publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)}:{}),...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
+    items.push({ id, assetId, title,...(originalCreator?{originalCreator}:{}),...(publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)?.sourceArtifactSha256===digest?.toLowerCase()?{sourceProvenance:publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)}:{}),...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
       originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),

@@ -15,10 +15,9 @@ export function publicAccountDisplayName(profile:Readonly<Record<string,unknown>
 
 /** The visible handle matches the canonical username used by its links. */
 export function profileUsernameLabel(username:string|null|undefined,receivingUsername?:string|null):string {
- const name=publicProfileUsername(username??'',receivingUsername);
- // An old lookup name lacks a character. If the same owner's full name
- // isn't carried, omit the handle instead of guessing or showing it cut off.
- return /^receiz_[a-z0-9]{17}$/.test(name)?'':name;
+ // Prefer the complete owner-bound name; retain a known legacy name when
+ // its full form is absent rather than erasing it or guessing a character.
+ return publicProfileUsername(username??'',receivingUsername);
 }
 
 /** Contacts already carry the exact receiving name when it is known. */

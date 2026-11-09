@@ -22,8 +22,8 @@ it('carries the source-bound public name through held profile, objects and cold 
  const html=profilePreviewHtml('<html><head></head><body><div id="root"></div></body></html>',locator,profile);
  expect(html).toContain('https://bankeiz.com/'+full+'/');expect(html).not.toContain('https://bankeiz.com/'+locator+'/');
  expect(publicAccountDisplayName({username:'custom_name',receivingUsername:full,displayName:'Chosen'})).toBe('Chosen');
- // An unrelated full name cannot restore this owner's missing character.
- expect(profileUsernameLabel(locator,'q'+full.slice(1))).toBe('');
+ // An unrelated full name cannot replace this owner’s known legacy name.
+ expect(profileUsernameLabel(locator,'q'+full.slice(1))).toBe(locator);
 });
 it('the same participant projector and profile DOM display every character with no request',async()=>{
  const person=chatPerson({kind:'user',userId:'account-1',username:locator,receivingUsername:full,displayName:locator,displayNameSource:'username'});
