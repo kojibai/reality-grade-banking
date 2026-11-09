@@ -1,4 +1,5 @@
 import {feedKind,type FeedKind} from '../public-feed/feed-items';
+import {readPublicProfileHeader,type PublicProfileHead} from '../receiz/public-profile-header';
 import {publicAccountDisplayName} from '../receiz/account-name';
 import {profileUsername,profilePageUsername} from '../receiz/public-profile';
 import type {PublicMarketItem} from '../receiz/public-market';
@@ -8,11 +9,19 @@ export type DiscoveryPerson={username:string;receivingUsername?:string;name:stri
 const normalize=(value:string)=>value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
 const kinds:FeedKind[]=['image','book','audio','moment','video','essay','document','collectible'];
 /** An index of the existing public presentation; never proof or custody admission. */
-export function buildDiscoveryIndex(rows:readonly PublicMarketItem[]){
+export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:readonly PublicProfileHead[]=[]){
  const seen=new Set<string>(),items:PublicMarketItem[]=[],people=new Map<string,DiscoveryPerson>();
  for(const row of rows){if(seen.has(row.id))continue;seen.add(row.id);items.push(row);
   const username=profileUsername(row.ownerUsername);if(!username||!profilePageUsername(`/${username}/`))continue;
   let person=people.get(username);if(!person){person={username,...(row.ownerReceivingUsername?{receivingUsername:row.ownerReceivingUsername}:{}),name:discoveryOwnerName(row),avatarUrl:row.ownerAvatarUrl??null,items:[]};people.set(username,person);}person.items.push(row);
+ }
+ for(const head of heads){
+  const profile=readPublicProfileHeader(head);
+  if(!profile)continue;
+  const existing=people.get(profile.username);
+  if(existing?.items.some(item=>item.ownerIdentity?.userId!==profile.userId))continue;
+  people.set(profile.username,{username:profile.username,receivingUsername:profile.receivingUsername,
+   name:profile.displayName,avatarUrl:profile.avatarUrl,items:existing?.items??[]});
  }
  return {items,people:[...people.values()],entries:new Map(items.map(item=>[item.id,normalize(`${item.title} ${item.summary} ${item.ownerDisplayName??''} @${item.ownerUsername??''}`)]))};
 }
@@ -21,7 +30,7 @@ export function searchDiscovery(index:DiscoveryIndex,query:string,filter:Discove
  const words=normalize(query.trim()).split(/\s+/).filter(Boolean).map(word=>word.replace(/^@(?=[a-z0-9_])/,'')),matches=(text:string)=>words.every(word=>text.includes(word));
  const matchesKind=(item:PublicMarketItem)=>{if(filter==='All')return true;const kind=feedKind(item);return kind===filter||filter==='essay'&&kind==='image'&&item.hasLongForm===true;};
  const items=filter==='People'?[]:index.items.filter(item=>matchesKind(item)&&matches(index.entries.get(item.id)!));
- const people=index.people.filter(person=>(filter==='All'||filter==='People'||person.items.some(matchesKind))&&matches(normalize(`${person.name} @${person.username}`)));
+ const people=index.people.filter(person=>(filter==='All'||filter==='People'||person.items.some(matchesKind))&&matches(normalize(`${person.name} @${person.username} ${person.receivingUsername??''}`)));
  return {items,people};
 }
 

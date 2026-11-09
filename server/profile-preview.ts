@@ -21,7 +21,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
  const navigationSeed=html.includes('<script id="receiz-navigation"');
  // Only genuinely missing compiled profiles use the existing page chrome;
  // known profiles arrive as their actual HTML, without a transition screen.
- const initial=content??`<div class="console public-explorer is-profile"><header class="app-header"><a class="bank-home-mark" href="/" aria-label="Bankeiz home">${bankMarkSvg}</a><div class="header-tools"><a href="/discover/" class="icon-button" aria-label="Discover people and their work" title="Discover"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></a><a class="avatar explorer-account" href="/" aria-label="Open your account"><span class="profile-avatar" aria-hidden="true"><span>ID</span></span></a></div></header><main class="main-panel" id="explorer-main"><section class="public-profile-page"><header class="profile-hero"><h1>@${escape(username)}</h1></header></section></main></div>`;
+ const initial=content??`<div class="console public-explorer is-profile"><header class="app-header"><a class="bank-home-mark" href="/" aria-label="Bankeiz home">${bankMarkSvg}</a><div class="header-tools"><a href="/discover/" class="icon-button" aria-label="Discover people and their work" title="Discover"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></a><a class="avatar explorer-account" href="/" aria-label="Open your account"><span class="profile-avatar" aria-hidden="true"><span>ID</span></span></a></div></header><main class="main-panel" id="explorer-main"><section class="public-profile-page" aria-label="Public profile"></section></main></div>`;
  const family=carryFamily?html.match(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>/)?.[0]??'':'';
  const withoutSeed=html.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
  return profilePageTemplate(withoutSeed)
@@ -57,16 +57,25 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const source=browser?null:dependencies.profile(username).then(async profile=>{await renderer;return {profile,content:await dependencies.render?.(profile),error:null};}).catch(error=>({profile:null,content:undefined,error}));
  let html:string;try{html=await dependencies.page();}catch{return new Response('This profile could not be opened. Please try again.',{status:503,headers});}
  if(!source){
-  const content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
-  const selected=match&&match[1]===generation&&match[2]===username?content!.slice(match[0].length):undefined;
-  if(!selected&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
+  let routeName=username,content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
+  let selected=match&&match[1]===generation&&match[2]===routeName?content!.slice(match[0].length):undefined;
+  const fullName=fullReceivingProfileName(username)?.replace(/^receiz_/,'');
+  if(!selected&&fullName){
+   const resolved=await resolveAlias();
+   if(resolved?.status===307){
+    routeName=profilePageUsername(new URL(resolved.headers.get('location')!,url).pathname)??username;
+    content=await dependencies.profileContent?.(routeName).catch(()=>null);
+    match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/);
+    if(match&&match[1]===generation&&match[2]===routeName&&match[3]===fullName)selected=content!.slice(match[0].length);
+   }else if(resolved)return resolved;
+  }
   // A genuinely absent compiled profile consumes its existing producer-saved
   // document as the response itself. Never render a handle/loading sequence
   // first, never check Source, and never consult this path for held HTML.
   if(!selected&&dependencies.missingDocument){
-   try{const saved=await dependencies.missingDocument(username);if(saved.ok||saved.status===403||saved.headers.get('x-receiz-public-html-withdrawn')==='1')return saved;await saved.body?.cancel();}catch{if(request.signal.aborted)throw request.signal.reason;}
+   try{const saved=await dependencies.missingDocument(routeName);if(saved.ok||saved.status===403||saved.headers.get('x-receiz-public-html-withdrawn')==='1')return saved;await saved.body?.cancel();}catch{if(request.signal.aborted)throw request.signal.reason;}
   }
-  return new Response(profilePreviewHtml(html,username,null,undefined,selected,true,selected?match?.[3]:undefined),{headers});
+  return new Response(profilePreviewHtml(html,routeName,null,undefined,selected,true,fullName??(selected?match?.[3]:undefined)),{headers});
  }
  // Crawlers keep one exact public profile, its rendered body and refusal status.
  const result=await source,status=result.error instanceof PublicProfileError?result.error.status:result.error?503:200,code=status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE';

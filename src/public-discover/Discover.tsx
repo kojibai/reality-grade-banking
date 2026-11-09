@@ -9,20 +9,22 @@ import {ProfileAvatar} from '../components/ProfileAvatar';
 import {PublicOwnerAvatar} from '../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectibleArtwork';
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
-import {safeReceizArtworkUrl,type PublicMarketItem} from '../receiz/public-market';
+import {safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
 import {profilePagePath} from '../receiz/public-profile';
 import {appendFeedItems,feedKind,feedText,refreshFeedItems} from '../public-feed/feed-items';
 import {subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
-import {prepareFeedItems,prepareFeedCollectibles} from '../public-feed/feed-source';
+import {readPreparedBankCatalog,preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/prepared-bank-catalog';
+import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
 import './discover.css';
 const Document=lazy(()=>import('../public-feed/FeedDocument'));
 const categories:[DiscoveryFilter,string][]=[['All','All'],['audio','Music'],['video','Videos'],['book','Books'],['image','Images'],['essay','Essays'],['moment','Moments'],['document','Documents'],['collectible','Collectibles'],['People','People']];
 const icons={image:ImageIcon,audio:Music2,video:Play,book:BookOpen,essay:FileText,moment:FileText,document:FileText,collectible:GalleryVerticalEnd};
 function People({people,onAll,active,expanded=false}:{people:DiscoveryPerson[];onAll?():void;active:boolean;expanded?:boolean}){
+ const publicPeople=people.filter(person=>profileUsernameLabel(person.username,person.receivingUsername));
  const [shown,setShown]=useState(20),row=useRef<HTMLDivElement>(null),last=useRef<HTMLAnchorElement>(null);
- useEffect(()=>{if(!active||shown>=people.length||!row.current||!last.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{root:expanded?null:row.current,rootMargin:expanded?'400px 0px':'0px 400px'});observer.observe(last.current);return()=>observer.disconnect();},[active,shown,people.length,expanded]);
- return <section className="discover-people" aria-label="People to discover"><div className="discover-section-heading"><h2>People to discover</h2>{onAll&&<button onClick={onAll}>See all<ArrowRight size={15}/></button>}</div><div ref={row} className={'discover-people-list'+(expanded?' is-expanded':'')}>{people.slice(0,shown).map((person,i)=><a ref={i===Math.min(shown,people.length)-1?last:undefined} key={person.username} href={profilePagePath(profileUsernameLabel(person.username,person.receivingUsername))}><PublicOwnerAvatar item={person.items[0]} name={person.name}/><strong>{person.name}</strong><span>@{profileUsernameLabel(person.username,person.receivingUsername)}</span></a>)}</div>{expanded&&shown<people.length&&<div className="discover-more"><button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button></div>}</section>;
+ useEffect(()=>{if(!active||shown>=publicPeople.length||!row.current||!last.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{root:expanded?null:row.current,rootMargin:expanded?'400px 0px':'0px 400px'});observer.observe(last.current);return()=>observer.disconnect();},[active,shown,publicPeople.length,expanded]);
+ return <section className="discover-people" aria-label="People to discover"><div className="discover-section-heading"><h2>People to discover</h2>{onAll&&<button onClick={onAll}>See all<ArrowRight size={15}/></button>}</div><div ref={row} className={'discover-people-list'+(expanded?' is-expanded':'')}>{publicPeople.slice(0,shown).map((person,i)=><a ref={i===Math.min(shown,publicPeople.length)-1?last:undefined} key={person.username} href={profilePagePath(profileUsernameLabel(person.username,person.receivingUsername))}>{person.items[0]?<PublicOwnerAvatar item={person.items[0]} src={person.avatarUrl} name={person.name}/>:<ProfileAvatar src={person.avatarUrl} name={person.name}/>}<strong>{person.name}</strong><span>@{profileUsernameLabel(person.username,person.receivingUsername)}</span></a>)}</div>{expanded&&shown<publicPeople.length&&<div className="discover-more"><button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button></div>}</section>;
 }
 function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;eager:boolean;active:boolean}){
  const kind=feedKind(item),text=kind==='moment'||kind==='essay',image=text||kind==='document'?null:safeReceizArtworkUrl(item.artworkUrl),Icon=icons[kind],ref=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(false);
@@ -33,16 +35,52 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
 }
 export function Discover({seed,active=true}:{seed:PublicMarketItem[];active?:boolean}){
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
- const publicationAt=useRef(-Infinity);
+ const publicationAt=useRef(-Infinity),selectedCatalog=useRef<PublicMarketCatalog|null>(null);
+ const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const scrollTools=useScrollReveal(active,'.discover-search');
- const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items),[items]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
+ const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?.publicProfileHeads),[items,catalog?.publicProfileHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
- useEffect(()=>{if(!active)return;const abort=new AbortController();void prepareFeedItems(abort.signal).then(found=>{if(!abort.signal.aborted)setItems(held=>appendFeedItems(held,found));}).catch(()=>{});return()=>abort.abort();},[active]);
+ useEffect(()=>{
+  if(!active)return;
+  const abort=new AbortController();
+  const adopt=(next:PublicMarketCatalog|null)=>{
+   if(!next?.complete||next===selectedCatalog.current)return;
+   selectedCatalog.current=next;
+   setCatalog(next);
+   setItems(held=>completeFeedItems(held,next.items));
+  };
+  const sync=()=>{
+   const state=preparedBankCatalogState();
+   adopt((state.value??state.carried)?.seed.catalog??null);
+  };
+  const unsubscribe=subscribePreparedBankCatalog(sync);
+  const held=readHeldFeedCatalog();
+  sync();
+  if(!selectedCatalog.current)adopt(held);
+  if(!held&&!selectedCatalog.current&&!document.getElementById('public-market-seed')){
+   void readPreparedBankCatalog().then(next=>{
+    if(abort.signal.aborted||next||selectedCatalog.current)return;
+    return prepareFeedItems(abort.signal).then(found=>{
+     if(!abort.signal.aborted&&!selectedCatalog.current)setItems(previous=>appendFeedItems(previous,found));
+    });
+   }).catch(()=>{});
+  }else if(!selectedCatalog.current){
+   void prepareFeedItems(abort.signal).then(found=>{
+    if(!abort.signal.aborted){
+     adopt(readHeldFeedCatalog());
+     if(!selectedCatalog.current)setItems(previous=>appendFeedItems(previous,found));
+    }
+   }).catch(()=>{});
+  }
+  return()=>{abort.abort();unsubscribe();};
+ },[active]);
  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
   // Undefined notifications are local admission/delivery changes. This surface
   // adopts only a dated public response, never the pending local overlay.
   if(!catalog)return;const observedAt=Date.parse(catalog.observedAt??'');if(!Number.isFinite(observedAt)||observedAt<=publicationAt.current)return;
-  publicationAt.current=observedAt;setItems(held=>refreshFeedItems(held,catalog.items));
+  publicationAt.current=observedAt;
+  if(catalog.complete){selectedCatalog.current=catalog;setCatalog(catalog);}
+  setItems(held=>refreshFeedItems(held,catalog.items));
  }),[]);
  useEffect(()=>{setShown(20);},[query,filter]);
  useEffect(()=>{if(!active||shown>=results.items.length||!more.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{rootMargin:'500px'});observer.observe(more.current);return()=>observer.disconnect();},[active,shown,results.items.length]);

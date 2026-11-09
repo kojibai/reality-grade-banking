@@ -74,3 +74,15 @@ it('publishes the held header through the existing Portal and clears it when ide
   await act(()=>root.render(createElement(PublicProfilePortal,{identity:null,userId:uid})));expect(actions.readProfileOwner()).toBeNull();expect(held()).toBeNull();expect(fetch).not.toHaveBeenCalled();
  }finally{await act(()=>root.unmount());host.remove();}
 });
+
+it('opens the exact signed fresh account profile from its admitted genesis without a Source read',()=>{
+ const value=identity(),createdAt=publicMetadata.createdAt,full='receiz_pbahqdfouqyxgsifcy';
+ const history=value.localHistory as unknown as Record<string,unknown>;
+ Object.assign(value,{username:full,accountUsername:()=>full,binding:{keyId:'identity-key',identityOwnerReceizId:uid},knownWallet:()=>({source:'account-genesis',wallet:{userId:uid}})});
+ Object.assign(history,{owner:{uid},verifiedState:{schema:'receiz.account.state.v3',createdAt,exportedAt:createdAt,account:{userId:uid,username:full},
+  bankGenesis:{schema:'bank.account-genesis.v1',applicationId:'rc_2d1wcGkAYfmCi5kGT3J89gkl',keyId:'identity-key',userId:uid,createdAt,kaiUPulse:'150000000'}}});
+ const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('No Source read'));
+ expect(readVerifiedOwnerProfileHeader(value,uid)).toMatchObject({userId:uid,receivingUsername:'pbahqdfouqyxgsifcy',stats:{originals:0}});
+ expect(readVerifiedOwnerProfileHeader(value,'other-account')).toBeNull();
+ expect(fetch).not.toHaveBeenCalled();
+});

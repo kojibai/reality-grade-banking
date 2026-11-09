@@ -27,7 +27,7 @@ export function profileAvatarUrl(value:unknown):string|null {
 }
 /** The signed Bank bootstrap establishes birth only for its exact admitted
  * identity. A connected wallet's account UID does not replace that identity. */
-function freshGenesisProfile(identity:OpenIdentity,source:Record<string,unknown>):Record<string,unknown>|null {
+export function freshGenesisProfile(identity:OpenIdentity,source:Record<string,unknown>) {
  const projection=identity.localHistory,genesis=object(source.bankGenesis),account=object(source.account),userId=account.userId,owner=projection.owner?.uid;
  if(projection.schema!=='receiz.sdk.identity_account_projection.v1'||projection.authority!=='verified-identity-portable-state'
   ||typeof projection.keyId!=='string'||!projection.keyId||projection.keyId!==identity.binding?.keyId||typeof owner!=='string'||owner!==identity.binding?.identityOwnerReceizId

@@ -109,7 +109,7 @@ it('keeps inline identity artwork out of preload and social-image tags',()=>{con
 it('shows the existing page chrome without a seal when a compiled public profile is genuinely absent',async()=>{
  const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn(),profileContent=vi.fn(async()=>null);
  const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page:async()=>html,render,prepareRender,profileContent});
- const body=await response.text();expect(body).toContain('class="app-header"');expect(body).toContain('<h1>@alexmorgan</h1>');
+ const body=await response.text();expect(body).toContain('class="app-header"');expect(body).not.toContain('<h1>@alexmorgan</h1>');
  expect(body).not.toMatch(/profile-opening|data-profile-opening|public-entry-placeholder|animationend|setTimeout/);
  for(const work of [profile,render,prepareRender])expect(work).not.toHaveBeenCalled();expect(profileContent).toHaveBeenCalledExactlyOnceWith('alexmorgan');
 });
@@ -121,5 +121,5 @@ it('serves the exact already-rendered profile with its unchanged catalog and no 
 it.each(['owner','generation'])('does not attach a compiled profile with a different %s to the carried family',async mismatch=>{
  const generation='b'.repeat(64),pageHtml=html.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"schema":"bank.public-market.document.v1","generation":"'+generation+'"}</script><script id="receiz-navigation"');
  const response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile:vi.fn(),page:async()=>pageHtml,profileContent:async()=>`<!-- bank.profile.document.v1 ${mismatch==='generation'?'c'.repeat(64):generation} ${mismatch==='owner'?'another':'alexmorgan'} --><article>Wrong compiled profile</article>`});
- const body=await response.text();expect(body).not.toContain('Wrong compiled profile');expect(body).not.toContain('data-public-profile-rendered');expect(body).toContain('@alexmorgan');
+ const body=await response.text();expect(body).not.toContain('Wrong compiled profile');expect(body).not.toContain('data-public-profile-rendered');expect(body).not.toContain('<h1>@alexmorgan</h1>');
 });

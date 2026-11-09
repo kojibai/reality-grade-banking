@@ -4,8 +4,8 @@ import {readPublicProfileAlias} from '../server/profile-alias';
 const full='pbahqdfouqyxgsifcy',legacy='receiz_'+full.slice(0,17),generation='b'.repeat(64);
 const html='<html><head></head><body><div id="public-explore-root"></div><script id="public-market-seed" type="application/json">{"generation":"'+generation+'"}</script><script id="receiz-navigation" type="application/json">{}</script></body></html>';
 it.each([full,'receiz_'+full])('opens %s through its exact existing canonical profile without rendering another collection',async input=>{
- const profile=vi.fn(),alias=vi.fn(async()=>legacy),response=await handleProfilePreview(new Request('https://bankeiz.com/'+input+'/?utm_source=share',{headers:{accept:'text/html'}}),{profile,page:async()=>html,alias});
- expect(response.status).toBe(307);expect(response.headers.get('location')).toBe('/'+legacy+'/?utm_source=share');expect(alias).toHaveBeenCalledExactlyOnceWith(input);expect(profile).not.toHaveBeenCalled();
+ const profile=vi.fn(),alias=vi.fn(async()=>legacy),missingDocument=vi.fn(async()=>new Response('<article>Actual held profile</article>')),response=await handleProfilePreview(new Request('https://bankeiz.com/'+input+'/?utm_source=share',{headers:{accept:'text/html'}}),{profile,page:async()=>html,alias,missingDocument});
+ expect(response.status).toBe(200);expect(response.headers.get('location')).toBeNull();expect(await response.text()).toContain('Actual held profile');expect(missingDocument).toHaveBeenCalledExactlyOnceWith(legacy);expect(alias).toHaveBeenCalledExactlyOnceWith(input);expect(profile).not.toHaveBeenCalled();
 });
 it('the production rewrite accepts the complete name and redirects through the same canonical route',async()=>{
  const response=await handleProfilePreview(new Request('https://bankeiz.com/api/profile?username=receiz_'+full,{method:'HEAD'}),{profile:vi.fn(),page:vi.fn(),alias:async()=>legacy});expect(response.status).toBe(307);expect(response.headers.get('location')).toBe('/'+legacy+'/');

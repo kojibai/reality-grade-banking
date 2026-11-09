@@ -5,6 +5,7 @@ import {profilePagePath,profileUsername} from '../receiz/public-profile';
 export function AccountProfileLink({username,receivingUsername,children,className,label}:{username:string|null|undefined;receivingUsername?:string;children:ReactNode;className?:string;label?:string}){
  const name=profileUsername(username?.toLowerCase());
  const handle=Array.isArray(children)&&children.length===2&&children[0]==='@'&&children[1]===name||typeof children==='string'&&children==='@'+name;
- const visible=handle&&name?'@'+profileUsernameLabel(name,receivingUsername):children;
- return name?<a href={profilePagePath(profileUsernameLabel(name,receivingUsername))} className={className} aria-label={label}>{visible}</a>:<span className={className}>{children}</span>;
+ const publicName=profileUsernameLabel(name,receivingUsername);
+ const visible=handle?(publicName?'@'+publicName:'Receiz ID'):children;
+ return publicName?<a href={profilePagePath(publicName)} className={className} aria-label={label}>{visible}</a>:<span className={className}>{visible}</span>;
 }

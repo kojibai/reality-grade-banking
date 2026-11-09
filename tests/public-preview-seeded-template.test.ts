@@ -20,7 +20,7 @@ afterEach(()=>{expect(fetch).not.toHaveBeenCalled();vi.unstubAllGlobals();});
 
 it('opens the browser profile chrome from a seeded Explore template without profile or rendering work',async()=>{
  const profile=vi.fn(),render=vi.fn(),prepareRender=vi.fn(),page=vi.fn(async()=>template),response=await handleProfilePreview(new Request('https://bankeiz.com/alexmorgan/',{headers:{accept:'text/html','user-agent':'Browser'}}),{profile,page,render,prepareRender}),html=await response.text(),view=document(html);
- expect(response.status).toBe(200);expectOwnEntry(view,true);expect(view.querySelector('#public-explore-root .profile-hero h1')?.textContent).toBe('@alexmorgan');expect(view.querySelector('#public-profile-seed')).toBeNull();expect(view.querySelector('#public-asset-seed')).toBeNull();expect(html.trimEnd()).toMatch(/<\/html>$/);
+ expect(response.status).toBe(200);expectOwnEntry(view,true);expect(view.querySelector('#public-explore-root .profile-hero h1')).toBeNull();expect(view.querySelector('#public-profile-seed')).toBeNull();expect(view.querySelector('#public-asset-seed')).toBeNull();expect(html.trimEnd()).toMatch(/<\/html>$/);
  expect(profile).not.toHaveBeenCalled();expect(render).not.toHaveBeenCalled();expect(prepareRender).not.toHaveBeenCalled();expect(page).toHaveBeenCalledOnce();
 });
 

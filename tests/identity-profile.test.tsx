@@ -57,3 +57,14 @@ it('uses a known public name immediately without preparing another connection',(
  const prepare=vi.fn(async()=>'unneeded'),identity={...unresolvedIdentity(prepare),accountUsername:()=> 'known_owner'},h=profileHarness(identity);
  try{expect(h.host.querySelector<HTMLAnchorElement>('.identity-public-profile-link')?.getAttribute('href')).toBe('/known_owner/');expect(prepare).not.toHaveBeenCalled();}finally{h.close();}
 });
+
+it('links a generated profile by its full public name without another account read',()=>{
+ const full='pbahqdfouqyxgsifcy',prepare=vi.fn(async()=>{throw Error('UNNEEDED_READ');});
+ const identity={...unresolvedIdentity(prepare),username:'receiz_'+full,accountUsername:()=> 'receiz_'+full.slice(0,-1)};
+ const h=profileHarness(identity);
+ try{
+  expect(h.host.querySelector('.identity-public-profile-link')?.getAttribute('href')).toBe('/'+full+'/');
+  expect(h.host.querySelector('code')?.textContent).toBe(full);
+  expect(prepare).not.toHaveBeenCalled();
+ }finally{h.close();}
+});

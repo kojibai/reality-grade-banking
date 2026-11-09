@@ -8,6 +8,7 @@ import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar} from '../../receiz/profile-avatar';
+import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
 import {profilePagePath,profileUsername,retainedPublicProfile,knownProfilePbiAuthorship} from '../../receiz/public-profile';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
@@ -31,12 +32,18 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
   };
   const [preparedProfile,setPreparedProfile]=useState<{owner:OpenIdentity;username:string}|null>(null),[profileOpening,setProfileOpening]=useState<OpenIdentity|null>(null),[profileError,setProfileError]=useState<{owner:OpenIdentity;message:string}|null>(null);
   const profilePending=useRef<OpenIdentity|null>(null);
-  const publicId = identity.accountUsername?.() || (preparedProfile?.owner===identity?preparedProfile.username:null) || identity.username || identity.binding.identityOwnerReceizId;
+  const knownName = identity.accountUsername?.() || (preparedProfile?.owner===identity?preparedProfile.username:null) || identity.username;
+  const publicName = (name: string) => {
+    const fullName = receivingUsernameForIdentity(name, identity.username ?? '');
+    return /^receiz_[a-z0-9]{17}$/.test(fullName) ? null : profileUsername(fullName);
+  };
+  const profileName = knownName ? publicName(knownName) : null;
+  const publicId = profileName ?? identity.binding.identityOwnerReceizId;
   const openPublicProfile=async()=>{
     if(profilePending.current===identity||!identity.prepareReceivingUsername)return;
     profilePending.current=identity;setProfileOpening(identity);setProfileError(null);
     try{
-      const username=profileUsername(await identity.prepareReceivingUsername());
+      const username=publicName(await identity.prepareReceivingUsername());
       if(current.current!==identity)return;
       if(!username)throw Error('PROFILE_USERNAME_UNAVAILABLE');
       setPreparedProfile({owner:identity,username});
@@ -44,7 +51,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     }catch{if(current.current===identity)setProfileError({owner:identity,message:'Your profile could not be opened. Try again.'});}
     finally{if(profilePending.current===identity)profilePending.current=null;if(current.current===identity)setProfileOpening(null);}
   };
-  const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(publicId)?.authorshipVerified;
+  const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(knownName??publicId)?.authorshipVerified;
  const backupId = () => {
     const held = identity.backup(), url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
     const link = document.createElement('a'); link.href = url; link.download = held.filename; link.click();
@@ -62,8 +69,8 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
       <code className="profile-public-id">{publicId}</code>
       <p>Your verified identity, secured on this device.</p>
     </div>
-    {identity.profile&&<QuickProfileEditor identity={identity} username={publicId}/>}
-    {profileUsername(publicId)?<a className="identity-public-profile-link" href={profilePagePath(publicId)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
+    {identity.profile&&<QuickProfileEditor identity={identity} username={knownName??publicId}/>}
+    {profileName?<a className="identity-public-profile-link" href={profilePagePath(profileName)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
     {profileError?.owner===identity&&<p className="error-message" role="alert">{profileError.message}</p>}
     <button className="primary-button" onClick={backupId}><IdentityRecordIcon action="save" size={20}/>Back up my Identity Record</button>
     {backup && <div className="identity-import profile-backup">

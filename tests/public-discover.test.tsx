@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import {act} from 'react';import {createRoot} from 'react-dom/client';import {afterEach,expect,it,vi} from 'vitest';
 import type {PublicMarketCatalog,PublicMarketItem} from '../src/receiz/public-market';
-const load=vi.hoisted(()=>vi.fn(async()=>[]));vi.mock('../src/public-feed/feed-source',()=>({prepareFeedItems:load,prepareFeedCollectibles:vi.fn(async()=>[])}));
+const load=vi.hoisted(()=>vi.fn(async()=>[]));vi.mock('../src/public-feed/feed-source',async original=>({...await original<typeof import('../src/public-feed/feed-source')>(),prepareFeedItems:load,prepareFeedCollectibles:vi.fn(async()=>[])}));
+vi.mock('../src/receiz/prepared-bank-catalog',async original=>({...await original<typeof import('../src/receiz/prepared-bank-catalog')>(),readPreparedBankCatalog:vi.fn(async()=>null)}));
 const publications=vi.hoisted(()=>new Set<(catalog?:PublicMarketCatalog)=>void>());
 vi.mock('../src/receiz/asset-publication-adoption',async original=>({...await original<typeof import('../src/receiz/asset-publication-adoption')>(),subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog)=>void)=>{publications.add(listener);return()=>{publications.delete(listener);};}}));
 vi.mock('../src/features/market/MarketFeedPopover',()=>({MarketFeedPopover:(p:any)=><div data-selected-work={p.selectedItemId??'all'} data-work-title={p.items.find((item:PublicMarketItem)=>item.id===p.selectedItemId)?.title}><button onClick={p.onClose}>Close discovery viewer</button></div>}));

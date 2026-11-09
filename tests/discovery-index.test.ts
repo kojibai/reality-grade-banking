@@ -18,3 +18,12 @@ it('includes images carrying long-form text in both Images and Essays, including
  expect(searchDiscovery(index,'illustrated','essay').items).toEqual([illustrated]);
  expect(searchDiscovery(index,'','All').items).toHaveLength(5);
 });
+
+it('indexes a public person from the carried owner header even before their first Original',()=>{
+ const username='receiz_pbahqdfouqyxgsifc',receivingUsername='pbahqdfouqyxgsifcy';
+ const head={profile:{userId:'exact-owner',username,receivingUsername,displayName:'New creator',isPrivate:false},viewer:{canView:true},stats:{}};
+ const index=buildDiscoveryIndex([],[head]);
+ expect(searchDiscovery(index,'@'+receivingUsername,'People').people).toEqual([
+  expect.objectContaining({username,receivingUsername,name:'New creator',items:[]})
+ ]);
+});
