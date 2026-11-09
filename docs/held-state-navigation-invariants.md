@@ -61,6 +61,16 @@ Qualification requires compiled HTML with JavaScript unavailable, blocked-API br
 
 ### Proof download and offline-kit contract
 
+Funding display reuses exact ancestors already carried by other records in the
+same held public or account family. A page boundary is never an ancestry
+boundary. Retain the selected root's complete reachable closure and preserve it
+through thinner responses, sharing and reopening; do not import account-only
+nodes into anonymous receipts. A genuinely missing source remains explicit.
+Neither matching amounts, display timestamps nor a transported `complete` flag
+can manufacture a parent. Bounded visible rows do not truncate held history.
+Explicit saved receipt sharing carries the complete curated context; preparing
+ordinary row navigation must not repeatedly serialize the family's entire graph.
+
 A transaction proof download returns the exact enclosing source artifact, including its existing proof bundle, signatures, packages and carried continuity. Reuse already admitted source bytes; do not reseal a projection, reconstruct history or weaken verification. Both public and My history rows must carry the same selected Original reader into the file button, technical inspector, kit and receipt. Restoring an existing explicit export may read its digest-bound custody; a download must not call the export sealer when that artifact is missing. The inspector's display JSON and Wallet hash capsules are not substitutes for that artifact. Copying display details remains a separate explicit operation.
 
 A verification kit must include the selected digest-bound original, the canonical offline verifier, its public verification material and complete corresponding sources, browser and Node entry points, instructions, licenses and a checked file inventory. If the original or a required verifier resource is absent or changed, refuse the complete-kit download. Do not silently deliver an archive without its proof. Test the extracted ZIP's actual verifier with network disabled and altered-source refusal. Its verdict covers the claims and continuity carried by the object; it does not establish current spendability or invent missing predecessors.

@@ -140,6 +140,35 @@ export function retainLedgerFundingContext(before:PublicRecord|undefined,after:P
  const nodes={...known.nodes};for(const [id,node]of Object.entries(next.nodes))nodes[id]=nodes[id]?mergeFundingNode(nodes[id],node,known.nodes,next.nodes):node;
  return applyLedgerFundingContext(after,{...next,nodes});
 }
+/** Reuse ancestors delivered with other records in this same held view. Exact
+ * parent references select the closure; neither page order nor a shared amount
+ * creates a relationship. Anonymous rows can never inherit account-only data. */
+export function retainLedgerFundingAncestors(records:readonly PublicRecord[],sources:readonly PublicRecord[]):PublicRecord[]{
+ const contexts=new Map<PublicRecord,LedgerFundingContext>();
+ for(const record of new Set([...records,...sources])){
+  const context=readLedgerFundingContext(record.details?.fundingContext);
+  if(context)contexts.set(record,context);
+ }
+ const families=new Map<PublicRecord['authority'],object>();
+ function family(authority:PublicRecord['authority']){
+  const held=families.get(authority);if(held)return held;
+  const nodes:Record<string,FundingNode>=Object.create(null),roots=new Map<string,FundingRef>(),coverage:Record<string,unknown>=Object.create(null),seen=new Set<LedgerFundingContext>();
+  for(const [record,context]of contexts){
+   if(record.authority!==authority||seen.has(context))continue;
+   seen.add(context);roots.set(key(context.root),context.root);coverage[key(context.root)]=context.coverage;
+   for(const [id,node]of Object.entries(context.nodes))nodes[id]=nodes[id]?mergeFundingNode(nodes[id],node,nodes,context.nodes):node;
+  }
+  const raw={schema:'receiz.wallet.funding-context.v1'};pages.set(raw,{nodes,roots,coverage});families.set(authority,raw);return raw;
+ }
+ return records.map(record=>{
+  const context=contexts.get(record);if(!context||context.coverage.status==='complete')return record;
+  const next=readLedgerFundingContext(family(record.authority),key(context.root));
+  if(!next)return record;
+  // A missing parent may now be held, but the selected root must still agree
+  // with the receipt's own amount and exact native units.
+  return applyLedgerFundingContext(record,next);
+ });
+}
 export function compactLedgerFundingContext(context:LedgerFundingContext,maxBytes=8000):LedgerFundingContext{
  const nodes:Record<string,FundingNode>={},queue=[context.root],seen=new Set<string>();let bytes=500;
  for(let i=0;i<queue.length;i++){const id=key(queue[i]);if(seen.has(id))continue;seen.add(id);const node=context.nodes[id];if(!node)continue;const size=new TextEncoder().encode(JSON.stringify({[id]:node})).length;if(bytes+size>maxBytes)continue;nodes[id]=node;bytes+=size;queue.push(...node.parents);}

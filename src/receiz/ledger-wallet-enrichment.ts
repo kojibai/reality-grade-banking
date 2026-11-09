@@ -1,4 +1,4 @@
-import {applyLedgerFundingContext,readLedgerFundingContext,type LedgerFundingContext} from './ledger-funding-context';
+import {applyLedgerFundingContext,readLedgerFundingContext,retainLedgerFundingAncestors,type LedgerFundingContext} from './ledger-funding-context';
 import type {PublicRecord} from './public-network';
 import {readWalletFundingAttribution,walletAttributionFitsRecord,walletFundingTimeKey,type WalletFundingAttribution} from './ledger-wallet-fifo';
 import {linkWalletFundingHistory,readWalletFundingHistory,type WalletFundingHistory} from './ledger-funding-history';
@@ -18,6 +18,7 @@ function noteFundingAgrees(parent:NoteGraph,record:PublicRecord,receipt:Record<s
 /** Reuse exact funding sources already held by this view. Public views never
  * inherit private context, and incomplete feeds never become FIFO inputs. */
 export function enrichWalletFundingContext(records:readonly PublicRecord[],sources:readonly PublicRecord[]):PublicRecord[]{
+ records=retainLedgerFundingAncestors(records,sources);
  const publicOnly=records.every(record=>record.authority==='public-source-projection');
  const byTransfer=new Map<string,Context|null>(),byNote=new Map<string,Context|null>(),byDebit=new Map<string,Context|null>(),own=new Map<PublicRecord,Context>();
  const noteGraphs=new Map<string,NoteGraph|null>();
@@ -70,11 +71,19 @@ export function enrichWalletFundingContext(records:readonly PublicRecord[],sourc
    }
   }
   if(graph){
-   const seen=new Set<string>(),pending=[graph.root],cohorts:WalletProofCohort[]=[];
+   const seen=new Set<string>(),pending=[graph.root],cohorts:WalletProofCohort[]=[],resolved={...graph.nodes};let added=false;
    while(pending.length){const ref=pending.pop()!,key=ref.kind+':'+ref.id;if(seen.has(key))continue;seen.add(key);const node=graph.nodes[key];if(!node)continue;pending.push(...node.parents);
     const cohort=sourceCohorts.get(ref.id);
-    if(ref.kind==='credit'&&node.source==='profile_rollup_seed'&&cohort&&node.amountPhiMicro===cohort.amountPhiMicro&&node.occurredAt&&walletFundingTimeKey(cohort.computedAt)!<=walletFundingTimeKey(node.occurredAt)!&&cohort.members.every(member=>!member.pulse||node.kaiUpulse&&BigInt(member.pulse)<=BigInt(node.kaiUpulse)/1000000n))cohorts.push(cohort);
+    if(ref.kind==='credit'&&node.source==='profile_rollup_seed'&&cohort&&node.amountPhiMicro===cohort.amountPhiMicro&&node.occurredAt&&walletFundingTimeKey(cohort.computedAt)!<=walletFundingTimeKey(node.occurredAt)!&&cohort.members.every(member=>!member.pulse||node.kaiUpulse&&BigInt(member.pulse)<=BigInt(node.kaiUpulse)/1000000n)){
+     cohorts.push(cohort);
+     // The old source rule's complete membership is already carried by this
+     // exact credit and native amount. Fill only its empty legacy marker;
+     // this remains reconstructed display membership, never proof admission.
+     const marker=node.parents.find(parent=>parent.kind==='proof-basis'&&parent.id==='original-credit:'+node.ref.id);
+     if(marker&&!resolved['proof-basis:'+marker.id]){resolved['proof-basis:'+marker.id]={ref:marker,parents:[],objectIds:cohort.members.map(member=>member.objectId)};added=true;}
+    }
    }
+   if(added)record=applyLedgerFundingContext(record,{...graph,nodes:resolved});
    const details={...record.details};if(cohorts.length)details.fundingCohorts=cohorts as unknown as NonNullable<PublicRecord['details']>[];else delete details.fundingCohorts;
    return {...record,details};
   }
