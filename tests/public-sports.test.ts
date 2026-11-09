@@ -143,3 +143,18 @@ it('retains unpriced verified groups when newer quotes predate their metadata ca
  expect(after.items).toHaveLength(3);expect(after.items[1].priceUsd).toBe(30);expect(after.items[2]).toMatchObject({ownerUsername:'metadata_holder',priceUsd:null,sealedAt:born.sealedAt});expect(after.items[2].sportsValuation).toBeUndefined();expect(after.sportsSealedBirthsObservedAt).toBe(held.sealedBirthsObservedAt);
  const later=mergePublicSports(after,{...incoming,sealedBirthsObservedAt:'2026-10-22T12:00:00Z'});expect(later.items).toHaveLength(2);
 });
+
+it('keeps held collectible groups across a Showcase refresh with a partial or unavailable sports response',()=>{
+ const extra={...card,collectibleId:'rsc_1123456789abcdef',athlete:'Already held athlete',claimHash:'b'.repeat(64)};
+ const capture={ok:true,schema:'receiz.sports_economy.live_inventory.v1',generatedAt:'2026-10-14T12:00:00Z',cards:[card,extra]};
+ const held=mergePublicSports(base(),capture),original=base().items[0];
+ const membership={...base(),items:[original,{...original,id:'new-original',assetId:'new-original',title:'New Original'}]};
+ const fallback={...capture,fallback:true,generatedAt:'2026-10-15T12:00:00Z',cards:[card]};
+ for(const input of [null,fallback]){
+  const selected=mergePublicSports(membership,input,held);
+  expect(selected.items.map(item=>item.id)).toEqual([...membership.items,...held.items.slice(1)].map(item=>item.id));
+  expect(selected.items.find(item=>item.assetId===extra.collectibleId)).toBe(held.items.find(item=>item.assetId===extra.collectibleId));
+ }
+ const complete=mergePublicSports(membership,{...fallback,fallback:false},held);
+ expect(complete.items.some(item=>item.assetId===extra.collectibleId)).toBe(false);
+});

@@ -159,3 +159,17 @@ it('opens installed public views with no prepared API wait when no visited-page 
  }
  expect(env.reads()).toHaveLength(0);
 });
+
+it.each([['/explore/','/explore/index.html'],['/discover/','/discover/index.html']])('opens %s during a rollout if its installed copy was evicted',async(path,installedPath)=>{
+ const {env,worker}=await installed(),cache=env.stores.get('receiz-bank-A')!,next='<html>Current deployment B</html>';
+ cache.delete(origin+installedPath);
+ env.network.set(origin+installedPath,next);
+ env.network.set(origin+path,next);
+ const before=env.requests.length,response=await worker.load(path,{navigate:true});
+ expect(await response!.text()).toBe(next);
+ expect(env.requests.slice(before).map(request=>new URL(request.url).pathname)).toEqual([path]);
+ expect(cache.has(origin+installedPath)).toBe(false);
+ expect(env.reads()).toHaveLength(0);
+ env.network.delete(origin+path);
+ expect((await worker.load(path,{navigate:true}))!.status).toBe(503);
+});

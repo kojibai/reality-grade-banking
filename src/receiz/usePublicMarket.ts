@@ -75,7 +75,7 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
 subscribeAssetPublicationAdmissions((accepted,snapshot)=>{const before=readPublicCatalog(),selected=publishPublicCatalog(current=>{
  if(!accepted)return snapshot&&current?mergePublicQuotes(current,snapshot):current;
  if(!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
- const updated=mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),sameSource=prior?.assetId===item.assetId&&prior.originalDigest===item.originalDigest,next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:mergeShareInventory(sameSource?compatibleShareInventory(item,prior?.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null)};return sameSource&&!item.chart.length&&prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports);
+ const updated=mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),sameSource=prior?.assetId===item.assetId&&prior.originalDigest===item.originalDigest,next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:mergeShareInventory(sameSource?compatibleShareInventory(item,prior?.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null)};return sameSource&&!item.chart.length&&prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports,current);
  return snapshot?mergePublicQuotes(updated,snapshot):updated;
 });if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);membershipRevision++;lastRefreshAt=Date.now();lastRefreshFailed=false;}});
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
@@ -90,7 +90,7 @@ function prepareShippedCatalog():Promise<void>{
     if(!response.ok)throw Error('Public collection snapshot unavailable.');
     const input=await untilAborted(response.json(),signal),cached=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(cached);
     publishPublicCatalog(current=>{
-      if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports);
+      if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports,current);
       const hints=new Map(cached.items.map(item=>[item.id,item]));
       const updated={...current,items:current.items.map(item=>{
         const hint=hints.get(item.id);
@@ -203,7 +203,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
           const quoted=previous.get(item.id);
           const presented={...retainPublicMomentManifest(retainPublicArtwork(item,quoted),quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
           return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
-        })},retainedSports);
+        })},retainedSports,current);
         if(quotes)updated=mergePublicQuotes(updated,quotes);
         return updated;
       });

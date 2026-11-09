@@ -140,7 +140,10 @@ async function publicDocument(request, path, installedPath) {
         cached = undefined;
       }
       // Opening an installed public view needs no prepared-page renewal.
-      if (installedPath && !source) return fromBuild(installedPath);
+      if (installedPath && !source) {
+        clearTimeout(timer);
+        return publicNavigation(request, installedPath);
+      }
     }
     if (path === 'bank-entry') {
       // Only the private Root may retain a previously checked local display
@@ -237,6 +240,20 @@ async function fromBuild(path) {
   // deployment cannot silently replace the runtime beneath an open account.
   const response = await verifiedFetch(path); await cache.put(path, response.clone()); return response;
 }
+// A previous worker can still control a tab during a rollout. If its public
+// document was evicted, open the ordinary online route without admitting a
+// different release into the installed cache.
+async function publicNavigation(request, installedPath) {
+  if (request.signal.aborted) throw request.signal.reason;
+  const cached = await caches.open(CACHE).then(cache => cache.match(installedPath, { ignoreVary: true })).catch(() => undefined);
+  if (request.signal.aborted) throw request.signal.reason;
+  if (cached) return cached;
+  try { return await fetch(request); }
+  catch {
+    if (request.signal.aborted) throw request.signal.reason;
+    return new Response('Public document unavailable offline.', { status: 503, headers: { 'cache-control': 'no-store' } });
+  }
+}
 // A new document navigation may open the current deployment's HTML. Installed
 // SDK/assets remain in their exact immutable cache; online HTML never replaces
 // that custody. This is one ordinary document GET, with no Source probe.
@@ -332,6 +349,7 @@ self.addEventListener('fetch', event => {
   const page = event.request.mode === 'navigate' && (PAGES[url.pathname] || (/^\/vault\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\/?$/i.test(url.pathname) && (PAGES['/vault/index.html'] || PAGES['/'])) || (/^\/pay\/[a-z0-9_]{3,24}\/?$/.test(url.pathname) && PAGES['/pay/checkout.html']) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/verify/']) || (/^\/asset\/[^/]+\/?$/.test(url.pathname) && PAGES['/explore/']));
   const nativeBuild = (url.pathname.startsWith('/native/') || url.pathname === '/proof-verifier/v129/verifier.js') && url.searchParams.size === 1 && url.searchParams.get('build') === RESOURCES[url.pathname]?.sha256;
   const path = page || (RESOURCES[url.pathname + url.search] ? url.pathname + url.search : nativeBuild ? url.pathname : undefined);
-  const heldEntry = url.pathname === '/' || url.pathname === '/index.html' || url.pathname.startsWith('/vault/') || url.pathname.startsWith('/discover/');
+  if (page && /^\/discover\/?$/.test(url.pathname)) { event.respondWith(publicNavigation(event.request, path)); return; }
+  const heldEntry = url.pathname === '/' || url.pathname === '/index.html' || url.pathname.startsWith('/vault/');
   if (path) event.respondWith(page && !heldEntry ? navigationDocument(event.request, path) : fromBuild(path));
 });

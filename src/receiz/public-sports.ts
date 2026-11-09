@@ -101,9 +101,18 @@ function applyCopyMetadata(item:PublicMarketItem,card:Record<string,unknown>,pri
  });
  if(item.circulationCount===1&&item.sealedCopies.length===1){const copy=item.sealedCopies[0];item.sealedAt=copy.sealedAt;item.ownerUsername=copy.ownerUsername;item.ownerProfileUrl=copy.ownerProfileUrl;item.ownerDisplayName=copy.ownerDisplayName;}
 }
-export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown): PublicMarketCatalog {
+export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown, held?: PublicMarketCatalog | null): PublicMarketCatalog {
+  // A Showcase membership response carries Originals only. Collectibles are
+  // selected independently and remain available while that operand refreshes.
+  const heldSports = held?.items.filter(item => item.category === 'sports');
+  if (held && heldSports?.length) {
+    const selected = new Set(catalog.items.map(item => item.assetId.toLowerCase()));
+    catalog = { ...catalog, items: [...catalog.items, ...heldSports.filter(item => !selected.has(item.assetId.toLowerCase()))],
+      sportsCoverage: held.sportsCoverage, sportsObservedAt: held.sportsObservedAt,
+      sportsSealedBirthsObservedAt: held.sportsSealedBirthsObservedAt, sportsHistorySnapshot: held.sportsHistorySnapshot };
+  }
   const data = object(input);
-  if (data.ok !== true || data.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(data.cards) || data.cards.length > 100000) return { ...catalog, sportsCoverage: 'missing' };
+  if (data.ok !== true || data.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(data.cards) || data.cards.length > 100000) return catalog.sportsCoverage ? catalog : { ...catalog, sportsCoverage: 'missing' };
   const birthsFresh=!olderCapture(catalog.sportsSealedBirthsObservedAt,metadataAt(data));
   const previous=new Map(catalog.items.filter(item=>item.category==='sports').map(item=>[item.assetId.toLowerCase(),item]));
   const keepPrices=olderCapture(catalog.sportsObservedAt,data.generatedAt)||data.fallback===true&&[...previous.values()].some(item=>item.priceUsd!==null||item.sportsValuation);
@@ -144,6 +153,8 @@ export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown):
     applyCopyMetadata(item,card,prior,birthsFresh,!olderCapture(data.generatedAt,metadataAt(data)));
     items.set(normalized, item);
   }
+  // A fallback is partial, so an omitted group has no newer selection.
+  if (data.fallback === true) for (const [id, item] of previous) if (!items.has(id)) items.set(id, item);
   // A quote capture cannot erase groups from a newer metadata capture.
   if(!birthsFresh)for(const prior of previous.values())if(!prior.sportsValuation&&prior.sealedBirths?.length&&!items.has(prior.assetId.toLowerCase())){items.set(prior.assetId.toLowerCase(),prior);complete=false;}
   return { ...catalog, items: [...items.values()],sportsHistorySnapshot:publicSportsHistorySnapshot(data.historySnapshot)??catalog.sportsHistorySnapshot, sportsCoverage: complete ? 'complete' : 'partial',sportsObservedAt:typeof data.generatedAt==='string'&&Number.isFinite(Date.parse(data.generatedAt))?data.generatedAt:null,sportsSealedBirthsObservedAt:birthsFresh&&data.cards.some(raw=>publicSportsSealedBirths(object(raw).sealedBirths))?metadataAt(data) as string:catalog.sportsSealedBirthsObservedAt };
