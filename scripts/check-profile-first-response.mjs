@@ -17,7 +17,10 @@ const profile=parsePublicProfile(input,'alexmorgan'),fullName='pbahqdfouqyxgsifc
 const remote=globalThis.fetch;globalThis.fetch=async()=>{throw Error('PROFILE_FIRST_RESPONSE_REMOTE_READ_FORBIDDEN');};
 const server=createServer(async(req,res)=>{
  try{
-  const url=new URL(req.url,'http://localhost'),name=url.pathname.replaceAll('/','');
+  const url=new URL(req.url,'http://localhost');
+  // Stall API responses even when the browser sends the request to this server.
+  if(url.pathname.startsWith('/api/'))return;
+  const name=url.pathname.replaceAll('/','');
   if(['alexmorgan',fullName,'bjklock'].includes(name)){
    const response=await handleProfilePreview(new Request(url,{headers:{accept:'text/html','user-agent':'Browser qualification'}}),{
     page:async()=>template,
@@ -25,11 +28,17 @@ const server=createServer(async(req,res)=>{
     profileContent:async requested=>{try{return await readFile('server/profile-runtime/profile-pages/'+requested+'.html','utf8');}catch{return null;}},
     missingDocument:async()=>new Response(null,{status:503}),render:renderProfileDocument,
    });
-   res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
+   const bytes=Buffer.from(await response.arrayBuffer());
+   res.writeHead(response.status,Object.fromEntries(response.headers)).end(bytes);return;
   }
   const file=resolve(directory,'.'+(url.pathname.endsWith('/')?url.pathname+'index.html':url.pathname));if(!file.startsWith(directory+'/'))throw Error('path');
-  res.writeHead(200,{'content-type':{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.wasm':'application/wasm'}[extname(file)]??'application/octet-stream'}).end(await readFile(file));
- }catch(error){console.error(error);res.writeHead(500).end();}
+  const bytes=await readFile(file);
+  res.writeHead(200,{'content-type':{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.wasm':'application/wasm'}[extname(file)]??'application/octet-stream'}).end(bytes);
+ }catch(error){
+  if(error.code==='ENOENT'){res.writeHead(404).end();return;}
+  console.error(error);
+  res.writeHead(500).end();
+ }
 });
 await new Promise(done=>server.listen(0,'127.0.0.1',done));const origin='http://127.0.0.1:'+server.address().port,results=[];let browser,passed=false;
 try{
@@ -38,7 +47,11 @@ try{
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[],pending=[];let entryReady;const entryRequested=new Promise(done=>{entryReady=done;});
   try{
    page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error'&&/hydrat|didn't match|server rendered|react.dev\/errors\/(?:418|423|425)/i.test(message.text()))errors.push(message.text());});
-   await page.route('**/api/**',()=>new Promise(()=>{}));await page.route(/\/assets\/explore-[^/]+\.js(?:\?|$)/,route=>new Promise(done=>{pending.push({route,done});entryReady();}));
+   await page.route('**/api/**',route=>{
+    if(new URL(route.request().url()).origin===origin)return route.continue();
+    return new Promise(()=>{});
+   });
+   await page.route(/\/assets\/explore-[^/]+\.js(?:\?|$)/,route=>new Promise(done=>{pending.push({route,done});entryReady();}));
    const response=await page.goto(origin+'/'+name+'/',{waitUntil:'commit'});assert.equal(response.status(),200);await page.locator('.profile-hero h1').waitFor();
    assert.equal(await page.locator('.profile-unavailable,[data-profile-opening],.public-entry-placeholder').count(),0);
    assert.equal(await page.locator('#public-market-seed').count(),1,'Retain the exact complete held family');
