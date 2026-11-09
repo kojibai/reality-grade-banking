@@ -9,6 +9,8 @@ import {Discover} from '../src/public-discover/Discover';
 import {orderFeedItems} from '../src/public-feed/feed-items';
 import {orderDiscoveryItems} from '../src/public-discover/discovery-index';
 import {readPreparedFeedCatalog,prepareFeedItems} from '../src/public-feed/feed-source';
+import {preparePublicMarketSeedText} from '../src/receiz/public-market-document-seed';
+import {profileFixture} from './fixtures/public-profile';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const row=(id:string,title:string)=>({id:'profile:example:'+id,receizId:id,title,summary:title+' exact claim.',visibility:'public',ownerUsername:'example',profileOriginal:{media:null}});
 function input(path:'feed'|'discover',originals=[row('new','New accepted Original'),row('held','Existing public Original')]){
@@ -67,5 +69,24 @@ it('keeps passive Discover producer data complete while the old runtime hydrates
   expect(host.querySelectorAll('.discover-work')).toHaveLength(12);expect(host.querySelector('script')).toBeNull();
   const navigation=JSON.parse(doc.getElementById('receiz-navigation')!.textContent!);expect(navigation.pages['/discover/'].content).toContain('public-discovery-seed');
   expect(navigation.pages['/discover/'].preparedBuild).toBeUndefined();expect(navigation.pages['/discover/'].preparedRevision).toBeUndefined();expect(fetcher).not.toHaveBeenCalled();
+ }finally{fetcher.mockRestore();}
+});
+
+for(const path of ['feed','discover'] as const)it(`retains the complete large ${path} family and its next addition within delivery capacity without Source reads`,async()=>{
+ const head=profileFixture().profile;head.profile.avatarUrl='data:image/png;base64,'+'a'.repeat(16000);
+ const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_SOURCE_READ'));
+ try{
+  for(const count of [613,614]){
+   const originals=Array.from({length:count},(_,n)=>({...row('held-'+n,'Held Original '+n),ownerUsername:head.profile.username,ownerUserId:head.profile.userId,ownerCreatedAt:'2026-01-01T00:00:00Z',ownerAvatarUrl:head.profile.avatarUrl})),value=input(path,originals),body=JSON.parse(value.material);
+   head.stats.originals=count;body.membership.transport.publicProfileHeads=[head];
+   const material=JSON.stringify(body),html=await renderPreparedDependentDocument({...value,material,generation:createHash('sha256').update(material).digest('hex')});
+   expect(Buffer.byteLength(html)).toBeLessThan(32*1024*1024);
+   const raw=html.match(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>/)![1];
+   expect(JSON.parse(raw).catalogGzip).toBeDefined();
+   const cold=await preparePublicMarketSeedText(raw);expect(cold?.catalog.complete).toBe(true);expect(cold?.catalog.items).toHaveLength(count);
+   expect(cold!.catalog.items.map(item=>item.assetId)).toEqual(originals.map(item=>item.receizId));
+   expect(cold!.catalog.items.every(item=>item.ownerAvatarUrl===head.profile.avatarUrl)).toBe(true);
+   expect(html).toContain('Held Original 0');expect(fetcher).not.toHaveBeenCalled();
+  }
  }finally{fetcher.mockRestore();}
 });

@@ -1,4 +1,5 @@
 import {prepareSelectedPublicReferenceCatalog} from './public-reference-state';
+import {compressedCatalog} from './public-market-document';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {renderToString} from 'react-dom/server';
@@ -68,7 +69,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
   const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
   const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
   const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';
-  const script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}});
+  const compressed=compressedCatalog(catalog),script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}},compressed.large?compressed.packet:undefined);
   // Feed keeps its existing complete cohort reader. Passive Discover retains
   // the producer's full source-bound seed beside the legacy 12-item hydration seed.
   const clean=template.replace(/<script id="public-(?:feed|discovery)-seed" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;

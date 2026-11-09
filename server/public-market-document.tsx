@@ -20,10 +20,14 @@ export const publicMarketPreparedPaths=PUBLIC_MARKET_PREPARED_PATHS;
 export type PublicMarketRenderInput={material:string;generation:string;template:string;path?:string;renderBuild?:string};
 export type PublicMarketSelectedState={catalog:PublicMarketDocumentSeed['catalog'];history:ReturnType<typeof parseMarketHistory>;asOfPulse:number;capitalization?:PublicMarketDocumentSeed['capitalization']|null;generation:string;path?:string;compressCatalog?:boolean;profileUsername?:string};
 const prepared=new Map<string,Promise<{catalog:ReturnType<typeof parsePublicMarket>;history:ReturnType<typeof parseMarketHistory>;asOfPulse:number;capitalization:ReturnType<typeof parseMarketCapSource>|null}>>();
-const compressedCatalogs=new WeakMap<PublicMarketDocumentSeed['catalog'],{gzipB64u:string;bytes:number}>();
-function compressedCatalog(catalog:PublicMarketDocumentSeed['catalog']){
+const compressedCatalogs=new WeakMap<PublicMarketDocumentSeed['catalog'],{packet:{gzipB64u:string;bytes:number};large:boolean}>();
+export function compressedCatalog(catalog:PublicMarketDocumentSeed['catalog']){
  const held=compressedCatalogs.get(catalog);if(held)return held;
- const bytes=Buffer.from(JSON.stringify(packPublicCatalogArtwork(catalog))),value={gzipB64u:gzipSync(bytes,{level:6}).toString('base64url'),bytes:bytes.length};
+ const packed=packPublicCatalogArtwork(catalog),bytes=Buffer.from(JSON.stringify(packed));
+ // Packing can make repeated portraits small; the uncompressed alternative
+ // still repeats them. Select the format using that held input size as well.
+ const repeated=packed.items.reduce((size,row,index)=>size+(row!==catalog.items[index]?Buffer.byteLength(catalog.items[index]!.ownerAvatarUrl!):0),0);
+ const value={packet:{gzipB64u:gzipSync(bytes,{level:6}).toString('base64url'),bytes:bytes.length},large:bytes.length+repeated>1024*1024};
  compressedCatalogs.set(catalog,value);return value;
 }
 async function prepare(material:string,generation:string){
@@ -63,7 +67,7 @@ export function renderSelectedPublicMarketState(input:PublicMarketSelectedState)
  const {catalog,history,asOfPulse,capitalization,generation,path='explore',compressCatalog=false}=input;
  const {content,format,visibleCount}=selectedPublicMarketPresentation(input);
  const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format,history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
- return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog):undefined)};
+ return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog).packet:undefined)};
 }
 /** Called by accepted-publication preparation, never by the cold visitor. The
  * existing public projector selects display fields; arbitrary input fields do
@@ -73,7 +77,7 @@ export async function renderPublicMarketDocument({material,generation,template,p
  if(!(publicMarketPreparedPaths as readonly string[]).includes(path))throw Error('PUBLIC_MARKET_RENDER_PATH_INVALID');
  // Use the same supported compressed seed as the complete build document.
  // Large accepted families must fit delivery without losing their held rows.
- const state=await prepare(material,generation),{content,seedScript}=renderSelectedPublicMarketState({...state,generation,path,compressCatalog:compressedCatalog(state.catalog).bytes>1024*1024});
+ const state=await prepare(material,generation),{content,seedScript}=renderSelectedPublicMarketState({...state,generation,path,compressCatalog:compressedCatalog(state.catalog).large});
  let replaced=false;
  const withoutSeed=template.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'');
  const html=withoutSeed.replace(/(<div id="public-explore-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
@@ -91,7 +95,7 @@ export async function renderPreparedProfileDocument({material,generation,templat
  if(!profile||profile.nextCursor||profile.stats.originals!==items.length||profile.items.length!==items.length||profile.items.some(item=>!items.some(row=>row.id===item.id)))throw Error('PUBLIC_PROFILE_RENDER_COMPLETE_REQUIRED');
  // New owners use the same real view, carried family and hydration boundary
  // as compiled profiles. A profile-only SSR replica cannot replace that family.
- const {content,seedScript}=renderSelectedPublicMarketState({...state,generation,path:'explore',profileUsername:username,compressCatalog:compressedCatalog(catalog).bytes>1024*1024});
+ const {content,seedScript}=renderSelectedPublicMarketState({...state,generation,path:'explore',profileUsername:username,compressCatalog:compressedCatalog(catalog).large});
  const selectedTemplate=template.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'').replace('<script id="receiz-navigation"',()=>seedScript+'<script id="receiz-navigation"');
  const html=profilePreviewHtml(selectedTemplate,username,profile,undefined,content,true);
  return alignPreparedPublicNavigation(html,path,undefined,generation,renderBuild);
@@ -103,7 +107,7 @@ export async function renderPreparedBankDocument({material,generation,path}:Publ
  if(path!=='bank'||Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
  const {catalog,history,asOfPulse,capitalization}=await prepare(material,generation),format=new Intl.DateTimeFormat().resolvedOptions();
  const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount:Math.min(50,catalog.items.length),asOfPulse,format:{locale:format.locale,timeZone:format.timeZone},history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
- return '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public Market state</title></head><body>'+publicMarketDocumentSeedScript(seed,compressedCatalog(catalog))+'</body></html>';
+ return '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Public Market state</title></head><body>'+publicMarketDocumentSeedScript(seed,compressedCatalog(catalog).packet)+'</body></html>';
 }
 
 /** Separate saved entry representation. The account template is unchanged;
