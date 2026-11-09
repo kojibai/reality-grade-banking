@@ -5,6 +5,8 @@ import {expect,it,vi} from 'vitest';
 import {profileFixture} from './fixtures/public-profile';
 import {buildDiscoveryIndex} from '../src/public-discover/discovery-index';
 import {parsePublicProfile} from '../src/receiz/public-profile';
+import {parsePublicMarket} from '../src/receiz/public-market';
+import {curatePublicMarketMembership} from '../server/public-market';
 import {copyPublicProfileHeader} from '../src/receiz/public-head-cache';
 import {ProfileIdentity} from '../src/public-explorer/ProfileIdentity';
 import {profilePreviewHtml} from '../server/profile-preview';
@@ -28,4 +30,13 @@ it('the same participant projector and profile DOM display every character with 
  const profile=parsePublicProfile(fixture(),locator),host=document.createElement('div'),root=createRoot(host),fetcher=vi.spyOn(globalThis,'fetch');document.body.append(host);
  try{await act(()=>root.render(<ProfileIdentity profile={profile}/>));expect(host.querySelector('.profile-identity-handle')?.textContent).toBe('@'+full);await act(()=>host.querySelector<HTMLButtonElement>('.profile-identity-handle')!.click());expect(host.querySelector('.profile-receiz-link')?.getAttribute('href')).toBe('https://receiz.com/'+full);expect(fetcher).not.toHaveBeenCalled();}
  finally{await act(()=>root.unmount());host.remove();fetcher.mockRestore();}
+});
+
+it('the real public catalog boundary carries a legacy owner’s full name into held display and Discover',()=>{
+ const input=fixture(),owner=input.profile.profile,original=input.profile.originals[0];
+ const row={id:'profile:'+locator+':work-1',receizId:'work-1',title:'Original',ownerUsername:locator,ownerReceivingUsername:full,ownerUserId:owner.userId,ownerCreatedAt:'2026-10-20T10:00:00Z',profileOriginal:original};
+ const selected=parsePublicMarket(curatePublicMarketMembership({ok:true,transport:{publicOriginals:[row]}}));
+ expect(selected.items[0].ownerReceivingUsername).toBe(full);expect(selected.items[0].ownerUsername).toBe(locator);
+ expect(buildDiscoveryIndex(selected.items).people[0].receivingUsername).toBe(full);
+ expect(parsePublicMarket(curatePublicMarketMembership({ok:true,transport:{publicOriginals:[{...row,ownerReceivingUsername:'x'+full.slice(1)}]}})).items[0].ownerReceivingUsername).toBeUndefined();
 });
