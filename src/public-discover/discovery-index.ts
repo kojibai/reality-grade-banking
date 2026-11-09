@@ -1,15 +1,17 @@
 import {feedKind,type FeedKind} from '../public-feed/feed-items';
 import {readPublicProfileHeader,type PublicProfileHead} from '../receiz/public-profile-header';
+import {profileAvatarUrl} from '../receiz/profile-avatar';
 import {publicAccountDisplayName} from '../receiz/account-name';
 import {profileUsername,profilePageUsername} from '../receiz/public-profile';
 import type {PublicMarketItem} from '../receiz/public-market';
+export type DiscoveryProfileHead=PublicProfileHead&Readonly<{avatarFallback?:string}>;
 export type DiscoveryFilter='All'|'People'|FeedKind;
 export const discoveryOwnerName=(item:PublicMarketItem)=>publicAccountDisplayName({displayName:item.ownerDisplayName,username:item.ownerUsername,receivingUsername:item.ownerReceivingUsername},item.ownerUsername??'');
 export type DiscoveryPerson={username:string;receivingUsername?:string;name:string;avatarUrl:string|null;items:PublicMarketItem[]};
 const normalize=(value:string)=>value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
 const kinds:FeedKind[]=['image','book','audio','moment','video','essay','document','collectible'];
 /** An index of the existing public presentation; never proof or custody admission. */
-export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:readonly PublicProfileHead[]=[]){
+export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:readonly DiscoveryProfileHead[]=[]){
  const seen=new Set<string>(),items:PublicMarketItem[]=[],people=new Map<string,DiscoveryPerson>();
  for(const row of rows){if(seen.has(row.id))continue;seen.add(row.id);items.push(row);
   const username=profileUsername(row.ownerUsername);if(!username||!profilePageUsername(`/${username}/`))continue;
@@ -20,8 +22,9 @@ export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:reado
   if(!profile)continue;
   const existing=people.get(profile.username);
   if(existing?.items.some(item=>item.ownerIdentity?.userId!==profile.userId))continue;
+  const thumbnail=profileAvatarUrl(head.avatarFallback);
   people.set(profile.username,{username:profile.username,receivingUsername:profile.receivingUsername,
-   name:profile.displayName,avatarUrl:!head.profile.avatarUrl&&existing?.items[0]?.ownerAvatarFallback?null:profile.avatarUrl,items:existing?.items??[]});
+   name:profile.displayName,avatarUrl:!head.profile.avatarUrl?(thumbnail?.startsWith('data:image/webp;base64,')?thumbnail:existing?.items[0]?.ownerAvatarFallback?null:profile.avatarUrl):profile.avatarUrl,items:existing?.items??[]});
  }
  return {items,people:[...people.values()],entries:new Map(items.map(item=>[item.id,normalize(`${item.title} ${item.summary} ${item.ownerDisplayName??''} @${item.ownerUsername??''}`)]))};
 }

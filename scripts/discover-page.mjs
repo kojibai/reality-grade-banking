@@ -1,5 +1,5 @@
 import {bundleCssFiles} from './scope-product-css.mjs';
-import {publicOwnerThumbnails} from './public-owner-thumbnails.mjs';
+import {publicOwnerThumbnails,publicProfileHeadThumbnails} from './public-owner-thumbnails.mjs';
 import {createElement} from 'react';
 import {renderToString} from 'react-dom/server';
 import {readFile} from 'node:fs/promises';
@@ -7,9 +7,14 @@ import {compactNavigation} from './compact-navigation.mjs';
 import {renderFeedState} from './feed-page.mjs';
 export const discoverySeedScript=seed=>`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`;
 export async function renderDiscoveryState(server){
- const [{Discover},{orderDiscoveryItems},{parsePublicMarket},input]=await Promise.all([server.ssrLoadModule('/src/public-discover/Discover.tsx'),server.ssrLoadModule('/src/public-discover/discovery-index.ts'),server.ssrLoadModule('/src/receiz/public-market.ts'),readFile('public/receiz-public-market.json','utf8').then(JSON.parse)]);
- const catalog=parsePublicMarket(input,input.snapshot),seedHeads=catalog.publicProfileHeads?.slice(0,20);
- const seed=await publicOwnerThumbnails(orderDiscoveryItems(catalog.items).slice(0,12),server),content=renderToString(createElement(Discover,{seed,seedHeads,active:false}));
+ const [{Discover},{orderDiscoveryItems,buildDiscoveryIndex},{parsePublicMarket},input]=await Promise.all([server.ssrLoadModule('/src/public-discover/Discover.tsx'),server.ssrLoadModule('/src/public-discover/discovery-index.ts'),server.ssrLoadModule('/src/receiz/public-market.ts'),readFile('public/receiz-public-market.json','utf8').then(JSON.parse)]);
+ const catalog=parsePublicMarket(input,input.snapshot),seed=await publicOwnerThumbnails(orderDiscoveryItems(catalog.items).slice(0,12),server);
+ const visible=new Set(buildDiscoveryIndex(seed,catalog.publicProfileHeads).people.slice(0,20).map(person=>person.username));
+ const heads=await publicProfileHeadThumbnails((catalog.publicProfileHeads??[]).filter(head=>visible.has(head.profile.username)),server);
+ // This first-frame carrier describes only the visible People row. The full
+ // selected header and collection remain in their existing shared carrier.
+ const seedHeads=heads.map(head=>({...head,profile:Object.fromEntries(['userId','username','receivingUsername','displayName','displayNameSource','avatarUrl','createdAt','isPrivate'].filter(key=>Object.hasOwn(head.profile,key)).map(key=>[key,head.profile[key]])),stats:{originals:head.stats.originals}}));
+ const content=renderToString(createElement(Discover,{seed,seedHeads,active:false}));
  if(!seed.length)throw Error('PUBLIC_DISCOVERY_SOURCE_EMPTY');
  const navigationSeed=seed.slice(0,4);return {seed,seedHeads,content,navigationContent:renderToString(createElement(Discover,{seed:navigationSeed,active:false}))+discoverySeedScript(navigationSeed)};
 }
