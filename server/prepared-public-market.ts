@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import type {PublicMarketRenderInput} from './public-market-document';
 import {preparedPublicPagePath,publicMarketPreparedPath} from '../src/receiz/prepared-public-page-path.js';
-import {readPreparedPublicMaterial,preparedPublicMaterialSelection} from './prepared-public-material.js';
+import {readPreparedPublicMaterial,preparedPublicMaterialSelection,withPreparedPublicMaterialScope} from './prepared-public-material.js';
 import type {PublicSportsParts} from './public-sports-parts.js';
 import type {PublicOriginalPartInput,PublicOriginalParts} from './public-original-parts.js';
 import type {PublicHistoryTransitionInput,PublicHistoryTransitionResult} from './public-history-transition.js';
@@ -56,7 +56,8 @@ async function render(input:RenderInput):Promise<string>{
  return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):bankEntry?runtime.renderPreparedBankEntryDocument(value satisfies PublicMarketRenderInput):profile?runtime.renderPreparedProfileDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);
 }
 /** Public display rendering cannot store, promote, admit or sign anything. */
-export async function handlePreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{
+export function handlePreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{return withPreparedPublicMaterialScope(()=>deliverPreparedPublicMarket(request,provided));}
+async function deliverPreparedPublicMarket(request:Request,provided?:Dependencies):Promise<Response>{
  const url=new URL(request.url),operation=url.searchParams.get('prepare'),prepare=url.pathname==='/api/explore'&&operation==='1',inputPreparation=url.pathname==='/api/explore'&&operation==='input';
  const selectedPath=preparedPublicPagePath(url.searchParams.get('path')??(url.pathname==='/api/explore'?'explore':url.pathname.replace(/^\//,'').replace(/\/$/,'').replace(/^explorer$/,'explore')));
  const deps=provided??{prepared:(method:'GET'|'HEAD',path:string,build:string)=>fetch('https://receiz.com/api/market/prepared-page?'+new URLSearchParams({path,build}),{method,credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.any([request.signal,AbortSignal.timeout(8000)]),headers:{accept:'text/html'}}),render};

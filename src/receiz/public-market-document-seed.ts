@@ -1,4 +1,5 @@
 import {decodePublicDocumentGzip} from './public-document-gzip';
+import {unpackPublicCatalogArtwork} from './public-catalog-artwork-wire';
 import type {MarketCapSource} from './market-projection/source';
 import type {PublicDocumentFormat} from '../core/public-document-format';
 import type {PublicMarketCatalog} from './public-market';
@@ -35,7 +36,7 @@ async function preparePublicMarketSeedValue(input:unknown):Promise<PublicMarketD
   if(value?.catalogGzip!==undefined){
    if(Object.hasOwn(value,'catalog'))return null;
    const bytes=await decodePublicDocumentGzip(value.catalogGzip,{raw:32*1024*1024,gzip:8*1024*1024});
-   value.catalog=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));delete value.catalogGzip;
+   value.catalog=unpackPublicCatalogArtwork(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)));delete value.catalogGzip;
   }
   return inspectSeed(value);
  }catch{return null;}

@@ -17,7 +17,7 @@ import {useProfileGrowth} from '../receiz/market-projection/useProfileGrowth';
 import {CHART_PERIODS,type ChartPeriod} from '../core/chart-history';
 import {PublicAssetTradeHost} from './PublicAssetTradeHost';
 import {profileCollectionPrices,profileCollectionSummary,profileCollectionCapitalization} from './profile-prices';
-import {fetchPublicProfile,profilePagePath,publicProfilePageError,selectHeldPublicProfile,publicProfileHasHeader,publicProfilesRevision,subscribePublicProfiles,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
+import {fetchPublicProfile,profilePagePath,publicProfilePageError,selectHeldPublicProfile,heldPublicProfileUsername,publicProfileHasHeader,publicProfilesRevision,subscribePublicProfiles,retainedPublicProfile,retainPublicProfile,type PublicProfile} from '../receiz/public-profile';
 import {buildCheckoutRequest} from '../receiz/checkout-request';
 import {beginProfileAccountAction,beginProfileEdit,beginProfileAssetCreation,closeProfileEdit,attachProfileEdit,readProfileEdit,readProfileOwner,readProfileOwnerHeader,subscribeProfileActions,signProfileWithPbi} from '../receiz/profile-actions';
 import type {usePublicMarket} from '../receiz/usePublicMarket';
@@ -40,6 +40,7 @@ function EditHost({active}:{active:boolean}){
  return edit.kind==='create-asset'?<AssetCreationSheet active={active} onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></AssetCreationSheet>:<Sheet title="Edit profile" onClose={()=>closeProfileEdit(edit.id)}><div ref={slot}/></Sheet>;
 }
 export function PublicProfilePage({username,source,active,initialProfile,collection}:{username:string;source:ReturnType<typeof usePublicMarket>;active:boolean;initialProfile?:PublicProfile;collection?:HeldCollection}){
+ username=heldPublicProfileUsername(username,source.historyCatalog??source.catalog);
  const [booking,setBooking]=useState<'unopened'|'open'|'closed'>('unopened');
  const [collectionOpen,setCollectionOpen]=useState(false);
  const profileRevision=useSyncExternalStore(subscribePublicProfiles,publicProfilesRevision,publicProfilesRevision);

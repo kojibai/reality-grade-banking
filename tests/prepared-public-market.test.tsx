@@ -1,4 +1,5 @@
 import {parsePublicMarket} from '../src/receiz/public-market';
+import {selectHeldPublicProfile} from '../src/receiz/public-profile';
 // @vitest-environment happy-dom
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
@@ -28,9 +29,9 @@ it('prepares a complete owner profile from the same selected family, without car
  const family=JSON.stringify({...JSON.parse(material),membership:{...input,transport:{...input.transport,publicOriginals:rows}}}),hash=createHash('sha256').update(family).digest('hex');
  vi.stubGlobal('fetch',vi.fn(()=>{throw Error('PUBLICATION_PROFILE_LOOKUP_FORBIDDEN');}));
  const html=await renderPreparedProfileDocument({material:family,generation:hash,path:'profile/artist',template:template.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"catalog":{"items":[{"id":"old-612"}]}}</script><script id="receiz-navigation"')});
- const body=new DOMParser().parseFromString(html.replace(/<link\b[^>]*>/g,''),'text/html'),profile=JSON.parse(body.getElementById('public-profile-seed')!.textContent!);
+ const body=new DOMParser().parseFromString(html.replace(/<link\b[^>]*>/g,''),'text/html'),seed=readPublicMarketDocumentSeed(body)!,profile=selectHeldPublicProfile('artist',seed.catalog)!;
  expect(profile.stats.originals).toBe(52);expect(profile.items).toHaveLength(52);expect(profile.items[0].title).toBe('New accepted public Original');expect(profile.nextCursor).toBeNull();
- expect(body.getElementById('public-market-seed')).toBeNull();expect(html).not.toContain('old-612');expect(fetch).not.toHaveBeenCalled();
+ expect(body.querySelectorAll('#public-market-seed')).toHaveLength(1);expect(body.getElementById('public-profile-seed')).toBeNull();expect(body.getElementById('public-explore-root')?.getAttribute('data-public-profile-rendered')).toBe('true');expect(html).not.toContain('old-612');expect(fetch).not.toHaveBeenCalled();
 });
 
 it('keeps a saved owner privacy refusal through the Bank delivery adapter',async()=>{

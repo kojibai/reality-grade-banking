@@ -2,6 +2,8 @@ import {parsePublicProfile,parsePublicOriginal,profileUsername,type PublicProfil
 import {readPublicShowcaseRelease} from '../src/receiz/public-showcase-release.js';
 import {reuseShippedProfileShareHistory} from './profile-share-history.js';
 import {profileAvatarUrl} from '../src/receiz/profile-avatar.js';
+import {publicProfileUsername} from '../src/receiz/account-name.js';
+import {legacyReceivingUsername} from '../native/receiz/app/lib/profile/receivingUsername.js';
 export class PublicProfileError extends Error {constructor(message:string,public status:number){super(message);}}
 const LIMIT=32*1024*1024;
 async function readBody(response:Response,limit=LIMIT){
@@ -24,11 +26,19 @@ export function createPublicProfileReader(fetchImpl:typeof fetch=fetch,enrich:(p
    // This is the same canonical public route used by Receiz itself. The
    // generic profile read reconstructs discovery and can stall a cold page.
    // Read the admitted collection once; the UI windows its already-held rows.
-   const response=await fetchImpl(`https://receiz.com/api/profile/${username}?surface=public-route&representation=collection-v2`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}});
+   const target=new URL(`https://receiz.com/api/profile/${username}?surface=public-route&representation=collection-v2`),legacy=legacyReceivingUsername(username);
+   const options={credentials:'omit',redirect:legacy?'manual':'error',cache:'no-store',signal:AbortSignal.timeout(25_000),headers:{accept:'application/json'}} as const;
+   let canonical=username,response=await fetchImpl(target.href,options);
+   if(legacy&&response.status===307){
+    const location=response.headers.get('location'),resolved=location?new URL(location,target):null;await response.body?.cancel();
+    if(!resolved||resolved.origin!==target.origin||resolved.pathname!==`/api/profile/${legacy}`||resolved.search!==target.search||resolved.hash)throw new PublicProfileError('PROFILE_ALIAS_UNAVAILABLE',503);
+    canonical=legacy;response=await fetchImpl(resolved.href,{...options,redirect:'error'});
+   }
    if(!response.ok){await response.body?.cancel().catch(()=>{});throw new PublicProfileError(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE',[403,404].includes(response.status)?response.status:503);}
    const input=await readBody(response);
    try{
-    const profile=parsePublicProfile(input,username),release=readPublicShowcaseRelease(response.headers.get('x-receiz-public-showcase-release'),profile);
+    const profile=parsePublicProfile(input,canonical),release=readPublicShowcaseRelease(response.headers.get('x-receiz-public-showcase-release'),profile);
+    if(canonical!==username&&publicProfileUsername(profile.username,profile.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1'))throw new PublicProfileError('PROFILE_IDENTITY_MISMATCH',503);
     if(release&&release.revision===response.headers.get('x-receiz-profile-public-collection-revision'))profile.publicShowcaseRelease=release;
     if(cursor&&cursor!=='all:'+profile.userId)throw new PublicProfileError('PROFILE_CHANGED',409);
     if(cursor&&profile.nextCursor)throw Error('PROFILE_COLLECTION_INCOMPLETE');
@@ -104,10 +114,10 @@ function readPublicPortrait(username:string){
  })();portraitReads.set(username,attempt);void attempt.finally(()=>{if(portraitReads.get(username)===attempt)portraitReads.delete(username);}).catch(()=>{});return attempt;
 }
 export async function handlePublicProfile(request:Request){
- const url=new URL(request.url),match=/^\/api\/bank\/public-profile\/([a-z0-9_]{3,24})$/.exec(url.pathname),headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
+ const url=new URL(request.url),match=/^\/api\/bank\/public-profile\/([a-z0-9_]+)$/.exec(url.pathname),headers={'Cache-Control':'no-store','Content-Type':'application/json','X-Content-Type-Options':'nosniff'};
  if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,Allow:'GET'}});
  const view=url.searchParams.get('view'),portrait=view==='portrait',head=view==='head',release=view==='release';
- if(!match||url.hash||[...url.searchParams.keys()].some(key=>(portrait||head||release?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
+ if(!match||!profileUsername(match[1])||url.hash||[...url.searchParams.keys()].some(key=>(portrait||head||release?key!=='view':key!=='cursor')||url.searchParams.getAll(key).length!==1))return Response.json({error:'PROFILE_REQUEST_INVALID'},{status:400,headers});
  if(release)try{return Response.json(await readPublicShowcaseReleaseHead(match[1]),{headers});}catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  if(portrait)try{return Response.json(await readPublicPortrait(match[1]),{headers});}catch(cause){return Response.json({error:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}
  if(head)try{return Response.json(await readPublicProfileHeader(match[1]),{headers});}catch(cause){return Response.json({error:cause instanceof PublicProfileError?cause.message:'PROFILE_UNAVAILABLE'},{status:cause instanceof PublicProfileError?cause.status:503,headers});}

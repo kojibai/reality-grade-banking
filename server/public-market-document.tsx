@@ -1,4 +1,5 @@
 import {prepareSelectedPublicReferenceState} from './public-reference-state';
+import {packPublicCatalogArtwork} from '../src/receiz/public-catalog-artwork-wire';
 import {alignPreparedPublicNavigation} from './prepared-public-navigation';
 import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext} from '../src/core/public-document-format';
 import {createHash} from 'node:crypto';
@@ -14,7 +15,6 @@ import {parseMarketCapSource} from '../src/receiz/market-projection/source';
 import {PUBLIC_MARKET_PREPARED_PATHS} from '../src/receiz/prepared-public-page-path';
 import {profilePagePath,profilePageUsername,selectHeldPublicProfile} from '../src/receiz/public-profile';
 import {profilePreviewHtml} from './profile-preview';
-import {renderPublicProfile} from './profile-document';
 
 export const publicMarketPreparedPaths=PUBLIC_MARKET_PREPARED_PATHS;
 export type PublicMarketRenderInput={material:string;generation:string;template:string;path?:string;renderBuild?:string};
@@ -23,7 +23,7 @@ const prepared=new Map<string,Promise<{catalog:ReturnType<typeof parsePublicMark
 const compressedCatalogs=new WeakMap<PublicMarketDocumentSeed['catalog'],{gzipB64u:string;bytes:number}>();
 function compressedCatalog(catalog:PublicMarketDocumentSeed['catalog']){
  const held=compressedCatalogs.get(catalog);if(held)return held;
- const bytes=Buffer.from(JSON.stringify(catalog)),value={gzipB64u:gzipSync(bytes,{level:6}).toString('base64url'),bytes:bytes.length};
+ const bytes=Buffer.from(JSON.stringify(packPublicCatalogArtwork(catalog))),value={gzipB64u:gzipSync(bytes,{level:6}).toString('base64url'),bytes:bytes.length};
  compressedCatalogs.set(catalog,value);return value;
 }
 async function prepare(material:string,generation:string){
@@ -86,10 +86,14 @@ export async function renderPublicMarketDocument({material,generation,template,p
  * family. A browser GET only streams these saved bytes. */
 export async function renderPreparedProfileDocument({material,generation,template,path,renderBuild}:PublicMarketRenderInput):Promise<string>{
  if(!path||!/^profile\/[a-z0-9_]{3,24}$/.test(path)||Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_MARKET_RENDER_INPUT_INVALID');
- const {catalog}=await prepare(material,generation),username=path.slice('profile/'.length),profile=selectHeldPublicProfile(username,catalog);
+ const state=await prepare(material,generation),{catalog}=state,username=path.slice('profile/'.length),profile=selectHeldPublicProfile(username,catalog);
  const items=catalog.items.filter(item=>item.category==='proof'&&item.ownerUsername===username);
  if(!profile||profile.nextCursor||profile.stats.originals!==items.length||profile.items.length!==items.length||profile.items.some(item=>!items.some(row=>row.id===item.id)))throw Error('PUBLIC_PROFILE_RENDER_COMPLETE_REQUIRED');
- const content=renderPublicProfile(profile),html=profilePreviewHtml(template,username,profile,undefined,content);
+ // New owners use the same real view, carried family and hydration boundary
+ // as compiled profiles. A profile-only SSR replica cannot replace that family.
+ const {content,seedScript}=renderSelectedPublicMarketState({...state,generation,path:'explore',profileUsername:username,compressCatalog:compressedCatalog(catalog).bytes>1024*1024});
+ const selectedTemplate=template.replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>\s*/g,'').replace('<script id="receiz-navigation"',()=>seedScript+'<script id="receiz-navigation"');
+ const html=profilePreviewHtml(selectedTemplate,username,profile,undefined,content,true);
  return alignPreparedPublicNavigation(html,path,undefined,generation,renderBuild);
 }
 
