@@ -27,6 +27,7 @@ type InputPreparation={selectionKey:string;history?:unknown;previousMaterial?:st
 type Dependencies={prepareHeldOperand?:(input:HeldPublicOperandRequest,build:string)=>Promise<HeldPublicOperandResult>;prepared:(method:'GET'|'HEAD',path:string,build:string)=>Promise<Response>;render:(input:RenderInput)=>Promise<string>;prepareInput?:(input:InputPreparation)=>Promise<{material:string;generation:string}>;prepareSportsParts?:(input:unknown)=>Promise<PublicSportsParts>|PublicSportsParts;prepareOriginalParts?:(input:PublicOriginalPartInput)=>Promise<PublicOriginalParts>|PublicOriginalParts;prepareHistoryTransition?:(input:PublicHistoryTransitionInput)=>Promise<PublicHistoryTransitionResult>;prepareOperand?:(input:PublicMarketOperandRequest,selected?:Readonly<Record<PublicMarketOperand,unknown>>)=>Promise<PublicMarketOperandResult>;readMaterial?:(generation:string)=>Promise<string>;build?:string};
 async function readMaterial(generation:string):Promise<string>{return readPreparedPublicMaterial(generation);}
 async function prepareSportsParts(input:unknown):Promise<PublicSportsParts>{const module=await import(/* @vite-ignore */ pathToFileURL(resolve('server/profile-runtime/public-page-preparation.mjs')).href) as typeof import('./public-page-preparation');return module.preparePublicSportsParts(input);}
+async function prepareHeldOperand(input:HeldPublicOperandRequest,build:string):Promise<HeldPublicOperandResult>{const module=await import(/* @vite-ignore */ pathToFileURL(resolve('server/profile-runtime/public-page-preparation.mjs')).href) as typeof import('./public-page-preparation');return module.prepareHeldPublicMarketOperand(input,build);}
 async function prepareOriginalParts(input:PublicOriginalPartInput):Promise<PublicOriginalParts>{
  const module=await import(/* @vite-ignore */ pathToFileURL(resolve('server/profile-runtime/public-page-preparation.mjs')).href) as typeof import('./public-page-preparation');return module.preparePublicOriginalParts(input);
 }
@@ -73,7 +74,7 @@ export async function handlePreparedPublicMarket(request:Request,provided?:Depen
    const requestOptions=await bounded(request),input=JSON.parse(requestOptions);
    if(input?.projectHeldOperand!==undefined){
     if(!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','projectHeldOperand'].includes(key))||!['membership','quotes','sports','capitalization','history','preparedLedger','pricingMetadata'].includes(input.projectHeldOperand))return new Response(null,{status:400,headers:jsonHeaders});
-    const result=await(provided?.prepareHeldOperand??(await import('./held-public-market-operands.js')).prepareHeldPublicMarketOperand)(input,build),body=JSON.stringify(result);if(Buffer.byteLength(body)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
+    const result=await(provided?.prepareHeldOperand??prepareHeldOperand)(input,build),body=JSON.stringify(result);if(Buffer.byteLength(body)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
     return new Response(streamedText(body),{headers:jsonHeaders});
    }
    if(input?.projectOperand!==undefined){

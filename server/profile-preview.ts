@@ -29,7 +29,7 @@ export function profilePreviewHtml(html:string,username:string,profile:PublicPro
 }
 export async function prepareProfileDocument(){const path=pathToFileURL(resolve('server/profile-runtime/profile-document.mjs')).href;return import(/* @vite-ignore */ path);}
 export async function renderProfileDocument(profile:PublicProfile):Promise<string>{return(await prepareProfileDocument()).renderPublicProfile(profile);}
-type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>;profileContent?:(username:string)=>Promise<string|null>;alias?:(username:string)=>Promise<string|null>};
+type Dependencies={profile:typeof readPublicProfile;page():Promise<string>;render?:(profile:PublicProfile)=>Promise<string>;prepareRender?:()=>Promise<unknown>;profileContent?:(username:string)=>Promise<string|null>;alias?:(username:string)=>Promise<string|null>;missingDocument?:(username:string)=>Promise<Response>};
 export async function handleProfilePreview(request:Request,deps?:Dependencies){
  const url=new URL(request.url),username=url.pathname.replace(/\/$/,'')==='/api/profile'?profileUsername(url.searchParams.get('username'))??fullReceivingProfileName(url.searchParams.get('username')):profilePageUsername(url.pathname)??fullReceivingProfilePath(url.pathname),headers={'Cache-Control':'no-store, no-transform','Content-Type':'text/html; charset=utf-8','Content-Disposition':'inline','X-Content-Type-Options':'nosniff'};
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers:{...headers,Allow:'GET, HEAD'}});
@@ -49,7 +49,8 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   // A visit does not check another server document before displaying it.
   page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),
   profileContent:async name=>{try{return await(await import('node:fs/promises')).readFile('server/profile-runtime/profile-pages/'+name+'.html','utf8');}catch{return null;}},
-  render:renderProfileDocument,prepareRender:prepareProfileDocument};
+  render:renderProfileDocument,prepareRender:prepareProfileDocument,
+  missingDocument:async name=>{const target=new URL('/api/explore',url.origin);target.searchParams.set('path','profile/'+name);return(await import('./prepared-public-market.js')).handlePreparedPublicMarket(new Request(target,{signal:request.signal,headers:{accept:'text/html'}}));}};
  const compiled=browser?dependencies.profileContent?.(username).catch(()=>null):undefined;
  if(!browser&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
  const renderer=browser?undefined:dependencies.prepareRender?.();void renderer?.catch(()=>{});
@@ -59,6 +60,12 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
   const content=await compiled,match=content?.match(/^<!-- bank\.profile\.document\.v1 ([a-f0-9]{64}) ([a-z0-9_]{3,24})(?: ([a-z0-9]{18}))? -->/),generation=html.match(/<script id="public-market-seed" type="application\/json">([^<]{1,512})/)?.[1].match(/"generation":"([a-f0-9]{64})"/)?.[1];
   const selected=match&&match[1]===generation&&match[2]===username?content!.slice(match[0].length):undefined;
   if(!selected&&fullReceivingProfileName(username)){const redirect=await resolveAlias();if(redirect)return redirect;}
+  // A genuinely absent compiled profile consumes its existing producer-saved
+  // document as the response itself. Never render a handle/loading sequence
+  // first, never check Source, and never consult this path for held HTML.
+  if(!selected&&dependencies.missingDocument){
+   try{const saved=await dependencies.missingDocument(username);if(saved.ok||saved.status===403||saved.headers.get('x-receiz-public-html-withdrawn')==='1')return saved;await saved.body?.cancel();}catch{if(request.signal.aborted)throw request.signal.reason;}
+  }
   return new Response(profilePreviewHtml(html,username,null,undefined,selected,true,selected?match?.[3]:undefined),{headers});
  }
  // Crawlers keep one exact public profile, its rendered body and refusal status.

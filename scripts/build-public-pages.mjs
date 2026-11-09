@@ -113,7 +113,7 @@ try {
   for(const file of await readdir(profileDirectory))if(file.endsWith('.html'))await unlink(profileDirectory+'/'+file);
   const {profilePagePath,profilePageUsername,selectHeldPublicProfile}=await server.ssrLoadModule('/src/receiz/public-profile.ts');
   let profileCount=0,profileBytes=0;
-  for(const username of new Set(readingCatalog.items.filter(item=>item.category==='proof'&&item.ownerUsername).map(item=>item.ownerUsername))){
+  for(const username of new Set([...readingCatalog.items.filter(item=>item.category==='proof'&&item.ownerUsername).map(item=>item.ownerUsername),...(readingCatalog.publicProfileHeads??[]).map(head=>head.profile.username)])){
     if(profilePageUsername(profilePagePath(username))!==username||!selectHeldPublicProfile(username,readingCatalog))continue;
     const content=renderSelectedPublicMarketContent({catalog:readingCatalog,history,capitalization,asOfPulse,generation,profileUsername:username});
     const receivingUsername=selectHeldPublicProfile(username,readingCatalog)?.receivingUsername;
