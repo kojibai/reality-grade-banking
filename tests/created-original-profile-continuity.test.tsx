@@ -23,6 +23,9 @@ it('carries the exact unsigned Original, artwork and full receipt from one cold 
  expect(profile.items).toHaveLength(1);expect(profile.items[0]).toMatchObject({assetId:id,hasPbiSignature:false,hasLongForm:true,originalDigest:'ea1ac75145e828fdf2873ce40790d566579b32a967093ff457c6aa4c21a8621f',verifyUrl:captured.original.verifyUrl});
  const shell='<html><head><title>Explore</title></head><body><div id="public-explore-root"></div><script id="receiz-navigation" type="application/json">{}</script></body></html>';
  const html=profilePreviewHtml(shell,username,profile,undefined,renderPublicProfile(profile));
+ // The server renderer retains its input in this test's shared module graph.
+ // A cold browser starts with an empty registry and reads the carried seed.
+ forgetPublicProfile(username);
  document.body.innerHTML=/<body>([\s\S]*?)<\/body>/.exec(html)![1];
  const coldCover=document.querySelector('.profile-asset-cover img'),seed=document.getElementById('public-profile-seed')!.textContent!;
  expect(coldCover?.getAttribute('src')).toBe(profile.items[0].artworkUrl);expect(coldCover?.getAttribute('loading')).toBe('eager');

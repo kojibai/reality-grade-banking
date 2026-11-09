@@ -112,8 +112,7 @@
     template.content.querySelector('link[rel="canonical"]').href=url;
     template.content.querySelectorAll('script[type="application/ld+json"]').forEach(node=>node.remove());
     const schema=document.createElement('script');schema.type='application/ld+json';schema.textContent=JSON.stringify({'@context':'https://schema.org','@type':name?'ProfilePage':'WebPage','@id':url+'#page',url,name:title,description});template.content.append(schema);
-    const preview=document.createElement('main');preview.className='public-entry-placeholder';const heading=document.createElement('h1'),copy=document.createElement('p');heading.textContent=meta?.title||(name?'Profile':'Asset');copy.textContent=description;preview.append(heading,copy);
-    const entry={...base,title,head:template.innerHTML,content:preview.outerHTML};assetEntries.set(id,entry);if(assetEntries.size>48)assetEntries.delete(assetEntries.keys().next().value);return entry;
+    const entry={...base,title,head:template.innerHTML,content:'',needsRuntime:true};assetEntries.set(id,entry);if(assetEntries.size>48)assetEntries.delete(assetEntries.keys().next().value);return entry;
   };
   addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
   addEventListener('bankeiz:profile-metadata',event=>{const value=event.detail;if(!value||!profileName('/u/'+value.username+'/'))return;keepAsset({...value,id:'@'+value.username});if(profileName(pathname(location.pathname))===value.username){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
@@ -123,7 +122,7 @@
   // The current document already owns its visible runtime; initialization is
   // not a navigation and must preserve its head, focus and scroll.
   const runtimeRoots = new Map([...document.querySelectorAll('[data-public-runtime]')].map(root => [root.dataset.publicRuntime, root]));
-  const loaded = new Set(runtimeRoots.keys());
+  const loaded = new Map([...runtimeRoots.keys()].map(name=>[name,null]));
   let renderedPublicPath = pathname(new URL(document.querySelector('link[rel="canonical"]')?.href||location.href).pathname);
   const hide = root => { if (root) { root.hidden = true; root.setAttribute('inert', ''); } };
   const show = root => { root.hidden = false; root.removeAttribute('inert'); };
@@ -133,17 +132,17 @@
     return root;
   };
   const loadRuntime = (page, root) => {
-    if (loaded.has(page.runtime)) return;
-    loaded.add(page.runtime);
+    if(loaded.has(page.runtime))return loaded.get(page.runtime);
     // Markup and exact CSS paint synchronously. Execute only the selected
     // public workspace; retained workspaces never remount on return.
-    void import(page.entry).then(module=>module?.mountPublicDocument?.(root)).catch(() => {
+    const opening = import(page.entry).then(module=>module?.mountPublicDocument?.(root)).then(()=>loaded.set(page.runtime,null)).catch(() => {
       loaded.delete(page.runtime);
       const status = document.createElement('p'), retry = document.createElement('button');
       status.setAttribute('role', 'status'); status.textContent = 'This workspace could not open. ';
       retry.textContent = 'Try again'; retry.onclick = () => { status.remove(); loadRuntime(page, root); };
       status.append(retry); root.append(status);
     });
+    loaded.set(page.runtime,opening);return opening;
   };
   const positions = new Map();
   // This router restores retained views after their destination DOM commits.
@@ -225,6 +224,13 @@
     const path = pathname(location.pathname), page = pageAt(path), learn = Boolean(page && !page.runtime);
     let focusPublic = false, destination;
     if (!page && path !== '/') return;
+    // A synthetic destination has no truthful first frame. Keep the existing
+    // view during its already-required code startup, then reveal the actual
+    // held profile/asset. Real carried HTML and mounted roots stay synchronous.
+    if(page?.needsRuntime){
+      const opening=loadRuntime(page,ensurePublicRuntime(page));
+      if(opening){await opening;if(pathname(location.pathname)!==path)return;}
+    }
     document.documentElement.classList.toggle('learn-surface', learn);
     document.body.dataset.bankSurface = page?.runtime || (learn ? 'learn' : 'bank');
     for (const root of runtimeRoots.values()) hide(root);
@@ -291,7 +297,7 @@
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
     const url=new URL(link.href,location.href);if(url.origin!==location.origin||url.search)return;
     const path=pathname(url.pathname),currentPath=pathname(location.pathname),page=pageAt(path),current=pageAt(currentPath);
-    if(path!==currentPath&&(page?!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
+    if(path!==currentPath&&(page?!page.needsRuntime&&!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
       event.preventDefault();url.pathname=path;void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
       return;
     }

@@ -66,3 +66,19 @@ it('uses one shared document click path and preserves ignored native-link intent
 });
 
 it('exposes hidden registration only for the three existing public catalog runtimes',()=>{const f=setup();for(const runtime of ['explore','feed','discover']){const root=f.api.ensurePublicRuntime(f.api.pages['/'+runtime+'/'])!;expect(root.dataset.publicRuntime).toBe(runtime);expect(root.hidden).toBe(true);expect(root.hasAttribute('inert')).toBe(true);}expect(f.document.getElementById('root')).toBe(f.root);expect(f.root?.hidden).toBe(false);expect(f.load).not.toHaveBeenCalled();expect(f.fetcher).not.toHaveBeenCalled();});
+
+it('reveals the actual held profile after its one code startup, never the synthetic Profile frame',async()=>{
+ const f=setup(),mount=vi.fn((root:HTMLDivElement)=>{root.innerHTML='<main><h1>Actual held profile</h1><img src="data:image/png;base64,held"></main>';});
+ let ready!:(module:{mountPublicDocument:typeof mount})=>void;f.load.mockReturnValue(new Promise(resolve=>{ready=resolve;}));
+ f.api.navigate('/new_account/');const root=f.document.querySelector<HTMLDivElement>('#public-explore-root')!;
+ expect(root.hidden).toBe(true);expect(f.root?.hidden).toBe(false);expect(f.document.getElementById('root')).toBe(f.root);expect(f.load).toHaveBeenCalledExactlyOnceWith('/explore.js');
+ ready({mountPublicDocument:mount});await vi.waitFor(()=>expect(root.hidden).toBe(false));
+ expect(root.querySelector('h1')?.textContent).toBe('Actual held profile');expect(root.querySelector('.public-entry-placeholder')).toBeNull();expect(f.root?.hidden).toBe(true);expect(f.fetcher).not.toHaveBeenCalled();expect(mount).toHaveBeenCalledOnce();
+});
+
+it('keeps a later selected destination when an earlier profile module finishes',async()=>{
+ const f=setup(),mount=vi.fn((root:HTMLDivElement)=>{root.innerHTML='<main>Held profile</main>';});let ready!:(module:{mountPublicDocument:typeof mount})=>void;
+ f.load.mockReturnValue(new Promise(resolve=>{ready=resolve;}));f.api.navigate('/new_account/');f.api.navigate('/#assets');
+ ready({mountPublicDocument:mount});await vi.waitFor(()=>expect(mount).toHaveBeenCalledOnce());await Promise.resolve();
+ expect(f.window.location.href).toBe('https://bankeiz.com/#assets');expect(f.root?.hidden).toBe(false);expect(f.document.querySelector<HTMLDivElement>('#public-explore-root')?.hidden).toBe(true);expect(f.fetcher).not.toHaveBeenCalled();
+});

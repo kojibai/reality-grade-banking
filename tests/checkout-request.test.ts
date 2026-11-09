@@ -24,3 +24,13 @@ it('validates a separate return locator and never embeds secrets or arbitrary re
  expect(()=>buildCheckoutReturn({username:'merchant',checkoutId:id},'https://evil.example')).toThrow();
  expect(parseCheckoutReturn(buildCheckoutRequest('merchant'),'https://bankeiz.com')).toBeNull();
 });
+
+it('projects the complete fresh Identity Seal name before building its profile Pay link',()=>{
+ const full='receiz_gn2sazqjdodwwcquew',publicName='gn2sazqjdodwwcquew';
+ for(const coordinate of [full,publicName,full+'.receiz.id','@'+full]){
+  const href=buildCheckoutRequest(coordinate);expect(href).toBe('https://bankeiz.com/pay/'+publicName+'/');
+  expect(parseCheckoutRequest(href)).toEqual({username:publicName});
+ }
+ expect(buildCheckoutReturn({username:full,checkoutId:id},'https://bankeiz.com')).toContain('/pay/'+publicName+'/');
+ expect(()=>buildCheckoutRequest('this_is_a_custom_name_longer_than_supported')).toThrow();
+});

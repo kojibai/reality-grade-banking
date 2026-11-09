@@ -50,7 +50,7 @@ function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocum
  // Hydrate the actual profile prepared from this exact carried family.
  // A newer held selection replaces an older document without reviving it.
  const hydrate=!!asset||profileSource&&!!frame||!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared);
- const renderer=hydrate?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!hydrate)renderer.render(content);return renderer;
+ const renderer=hydrate?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!hydrate)flushSync(()=>renderer.render(content));return renderer;
 }
 /** Raw prepared entries stay synchronous. A compressed static entry retains
  * its visible rows while the existing bounded, cached local decoder finishes. */
