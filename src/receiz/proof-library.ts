@@ -168,7 +168,19 @@ export function createProofLibrary(input: {
     const name=file.name,mime=file.type;
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (!bytes.length || bytes.length > MAX_WIRE) throw Error('PROOF_BACKUP_CAPACITY');
+    file=new File([new Uint8Array(bytes)],name,{type:mime});
     let parsed: unknown; try { parsed = JSON.parse(utf8(bytes)); } catch { /* Native binary originals are verified below. */ }
+    // New backups enclose the same compatible collection in a canonical proof.
+    // Verify its owner before reading the unchanged, individually checked members.
+    const carrier = hasProofCaptureCarrier(bytes);
+    const opened = carrier ? await openCanonicalProofFile(file) : undefined;
+    const payload = opened ? json(opened.verifiedPayload.bytes) : parsed;
+    if (opened && object(payload) && payload.schema === 'bankeiz.proof-backup.v1') {
+      if (opened.sealedArtifact.continuity.ownerReceizId !== binding.artifactOwnerReceizId) throw Error('PROOF_BACKUP_IDENTITY_MISMATCH');
+      parsed = payload;
+    } else if (opened && object(parsed) && parsed.schema === 'bankeiz.proof-backup.v1') {
+      throw Error('PROOF_BACKUP_SOURCE_MISMATCH');
+    }
     let sources: ProofSource[];
     if (object(parsed) && parsed.schema === 'bankeiz.proof-backup.v1') {
       if (!exact(parsed, ['schema', 'applicationId', 'keyId', 'ownerReceizId', 'sources']) || !isBankNativeApplicationId(parsed.applicationId)
@@ -185,19 +197,19 @@ export function createProofLibrary(input: {
         sources.push({ kind: value.kind as ProofKind, filename: value.filename, bytes: original });
       }
     } else {
-      file=new File([new Uint8Array(bytes)],name,{type:mime});
-      const carrier=hasProofCaptureCarrier(bytes);
       let kind=rawKind(parsed);
       if(!kind&&isProofPng(bytes)&&!carrier){
         try{await inspectNoteProof({kind:'note-image',filename:file.name,bytes},binding.keyId);kind='note-image';}catch{/* Canonical ownership below remains required. */}
       }
       if(!kind||carrier){
-        const opened=await openCanonicalProofFile(file),payload=opened.verifiedPayload.bytes,value=json(payload);
-        kind=accountStatement(value)||accountPng(payload)?'account-source':rawKind(value);
-        if(!kind&&(isProofPng(payload)||isProofPng(bytes))){
+        const canonical = opened ?? await openCanonicalProofFile(file);
+        const originalPayload = canonical.verifiedPayload.bytes;
+        const value = opened ? payload : json(originalPayload);
+        kind=accountStatement(value)||accountPng(originalPayload)?'account-source':rawKind(value);
+        if(!kind&&(isProofPng(originalPayload)||isProofPng(bytes))){
           // Complete native verification distinguishes a Note image from an
           // ordinary canonical PNG; neither classification certifies ownership.
-          const noteBytes=isProofPng(payload)?payload:bytes;
+          const noteBytes=isProofPng(originalPayload)?originalPayload:bytes;
           try{await inspectNoteProof({kind:'note-image',filename:file.name,bytes:noteBytes},binding.keyId);kind='note-image';}catch{/* The owned Original path still checks its actual owner. */}
         }
         kind??='owned-source';

@@ -12,17 +12,19 @@ function save(value: { bytes: Uint8Array; filename: string }) {
 function failure(cause: unknown): string {
   const code = cause instanceof Error ? cause.message : '';
   if (/IDENTITY|OWNER|belongs to a different/u.test(code)) return 'Open the matching Receiz ID before importing these proofs.';
+  if (/PROOF_BACKUP_SOURCE_REQUIRED/u.test(code)) return 'No retained proof originals were available for this backup. No empty file was downloaded.';
   if (/CAPACITY/u.test(code)) return 'This collection exceeds the supported proof storage or file limits. Keep your original files; nothing was imported.';
   if (/CAPACITY|INVALID|DIGEST|MISMATCH/u.test(code)) return 'This file could not be verified as a complete supported proof. Choose the original file and try again.';
   return 'The proof could not be verified or retained. Your existing originals are unchanged. Keep this file and try again.';
 }
 export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [recoveryAvailable, setRecoveryAvailable] = useState(false);
   const [review, setReview] = useState<ProofReview | null>(null), [archive, setArchive] = useState<readonly ProofSummary[]>([]);
   const api = useRef<ProofLibrary | null>(null), generation = useRef(0), running = useRef(false);
   useEffect(() => {
     generation.current++; api.current = null; running.current = false;
-    setBusy(false); setError(''); setNotice(''); setReview(null); setArchive([]);
+    setBusy(false); setError(''); setNotice(''); setRecoveryAvailable(false); setReview(null); setArchive([]);
     return () => { generation.current++; };
   }, [identity]);
   const library = async (ticket: number) => {
@@ -46,8 +48,32 @@ export function ProofPortabilityPanel({ identity }: { identity: OpenIdentity }) 
     <div className="proof-private-heading">Private evidence archive</div>
     <p className="body-copy small-copy">Keep your originals, verified account history, asset definitions and receipts together. This private archive preserves your evidence; it does not sign you in.</p>
     <button className="secondary-button" disabled={busy} onClick={() => void run(async (lib, current) => {
-      const backup = await lib.exportBackup(); if (current()) { save(backup); setNotice('Proof backup saved. Keep this private file with your Identity Record.'); }
+      setRecoveryAvailable(false);
+      const backup = await lib.exportBackup();
+      if (!current()) return;
+      try {
+        const seal = identity.sealRecordExport;
+        if (!seal) throw Error('PROOF_EXPORT_SEAL_REQUIRED');
+        const { proofBackupFile } = await import('../../receiz/proof-backup-file');
+        const file = await proofBackupFile(backup, identity.binding.artifactOwnerReceizId, seal, () => {
+          if (!current()) throw Error('PROOF_IDENTITY_CLOSED');
+        });
+        if (!current()) return;
+        save(file);
+        setNotice('Sealed private evidence backup saved. Keep this private file with your Identity Record. Use the account statement above when sharing balances and history.');
+      } catch (cause) {
+        if (!current()) return;
+        if (cause instanceof Error && cause.message === 'PROOF_BACKUP_SOURCE_REQUIRED') throw cause;
+        setRecoveryAvailable(true);
+        setError('The backup could not be sealed. You can still save the recovery archive with its individual proof originals.');
+      }
     })}><Download size={16} />Save private proof backup</button>
+    {recoveryAvailable && <button className="text-button" disabled={busy} onClick={() => void run(async (lib, current) => {
+      const backup = await lib.exportBackup();
+      if (!current()) return;
+      save(backup);
+      setNotice('Private recovery archive saved. Each original can be verified separately.');
+    })}><Download size={16} />Save recovery archive</button>}
     <label className={`secondary-button proof-import-choice${busy ? ' disabled' : ''}`}><Upload size={16} />Import backup or proof<input type="file" aria-label="Proof backup or recovery file" disabled={busy} accept=".json,.receiz,.receizbundle,.png,.svg,.zip,.jpg,.jpeg,.webp,.pdf" onChange={event => {
       const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; setReview(null);
       void run(async (lib, current) => { const value = await lib.inspect(file); if (current()) setReview(value); });

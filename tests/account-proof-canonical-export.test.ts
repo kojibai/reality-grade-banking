@@ -23,8 +23,15 @@ beforeAll(async()=>{
  const verification=await r.verifyReceizArtifact(fixture.identity.bytes),admission=await r.createReceizArtifactAdmissionEngine()(verification,{profile:'identity',identityPassphrase:fixture.identity.phrase}),binding=await r.readReceizIdentityPublicBinding(admission);
  owner={keyId:binding.keyId,artifactOwnerReceizId:binding.artifactOwnerReceizId};
  const hash=(v:string)=>v.repeat(64),now=String(r.receizKaiNow().uPulse),identity={receizId:binding.artifactOwnerReceizId,keyId:binding.keyId,alg:binding.alg,publicKeyRawB64u:binding.publicKeyRawB64u};
- const payload={schema:'bankeiz.public-account-statement.v2',applicationId:BANK_APPLICATION_ID,domain:'receiz.bank.native-account-statement.root-signature.v2',issuerRootKid:fixture.roots[0].kid,account:identity,
- checkpoint:{accountHead:hash('a'),identityBindingDigest:await r.digestReceizCanonicalV122(identity),genesisHead:hash('b'),historyHead:hash('b'),transactionCount:0,kaiUPulse:now,reserveUsdCents:'0',settlementPhiMicro:'0',balancePhiMicro:'0',usdPerPhiMicrocents:'100000000',historyDigest:await r.digestReceizCanonicalV122([])},transactions:[]};
+ const transactions=[];let previous=hash('b');
+ for(let index=0;index<61;index++){
+  const eventDigest=await r.digestReceizCanonicalV122({index,kind:'credit'});
+  transactions.push({sequence:index+1,transactionId:'complete-history-'+index,eventDigest,previousEventDigest:previous,kaiUPulse:String(BigInt(now)-BigInt(61-index)*1000000n),kind:'credit',description:'Verified credit '+index,reserveDeltaUsdCents:'0',settlementDeltaPhiMicro:'1000000',balanceDeltaPhiMicro:'1000000'});previous=eventDigest;
+ }
+ const sourceFrontier={schema:'receiz.bank.account-source-frontier.v1',authorizationHead:hash('1'),walletHead:hash('2'),lawfulInventoryHead:hash('3'),accountHistoryHead:previous,assetHistoryDigest:hash('4'),assetHeads:[{assetId:hash('5'),sourceSha256:hash('6')}],artifactSourceHead:null,offlineSourceHead:null};
+ const components={lawfulValues:[],assets:[{assetId:hash('5'),name:'Retained source asset',symbol:'UNIT',description:'An accepted asset source',linkedProofDigest:null,supplyMicro:'1000000',quantityMicro:'1000000',backingRail:'settlement',backingPhiMicro:'1000000',backingUsdCents:'100',status:'active',issuanceSourceSha256:hash('7'),headSourceSha256:hash('6')}],assetOffers:[],artifactIntrinsicPhiMicro:'0',offlineLockedPhiMicro:'0',offlineLockedUsdCents:'0'};
+ const payload={schema:'bankeiz.public-account-statement.v4',applicationId:BANK_APPLICATION_ID,domain:'receiz.bank.native-account-statement.root-signature.v2',issuerRootKid:fixture.roots[0].kid,account:identity,
+ checkpoint:{accountHead:await r.digestReceizCanonicalV122(sourceFrontier),identityBindingDigest:await r.digestReceizCanonicalV122(identity),genesisHead:hash('b'),historyHead:previous,transactionCount:transactions.length,kaiUPulse:now,reserveUsdCents:'0',settlementPhiMicro:'61000000',balancePhiMicro:'61000000',usdPerPhiMicrocents:'100000000',historyDigest:await r.digestReceizCanonicalV122(transactions)},transactions,sourceFrontier,components};
  // Use the real existing canonical JSON routine for the signed statement.
  const {canonicalizeReceizV122}=await import('@receiz/sdk');
  const signature=await fixture.signFinancial(new TextEncoder().encode(canonicalizeReceizV122(payload)));
@@ -92,4 +99,44 @@ it('keeps Account artwork and exact backup bytes inside a canonically sealed ima
  const tampered=first.bytes.slice();tampered[50]^=1;expect((await fixture.runtime.verifyReceizArtifact(tampered)).status).not.toBe('verified-artifact');
  const roundtrip=await account.verifyAccountProof(await readAccountProofFile(new File([new Uint8Array(first.bytes)],first.filename,{type:'image/png'})),owner);
  expect(roundtrip.sourceDigest).toBe(proof.sourceDigest);
+});
+
+it('exports a titled Account Statement with every existing source byte and no new seal or network',async()=>{
+ const {accountStatementFile}=await import('../src/receiz/account-proof-file');
+ const proof=await account.verifyAccountProof(wire,owner),before=nativeOpens;
+ const network=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ try{
+  const exported=accountStatementFile(proof);
+  expect(exported.filename).toMatch(/^Account-Statement-.+-Kai-\d+-[a-f0-9]{12}\.receizbundle$/);
+  expect(exported.bytes).toEqual(new Uint8Array(await original.arrayBuffer()));expect(nativeOpens).toBe(before);
+  const opened=await account.verifyAccountProof(await readAccountProofFile(new File([new Uint8Array(exported.bytes)],exported.filename,{type:exported.mimeType})),owner);
+  expect(opened.statement).toEqual(proof.statement);expect(opened.statement.transactions).toHaveLength(61);expect(opened.statement.transactions[0].transactionId).toBe('complete-history-0');expect(opened.statement.components?.assets[0].name).toBe('Retained source asset');expect(opened.sourceDigest).toBe(proof.sourceDigest);expect(network).not.toHaveBeenCalled();
+ }finally{network.mockRestore();}
+});
+
+it('seals the private backup with its exact account Original, verifies offline and imports all members without writes before review',async()=>{
+ const {proofBackupFile}=await import('../src/receiz/proof-backup-file');
+ const network=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));
+ let retained:ProofSource[]=[];
+ const commit=vi.fn(async(rows:ProofSource[])=>{retained=rows;return{added:rows.length,alreadyHeld:0};});
+ const library=createProofLibrary({binding:owner,assertOpen(){},readOwned:async()=>[],readArchive:async()=>[],readRecoveries:async()=>[],readNotes:async()=>[],readAccount:async()=>[{kind:'account-source',filename:original.name,bytes:new Uint8Array(await original.arrayBuffer())}],commit});
+ const states=new Map(),blobs=new Map<string,Uint8Array>();let seals=0;
+ const exports=createRecordProofExports({assertOpen(){},read:async key=>states.get(key),write:async(key,next)=>{states.set(key,next);},retain:async bytes=>{const digest=await fixture.runtime.sha256ReceizBytes(bytes);blobs.set(digest,bytes.slice());return digest;},restore:async digest=>blobs.get(digest)!.slice(),seal:async input=>{seals++;return ownerSealer.seal(input);}});
+ try{
+  const backup=await library.exportBackup();
+  const file=await proofBackupFile(backup,owner.artifactOwnerReceizId,input=>exports.export(input));
+  expect(file.filename).toMatch(/^Bankeiz-Private-Proof-Backup-.+\.(?:json|receizbundle)$/);
+  const verified=await fixture.runtime.verifyReceizArtifact(file.bytes);expect(verified.status).toBe('verified-artifact');
+  const fresh=fixture.runtime.createReceizClient();
+  const opened=await fresh.artifacts.verifyAndOpen(new File([new Uint8Array(file.bytes)],file.filename));
+  expect(opened.verifiedPayload.bytes).toEqual(backup.bytes);
+  const payload=JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));
+  expect(payload.sources).toHaveLength(1);expect(fixture.runtime.receizBase64UrlDecode(payload.sources[0].bytesB64u)).toEqual(new Uint8Array(await original.arrayBuffer()));
+  const review=await library.inspect(new File([new Uint8Array(file.bytes)],file.filename));expect(review.items[0].kind).toBe('account-source');expect(commit).not.toHaveBeenCalled();
+  await library.retain(review);expect(retained[0].bytes).toEqual(new Uint8Array(await original.arrayBuffer()));
+  const again=await proofBackupFile(backup,owner.artifactOwnerReceizId,input=>exports.export(input));expect(again.bytes).toEqual(file.bytes);expect(seals).toBe(1);
+  const altered=file.bytes.slice();altered[altered.length-40]^=1;await expect(library.inspect(new File([new Uint8Array(altered)],file.filename))).rejects.toThrow();
+  await expect(proofBackupFile({bytes:new TextEncoder().encode(JSON.stringify({...payload,sources:[]})),},owner.artifactOwnerReceizId,input=>exports.export(input))).rejects.toThrow('PROOF_BACKUP_SOURCE_REQUIRED');
+  expect(network).not.toHaveBeenCalled();
+ }finally{network.mockRestore();}
 });

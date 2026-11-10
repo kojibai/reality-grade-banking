@@ -1909,9 +1909,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       ...(await localConnectedNotes().savedNotes()).map(note=>({kind:'note-image' as const,filename:`note-${note.noteId}.png`,bytes:note.image})),
       ...(await localReceivedNotes().list()).map(note=>({kind:'note-deposit' as const,filename:`note-${note.status==='received'?'received':'deposit'}-${note.noteId}.receiz.json`,bytes:note.proofBytes}))],
     readAccount: async () => {
-      const proof = await localLedger.original(); if (!proof) return [];
-      const { heldAccountProofBytes } = await import('./account-proof');
-      return [{ kind: 'account-source' as const, filename: `bankeiz-account-proof-${proof.sourceDigest.slice(0,16)}.json`, bytes: heldAccountProofBytes(proof) }];
+      const uid = accountUid ?? carriedAccountUid ?? knownWallet?.wallet.userId;
+      const proof = localLedger.knownOriginal?.(uid) ?? await localLedger.original(uid);
+      noteOpen();
+      if (!proof) return [];
+      const { heldAccountProofOriginal } = await import('./account-proof');
+      const { bytes, filename } = heldAccountProofOriginal(proof);
+      return [{ kind: 'account-source' as const, filename, bytes }];
     },
     commit: async sources => {const result=await retainProofBatch(binding,sources);heldSourceView.invalidate();return result;},
     restoreAccounts: async proofs => {

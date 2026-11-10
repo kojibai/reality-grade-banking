@@ -48,9 +48,9 @@ export function AccountProofReader({routeDigest}:{routeDigest?:string|null}={}) 
     finally { if (ticket === request.current) setBusy(false); }
   };
   return <section className="account-proof-reader" aria-label="Account proof verification">
-    <div className="account-proof-reader-heading"><FileCheck2 size={20} /><h2>Open the original proof.</h2></div>
+    <div className="account-proof-reader-heading"><FileCheck2 size={20} /><h2>{proof ? 'Account Statement' : 'Open the original proof.'}</h2></div>
     <p>Verify the public account source on this device. No login is needed. The file cannot open an account, move funds or restore private custody.</p>
-    <label className="account-proof-picker">{busy ? 'Verifying public source…' : 'Choose original proof image or file'}<input type="file" disabled={busy} accept=".png,.json,image/png,application/json" aria-label="Shared account proof file" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void inspect(file); }} /></label>
+    <label className="account-proof-picker">{busy ? 'Verifying public source…' : 'Choose original proof image or file'}<input type="file" disabled={busy} accept=".png,.json,.receiz,.receizbundle,image/png,application/json,application/vnd.receiz.bundle+json,application/octet-stream" aria-label="Shared account proof file" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void inspect(file); }} /></label>
     {error && <p className="account-proof-inspector-error" role="status">{error}</p>}
     {snapshot && newest && snapshot.sourceDigest !== newest.sourceDigest && <div className="account-proof-version-choice" role="group" aria-label="Account source versions"><button aria-pressed={proof === snapshot} onClick={() => setProof(snapshot)}>Original snapshot</button><button aria-pressed={proof === newest} onClick={() => setProof(newest)}>Latest shared source</button></div>}
     {proof && <><AccountProofDetails key={proof.sourceDigest} proof={proof} /><button className="account-proof-refresh" disabled={busy} onClick={() => void latest()}>Check newer shared history</button></>}

@@ -21,3 +21,5 @@
 .account-proof-movements { display: flex; flex-wrap: wrap; gap: 5px 14px; }
 .account-proof-movements span[data-direction=up] { color: #16886b; }
 .account-proof-movements span[data-direction=down] { color: #ad3e50; }
+
+.account-proof-source{max-height:560px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,SFMono-Regular,monospace;background:#f6f8fc;border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0 0}

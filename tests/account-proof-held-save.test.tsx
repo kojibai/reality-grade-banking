@@ -33,9 +33,9 @@ it('reviews and saves the complete held statement locally without public consent
   await act(async()=>root.render(<AccountProofPanel identity={identity}/>));
   await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Review account proof')!.click());
   expect(host.textContent).toContain('Account source verified');expect(host.textContent).toContain('Later activity is not checked by this file.');
-  const save=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Save account proof'));expect(save).toBeDefined();expect(save!.disabled).toBe(false);
+  const save=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Save account statement'));expect(save).toBeDefined();expect(save!.disabled).toBe(false);
   await act(async()=>save!.click());
-  expect(click).toHaveBeenCalledOnce();const anchor=click.mock.instances[0];expect(anchor).toBeInstanceOf(HTMLAnchorElement);expect((anchor as HTMLAnchorElement).download).toBe(heldAccountProofOriginal(proof).filename);
+  expect(click).toHaveBeenCalledOnce();const anchor=click.mock.instances[0];expect(anchor).toBeInstanceOf(HTMLAnchorElement);expect((anchor as HTMLAnchorElement).download).toMatch(/^Account-Statement-fixture-Kai-100000000-[a-f0-9]{12}\.receiz$/);
   const blob=url.mock.calls[0][0] as Blob;expect(new Uint8Array(await blob.arrayBuffer())).toEqual(heldAccountProofOriginal(proof).bytes);expect(heldAccountProofBytes(proof)).toEqual(new TextEncoder().encode(wire));
   expect(publicSharing).not.toHaveBeenCalled();expect(fetch).not.toHaveBeenCalled();expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);
  }finally{act(()=>root.unmount());url.mockRestore();revoke.mockRestore();click.mockRestore();fetch.mockRestore();}
