@@ -1,3 +1,4 @@
+import {readReceizPublicMarketSource} from './public-market.js';
 import {createPublicMaterialWindowReader} from './public-material-window.js';
 import {preparedPublicMaterialSelection} from './prepared-public-material.js';
 import {readPublicReferenceHistory} from './public-reference-history.js';
@@ -15,6 +16,14 @@ function parseRow(row:Record<string,unknown>,quote:Record<string,unknown>|undefi
  if(selected){const id=`profile:${selected.username}:${item.assetId}`;item={...item,id,ownerUsername:selected.username,ownerDisplayName:selected.displayName,ownerAvatarUrl:selected.avatarUrl,ownerProfileUrl:`https://receiz.com/${selected.username}`,sourceUrl:`https://receiz.com/${selected.username}/verified/${encodeURIComponent(item.assetId)}`,ownerIdentity:selected.createdAt?{userId:selected.userId,username:selected.username,createdAt:selected.createdAt}:item.ownerIdentity,valuationBinding:{itemId:id,assetId:item.assetId}};item={...item,shareInventory:compatibleShareInventory(item,item.shareInventory)};}
  quotes.set(q,{basis,item,base});return item;
 }
+const selectedCatalogs=new WeakMap<object,Promise<ReturnType<typeof parsePublicMarket>>>();
+async function catalogFromRows(reader:ReturnType<typeof createPublicMaterialWindowReader>,rows:Record<string,unknown>[],quotes:Record<string,unknown>[],heads:Map<string,unknown>){
+ const [metadata,snapshot]=await Promise.all([reader.readPart(reader.root.membership.metadata) as Promise<{transport:Record<string,unknown>&{publicMembership:Record<string,unknown>}}>,reader.readPart(reader.root.snapshot.metadata) as Promise<{data:Record<string,unknown>}>]);
+ const selected=metadata.transport?.publicMembership;if(selected?.version!==1||selected.source!=='canonical-complete'||selected.scope!=='whole-market-visible-showcase'||selected.isComplete!==true||selected.itemCount!==reader.root.membership.count)throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
+ const membership={...metadata,transport:{...metadata.transport,publicMembership:{...metadata.transport.publicMembership,isComplete:true,itemCount:rows.length},publicOriginals:[],publicProfileHeads:[...heads.values()]}},observations={...snapshot,data:{...snapshot.data,liveMarkets:[]}},byId=new Map(quotes.map(quote=>[quote.itemId,quote])),items=rows.map(row=>parseRow(row,byId.get(row.id),heads.get(String(row.ownerUserId)))),base={...parsePublicMarket(membership,observations),items,complete:items.length===reader.root.membership.count};
+ if(new Set(items.map(item=>item.id)).size!==items.length||!base.complete||base.items.length!==rows.length)throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
+ return base;
+}
 type PartReader=(generation:string)=>Promise<string>;
 const sources=new WeakMap<PartReader,{readers:Map<string,ReturnType<typeof createPublicMaterialWindowReader>>;retainedParts:Map<string,Promise<unknown>>}>();
 /** Called inside the publication renderer after the fixed Source selected this
@@ -23,6 +32,28 @@ const sources=new WeakMap<PartReader,{readers:Map<string,ReturnType<typeof creat
 type ReferenceInput={material:string;generation:string;path?:string;readPart?:(generation:string)=>Promise<string>};
 export async function prepareSelectedPublicReferenceCatalog(input:ReferenceInput,includeSports=true){
  const selection=input.readPart?null:preparedPublicMaterialSelection({root:input.generation}),port=input.readPart??selection!.read;let cache=sources.get(port);if(!cache){cache={readers:new Map(),retainedParts:new Map()};sources.set(port,cache);}const {readers,retainedParts}=cache;let reader=readers.get(input.generation);if(!reader){reader=createPublicMaterialWindowReader({...input,readPart:port,retainedParts,...(selection?{recheckPart:selection.recheck}:{})});readers.set(input.generation,reader);while(readers.size>4){const oldest=readers.keys().next().value!,released=readers.get(oldest)!;readers.delete(oldest);released.releaseUnusedParts(id=>[...readers.values()].some(held=>held.usesPart(id)));}}
+ // The existing selected public response already carries this exact family.
+ // Reuse it once; walking its retained profile/Original indexes again is not
+ // publication work. Custom historical ports keep their explicit graph role.
+ if(!input.readPart){
+  let held=selectedCatalogs.get(reader);
+  if(held)await selection!.recheck(input.generation);
+  else{
+   const selectedReader=reader;
+   held=(async()=>{
+    const response=await readReceizPublicMarketSource('membership',undefined,{fresh:true,selectionKey:input.generation}) as {ok?:boolean;transport?:{publicMembership?:Record<string,unknown>;publicOriginals?:Record<string,unknown>[];publicProfileHeads?:unknown[]};snapshot?:{ok?:boolean;data?:{schema?:string;liveMarkets?:Record<string,unknown>[]}}};
+    const member=response.transport?.publicMembership,rows=response.transport?.publicOriginals,quotes=response.snapshot?.data?.liveMarkets,rawHeads=response.transport?.publicProfileHeads;
+    if(member?.revision!==input.generation)throw Error('PUBLIC_MATERIAL_SELECTION_CHANGED');
+    if(response.ok!==true||member.version!==1||member.source!=='canonical-complete'||member.scope!=='whole-market-visible-showcase'||member.isComplete!==true||member.itemCount!==selectedReader.root.membership.count||!Array.isArray(rows)||rows.length!==selectedReader.root.membership.count||response.snapshot?.ok!==true||response.snapshot.data?.schema!=='receiz.market.public-snapshot.v1'||!Array.isArray(quotes)||quotes.length!==selectedReader.root.snapshot.count||!Array.isArray(rawHeads))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
+    const heads=new Map<string,unknown>();for(const raw of rawHeads){const head=readPublicProfileHeader(raw);if(!head||heads.has(head.userId))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');heads.set(head.userId,raw);}
+    return catalogFromRows(selectedReader,rows,quotes,heads);
+   })();
+   selectedCatalogs.set(reader,held);const attempt=held;void held.catch(()=>{if(selectedCatalogs.get(selectedReader)===attempt)selectedCatalogs.delete(selectedReader);});
+  }
+  const [base,sports]=await Promise.all([held,includeSports&&reader.root.sports?reader.readPart(reader.root.sports):Promise.resolve(null)]),catalog=sports?mergePublicSports(base,sports):base;
+  if(catalog.items.length!==reader.root.membership.count+(includeSports?reader.root.sportsCount:0))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
+  return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader};
+ }
  // Existing app seeds carry the full current cohort. Open its immutable rows
  // once in the write-side renderer; never combine the unrelated financial
  // ledger into the Market material or replay canonical Source history here.
@@ -31,10 +62,7 @@ export async function prepareSelectedPublicReferenceCatalog(input:ReferenceInput
  // Public profile admission is independent of having an Original row.
  if((!baseline||!reader.root.membership.headsBaselineChanges)&&reader.root.membership.headsByOwner){heads.clear();for(const head of await reader.profileHeads()){const uid=(head as {profile:{userId:string}}).profile.userId;heads.set(uid,head);}}
  if(rows.length!==reader.root.membership.count)throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
- const metadata=await reader.readPart(reader.root.membership.metadata) as {transport:Record<string,unknown>&{publicMembership:Record<string,unknown>}},snapshot=await reader.readPart(reader.root.snapshot.metadata) as {data:Record<string,unknown>};
- const selected=metadata.transport?.publicMembership;if(selected?.version!==1||selected.source!=='canonical-complete'||selected.scope!=='whole-market-visible-showcase'||selected.isComplete!==true||selected.itemCount!==reader.root.membership.count)throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
- const membership={...metadata,transport:{...metadata.transport,publicMembership:{...metadata.transport.publicMembership,isComplete:true,itemCount:rows.length},publicOriginals:[],publicProfileHeads:[...heads.values()]}},observations={...snapshot,data:{...snapshot.data,liveMarkets:[]}},byId=new Map(quotes.map(quote=>[quote.itemId,quote])),items=rows.map(row=>parseRow(row,byId.get(row.id),heads.get(String(row.ownerUserId)))),base={...parsePublicMarket(membership,observations),items,complete:items.length===reader.root.membership.count};
- if(new Set(items.map(item=>item.id)).size!==items.length||!base.complete||base.items.length!==rows.length)throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
+ const base=await catalogFromRows(reader,rows,quotes,heads);
  const sports=includeSports&&reader.root.sports?await reader.readPart(reader.root.sports):null,catalog=sports?mergePublicSports(base,sports):base;
  if(catalog.items.length!==reader.root.membership.count+(includeSports?reader.root.sportsCount:0))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
  return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader};
