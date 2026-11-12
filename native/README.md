@@ -84,6 +84,13 @@ alongside the existing native sources. Rebuilding this module does not replace
 the pinned Note/receiver modules or the published SDK package. See the
 [public asset publication contract](../docs/public-asset-publication-v129.md).
 
+The local creator projection reuses the same admitted device-owner binding as
+publication, associating its signed identifier with the chosen account name.
+The imported Original download selector returns the retained sealed native file
+when present; historical bundle-only Originals retain their exact complete
+source. File verification runs on explicit download, without adding a creator,
+signing, or page-opening prerequisite.
+
 ## Direct Note delivery
 
 Bankeiz composes the existing connected Note funding, per-Note authority and canonical PNG seal into one transferable image. Save and send the original PNG; the receiver imports it and signs the existing account claim. No account signing key or private account opening is included. A copied file cannot produce a second accepted credit.

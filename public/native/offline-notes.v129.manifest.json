@@ -1265,6 +1265,13 @@
       "baseSha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
       "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
       "purpose": "Reuse the exact already-open canonical Original creator and admitted Identity for account-bound creator presentation. Preserve sealed source, signer, PBI, publication, account entry and financial authority."
+    },
+    {
+      "id": "bankeiz-held-creator-device-binding",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395",
+      "sha256": "0f40f22bad7542a86a60b9802fbcda282b4b8d2184097cedc86042cc62d27c23",
+      "purpose": "Pass the already-held admitted device owner into the existing local creator projector so its chosen account name displays immediately. No seal, signer, identity, publication or verification boundary changes."
     }
   ]
 }

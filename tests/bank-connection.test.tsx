@@ -6,6 +6,19 @@ import { BankConnection } from '../src/features/account/BankConnection';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import { BankConnectionError } from '../src/receiz/bank-connection-error';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+it('shows the held chosen account above its unchanged signed device identifier without checking the connection', () => {
+  const host = document.createElement('div'), root = createRoot(host), check = vi.fn();
+  const device = 'receiz_device_held_signed_actor';
+  const identity = { accountUsername: () => 'bjklock', binding: { identityOwnerReceizId: device }, nativeReadiness: check } as unknown as OpenIdentity;
+  try {
+    act(() => root.render(<BankConnection identity={identity} />));
+    const coordinate = host.querySelector('.profile-owner-coordinate')!;
+    expect(coordinate.textContent).toContain('@bjklock');
+    expect(coordinate.textContent!.indexOf('@bjklock')).toBeLessThan(coordinate.textContent!.indexOf(device));
+    expect(coordinate.querySelector('code')!.textContent).toBe(device);
+    expect(check).not.toHaveBeenCalled();
+  } finally { act(() => root.unmount()); }
+});
 it('keeps connection checks read-only and connects private account proofs only after explicit approval', async () => {
   const host = document.createElement('div'), root = createRoot(host);
   const connect = vi.fn(async () => ({ subjectId: 'fixture-subject', sourceDigest: 'a'.repeat(64), sessionExpiresKaiUPulse: 20, readyToTransact: false }));

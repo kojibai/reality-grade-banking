@@ -6,6 +6,7 @@ import {appendFileSync} from 'node:fs';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 import {createAssetPublication,type AssetPublicationState} from '../src/receiz/asset-publication';
 import {composerDraftWithLink} from '../src/receiz/asset-composer';
+type LocalCreationDisplay={ownershipKind?:string;originalCreator?:{username?:string;userId?:string}|null};
 
 it('seals one image essay locally, preserves its exact media and Kai, and delivers the same proof after interruption',async()=>{
  vi.stubGlobal('indexedDB',composerCustodyIdb());
@@ -29,8 +30,12 @@ it('seals one image essay locally, preserves its exact media and Kai, and delive
  expect(new Uint8Array(await opened.payload.arrayBuffer())).toEqual(new Uint8Array(await image.arrayBuffer()));
  expect(opened.projection.ownerReceizId).toBe(owner);expect(opened.projection.pulse).toMatch(/^\d+$/);
  const digest=prepared.reference.artifactSha256,artifactBytes=new Uint8Array(await prepared.artifact.arrayBuffer());
- const requests=vi.spyOn(globalThis,'fetch');let localArtwork:Blob|undefined;
- await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,username:'artist',assertCurrent(){},onLocalAdmission:(admission:Parameters<typeof retainAssetPublicationAdmission>[0]&{artwork?:Blob})=>{localArtwork=admission.artwork;retainAssetPublicationAdmission(admission,{identityDigest:'d'.repeat(64),accountUid:'fixture-owner'});}});
+ const requests=vi.spyOn(globalThis,'fetch');let localArtwork:Blob|undefined,localOriginal:LocalCreationDisplay|undefined;
+ await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,username:'artist',assertCurrent(){},onLocalAdmission:(admission:Parameters<typeof retainAssetPublicationAdmission>[0]&{artwork?:Blob})=>{localOriginal=admission.original as LocalCreationDisplay;localArtwork=admission.artwork;retainAssetPublicationAdmission(admission,{identityDigest:'d'.repeat(64),accountUid:'fixture-owner'});}});
+ expect(localOriginal?.ownershipKind).toBe('creator');
+ expect(localOriginal?.originalCreator?.username).toBe('artist');
+ expect(localOriginal?.originalCreator?.userId).toBe(owner);
+ expect(opened.projection.ownerReceizId).toBe(owner);
  const displayed=admittedAssetPublicationItem(digest,'artist');
  expect(displayed?.priceUsd).toBeGreaterThan(0);expect(localArtwork).toBeInstanceOf(Blob);expect(new Uint8Array(await localArtwork!.arrayBuffer())).toEqual(new Uint8Array(await image.arrayBuffer()));expect(displayed?.livePulseSeed?.claimPulse).toBe(Number(opened.projection.pulse));expect(displayed?.hasPbiSignature).toBe(false);expect(requests).not.toHaveBeenCalled();
  let state:AssetPublicationState|null=null,seals=0,deliveries=0,connected=false;const retained=new Map<string,File>();

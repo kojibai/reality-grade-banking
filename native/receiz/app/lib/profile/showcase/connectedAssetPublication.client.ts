@@ -41,7 +41,7 @@ export async function admitConnectedComposerSource(input:Readonly<{file:File;own
  }
  if(held.source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
  input.assertCurrent();retainImportedProfileOriginalMaterial(held.original,input.username,held.source);
- await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
+ await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.ownerReceizId,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
 }
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
