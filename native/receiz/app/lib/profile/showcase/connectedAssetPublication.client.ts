@@ -25,9 +25,9 @@ import {retainImportedProfileOriginalMaterial} from "../materialProjection.clien
 import {attachImportedSourceMarketPreviews} from "./importedSourceMarketPreview";
 export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null;artwork?:Blob}>;
 const localDisplays=new WeakMap<import("../types").ProfileOriginal,Map<string,import("../types").ProfileOriginal>>();
-function sourceDisplay(original:import("../types").ProfileOriginal,source:Awaited<ReturnType<typeof openImportedProofSource>>,username:string,owner:string){
+function sourceDisplay(original:import("../types").ProfileOriginal,source:Awaited<ReturnType<typeof openImportedProofSource>>,username:string,owner:string,ownerReceizId?:string){
  let views=localDisplays.get(original);if(!views){views=new Map();localDisplays.set(original,views);}let display=views.get(username);
- if(!display){display=attachImportedSourceMarketPreviews({originals:[original],ownerUserId:owner,ownerUsername:username,sources:[source]})[0]!;views.set(username,display);}return display;
+ if(!display){display=attachImportedSourceMarketPreviews({originals:[original],ownerUserId:owner,ownerUsername:username,ownerReceizId,sources:[source]})[0]!;views.set(username,display);}return display;
 }
 function sourceArtwork(source:Awaited<ReturnType<typeof openImportedProofSource>>){const cover=source.projection.bankAsset?.composer?.files.find(file=>file.role==='cover');return cover?source.composerResources?.[cover.id]:source.projection.payloadMimeType.startsWith('image/')?source.payload:undefined;}
 // The already-open ID can prepare and admit its one source without reading a Showcase.
@@ -91,7 +91,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
     input.assertCurrent();signedSources.set(opened.reference.artifactSha256,authorshipProof);
    }
    retainImportedProfileOriginalMaterial(original,username,opened.source);
-   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
+   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid,identityAdmission.ownerReceizId!),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
    return(await publication()).publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
  return {

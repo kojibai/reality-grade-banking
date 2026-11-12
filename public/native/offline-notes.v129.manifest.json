@@ -1244,6 +1244,27 @@
       "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
       "purpose": "Reuse the existing native verified saved-PBI selector for source-only creation recovery without authorizing, publishing or resealing. Preserve the native proof, owner binding, outbox, signing order and publication path.",
       "sourceCommit": "eb0ba0c0299754aaa4d349ec7b25425c1ce554a5"
+    },
+    {
+      "id": "bankeiz-full-receiving-name",
+      "path": "receiz/app/lib/profile/receivingUsername.ts",
+      "baseSha256": null,
+      "sha256": "9921445c27f8b1d64f84d51d1a863e020fabd306fbe3779d6a9bf5a839da55f1",
+      "purpose": "Reuse the exact Receiz receiving-name projection and optional-prefix Send selector over retained identity names. Existing account IDs, proof history and execution authority remain unchanged."
+    },
+    {
+      "id": "bankeiz-source-creator-display-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
+      "sha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395",
+      "purpose": "Reuse the exact already-open canonical Original creator and admitted Identity for account-bound creator presentation. Preserve sealed source, signer, PBI, publication, account entry and financial authority."
+    },
+    {
+      "id": "bankeiz-source-creator-display-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "baseSha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
+      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
+      "purpose": "Reuse the exact already-open canonical Original creator and admitted Identity for account-bound creator presentation. Preserve sealed source, signer, PBI, publication, account entry and financial authority."
     }
   ]
 }

@@ -7022,8 +7022,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
-      "bytes": 24255,
+      "sha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395",
+      "bytes": 24324,
       "mode": 420
     },
     {
@@ -7076,8 +7076,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
-      "bytes": 6837,
+      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
+      "bytes": 10619,
       "mode": 420
     },
     {
@@ -17503,6 +17503,20 @@
       "baseSha256": null,
       "sha256": "9921445c27f8b1d64f84d51d1a863e020fabd306fbe3779d6a9bf5a839da55f1",
       "purpose": "Reuse the exact Receiz receiving-name projection and optional-prefix Send selector over retained identity names. Existing account IDs, proof history and execution authority remain unchanged."
+    },
+    {
+      "id": "bankeiz-source-creator-display-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc",
+      "sha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395",
+      "purpose": "Reuse the exact already-open canonical Original creator and admitted Identity for account-bound creator presentation. Preserve sealed source, signer, PBI, publication, account entry and financial authority."
+    },
+    {
+      "id": "bankeiz-source-creator-display-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "baseSha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9",
+      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
+      "purpose": "Reuse the exact already-open canonical Original creator and admitted Identity for account-bound creator presentation. Preserve sealed source, signer, PBI, publication, account entry and financial authority."
     }
   ],
   "historicalValuation": {
@@ -17511,7 +17525,7 @@
     "sourcePath": "app/utils/phi-issuance.ts",
     "sourceSha256": "69622c017e955734525e121a7b27bdaa42066932657b145e02be493792de9c74",
     "sdkVersion": "129.0.0",
-    "intrinsicAlgorithm": "phi/kosmos-v\u03c6-5",
+    "intrinsicAlgorithm": "phi/kosmos-vφ-5",
     "intrinsicPolicyChecksum": "b05b2049",
     "sampleUsd": 100,
     "historicalPointsAreRecordedQuotes": false
@@ -18183,7 +18197,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "91c0523891ee864e8605b00aafec4c5d872e96e81380ab2d030c205979575efc"
+      "sha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -18219,7 +18233,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "1667e953dbe734959e8caf73c050f066ce99d2c37a93c0f738f08d6dcbd334a9"
+      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013"
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePlacement.client.ts",

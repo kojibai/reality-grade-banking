@@ -21,7 +21,16 @@ it('rechecks an already parsed baseline after withdrawal and uses only the remai
 });
 
 it('includes a current empty profile header even when the retained row baseline predates that Account',async()=>{
- const f=family(),uid='new-owner',head=f.put({profile:{userId:uid,username:'new_owner',isPrivate:false,createdAt:'2026-11-09T00:00:00Z'},viewer:{canView:true},stats:{originals:0}}),root={...f.root,membership:{...f.root.membership,headsByOwner:f.index([[uid,head]]).root}},material=JSON.stringify(root);
+ const f=family(),uid='new-owner',head=f.put({profile:{userId:uid,username:'new_owner',isPrivate:false,createdAt:'2026-11-09T00:00:00Z'},viewer:{canView:true},stats:{originals:0}}),root={...f.root,membership:{...f.root.membership,headsByOwner:f.index([[uid,head]]).root,headsBaselineChanges:f.index([[uid,JSON.stringify(head)]])}},material=JSON.stringify(root);
  const result=await prepareSelectedPublicReferenceCatalog({material,generation:createHash('sha256').update(material).digest('hex'),readPart:f.readPart},false);
  expect(result.catalog.publicProfileHeads?.map(h=>h.profile.username)).toEqual(['new_owner']);expect(result.catalog.items).toHaveLength(rows.length);expect(f.generations.some(id=>f.reads.has(id))).toBe(false);
+});
+
+it('reuses complete retained profile headers and their current overlay without walking the unchanged owner index',async()=>{
+ const f=family(),uid='empty-owner',head={profile:{userId:uid,username:'empty_owner',displayName:'Already held',isPrivate:false,createdAt:'2026-11-09T00:00:00Z'},viewer:{canView:true},stats:{originals:0}},headId=f.put(head),heads=f.index([[uid,headId]]);
+ const baseline=JSON.parse(f.objects.get(f.baseline)!);baseline.transport.publicProfileHeads=[head];const generation=f.put(baseline);
+ const root={...f.root,membership:{...f.root.membership,baseline:{...f.root.membership.baseline,generation},headsByOwner:heads.root}},material=JSON.stringify(root);
+ const result=await prepareSelectedPublicReferenceCatalog({material,generation:createHash('sha256').update(material).digest('hex'),readPart:f.readPart},false);
+ expect(result.catalog.publicProfileHeads?.map(h=>h.profile.username)).toEqual(['empty_owner']);
+ expect(f.reads.has(heads.root!)).toBe(false);expect(f.reads.has(headId)).toBe(false);
 });

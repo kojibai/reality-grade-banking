@@ -1,4 +1,4 @@
-import {useContext,useState} from 'react';
+import {useContext,useState,type ReactNode} from 'react';
 import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
 import {AssetMark} from '../../components/AssetMark';
@@ -26,7 +26,7 @@ function PublicObjectProvenance({item}:{item:PublicMarketItem}){
 }
 /** Shared discovery/showcase row. Pricing and ownership remain the supplied
  * source projection; opening the row never establishes transferable rights. */
-export function PublicObjectRow({item,onOpen,eagerArtwork=true}:{item:PublicMarketItem;onOpen:()=>void;eagerArtwork?:boolean}){
+export function PublicObjectRow({item,onOpen,eagerArtwork=true,artwork}:{item:PublicMarketItem;onOpen:()=>void;eagerArtwork?:boolean;artwork?:ReactNode}){
  const change=item.changePct;
- return <button className="asset-row" onClick={onOpen}><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/><span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
+ return <button className="asset-row" onClick={onOpen}>{artwork??<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/>}<span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
 }
