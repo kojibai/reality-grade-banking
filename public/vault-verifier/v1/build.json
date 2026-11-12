@@ -856,7 +856,7 @@
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
-      "sha256": "c3825c0d07cc7b5a4b7fcdb23483a0eb11f9902f3da05e53e36a00d6c6d97aef"
+      "sha256": "c02e602f0d385335bbf6028e87d3e8c7a0ef37659e9ed10b33f691a75268feca"
     },
     {
       "path": "public/native/offline-notes.v129.mjs",
@@ -1149,20 +1149,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "7e57ba73934cb8061885e9e6f26ecc9acb01f8c0b85bb84eab1f49db1664f307",
-      "bytes": 9587209
+      "sha256": "48c59e5dce25cb3264a3fb39783ceaf07b8662cb424072a890bbfb8e634359e5",
+      "bytes": 9587730
     },
     "inspector.js.map": {
-      "sha256": "dcae45c5b74cadd826a4c6028876ef515d6d0ba0ef0064dbebebe96ebfd1c12d",
-      "bytes": 23812515
+      "sha256": "8a6abbeb48ed623530097aaae8520bbf48eb73f91d3b97f7735774c2838d653d",
+      "bytes": 23813188
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "1ef7f6600fcd2127d0385878fa606f9ef271a2999fad753e5ec223c72fbdc726",
-      "bytes": 9592059
+      "sha256": "e4ddcc85a80d928934e938967d76fd078e150d1806b21955cb09989fde926bc9",
+      "bytes": 9592580
     },
     "README.txt": {
       "sha256": "69230c971b734b723cf1af67da1e32c3f97129f78860af2e951c6f059fb09ffc",

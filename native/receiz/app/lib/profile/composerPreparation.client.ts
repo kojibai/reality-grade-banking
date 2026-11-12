@@ -2,15 +2,19 @@
 import {sha256} from "@noble/hashes/sha2.js";
 import {bytesToHex} from "@noble/hashes/utils.js";
 import {jcsCanonicalize} from "@/app/utils/jcs";
-import {validateComposerAssetDraft,readComposerCapacity,readComposerAssetContent,composerFileMime,type ComposerAssetDraft,type ComposerAssetContent,type ComposerAssetFile,type ComposerProtectedOriginal,type PreparedComposerSource} from "./composerPreparation";
+import {validateComposerAssetDraft,readComposerCapacity,readComposerAssetContent,composerFileMime,composerRequiresProtectedOriginal,type ComposerAssetDraft,type ComposerAssetContent,type ComposerAssetFile,type ComposerProtectedOriginal,type PreparedComposerSource} from "./composerPreparation";
 import {writeExactByteBlocks,type ExactByteBlockWriter} from "../transport/exactByteBlocks";
 import {parseImportedProofSourceReference} from "./showcase/importedSource";
 import {rejectImportedSourceRecoveryBlob} from "./showcase/importedSourcePrivacy";
 import type {receizeDocumentBytesClient} from "../documentSeal/receizeDocumentBytesClient";
 export type ComposerDocumentSealer=(input:Parameters<typeof receizeDocumentBytesClient>[0])=>Promise<Pick<Awaited<ReturnType<typeof receizeDocumentBytesClient>>,"artifactBytes"|"downloadName"|"kind">>;
+function requirePreparedOriginalCustody(content:Pick<ComposerAssetContent,'kind'|'collection'>,protectedOriginal:unknown){
+ if(content.kind!=="moment"&&composerRequiresProtectedOriginal(content.collection)&&!protectedOriginal)throw new TypeError("COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED");
+}
 export async function prepareConnectedComposerContent(input:{draft:ComposerAssetDraft;ownerReceizId:string;writeBlock?:ExactByteBlockWriter;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>{
  input.assertCurrent();const draft=validateComposerAssetDraft(input.draft,readComposerCapacity());
  if(!/^[A-Za-z0-9_.:@-]{3,160}$/u.test(input.ownerReceizId))throw new TypeError("COMPOSER_OWNER_REQUIRED");
+ requirePreparedOriginalCustody(draft,draft.protectedOriginal);
  if(draft.protectedOriginal&&typeof input.writeProtectedBlock!=="function")throw new TypeError("COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED");
  const writeBlock=input.writeBlock??(await import("./showcase/importedSourceCustody.client")).createImportedProofSourceCustody().writeBlock;
  let protectedOriginal:ComposerProtectedOriginal|undefined;
@@ -41,6 +45,7 @@ export async function prepareConnectedComposerContent(input:{draft:ComposerAsset
 }
 export async function sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:ComposerDocumentSealer;writeBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<PreparedComposerSource>{
  input.assertCurrent();const content=readComposerAssetContent(input.content,input.content.ownerReceizId);
+ requirePreparedOriginalCustody(content,content.protectedOriginal);
  const writeBlock=input.writeBlock??(await import("./showcase/importedSourceCustody.client")).createImportedProofSourceCustody().writeBlock;
  const payloadBytes=new TextEncoder().encode(jcsCanonicalize(content));
  const {prepareNativeProofObjectSeal}=await import("../documentSeal/prepareNativeProofObjectSeal");

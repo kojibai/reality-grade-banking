@@ -6718,8 +6718,8 @@
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.client.ts",
-      "sha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01",
-      "bytes": 4626,
+      "sha256": "6525d292fbc673b6f072d5f0ee1b67c465dfa35bd22d8c1214e1e05bf1c9aa16",
+      "bytes": 7074,
       "mode": 420
     },
     {
@@ -17637,6 +17637,13 @@
       "baseSha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3",
       "sha256": "1a4cc6abfbb4838fb614271987ba65c0d10fbe88be91df85e45a45a9c0248325",
       "purpose": "Keep exact Source acceptance independent of browser document refresh; reuse the complete retained delivery receipt after cold reopening. Preserve canonical owner/receipt-image custody, signed-device identity and current Account display binding. Protected Original work overlaps only independent existing transport; SDK admission, causal append, financial state and frozen account entry are unchanged."
+    },
+    {
+      "id": "bankeiz-prepared-original-private-custody-v129",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01",
+      "sha256": "6525d292fbc673b6f072d5f0ee1b67c465dfa35bd22d8c1214e1e05bf1c9aa16",
+      "purpose": "Require existing protected Original custody before explicit new restricted content preparation or sealing writes public blocks. Preserve editor validation, historical canonical reads, default free creation and unchanged SDK/financial authority."
     }
   ],
   "historicalValuation": {
@@ -18133,7 +18140,7 @@
     },
     {
       "path": "app/lib/profile/composerPreparation.client.ts",
-      "sha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01"
+      "sha256": "6525d292fbc673b6f072d5f0ee1b67c465dfa35bd22d8c1214e1e05bf1c9aa16"
     },
     {
       "path": "app/lib/profile/composerPreparation.ts",
