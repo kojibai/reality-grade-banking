@@ -168,6 +168,7 @@ export type ProfileOriginal = {
     sourceArtifactSha256: string;
     sourceIdentity: Readonly<{ artifactId: string; namespace: string; genesisOwnerReceizId: string }> | null;
     pbiAppendHeads: readonly string[];
+    collectionPolicy?: import("./composerPreparation").ComposerCollectionPolicy;
   }>;
   id: string;
   slug: string;

@@ -35,7 +35,9 @@ it('the actual Discover writer keeps eighty-two profiles while rendering twenty 
   expect((await sharp(Buffer.from(prepared.seedHeads[1].avatarFallback!.split(',')[1],'base64')).metadata()).width).toBe(80);
   expect(prepared.seed.map((row:{id:string})=>row.id)).toEqual(['one']);expect(await readFile(join(root,'public/receiz-public-market.json'),'utf8')).toBe(before);expect(fetcher).not.toHaveBeenCalled();
  }finally{process.chdir(previous);await rm(root,{recursive:true,force:true});vi.unstubAllGlobals();}
-});
+ // This integration renders twenty real codec-backed portraits during the
+ // build. Its byte/count/no-request budgets remain exact on shared CI CPUs.
+},20_000);
 it('keeps a selected custom portrait ahead of its default thumbnail',async()=>{
  const custom={...head(1),profile:{...head(1).profile,avatarUrl:'https://receiz.com/artwork/custom.png'},avatarFallback:'data:image/webp;base64,YQ=='};
  const server={ssrLoadModule:async()=>({publicProfileAvatar:vi.fn(()=>{throw Error('Custom portrait must be reused');})})};

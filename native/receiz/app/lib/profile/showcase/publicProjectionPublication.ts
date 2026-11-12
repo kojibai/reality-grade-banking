@@ -58,6 +58,7 @@ export type ProfileShowcasePublicProjectionPublicationResult =
       artifactDigest: string;
       operationCount: number;
       visibleChildCount: number;
+      publicFamilyStatus?: "pending" | "ready";
     }>
   | Readonly<{
       status: "pending" | "rejected";
@@ -181,12 +182,14 @@ export async function publishProfileShowcaseTransport(
     const value = await plan({ action: "finalize", scope, transport, ...association }) as ProfileShowcasePublicProjectionPublicationResult;
     if (value?.status === "published" && value.publicationVersion === 2 && value.scope
       && value.artifactDigest === artifactDigest && routeStillCurrent()
+      && Number.isSafeInteger(value.operationCount) && value.operationCount >= 0
+      && Number.isSafeInteger(value.visibleChildCount) && value.visibleChildCount >= 0
       && profileShowcaseCompletePublicationScopeKey(value.scope) === scopeKey) {
-      const refreshed = await refreshDocument({ username: scope.username,
-        artifactDigest: value.artifactDigest, operationCount: value.operationCount });
-      // A browser without a controlling worker cannot hold a document, but
-      // that does not revoke the server's exact sealed-source receipt.
-      return refreshed !== "pending" ? value : { status: "pending", code: "PROFILE_SHOWCASE_PUBLIC_DOCUMENT_REFRESH_PENDING" };
+      // Document custody remains scheduled beneath the exact accepted Source.
+      // Its ACK or failure cannot delay or revoke the publication receipt.
+      void Promise.resolve().then(() => refreshDocument({ username: scope.username,
+        artifactDigest: value.artifactDigest, operationCount: value.operationCount })).catch(() => {});
+      return value;
     }
     if ((value?.status === "rejected" || value?.status === "pending") && typeof value.code === "string" && value.code.trim()) return value;
     return pending();

@@ -67,7 +67,7 @@ export function attachImportedSourceDisplayFacts(input:Readonly<{
    const sourceCreator=original.originalCreator??{userId:creator.receizId,username:creator.username,
     displayName:creator.displayName??creator.username,avatarUrl:null,isPrivate:false};
    original={...original,originalCreator:ownsCreation&&sourceCreator.userId===creator.receizId
-    ?{...sourceCreator,username:input.ownerUsername,displayName:input.ownerUsername}:sourceCreator,
+    ?{...sourceCreator,userId:input.ownerUserId,username:input.ownerUsername,displayName:input.ownerUsername}:sourceCreator,
     ...(ownsCreation?{ownershipKind:'creator' as const,ownershipRole:'creator' as const}:{}),
     claimHashHex:original.claimHashHex??fact.claimHashHex,verifyPath:fact.verifyPath,verifyUrl:fact.verifyUrl};
   }

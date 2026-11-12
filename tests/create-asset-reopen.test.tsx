@@ -32,9 +32,11 @@ it('does not restore a dismissed completion when an older signature response arr
   await act(async()=>{finish({...original,pbiSigned:true});await signed;});expect(v.host.querySelector('.creation-complete')).toBeNull();expect(v.host.querySelector('.asset-creation--studio')).not.toBeNull();expect(publish).toHaveBeenCalledOnce();
  }finally{finish({...original,pbiSigned:true});await signed;act(()=>v.root.unmount());}
 });
-it('keeps genuinely unfinished delivery recoverable without starting it twice',async()=>{
- let finish!:(value:unknown)=>void;const delivery=new Promise(resolve=>{finish=resolve;}),retry=vi.fn(()=>delivery),identity={pendingAssetPublication:async()=>({...original,publication:{status:'pending'}}),accountUsername:()=> 'artist',retryAssetPublication:retry}as unknown as OpenIdentity,v=view(identity);
- try{await v.render();await v.render(false);await v.render();expect(v.host.querySelector('.creation-complete')).not.toBeNull();expect(retry).toHaveBeenCalledOnce();
+it('finishes the editor visit while its exact saved delivery continues, without starting it twice or blocking the next draft',async()=>{
+ let finish!:(value:unknown)=>void;const delivery=new Promise(resolve=>{finish=resolve;}),retry=vi.fn(()=>delivery),dismiss=vi.fn(async()=>{}),identity={pendingAssetPublication:async()=>({...original,publication:{status:'pending'}}),accountUsername:()=> 'artist',retryAssetPublication:retry,dismissAssetCreation:dismiss}as unknown as OpenIdentity,v=view(identity);
+ try{await v.render();await v.render(false);await v.render();expect(v.host.querySelector('.creation-complete')).toBeNull();expect(v.host.querySelector('fieldset')?.disabled).toBe(false);expect(retry).toHaveBeenCalledOnce();expect(dismiss).toHaveBeenCalledExactlyOnceWith(original.digest);
+  await act(()=>v.host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(v.host.querySelector('.asset-creation')?.getAttribute('data-creation-step')).toBe('review');
+  await act(async()=>{finish(original);await delivery;});expect(v.host.querySelector('.creation-complete')).toBeNull();expect(v.host.querySelector('fieldset')?.disabled).toBe(false);
  }finally{await act(async()=>{finish(original);await delivery;});act(()=>v.root.unmount());}
 });
 

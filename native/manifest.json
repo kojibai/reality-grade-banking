@@ -6718,13 +6718,13 @@
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.client.ts",
-      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
+      "sha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01",
       "bytes": 4626,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.ts",
-      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "sha256": "9e8e37f74aa04c0d1729bbd842b65ff53bcae5a0bead549062594838f8208a33",
       "bytes": 11433,
       "mode": 420
     },
@@ -6777,8 +6777,8 @@
     },
     {
       "path": "receiz/app/lib/profile/materialProjection.client.ts",
-      "sha256": "07452db59642d48f85753b1bb815925fd9fc80168390c8dca034f08e24f44f34",
-      "bytes": 42275,
+      "sha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a",
+      "bytes": 42554,
       "mode": 420
     },
     {
@@ -7022,8 +7022,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "0f40f22bad7542a86a60b9802fbcda282b4b8d2184097cedc86042cc62d27c23",
-      "bytes": 24324,
+      "sha256": "1c879c19885f4d0dab87e4cfa845397c1262c567a8310cc74137d8e1ae6c8734",
+      "bytes": 27542,
       "mode": 420
     },
     {
@@ -7052,7 +7052,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSource.ts",
-      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
+      "sha256": "6f99fbd2b07c4e972b7b7de764a75f9dc1284c5971ebe7ada3685e5a00c29957",
       "bytes": 28891,
       "mode": 420
     },
@@ -7075,8 +7075,13 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/importedSourceIdentity.ts",
+      "sha256": "e6ec194e98a21289a819e43cbae5cdc22b5173b48f12d2af5066873900cd0653",
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
+      "sha256": "b7662a21b492e9783b77e11ed6c58ef39e2b45690f99cf0bbad10d16898ebf16",
       "bytes": 10619,
       "mode": 420
     },
@@ -7094,7 +7099,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "sha256": "1742325f847de0e90f0757355b0b98c703965e032bcd69c8a21aea4a393b4a94",
       "bytes": 10214,
       "mode": 420
     },
@@ -7165,6 +7170,11 @@
       "mode": 420
     },
     {
+      "path": "receiz/app/lib/profile/showcase/protectedComposerOriginal.client.ts",
+      "sha256": "cee1888581cb12706664ab35bfab819bccbb141f03e11a26ad81ac5b7ff6ac45",
+      "mode": 420
+    },
+    {
       "path": "receiz/app/lib/profile/showcase/publicProfileDocumentRefresh.client.ts",
       "sha256": "636a777902be115beee7119366ac7427ee32d0c941ca1b693d43aabe30639361",
       "bytes": 6845,
@@ -7172,14 +7182,14 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0",
-      "bytes": 13281,
+      "sha256": "40e4bdbca3cf4e75cea5c82a81837de725bc544157c11582bb4e9b50f5e49c0b",
+      "bytes": 13423,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/showcase/publicProjectionRetry.ts",
-      "sha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3",
-      "bytes": 22799,
+      "sha256": "1a4cc6abfbb4838fb614271987ba65c0d10fbe88be91df85e45a45a9c0248325",
+      "bytes": 24017,
       "mode": 420
     },
     {
@@ -7256,7 +7266,7 @@
     },
     {
       "path": "receiz/app/lib/profile/types.ts",
-      "sha256": "94d3a802b07e33ac4d428e40d27d167b47c259f00d79fc3503eb86c50ddc1fb6",
+      "sha256": "717900d04eac29fa388e143f9c864719f949d54ea12290e54c987e10754994fe",
       "bytes": 14780,
       "mode": 420
     },
@@ -7826,6 +7836,11 @@
       "path": "receiz/app/utils/kai_pulse.ts",
       "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954",
       "bytes": 53541,
+      "mode": 420
+    },
+    {
+      "path": "receiz/app/utils/mime.ts",
+      "sha256": "1d40b9eec57eba1978e7a1f73b90adf82a9b243209f940a03eb19f6bc555d822",
       "mode": 420
     },
     {
@@ -17524,6 +17539,104 @@
       "baseSha256": "42ce7507d4bad10090d17d6b4079a94819d5ec909178300b86e536cc45146395",
       "sha256": "0f40f22bad7542a86a60b9802fbcda282b4b8d2184097cedc86042cc62d27c23",
       "purpose": "Pass the already-held admitted device owner into the existing local creator projector so its chosen account name displays immediately. No seal, signer, identity, publication or verification boundary changes."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/composerPreparation.client.ts",
+      "baseSha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15",
+      "sha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/composerPreparation.ts",
+      "baseSha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "sha256": "9e8e37f74aa04c0d1729bbd842b65ff53bcae5a0bead549062594838f8208a33",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "0f40f22bad7542a86a60b9802fbcda282b4b8d2184097cedc86042cc62d27c23",
+      "sha256": "c991c9afe1510b49164f681964e4616004926fd943e51f8eb636121b0429628f",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade",
+      "sha256": "6f99fbd2b07c4e972b7b7de764a75f9dc1284c5971ebe7ada3685e5a00c29957",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceIdentity.ts",
+      "baseSha256": null,
+      "sha256": "e6ec194e98a21289a819e43cbae5cdc22b5173b48f12d2af5066873900cd0653",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceMarketPreview.ts",
+      "baseSha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013",
+      "sha256": "b7662a21b492e9783b77e11ed6c58ef39e2b45690f99cf0bbad10d16898ebf16",
+      "purpose": "Associate the unchanged signed creator/device with its already-bound account ID and chosen name under the existing exact owner checks. No new lookup, seal or valuation calculation."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
+      "baseSha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "sha256": "1742325f847de0e90f0757355b0b98c703965e032bcd69c8a21aea4a393b4a94",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/showcase/protectedComposerOriginal.client.ts",
+      "baseSha256": null,
+      "sha256": "cee1888581cb12706664ab35bfab819bccbb141f03e11a26ad81ac5b7ff6ac45",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/lib/profile/types.ts",
+      "baseSha256": "94d3a802b07e33ac4d428e40d27d167b47c259f00d79fc3503eb86c50ddc1fb6",
+      "sha256": "717900d04eac29fa388e143f9c864719f949d54ea12290e54c987e10754994fe",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-native-original-collection-v129",
+      "path": "receiz/app/utils/mime.ts",
+      "baseSha256": null,
+      "sha256": "1d40b9eec57eba1978e7a1f73b90adf82a9b243209f940a03eb19f6bc555d822",
+      "purpose": "Carry the canonical Original collection policy and separate protected exact bytes from public previews through explicit owner custody ports. Preserve SDK admission, accepted history, signing and default first paint."
+    },
+    {
+      "id": "bankeiz-independent-original-delivery-v129",
+      "path": "receiz/app/lib/profile/materialProjection.client.ts",
+      "baseSha256": "07452db59642d48f85753b1bb815925fd9fc80168390c8dca034f08e24f44f34",
+      "sha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a",
+      "purpose": "Keep exact Source acceptance independent of browser document refresh; reuse the complete retained delivery receipt after cold reopening. Preserve canonical owner/receipt-image custody, signed-device identity and current Account display binding. Protected Original work overlaps only independent existing transport; SDK admission, causal append, financial state and frozen account entry are unchanged."
+    },
+    {
+      "id": "bankeiz-independent-original-delivery-v129",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "c991c9afe1510b49164f681964e4616004926fd943e51f8eb636121b0429628f",
+      "sha256": "1c879c19885f4d0dab87e4cfa845397c1262c567a8310cc74137d8e1ae6c8734",
+      "purpose": "Keep exact Source acceptance independent of browser document refresh; reuse the complete retained delivery receipt after cold reopening. Preserve canonical owner/receipt-image custody, signed-device identity and current Account display binding. Protected Original work overlaps only independent existing transport; SDK admission, causal append, financial state and frozen account entry are unchanged."
+    },
+    {
+      "id": "bankeiz-independent-original-delivery-v129",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionPublication.ts",
+      "baseSha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0",
+      "sha256": "40e4bdbca3cf4e75cea5c82a81837de725bc544157c11582bb4e9b50f5e49c0b",
+      "purpose": "Keep exact Source acceptance independent of browser document refresh; reuse the complete retained delivery receipt after cold reopening. Preserve canonical owner/receipt-image custody, signed-device identity and current Account display binding. Protected Original work overlaps only independent existing transport; SDK admission, causal append, financial state and frozen account entry are unchanged."
+    },
+    {
+      "id": "bankeiz-independent-original-delivery-v129",
+      "path": "receiz/app/lib/profile/showcase/publicProjectionRetry.ts",
+      "baseSha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3",
+      "sha256": "1a4cc6abfbb4838fb614271987ba65c0d10fbe88be91df85e45a45a9c0248325",
+      "purpose": "Keep exact Source acceptance independent of browser document refresh; reuse the complete retained delivery receipt after cold reopening. Preserve canonical owner/receipt-image custody, signed-device identity and current Account display binding. Protected Original work overlaps only independent existing transport; SDK admission, causal append, financial state and frozen account entry are unchanged."
     }
   ],
   "historicalValuation": {
@@ -18020,11 +18133,11 @@
     },
     {
       "path": "app/lib/profile/composerPreparation.client.ts",
-      "sha256": "94c07dc09eb1bae18f8846720f959bcc7f643830f5d9116df70dd41f51290b15"
+      "sha256": "ab785d8259a9fe9288742e2d5e29334aa93026f0744de64f5c7bcf4fcd8fea01"
     },
     {
       "path": "app/lib/profile/composerPreparation.ts",
-      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7"
+      "sha256": "9e8e37f74aa04c0d1729bbd842b65ff53bcae5a0bead549062594838f8208a33"
     },
     {
       "path": "app/lib/profile/deterministicFeed.ts",
@@ -18056,7 +18169,7 @@
     },
     {
       "path": "app/lib/profile/materialProjection.client.ts",
-      "sha256": "07452db59642d48f85753b1bb815925fd9fc80168390c8dca034f08e24f44f34"
+      "sha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a"
     },
     {
       "path": "app/lib/profile/originalStorage.ts",
@@ -18204,7 +18317,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "0f40f22bad7542a86a60b9802fbcda282b4b8d2184097cedc86042cc62d27c23"
+      "sha256": "1c879c19885f4d0dab87e4cfa845397c1262c567a8310cc74137d8e1ae6c8734"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -18224,7 +18337,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSource.ts",
-      "sha256": "94198bc2ebd9bd1ae7fc420f3cc742e504789ca54f00b75f89a7aacb29882ade"
+      "sha256": "6f99fbd2b07c4e972b7b7de764a75f9dc1284c5971ebe7ada3685e5a00c29957"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceAuthorship.ts",
@@ -18239,8 +18352,12 @@
       "sha256": "c39f9b5bd24f0da29dd8e24a09820d98622eb326217cda4f09449b7bed9c6464"
     },
     {
+      "path": "app/lib/profile/showcase/importedSourceIdentity.ts",
+      "sha256": "e6ec194e98a21289a819e43cbae5cdc22b5173b48f12d2af5066873900cd0653"
+    },
+    {
       "path": "app/lib/profile/showcase/importedSourceMarketPreview.ts",
-      "sha256": "43de3c9b5dcad3ebcf83d1ae06b694383c3e31e99a9bcab4c3b282b75e67a013"
+      "sha256": "b7662a21b492e9783b77e11ed6c58ef39e2b45690f99cf0bbad10d16898ebf16"
     },
     {
       "path": "app/lib/profile/showcase/importedSourcePlacement.client.ts",
@@ -18252,7 +18369,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363"
+      "sha256": "1742325f847de0e90f0757355b0b98c703965e032bcd69c8a21aea4a393b4a94"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceReference.ts",
@@ -18295,16 +18412,20 @@
       "sha256": "a01c4345be224e90658b95950bcce04350701c9c9ea5b070a94e0889a724bb19"
     },
     {
+      "path": "app/lib/profile/showcase/protectedComposerOriginal.client.ts",
+      "sha256": "cee1888581cb12706664ab35bfab819bccbb141f03e11a26ad81ac5b7ff6ac45"
+    },
+    {
       "path": "app/lib/profile/showcase/publicProfileDocumentRefresh.client.ts",
       "sha256": "636a777902be115beee7119366ac7427ee32d0c941ca1b693d43aabe30639361"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionPublication.ts",
-      "sha256": "adc0debf40dcf232ca6a1db7991d4e032e8821bb54dd56d68f0ddf3187d25ab0"
+      "sha256": "40e4bdbca3cf4e75cea5c82a81837de725bc544157c11582bb4e9b50f5e49c0b"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionRetry.ts",
-      "sha256": "807c2f71b0bbd98e90a4b27b669c62bf3b1aae3406337fdb9d5c25d60e8676b3"
+      "sha256": "1a4cc6abfbb4838fb614271987ba65c0d10fbe88be91df85e45a45a9c0248325"
     },
     {
       "path": "app/lib/profile/showcase/publicProjectionScope.client.ts",
@@ -18629,6 +18750,10 @@
     {
       "path": "app/utils/kai_pulse.ts",
       "sha256": "c1d9a1ff780681946935389d94ada11df3245e96782dca1183e2675b0ef14954"
+    },
+    {
+      "path": "app/utils/mime.ts",
+      "sha256": "1d40b9eec57eba1978e7a1f73b90adf82a9b243209f940a03eb19f6bc555d822"
     },
     {
       "path": "app/utils/pbi/webauthn.ts",

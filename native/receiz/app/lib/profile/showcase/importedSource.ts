@@ -256,7 +256,8 @@ async function openImportedProofSourceWithTraversal(
   let composerResources=bankAsset?.composer?await openComposerResources(bankAsset.composer,options.resolveSourceBlock,bytes=>{
     if((traversal.remainingBytes-=bytes)<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_EXECUTION_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
   },()=>{if(--traversal.remainingBlockReads<0)throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_RESOURCE_READ_BUDGET","VERIFICATION_RESOURCE_UNAVAILABLE","verified");}):undefined;
-  const primary=bankAsset?.composer?.files.find(file=>file.role==="primary");
+  const composer=bankAsset?.composer;
+ const primary=composer?.files.find(file=>file.role==="primary")??(composer?.protectedOriginal?composer.files.find(file=>file.role==="cover"):undefined);
   if(primary&&composerResources){payload=composerResources[primary.id];payloadSha256=primary.sha256;payloadFilename=primary.name;payloadMimeType=primary.mime;}
   if(bankAsset?.files[0]) { const file=bankAsset.files[0]; payload=new Blob([file.bytes.slice().buffer as ArrayBuffer],{type:file.mimeType}); payloadSha256=file.sha256; payloadFilename=file.filename; payloadMimeType=file.mimeType; }
   // The accepted portable Original may carry its rendered child bytes. Resolve

@@ -26,14 +26,15 @@ import {attachImportedSourceMarketPreviews} from "./importedSourceMarketPreview"
 export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null;artwork?:Blob}>;
 const localDisplays=new WeakMap<import("../types").ProfileOriginal,Map<string,import("../types").ProfileOriginal>>();
 function sourceDisplay(original:import("../types").ProfileOriginal,source:Awaited<ReturnType<typeof openImportedProofSource>>,username:string,owner:string,ownerReceizId?:string){
- let views=localDisplays.get(original);if(!views){views=new Map();localDisplays.set(original,views);}let display=views.get(username);
- if(!display){display=attachImportedSourceMarketPreviews({originals:[original],ownerUserId:owner,ownerUsername:username,ownerReceizId,sources:[source]})[0]!;views.set(username,display);}return display;
+ const key=JSON.stringify([username,owner,ownerReceizId]);
+ let views=localDisplays.get(original);if(!views){views=new Map();localDisplays.set(original,views);}let display=views.get(key);
+ if(!display){display=attachImportedSourceMarketPreviews({originals:[original],ownerUserId:owner,ownerUsername:username,ownerReceizId,sources:[source]})[0]!;views.set(key,display);}return display;
 }
 function sourceArtwork(source:Awaited<ReturnType<typeof openImportedProofSource>>){const cover=source.projection.bankAsset?.composer?.files.find(file=>file.role==='cover');return cover?source.composerResources?.[cover.id]:source.projection.payloadMimeType.startsWith('image/')?source.payload:undefined;}
 // The already-open ID can prepare and admit its one source without reading a Showcase.
 export {prepareConnectedComposerContent,sealConnectedComposerContent};
 const locallyOpened=new WeakMap<File,{source:Awaited<ReturnType<typeof openImportedProofSource>>;reference:import("./importedSourceReference").ImportedProofSourceReference;original:import("../types").ProfileOriginal}>();
-export async function admitConnectedComposerSource(input:Readonly<{file:File;ownerReceizId:string;username:string;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}>){
+export async function admitConnectedComposerSource(input:Readonly<{file:File;ownerReceizId:string;profileIdentity?:string;username:string;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}>){
  input.assertCurrent();const custody=createImportedProofSourceCustody();let held=locallyOpened.get(input.file);
  if(!held){const source=await openImportedProofSource(input.file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});input.assertCurrent();
   if(source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
@@ -41,13 +42,13 @@ export async function admitConnectedComposerSource(input:Readonly<{file:File;own
  }
  if(held.source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
  input.assertCurrent();retainImportedProfileOriginalMaterial(held.original,input.username,held.source);
- await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.ownerReceizId,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
+ await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.profileIdentity??input.ownerReceizId,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
 }
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
 type ConnectedAssetRuntimeInput=Readonly<{
  identity:Uint8Array;passphrase:string;account:Readonly<{uid:string;username:string}>;
- sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission,context?:Readonly<{signing:boolean}>):Promise<void>|void;
+ sealDocument:typeof receizeDocumentBytesClient;fetchImpl:typeof fetch;writeProtectedBlock?:import('../../transport/exactByteBlocks').ExactByteBlockWriter;resolveProtectedBlock?:import('../../transport/exactByteBlocks').ExactByteBlockResolver;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission,context?:Readonly<{signing:boolean}>):Promise<void>|void;
 } >;
 export async function createConnectedAssetPublicationRuntime(input:ConnectedAssetRuntimeInput){
  input.assertCurrent();
@@ -60,11 +61,21 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
  const custody=createImportedProofSourceCustody();
  const sealDocument:typeof receizeDocumentBytesClient=async args=>{input.assertCurrent();const result=await input.sealDocument(args);input.assertCurrent();return result;};
  const signedSources=new Map<string,import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>();
+ const privateUploads=new Map<string,Promise<void>>();
+ const retainPrivateOriginal=(source:import("./importedSource").OpenedImportedProofSource)=>{
+  const original=source.projection.bankAsset?.composer?.protectedOriginal;
+  if(!original)throw Error('COMPOSER_PRIVATE_ORIGINAL_REQUIRED');
+  const key=JSON.stringify([original.profileIdentity,original.file.sha256,original.file.name,original.file.mime]);
+  let job=privateUploads.get(key);
+  if(!input.resolveProtectedBlock)throw new TypeError('COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED');
+  if(!job){job=import('./protectedComposerOriginal.client').then(({stageProtectedComposerOriginal})=>stageProtectedComposerOriginal({source,profileIdentity:input.account.uid,username,resolveProtectedBlock:input.resolveProtectedBlock!,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent}));privateUploads.set(key,job);void job.catch(()=>{if(privateUploads.get(key)===job)privateUploads.delete(key);});}
+  return job;
+ };
  let publisher:ReturnType<typeof openConnectedAssetPublisher>|undefined;
- const publication=()=>publisher??=openConnectedAssetPublisher(input,admitted,keyFile).catch(error=>{publisher=undefined;throw error;});
+ const publication=()=>publisher??=openConnectedAssetPublisher(input,admitted,keyFile,retainPrivateOriginal).catch(error=>{publisher=undefined;throw error;});
  type AuthorizeMarket=(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>;
  async function readSourceAuthorship(file:File,requiresPbi=false){
-   const opened=await admitConnectedComposerSource({file,ownerReceizId:identityAdmission.ownerReceizId!,username,assertCurrent:input.assertCurrent});
+   const opened=await admitConnectedComposerSource({file,ownerReceizId:identityAdmission.ownerReceizId!,profileIdentity:input.account.uid,username,assertCurrent:input.assertCurrent});
    const pbi=await import("./importedSourceAuthorship");let action:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput|undefined;
    try{action=await pbi.importedSourceAuthorshipInput(opened.source,identityAdmission.actor.actorId,profileShowcaseLiveKaiUpulse());}catch(error){if(requiresPbi||!(error instanceof TypeError)||error.message!=='IMPORTED_SOURCE_PBI_SOURCE_REQUIRED')throw error;}
    const actionHash=action?await computeLocalPbiAuthorshipActionHash(action):null;
@@ -92,13 +103,18 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    }
    retainImportedProfileOriginalMaterial(original,username,opened.source);
    await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid,identityAdmission.ownerReceizId!),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
-   return(await publication()).publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
+   // The already-open Source supplies private custody independently of the
+   // accepted predecessor lookup. Both must finish before any public append.
+   const selected=opened.source.projection.bankAsset?.composer?.protectedOriginal
+    ? (await Promise.all([publication(),retainPrivateOriginal(opened.source)]))[0]
+    : await publication();input.assertCurrent();
+   return selected.publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
  return {
   async stage(file:File){return(await publication()).stage(file);},
-  prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:identityAdmission.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
-  sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
-  prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:identityAdmission.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),
+  prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:identityAdmission.ownerReceizId!,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
+  sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
+  prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:identityAdmission.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
   publish,
   // Reuse the exact durable PBI proof. A background resume can never open a
   // ceremony or publish an unsigned placement in place of the saved signature.
@@ -113,7 +129,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
 }
 /** Publication starts only after local admission and an explicitly requested
  * PBI ceremony. Signing cannot enter full Showcase recovery or legacy scans. */
-async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admitted:import("../../../../packages/receiz-sdk/src/artifactAdmissionTypes").ReceizVerifiedIdentityArtifactAdmission,keyFile:Awaited<ReturnType<typeof readReceizIdentityArtifact>>){
+async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admitted:import("../../../../packages/receiz-sdk/src/artifactAdmissionTypes").ReceizVerifiedIdentityArtifactAdmission,keyFile:Awaited<ReturnType<typeof readReceizIdentityArtifact>>,retainPrivateOriginal:(source:import("./importedSource").OpenedImportedProofSource)=>Promise<void>){
  const username=input.account.username.toLowerCase(),account={username,profileIdentity:input.account.uid};
  let acceptedDelivery:unknown,acceptedReadFailure:unknown;
  const fetchDelivery:typeof fetch=async(resource,init)=>{
@@ -143,6 +159,7 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
   }});
  const deliveries=new Map<string,Promise<ProfileShowcasePublicProjectionPublicationResult>>();
  const custody=createImportedProofSourceCustody();
+
  // Acknowledged immutable source closures are already stored by this transport.
  // Reuse their exact references; never download/reopen/re-upload old media just
  // to append one new Original. Finalization still admits the full successor.
@@ -162,8 +179,9 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
    }).then(async receipt=>{if(receipt.status==='published'){await rememberDeliveredSources(source);if(prepared)await incremental.acceptPublished(prepared);initialDeliveryAccepted=true;}return receipt;});
   deliveries.set(source.artifactDigest,result);return result;
  };
- return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)});return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false){
+ return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await Promise.all([stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)}),...(source.projection.bankAsset?.composer?.protectedOriginal?[retainPrivateOriginal(source)]:[])]);return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false){
   input.assertCurrent();const {source,reference}=opened,original=opened.original;
+  if(source.projection.bankAsset?.composer?.protectedOriginal)await retainPrivateOriginal(source);input.assertCurrent();
   const sourceResultKey=`original:${reference.artifactSha256}:${authorshipProof?.pbiReceiptHash??''}`,known=deliveries.get(sourceResultKey);if(known)return known;
   const remember=(result:ProfileShowcasePublicProjectionPublicationResult)=>{if(result.status==='published')deliveries.set(sourceResultKey,Promise.resolve(result));return result;};
   // Explicit signing only advances a current head. Ordinary first delivery may
@@ -195,9 +213,20 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
   }
   input.assertCurrent();const head=await vault.readPublicationHead(artifactId);if(!head)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_REQUIRED");
   const ensured=await ensureCurrentProfileShowcasePublicProjection(vault,artifactId,deliver,{readRoute:()=>{input.assertCurrent();return account;}});input.assertCurrent();
+  // A cold runtime may hold the exact durable receipt without an in-process
+  // delivery promise. Reuse that receipt; an empty memo is not a refusal.
+  if(ensured.status==="published"&&ensured.artifactDigest===head.artifactDigest&&ensured.publishedReceipt)return remember(ensured.publishedReceipt);
   const pending=deliveries.get(head.artifactDigest),result=pending?await pending:{status:"pending"as const,code:ensured.code??"PROFILE_SHOWCASE_PUBLICATION_PENDING"};if(result.status!=="published")deliveries.delete(head.artifactDigest);return remember(result);
  }};
 }
 
 /** Byte servant for already canonically opened composer manifests. */
 export async function resolveComposerBlock(reference:import("../../transport/exactByteBlocks").ExactByteBlockReference):Promise<Uint8Array>{return createImportedProofSourceCustody().resolveBlock(reference);}
+
+/** Explicit file preparation reuses the canonical reader once. Its returned
+ * unsealed payload is a public preview, never a replacement for the exact file. */
+export async function readComposerPrimaryFile(file:File){
+ const {readVerifiedReceizDocumentBytes}=await import('../../receizArtifactVerifier');
+ const opened=await readVerifiedReceizDocumentBytes({fileBytes:new Uint8Array(await file.arrayBuffer()),filename:file.name,mime:file.type});
+ return {verification:opened.verification,...(opened.ok?{payload:new File([opened.payloadBytes.slice().buffer as ArrayBuffer],opened.payloadFilename,{type:opened.payloadMimeType})}:{})};
+}

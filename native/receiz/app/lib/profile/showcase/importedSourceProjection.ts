@@ -1,3 +1,4 @@
+import {importedProofSourceOriginalId} from "./importedSourceIdentity";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { jcsCanonicalize } from "@/app/utils/jcs";
@@ -47,8 +48,7 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
     namespace: continuity.namespace, genesisOwnerReceizId: continuity.genesisOwnerReceizId } : null;
   // The canonical ownership genesis binds artifactId, namespace and genesis
   // owner. Genesis owner here scopes continuity; it never implies creator.
-  const identity = sourceIdentity ? jcsCanonicalize(sourceIdentity) : `${p.identity.kind}:${p.identity.value}`;
-  const id = `imported-${bytesToHex(sha256(new TextEncoder().encode(identity)))}`;
+  const id = importedProofSourceOriginalId(sourceIdentity ?? `${p.identity.kind}:${p.identity.value}`);
   const creator = p.originalCreator ?? (() => {
     if (carried?.ownershipKind !== "creator") return null;
     const actual = projectVerifierIdentityDisplay(terminal.verification).originalCreator;
@@ -56,7 +56,8 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
       displayName: actual.displayName ?? actual.username, avatarUrl: null, isPrivate: false } : null;
   })();
   const mime = p.payloadMimeType;
-  const kind = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : mime.startsWith("audio/") ? "audio" : mime === "application/pdf" ? "pdf" : mime === "application/epub+zip" ? "epub" : "file";
+  const composerKind=p.bankAsset?.composer?.kind;
+  const kind = composerKind&&composerKind!=="moment"?composerKind:mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : mime.startsWith("audio/") ? "audio" : mime === "application/pdf" ? "pdf" : mime === "application/epub+zip" ? "epub" : "file";
   const download = importedSourceResourcePath(reference);
   const original: ProfileOriginal = {
     ...(carried ?? {}), id, slug: p.slug, code: p.code, pulse: p.pulse,
@@ -68,7 +69,9 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
       sourceArtifactSha256: terminal.descriptor.artifactSha256,
       sourceIdentity,
       sourceProofHead: terminal.verification.assetContinuity?.state === "verified" ? terminal.verification.assetContinuity.headReference : null,
-      pbiAppendHeads: p.pbi.history.map(append => append.appendHeadSha256) },
+      pbiAppendHeads: p.pbi.history.map(append => append.appendHeadSha256),
+      ...(p.bankAsset?.composer?.collection ? {collectionPolicy:p.bankAsset.composer.collection} : {}),
+      ...(p.bankAsset?.composer?.protectedOriginal ? {protectedOriginal:true as const} : {}) },
     contextPreset: carried?.contextPreset ?? null, claimHashHex: carried?.claimHashHex ?? null,
     ...(p.bankAsset?{assetTitle:p.bankAsset.title,...(p.bankAsset.nativeAsset?{nativeAsset:p.bankAsset.nativeAsset}:{})}:{}),
     claim: p.bankAsset?.description ?? p.claim ?? "",
@@ -108,8 +111,14 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
     original.attachments=composer.files.filter(file=>file.role==="attachment").map(file=>({id:file.id,role:file.attachmentRole??"source",name:file.name,mime:file.mime,size:file.size,sha256Hex:file.sha256,src:resource(file.id),storage:null,downloadName:file.name,description:file.description??null,createdAt:null}));
     if(composer.kind==="moment")original.media=null;
     else if(original.media){
-      const cover=composer.files.find(file=>file.role==="cover");
-      original.media={...original.media,...(["audio","video"].includes(composer.kind)?{playbackSrc:importedSourceResourcePath(reference,true),playbackMime:mime}:{}),
+      const cover=composer.files.find(file=>file.role==="cover"),primary=composer.files.find(file=>file.role==="primary"),protectedFile=composer.protectedOriginal?.file;
+      const publicResource=primary??cover;
+      const collect=(kind:string)=>`/api/profile/originals/download?receizId=${encodeURIComponent(id)}&kind=${kind}`;
+      original.media={...original.media,...(composer.collection??{}),
+        ...(protectedFile?{src:publicResource?resource(publicResource.id):"",originalDownloadSrc:collect("original"),originalDownloadName:protectedFile.name,originalDownloadMime:protectedFile.mime,originalDownloadSize:protectedFile.size,originalDownloadSha256Hex:protectedFile.sha256}:{}),
+        ...(composer.collection?.allowDerivativeDownload?{derivativeDownloadSrc:collect("derivative"),derivativeDownloadMime:"image/png"}:{}),
+        ...(composer.collection?.allowMomentRecordDownload?{receiptDownloadSrc:collect("moment")}:{}),
+        ...(["audio","video"].includes(composer.kind)?{playbackSrc:protectedFile?(primary?resource(primary.id):null):importedSourceResourcePath(reference,true),playbackMime:protectedFile?(primary?.mime??null):mime}:{}),
         audioDistribution:composer.music??null,epubMetadata:composer.book??null,
         ...(cover?{...(composer.kind==="audio"?{audioCoverSrc:resource(cover.id),audioCoverMime:cover.mime,audioCoverName:cover.name}:composer.kind==="video"?{videoPosterSrc:resource(cover.id),videoPosterMime:cover.mime,videoPosterName:cover.name}:{epubCoverSrc:resource(cover.id),epubCoverMime:cover.mime,epubCoverName:cover.name})}:{})};
     }

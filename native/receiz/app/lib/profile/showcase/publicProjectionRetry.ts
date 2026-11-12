@@ -33,8 +33,10 @@ export type PublicProjectionPublisher = (
   ownerReceizId: string,
 ) => Promise<ProfileShowcasePublicProjectionPublicationResult>;
 
+type PublishedReceipt = Extract<ProfileShowcasePublicProjectionPublicationResult, { status: "published" }>;
+
 type CapturedOutcome =
-  | Readonly<{ status: "published" }>
+  | Readonly<{ status: "published"; publishedReceipt?: PublishedReceipt }>
   | Readonly<{ status: "pending" | "rejected"; code: string }>;
 
 type RetryOptions = Readonly<{
@@ -87,11 +89,14 @@ export type ProfileShowcasePublicProjectionEnsureResult = Readonly<{
   code: string | null;
   /** The captured publication head, not a claim about a later local head. */
   artifactDigest: string | null;
+  /** The exact validated server receipt, when retained by this ack version. */
+  publishedReceipt?: PublishedReceipt;
 }>;
 
 const ACK_SCHEMA = "receiz.profile-showcase.exact-public-source-ack.v2";
 const acknowledged = new Map<string, ProfileShowcaseCompletePublicationScope>();
 const acknowledgedOperationCounts = new Map<string, number>();
+const acknowledgedReceipts = new Map<string, PublishedReceipt>();
 type AcknowledgmentObserver = (scope: ProfileShowcaseCompletePublicationScope) => void;
 const acknowledgmentObservers = new Set<AcknowledgmentObserver>();
 
@@ -135,6 +140,22 @@ function receiptKey(scope: ProfileShowcaseCompletePublicationScope): string {
   return `${ACK_SCHEMA}:${profileShowcaseCompletePublicationScopeKey(scope)}`;
 }
 
+function receiptMatchesScope(value: unknown, scope: ProfileShowcaseCompletePublicationScope): value is PublishedReceipt {
+  const receipt = value as Partial<PublishedReceipt> | null;
+  if (receipt?.status !== "published" || receipt.publicationVersion !== 2
+    || !receipt.scope || receipt.artifactDigest !== scope.artifactDigest
+    || !Number.isSafeInteger(receipt.operationCount) || Number(receipt.operationCount) < 0
+    || !Number.isSafeInteger(receipt.visibleChildCount) || Number(receipt.visibleChildCount) < 0) return false;
+  try { return profileShowcaseCompletePublicationScopeKey(receipt.scope) === profileShowcaseCompletePublicationScopeKey(scope); }
+  catch { return false; }
+}
+
+function retainReceipt(scope: ProfileShowcaseCompletePublicationScope, receipt: PublishedReceipt): PublishedReceipt {
+  const held = Object.freeze({ ...receipt, scope: Object.freeze({ ...receipt.scope! }) });
+  acknowledgedReceipts.set(receiptKey(scope), held);
+  return held;
+}
+
 function alreadyPublished(scope: ProfileShowcaseCompletePublicationScope): boolean {
   const key = receiptKey(scope);
   if (acknowledged.has(key)) return true;
@@ -142,8 +163,10 @@ function alreadyPublished(scope: ProfileShowcaseCompletePublicationScope): boole
     const value = JSON.parse(readDurableLocalTruthItem(key) ?? "null");
     const matches = value?.schema === ACK_SCHEMA
       && profileShowcaseCompletePublicationScopeKey(value.scope)
-        === profileShowcaseCompletePublicationScopeKey(scope);
+        === profileShowcaseCompletePublicationScopeKey(scope)
+      && (value.publishedReceipt === undefined || receiptMatchesScope(value.publishedReceipt, scope));
     if (matches) {
+      if (value.publishedReceipt !== undefined) retainReceipt(scope, value.publishedReceipt);
       holdAcknowledgment(scope);
       if (Number.isSafeInteger(value.operationCount) && value.operationCount >= 0)
         acknowledgedOperationCounts.set(key, value.operationCount);
@@ -152,12 +175,14 @@ function alreadyPublished(scope: ProfileShowcaseCompletePublicationScope): boole
   } catch { return false; }
 }
 
-function remember(scope: ProfileShowcaseCompletePublicationScope, operationCount: number): void {
+function remember(scope: ProfileShowcaseCompletePublicationScope, receipt: PublishedReceipt): PublishedReceipt {
   const key = receiptKey(scope);
+  const held = retainReceipt(scope, receipt);
+  const operationCount = held.operationCount;
   holdAcknowledgment(scope);
   acknowledgedOperationCounts.set(key, operationCount);
   try {
-    writeDurableLocalTruthItem(key, JSON.stringify({ schema: ACK_SCHEMA, scope, operationCount }), {
+    writeDurableLocalTruthItem(key, JSON.stringify({ schema: ACK_SCHEMA, scope, operationCount, publishedReceipt: held }), {
       rank: DURABLE_LOCAL_TRUTH_RANK.deterministicSnapshot,
       source: "profile-showcase-complete-public-source-transport",
     });
@@ -169,6 +194,7 @@ function remember(scope: ProfileShowcaseCompletePublicationScope, operationCount
       artifactDigest: scope.artifactDigest,
     });
   }
+  return held;
 }
 
 async function renewAcknowledgedDocument(
@@ -177,21 +203,21 @@ async function renewAcknowledgedDocument(
   readRoute: () => ProfileShowcasePublicationRoute | null,
   refreshDocument = refreshAcceptedPublicProfileDocument,
 ): Promise<CapturedOutcome> {
-  let operationCount = acknowledgedOperationCounts.get(receiptKey(scope));
-  if (operationCount === undefined) {
-    const head = await vault.readPublicationHead(scope.artifactId);
-    if (head?.artifactDigest === scope.artifactDigest) operationCount = head.operationCount;
-  }
   if (!routeMatches(readRoute(), scope)) return pending(ACCOUNT_CHANGED);
-  // Older exact source receipts remain held. A missing document coordinate
-  // cannot require exporting or reproving their source before local paint.
-  if (!Number.isSafeInteger(operationCount) || Number(operationCount) < 0)
-    return typeof navigator === "undefined" || !navigator.serviceWorker?.controller
-      ? { status: "published" } : pending("PROFILE_SHOWCASE_PUBLIC_DOCUMENT_HEAD_UNAVAILABLE");
-  const refreshed = await refreshDocument({ username: scope.username,
-    artifactDigest: scope.artifactDigest, operationCount: operationCount! });
-  if (!routeMatches(readRoute(), scope)) return pending(ACCOUNT_CHANGED);
-  return refreshed === "pending" ? pending("PROFILE_SHOWCASE_PUBLIC_DOCUMENT_REFRESH_PENDING") : { status: "published" };
+  // Representation repair cannot hold or revoke an already validated Source
+  // receipt. Older acknowledgments may lack the document's count coordinate.
+  void (async () => {
+    let operationCount = acknowledgedOperationCounts.get(receiptKey(scope));
+    if (operationCount === undefined) {
+      const head = await vault.readPublicationHead(scope.artifactId);
+      if (head?.artifactDigest === scope.artifactDigest) operationCount = head.operationCount;
+    }
+    if (!routeMatches(readRoute(), scope) || !Number.isSafeInteger(operationCount) || Number(operationCount) < 0) return;
+    await refreshDocument({ username: scope.username,
+      artifactDigest: scope.artifactDigest, operationCount: operationCount! });
+  })().catch(() => {});
+  const publishedReceipt = acknowledgedReceipts.get(receiptKey(scope));
+  return { status: "published", ...(publishedReceipt ? { publishedReceipt } : {}) };
 }
 
 function routeMatches(
@@ -282,20 +308,11 @@ async function publishCaptured(
           ? result.code : PENDING_CODE,
       });
     }
-    if (result?.status !== "published" || result.publicationVersion !== 2
-      || !result.scope || result.artifactDigest !== scope.artifactDigest
-      || !Number.isSafeInteger(result.operationCount) || result.operationCount < 0) {
+    if (!receiptMatchesScope(result, scope)) {
       return pending(RECEIPT_MISMATCH);
     }
-    try {
-      if (profileShowcaseCompletePublicationScopeKey(result.scope)
-        !== profileShowcaseCompletePublicationScopeKey(scope)) {
-        return pending(RECEIPT_MISMATCH);
-      }
-    } catch { return pending(RECEIPT_MISMATCH); }
     if (!routeMatches(readRoute(), scope)) return pending(ACCOUNT_CHANGED);
-    remember(scope, result.operationCount);
-    return { status: "published" };
+    return { status: "published", publishedReceipt: remember(scope, result) };
   })().finally(() => {
     if (inFlight.get(key) === operation) inFlight.delete(key);
   });
@@ -442,6 +459,8 @@ function ensureResult(
     status: outcome.status,
     code: outcome.status === "published" ? null : outcome.code,
     artifactDigest,
+    ...(outcome.status === "published" && outcome.publishedReceipt
+      ? { publishedReceipt: outcome.publishedReceipt } : {}),
   });
 }
 

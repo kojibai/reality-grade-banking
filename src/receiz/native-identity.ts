@@ -138,7 +138,7 @@ export interface OpenIdentity {
   publishAssetToMarket:(source:HeldDeposit)=>Promise<HeldDeposit>;
   createComposedAsset: (definition:AssetDefinition,draft:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void)=>Promise<HeldDeposit>;
   pendingAssetPublication?: () => Promise<HeldDeposit | null>;
-  retryAssetPublication?: () => Promise<HeldDeposit>;
+  retryAssetPublication?: (sourceDigest?:string) => Promise<HeldDeposit>;
   dismissAssetCreation?: (digest:string) => Promise<void>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   readNoteHistory?: () => Promise<import('./public-network').PublicRecord[]>;
@@ -1520,7 +1520,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const publication=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();
     let signer=preparedSealer;
     const sealDocument:Parameters<import('./offline-notes').BankNoteRuntimeFactory>[0]['sealDocument']=async args=>(await(signer??=assetDocumentSealer()))(args);
-    return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid,username},sealDocument,assertCurrent,onLocalAdmission:(admission,context)=>{assertCurrent();retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:artwork??admission.artwork});return recordAssetSignatureAdmission(admission,context);},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==uid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
+    const privateCustody=(await import('./composer-original-custody')).composerOriginalCustody(binding,assertCurrent);
+    return publication.createConnectedAssetPublicationRuntime({identity:new Uint8Array(bytes),passphrase:phrase,account:{uid,username},sealDocument,...privateCustody,assertCurrent,onLocalAdmission:(admission,context)=>{assertCurrent();retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:admission.artwork??artwork});return recordAssetSignatureAdmission(admission,context);},fetchImpl:createAssetPublicationFetch({applicationId:BANK_APPLICATION_ID,username,profileIdentity:uid,assertCurrent,request:async(path,init)=>{const current=await connectPublication(),currentAccount=clientAccounts.get(current),currentRequest=clientFetches.get(current);assertCurrent();if(currentAccount?.accountUid!==uid||!currentRequest)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');const held=await loadDeviceIdentity();if(!held||await sdk.sha256ReceizBytes(held.bytes)!==binding.artifactSha256)throw Error('BANK_ASSET_PUBLICATION_ACCOUNT_CHANGED');return currentRequest(path,init);}})});
   }
   // One publisher retains its canonically admitted head for this open ID.
   // Rebuilding it on each Create discarded reusable custody and recovery work.
@@ -1531,7 +1532,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const entry={key,runtime:openAssetPublicationRuntime(undefined,signer,localFirst)};
     entry.runtime=entry.runtime.then(runtime=>{entry.key=scopeKey();return runtime;}).catch(error=>{if(composedPublisher===entry)composedPublisher=undefined;throw error;});composedPublisher=entry;return entry.runtime;
   };
-  async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void): Promise<HeldDeposit> {
+  async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void,sourceDigest?:string): Promise<HeldDeposit> {
     lifetime.signal.throwIfAborted();
     const definition = input ? validateAssetDefinition(input) : null;
     const linked = definition?.linkedProofDigest ? (await listDeposits()).find(source => source.kind === 'proof' && source.digest === definition.linkedProofDigest) : null;
@@ -1551,8 +1552,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     let publicationModule:Promise<import('./asset-publication-runtime').AssetPublicationRuntimeModule>|undefined;
     const awaitImportPublication=()=>publicationModule??=import('./asset-publication-runtime').then(module=>module.loadAssetPublicationRuntime());
     let publicationRuntime:ReturnType<typeof openAssetPublicationRuntime>|undefined;
-    const artwork=composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined);
-    const openPublicationRuntime=()=>publicationRuntime??=(composed?openComposedPublisher(openDocumentSealer()):openAssetPublicationRuntime(artwork));
+    let artwork=composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined);
+    const openPublicationRuntime=()=>publicationRuntime??=(composed||restoredComposer?openComposedPublisher(composed?openDocumentSealer():undefined):openAssetPublicationRuntime(artwork));
     if(composed){
       if(!definition||definition.linkedProofDigest)throw Error('BANK_ASSET_COMPOSER_DEFINITION_INVALID');
       const {validateComposerAssetDraft,readComposerCapacity}=await import('./asset-composer');
@@ -1562,8 +1563,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       // Stream and retain the selected bytes while the existing local signer opens.
       const signer=openDocumentSealer();void signer.catch(()=>{});
       const {prepareCreatedAssetPrimary}=await import('./created-asset-file');
-      const sealedDraft=await prepareCreatedAssetPrimary({draft:selected,assertCurrent:noteOpen,seal:async source=>{onProgress?.({stage:'sealing'});return(await ownedSealer()).seal(source);}});
-      intent={composer:await native.prepareConnectedComposerContent({draft:sealedDraft,ownerReceizId:binding.artifactOwnerReceizId,assertCurrent:noteOpen})};await signer;
+      const sealedDraft=await prepareCreatedAssetPrimary({draft:selected,profileIdentity:accountUid??knownWallet?.wallet.userId,assertCurrent:noteOpen,seal:async source=>{onProgress?.({stage:'sealing'});return(await ownedSealer()).seal(source);}});
+      artwork=sealedDraft.files.find(file=>file.role==='cover')?.file??(sealedDraft.kind==='image'?sealedDraft.files.find(file=>file.role==='primary')?.file:undefined);
+      intent={composer:await native.prepareConnectedComposerContent({draft:sealedDraft,ownerReceizId:binding.artifactOwnerReceizId,writeProtectedBlock:(await import('./composer-original-custody')).composerOriginalCustody(binding,noteOpen).writeProtectedBlock,assertCurrent:noteOpen})};await signer;
     }
     const publication=createAssetPublication({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
       lock:async run=>{if(!navigator.locks)throw Error('BANK_ASSET_PUBLICATION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run());},
@@ -1598,13 +1600,15 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         // delays local creation; global delivery begins without a timer.
         const delivery=openPublicationRuntime();void delivery.catch(()=>{});
         const username=presentationUsername??keyFile.owner.username,uid=accountUid??knownWallet?.wallet.userId;
-        if(composed&&username&&uid){const native=await awaitImportPublication();await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted,artwork:artwork??admission.artwork});}});}
+        if(composed&&username&&uid){const native=await awaitImportPublication();await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted,artwork:admission.artwork??artwork});}});}
         const receipt=await(await delivery).publish(file);lifetime.signal.throwIfAborted();if(!publicationDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');adoption.acknowledgeAssetPublication(publicationDigest,receipt);if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(publicationDigest);return receipt;},
     });
-    const result=localOnly?await publication.pending():composed?await publication.createLocal(intent):input?await publication.create(intent):await publication.resume();
+    const result=localOnly?await publication.pending():composed?await publication.createLocal(intent):input?await publication.create(intent):await publication.resume(sourceDigest);
     if(!result)throw Error('BANK_ASSET_PUBLICATION_NONE');
     const deposit=heldDeposit??await projectOwnedSource(new Uint8Array(await result.file.arrayBuffer()),result.file.name);
-    heldSourceView.invalidate();return Object.assign(deposit,{publication:result.publication,...(result.pbiSigned?{pbiSigned:true}:{})});
+    heldSourceView.invalidate();
+    if(composed)queueMicrotask(()=>startAssetSignatureSync(result.digest));
+    return Object.assign(deposit,{publication:result.publication,...(result.pbiSigned?{pbiSigned:true}:{})});
   }
   function assetCreationState(){return{ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>import('./identity-vault').then(s=>s.loadAssetPublicationState(binding)),write:(next:import('./asset-publication').AssetPublicationState,previous:unknown)=>import('./identity-vault').then(s=>s.saveAssetPublicationState(binding,next,previous)),lock:async<T>(run:()=>Promise<T>)=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())};}
   type AssetSigningFlight={receipt:Promise<import('./asset-publication').AssetPublicationReceipt|null>;result?:Promise<HeldDeposit>;signaturePbiReceiptHash?:string};
@@ -1656,14 +1660,30 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     });
   }
   let assetSignatureSync:Promise<void>|undefined;
-  function startAssetSignatureSync(){
+  function startAssetSignatureSync(eventOrSource?:Event|string){
     if(lifetime.signal.aborted||navigator.onLine===false||assetSignatureSync)return;
     const attempt=(async()=>{
       const adoption=await import('./asset-publication-adoption');noteOpen();
       const uid=accountUid??knownWallet?.wallet.userId,username=publicAccountUsername(presentationUsername??keyFile.owner.username);if(!uid||!username)return;
+      // Delivery recovery uses only compact checkpoints for this open owner.
+      // New local creation and page opening never await these retries. Two
+      // exact sources may reopen together; the native append lock still owns
+      // their causal publication order.
+      const {readPendingAssetPublicationDigests,isAssetPublicationDeliveryActive}=await import('./asset-publication');
+      const saved=await import('./identity-vault').then(vault=>vault.loadAssetPublicationState(binding));noteOpen();
+      const attempted=new Set<string>(typeof eventOrSource==='string'?[eventOrSource]:[]);let after:string|undefined;
+      for(;;){
+        const batch=readPendingAssetPublicationDigests(saved,binding.artifactOwnerReceizId,16,after);if(!batch.length)break;
+        after=batch[batch.length-1];
+        for(let at=0;at<batch.length;at+=2)await Promise.all(batch.slice(at,at+2).map(async digest=>{
+          noteOpen();if(attempted.has(digest)||isAssetPublicationDeliveryActive(binding.artifactOwnerReceizId,digest))return;
+          attempted.add(digest);try{await createAsset(null,undefined,false,undefined,undefined,digest);}catch{noteOpen();}
+        }));
+      }
       // Only retained pending additions for this open account, never its whole
       // Showcase or history. A saved signature resumes without an authorizer.
       for(const digest of adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid,username)){
+        if(attempted.has(digest))continue;
         noteOpen();try{await publishAssetSignature(digest,true);}catch{noteOpen();}
       }
     })();assetSignatureSync=attempt;
@@ -1675,12 +1695,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     addEventListener('pageshow',startAssetSignatureSync,{signal:lifetime.signal});
   }
   if(typeof document!=='undefined'&&typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')startAssetSignatureSync();},{signal:lifetime.signal});
+  queueMicrotask(startAssetSignatureSync);
   let backedPublicationPromise:Promise<import('./backed-asset-client').BackedAssetClient>|undefined;
   const backedAssetPublication=()=>backedPublicationPromise??=import('./backed-asset-client').then(async({createBackedAssetClient})=>{
     const vault=await import('./identity-vault');return createBackedAssetClient({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,
       lock:async run=>await navigator.locks.request(`receiz-bank-backed-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run()),
       read:()=>vault.loadBackedAssetPublicationState(binding),write:(next,previous)=>vault.saveBackedAssetPublicationState(binding,next,previous),
-      runtime:openAssetPublicationRuntime,operations,retain:holdProof,
+      runtime:openAssetPublicationRuntime,prepareDraft:async draft=>{const {prepareCreatedAssetPrimary}=await import('./created-asset-file');return prepareCreatedAssetPrimary({draft,profileIdentity:accountUid??knownWallet?.wallet.userId,assertCurrent:noteOpen,seal:async source=>(await ownedSealer()).seal(source)});},operations,retain:holdProof,
       restore:async(digest,filename,mimeType)=>{for(const source of await loadDepositSources(binding))if(await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_BACKED_PUBLICATION_SOURCE_UNAVAILABLE');},
       recoverFunding:async nonce=>(await nativeAssets()).recoverOperation(nonce),
       publicProjection:async assetId=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();return current.request(`/api/connect/bank/assets/public-projection?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{assetId}});},
@@ -2208,7 +2229,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       });
     }return transferOriginalReader(record);
   };
-  const openedIdentity:OpenIdentity = { readHeldLedgerOriginal, sealRecordExport, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:()=>createAsset(null),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const openedIdentity:OpenIdentity = { readHeldLedgerOriginal, sealRecordExport, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
   return openedIdentity;
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {

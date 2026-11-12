@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {access, mkdtemp, rm} from 'node:fs/promises';
+import {access, mkdir, mkdtemp, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {chromium} from 'playwright';
@@ -112,17 +112,41 @@ try {
       await page.locator('summary').filter({hasText: /^Asset details/}).click();
       await page.getByLabel('Short code', {exact: true}).fill('LOCAL');
       await page.getByLabel('Defined units', {exact: true}).fill('25');
+      const collection = page.locator('details[data-composer-section="collection"]');
+      assert.equal(await collection.getAttribute('open'), null, 'Collection starts collapsed in Details');
+      await collection.locator('summary').click();
+      assert.equal(await page.getByLabel('Allow original download', {exact: true}).isChecked(), true);
+      assert.equal(await page.getByLabel('Allow derivative download', {exact: true}).isChecked(), false);
+      assert.equal(await page.getByLabel('Gate audio playback', {exact: true}).count(), 0, 'Only audio exposes the playback gate');
+      await page.getByLabel('Original download quantity', {exact: true}).fill('7');
+      await page.getByLabel('Original download price (USD)', {exact: true}).fill('0.001');
+      await page.getByRole('button', {name: 'Create asset', exact: true}).click();
+      await page.getByRole('button', {name: 'Create asset', exact: true}).waitFor();
+      assert.equal(await page.evaluate(() => window.composerFixture.created), 0, 'An invalid price must stop before creation');
+      assert.equal(await page.getByLabel('Original download price (USD)', {exact: true}).getAttribute('aria-invalid'), 'true');
+      await page.getByLabel('Original download price (USD)', {exact: true}).fill('1.25');
+      await page.getByLabel('Allow derivative download', {exact: true}).check();
+      await page.getByLabel('Derivative download quantity', {exact: true}).fill('3');
+      await page.getByLabel('Derivative download price (USD)', {exact: true}).fill('2.50');
+      await page.getByLabel('Allow moment record download', {exact: true}).check();
+      await fullscreen(page, width);
+      if (process.env.BANK_ASSET_COMPOSER_SCREENSHOTS) {
+        await mkdir(process.env.BANK_ASSET_COMPOSER_SCREENSHOTS, {recursive: true});
+        await collection.evaluate(element => element.scrollIntoView({block: 'center'}));
+        await page.screenshot({path: join(process.env.BANK_ASSET_COMPOSER_SCREENSHOTS, `collection-${width}.png`)});
+      }
       assert.equal(await page.evaluate(() => window.composerFixture.created), 0, 'Editing metadata must not seal the original');
       await page.getByRole('button', {name: 'Create asset', exact: true}).click();
       await page.getByRole('heading', {name: 'Your Original is sealed.', exact: true}).waitFor();
       const selected = await page.evaluate(async () => {
         const fixture = window.composerFixture, primary = fixture.draft.files.find(entry => entry.role === 'primary'), attachment = fixture.draft.files.find(entry => entry.role === 'attachment');
-        return {created: fixture.created, funded: fixture.funded, exactFile: primary.file === window.__chosenOriginal, primary: {name: primary.file.name, type: primary.file.type, bytes: Array.from(new Uint8Array(await primary.file.arrayBuffer()))}, attachment: {name: attachment.file.name, role: attachment.attachmentRole, description: attachment.description}, longForm: fixture.draft.longForm, definition: fixture.definition};
+        return {created: fixture.created, funded: fixture.funded, exactFile: primary.file === window.__chosenOriginal, primary: {name: primary.file.name, type: primary.file.type, bytes: Array.from(new Uint8Array(await primary.file.arrayBuffer()))}, attachment: {name: attachment.file.name, role: attachment.attachmentRole, description: attachment.description}, longForm: fixture.draft.longForm, definition: fixture.definition, collection: fixture.draft.collection};
       });
       assert.equal(selected.created, 1); assert.equal(selected.funded, 0); assert.equal(selected.exactFile, true, 'Canvas/review/back must retain the same File object');
       assert.deepEqual(selected.primary, {name: 'local-original.png', type: 'image/png', bytes: [...png]});
       assert.deepEqual(selected.attachment, {name: 'source-notes.txt', role: 'source', description: 'Research accompanying the original.'});
       assert.equal(selected.longForm, 'A complete original, written in the browser fixture.');
+      assert.deepEqual(selected.collection, {allowOriginalDownload: true, allowDerivativeDownload: true, allowMomentRecordDownload: true, gateAudioPlayback: false, originalDownloadLimit: 7, derivativeDownloadLimit: 3, originalDownloadPriceCents: 125, derivativeDownloadPriceCents: 250});
       assert.equal(selected.definition.name, 'A complete release'); assert.equal(selected.definition.symbol, 'LOCAL'); assert.equal(selected.definition.units, '25');
       await page.getByRole('button', {name: 'Retry public delivery', exact: true}).click();
       await page.getByRole('button', {name: 'Sign', exact: true}).waitFor();

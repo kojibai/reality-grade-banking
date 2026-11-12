@@ -1,7 +1,8 @@
 /** Prepare an explicitly chosen photo locally for the existing Receiz image
  * pipeline. No work or image transfer occurs before the file picker is used. */
-export async function prepareProfileImage(file:File,kind:'avatar'|'banner'):Promise<File>{
- if(!file.type.startsWith('image/')||file.size<=0||file.size>14*1024*1024)throw Error('Choose an image smaller than 14 MB.');
+export async function prepareProfileImage(file:File,kind:'avatar'|'banner',maximumSourceBytes=14*1024*1024):Promise<File>{
+ if(!Number.isSafeInteger(maximumSourceBytes)||maximumSourceBytes<1||maximumSourceBytes>16*1024*1024)throw Error('IMAGE_SOURCE_CAPACITY_INVALID');
+ if(!file.type.startsWith('image/')||file.size<=0||file.size>maximumSourceBytes)throw Error(`Choose an image smaller than ${maximumSourceBytes/(1024*1024)} MB.`);
  const url=URL.createObjectURL(file),image=new Image();image.decoding='async';
  try{
   image.src=url;await image.decode();if(!image.naturalWidth||!image.naturalHeight||image.naturalWidth*image.naturalHeight>80_000_000)throw Error('Choose a smaller image.');

@@ -1,3 +1,4 @@
+import {extensionFromMimeType,resolveMimeType} from "../../utils/mime";
 import {ImportedProofSourceUnavailableError} from "./showcase/importedSourceErrors";
 import type {ProfileOriginalAudioDistribution,ProfileOriginalEpubMetadata} from "./mediaMetadata";
 import {parseExactByteBlockReference,type ExactByteBlockReference} from "../transport/exactByteBlocks";
@@ -5,11 +6,14 @@ import {parseImportedProofSourceReference,type ImportedProofSourceReference} fro
 export type ComposerMediaKind="moment"|"image"|"audio"|"video"|"epub"|"pdf"|"file";
 export type ComposerFileDraft=Readonly<{id:string;file:File;role:"primary"|"cover"|"attachment";attachmentRole?:"source"|"appendix"|"dataset"|"contract"|"receipt"|"research"|"other";description?:string}>;
 export type ComposerAssetDefinition=Readonly<{name:string;symbol:string;units:string;description:string;linkedProofDigest:string|null}>;
-export type ComposerAssetDraft=Readonly<{definition?:ComposerAssetDefinition;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerFileDraft[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
+export type ComposerCollectionPolicy=Readonly<{allowOriginalDownload:boolean;allowDerivativeDownload:boolean;allowMomentRecordDownload:boolean;gateAudioPlayback:boolean;originalDownloadLimit:number|null;derivativeDownloadLimit:number|null;originalDownloadPriceCents:number|null;derivativeDownloadPriceCents:number|null}>;
+export type ComposerProtectedOriginalDraft=Readonly<{file:File;profileIdentity:string}>;
+export type ComposerAssetDraft=Readonly<{protectedOriginal?:ComposerProtectedOriginalDraft;collection?:ComposerCollectionPolicy;definition?:ComposerAssetDefinition;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerFileDraft[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
 export type ComposerCapacity=Readonly<{maxAttachments:number;maxTotalBytes:number;maxAttachmentBytes:number;maxPrimaryBytes:Readonly<Partial<Record<ComposerMediaKind,number>>>;maxCoverBytes:number;maxTextCharacters:100000}>;
 export type ComposerAssetFile=Readonly<Omit<ComposerFileDraft,"file">&{name:string;mime:string;size:number;sha256:string;bytes:ExactByteBlockReference}>;
+export type ComposerProtectedOriginal=Readonly<{profileIdentity:string;file:ComposerAssetFile}>;
 export type ComposerNativeAssetBinding=Readonly<{authoredSource:ImportedProofSourceReference;publicCertificateB64u:string;publicCertificateSha256:string}>;
-export type ComposerAssetContent=Readonly<{nativeAsset?:ComposerNativeAssetBinding;definition?:ComposerAssetDefinition;schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
+export type ComposerAssetContent=Readonly<{protectedOriginal?:ComposerProtectedOriginal;collection?:ComposerCollectionPolicy;nativeAsset?:ComposerNativeAssetBinding;definition?:ComposerAssetDefinition;schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
 export type PreparedComposerSource=Readonly<{artifact:File;reference:ImportedProofSourceReference;content:ComposerAssetContent}>;
 const MIB=1024*1024;
 const KINDS=new Set<ComposerMediaKind>(["moment","image","audio","video","epub","pdf","file"]);
@@ -19,6 +23,22 @@ const BOOK_FIELDS=["title","subtitle","primaryAuthor","contributors","publisher"
 const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
 function fail(code:string):never{throw new TypeError(`COMPOSER_${code}`);}
 function text(value:unknown,max:number,multiline=false):value is string{return typeof value==="string"&&value.length<=max&&!(multiline?/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u:/[\x00-\x1f\x7f]/u).test(value);}
+const PROFILE_UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function protectedProfileIdentity(value:unknown):string{if(typeof value!=="string"||!PROFILE_UUID.test(value))fail("PROTECTED_ORIGINAL_PROFILE_INVALID");return value.toLowerCase();}
+export function composerRequiresProtectedOriginal(policy:ComposerCollectionPolicy|null|undefined):boolean{
+ return Boolean(policy&&(!policy.allowOriginalDownload||policy.originalDownloadPriceCents!==null||policy.originalDownloadLimit!==null||policy.gateAudioPlayback));
+}
+/** Deterministic existing private upload coordinate. Location never supplies
+ * proof admission, owner binding, or permission to read the sealed file. */
+export function protectedComposerOriginalStoragePath(profileIdentity:string,sha:string,name:string,mime:string):string{
+ const uid=protectedProfileIdentity(profileIdentity),digest=typeof sha==="string"?sha.toLowerCase():"";
+ if(!/^[a-f0-9]{64}$/.test(digest))fail("PROTECTED_ORIGINAL_DIGEST_INVALID");
+ const safeName=(name??"").trim().replace(/[^a-zA-Z0-9._-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,120)||"upload.bin";
+ const at=safeName.lastIndexOf("."),named=at>0?safeName.slice(at).toLowerCase():"";
+ const typed=extensionFromMimeType(resolveMimeType({mime,filename:safeName,fallback:"application/octet-stream"}));
+ const extension=/^\.[a-z0-9]{1,16}$/.test(named)?named:typed&&/^[a-z0-9]{1,16}$/.test(typed)?`.${typed}`:".bin";
+ return `originals/${uid}/${digest}${extension}`;
+}
 /** Conservative connected authoring profile: the narrowest current complete-source
  * consumer, not a change to canonical proof validity or an unlimited-file claim. */
 export function readComposerCapacity():ComposerCapacity{
@@ -46,13 +66,22 @@ function definition(input:unknown):ComposerAssetDefinition|undefined{
  const v=record(input);if(Object.keys(v).sort().join("|")!=="description|linkedProofDigest|name|symbol|units"||!text(v.name,80)||!v.name.trim()||!text(v.description,2000,true)||typeof v.symbol!=="string"||! /^[A-Z][A-Z0-9]{1,7}$/.test(v.symbol)||typeof v.units!=="string"||! /^\d{1,18}(?:\.\d{1,6})?$/.test(v.units)||! /[1-9]/.test(v.units)||v.linkedProofDigest!==null&&(typeof v.linkedProofDigest!=="string"||! /^[a-f0-9]{64}$/.test(v.linkedProofDigest)))fail("DEFINITION_INVALID");
  return Object.freeze({name:v.name.trim(),symbol:v.symbol,units:v.units,description:v.description,linkedProofDigest:v.linkedProofDigest}) as ComposerAssetDefinition;
 }
+/** The same per-post collection fields and ranges used by the profile composer.
+ * This is sealed policy data; it adds no authority or publication operation. */
+function collection(input:unknown):ComposerCollectionPolicy|undefined{
+ if(input===undefined)return;
+ const value=record(input),flags=["allowOriginalDownload","allowDerivativeDownload","allowMomentRecordDownload","gateAudioPlayback"],amounts=["originalDownloadLimit","derivativeDownloadLimit","originalDownloadPriceCents","derivativeDownloadPriceCents"];
+ if(Object.keys(value).sort().join('|')!==[...flags,...amounts].sort().join('|')||flags.some(key=>typeof value[key]!=="boolean")||amounts.some(key=>value[key]!==null&&(!Number.isSafeInteger(value[key])||Number(value[key])<1||Number(value[key])>1000000)))fail("COLLECTION_POLICY_INVALID");
+ return Object.freeze({...value}) as ComposerCollectionPolicy;
+}
 function fields(value:ComposerAssetDraft|ComposerAssetContent){
  if(!text(value.title,160)||!value.title.trim()||!text(value.description,2000,true)||!text(value.longForm,100000,true)||!KINDS.has(value.kind))fail(value.longForm?.length>100000?"TEXT_CAPACITY":"DRAFT_INVALID");
  if(value.music!==undefined&&value.kind!=="audio"||value.book!==undefined&&!["epub","pdf"].includes(value.kind))fail("METADATA_KIND_INVALID");
- return {...(value.definition!==undefined?{definition:definition(value.definition)}:{}),title:value.title.trim(),description:value.description,kind:value.kind,longForm:value.longForm,
+ if(value.kind==="moment"&&value.collection&&(value.collection.originalDownloadPriceCents!==null||value.collection.originalDownloadLimit!==null))fail("COLLECTION_ORIGINAL_FILE_REQUIRED");
+ return {...(value.collection!==undefined?{collection:collection(value.collection)}:{}),...(value.definition!==undefined?{definition:definition(value.definition)}:{}),title:value.title.trim(),description:value.description,kind:value.kind,longForm:value.longForm,
   ...(value.music!==undefined?{music:metadata<ProfileOriginalAudioDistribution>(value.music,MUSIC_FIELDS)}:{}),...(value.book!==undefined?{book:metadata<ProfileOriginalEpubMetadata>(value.book,BOOK_FIELDS)}:{})};
 }
-function roles(files:readonly {id:string;role:string;mime:string;size:number;attachmentRole?:string;description?:string}[],kind:ComposerMediaKind){
+function roles(files:readonly {id:string;role:string;mime:string;size:number;attachmentRole?:string;description?:string}[],kind:ComposerMediaKind,protectedOriginal=false,gateAudioPlayback=false){
  const ids=new Set<string>();let primary=0,cover=0;
  for(const file of files){
   if(typeof file.id!=="string"||!/^[A-Za-z0-9_-]{1,100}$/u.test(file.id)||!["primary","cover","attachment"].includes(file.role)||!Number.isSafeInteger(file.size)||file.size<=0||!text(file.mime,120)||!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/u.test(file.mime))fail("FILE_INVALID");
@@ -61,35 +90,56 @@ function roles(files:readonly {id:string;role:string;mime:string;size:number;att
   if(file.role==="cover"){cover++;if(!file.mime.startsWith("image/"))fail("COVER_INVALID");}
   if(file.attachmentRole!==undefined&&(file.role!=="attachment"||!ATTACHMENT_ROLES.has(file.attachmentRole))||file.description!==undefined&&!text(file.description,2000,true))fail("ATTACHMENT_INVALID");
  }
- if(primary!==(kind==="moment"?0:1))fail("PRIMARY_REQUIRED");if(cover>1||kind==="moment"&&cover>0)fail("COVER_INVALID");
+ if(protectedOriginal&&kind==="moment")fail("PROTECTED_ORIGINAL_KIND_INVALID");
+ if(protectedOriginal&&primary&&(["pdf","epub","file"].includes(kind)||kind==="audio"&&gateAudioPlayback))fail("PROTECTED_ORIGINAL_PUBLIC_PRIMARY_INVALID");
+ if(protectedOriginal?primary>1:primary!==(kind==="moment"?0:1))fail("PRIMARY_REQUIRED");if(cover>1||kind==="moment"&&cover>0)fail("COVER_INVALID");
 }
 export function validateComposerAssetDraft(draft:ComposerAssetDraft,capacity:ComposerCapacity):ComposerAssetDraft{
  const content=fields(draft);if(!Array.isArray(draft.files))fail("FILES_INVALID");
+ let protectedOriginal:ComposerProtectedOriginalDraft|undefined;
+ if(draft.protectedOriginal!==undefined){
+  const p=record(draft.protectedOriginal),file=p.file;
+  if(Object.keys(p).sort().join('|')!=="file|profileIdentity"||draft.kind==="moment")fail("PROTECTED_ORIGINAL_INVALID");
+  if(!(file instanceof File)||!file.name||!text(file.name,240)||/[\/\\]/u.test(file.name)||!file.size||file.size>(capacity.maxPrimaryBytes[draft.kind]??0)||composerMediaKind(composerFileMime(file))!==draft.kind)fail("PROTECTED_ORIGINAL_FILE_INVALID");
+  protectedOriginal=Object.freeze({file,profileIdentity:protectedProfileIdentity(p.profileIdentity)});
+ }
  let total=0,attachments=0;
  const files=draft.files.map(selected=>{
   if(!(selected.file instanceof File)||!selected.file.name||!text(selected.file.name,240)||/[\/\\]/u.test(selected.file.name))fail("FILE_INVALID");
+  if(protectedOriginal&&(selected.id==="protected-original"||selected.file===protectedOriginal.file))fail("PROTECTED_ORIGINAL_PUBLIC_ALIAS");
   const size=selected.file.size;total+=size;if(selected.role==="attachment")attachments++;
   const maximum=selected.role==="cover"?capacity.maxCoverBytes:selected.role==="attachment"?capacity.maxAttachmentBytes:capacity.maxPrimaryBytes[draft.kind]??0;
   if(size>maximum||total>capacity.maxTotalBytes||attachments>capacity.maxAttachments)fail("FILE_CAPACITY");
   return Object.freeze({id:selected.id,file:selected.file,role:selected.role,...(selected.attachmentRole!==undefined?{attachmentRole:selected.attachmentRole}:{}),...(selected.description!==undefined?{description:selected.description}:{})});
  });
- roles(files.map(file=>({...file,mime:composerFileMime(file.file),size:file.file.size})),draft.kind);
+ roles(files.map(file=>({...file,mime:composerFileMime(file.file),size:file.file.size})),draft.kind,!!protectedOriginal,content.collection?.gateAudioPlayback);
  if(draft.longForm.length>capacity.maxTextCharacters)fail("TEXT_CAPACITY");
- return Object.freeze({...content,files:Object.freeze(files)});
+ return Object.freeze({...content,files:Object.freeze(files),...(protectedOriginal?{protectedOriginal}:{})});
+}
+function contentFile(raw:unknown):ComposerAssetFile{
+ const f=record(raw);if(Object.keys(f).some(key=>!["id","role","attachmentRole","description","name","mime","size","sha256","bytes"].includes(key))||!text(f.name,240)||!f.name||/[\/\\]/u.test(f.name)||typeof f.sha256!=="string"||! /^[a-f0-9]{64}$/u.test(f.sha256))fail("CONTENT_FILE_INVALID");
+ const bytes=parseExactByteBlockReference(f.bytes);if(bytes.contentByteLength!==f.size)fail("CONTENT_FILE_INVALID");
+ return Object.freeze({...f,bytes}) as ComposerAssetFile;
+}
+function protectedContent(input:unknown,kind:ComposerMediaKind):ComposerProtectedOriginal|undefined{
+ if(input===undefined)return;
+ const value=record(input);if(Object.keys(value).sort().join('|')!=="file|profileIdentity"||kind==="moment")fail("PROTECTED_ORIGINAL_INVALID");
+ const file=contentFile(value.file),fields=Object.keys(record(value.file)).sort().join('|');
+ if(fields!=="bytes|id|mime|name|role|sha256|size"||file.id!=="protected-original"||file.role!=="primary"||composerMediaKind(file.mime)!==kind||!Number.isSafeInteger(file.size)||file.size<1||file.size>(readComposerCapacity().maxPrimaryBytes[kind]??0))fail("PROTECTED_ORIGINAL_FILE_INVALID");
+ roles([file],kind);
+ return Object.freeze({profileIdentity:protectedProfileIdentity(value.profileIdentity),file});
 }
 /** Called only after the enclosing canonical source passed verification. Block
  * addresses locate committed bytes; they never provide ownership/admission. */
 export function readComposerAssetContent(input:unknown,ownerReceizId:string|null):ComposerAssetContent{
- const v=record(input),allowed=["schema","ownerReceizId","title","description","kind","longForm","files","music","book","definition","nativeAsset"];
+ const v=record(input),allowed=["schema","ownerReceizId","title","description","kind","longForm","files","music","book","definition","nativeAsset","collection","protectedOriginal"];
  if(v.schema!=="receiz.bank.asset-content.v2"||v.ownerReceizId!==ownerReceizId||!ownerReceizId||Object.keys(v).some(key=>!allowed.includes(key))||!Array.isArray(v.files))fail("CONTENT_INVALID");
  if(v.files.length>202)throw new ImportedProofSourceUnavailableError("COMPOSER_FILE_COUNT_CAPACITY","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
  const content=fields(v as unknown as ComposerAssetContent);
- const files=v.files.map(raw=>{const f=record(raw);if(Object.keys(f).some(key=>!["id","role","attachmentRole","description","name","mime","size","sha256","bytes"].includes(key))||!text(f.name,240)||!f.name||/[\/\\]/u.test(f.name)||typeof f.sha256!=="string"||! /^[a-f0-9]{64}$/u.test(f.sha256))fail("CONTENT_FILE_INVALID");
-  const bytes=parseExactByteBlockReference(f.bytes);if(bytes.contentByteLength!==f.size)fail("CONTENT_FILE_INVALID");
-  return Object.freeze({...f,bytes}) as ComposerAssetFile;
- });
- roles(files,content.kind);
+ const files=v.files.map(contentFile),protectedOriginal=protectedContent(v.protectedOriginal,content.kind);
+ if(protectedOriginal&&files.some(file=>file.id===protectedOriginal.file.id||file.sha256===protectedOriginal.file.sha256||file.bytes.sha256===protectedOriginal.file.bytes.sha256))fail("PROTECTED_ORIGINAL_PUBLIC_ALIAS");
+ roles(files,content.kind,!!protectedOriginal,content.collection?.gateAudioPlayback);
  let nativeAsset:ComposerNativeAssetBinding|undefined;
  if(v.nativeAsset!==undefined){const binding=record(v.nativeAsset);if(Object.keys(binding).sort().join('|')!=='authoredSource|publicCertificateB64u|publicCertificateSha256'||typeof binding.publicCertificateB64u!=='string'||binding.publicCertificateB64u.length>11*1024*1024||!/^[A-Za-z0-9_-]+$/.test(binding.publicCertificateB64u)||typeof binding.publicCertificateSha256!=='string'||!/^[a-f0-9]{64}$/.test(binding.publicCertificateSha256))fail('NATIVE_ASSET_BINDING_INVALID');nativeAsset=Object.freeze({...binding,authoredSource:parseImportedProofSourceReference(binding.authoredSource as ImportedProofSourceReference)}) as ComposerNativeAssetBinding;}
- return Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId,...content,files:Object.freeze(files),...(nativeAsset?{nativeAsset}:{})});
+ return Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId,...content,files:Object.freeze(files),...(protectedOriginal?{protectedOriginal}:{}),...(nativeAsset?{nativeAsset}:{})});
 }

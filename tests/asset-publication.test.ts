@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {createAssetPublication, type AssetPublicationState} from '../src/receiz/asset-publication';
+import {createAssetPublication,readAssetPublicationState, type AssetPublicationState} from '../src/receiz/asset-publication';
 
 const owner='owner.receiz.id', digest='a'.repeat(64), intent={definition:{name:'Original',symbol:'ORG',units:'1',description:'Exact original',linkedProofDigest:null},moment:{text:'Long form stays complete',files:[{filename:'song.wav',bytesB64u:'AQID'}]}};
 function fixture(failureCode='LOST_RESPONSE'){
@@ -22,10 +22,10 @@ it('reuses retained exact bytes after a lost public response without sealing ano
  expect(f.seals).toBe(1);expect(f.publications).toBe(2);
  expect((await f.api.create(intent)).publication.status).toBe('published');expect(f.publications).toBe(2);
 });
-it('does not seal a different intent while the previous original awaits publication',async()=>{
+it('refuses a sealer that collapses different intents onto the same exact Original',async()=>{
  const f=fixture();f.fail=true;await f.api.create(intent);
- await expect(f.api.create({...intent,moment:{text:'Different original'}})).rejects.toThrow('BANK_ASSET_PUBLICATION_PENDING');
- expect(f.seals).toBe(1);expect(f.publications).toBe(1);
+ await expect(f.api.create({...intent,moment:{text:'Different original'}})).rejects.toThrow('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');
+ expect(f.seals).toBe(2);expect(f.publications).toBe(1);expect(f.state?.sourceDigest).toBe(digest);
 });
 it('refuses stale account access before creating or delivering any original',async()=>{
  const f=fixture();f.closed=true;await expect(f.api.create(intent)).rejects.toThrow('CLOSED');expect(f.seals).toBe(0);expect(f.publications).toBe(0);
@@ -93,10 +93,11 @@ it('does not drop native PBI or dismissal when an older unsigned delivery finish
  finish({status:'pending',code:'OLD_DELIVERY_REPLY'});await api.resume();expect(state).toMatchObject({pbiReceiptHash:'e'.repeat(64),creationDismissed:true});expect(await api.pending()).toBeNull();
 });
 
-it('reconciles only the exact completed predecessor during explicit Create before admitting the next intent',async()=>{
+it('retains the exact signed predecessor independently while delivering the next intent',async()=>{
  const {retainAssetCreationSignature}=await import('../src/receiz/asset-publication');let state:AssetPublicationState|null=null,seals=0,publishes=0,fail=true;const files=new Map<string,File>();
  const ports={ownerReceizId:owner,assertOpen(){},lock:async<T>(run:()=>Promise<T>)=>run(),read:async()=>state,write:async(next:AssetPublicationState)=>{state=structuredClone(next);}};
  const api=createAssetPublication({...ports,seal:async intent=>{seals++;return new File([JSON.stringify(intent)],'source.receizbundle');},retain:async file=>{const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer()))].map(v=>v.toString(16).padStart(2,'0')).join('');files.set(hash,file);return hash;},restore:async digest=>files.get(digest)!,readIntent:async file=>JSON.parse(await file.text()),publish:async()=>{publishes++;if(fail)throw Error('OLD_ACK_UNAVAILABLE');return{status:'published',artifactDigest:'b'.repeat(64),operationCount:1,visibleChildCount:1};}});
  const first=await api.create({title:'First'});await retainAssetCreationSignature(ports,first.digest,'e'.repeat(64));expect(await api.pending()).toBeNull();expect(publishes).toBe(1);
- fail=false;const second=await api.create({title:'Second'});expect(second.digest).not.toBe(first.digest);expect(seals).toBe(2);expect(publishes).toBe(3);expect(state).not.toHaveProperty('pbiReceiptHash');expect(state).not.toHaveProperty('creationDismissed');
+ fail=false;const second=await api.create({title:'Second'});expect(second.digest).not.toBe(first.digest);expect(seals).toBe(2);expect(publishes).toBe(2);expect(state).not.toHaveProperty('pbiReceiptHash');expect(state).not.toHaveProperty('creationDismissed');
+ expect(readAssetPublicationState(state,owner)?.pendingSources).toMatchObject([{sourceDigest:first.digest,pbiReceiptHash:'e'.repeat(64),status:'pending'}]);
 });

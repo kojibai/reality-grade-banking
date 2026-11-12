@@ -530,8 +530,9 @@ async function realizeVerifiedMaterial(
 
 function historicalMaterialRequestKey(
   locator: ProfileOriginalHistoricalMaterialLocator | null | undefined,
+  includeSourceWithoutUpload = false,
 ): string | null {
-  if (!locator?.original.media) return null;
+  if (!locator || (!locator.original.media && !includeSourceWithoutUpload)) return null;
   const username = locator.profileUsername.trim().normalize("NFC").toLowerCase();
   const originalId = locator.original.id.trim();
   if (
@@ -556,8 +557,11 @@ function importedMaterialResource(original: ProfileOriginal, source: { exactArti
  * and live-player resource projection before the Original becomes visible. */
 export function retainImportedProfileOriginalMaterial(original: ProfileOriginal, username: string, source: OpenedImportedProofSource): void {
   requireOpenedImportedProofSource(source);
-  const key = historicalMaterialRequestKey({ original, profileUsername: username });
+  const key = historicalMaterialRequestKey({ original, profileUsername: username }, true);
   if (!key || !original.importedSource || source.descriptor.artifactSha256 !== original.importedSource.reference.artifactSha256) throw new TypeError("IMPORTED_SOURCE_RESOURCE_BINDING_INVALID");
+  // A Moment retains its receipt/card and exact Source separately. No uploaded
+  // payload means no media-cache resource, not an invalid or missing Original.
+  if (!original.media) return;
   if (!historicalResources.has(key)) rememberHistoricalMaterial(key, importedMaterialResource(original, {
     exactArtifact: source.exactArtifact, payload: source.payload, payloadFilename: source.projection.payloadFilename, payloadMimeType: source.projection.payloadMimeType,
   }));

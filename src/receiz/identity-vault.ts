@@ -650,11 +650,12 @@ export const loadAssetPublicationState = (binding:{artifactSha256:string}) => lo
 export const saveAssetPublicationState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'asset-publication',value,expected);
 
 /** Immutable encrypted byte custody; digest references never replace SDK admission. */
-export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {
+type PrivateByteFamily = 'offline-note-source' | 'composer-original-source';
+async function savePrivateByteBlob(family: PrivateByteFamily, binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {
   const bytes = new Uint8Array(input); if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('BANK_NOTE_DEVICE_CAPACITY');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-note-source|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, bytes), db = await database();
   try { await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(['identity', 'operations'], 'readwrite'), read = tx.objectStore('identity').get('current'), sources = tx.objectStore('operations');
@@ -662,16 +663,30 @@ export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, i
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('BANK_NOTE_IDENTITY_CHANGED'));
   }); } finally { db.close(); } return digest;
 }
-export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
+async function loadPrivateByteBlob(family: PrivateByteFamily, binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
   if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error('BANK_NOTE_SOURCE_REFERENCE_INVALID');
   const saved = await held(); if (!saved) throw new Error('BANK_NOTE_IDENTITY_UNAVAILABLE'); await sameSavedIdentity(saved, binding);
-  const key = `offline-note-source|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, db = await database();
+  const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, db = await database();
   let row: PrivateBankOperation | undefined;
   try { row = await new Promise((resolve, reject) => { const r = db.transaction('operations').objectStore('operations').get(key); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); } finally { db.close(); }
   if (!row) throw new Error('BANK_NOTE_EXACT_SOURCE_UNAVAILABLE');
   const bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(row.iv), additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, row.bytes));
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
   if (hash !== digest) throw new Error('BANK_NOTE_EXACT_SOURCE_MISMATCH'); return bytes;
+}
+export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {
+  return savePrivateByteBlob('offline-note-source', binding, input);
+}
+export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
+  return loadPrivateByteBlob('offline-note-source', binding, digest);
+}
+/** Exact composer blocks use the same owner-encrypted byte servant. This
+ * separate role grants no proof admission, Note custody or financial input. */
+export async function saveComposerOriginalBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {
+  return savePrivateByteBlob('composer-original-source', binding, input);
+}
+export async function loadComposerOriginalBlob(binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
+  return loadPrivateByteBlob('composer-original-source', binding, digest);
 }
 
 /** Portable proof evidence is retained separately from live execution/note
