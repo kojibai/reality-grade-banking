@@ -25,3 +25,30 @@ it.each(['history','shareHistory'] as const)('refuses a mismatched prior %s inst
  const values=await input();values[key]={...values[key],basisSha256:'f'.repeat(64)};
  await expect(buildMembershipOnlyPublicMarketState(values)).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
 });
+
+it('adopts new Originals and newly received quote observations through their existing separate history transitions',async()=>{
+ const values=await input(),old=parsePublicMarket(values.previous,values.previous.snapshot).items[0],inventory=old.shareInventory!;
+ const at=(value:number)=>String(BigInt(value)*1000000n),capture={kaiUPulse:at(pulse-2),unitPriceUsdCents:'100',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'1000000'};
+ const heldInventory={...inventory,observedAtKaiUPulse:capture.kaiUPulse,outstandingShareQuantityMicro:capture.outstandingShareQuantityMicro,availableShareQuantityMicro:capture.availableShareQuantityMicro,capitalizationHistory:[capture]};
+ values.previous.snapshot.data.liveMarkets=[{itemId:old.id,visibility:'public',priceUsd:100,shareInventory:heldInventory}];
+ const prior=parsePublicMarket(values.previous,values.previous.snapshot),source=values.capitalization.marketCapProjection;
+ values.history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:prior,pulse}))!;
+ values.shareHistory=(await buildMarketHistory(source,null,undefined,undefined,{catalog:prior,pulse,capitalization:true}))!;
+ const arrived={...heldInventory,observedAtKaiUPulse:at(pulse+2),availableShareQuantityMicro:'2000000',capitalizationHistory:[capture,{...capture,kaiUPulse:at(pulse-1),unitPriceUsdCents:'115',availableShareQuantityMicro:'2000000'},{...capture,kaiUPulse:at(pulse+2),unitPriceUsdCents:'130',availableShareQuantityMicro:'2000000'}]};
+ values.snapshot.data.liveMarkets.push({itemId:old.id,visibility:'public',priceUsd:130,shareInventory:arrived});
+ const fetch=vi.fn(()=>{throw Error('Unexpected Source read');});vi.stubGlobal('fetch',fetch);
+ const result=await buildMembershipOnlyPublicMarketState(values),catalog=parsePublicMarket(result.source,result.source.snapshot),shares=parseMarketHistory(result.shareHistory);
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog,pulse:shares.summary.serverPulse,capitalization:true}))!;
+ const {globalMarketCapitalizationInputs,prepareGlobalShareCapitalization}=await import('../src/receiz/market-projection/global-share-capitalization'),{currentMarketDisplayModel}=await import('../src/receiz/market-projection/catalog-source');
+ const scoped=globalMarketCapitalizationInputs(source,catalog),exact=prepareGlobalShareCapitalization(currentMarketDisplayModel(scoped.source,scoped.catalog,shares.summary.serverPulse),catalog);
+ expect(catalog.items).toHaveLength(2);expect(shares.summary).toEqual(full.summary);
+ for(const points of Object.values(shares.series))for(const point of points)expect(point.usdCents).toBe(exact.at(point.pulse));
+ const added=catalog.items.find(item=>item.id!==old.id)!,nextPulse=shares.summary.serverPulse+1;
+ const nextRow={id:'profile:someone:next',receizId:'next-asset',title:'Next Original',pulse:String(nextPulse),livePulseSeed:{...added.livePulseSeed!,claimPulse:nextPulse},profileOriginal:{hasPbiSignature:true}};
+ const nextInventory={...added.shareInventory!,marketItemId:nextRow.id,assetId:nextRow.receizId,observedAtKaiUPulse:at(nextPulse+1),releaseCapitalization:{...added.shareInventory!.releaseCapitalization!,kaiUPulse:at(nextPulse)},history:undefined,capitalizationHistory:undefined};
+ const nextMembership={...values.membership,transport:{...values.membership.transport,publicMembership:{...values.membership.transport.publicMembership,itemCount:3,revision:'3'},publicOriginals:[nextRow,...values.membership.transport.publicOriginals]}};
+ const reopened=await buildMembershipOnlyPublicMarketState({...values,previous:JSON.parse(JSON.stringify(result.source)),history:JSON.parse(JSON.stringify(result.history)),shareHistory:JSON.parse(JSON.stringify(result.shareHistory)),membership:nextMembership,snapshot:{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[...result.source.snapshot.data.liveMarkets,{itemId:nextRow.id,visibility:'public',priceUsd:100,shareInventory:nextInventory}]}}});
+ expect(parsePublicMarket(reopened.source,reopened.source.snapshot).items).toHaveLength(3);
+ const retained=new Map(Object.values(shares.series).flat().map(point=>[point.pulse,point.usdCents]));for(const points of Object.values(parseMarketHistory(reopened.shareHistory).series))for(const point of points)if(retained.has(point.pulse))expect(point.usdCents).toBe(retained.get(point.pulse));
+ expect(fetch).not.toHaveBeenCalled();
+});

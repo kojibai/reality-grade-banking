@@ -263,6 +263,18 @@ function carriedTextSize(document,id,count){
  assert.ok(match);const items=JSON.parse(match[1]);assert.equal(items.length,count,'The existing first-paint item count is preserved.');
  return items.reduce((size,item)=>{assert.deepEqual(item.carriedText,staticItems.get(item.id)?.carriedText,'First-paint text is the complete selected Original text.');return size+(item.carriedText?JSON.stringify(item.carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026').length:0);},0);
 }
+function carriedNavigationTextSize(document){
+ const raw=document.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1];assert.ok(raw);
+ const navigation=JSON.parse(raw),expand=value=>Array.isArray(value)?value.map(part=>typeof part==='number'?navigation.styles[part]:part).join(''):value;
+ const content=expand(navigation.pages['/feed/'].content),match=content.match(/<script id="public-feed-seed" type="application\/json">([\s\S]*?)<\/script>/);assert.ok(match);
+ const items=JSON.parse(match[1]);assert.equal(items.length,1,'Discover keeps the existing single-row Feed navigation carrier.');
+ return items.reduce((size,item)=>{
+  assert.deepEqual(item.carriedText,staticItems.get(item.id)?.carriedText,'Navigation retains the exact complete Original text.');if(!item.carriedText)return size;
+  const text=JSON.stringify(item.carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026'),encoded=JSON.stringify(text).slice(1,-1);
+  assert.equal(raw.split(encoded).length-1,1,'The complete navigation text is serialized once, not duplicated.');
+  return size+encoded.length;
+ },0);
+}
 assert.ok(feedDocument.length-carriedTextSize(feedDocument,'public-feed-seed',8)<600000,'The dedicated feed interface and non-text payload stay under 600 kB uncompressed.');
 const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
@@ -275,4 +287,4 @@ assert.ok(discoveryOpening.includes('data-public-runtime="discover"')&&discovery
 assert.ok(discoveryOpening.includes('<style data-public-page-style="discover">')&&!/<link rel="stylesheet"/.test(discoveryOpening),'Discovery does not wait for a stylesheet.');
 assert.ok(/<script type="module" async[^>]*src="\/assets\/discover-/.test(discoveryDocument),'Discovery hydrates before unrelated document payload.');
 assert.ok(!discoveryOpening.includes('site-footer')&&!discoveryOpening.includes('account-opening-screen'),'Discovery starts with works, without footer or account work.');
-assert.ok(discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)<700000,'Discovery interface and non-text payload remain below 700 kB uncompressed.');
+assert.ok(discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)-carriedNavigationTextSize(discoveryDocument)<700000,'Discovery interface and non-text payload remain below 700 kB uncompressed.');
