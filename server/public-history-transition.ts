@@ -1,3 +1,5 @@
+import {parsePublicMarket} from '../src/receiz/public-market.js';
+import {mergePublicSports} from '../src/receiz/public-sports.js';
 import {prepareSelectedPublicReferenceCatalog} from './public-reference-state.js';
 import {createPublicMaterialWindowReader} from './public-material-window.js';
 import {readPublicReferencePricing} from './public-reference-pricing.js';
@@ -17,7 +19,12 @@ export type PublicHistoryTransitionResult={schema:'bank.public-market.history-tr
  * eliminates old history bodies from the returned storage transition. */
 export async function preparePublicHistoryTransition(input:PublicHistoryTransitionInput):Promise<PublicHistoryTransitionResult>{
  const {previousGeneration,currentGeneration,asOfPulse}=input.historyTransition;
- const current=await prepareSelectedPublicReferenceCatalog({material:input.currentMaterial,generation:currentGeneration,readPart:input.readPart}),priorReader=createPublicMaterialWindowReader({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPreviousPart??input.readPart});
+ const currentReader=createPublicMaterialWindowReader({material:input.currentMaterial,generation:currentGeneration,readPart:input.readPart}),priorReader=createPublicMaterialWindowReader({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPreviousPart??input.readPart});
+ // The selected numeric checkpoint already carries every calculator operand.
+ // Opening Original content and profile headers here repeats unrelated work.
+ const current=currentReader.root.history.pricing?{reader:currentReader,catalog:await readPublicReferencePricing(currentReader,
+  currentReader.root.sports?mergePublicSports(parsePublicMarket({ok:true,transport:{publicOriginals:[]}}),await currentReader.readPart(currentReader.root.sports)):{items:[]},currentReader.root.sports,{currentMembership:true})
+ }:await prepareSelectedPublicReferenceCatalog({material:input.currentMaterial,generation:currentGeneration,readPart:input.readPart});
  const priorCatalog=priorReader.root.history.pricing?await readPublicReferencePricing(priorReader,current.catalog,current.reader.root.sports):(await prepareSelectedPublicReferenceCatalog({material:input.previousMaterial,generation:previousGeneration,readPart:input.readPreviousPart??input.readPart})).catalog;
  if(current.reader.root.selectionKey!==input.selectionKey||current.reader.root.marketPrepared.asOfPulse!==asOfPulse)throw Error('PUBLIC_HISTORY_TRANSITION_SELECTION_INVALID');
  const previous=await readPublicReferenceHistory(priorReader),generation=current.reader.root.capitalization;
