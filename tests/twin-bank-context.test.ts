@@ -9,7 +9,7 @@ it('distinguishes repeated transfer titles using the held amount and moment with
  const first={id:'one',source:'wallet',title:'chat transfer',kind:'chat_transfer',time:'2026-10-19T12:00:00Z',amountUsdCents:'100',evidence:{}} as PublicRecord;
  const second={...first,id:'two',time:'2026-10-18T12:00:00Z',amountUsdCents:'200'};
  const records=bankTwinContextRecords([first,second]);
- expect(records[0].title).toContain('Money Transfer');expect(records[0].title).toContain('$1.00');
+ expect(records[0].title).toContain('Money Transfer');expect(records[0].title).toContain('$1.00');expect(records[0].text).toContain('bank-record:one');
  expect(records[1].title).toContain('$2.00');expect(records[0].title).not.toBe(records[1].title);
  expect(records[0].title).toMatch(/Oct|10/);expect(Object.keys(records[0]).sort()).toEqual(['id','text','title']);
 });

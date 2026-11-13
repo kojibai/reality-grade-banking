@@ -2,6 +2,27 @@ import {expect,it,vi} from 'vitest';
 import {createPublicBookingConversation,createPublicBookingRequest} from '../src/receiz/public-booking-conversation';
 function stream(events:unknown[]){return new Response(events.map(value=>'data: '+JSON.stringify(value)+'\n\n').join(''),{headers:{'content-type':'text/event-stream'}});}
 function accepted(payload:any,extra={}){return{type:'reply_done',world:{username:'alice'},assistantMessage:{id:payload.clientAssistantMessageId},reply:{message:'Native review',memory:[{id:payload.clientUserMessageId,role:'user',body:payload.message},{id:payload.clientAssistantMessageId,role:'assistant',body:'Native review'}],bookingProposal:{slotStartAt:'2026-11-01T15:00:00Z'},bookingConfirmation:null,...extra}};}
+it('keeps interrupted booking text visible during an exact retry and does not duplicate replayed deltas',async()=>{
+ let wire!:ReadableStreamDefaultController<Uint8Array>,payload:any,calls=0;
+ const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams(),request:async(_url,init)=>{payload=JSON.parse(String(init?.body));if(++calls===1)return stream([{type:'reply_delta',messageId:payload.clientAssistantMessageId,delta:'Checking Tuesday'}]);return new Response(new ReadableStream<Uint8Array>({start(value){wire=value;}}),{headers:{'content-type':'text/event-stream'}});}});
+ controller.setDraft('Tuesday?');await controller.send();const retry=controller.retry();
+ expect(controller.known().messages.at(-1)?.body).toBe('Checking Tuesday');
+ await vi.waitFor(()=>expect(wire).toBeDefined());
+ wire.enqueue(new TextEncoder().encode('data: '+JSON.stringify({type:'reply_delta',messageId:payload.clientAssistantMessageId,delta:'Checking '})+'\n\n'));
+ await vi.waitFor(()=>expect(controller.known().messages.at(-1)?.status).toBe('streaming'));
+ expect(controller.known().messages.at(-1)?.body).toBe('Checking Tuesday');
+ wire.enqueue(new TextEncoder().encode('data: '+JSON.stringify(accepted(payload,{message:'Checking Tuesday for you.'}))+'\n\n'));wire.close();await retry;
+ expect(controller.known().messages.at(-1)?.body).toBe('Checking Tuesday for you.');
+});
+it('shows source-bound preview text immediately while keeping booking effects provisional',async()=>{
+ let wire!:ReadableStreamDefaultController<Uint8Array>,payload:any;
+ const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams(),request:async(_url,init)=>{payload=JSON.parse(String(init?.body));return new Response(new ReadableStream<Uint8Array>({start(value){wire=value;}}),{headers:{'content-type':'text/event-stream'}});}});
+ controller.setDraft('Tuesday?');const task=controller.send();await vi.waitFor(()=>expect(wire).toBeDefined());
+ wire.enqueue(new TextEncoder().encode('data: '+JSON.stringify({type:'reply_preview',messageId:payload.clientAssistantMessageId,message:'Tuesday at 3 works.'})+'\n\n'));
+ await vi.waitFor(()=>expect(controller.known().messages.at(-1)?.body).toBe('Tuesday at 3 works.'));
+ expect(controller.known().lastAcceptedOperationId).toBeNull();expect(controller.known().bookingConfirmation).toBeNull();
+ wire.enqueue(new TextEncoder().encode('data: '+JSON.stringify(accepted(payload,{message:'Tuesday at 3 works.'}))+'\n\n'));wire.close();await task;
+});
 it('opens without any request and retains an exact interrupted operation tuple for retry, then links only accepted parent',async()=>{
  const calls:any[]=[];const request:typeof fetch=async(url,init)=>{const body=JSON.parse(String(init?.body));calls.push({url,body});return calls.length===1?stream([{type:'reply_delta',messageId:body.clientAssistantMessageId,delta:'Provisional'}]):stream([accepted(body)]);};
  const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams('slotMinutes=30'),request});expect(calls).toHaveLength(0);expect(controller.known().messages).toEqual([]);controller.setDraft('Tuesday please');await controller.send();const pending=controller.known().pending;expect(pending).not.toBeNull();expect(controller.known().lastAcceptedOperationId).toBeNull();expect(controller.known().messages.at(-1)?.status).toBe('interrupted');controller.setDraft('Different draft');await controller.send();expect(calls).toHaveLength(1);await controller.retry();expect(calls[1].body).toEqual(calls[0].body);expect(controller.known().pending).toBeNull();expect(controller.known().draft).toBe('Different draft');expect(controller.known().messages).toHaveLength(2);expect(controller.known().messages.at(-1)?.id).toBe(pending?.clientAssistantMessageId);await controller.send();expect(calls[2].body.replyToOperationId).toBe(pending?.clientOperationId);expect(calls[2].body.clientOperationId).not.toBe(pending?.clientOperationId);expect(String(calls[0].url)).toBe('/api/bank/booking/alice/conversation?slotMinutes=30');

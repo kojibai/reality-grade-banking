@@ -6,6 +6,11 @@ const operation={message:'Tuesday please',clientOperationId:'operation-12345',qu
 function req(path='/api/bank/booking/alice/conversation',body:unknown=operation,headers:Record<string,string>={}) {return new Request('https://bankeiz.com'+path,{method:'POST',headers:{Origin:'https://bankeiz.com',Cookie:cookie,'Content-Type':'application/json',...headers},body:JSON.stringify(body)});}
 function sse(value:unknown){return new Response('data: '+JSON.stringify(value)+'\n\n',{headers:{'Content-Type':'text/event-stream'}});}
 const reply=(username='alice',extra={})=>({type:'reply_done',world:{username},assistantMessage:{id:operation.clientAssistantMessageId},reply:{message:'Which time?',memory:[],bookingConfirmation:null,...extra}});
+it('forwards native preview text before settlement without carrying performance or inventing confirmation',async()=>{
+ const native=sse({type:'reply_preview',messageId:operation.clientAssistantMessageId,message:'Tuesday is available.',performance:{voiceBase64:'x'.repeat(10000)}});
+ const response=await handlePublicBookingConversation(req(),{fetch:async()=>native}),body=await response.text();
+ expect(body).toContain('Tuesday is available.');expect(body).not.toContain('voiceBase64');expect(body).not.toContain('reply_done');expect(body).toContain('RECEIZ_RESULT_UNCONFIRMED');
+});
 it('the one calendar GET establishes public continuity without a World/welcome read and dispatches through Bank API',async()=>{
  const calls:Array<[string,RequestInit|undefined]>=[];vi.stubGlobal('fetch',async(url:unknown,init?:RequestInit)=>{calls.push([String(url),init]);return Response.json({ok:true,owner:{username:'alice'},slots:[]});});
  try{const response=await handleBankApi(new Request('https://bankeiz.com/api/bank/booking/alice?slotMinutes=30&owner=forged'));expect(response.status).toBe(200);expect(response.headers.get('set-cookie')).toMatch(/receiz_world_visitor=guest_[^;]+;.*HttpOnly.*Secure/);expect(calls).toHaveLength(1);expect(calls[0][0]).toBe('https://receiz.com/api/calendar/embed/alice?slotMinutes=30');expect(new Headers(calls[0][1]?.headers).get('cookie')).toMatch(/^receiz_world_visitor=guest_/);}finally{vi.unstubAllGlobals();}

@@ -39,7 +39,7 @@ function nativeMemory(memory,payload,reply){
 async function readReply(response,payload){
  if(!response.ok||!response.headers.get('content-type')?.includes('text/event-stream'))return response.json();
  if(!response.body)throw Error('EMPTY_STREAM');
- const reader=response.body.getReader(),decoder=new TextDecoder(),replyRow=state.messages.find(row=>row.key===payload.clientOperationId);let buffer='',result=null;
+ const reader=response.body.getReader(),decoder=new TextDecoder(),replyRow=state.messages.find(row=>row.key===payload.clientOperationId);let buffer='',result=null,streamed='';
  const consume=frame=>{
   const data=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
   const event=JSON.parse(data);
@@ -47,7 +47,9 @@ async function readReply(response,payload){
   if(['reply_start','reply_delta','reply_preview'].includes(event.type)&&event.messageId!==payload.clientOperationId)throw Error('SOURCE_MISMATCH');
   if(event.type==='reply_delta'){
    if(result||typeof event.delta!=='string')throw Error('INVALID_STREAM');
-   replyRow.body+=event.delta;replyRow.status='streaming';publishDelta(replyRow);
+   streamed+=event.delta;if(streamed.length>2000000)throw Error('INVALID_STREAM');replyRow.body=replyRow.body.startsWith(streamed)?replyRow.body:streamed;replyRow.status='streaming';publishDelta(replyRow);
+  }else if(event.type==='reply_preview'){
+   if(result||typeof event.message!=='string'||event.message.length>2000000)throw Error('INVALID_STREAM');replyRow.body=replyRow.body.startsWith(event.message)?replyRow.body:event.message;replyRow.status='streaming';publishDelta(replyRow);
   }else if(event.type==='reply_done'){
    if(result||event.world?.username!=='bjklock'||typeof event.reply?.message!=='string'||event.assistantMessage?.id&&event.assistantMessage.id!==payload.clientOperationId)throw Error('SOURCE_MISMATCH');
    result={...event,ok:true};
@@ -73,7 +75,7 @@ async function send(payload){
   const own=state.messages.find(row=>row.key==='local:'+payload.clientOperationId);if(own&&own.status!=='accepted')own.status='submitted';
   let row=state.messages.find(row=>row.key===payload.clientOperationId);
   if(!row){row={id:payload.clientOperationId,key:payload.clientOperationId,role:'assistant'};state.messages.push(row);}
-  row.body='';row.status='pending';state.active=payload.clientOperationId;
+  row.body??='';row.status='pending';state.active=payload.clientOperationId;
   if(state.draft.trim()===payload.message)state.draft='';state.notice='';
  }else state.notice='Confirming this time with Receiz…';
  publish(payload.action==='message');

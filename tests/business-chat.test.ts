@@ -1,5 +1,21 @@
 import {expect,it,vi} from 'vitest';
 import {createBusinessChat} from '../src/receiz/business-chat';
+it('keeps each concurrent seal and publish workflow bound to its exact Original',async()=>{
+ let release!:()=>void,retaining!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;}),started=new Promise<void>(resolve=>{retaining=resolve;}),a=new File(['A'],'A.receiz'),b=new File(['B'],'B.receiz'),publish=vi.fn(async(_source:File)=>({status:'published'}));
+ const chat=createBusinessChat({accountUid:'owner',assertOpen(){},profile:async()=>({sealObject:async(draft:{title:string})=>({original:draft.title==='A'?a:b,view:{title:draft.title}}),publishObject:publish}) as never,retainOriginal:async file=>{if(file===a){retaining();await gate;}},setup:async()=>({}) as never,dns:async()=>({}) as never});
+ const seal=(title:string)=>({tool:'business_seal_object',args:{title,description:title,longForm:title,kind:'moment'}});
+ const first=chat.execute('concurrent-A',[seal('A'),{tool:'business_publish_object',args:{}}]);await started;
+ await chat.execute('concurrent-B',[seal('B')]);release();await first;
+ expect(publish).toHaveBeenCalledExactlyOnceWith(a);
+ await chat.execute('publish-latest',[{tool:'business_publish_object',args:{}}]);expect(publish.mock.calls.at(-1)?.[0]).toBe(b);
+});
+it('keeps the latest submitted seal selected when older work reaches its seal later',async()=>{
+ let release!:()=>void,started!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;}),waiting=new Promise<void>(resolve=>{started=resolve;}),a=new File(['A'],'A.receiz'),b=new File(['B'],'B.receiz'),publish=vi.fn(async(_source:File)=>({status:'published'}));
+ const chat=createBusinessChat({accountUid:'owner',assertOpen(){},profile:async()=>({updateProfile:async()=>{started();await gate;return{profilePath:'/owner'};},sealObject:async(draft:{title:string})=>({original:draft.title==='A'?a:b,view:{title:draft.title}}),publishObject:publish}) as never,setup:async()=>({}) as never,dns:async()=>({}) as never});
+ const seal=(title:string)=>({tool:'business_seal_object',args:{title,description:title,longForm:title,kind:'moment'}});
+ const first=chat.execute('workflow-A',[{tool:'business_update_profile',args:{patch:{bio:'A'}}},seal('A')]);await waiting;await chat.execute('workflow-B',[seal('B')]);release();await first;
+ await chat.execute('publish-latest',[{tool:'business_publish_object',args:{}}]);expect(publish).toHaveBeenCalledExactlyOnceWith(b);
+});
 it('runs an actual profile update once per retained native response and returns a concise confirmed receipt',async()=>{const update=vi.fn(async()=>({accountUid:'owner',profilePath:'/owner',profile:{}}));const chat=createBusinessChat({accountUid:'owner',assertOpen(){},profile:async()=>({updateProfile:update}) as never,setup:async()=>({execute:vi.fn()}) as never,dns:async()=>({}) as never});const action={tool:'business_update_profile',args:{patch:{bio:'My work'}}};const one=await chat.execute('response-1',[action]),two=await chat.execute('response-1',[action]);expect(one).toEqual(two);expect(one[0]).toMatchObject({status:'accepted',title:'Profile saved'});expect(update).toHaveBeenCalledOnce();});
 it('never supplies fake files, crosses identity or executes unknown tool names',async()=>{const profile=vi.fn();let open=true;const chat=createBusinessChat({accountUid:'owner',assertOpen(){if(!open)throw Error('closed');},profile,setup:async()=>({}) as never,dns:async()=>({}) as never});expect((await chat.execute('response-1',[{tool:'business_set_profile_image',args:{kind:'avatar'}}]))[0].status).toBe('needs-file');expect(profile).not.toHaveBeenCalled();expect((await chat.execute('response-2',[{tool:'pay',args:{}}]))[0].status).toBe('refused');open=false;await expect(chat.execute('response-3',[])).rejects.toThrow('closed');});
 it('an ambiguous result is retained without retrying the action',async()=>{const update=vi.fn(async()=>{throw Error('lost response');});const chat=createBusinessChat({accountUid:'owner',assertOpen(){},profile:async()=>({updateProfile:update}) as never,setup:async()=>({}) as never,dns:async()=>({}) as never});const action={tool:'business_update_profile',args:{patch:{bio:'My work'}}};expect((await chat.execute('result-1',[action]))[0].status).toBe('unknown');await chat.execute('result-1',[action]);expect(update).toHaveBeenCalledOnce();});

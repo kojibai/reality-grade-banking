@@ -16,6 +16,7 @@ it('explains the existing same-account Ledger without requesting a separate acco
  const result=await history.search({query:'studio',direction:'out'});
  expect(result.authority).toBe('authenticated-account-history');
  expect(result.transactions).toHaveLength(1);expect(result.transactions[0].description).toContain('Studio rent');
+ expect(result.transactions[0]).toMatchObject({recordLink:'bank-record:'+encodeURIComponent(result.transactions[0].recordId)});
  expect(result.coverage).toMatchObject({complete:false,hasMore:true,loadedRecordCount:2});
  expect(result).not.toHaveProperty('sourceDigest');expect(read).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled();
 });

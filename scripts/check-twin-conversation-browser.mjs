@@ -1,0 +1,32 @@
+import {chromium} from 'playwright';
+import {createServer} from 'vite';
+import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+const evidence=process.env.TWIN_CHAT_EVIDENCE??'/tmp/bankeiz-twin-chat-evidence';await mkdir(evidence,{recursive:true});
+const cache=await mkdtemp(join(tmpdir(),'bank-twin-chat-'));
+const server=await createServer({cacheDir:cache,server:{host:'127.0.0.1',port:5191,strictPort:false},optimizeDeps:{noDiscovery:true,include:['react','react-dom/client','lucide-react']}});await server.listen();const origin=server.resolvedUrls.local[0].replace(/\/$/,'');
+const browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});
+const results=[];const check=(condition,message)=>{if(!condition)throw Error(message);};
+try{for(const width of [390,1280]){
+ const page=await browser.newPage({viewport:{width,height:844},isMobile:width<600,hasTouch:width<600}),errors=[],external=[];
+ page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+ await page.route('**/*',route=>{if(new URL(route.request().url()).origin===origin)return route.continue();external.push(route.request().url());return route.abort();});
+ await page.goto(origin+'/tests/browser/twin-tool-conversation.html');await page.getByRole('textbox',{name:'Ask your agent…',exact:true}).waitFor();
+ const field=page.getByRole('textbox',{name:'Ask your agent…',exact:true}),send=page.getByRole('button',{name:'Ask your agent',exact:true}),turns=page.locator('.bank-twin-exchange');
+ const say=async text=>{await field.fill(text);await send.click();};
+ await say('Who owes me?');await page.waitForFunction(()=>window.twinToolFixture.moneyExecutions===1);await turns.nth(0).getByText('I’ll check your commitments.',{exact:true}).waitFor();
+ await say('Check my calendar too');await page.waitForFunction(()=>window.twinToolFixture.calendarExecutions===1);await say('Can we talk meanwhile?');await turns.nth(2).getByText('Yes, I’m here while those checks run.',{exact:true}).waitFor();
+ await field.fill('Keep my unsent draft');await page.evaluate(()=>window.twinToolFixture.finishCalendar());await turns.nth(1).getByText('You’re meeting Sam tomorrow.',{exact:true}).waitFor();
+ await page.evaluate(()=>window.twinToolFixture.finishMoney());await turns.nth(0).getByText('Acme owes you $125 for the project.',{exact:true}).waitFor();
+ check(await field.inputValue()==='Keep my unsent draft','Tool completion erased the draft');check(await turns.count()===3,'Duplicated human/tool turns');
+ check(JSON.stringify(await turns.locator('.bank-message-own').allTextContents())===JSON.stringify(['Who owes me?','Check my calendar too','Can we talk meanwhile?']),'Submission chronology changed');
+ await turns.nth(0).locator('details').waitFor();check(await turns.nth(0).locator('details').count()===1&&!await turns.nth(0).locator('details').getAttribute('open'),'Raw financial reads expanded');
+ await page.screenshot({path:join(evidence,'twin-'+width+'.png'),fullPage:true});
+ await say('Keep this interrupted reply');await page.getByRole('button',{name:'Check previous agent request'}).waitFor();check((await turns.nth(3).textContent()).includes('I’m still here'),'Interrupted reply disappeared');
+ const original=await page.evaluate(()=>window.twinToolFixture.requests.at(-1).requestId);await page.getByRole('button',{name:'Check previous agent request'}).click();
+ await page.waitForFunction(id=>window.twinToolFixture.requests.filter(row=>row.requestId===id).length===2,original);check(await turns.nth(3).getByText('I’m still here',{exact:true}).count()===1,'Retry duplicated or cleared its text');
+ await page.evaluate(()=>window.twinToolFixture.recover());await turns.nth(3).getByText('I’m still here. Your reply is recovered.',{exact:true}).waitFor();
+ const counts=await page.evaluate(()=>({money:window.twinToolFixture.moneyExecutions,calendar:window.twinToolFixture.calendarExecutions,overflow:document.documentElement.scrollWidth>innerWidth+1}));check(counts.money===1&&counts.calendar===1,'Tool work replayed');check(!counts.overflow,'Horizontal page overflow');check(!errors.length,'Browser errors: '+errors.join('\n'));check(!external.length,'External requests: '+external.join('\n'));
+ results.push({width,status:'pass',...counts});await page.close();console.log('PASS Twin',width,'parallel tools, follow-up replies, chronology, drafts, exact retry');
+}await writeFile(join(evidence,'results.json'),JSON.stringify(results,null,2));}finally{await browser.close();await server.close();await rm(cache,{recursive:true,force:true});}

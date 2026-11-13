@@ -7,7 +7,7 @@ import {formatMoney} from '../core/money';
 export function bankTwinContextRecords(records:readonly PublicRecord[]){
  const timeFormat=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
  const seen=new Set<string>();return records.filter(record=>{if(seen.has(record.id))return false;seen.add(record.id);return true;}).map(record=>{
-  const fields={authority:'Bank display projection; not independently verified by this conversation',kind:record.kind,occurredAt:record.time,kaiUPulse:record.kaiUpulse,pulse:record.pulse,recordedUsdCents:record.amountUsdCents,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,sourceCoordinates:record.evidence};
+  const fields={recordLink:'bank-record:'+encodeURIComponent(record.id),linkUsage:'You may cite this record inline as [a short descriptive label](recordLink). The app resolves only the exact held account record.',authority:'Bank display projection; not independently verified by this conversation',kind:record.kind,occurredAt:record.time,kaiUPulse:record.kaiUpulse,pulse:record.pulse,recordedUsdCents:record.amountUsdCents,sender:record.sender,recipient:record.recipient,sourceUrl:record.sourceUrl,sourceCoordinates:record.evidence};
   const base=JSON.stringify(fields);const funding=record.details?.fundingAttribution;const extra=funding?JSON.stringify({calculatedFundingAttribution:funding}):'';
   const amount=record.amountUsdCents&&/^-?\d{1,25}$/.test(record.amountUsdCents)?formatMoney(record.amountUsdCents):null;
   const at=record.time&&Number.isFinite(Date.parse(record.time))?timeFormat.format(new Date(record.time)):null;

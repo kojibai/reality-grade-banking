@@ -8,7 +8,7 @@ export const moneyProgress:Record<string,string>={money_find_person:'Finding the
 function failureCode(cause:unknown){const status=(cause as {status?:unknown}|null)?.status;if(typeof status==='number'&&Number.isInteger(status)&&status>=400&&status<=599)return `HTTP_${status}`;return cause instanceof Error&&/^[A-Z][A-Z0-9_]{1,100}$/.test(cause.message)?cause.message:'MONEY_TOOL_RESULT_UNCONFIRMED';}
 function compactHistory(receipt:MoneyReceipt):MoneyReceipt{
  if(receipt.tool!=='money_search_history'||!Array.isArray(receipt.data?.transactions))return receipt;
- const fields=['transactionId','paymentReference','sequence','kind','displayTime','kaiUPulse','direction','amountUsdCents','amountPhiMicro','reserveDeltaUsdCents','settlementDeltaPhiMicro','balanceDeltaPhiMicro'];
+ const fields=['transactionId','recordId','recordLink','paymentReference','sequence','kind','displayTime','kaiUPulse','direction','amountUsdCents','amountPhiMicro','reserveDeltaUsdCents','settlementDeltaPhiMicro','balanceDeltaPhiMicro'];
  const tradeFields=['side','tradeId','shareQuantityMicro','priceUsdCents','notionalUsdCents','settlementUsdCents','feeUsdCents','realizedCostBasisUsdCents'];
  return{...receipt,data:{...receipt.data,workingProjection:'Full records are retained in the conversation and Ledger; long descriptive text is shortened only in this model working context.',transactions:receipt.data.transactions.map(value=>{
   const row=value as Record<string,unknown>,trade=row.assetTrade&&typeof row.assetTrade==='object'?row.assetTrade as Record<string,unknown>:null;return{...Object.fromEntries(fields.filter(key=>Object.hasOwn(row,key)).map(key=>[key,row[key]])),...(typeof row.title==='string'?{title:row.title.slice(0,80)}:{}),...(typeof row.description==='string'?{description:row.description.slice(0,160)}:{}),...(trade?{assetTrade:Object.fromEntries(tradeFields.filter(key=>Object.hasOwn(trade,key)).map(key=>[key,trade[key]]))}:{})};
@@ -16,7 +16,7 @@ function compactHistory(receipt:MoneyReceipt):MoneyReceipt{
 }
 /** Continue the SAME real Twin with actual results. Local recovery metadata is
  * never sent as human text or permission; only the original owner text is. */
-export async function runMoneyConversation(input:{accountUid:string;question:MoneyQuestion;ask(question:NativeTwinAsk):Promise<NativeTwinReply>;execute(turn:MoneyTurn,action:MoneyAction):Promise<MoneyReceipt>;signal?:AbortSignal;onDelta?:(text:string)=>void;onCheckpoint?:(question:MoneyQuestion)=>Promise<void>|void;onProgress?:(status:string)=>void;onReceipt?:(receipt:MoneyReceipt)=>void}){
+export async function runMoneyConversation(input:{accountUid:string;question:MoneyQuestion;ask(question:NativeTwinAsk):Promise<NativeTwinReply>;execute(turn:MoneyTurn,action:MoneyAction):Promise<MoneyReceipt>;signal?:AbortSignal;onDelta?:(text:string)=>void;onReply?:(reply:NativeTwinReply)=>void;onCheckpoint?:(question:MoneyQuestion)=>Promise<void>|void;onProgress?:(status:string)=>void;onReceipt?:(receipt:MoneyReceipt)=>void}){
  let question={...input.question},task:MoneyTask=question.moneyTask??{humanRequestId:question.requestId,humanText:question.message,step:0,receipts:[],completed:{}};
  // Explicit recovery may check a previously invalid read once under the aligned
  // query contract. Accepted reads, unknown effects and writes remain retained.
@@ -26,7 +26,7 @@ export async function runMoneyConversation(input:{accountUid:string;question:Mon
  }
  for(;;){
   input.signal?.throwIfAborted();question={...question,moneyTask:task};await input.onCheckpoint?.(question);
-  const reply=await input.ask({...question,signal:input.signal,onDelta:input.onDelta});input.signal?.throwIfAborted();
+  const reply=await input.ask({...question,signal:input.signal,onDelta:input.onDelta});input.signal?.throwIfAborted();input.onReply?.(reply);
   if(!reply.moneyActions?.length||task.step>=6)return{reply:task.step>=6&&reply.moneyActions?.length?{...reply,message:reply.message+'\n\nI’ve reached the work limit for this turn. Those last proposed actions have not run. Reply to continue.',moneyActions:[]}:reply,receipts:task.receipts,humanRequestId:task.humanRequestId,humanText:task.humanText};
   for(const action of reply.moneyActions){
    input.signal?.throwIfAborted();const fingerprint=moneyActionFingerprint(action);let receipt:MoneyReceipt|undefined=task.completed[fingerprint];

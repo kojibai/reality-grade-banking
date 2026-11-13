@@ -480,6 +480,46 @@ it('retrieves money tools itself, carries actual results into the same Twin, and
   await vi.waitFor(()=>expect(f.host.querySelector('.bank-money-receipts')).not.toBeNull());
  }finally{f.unmount();}
 });
+it('keeps financial narration and follow-up replies in submission order while the original tool is still working',async()=>{
+ const f=fixture(),tool=deferred<import('../src/receiz/money-workspace').MoneyReceipt>(),execute=vi.fn(()=>tool.promise),checkpoint=vi.fn(async()=>{});
+ const identity={...f.identity,moneyTools:async()=>({execute,checkpoint,recoverQuestion:async()=>null,markReviewDisplayed(){}})} as unknown as OpenIdentity;
+ f.api.twin.ask.mockImplementation(async q=>{
+  const message=q.moneyContext?'Acme owes you $125.':q.message==='Who owes me?'?'I’ll check your commitments.':'Yes, we can talk while I check.';
+  q.onDelta?.(message);
+  return{requestId:q.requestId,message,authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[],moneyActions:q.moneyTools&&!q.moneyContext?[{tool:'money_list_commitments',args:{direction:'receivable'}}]:[]};
+ });
+ try{
+  await f.render(true,identity);await f.input('Ask your agent…','Who owes me?');await f.submit();await vi.waitFor(()=>expect(execute).toHaveBeenCalledOnce());
+  expect(f.host.textContent).toContain('I’ll check your commitments.');
+  await f.input('Ask your agent…','Can we talk meanwhile?');
+  expect(f.host.querySelector<HTMLButtonElement>('[aria-label="Ask your agent"]')?.disabled).toBe(false);
+  await f.submit();await vi.waitFor(()=>expect(f.host.textContent).toContain('Yes, we can talk while I check.'));
+  await f.input('Ask your agent…','Keep this unsent draft');
+  await act(async()=>tool.resolve({id:'read-commitments',tool:'money_list_commitments',status:'accepted',summary:'Tracked commitments',data:{commitments:[{id:'acme',title:'Acme project',counterparty:'Acme',outstandingUsdCents:'12500'}]}}));
+  await vi.waitFor(()=>expect(f.host.textContent).toContain('Acme owes you $125.'));
+  const turns=[...f.host.querySelectorAll('.bank-twin-exchange')];
+  expect(turns.map(row=>row.querySelector('.bank-message-own')?.textContent)).toEqual(['Who owes me?','Can we talk meanwhile?']);
+  expect(turns[0].textContent).toContain('I’ll check your commitments.');expect(turns[0].textContent).toContain('Acme owes you $125.');
+  expect(turns[1].textContent).toContain('Yes, we can talk while I check.');
+  expect(f.host.querySelector<HTMLInputElement>('[aria-label="Ask your agent…"]')?.value).toBe('Keep this unsent draft');
+  expect(execute).toHaveBeenCalledOnce();expect(f.api.twin.ask.mock.calls[1][0].moneyTools).not.toBe(true);
+ }finally{f.unmount();}
+});
+it('does not erase accepted owner-tool narration when the same turn continues with the result',async()=>{
+ const f=fixture();let count=0;
+ f.api.twin.ask.mockImplementation(async q=>({requestId:q.requestId,message:++count===1?'I’ll check your calendar.':'You’re meeting Sam tomorrow.',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[],businessActions:count===1?[{tool:'business_read_calendar',args:{}}]:[]}));
+ const identity={...f.identity,businessSetup:async()=>({execute:async()=>[{id:'calendar',tool:'business_read_calendar',status:'accepted',title:'Calendar',summary:'Sam tomorrow'}]})} as unknown as OpenIdentity;
+ try{await f.render(true,identity);await f.input('Ask your agent…','Who am I meeting?');await f.submit();await vi.waitFor(()=>expect(f.host.textContent).toContain('You’re meeting Sam tomorrow.'));expect(f.host.textContent).toContain('I’ll check your calendar.');expect(f.host.querySelectorAll('.bank-message-own')).toHaveLength(1);}finally{f.unmount();}
+});
+it('keeps an interrupted follow-up stream visible and retries its exact request without disturbing background work',async()=>{
+ const f=fixture(),tool=deferred<import('../src/receiz/money-workspace').MoneyReceipt>(),execute=vi.fn(()=>tool.promise),identity={...f.identity,moneyTools:async()=>({execute,checkpoint:async()=>{},recoverQuestion:async()=>null})} as unknown as OpenIdentity;
+ let failed=false;f.api.twin.ask.mockImplementation(async q=>{
+  if(q.message==='Can we talk?'&&!failed){failed=true;q.onDelta?.('Yes, I’m here');throw Error('STREAM_INTERRUPTED');}
+  const message=q.message==='Can we talk?'?'Yes, I’m here for you.':q.moneyContext?'There are no tracked commitments.':'I’ll check.';
+  return{requestId:q.requestId,message,authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[],moneyActions:q.moneyTools&&!q.moneyContext?[{tool:'money_list_commitments',args:{}}]:[]};
+ });
+ try{await f.render(true,identity);await f.input('Ask your agent…','Check commitments');await f.submit();await vi.waitFor(()=>expect(execute).toHaveBeenCalledOnce());await f.input('Ask your agent…','Can we talk?');await f.submit();expect(f.host.textContent).toContain('Yes, I’m here');const first=f.api.twin.ask.mock.calls[1][0];await f.click('Retry this reply');expect(f.api.twin.ask.mock.calls[2][0].requestId).toBe(first.requestId);expect(f.host.textContent).toContain('Yes, I’m here for you.');expect(execute).toHaveBeenCalledOnce();await act(async()=>tool.resolve({id:'read',tool:'money_list_commitments',status:'accepted',summary:'No tracked commitments'}));}finally{f.unmount();}
+});
 it('opens a secure credit top-up from the message box and returns to the same draft and conversation',async()=>{
  const f=fixture(),result={accountUid:uid,twinAccess:true,creditsBalance:{grantRemaining:'100',purchasedRemaining:'50',totalRemaining:'150'}},balance=deferred<typeof result>();
  const upgradeTwin=vi.fn(async(input:import('../src/receiz/twin-upgrade').TwinUpgradeInput)=>{

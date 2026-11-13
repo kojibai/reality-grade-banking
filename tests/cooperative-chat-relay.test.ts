@@ -6,6 +6,17 @@ let browser:Window;
 beforeEach(()=>{vi.resetModules();browser=new Window({url:'https://bankeiz.com/together/'});for(const key of ['document','location','navigator','sessionStorage'])vi.stubGlobal(key,(browser as unknown as Record<string,unknown>)[key]);document.body.innerHTML=cooperativeConversation('together');});
 afterEach(()=>{browser.happyDOM.cancelAsync();vi.unstubAllGlobals();});
 async function say(message:string){const form=document.querySelector('[data-twin-composer]') as HTMLFormElement;(form.elements.namedItem('message') as HTMLTextAreaElement).value=message;form.dispatchEvent(new browser.Event('submit',{cancelable:true}) as unknown as Event);await vi.waitFor(()=>expect((form.querySelector('button[type=submit]') as HTMLButtonElement).disabled).toBe(false),{timeout:5000});}
+it('shows source-bound preview text through the public relay while the accepted reply is still pending',async()=>{
+ let controller!:ReadableStreamDefaultController<Uint8Array>,payload:any;const frame=(value:unknown)=>new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n');
+ const transport:typeof fetch=async(_url,init)=>{payload=JSON.parse(String(init?.body));return new Response(new ReadableStream<Uint8Array>({start(c){controller=c;}}),{headers:{'Content-Type':'text/event-stream'}});};
+ vi.stubGlobal('fetch',async(url:string,init?:RequestInit)=>{const headers=new Headers(init?.headers);headers.set('Origin','https://bankeiz.com');headers.set('Cookie','receiz_world_visitor=guest_browser_fixture');return handleCooperativeConversation(new Request('https://bankeiz.com'+url,{...init,headers}),{fetch:transport});});
+ // @ts-expect-error Standalone public ESM.
+ const {mountConversation}=await import('../public/learn/cooperative-twin.js');mountConversation(document.querySelector('[data-coop-twin]'));
+ const form=document.querySelector('[data-twin-composer]') as HTMLFormElement;(form.elements.namedItem('message') as HTMLTextAreaElement).value='Can we talk?';form.dispatchEvent(new browser.Event('submit',{cancelable:true}) as unknown as Event);
+ await vi.waitFor(()=>expect(controller).toBeDefined());controller.enqueue(frame({type:'reply_preview',messageId:payload.clientOperationId,message:'Of course. What’s on your mind?',performance:{voiceBase64:'x'.repeat(10000)}}));
+ await vi.waitFor(()=>expect(document.querySelector('.coop-twin-reply p')?.textContent).toBe('Of course. What’s on your mind?'));expect(document.querySelector('[data-twin-messages]')?.getAttribute('aria-busy')).toBe('true');
+ controller.enqueue(frame({type:'reply_done',world:{username:'bjklock'},reply:{message:'Of course. What’s on your mind?',source:'upstream',memory:[]}}));controller.close();await vi.waitFor(()=>expect(document.querySelector('[data-twin-messages]')?.getAttribute('aria-busy')).toBe('false'));
+});
 it('streams the first native token through the real relay without a preliminary native profile read',async()=>{
  let cookie='',controller!:ReadableStreamDefaultController<Uint8Array>,payload:any;const targets:string[]=[];
  const frame=(value:unknown)=>new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n');

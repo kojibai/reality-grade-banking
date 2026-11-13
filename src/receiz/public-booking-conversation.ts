@@ -102,7 +102,7 @@ export function createPublicBookingConversation({username,options,request=global
    if(!response.ok||value.ok!==true){refuse(value,pending);return;}accept(value,pending);return;
   }
   if(!response.body)throw Error('RECEIZ_RESULT_UNCONFIRMED');
-  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',complete=false;
+  const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',complete=false,streamed='';
   const frame=(raw:string)=>{
    const data=raw.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
    const value=record(JSON.parse(data));assertLive();
@@ -110,9 +110,13 @@ export function createPublicBookingConversation({username,options,request=global
    if(['reply_start','reply_delta','reply_preview'].includes(String(value.type))&&value.messageId!==pending.clientAssistantMessageId)throw Error('RECEIZ_SOURCE_MISMATCH');
    if(value.type==='reply_delta'){
     if(typeof value.delta!=='string')throw Error('RECEIZ_RESULT_UNCONFIRMED');
-    const previous=state.messages.find(row=>row.id===pending.clientAssistantMessageId)?.body??'';
-    if(previous.length+value.delta.length>2_000_000)throw Error('RECEIZ_RESULT_UNCONFIRMED');
-    reviseMessage(pending.clientAssistantMessageId,{body:previous+value.delta,status:'streaming'});
+    streamed+=value.delta;if(streamed.length>2_000_000)throw Error('RECEIZ_RESULT_UNCONFIRMED');
+    const held=state.messages.find(row=>row.id===pending.clientAssistantMessageId)?.body??'';
+    reviseMessage(pending.clientAssistantMessageId,{body:held.startsWith(streamed)?held:streamed,status:'streaming'});
+   }else if(value.type==='reply_preview'){
+    if(typeof value.message!=='string'||value.message.length>2_000_000)throw Error('RECEIZ_RESULT_UNCONFIRMED');
+    const held=state.messages.find(row=>row.id===pending.clientAssistantMessageId)?.body??'';
+    reviseMessage(pending.clientAssistantMessageId,{body:held.startsWith(value.message)?held:value.message,status:'streaming'});
    }else if(value.type==='reply_done'){accept(value,pending);complete=true;}
   };
   try{
@@ -126,7 +130,7 @@ export function createPublicBookingConversation({username,options,request=global
  function dispatch(pending:PendingBookingMessage):Promise<void>{
   if(disposed)return Promise.resolve();if(work)return work;
   active=new AbortController();
-  publish({busy:true,error:'',pending,messages:state.messages.map(row=>row.id===pending.clientAssistantMessageId?{...row,body:'',status:'pending'}:row)});
+  publish({busy:true,error:'',pending,messages:state.messages.map(row=>row.id===pending.clientAssistantMessageId?{...row,status:'pending'}:row)});
   const run=(async()=>{
    try{const response=await request(path,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify(pending),signal:AbortSignal.any([active!.signal,AbortSignal.timeout(120000)])});assertLive();await consume(response,pending);}
    catch(error){if(!disposed)publish({error:error instanceof Error?error.message:'RECEIZ_RESULT_UNCONFIRMED'});}

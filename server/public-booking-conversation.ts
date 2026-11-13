@@ -37,7 +37,10 @@ function nativeStream(response:Response,username:string,messageId:string):Readab
   if(['reply_start','reply_delta','reply_preview'].includes(String(value.type))){
    if(complete||value.messageId!==messageId){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}
    if(value.type==='reply_delta'&&typeof value.delta!=='string'){refuse(controller);return;}
-   if(value.type==='reply_preview')return;
+   if(value.type==='reply_preview'){
+    if(typeof value.message!=='string'||value.message.length>2_000_000){refuse(controller);return;}
+    event(controller,{type:'reply_preview',messageId,message:value.message});return;
+   }
   }else if(value.type==='reply_done'){
    if(complete||!accepted(value,username,messageId)){refuse(controller,'RECEIZ_SOURCE_MISMATCH');return;}complete=true;
   }else if(value.type==='error'){failed=true;}
