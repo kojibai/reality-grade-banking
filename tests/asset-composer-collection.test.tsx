@@ -39,7 +39,7 @@ it('retains the raw Collection fields through canvas and review and limits the a
   await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Review original"]')!.click());expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.value).toBe('1.234');
   expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.getAttribute('aria-invalid')).toBe('true');
   await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Remove song.mp3"]')!.click());expect(draft.kind).toBe('moment');expect(draft.collection?.gateAudioPlayback).toBe(false);expect(host.querySelector('[aria-label="Gate audio playback"]')).toBeNull();expect(file.size).toBe(4);
-  expect(draft.collection?.originalDownloadPriceCents).toBeNull();expect(draft.collection?.originalDownloadLimit).toBeNull();expect(host.querySelector('[aria-label="Original download price (USD)"]')).toBeNull();
+  expect(draft.collection?.originalDownloadPriceCents).toBeNull();expect(draft.collection?.originalDownloadLimit).toBeNull();expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.value).toBe('');
  }finally{await act(()=>root.unmount());}
 });
 for(const field of ['Original download quantity','Original download price (USD)','Derivative download quantity','Derivative download price (USD)'])it(`rejects an invalid ${field.toLowerCase()} before the existing creation call`,async()=>{
@@ -70,11 +70,11 @@ it('uses the Source input bounds and never turns malformed enabled amounts into 
  }finally{await act(()=>root.unmount());}
 });
 
-it('Moment hides Original file amounts while retaining derivative pricing, Moment permission and historical defaults',async()=>{
+it('Moment shows optional Original file inputs while retaining derivative pricing, Moment permission and historical defaults',async()=>{
  let draft=base;const host=document.createElement('div'),root=createRoot(host),changed=vi.fn();
  const render=()=>root.render(<AssetComposer value={draft} onChange={next=>{changed(next);draft=next;render();}}/>);
  try{await act(render);expect(changed).not.toHaveBeenCalled();
-  expect(host.querySelector('[aria-label="Original download quantity"]')).toBeNull();expect(host.querySelector('[aria-label="Original download price (USD)"]')).toBeNull();
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Original download quantity"]')!.value).toBe('');expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.value).toBe('');
   expect(host.querySelector<HTMLInputElement>('[aria-label="Allow original download"]')!.checked).toBe(true);
   await act(()=>check(host,'Allow derivative download'));await act(()=>edit(host,'Derivative download price (USD)','2.34'));await act(()=>edit(host,'Derivative download quantity','7'));await act(()=>check(host,'Allow moment record download'));
   await act(()=>check(host,'Allow original download'));await act(()=>check(host,'Allow original download'));
@@ -92,5 +92,18 @@ it('removing a priced primary clears only Original file amounts and cannot resur
   await act(()=>chooseOriginal(host,new File(['replacement'],'next.bin',{type:'application/octet-stream'})));
   expect(draft.kind).toBe('file');expect(host.querySelector<HTMLInputElement>('[aria-label="Original download quantity"]')!.value).toBe('');expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.value).toBe('');
   await act(()=>check(host,'Allow moment record download'));expect(draft.collection?.originalDownloadLimit).toBeNull();expect(draft.collection?.originalDownloadPriceCents).toBeNull();
+ }finally{await act(()=>root.unmount());}
+});
+
+
+it('shows Original quantity and price before file selection and retains the selected terms when attaching the Original',async()=>{
+ let draft=base;const host=document.createElement('div'),root=createRoot(host),render=()=>root.render(<AssetComposer value={draft} onChange={next=>{draft=next;render();}}/>);
+ try{await act(render);
+  await act(()=>edit(host,'Original download quantity','25'));await act(()=>edit(host,'Original download price (USD)','4.99'));
+  expect(draft.collection).toMatchObject({originalDownloadLimit:25,originalDownloadPriceCents:499});
+  await act(()=>chooseOriginal(host,fileBase.files[0].file));
+  expect(draft.kind).toBe('file');expect(draft.collection).toMatchObject({originalDownloadLimit:25,originalDownloadPriceCents:499});
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Original download quantity"]')!.value).toBe('25');
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Original download price (USD)"]')!.value).toBe('4.99');
  }finally{await act(()=>root.unmount());}
 });
