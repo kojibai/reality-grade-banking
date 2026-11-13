@@ -174,3 +174,35 @@ it('retains an unchanged unit basis when required and preserves the ordinary reb
  const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog:after,pulse:pulse+1}))!;
  expect(rebuilt).toEqual(full);expect(rebuiltSamples).toBeGreaterThan(20);
 });
+
+
+it.each([false,true])('retains numeric history across creator key labels while appending an Original: shares=%s',async capitalization=>{
+ const {source,before,after}=fixture(),previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse,capitalization}))!;
+ after.items[1]={...after.items[1],pulse:String(pulse+1),livePulseSeed:{...after.items[1].livePulseSeed!,claimPulse:pulse+1}};
+ const existing=after.items[0];after.items[0]={...existing,livePulseSeed:{...existing.livePulseSeed!,userPhiKey:'11111111-1111-4111-8111-111111111111:'+existing.assetId}};
+ let samples=0;const next=(await buildMarketHistory(source,previous,undefined,async()=>{samples++;},{catalog:after,pulse:pulse+1,capitalization,priorInput:{source,catalog:before},requireRetained:true}))!;
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog:after,pulse:pulse+1,capitalization}))!;
+ expect(next.summary).toEqual(full.summary);
+ for(const period of Object.keys(next.series) as (keyof typeof next.series)[]){const exact=new Map(full.series[period].map(point=>[point.pulse,point.usdCents]));for(const point of next.series[period])if(exact.has(point.pulse))expect(point.usdCents).toBe(exact.get(point.pulse));}
+ expect(samples).toBeLessThan(20);
+ const relabelled={...after,items:after.items.map(item=>({...item,livePulseSeed:{...item.livePulseSeed!,userPhiKey:'chosen.receiz.id:'+item.assetId}}))};
+ let restoredSamples=0;const restored=(await buildMarketHistory(source,next,undefined,async()=>{restoredSamples++;},{catalog:relabelled,pulse:pulse+2,capitalization,priorInput:{source,catalog:after},requireRetained:true}))!;
+ const old=new Map(Object.values(next.series).flat().map(point=>[point.pulse,point.usdCents]));for(const points of Object.values(restored.series))for(const point of points)if(old.has(point.pulse))expect(point.usdCents).toBe(old.get(point.pulse));
+ expect(restoredSamples).toBeLessThan(20);
+});
+
+
+it('updates the current share quote at an already retained closing pulse and preserves every earlier sample',async()=>{
+ const {source,before}=fixture(),item=before.items[0],start=BigInt(pulse-1)*1000000n;
+ const closing={kaiUPulse:String(start+100n),unitPriceUsdCents:'100',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'1000000'};
+ const inventory={...item.shareInventory!,observedAtKaiUPulse:String(start+200n),releaseCapitalization:{...item.shareInventory!.releaseCapitalization!,kaiUPulse:String(start-2000000n)},capitalizationHistory:[closing]};
+ before.items[0]={...item,shareInventory:inventory};
+ const previous=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse,capitalization:true}))!;
+ const catalog={...before,items:[{...before.items[0],shareInventory:{...inventory,observedAtKaiUPulse:String(start+300n),availableShareQuantityMicro:'2000000',capitalizationHistory:[closing,{kaiUPulse:String(start+300n),unitPriceUsdCents:'100',outstandingShareQuantityMicro:inventory.outstandingShareQuantityMicro,availableShareQuantityMicro:'2000000'}]}}]};
+ const next=(await buildMarketHistory(source,previous,undefined,undefined,{catalog,pulse,capitalization:true,priorInput:{source,catalog:before},requireRetained:true}))!;
+ const full=(await buildMarketHistory(source,null,undefined,undefined,{catalog,pulse,capitalization:true}))!;
+ expect(next.summary).toEqual(full.summary);expect(next.series.ALL.at(-1)).toEqual(full.series.ALL.at(-1));
+ const old=new Map(Object.values(previous.series).flat().map(point=>[point.pulse,point.usdCents]));for(const points of Object.values(next.series))for(const point of points)if(point.pulse<pulse&&old.has(point.pulse))expect(point.usdCents).toBe(old.get(point.pulse));
+ const altered={...catalog,items:[{...catalog.items[0],shareInventory:{...catalog.items[0].shareInventory,releaseCapitalization:{...inventory.releaseCapitalization,availableShareQuantityMicro:'9000000'}}}]};
+ await expect(buildMarketHistory(source,previous,undefined,undefined,{catalog:altered,pulse,capitalization:true,priorInput:{source,catalog:before},requireRetained:true})).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+});

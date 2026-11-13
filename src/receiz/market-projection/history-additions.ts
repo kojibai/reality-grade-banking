@@ -1,9 +1,13 @@
 import {publicCapitalizationAssets,type PublicShareInventory} from '../market-share-inventory';
 import type {PublicMarketPricingCatalog,PublicMarketPricingItem} from './pricing-inputs';
 import {publicAssetPulseSeed} from './asset';
-import type {MarketCapSource} from './source';
+import type {MarketCapSource,MarketPulseSeed} from './source';
 import {publicCatalogAtPulse} from './catalog-prices';
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
+// The canonical valuation does not consume this creator label. Account/handle
+// projection may change it without changing any retained numeric operand.
+const pricingSeed=(seed:MarketPulseSeed|null|undefined)=>{if(!seed)return seed;const {userPhiKey:_creator,...operands}=seed;return operands;};
+const pricingRow=(row:MarketCapSource['valueRows'][number]|undefined)=>row?.marketItem?.livePulseSeed?{...row,marketItem:{...row.marketItem,livePulseSeed:pricingSeed(row.marketItem.livePulseSeed)}}:row;
 /** Whole-pulse quantity intervals and exact-price anchors of the existing share
  * reader, bounded to the completed history. Later observations do not rewrite
  * that prefix; any changed past quantity or price refuses reuse. */
@@ -30,7 +34,7 @@ function originalAdditionInputs(beforeSource:MarketCapSource,source:MarketCapSou
  const context=(value:MarketCapSource)=>[value.unpricedSealedBirths,value.sportsHistorySnapshot,value.sportsHistoryEvaluationPulse];
  if(!same(context(beforeSource),context(source)))return null;
  const rows=new Map(source.valueRows.map(row=>[row.id,row]));if(rows.size!==source.valueRows.length)return null;
- for(const row of beforeSource.valueRows)if(!same(row,rows.get(row.id)))return null;
+ for(const row of beforeSource.valueRows)if(!same(pricingRow(row),pricingRow(rows.get(row.id))))return null;
  const priorRows=new Set(beforeSource.valueRows.map(row=>row.id)),addedRows=source.valueRows.filter(row=>!priorRows.has(row.id));
  if(addedRows.some(row=>row.source!=='market-desk-live-asset'))return null;
  const membership=new Map(catalog.items.map(item=>[item.id,item])),priorMembership=new Map(before.items.map(item=>[item.id,item]));
@@ -44,7 +48,7 @@ export function marketHistoryOriginalUnitAdditions(beforeSource:MarketCapSource,
  const inputs=originalAdditionInputs(beforeSource,source,before,catalog);if(!inputs)return null;
  if(!same([beforeSource.undatedHistory,beforeSource.sourceEvaluation],[source.undatedHistory,source.sourceEvaluation]))return null;
  for(const item of before.items){const next=inputs.membership.get(item.id)!;
-  if(item.category==='sports'?!same(item,next):!same(publicAssetPulseSeed(item,beforeSource),publicAssetPulseSeed(next,source)))return null;
+  if(item.category==='sports'?!same(item,next):!same(pricingSeed(publicAssetPulseSeed(item,beforeSource)),pricingSeed(publicAssetPulseSeed(next,source))))return null;
  }
  for(const row of inputs.addedRows){const item=inputs.membership.get(row.marketItem?.id??'');
   if(!item||item.category!=='proof'||item.assetId!==row.seed||!row.marketItem?.livePulseSeed||row.marketItem.livePulseSeed.claimPulse<=beforeSource.serverPulse||!same(publicAssetPulseSeed(item,source),row.marketItem.livePulseSeed))return null;
@@ -60,7 +64,7 @@ export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,sour
  const previous=publicCapitalizationAssets(publicCatalogAtPulse(before,beforeSource,last)).items,next=publicCapitalizationAssets(publicCatalogAtPulse(catalog,source,source.serverPulse)).items,selected=new Map(next.map(item=>[identity(item),item]));
  for(const item of previous){const current=selected.get(identity(item));if(!current)return null;
   if(item.category==='sports'){if(!same(priorMembership.get(item.id),membership.get(current.id)))return null;continue;}
-  if(current.id!==item.id||!same(publicAssetPulseSeed(item,beforeSource),publicAssetPulseSeed(current,source))||!same(inventoryPrefix(item.shareInventory!,last),inventoryPrefix(current.shareInventory!,last)))return null;
+  if(current.id!==item.id||!same(pricingSeed(publicAssetPulseSeed(item,beforeSource)),pricingSeed(publicAssetPulseSeed(current,source)))||!same(inventoryPrefix(item.shareInventory!,last),inventoryPrefix(current.shareInventory!,last)))return null;
  }
  const prior=new Set(previous.map(identity)),added=next.filter(item=>!prior.has(identity(item)));
  if(added.some(item=>item.category!=='proof'||!publicAssetPulseSeed(item,source)))return null;
