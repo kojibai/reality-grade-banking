@@ -56,7 +56,7 @@ it('overlaps exact private retention with predecessor scope, deduplicates it, an
  const draft={kind:'image',title:'Private exact Original',description:'',longForm:'',files:[{id:'cover',role:'cover',file:image}],protectedOriginal:{profileIdentity:uid,file:privateFile},collection:{allowOriginalDownload:true,allowDerivativeDownload:false,allowMomentRecordDownload:false,gateAudioPlayback:false,originalDownloadLimit:2,derivativeDownloadLimit:null,originalDownloadPriceCents:100,derivativeDownloadPriceCents:null}};
  const prepared=await runtime.prepare(draft);
  expect(initializations).toBe(0);expect(scopeReads).toBe(0);
- const first=runtime.publish(prepared.artifact).then((value:unknown)=>({value}),(error:Error)=>({error}));
+ const first:Promise<{value:unknown}|{error:Error}>=runtime.publish(prepared.artifact).then((value:unknown)=>({value}),(error:Error)=>({error}));
  const reached=async(signal:ReturnType<typeof deferred>,stage:string)=>Promise.race([signal.promise,first.then(outcome=>{throw Error(`PUBLICATION_FINISHED_BEFORE_${stage}${'error'in outcome?': '+outcome.error.message:''}`);})]);
  try{
   await reached(scopeStarted,'PREDECESSOR_SCOPE');await new Promise<void>(resolve=>setImmediate(resolve));
