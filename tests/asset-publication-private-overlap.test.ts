@@ -1,12 +1,16 @@
-import {afterEach,expect,it,vi} from 'vitest';
+import {afterEach,beforeAll,expect,it,vi} from 'vitest';
 import {IDBFactory} from 'fake-indexeddb';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 
 const deferred=()=>{let resolve!:()=>void;const promise=new Promise<void>(done=>{resolve=done;});return{promise,resolve};};
+let f:Awaited<ReturnType<typeof conformanceOfflineFixture>>;
+// Build and enroll the real cryptographic fixture before timing publication.
+// Keep the test body's ordinary deadline and every custody/admission guard.
+beforeAll(async()=>{f=await conformanceOfflineFixture({composer:true});});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 it('overlaps exact private retention with predecessor scope, deduplicates it, and never accepts before private completion',async()=>{
- const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const r=f.runtime;
  vi.stubGlobal('indexedDB',new IDBFactory());
  const values=new Map<string,string>(),events=new EventTarget();
  const storage={getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value),removeItem:(key:string)=>values.delete(key),key:(index:number)=>[...values.keys()][index]??null,get length(){return values.size;}};
@@ -53,10 +57,11 @@ it('overlaps exact private retention with predecessor scope, deduplicates it, an
  const prepared=await runtime.prepare(draft);
  expect(initializations).toBe(0);expect(scopeReads).toBe(0);
  const first=runtime.publish(prepared.artifact).then((value:unknown)=>({value}),(error:Error)=>({error}));
+ const reached=async(signal:ReturnType<typeof deferred>,stage:string)=>Promise.race([signal.promise,first.then(outcome=>{throw Error(`PUBLICATION_FINISHED_BEFORE_${stage}${'error'in outcome?': '+outcome.error.message:''}`);})]);
  try{
-  await scopeStarted.promise;await new Promise<void>(resolve=>setImmediate(resolve));
+  await reached(scopeStarted,'PREDECESSOR_SCOPE');await new Promise<void>(resolve=>setImmediate(resolve));
   expect(initializations,'private upload must already run while accepted scope is stalled').toBe(1);
-  await privateStarted.promise;await completeStarted.promise;
+  await reached(privateStarted,'PRIVATE_UPLOAD');await reached(completeStarted,'PRIVATE_COMPLETION');
   const second=runtime.publish(prepared.artifact).then((value:unknown)=>({value}),(error:Error)=>({error}));
   releaseScope.resolve();await new Promise<void>(resolve=>setImmediate(resolve));
   expect(finalizations).toBe(0);expect(initializations).toBe(1);expect(scopeReads).toBe(1);
