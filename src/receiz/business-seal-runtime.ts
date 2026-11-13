@@ -1,7 +1,7 @@
 import build from '../../public/native/business-seal.v129.manifest.json';
 import type {AssetComposerDraft,PreparedComposerSource} from './asset-composer';
 import type {BankNoteRuntimeFactory} from './offline-notes';
-type NativeBusinessSeal={prepareConnectedComposerSource(input:{draft:AssetComposerDraft;ownerReceizId:string;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>};
+type NativeBusinessSeal={prepareConnectedComposerSource(input:{draft:AssetComposerDraft;ownerReceizId:string;creatorUsername?:string;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>};
 let runtime:Promise<NativeBusinessSeal>|undefined;
 /** Canonical private Original producer, loaded only for an explicit seal. It
  * creates no public Showcase runtime and makes no profile publication request. */

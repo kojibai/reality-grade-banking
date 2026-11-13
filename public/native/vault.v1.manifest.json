@@ -146,7 +146,7 @@
     },
     {
       "path": "app/lib/profile/composerPreparation.ts",
-      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "sha256": "8ff28e0de7cf7384fe2782172da8c693474b6df23a6556c15441e282028fe2ff",
       "mode": 420
     },
     {
@@ -175,8 +175,12 @@
       "mode": 420
     },
     {
+      "path": "app/lib/profile/receivingUsername.ts",
+      "sha256": "37a96a03cdd866dd2790468109cca0d237051ae7978acb6d1afe952cbb48796d"
+    },
+    {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "sha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
       "mode": 420
     },
     {
@@ -201,7 +205,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "sha256": "a19cbd52db9c853b29fa588f2c4863bae0b81af0899134e50e8feccb931ebe81",
       "mode": 420
     },
     {
@@ -406,7 +410,7 @@
     },
     {
       "path": "app/verify/identityDisplay.ts",
-      "sha256": "54722147f5dcb39cf3e7fa81977725b40cb2f9602a0766f27e4be7cb4fc7023e",
+      "sha256": "cf1206c13028141c8e4bfa0080cb097dc8942ca50742b35ec75a40874b2dae91",
       "mode": 420
     },
     {
@@ -416,7 +420,12 @@
     },
     {
       "path": "app/verify/verifyRuntime.ts",
-      "sha256": "e576c952abb42278b70152e34e3b5d342dde43ae9ccf3d543845bbc354d826b7",
+      "sha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/LICENSE",
+      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
       "mode": 420
     },
     {
@@ -427,11 +436,6 @@
     {
       "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
       "sha256": "b09da8c07fe8187c07649494cdb7cd0bcf13df90b506a9473d19e4d5f8c2e102",
-      "mode": 420
-    },
-    {
-      "path": "node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/LICENSE",
-      "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec",
       "mode": 420
     },
     {
@@ -450,13 +454,13 @@
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
-      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
+      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/LICENSE.md",
+      "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/LICENSE.md",
-      "sha256": "c46324e45a005413535a6fb7a97e9eacd3cc6bf30335b7d5c10b8ee3af9e60c2",
+      "path": "node_modules/.pnpm/dijkstrajs@1.0.3/node_modules/dijkstrajs/dijkstra.js",
+      "sha256": "7f5721e77332370a71314f1536b8c552f4f9dbd99bbc6c5aa10df3253eacfd5c",
       "mode": 420
     },
     {
@@ -475,13 +479,13 @@
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
-      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
+      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/LICENSE",
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/LICENSE",
-      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551",
+      "path": "node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1",
       "mode": 420
     },
     {
@@ -490,18 +494,23 @@
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
-      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d",
-      "mode": 420
-    },
-    {
       "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/LICENSE",
       "sha256": "c14dea172f72f2714284a0ac2ab1b00b5352a01409d58255a46227ffc541debd",
       "mode": 420
     },
     {
+      "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
+      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d",
+      "mode": 420
+    },
+    {
       "path": "node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/package.json",
       "sha256": "bdb86309706014e1e3062ce78aa7a2e8b196a44d5a22ceec8978d864e28116f7",
+      "mode": 420
+    },
+    {
+      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/LICENSE",
+      "sha256": "8df47c6ad9ac2c41eb9b2a72def9908959da0ede8dadd56c7b249c1bdb0c5ce6",
       "mode": 420
     },
     {
@@ -640,11 +649,6 @@
       "mode": 420
     },
     {
-      "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/LICENSE",
-      "sha256": "8df47c6ad9ac2c41eb9b2a72def9908959da0ede8dadd56c7b249c1bdb0c5ce6",
-      "mode": 420
-    },
-    {
       "path": "node_modules/.pnpm/qrcode@1.5.4/node_modules/qrcode/package.json",
       "sha256": "cbe26d7282c802f4ab9c1f790c5d8450d2b5c82e8bb5f67e3a5c2641ea347d1d",
       "mode": 420
@@ -675,13 +679,13 @@
       "mode": 420
     },
     {
-      "path": "packages/receiz-sdk/src/artifacts.ts",
-      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
+      "path": "packages/receiz-sdk/src/artifactVerification.ts",
+      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
       "mode": 420
     },
     {
-      "path": "packages/receiz-sdk/src/artifactVerification.ts",
-      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3",
+      "path": "packages/receiz-sdk/src/artifacts.ts",
+      "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39",
       "mode": 420
     },
     {
@@ -1165,6 +1169,6 @@
     "packages/receiz-sdk/src/verifier/roots.ts",
     "packages/receiz-sdk/src/verifier/signatureV4.ts"
   ],
-  "moduleSha256": "cd1904c24e517309d4f55611562618feb652609195da72a91e628b1950bd1cb2",
-  "bytes": 1865203
+  "moduleSha256": "9315ba02f16c34242f3282ecf1e3ee38ba74e5798b5f1f6a706013a147a9c82d",
+  "bytes": 1866721
 }

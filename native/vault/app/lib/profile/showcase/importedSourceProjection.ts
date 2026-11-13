@@ -50,7 +50,7 @@ export function projectImportedSourceOriginal(source: OpenedImportedProofSource,
   const identity = sourceIdentity ? jcsCanonicalize(sourceIdentity) : `${p.identity.kind}:${p.identity.value}`;
   const id = `imported-${bytesToHex(sha256(new TextEncoder().encode(identity)))}`;
   const creator = p.originalCreator ?? (() => {
-    if (carried?.ownershipKind !== "creator") return null;
+    if (carried?.ownershipKind !== "creator" && !p.bankAsset?.creatorUsername) return null;
     const actual = projectVerifierIdentityDisplay(terminal.verification).originalCreator;
     return actual.receizId && actual.username ? { userId: actual.receizId, username: actual.username,
       displayName: actual.displayName ?? actual.username, avatarUrl: null, isPrivate: false } : null;

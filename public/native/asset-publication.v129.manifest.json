@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.0.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "1e4527600d916f94c5bf0e94cf74e5910bd2eaaaf67ae67e0df5140fdc47e5da",
-  "sourceTreeSha256": "e53c848ddcbb377b7a69177765cea38f2e5d6aa680f402d776cc6dd37c0a5ac2",
-  "inputs": 524,
-  "bytes": 3077857,
+  "moduleSha256": "cc79531f0ee18a41c87b2b2ea5355548ef38102f60a39faea19502f06a6558e8",
+  "sourceTreeSha256": "36b34cf2596b4bd7f2e1e2ea4af2463fb3e663525f855218ff8b147b2955df23",
+  "inputs": 525,
+  "bytes": 3079570,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -934,7 +934,7 @@
       "id": "bankeiz-source-first-boundedEdgeVault",
       "path": "receiz/app/lib/profile/showcase/boundedEdgeVault.ts",
       "baseSha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
-      "sha256": "feb5daa626ad5b7da483f01302bb314187b8995df0b73b287bd1d2524e5de674",
+      "sha256": "2a826b263cb0a2444cfa801f83760f355474c6ae48219b11ce9657c775db045d",
       "purpose": "Retain exact admitted Source successor and only newly supplied proof material across cold publication, preserving Bank PBI, active complete presentation and unchanged SDK admission/currentness. Reopen exact SDK context through existing proof guards, without old Original-body or settled-history scans.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
@@ -979,7 +979,7 @@
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
       "baseSha256": "c5d47a699072a41cc32e3021f62627367942454b6d050b91299f927de405f768",
-      "sha256": "c8bf0ad8b4921db30ee2bff9d3b9bf521f98cba43c7bbcfa5a64b1caa810f74e",
+      "sha256": "a652bc755da0f4f1bec23b23dea7f0bb9a45d4e0f39e1d1c98e21e086e4fd802",
       "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
@@ -1087,7 +1087,7 @@
       "id": "bankeiz-bounded-showcase-append-v129",
       "path": "receiz/app/lib/profile/showcase/boundedEdgeVault.ts",
       "baseSha256": "34a0c121252c1fdfc92afd262f4e3680cc2d7356522da73e29e3edd60cd5609b",
-      "sha256": "feb5daa626ad5b7da483f01302bb314187b8995df0b73b287bd1d2524e5de674",
+      "sha256": "2a826b263cb0a2444cfa801f83760f355474c6ae48219b11ce9657c775db045d",
       "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
@@ -1095,7 +1095,7 @@
       "id": "bankeiz-bounded-showcase-append-v129",
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
       "baseSha256": "79af5b6eddbba449be86f2cf0f8371e73ea6f772369dfab2e5b9664da887a62b",
-      "sha256": "c8bf0ad8b4921db30ee2bff9d3b9bf521f98cba43c7bbcfa5a64b1caa810f74e",
+      "sha256": "a652bc755da0f4f1bec23b23dea7f0bb9a45d4e0f39e1d1c98e21e086e4fd802",
       "purpose": "Reuse exact accepted SDK Showcase custody and bounded append, witness/frontier and pending-suffix state; preserve SDK guards, financial authority and frozen account entry. Published SDK package sources and outputs remain unchanged.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
@@ -1198,7 +1198,7 @@
       "id": "bankeiz-original-delivery-continuity",
       "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
       "baseSha256": "0872f255264b584c6afd4f62e6b5cbcec17423bcd3096e1710fda76edc5a7250",
-      "sha256": "c8bf0ad8b4921db30ee2bff9d3b9bf521f98cba43c7bbcfa5a64b1caa810f74e",
+      "sha256": "a652bc755da0f4f1bec23b23dea7f0bb9a45d4e0f39e1d1c98e21e086e4fd802",
       "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
     },
     {

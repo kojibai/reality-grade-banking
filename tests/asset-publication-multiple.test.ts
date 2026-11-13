@@ -69,6 +69,39 @@ it('cold retries both exact retained Originals without resealing and coalesces d
  expect(f.seals).toBe(2);expect(f.sources.size).toBe(2);expect(snapshot?.pendingSources??[]).toEqual([]);
 });
 
+it('shares an explicit cold retry before reopening so a fast accepted receipt cannot retire another caller',async()=>{
+ const f=fixture();f.failed=true;const first=await f.api.create({title:'Retained retry'});await f.api.create({title:'Current independent Original'});
+ let entered!:()=>void,release!:()=>void,restores=0,publishes=0;
+ const started=new Promise<void>(resolve=>{entered=resolve;}),waiting=new Promise<void>(resolve=>{release=resolve;});
+ const dependencies={...f.dependencies,restore:async(digest:string)=>{restores++;entered();await waiting;return f.dependencies.restore(digest);},publish:async()=>{publishes++;return receipt;}};
+ const left=publication.createAssetPublication(dependencies),right=publication.createAssetPublication(dependencies);
+ const a=left.resume(first.digest);await started;const b=right.resume(first.digest);
+ releases.push(()=>{release();return Promise.allSettled([a,b]).then(()=>{});});
+ await f.ports.lock(async()=>{});
+ expect(restores).toBe(1);release();
+ const results=await Promise.all([a,b]);
+ expect(results.every(result=>result.digest===first.digest&&result.publication.status==='published')).toBe(true);
+ expect(publishes).toBe(1);expect(f.seals).toBe(2);expect(f.state?.pendingSources??[]).toEqual([]);
+});
+
+it('refuses a closed joined caller while preserving the open caller accepted retry',async()=>{
+ const f=fixture();f.failed=true;const first=await f.api.create({title:'Closed joined retry'});
+ let entered!:()=>void,release!:()=>void,closed=false;
+ const started=new Promise<void>(resolve=>{entered=resolve;}),waiting=new Promise<void>(resolve=>{release=resolve;});
+ const dependencies={...f.dependencies,restore:async(digest:string)=>{entered();await waiting;return f.dependencies.restore(digest);},publish:async()=>receipt};
+ const a=publication.createAssetPublication(dependencies).resume(first.digest);await started;
+ const b=publication.createAssetPublication({...dependencies,assertOpen(){if(closed)throw Error('JOINER_CLOSED');}}).resume(first.digest);
+ void b.catch(()=>{});closed=true;release();
+ expect((await a).publication.status).toBe('published');await expect(b).rejects.toThrow('JOINER_CLOSED');
+});
+
+it('releases a failed exact retry so its retained Original can be resumed again',async()=>{
+ const f=fixture();f.failed=true;const first=await f.api.create({title:'Retry after failed restore'});let restores=0;
+ const cold=publication.createAssetPublication({...f.dependencies,restore:async(digest:string)=>{if(++restores===1)throw Error('RESTORE_UNAVAILABLE');return f.dependencies.restore(digest);},publish:async()=>receipt});
+ await expect(cold.resume(first.digest)).rejects.toThrow('RESTORE_UNAVAILABLE');
+ expect((await cold.resume(first.digest)).publication.status).toBe('published');expect(restores).toBe(2);expect(f.seals).toBe(1);
+});
+
 it('validates same-owner flat unique archive records and keeps pending removal protection independently of current status',async()=>{
  const f=fixture();f.failed=true;await f.api.create({title:'Older'});await f.api.create({title:'Current'});
  const state=f.state!;expect(state.pendingSources).toHaveLength(1);

@@ -1,4 +1,4 @@
-import { carriedVerifierOriginal } from "./identityDisplay";
+import { carriedVerifierOriginal, projectVerifiedCreatorUsername } from "./identityDisplay";
 import { executeSelectedSource, unavailableSelectedSourceExecution } from "@/app/lib/documentSeal/selectedSourceExecution";
 import { inflateSync } from "fflate";
 import { detectDocumentFormat } from "@/app/lib/documentSeal/fileFormat";
@@ -60,6 +60,7 @@ export type ReceizVerifierProjectionResult = ReceizArtifactVerificationResult & 
   nativeCapture: ReceizNativeCaptureV1 | null;
   pbiAuthorshipHistory: readonly ReceizPbiProofObjectAuthorshipAppendV1[];
   identitySource?: Readonly<{ state: "verified" | "invalid" | "unavailable"; result?: ReceizVerifierProjectionResult }>;
+  sourceCreatorUsername?: string;
 }>;
 
 function failedAppendProjection(
@@ -223,8 +224,10 @@ export async function projectVerifiedV115Appends(
         identitySource = { state: "unavailable" };
       }
     }
+    const sourceCreatorUsername = projectVerifiedCreatorUsername(verification, payloadBytes);
     return {
       ...verification,
+      ...(sourceCreatorUsername ? { sourceCreatorUsername } : {}),
       ...(identitySource ? { identitySource } : {}),
       nativeCapture,
       pbiAuthorshipHistory:

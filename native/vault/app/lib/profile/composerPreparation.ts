@@ -2,6 +2,7 @@ import {ImportedProofSourceUnavailableError} from "./showcase/importedSourceErro
 import type {ProfileOriginalAudioDistribution,ProfileOriginalEpubMetadata} from "./mediaMetadata";
 import {parseExactByteBlockReference,type ExactByteBlockReference} from "../transport/exactByteBlocks";
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from "./showcase/importedSourceReference";
+import {parseReceivingUsername} from "./receivingUsername";
 export type ComposerMediaKind="moment"|"image"|"audio"|"video"|"epub"|"pdf"|"file";
 export type ComposerFileDraft=Readonly<{id:string;file:File;role:"primary"|"cover"|"attachment";attachmentRole?:"source"|"appendix"|"dataset"|"contract"|"receipt"|"research"|"other";description?:string}>;
 export type ComposerAssetDefinition=Readonly<{name:string;symbol:string;units:string;description:string;linkedProofDigest:string|null}>;
@@ -9,7 +10,7 @@ export type ComposerAssetDraft=Readonly<{definition?:ComposerAssetDefinition;tit
 export type ComposerCapacity=Readonly<{maxAttachments:number;maxTotalBytes:number;maxAttachmentBytes:number;maxPrimaryBytes:Readonly<Partial<Record<ComposerMediaKind,number>>>;maxCoverBytes:number;maxTextCharacters:100000}>;
 export type ComposerAssetFile=Readonly<Omit<ComposerFileDraft,"file">&{name:string;mime:string;size:number;sha256:string;bytes:ExactByteBlockReference}>;
 export type ComposerNativeAssetBinding=Readonly<{authoredSource:ImportedProofSourceReference;publicCertificateB64u:string;publicCertificateSha256:string}>;
-export type ComposerAssetContent=Readonly<{nativeAsset?:ComposerNativeAssetBinding;definition?:ComposerAssetDefinition;schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
+export type ComposerAssetContent=Readonly<{creatorUsername?:string;nativeAsset?:ComposerNativeAssetBinding;definition?:ComposerAssetDefinition;schema:"receiz.bank.asset-content.v2";ownerReceizId:string;title:string;description:string;kind:ComposerMediaKind;longForm:string;files:readonly ComposerAssetFile[];music?:ProfileOriginalAudioDistribution;book?:ProfileOriginalEpubMetadata}>;
 export type PreparedComposerSource=Readonly<{artifact:File;reference:ImportedProofSourceReference;content:ComposerAssetContent}>;
 const MIB=1024*1024;
 const KINDS=new Set<ComposerMediaKind>(["moment","image","audio","video","epub","pdf","file"]);
@@ -18,6 +19,13 @@ const MUSIC_FIELDS=["releaseTitle","primaryArtist","releaseType","genre","subgen
 const BOOK_FIELDS=["title","subtitle","primaryAuthor","contributors","publisher","imprint","genre","language","isbn","edition","series"] as const;
 const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:{};
 function fail(code:string):never{throw new TypeError(`COMPOSER_${code}`);}
+/** The chosen name is carried by the existing sealed payload. The physical
+ * signing identity remains ownerReceizId; legacy payloads retain omission. */
+export function readComposerCreatorUsername(value:unknown):string|undefined{
+ if(value===undefined)return;
+ if(typeof value!=="string"||parseReceivingUsername(value)!==value)fail("CREATOR_USERNAME_INVALID");
+ return value;
+}
 function text(value:unknown,max:number,multiline=false):value is string{return typeof value==="string"&&value.length<=max&&!(multiline?/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u:/[\x00-\x1f\x7f]/u).test(value);}
 /** Conservative connected authoring profile: the narrowest current complete-source
  * consumer, not a change to canonical proof validity or an unlimited-file claim. */
@@ -80,10 +88,10 @@ export function validateComposerAssetDraft(draft:ComposerAssetDraft,capacity:Com
 /** Called only after the enclosing canonical source passed verification. Block
  * addresses locate committed bytes; they never provide ownership/admission. */
 export function readComposerAssetContent(input:unknown,ownerReceizId:string|null):ComposerAssetContent{
- const v=record(input),allowed=["schema","ownerReceizId","title","description","kind","longForm","files","music","book","definition","nativeAsset"];
+ const v=record(input),allowed=["schema","ownerReceizId","creatorUsername","title","description","kind","longForm","files","music","book","definition","nativeAsset"];
  if(v.schema!=="receiz.bank.asset-content.v2"||v.ownerReceizId!==ownerReceizId||!ownerReceizId||Object.keys(v).some(key=>!allowed.includes(key))||!Array.isArray(v.files))fail("CONTENT_INVALID");
  if(v.files.length>202)throw new ImportedProofSourceUnavailableError("COMPOSER_FILE_COUNT_CAPACITY","VERIFICATION_RESOURCE_UNAVAILABLE","verified");
- const content=fields(v as unknown as ComposerAssetContent);
+ const creatorUsername=readComposerCreatorUsername(v.creatorUsername),content=fields(v as unknown as ComposerAssetContent);
  const files=v.files.map(raw=>{const f=record(raw);if(Object.keys(f).some(key=>!["id","role","attachmentRole","description","name","mime","size","sha256","bytes"].includes(key))||!text(f.name,240)||!f.name||/[\/\\]/u.test(f.name)||typeof f.sha256!=="string"||! /^[a-f0-9]{64}$/u.test(f.sha256))fail("CONTENT_FILE_INVALID");
   const bytes=parseExactByteBlockReference(f.bytes);if(bytes.contentByteLength!==f.size)fail("CONTENT_FILE_INVALID");
   return Object.freeze({...f,bytes}) as ComposerAssetFile;
@@ -91,5 +99,5 @@ export function readComposerAssetContent(input:unknown,ownerReceizId:string|null
  roles(files,content.kind);
  let nativeAsset:ComposerNativeAssetBinding|undefined;
  if(v.nativeAsset!==undefined){const binding=record(v.nativeAsset);if(Object.keys(binding).sort().join('|')!=='authoredSource|publicCertificateB64u|publicCertificateSha256'||typeof binding.publicCertificateB64u!=='string'||binding.publicCertificateB64u.length>11*1024*1024||!/^[A-Za-z0-9_-]+$/.test(binding.publicCertificateB64u)||typeof binding.publicCertificateSha256!=='string'||!/^[a-f0-9]{64}$/.test(binding.publicCertificateSha256))fail('NATIVE_ASSET_BINDING_INVALID');nativeAsset=Object.freeze({...binding,authoredSource:parseImportedProofSourceReference(binding.authoredSource as ImportedProofSourceReference)}) as ComposerNativeAssetBinding;}
- return Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId,...content,files:Object.freeze(files),...(nativeAsset?{nativeAsset}:{})});
+ return Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId,...(creatorUsername!==undefined?{creatorUsername}:{}),...content,files:Object.freeze(files),...(nativeAsset?{nativeAsset}:{})});
 }

@@ -2,7 +2,7 @@
 import {sha256} from "@noble/hashes/sha2.js";
 import {bytesToHex} from "@noble/hashes/utils.js";
 import {jcsCanonicalize} from "@/app/utils/jcs";
-import {validateComposerAssetDraft,readComposerCapacity,readComposerAssetContent,composerFileMime,composerRequiresProtectedOriginal,type ComposerAssetDraft,type ComposerAssetContent,type ComposerAssetFile,type ComposerProtectedOriginal,type PreparedComposerSource} from "./composerPreparation";
+import {validateComposerAssetDraft,readComposerCapacity,readComposerAssetContent,readComposerCreatorUsername,composerFileMime,composerRequiresProtectedOriginal,type ComposerAssetDraft,type ComposerAssetContent,type ComposerAssetFile,type ComposerProtectedOriginal,type PreparedComposerSource} from "./composerPreparation";
 import {writeExactByteBlocks,type ExactByteBlockWriter} from "../transport/exactByteBlocks";
 import {parseImportedProofSourceReference} from "./showcase/importedSource";
 import {rejectImportedSourceRecoveryBlob} from "./showcase/importedSourcePrivacy";
@@ -11,8 +11,9 @@ export type ComposerDocumentSealer=(input:Parameters<typeof receizeDocumentBytes
 function requirePreparedOriginalCustody(content:Pick<ComposerAssetContent,'kind'|'collection'>,protectedOriginal:unknown){
  if(content.kind!=="moment"&&composerRequiresProtectedOriginal(content.collection)&&!protectedOriginal)throw new TypeError("COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED");
 }
-export async function prepareConnectedComposerContent(input:{draft:ComposerAssetDraft;ownerReceizId:string;writeBlock?:ExactByteBlockWriter;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>{
+export async function prepareConnectedComposerContent(input:{draft:ComposerAssetDraft;ownerReceizId:string;creatorUsername?:string;writeBlock?:ExactByteBlockWriter;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>{
  input.assertCurrent();const draft=validateComposerAssetDraft(input.draft,readComposerCapacity());
+ const creatorUsername=readComposerCreatorUsername(input.creatorUsername);
  if(!/^[A-Za-z0-9_.:@-]{3,160}$/u.test(input.ownerReceizId))throw new TypeError("COMPOSER_OWNER_REQUIRED");
  requirePreparedOriginalCustody(draft,draft.protectedOriginal);
  if(draft.protectedOriginal&&typeof input.writeProtectedBlock!=="function")throw new TypeError("COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED");
@@ -40,7 +41,7 @@ export async function prepareConnectedComposerContent(input:{draft:ComposerAsset
   files.push(Object.freeze({...description,name:file.name,mime:composerFileMime(file),size:file.size,sha256:bytesToHex(hash.digest()),bytes}));
  }
  const metadata={...(protectedOriginal?{protectedOriginal}:{}),...(draft.collection?{collection:draft.collection}:{}),...(draft.definition?{definition:draft.definition}:{}),title:draft.title,description:draft.description,kind:draft.kind,longForm:draft.longForm,...(draft.music?{music:draft.music}:{}),...(draft.book?{book:draft.book}:{})};
- const content:ComposerAssetContent=Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId:input.ownerReceizId,...metadata,files:Object.freeze(files)});
+ const content:ComposerAssetContent=Object.freeze({schema:"receiz.bank.asset-content.v2",ownerReceizId:input.ownerReceizId,...(creatorUsername!==undefined?{creatorUsername}:{}),...metadata,files:Object.freeze(files)});
  return protectedOriginal?readComposerAssetContent(content,input.ownerReceizId):content;
 }
 export async function sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:ComposerDocumentSealer;writeBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<PreparedComposerSource>{
@@ -57,6 +58,6 @@ export async function sealConnectedComposerContent(input:{content:ComposerAssetC
  return Object.freeze({artifact,reference,content});
 }
 
-export async function prepareConnectedComposerSource(input:{draft:ComposerAssetDraft;ownerReceizId:string;sealDocument:ComposerDocumentSealer;writeBlock?:ExactByteBlockWriter;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<PreparedComposerSource>{
+export async function prepareConnectedComposerSource(input:{draft:ComposerAssetDraft;ownerReceizId:string;creatorUsername?:string;sealDocument:ComposerDocumentSealer;writeBlock?:ExactByteBlockWriter;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<PreparedComposerSource>{
  const content=await prepareConnectedComposerContent(input);return sealConnectedComposerContent({...input,content});
 }

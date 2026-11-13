@@ -60,7 +60,10 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const open=(previous=false,module=r)=>(previous?module.previousConnectedComposer:module.connectedComposer).createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){if(!active)throw Error('ACCOUNT_CLOSED');},fetchImpl:request,onLocalAdmission:(value:any)=>{expect(value.original.marketPreview?.quote?.priceUsd??value.original.marketPreview).toBeDefined();timeline.push('local');},sealDocument:async(args:any)=>{seals++;return seal(args);}});
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  let runtime=await open();
+ const namedContent=await runtime.prepareContent({kind:'moment',title:'A retained creator',description:'',longForm:'The creator name is already held.',files:[]});
+ expect(namedContent.creatorUsername).toBe(username);expect(namedContent.ownerReceizId).toBe(owner);
  const prior=await runtime.prepare({kind:'image',title:'First exact image',description:'',longForm:'First full essay',files:[{id:'photo',role:'primary',file:image}]});
+ expect(prior.content.creatorUsername).toBe(username);expect(prior.content.ownerReceizId).toBe(owner);
  const firstResult=await runtime.publish(prior.artifact);expect(firstResult.status,JSON.stringify(firstResult)).toBe('published');
  expect(timeline.indexOf('local')).toBeLessThan(timeline.indexOf('finalize'));
  const acceptedPriorHead=acceptedHead.admission.artifactSha256;

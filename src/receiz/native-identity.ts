@@ -690,7 +690,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           (async()=>{const native=await loadBankNoteRuntime(),sealer=await ownedSealer();return native.createBankNativeNoteSealer({enrollment:await sealer.enroll(),resources:sealingResources!});})(),
           import('./business-seal-runtime').then(module=>module.loadBusinessSealRuntime()),
         ]);assertOpen();
-        return prepareConnectedComposerSource({draft,ownerReceizId:binding.artifactOwnerReceizId,sealDocument,assertCurrent:assertOpen});
+        return prepareConnectedComposerSource({draft,ownerReceizId:binding.artifactOwnerReceizId,creatorUsername:publicAccountUsername(presentationUsername??keyFile.owner.username)??undefined,sealDocument,assertCurrent:assertOpen});
       }});
       const dns=async(provider?:string,expectedHostname?:string)=>createBusinessDnsTools({accountUid:uid,expectedHostname,assertOpen,execute:(tool,args)=>setup.execute(tool,args),connection:async hostname=>{
         const names:Record<string,string>={cloudflare:'cloudflare',godaddy:'godaddy',vercel:'vercel',digitalocean:'digitalocean',dnsimple:'dnsimple',porkbun:'porkbun',route53:'route53','aws route 53':'route53','google cloud dns':'google-cloud-dns','google-cloud-dns':'google-cloud-dns','azure dns':'azure-dns','azure-dns':'azure-dns',namecheap:'namecheap'};
@@ -1565,7 +1565,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const {prepareCreatedAssetPrimary}=await import('./created-asset-file');
       const sealedDraft=await prepareCreatedAssetPrimary({draft:selected,profileIdentity:accountUid??knownWallet?.wallet.userId,assertCurrent:noteOpen,seal:async source=>{onProgress?.({stage:'sealing'});return(await ownedSealer()).seal(source);}});
       artwork=sealedDraft.files.find(file=>file.role==='cover')?.file??(sealedDraft.kind==='image'?sealedDraft.files.find(file=>file.role==='primary')?.file:undefined);
-      intent={composer:await native.prepareConnectedComposerContent({draft:sealedDraft,ownerReceizId:binding.artifactOwnerReceizId,writeProtectedBlock:(await import('./composer-original-custody')).composerOriginalCustody(binding,noteOpen).writeProtectedBlock,assertCurrent:noteOpen})};await signer;
+      intent={composer:await native.prepareConnectedComposerContent({draft:sealedDraft,ownerReceizId:binding.artifactOwnerReceizId,creatorUsername:publicAccountUsername(presentationUsername??keyFile.owner.username)??undefined,writeProtectedBlock:(await import('./composer-original-custody')).composerOriginalCustody(binding,noteOpen).writeProtectedBlock,assertCurrent:noteOpen})};await signer;
     }
     const publication=createAssetPublication({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:()=>lifetime.signal.throwIfAborted(),
       lock:async run=>{if(!navigator.locks)throw Error('BANK_ASSET_PUBLICATION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run());},
@@ -1587,7 +1587,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           return(await native.sealConnectedComposerContent({content:(intent as {composer:import('./asset-composer').ComposerAssetContent}).composer,assertCurrent:noteOpen,
             sealDocument:args=>sealDocument({...args,options:{...args.options,onProgress:(ratio:number)=>{onProgress?.({stage:'sealing',ratio});}}})})).artifact;
         }
-        const payload={schema:'receiz.bank.asset-definition.v1',...intent,issuerReceizId:binding.artifactOwnerReceizId,createsSpendableValue:false,backingCommitted:false,kai:sdk.receizKaiNow()},payloadBytes=new TextEncoder().encode(JSON.stringify(payload));
+        const payload={schema:'receiz.bank.asset-definition.v1',...intent,creatorUsername:publicAccountUsername(presentationUsername??keyFile.owner.username)??undefined,issuerReceizId:binding.artifactOwnerReceizId,createsSpendableValue:false,backingCommitted:false,kai:sdk.receizKaiNow()},payloadBytes=new TextEncoder().encode(JSON.stringify(payload));
         if(payloadBytes.length>10*1024*1024)throw Error('This moment and its linked proof exceed the supported combined capacity. Use smaller originals.');
         const sealer=await openAttemptSealer();lifetime.signal.throwIfAborted();
         const sealed=await sealer.seal({bytes:payloadBytes,filename:`${definition.symbol.toLowerCase()}.receiz-asset.json`,mimeType:'application/json'});

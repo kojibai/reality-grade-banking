@@ -7,7 +7,7 @@ export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unkn
 export interface AssetPublicationRuntimeModule{
  readComposerAuthoredFile(input:{file:File;originalFile?:File;ownerReceizId:string;username:string;assertCurrent():void;resolveProtectedBlock?:ExactByteBlockResolver}):Promise<File|null>;
  readComposerPrimaryFile(file:File):Promise<{verification:{ok:boolean;bundle?:unknown;errors:readonly string[]};payload?:File}>;
- prepareConnectedComposerContent(input:{draft:AssetComposerDraft;ownerReceizId:string;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>;
+ prepareConnectedComposerContent(input:{draft:AssetComposerDraft;ownerReceizId:string;creatorUsername?:string;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>;
  sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>;
  admitConnectedComposerSource(input:{file:File;ownerReceizId:string;username:string;profileIdentity?:string;assertCurrent():void;onLocalAdmission?(admission:ConnectedAssetLocalAdmission):Promise<void>|void}):Promise<unknown>;
  resolveComposerBlock(reference:ExactByteBlockReference):Promise<Uint8Array>;

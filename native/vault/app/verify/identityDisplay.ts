@@ -1,4 +1,5 @@
 import { decodeProfileOriginalRouteProjectionAppend } from '../lib/profile/showcase/routeProjectionEncoding';
+import { parseReceivingUsername } from '../lib/profile/receivingUsername';
 
 export type VerifierIdentity = Readonly<{ receizId: string | null; username: string | null; displayName: string | null; unavailableReason?: string }>;
 export type VerifierIdentityDisplay = Readonly<{
@@ -17,6 +18,27 @@ export function verifierIdentity(value: unknown, displayName: unknown = null): V
   return { receizId, username: component && USERNAME.test(component) ? component : null, displayName: text(displayName) };
 }
 const absent = (): VerifierIdentity => verifierIdentity(null);
+
+/** Projection of the already canonically verified payload, never an account
+ * lookup or an independent creator authority. The seal keeps its physical ID. */
+export function projectVerifiedCreatorUsername(value: unknown, payloadBytes: Uint8Array): string | null {
+  const result = record(value), continuity = record(result?.assetContinuity);
+  const native = record(record(result?.bundle)?.nativeRecordSeal), nativeContinuity = record(native?.ownershipContinuity);
+  const nativeSource = continuity?.state === 'verified' && continuity.carrier === 'native_record_seal'
+    ? continuity : continuity?.state === 'not_applicable' && typeof nativeContinuity?.namespace === 'string'
+      && nativeContinuity.namespace.startsWith('receiz.native-proof:') ? nativeContinuity : null;
+  if (result?.ok !== true || record(result.integrity)?.ok === false
+    || !nativeSource
+    || payloadBytes.length > 10 * 1024 * 1024 || payloadBytes[0] !== 123) return null;
+  let source: Record<string, unknown> | null;
+  try { source = record(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes))); } catch { return null; }
+  const owner = source?.schema === 'receiz.bank.asset-content.v2' ? source.ownerReceizId
+    : source?.schema === 'receiz.bank.asset-definition.v1' ? source.issuerReceizId : null;
+  return source && owner === nativeSource.genesisOwnerReceizId
+    && typeof source.creatorUsername === 'string'
+    && parseReceivingUsername(source.creatorUsername) === source.creatorUsername
+    ? source.creatorUsername : null;
+}
 
 /** Reads the existing sealed Original projection after enclosing verification.
  * The payload digest has already been recomputed by the canonical reader. */
@@ -52,8 +74,12 @@ export function projectVerifierIdentityDisplay(value: unknown): VerifierIdentity
   // ownership appends retain that genesis identity; PBI assertions stay separate.
   if (!creator && (original?.ownershipKind === 'creator'
     || (!original && canonicalContinuity?.state === 'verified'
-      && canonicalContinuity.carrier === 'native_record_seal'))) {
+      && canonicalContinuity.carrier === 'native_record_seal')
+    || (!original && canonicalContinuity?.state === 'not_applicable'
+      && typeof continuity?.namespace === 'string' && continuity.namespace.startsWith('receiz.native-proof:')))) {
     originalCreator = verifierIdentity(continuity?.genesisOwnerReceizId ?? record(native?.ownershipContinuity)?.genesisOwnerReceizId);
+    const chosen = text(result.sourceCreatorUsername);
+    if (chosen && parseReceivingUsername(chosen) === chosen) originalCreator = { ...originalCreator, username: chosen };
   }
   const nested = record(result.identitySource);
   const nestedDisplay = nested?.state === 'verified' ? projectVerifierIdentityDisplay(nested.result) : null;

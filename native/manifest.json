@@ -6725,13 +6725,13 @@
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.client.ts",
-      "sha256": "6525d292fbc673b6f072d5f0ee1b67c465dfa35bd22d8c1214e1e05bf1c9aa16",
+      "sha256": "7a13f717b6847dbdbafde4d109d45a637fa530525d6c737864ce4b311b0a1294",
       "bytes": 7074,
       "mode": 420
     },
     {
       "path": "receiz/app/lib/profile/composerPreparation.ts",
-      "sha256": "9e8e37f74aa04c0d1729bbd842b65ff53bcae5a0bead549062594838f8208a33",
+      "sha256": "335dcc5bf9fd6c6aa2b46bad9986c2fd119f2c5ab435db380ec63cb8548828cd",
       "bytes": 11433,
       "mode": 420
     },
@@ -6945,7 +6945,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "sha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
       "bytes": 5182,
       "mode": 420
     },
@@ -7034,7 +7034,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "29a8ffac1760ec7db3a1f745be6d55419f70c02af2e3982e2b736fb6c3be9a54",
+      "sha256": "36ea07609bbe7454731abe162f8e90251b08aa01f241d5dc43e03244a03b83ff",
       "mode": 420
     },
     {
@@ -7110,7 +7110,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "1742325f847de0e90f0757355b0b98c703965e032bcd69c8a21aea4a393b4a94",
+      "sha256": "3aeda7ca8bd4c2ed8382cc52970564772e2679e28c2eb842b6117c772a9b3ccc",
       "bytes": 10214,
       "mode": 420
     },
@@ -7929,7 +7929,7 @@
     },
     {
       "path": "receiz/app/verify/identityDisplay.ts",
-      "sha256": "54722147f5dcb39cf3e7fa81977725b40cb2f9602a0766f27e4be7cb4fc7023e",
+      "sha256": "cf1206c13028141c8e4bfa0080cb097dc8942ca50742b35ec75a40874b2dae91",
       "bytes": 6831,
       "mode": 420
     },
@@ -7941,7 +7941,7 @@
     },
     {
       "path": "receiz/app/verify/verifyRuntime.ts",
-      "sha256": "e576c952abb42278b70152e34e3b5d342dde43ae9ccf3d543845bbc354d826b7",
+      "sha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe",
       "bytes": 17707,
       "mode": 420
     },
@@ -14625,7 +14625,7 @@
     },
     {
       "path": "vault/app/lib/profile/composerPreparation.ts",
-      "sha256": "d951c43876430383f70f7f2fc3a78d2ebfa5bfc93f38e0152351c43d3f7dc9d7",
+      "sha256": "8ff28e0de7cf7384fe2782172da8c693474b6df23a6556c15441e282028fe2ff",
       "mode": 420
     },
     {
@@ -14654,8 +14654,13 @@
       "mode": 420
     },
     {
+      "path": "vault/app/lib/profile/receivingUsername.ts",
+      "sha256": "37a96a03cdd866dd2790468109cca0d237051ae7978acb6d1afe952cbb48796d",
+      "mode": 420
+    },
+    {
       "path": "vault/app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "sha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
       "mode": 420
     },
     {
@@ -14680,7 +14685,7 @@
     },
     {
       "path": "vault/app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "e21ed52255f1385b7b5ef250629def5d4d1bbd2b11bbc4ca8260aa5ec7076363",
+      "sha256": "a19cbd52db9c853b29fa588f2c4863bae0b81af0899134e50e8feccb931ebe81",
       "mode": 420
     },
     {
@@ -14885,7 +14890,7 @@
     },
     {
       "path": "vault/app/verify/identityDisplay.ts",
-      "sha256": "54722147f5dcb39cf3e7fa81977725b40cb2f9602a0766f27e4be7cb4fc7023e",
+      "sha256": "cf1206c13028141c8e4bfa0080cb097dc8942ca50742b35ec75a40874b2dae91",
       "mode": 420
     },
     {
@@ -14895,7 +14900,7 @@
     },
     {
       "path": "vault/app/verify/verifyRuntime.ts",
-      "sha256": "e576c952abb42278b70152e34e3b5d342dde43ae9ccf3d543845bbc354d826b7",
+      "sha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe",
       "mode": 420
     },
     {
@@ -18171,11 +18176,11 @@
     },
     {
       "path": "app/lib/profile/composerPreparation.client.ts",
-      "sha256": "6525d292fbc673b6f072d5f0ee1b67c465dfa35bd22d8c1214e1e05bf1c9aa16"
+      "sha256": "7a13f717b6847dbdbafde4d109d45a637fa530525d6c737864ce4b311b0a1294"
     },
     {
       "path": "app/lib/profile/composerPreparation.ts",
-      "sha256": "9e8e37f74aa04c0d1729bbd842b65ff53bcae5a0bead549062594838f8208a33"
+      "sha256": "335dcc5bf9fd6c6aa2b46bad9986c2fd119f2c5ab435db380ec63cb8548828cd"
     },
     {
       "path": "app/lib/profile/deterministicFeed.ts",
@@ -18278,6 +18283,10 @@
       "sha256": "683fa2d2347ff00a798f9421309b0c69cfd61bee5c87a1e48a87a8a3f00004c3"
     },
     {
+      "path": "app/lib/profile/receivingUsername.ts",
+      "sha256": "9921445c27f8b1d64f84d51d1a863e020fabd306fbe3779d6a9bf5a839da55f1"
+    },
+    {
       "path": "app/lib/profile/routeHydration.ts",
       "sha256": "a7587e786b01d709800ac72d51757abab2f55bf2f851beacbdc0e5dbc0478b22"
     },
@@ -18303,7 +18312,7 @@
     },
     {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324"
+      "sha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209"
     },
     {
       "path": "app/lib/profile/showcase/boundedEdgeVault.ts",
@@ -18359,7 +18368,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "29a8ffac1760ec7db3a1f745be6d55419f70c02af2e3982e2b736fb6c3be9a54"
+      "sha256": "36ea07609bbe7454731abe162f8e90251b08aa01f241d5dc43e03244a03b83ff"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -18411,7 +18420,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceProjection.ts",
-      "sha256": "1742325f847de0e90f0757355b0b98c703965e032bcd69c8a21aea4a393b4a94"
+      "sha256": "3aeda7ca8bd4c2ed8382cc52970564772e2679e28c2eb842b6117c772a9b3ccc"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceReference.ts",
@@ -18843,7 +18852,7 @@
     },
     {
       "path": "app/verify/identityDisplay.ts",
-      "sha256": "54722147f5dcb39cf3e7fa81977725b40cb2f9602a0766f27e4be7cb4fc7023e"
+      "sha256": "cf1206c13028141c8e4bfa0080cb097dc8942ca50742b35ec75a40874b2dae91"
     },
     {
       "path": "app/verify/portableIdentityReader.ts",
@@ -18851,7 +18860,7 @@
     },
     {
       "path": "app/verify/verifyRuntime.ts",
-      "sha256": "e576c952abb42278b70152e34e3b5d342dde43ae9ccf3d543845bbc354d826b7"
+      "sha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe"
     },
     {
       "path": "node_modules/.pnpm/@noble+curves@2.3.0/node_modules/@noble/curves/abstract/curve.js",

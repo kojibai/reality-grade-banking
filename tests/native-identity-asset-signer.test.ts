@@ -10,10 +10,10 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>({
  verifyReceizArtifact:async()=>({status:'verified-artifact'}),
  createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,
  readReceizIdentityPublicBinding:async()=>({keyId:'a'.repeat(64),artifactSha256:'b'.repeat(64),artifactOwnerReceizId:'owner.receiz.id'}),
- readReceizIdentityArtifact:async()=>({keyId:'a'.repeat(64),owner:{uid:'owner',username:'owner'},crypto:{publicKeyRawB64u:'public'}}),
+ readReceizIdentityArtifact:async()=>({keyId:'a'.repeat(64),owner:{uid:'owner',username:'chosen_creator'},crypto:{publicKeyRawB64u:'public'}}),
  projectReceizIdentityAccount:async()=>({authority:'identity-only'}),receizKaiNow:()=>({pulse:100}),sha256ReceizBytes:async()=> 'b'.repeat(64),
  createReceizProofAuthorityChallenge:()=>({challenge:{},challengeB64Url:'fixture'}),
- createReceizClient:()=>({identity:{continueReceizId:async()=>({ok:true,session:{uid:'owner',username:'owner'}}),signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId:BANK_APPLICATION_ID,keyId:'a'.repeat(64),artifactDigest:'b'.repeat(64),grantedScopes:scopes,accessToken:'synthetic-test-only',expiresAtKai:200})}}),
+ createReceizClient:()=>({identity:{continueReceizId:async()=>({ok:true,session:{uid:'owner',username:'chosen_creator'}}),signLoginProof:async()=>({}),exchangeProofAuthority:async()=>({applicationId:BANK_APPLICATION_ID,keyId:'a'.repeat(64),artifactDigest:'b'.repeat(64),grantedScopes:scopes,accessToken:'synthetic-test-only',expiresAtKai:200})}}),
 })}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({load:p.load}),createReceizOfflineSealer:()=>({enroll:p.enroll})}));
 vi.mock('../src/receiz/offline-notes',()=>({loadBankNoteRuntime:async()=>({createBankNativeNoteSealer:p.nativeSealer})}));
@@ -40,6 +40,7 @@ it('opens asset creation with the existing non-exportable enrollment, enrolling 
   expect(p.enroll).toHaveBeenCalledTimes(1);expect(p.load).toHaveBeenCalledTimes(1);
   expect(p.nativeSealer).toHaveBeenCalledExactlyOnceWith({enrollment:p.enrollment,resources:{wasm:new Uint8Array([1]),zkey:new Uint8Array([2])}});
   expect(p.prepare).toHaveBeenCalledTimes(1);
+  expect(p.prepare.mock.calls[0]?.[0]).toMatchObject({creatorUsername:'chosen_creator',ownerReceizId:'owner.receiz.id'});
  }finally{identity.dispose();}
 });
 it('reports unavailable local signer custody before opening publication',async()=>{
