@@ -5,7 +5,7 @@ import type {ChatPerson} from '../../receiz/native-messaging';
 
 /** A world Twin's sender ID carries its owner. Reuse that conversation member;
  * no username guessing, new directory read or human-authorship claim. */
-export function chatReplyPerson(userId:string,agentId:string|null|undefined,members:ChatPerson[]):ChatPerson|null{
+export function chatReplyPerson(userId:string|null,agentId:string|null|undefined,members:ChatPerson[]):ChatPerson|null{
  const owner=/^world:([\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})$/i.exec(agentId??'')?.[1];
  return members.find(person=>person.kind==='user'&&person.userId===(owner??userId))
   ??members.find(person=>person.kind==='ai'&&!!agentId&&person.aiAgentId===agentId)??null;

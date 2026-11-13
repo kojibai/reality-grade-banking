@@ -27,7 +27,7 @@ function normalizeError(error:unknown):never{
 }
 /** The canonical passkey protocol, presented by this host. The RP is shared
  * with Receiz; only the browser's system authenticator displays a ceremony. */
-async function complete(begin:Json,accountUid?:string,credentialId?:string){
+async function complete(begin:Json,accountUid?:string,credentialId?:string,expectedEmail?:string){
  if(begin.ok!==true||!['authenticate','register'].includes(begin.flow)||begin.rpId!=='receiz.com'||typeof begin.challengeId!=='string')throw Error('PBI_ACCOUNT_RESPONSE_INVALID');
  if(begin.flow==='register'&&accountUid){const raw=accountUid.replaceAll('-','');if(!/^[a-f0-9]{32}$/i.test(raw)||begin.user?.idB64Url!==encode(Uint8Array.from(raw.match(/../g)!,v=>parseInt(v,16)).buffer))throw Error('PBI_ACCOUNT_MISMATCH');}
  let credential:PublicKeyCredential|null;
@@ -43,12 +43,15 @@ async function complete(begin:Json,accountUid?:string,credentialId?:string){
  const rawId=encode(credential.rawId);if(credentialId&&rawId!==credentialId)throw Error('PBI_ACCOUNT_MISMATCH');
  const response=credential.response,common={id:credential.id,rawId,type:'public-key',response:{clientDataJSON:encode(response.clientDataJSON)}};
  const payload=begin.flow==='register'?{attestation:{...common,response:{...common.response,attestationObject:encode((response as AuthenticatorAttestationResponse).attestationObject)}}}:{assertion:{...common,response:{...common.response,authenticatorData:encode((response as AuthenticatorAssertionResponse).authenticatorData),signature:encode((response as AuthenticatorAssertionResponse).signature),userHandle:(response as AuthenticatorAssertionResponse).userHandle?encode((response as AuthenticatorAssertionResponse).userHandle!):null}}};
- const finished=await pbiAccountRequest('finish',{challengeId:begin.challengeId,...payload});return{accountUid:expectedAccount(finished,accountUid),credentialId:rawId};
+ const finished=await pbiAccountRequest('finish',{challengeId:begin.challengeId,...payload});if(expectedEmail&&finished.session?.email?.trim().toLowerCase()!==expectedEmail)throw Error('PBI_ACCOUNT_MISMATCH');return{accountUid:expectedAccount(finished,accountUid),credentialId:rawId};
 }
-export async function recoverPbiAccountInline(){
+export async function recoverPbiAccountInline(options?:{existingOnly:true;email:string}){
  if(!navigator.credentials?.get||!navigator.credentials?.create)throw Error('PBI_BROWSER_UNAVAILABLE');
- const begin=await pbiAccountRequest('begin',{intent:'auto',next:'/account'});
- try{return await complete(begin);}catch(error){
+ const email=options?.email.trim().toLowerCase();if(options&&(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw Error('PBI_ACCOUNT_MISMATCH');
+ const begin=await pbiAccountRequest('begin',{intent:'auto',next:'/account',...(email?{email}:{})});
+ if(options?.existingOnly&&begin.flow!=='authenticate')throw Error('PBI_ACCOUNT_MISMATCH');
+ try{return await complete(begin,undefined,undefined,email);}catch(error){
+  if(options?.existingOnly)throw error;
   if(!(error instanceof Error)||!['passkey_cancelled','passkey_not_registered','passkey_not_found'].includes(error.message)||begin.flow!=='authenticate'||begin.allowCredentialIds?.length)throw error;
   return await complete(await pbiAccountRequest('begin',{intent:'register',next:'/account'}));
  }

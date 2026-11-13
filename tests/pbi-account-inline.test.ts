@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {runPbiAccountInline,runPbiAccountInlineConnection} from '../src/receiz/pbi-account-inline';
+import {recoverPbiAccountInline,runPbiAccountInline,runPbiAccountInlineConnection} from '../src/receiz/pbi-account-inline';
 const uid='11111111-1111-4111-8111-111111111111';
 const device={keyId:'key',alg:'Ed25519',publicKeyRawB64u:'pub',localUid:'device'};
 const credential={id:'credential',type:'public-key',rawId:new Uint8Array([1,2]).buffer,response:{clientDataJSON:new Uint8Array([1]).buffer,authenticatorData:new Uint8Array([2]).buffer,signature:new Uint8Array([3]).buffer,attestationObject:new Uint8Array([4]).buffer,userHandle:null}};
@@ -9,7 +9,7 @@ function setup(mode='existing'){
  const fetch=vi.fn(async(input:string,init?:RequestInit)=>{
   const operation=input==='https://receiz.com/api/auth/passkey/related/begin'?'begin':input.split('/pbi/')[1],body=init?.body?JSON.parse(String(init.body)):{};
   if(operation==='begin'||operation==='enroll')return Response.json({ok:true,flow:body.intent==='register'||operation==='enroll'?'register':'authenticate',challengeId:'challenge',challengeB64Url:'Y2hhbGxlbmdl',rpId:mode==='realm'?'wrong.test':'receiz.com',rpName:'Receiz',user:{idB64Url:Buffer.from(uid.replaceAll('-',''),'hex').toString('base64url'),name:'Account',displayName:'Account'}});
-  if(operation==='finish'||operation==='switch')return Response.json({ok:true,session:{uid:mode==='wrong-account'?'other':uid}});
+  if(operation==='finish'||operation==='switch')return Response.json({ok:true,session:{uid:mode==='wrong-account'?'other':uid,...(mode==='matched-email'?{email:'alex@example.org'}:{})}});
   if(operation==='credential')return Response.json({credential:mode==='other-device'?{credIdB64Url:'YW5vdGhlcg',pubKeyPem:'other'}:null});
   if(operation==='bind')return Response.json({ok:true,accountUid:uid,sourceMode:'legacy-sql',binding:device});
   if(operation?.startsWith('credential-source?'))return Response.json({ok:true,accountUid:uid,credentialId:'AQI',sourceMode:'legacy-sql'});
@@ -17,6 +17,14 @@ function setup(mode='existing'){
  });vi.stubGlobal('fetch',fetch);return{get,create,fetch};
 }
 afterEach(()=>vi.unstubAllGlobals());
+it('existing paid-account PBI uses the exact email and never registers after cancellation',async()=>{
+ const f=setup('cancel');await expect(recoverPbiAccountInline({existingOnly:true,email:'Alex@Example.org'})).rejects.toThrow('passkey_cancelled');
+ expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body))).toMatchObject({email:'alex@example.org',intent:'auto'});expect(f.create).not.toHaveBeenCalled();expect(f.fetch.mock.calls).toHaveLength(1);
+});
+it('existing paid-account PBI refuses a finished account for a different email',async()=>{
+ const f=setup('existing');await expect(recoverPbiAccountInline({existingOnly:true,email:'alex@example.org'})).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(f.create).not.toHaveBeenCalled();
+});
+it('existing paid-account PBI accepts the canonical finish for that exact email without registration',async()=>{const f=setup('matched-email');expect((await recoverPbiAccountInline({existingOnly:true,email:'alex@example.org'})).accountUid).toBe(uid);expect(f.create).not.toHaveBeenCalled();expect(f.fetch).toHaveBeenCalledTimes(2);});
 it.each(['existing','new'])('runs %s account ceremony on this screen with the canonical RP',async mode=>{
  const f=setup(mode),sign=vi.fn(async()=>({challengeB64Url:'signed',signatureB64Url:'proof'}));
  const result=await runPbiAccountInline(device,sign);expect(result.accountUid).toBe(uid);expect(sign).toHaveBeenCalledExactlyOnceWith(uid);expect(f.get.mock.calls[0][0].publicKey!.rpId).toBe('receiz.com');expect(f.create).toHaveBeenCalledTimes(mode==='new'?1:0);expect(f.fetch.mock.calls.filter(([url])=>url.endsWith('/finish'))).toHaveLength(1);

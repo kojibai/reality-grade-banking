@@ -60,6 +60,7 @@ function completeBody(output: Uint8Array) {
 export async function relayNativeAccount(request: Request): Promise<Response> {
   if(new URL(request.url).pathname.startsWith(PREFIX+'/email-payment/'))return(await import('./email-payment-entry.js')).handleEmailPaymentEntry(request);
   if(new URL(request.url).pathname.startsWith(PREFIX+'/email-meeting/'))return(await import('./email-meeting-entry.js')).handleEmailMeetingEntry(request);
+  if(new URL(request.url).pathname.startsWith(PREFIX+'/email-message/'))return(await import('./email-message-entry.js')).handleEmailMessageEntry(request);
   if(new URL(request.url).pathname.startsWith(PREFIX+'/pbi/'))return(await import('./pbi-account-transport.js')).relayPbiAccount(request);
   if(new URL(request.url).pathname===PREFIX+'/twin-upgrade')return relayTwinUpgrade(request);
   const url = new URL(request.url), path = nativeRequestPath(url.pathname + url.search, request.method);
@@ -70,10 +71,16 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
   const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(nativeRequestTimeout(path,request.method))]);
   try {
-    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport,multipartPath=artifactPath&&!certificateExport||certificateImport||path==='/api/document-verify'||path==='/api/profile/me/media';
-    const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
+    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',originalPath=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/original$/i.test(path),artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport||originalPath,multipartPath=artifactPath&&!certificateExport||certificateImport||path==='/api/document-verify'||path==='/api/profile/me/media';
+    const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':originalPath?'message/rfc822, image/png':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;
+    if(path==='/api/auth/receiz-id/account-match'){
+      headers.Origin=url.origin;
+      for(const key of ['x-receiz-local-action-id','x-receiz-local-action-key-id','x-receiz-local-action-public-key','x-receiz-local-action-challenge','x-receiz-local-action-signature']){
+        const value=request.headers.get(key);if(!value||value.length>8192)return fail(400);headers[key]=value;
+      }
+    }
     if(new URL(path,'https://receiz.com').pathname==='/api/connect/profile/showcase/publication'){
       for(const key of ['x-receiz-owner-id','x-receiz-profile-username','x-receiz-local-action-id','x-receiz-local-action-key-id','x-receiz-local-action-public-key','x-receiz-local-action-challenge','x-receiz-local-action-signature','x-receiz-local-outbox-replay']){
         const value=request.headers.get(key);if(value){if(value.length>8192)return fail(400);headers[key]=value;}
@@ -98,7 +105,8 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
       if (!streamPath || !response.ok || !response.body) { await response.body?.cancel(); return fail(503); }
       return new Response(streamingBody(response.body,signal,abort), {status:response.status,headers:{...base,'Cache-Control':'no-store, no-transform','Content-Type':response.headers.get('content-type')!,'X-Accel-Buffering':'no'}});
     }
-    let output = await bytes(response.body,certificateExport?26*1024*1024:LIMIT,signal);
+    if(originalPath&&response.ok&&(!['message/rfc822','image/png'].includes(type??'')||type==='message/rfc822'&&!/^attachment;\s*filename="[A-Za-z0-9._ -]{1,150}\.eml"$/i.test(response.headers.get('content-disposition')??''))){await response.body?.cancel();return fail(503);}
+    let output = await bytes(response.body,originalPath?25*1024*1024:certificateExport?26*1024*1024:LIMIT,signal);
     // Older certificate projections can omit an Original's pricing operands.
     // Reuse the exact public source already shipped for that same artifact;
     // no account, quote or discovery request belongs in this public read.

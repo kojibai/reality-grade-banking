@@ -2,8 +2,10 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,beforeAll,expect,it,vi} from 'vitest';
+const verifiedEmailCustody=vi.hoisted(()=>({open:vi.fn()}));
+vi.mock('../src/receiz/pbi-account',()=>({openVerifiedInvitationAccount:verifiedEmailCustody.open}));
 import {MessagesPanel} from '../src/features/messages/MessagesPanel';
-import {MessagingError,type ChatConversation,type ChatMessage,type ChatPage,type NativeMessaging,type MessageSendOptions} from '../src/receiz/native-messaging';
+import {MessagingError,type ChatConversation,type ChatMessage,type ChatNativeMessage,type ChatPage,type NativeMessaging,type MessageSendOptions} from '../src/receiz/native-messaging';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {NativeTwinAsk,NativeTwinMemory,NativeTwinReply} from '../src/receiz/native-twin';
 
@@ -15,17 +17,17 @@ afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllGlobals();Obj
 const uid='33333333-3333-4333-8333-333333333333',threadId='11111111-1111-4111-8111-111111111111';
 const peer={kind:'user' as const,userId:'22222222-2222-4222-8222-222222222222',username:'sam',displayName:'Sam',avatarUrl:null};
 const other={...peer,userId:'44444444-4444-4444-8444-444444444444',username:'alex',displayName:'Alex'};
-const message:ChatMessage={id:'message-1',conversationId:threadId,senderUserId:peer.userId,senderKind:'user',senderAiId:null,senderDisplay:'Sam',body:'An actual fixture message',createdAt:'2026-10-19T12:00:00Z',receizedAt:'2026-10-19T12:00:00Z',receipt:null,sealedOriginalAvailable:false};
+const message:ChatNativeMessage={id:'message-1',conversationId:threadId,senderUserId:peer.userId,senderKind:'user',senderAiId:null,senderDisplay:'Sam',body:'An actual fixture message',createdAt:'2026-10-19T12:00:00Z',receizedAt:'2026-10-19T12:00:00Z',receipt:null,sealedOriginalAvailable:false};
 const conversation:ChatConversation={id:threadId,kind:'dm',title:'Sam',members:[peer],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:message,createdAt:message.createdAt,updatedAt:message.createdAt,lastMessageAt:message.createdAt};
 const page:ChatPage={conversation,messages:[message],hasMore:true,nextCursor:'2026-10-19T12:00:00Z'};
 function deferred<T>(){let resolve!:(value:T)=>void,reject!:(reason:unknown)=>void;const promise=new Promise<T>((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};}
 function fixture(consented=true){
  let approved=consented;
  const twin={readiness:vi.fn(()=>({status:'configured',availability:'unchecked',requires:['business','usage-credits']})),ask:vi.fn(async(input:NativeTwinAsk):Promise<NativeTwinReply>=>({requestId:input.requestId,message:'A generated answer',authority:'generated-interpretation',source:'upstream',memoryScope:'none',memory:[],sourceReferences:[],sharedContext:[],actionHandoffs:[{kind:'pay',label:'Review proposal',href:'https://receiz.com/review',authority:'proposal-only',admitted:false}]}))};
- const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:():ChatPage|null=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions)=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
+ const api={accountUid:uid,twin,callTransport:{heldFetch:vi.fn(async(_path:string,_init?:RequestInit)=>Response.json({ok:true,calls:[],activeCall:null}))},knownConversations:()=>[conversation],knownMessages:():ChatPage|null=>page,conversations:vi.fn(async(_signal?:AbortSignal)=>[conversation]),messages:vi.fn(async(_id:string,_before?:string,_signal?:AbortSignal)=>page),search:vi.fn(async(_query:string,_signal?:AbortSignal)=>[peer,other]),createConversation:vi.fn(async(_input:{participantUserIds:string[];title?:string})=>threadId),send:vi.fn(async(_id:string,_body:string,_options?:MessageSendOptions):Promise<ChatMessage>=>({...message,id:'sent-1',senderUserId:uid,body:'My draft'}))};
  const identity={binding:{identityOwnerReceizId:'owner'},knownTwinAccess:()=>true,messaging:vi.fn(async(approve=false)=>{if(!approved&&!approve)throw Error('MESSAGING_CONSENT_REQUIRED');approved=true;return api;})} as unknown as OpenIdentity;
  const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onClose=vi.fn(),onOpen=vi.fn(),onPreparePayment=vi.fn();
- const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget,initialBusinessRequest?:{id:string;start?:import('../src/features/messages/useBusinessEntry').BusinessStart},onBusinessConsumed?: (id:string)=>void,initialMeeting?:import('../src/receiz/meeting-invitation').MeetingEntry)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification} initialBusinessRequest={initialBusinessRequest} onBusinessConsumed={onBusinessConsumed} initialMeeting={initialMeeting}/>));
+ const render=(active=true,nextIdentity=identity,twinContextRecords?:ReadonlyArray<{id:string;title:string;text:string}>,initialRecipient?:{id:number;person:typeof peer},initialNotification?:import('../src/pwa/notification-target').NotificationTarget,initialBusinessRequest?:{id:string;start?:import('../src/features/messages/useBusinessEntry').BusinessStart},onBusinessConsumed?: (id:string)=>void,initialMeeting?:import('../src/receiz/meeting-invitation').MeetingEntry,initialEmailMessage?:import('../src/receiz/email-message-entry').EmailMessageObservation)=>act(async()=>root.render(<MessagesPanel identity={nextIdentity} active={active} onClose={onClose} onOpen={onOpen} onPreparePayment={onPreparePayment} twinContextRecords={twinContextRecords} initialRecipient={initialRecipient} initialNotification={initialNotification} initialBusinessRequest={initialBusinessRequest} onBusinessConsumed={onBusinessConsumed} initialMeeting={initialMeeting} initialEmailMessage={initialEmailMessage}/>));
  const click=async(label:string)=>{const button=[...host.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label||b.textContent===label);expect(button,'button '+label).toBeTruthy();await act(async()=>button!.click());};
  const input=async(label:string,value:string)=>{const field=host.querySelector<HTMLInputElement>('[aria-label="'+label+'"]')!;expect(field,'input '+label).toBeTruthy();await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);field.dispatchEvent(new Event('input',{bubbles:true}));});};
  const submit=()=>act(async()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
@@ -635,4 +637,38 @@ it('sends and continues the full owner Twin through the real retained-money vali
   await vi.waitFor(async()=>expect(await retention.recoverQuestion()).toBeNull());
   expect(execute).not.toHaveBeenCalled();expect(identity.organizer).not.toHaveBeenCalled();
  }finally{f.unmount();}
+});
+it('auto-enables messaging only for the closed email entry after custody/adoption and opens its exact message',async()=>{
+ const f=fixture(false),email=await import('../src/receiz/email-message-entry'),targetId='55555555-5555-4555-8555-555555555555',wire={ok:true as const,recipient:{userId:uid,email:'owner@example.test'},invitation:{conversationId:threadId,messageId:targetId}};
+ const targetPage={...page,messages:[{...message,id:targetId}],hasMore:false,nextCursor:null};f.api.knownMessages=()=>targetPage;f.api.messages.mockResolvedValue(targetPage);
+ verifiedEmailCustody.open.mockResolvedValue({dispose:vi.fn()});vi.stubGlobal('fetch',vi.fn(async input=>Response.json(String(input).endsWith('/adopt')?{...wire,adopted:true}:wire)));
+ const verified=await email.openEmailMessage(),identity={...f.identity,walletReceivingAddress:()=>uid}as OpenIdentity;
+ try{await f.render(true,identity,undefined,undefined,undefined,undefined,undefined,undefined,verified);await vi.waitFor(()=>expect(f.host.querySelector('[data-chat-message="'+targetId+'"]')).not.toBeNull());expect(identity.messaging).toHaveBeenCalledWith(true);expect(f.host.textContent).not.toContain('Enable messages');expect(f.api.createConversation).not.toHaveBeenCalled();expect(f.api.send).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('a caller-crafted email notification cannot approve first-device messaging access',async()=>{
+ const f=fixture(false),identity={...f.identity,walletReceivingAddress:()=>uid}as OpenIdentity,forged={ok:true as const,recipient:{userId:uid,email:'owner@example.test'},invitation:{conversationId:threadId,messageId:'55555555-5555-4555-8555-555555555555'}};
+ try{await f.render(true,identity,undefined,undefined,undefined,undefined,undefined,undefined,forged);expect(identity.messaging).toHaveBeenCalledWith(false);expect(identity.messaging).not.toHaveBeenCalledWith(true);expect(f.api.messages).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('a delayed email append preserves the active unsent draft and the actual client chronological merge',async()=>{
+ const f=fixture(),{createNativeMessaging}=await import('../src/receiz/native-messaging');let finish!:(value:Response)=>void;
+ const early={...message,id:'early',createdAt:'2026-10-19T10:00:00Z'},late={...message,id:'late',createdAt:'2026-10-19T12:00:00Z'};
+ const delayed:ChatMessage={...message,id:'delayed',createdAt:'2026-10-19T11:00:00Z',senderKind:'external-email',senderUserId:null,senderAiId:null,walletTransfer:null,body:'A delayed email',transport:{fromEmail:'mail@example.test',recipientAlias:'alice@receiz.com'}};
+ const client=createNativeMessaging({accountUid:uid,callTransport:f.api.callTransport,retained:{schema:'bankeiz.messaging-display.v1',accountUid:uid,inbox:[conversation],pages:[{...page,messages:[early,late]}]},request:async path=>path==='/api/chat/conversations'?Response.json({ok:true,conversations:[conversation]}):new Promise(resolve=>{finish=resolve;})});
+ const identity={...f.identity,knownTwinAccess:()=>false,messaging:vi.fn(async()=>({...client,twin:f.api.twin,typing:undefined,notifications:undefined}))}as unknown as OpenIdentity;
+ try{await f.render(true,identity);await f.click('Open conversation Sam');await f.input('Message…','Keep my draft');await act(async()=>finish(Response.json({ok:true,conversation,messages:[delayed],hasMore:false,nextCursor:null})));expect([...f.host.querySelectorAll('[data-chat-message]')].map(node=>node.getAttribute('data-chat-message'))).toEqual(['early','delayed','late']);expect(f.host.querySelector<HTMLInputElement>('[aria-label="Message…"]')?.value).toBe('Keep my draft');}finally{f.unmount();}
+});
+it('allows a full-length external email only when the existing messaging capability permits it',async()=>{
+ const f=fixture(),email='a'.repeat(64)+'@'+'b'.repeat(63)+'.'+'c'.repeat(63)+'.'+'d'.repeat(61),createEmail=vi.fn(async()=>threadId);
+ expect(email).toHaveLength(254);f.api.emailConversationsAvailable=()=>true;f.api.createEmailConversation=createEmail;
+ try{await f.render();await f.click('Messages');await f.click('New conversation');await f.input('Find a person by name or username',email);expect(f.host.querySelector<HTMLInputElement>('[aria-label="Find a person by name or username"]')?.maxLength).toBe(254);await f.click('Start conversation');expect(createEmail).toHaveBeenCalledWith(email);expect(f.api.createConversation).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('does not advertise or dispatch email conversation creation when the held Native capability is disabled',async()=>{
+ const f=fixture(),createEmail=vi.fn(async()=>threadId);f.api.emailConversationsAvailable=()=>false;f.api.createEmailConversation=createEmail;
+ try{await f.render();await f.click('Messages');await f.click('New conversation');await f.input('Find a person by name or username','someone@example.test');const start=[...f.host.querySelectorAll('button')].find(button=>button.textContent?.startsWith('Start conversation'));expect(start?.disabled).toBe(true);expect(f.host.textContent).not.toContain('Start a conversation with someone@example.test');expect(createEmail).not.toHaveBeenCalled();}finally{f.unmount();}
+});
+it('displays held history immediately and fetches only the exact email entry message missing from that page',async()=>{
+ const f=fixture(),email=await import('../src/receiz/email-message-entry'),targetId='55555555-5555-4555-8555-555555555555',wire={ok:true as const,recipient:{userId:uid,email:'owner@example.test'},invitation:{conversationId:threadId,messageId:targetId}};
+ const reading=deferred<ChatPage>();f.api.messages.mockReturnValue(reading.promise);verifiedEmailCustody.open.mockResolvedValue({dispose:vi.fn()});vi.stubGlobal('fetch',vi.fn(async input=>Response.json(String(input).endsWith('/adopt')?{...wire,adopted:true}:wire)));
+ const verified=await email.openEmailMessage(),identity={...f.identity,walletReceivingAddress:()=>uid}as OpenIdentity;
+ try{await f.render(true,identity,undefined,undefined,undefined,undefined,undefined,undefined,verified);expect(f.host.textContent).toContain('An actual fixture message');expect(f.api.messages).toHaveBeenCalledWith(threadId,undefined,expect.any(AbortSignal),targetId);await act(async()=>reading.resolve({...page,messages:[message,{...message,id:targetId,body:'Selected exact email'}]}));expect(f.host.querySelector('[data-chat-message="'+targetId+'"]')?.textContent).toContain('Selected exact email');expect(f.api.send).not.toHaveBeenCalled();expect(f.api.createConversation).not.toHaveBeenCalled();}finally{f.unmount();}
 });

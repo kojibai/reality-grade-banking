@@ -1,0 +1,81 @@
+{
+  "producer": "appendChatEmailObservation/projectEmailObservationRow",
+  "owner": "11111111-1111-4111-8111-111111111111",
+  "conversationId": "22222222-2222-4222-8222-222222222222",
+  "mimeBase64": "RnJvbTogU2VuZGVyIDxzZW5kZXJAZXhhbXBsZS50ZXN0Pg0KVG86IGFsaWNlQHJlY2Vpei5jb20NClN1YmplY3Q6IEV4YWN0IGluY29taW5nIGVtYWlsDQoNCkEgZGVsaXZlcmVkIGVtYWlsIG1lc3NhZ2UNCg==",
+  "wire": {
+    "id": "c157e31e-7648-5806-a25a-5edf7371a2a6",
+    "conversationId": "22222222-2222-4222-8222-222222222222",
+    "senderUserId": null,
+    "senderKind": "external-email",
+    "senderAiId": null,
+    "senderDisplay": "Sender",
+    "body": "A delivered email message",
+    "walletTransfer": null,
+    "createdAt": "2026-11-13T15:00:00.000Z",
+    "receizedAt": "2026-11-13T21:36:17.313Z",
+    "receipt": {
+      "version": 2,
+      "primitive": "receiz.chat.receipt.v2",
+      "kind": "message",
+      "scopeId": "c157e31e-7648-5806-a25a-5edf7371a2a6",
+      "sealId": "e09f2a89",
+      "payloadDigest": "e1153379b9108831993e68f09e27cca6e0c1ffe11293cc5129ccd3a618d1b90b",
+      "digest": "e09f2a89c9334dcc5bfb6649bad7726511a5a7a418472b0006bde59ffaab69e5",
+      "originDigest": "e1153379b9108831993e68f09e27cca6e0c1ffe11293cc5129ccd3a618d1b90b",
+      "resealCount": 0,
+      "sealedAt": "2026-11-13T21:36:17.313Z",
+      "receizedBy": "transport:resend",
+      "payloadEncoding": "jcs-v1",
+      "digestNonce": "01ce2195b5549d03de1675d2c0d22a0b",
+      "previousDigest": null
+    },
+    "transport": {
+      "provider": "resend",
+      "providerEmailId": "33333333-3333-4333-8333-333333333333",
+      "ownerUserId": "11111111-1111-4111-8111-111111111111",
+      "recipientAlias": "alice@receiz.com",
+      "fromEmail": "sender@example.test",
+      "receivedAt": "2026-11-13T15:00:00.000Z",
+      "rfcMessageId": "<actual-email@example.test>",
+      "inReplyTo": null,
+      "references": [],
+      "subject": "Exact incoming email"
+    },
+    "sealedOriginalAvailable": true,
+    "sealedOriginal": {
+      "version": 1,
+      "primitive": "receiz.chat.email-observation.v1",
+      "messageId": "c157e31e-7648-5806-a25a-5edf7371a2a6",
+      "conversationId": "22222222-2222-4222-8222-222222222222",
+      "senderKind": "external-email",
+      "senderUserId": null,
+      "senderAiId": null,
+      "senderDisplay": "Sender",
+      "body": "A delivered email message",
+      "walletTransfer": null,
+      "createdAt": "2026-11-13T15:00:00.000Z",
+      "transport": {
+        "provider": "resend",
+        "providerEmailId": "33333333-3333-4333-8333-333333333333",
+        "ownerUserId": "11111111-1111-4111-8111-111111111111",
+        "recipientAlias": "alice@receiz.com",
+        "fromEmail": "sender@example.test",
+        "receivedAt": "2026-11-13T15:00:00.000Z",
+        "rfcMessageId": "<actual-email@example.test>",
+        "inReplyTo": null,
+        "references": [],
+        "subject": "Exact incoming email"
+      },
+      "mime": {
+        "bucket": "receiz-chat-attachments",
+        "path": "11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222/email/c157e31e-7648-5806-a25a-5edf7371a2a6.eml",
+        "sha256": "0e6ad2eaf7aee837236b7d70586e12df025589e0d6936feae9bf95326d445359",
+        "bytes": 118
+      },
+      "receiptDigest": "e09f2a89c9334dcc5bfb6649bad7726511a5a7a418472b0006bde59ffaab69e5",
+      "payloadDigest": "e1153379b9108831993e68f09e27cca6e0c1ffe11293cc5129ccd3a618d1b90b",
+      "originDigest": "e1153379b9108831993e68f09e27cca6e0c1ffe11293cc5129ccd3a618d1b90b"
+    }
+  }
+}

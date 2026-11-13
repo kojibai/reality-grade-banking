@@ -2,14 +2,15 @@ import type {OpenIdentity} from '../receiz/native-identity';
 export interface CheckoutIdentitySession {
  open():Promise<OpenIdentity>;
  restore?():Promise<OpenIdentity|null>;
- import(file:File,phrase:string):Promise<OpenIdentity>;
+ import(file:File,phrase:string,expectedEmail?:string):Promise<OpenIdentity>;
+ recoverPbi?(expectedEmail?:string):Promise<OpenIdentity>;
  close():void;
 }
 interface IdentityEntry {
  restore():Promise<OpenIdentity|null>;
  create(consent:boolean):Promise<OpenIdentity>;
- importIdentity(file:File,phrase:string,consent:boolean):Promise<OpenIdentity>;
- recover?():Promise<OpenIdentity>;
+ importIdentity(file:File,phrase:string,consent:boolean,current?:OpenIdentity,expectedEmail?:string):Promise<OpenIdentity>;
+ recover?(current:OpenIdentity|null,expectedEmail?:string):Promise<OpenIdentity>;
 }
 export function createCheckoutIdentitySession(deps:IdentityEntry){
  let current:OpenIdentity|null=null,opening:Promise<OpenIdentity>|null=null,restoring:Promise<OpenIdentity|null>|null=null,selection:Promise<OpenIdentity>|null=null,closed=false;
@@ -29,12 +30,12 @@ export function createCheckoutIdentitySession(deps:IdentityEntry){
   const attempt=(async()=>{if(opening)await opening.catch(()=>{});else if(restoring)await restoring.catch(()=>{});assertOpen();return adopt(await read());})();
   selection=attempt;void attempt.finally(()=>{if(selection===attempt)selection=null;}).catch(()=>{});return attempt;
  };
- return{open,restore():Promise<OpenIdentity|null>{try{assertOpen();}catch(error){return Promise.reject(error);}if(selection)return selection;if(current)return Promise.resolve(current);if(opening)return opening;if(restoring)return restoring;const attempt=(async()=>{const held=await deps.restore();if(closed){held?.dispose();assertOpen();}return held?adopt(held):null;})();restoring=attempt;void attempt.finally(()=>{if(restoring===attempt)restoring=null;}).catch(()=>{});return attempt;},import:(file:File,phrase:string)=>select(()=>deps.importIdentity(file,phrase,true)),
-  recoverPbi:()=>select(()=>{if(!deps.recover)throw Error('PBI recovery is unavailable here.');return deps.recover();}),
+ return{open,restore():Promise<OpenIdentity|null>{try{assertOpen();}catch(error){return Promise.reject(error);}if(selection)return selection;if(current)return Promise.resolve(current);if(opening)return opening;if(restoring)return restoring;const attempt=(async()=>{const held=await deps.restore();if(closed){held?.dispose();assertOpen();}return held?adopt(held):null;})();restoring=attempt;void attempt.finally(()=>{if(restoring===attempt)restoring=null;}).catch(()=>{});return attempt;},import:(file:File,phrase:string,expectedEmail?:string)=>select(()=>{if(expectedEmail&&!current)throw Error('CHECKOUT_CURRENT_IDENTITY_REQUIRED');return current&&expectedEmail?deps.importIdentity(file,phrase,true,current,expectedEmail):deps.importIdentity(file,phrase,true);}),
+  recoverPbi:(expectedEmail?:string)=>select(()=>{if(!deps.recover)throw Error('PBI recovery is unavailable here.');if(expectedEmail&&!current)throw Error('CHECKOUT_CURRENT_IDENTITY_REQUIRED');return deps.recover(current,expectedEmail);}),
   close(){if(closed)return;closed=true;current?.dispose();current=null;}};
 }
 export async function checkoutIdentitySession(){
  const native=await import('../receiz/native-identity');
- return createCheckoutIdentitySession({restore:native.restoreNativeIdentity,create:native.createNativeIdentity,importIdentity:native.importNativeIdentity,
-  recover:async()=> (await import('../receiz/pbi-account')).openPbiAccount(true)});
+ return createCheckoutIdentitySession({restore:native.restoreNativeIdentity,create:native.createNativeIdentity,importIdentity:(file,phrase,consent,current,expectedEmail)=>current&&expectedEmail?import('./checkout-account').then(module=>module.importCheckoutIdentityRecord(current,file,phrase,expectedEmail)):native.importNativeIdentity(file,phrase,consent),
+  recover:async(current,expectedEmail)=>{const pbi=await import('../receiz/pbi-account');return current&&expectedEmail?pbi.openPbiCheckoutAccount(current,expectedEmail):pbi.openPbiAccount(true);}});
 }

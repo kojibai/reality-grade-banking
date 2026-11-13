@@ -1,3 +1,4 @@
+import type {EmailMessageObservation} from './receiz/email-message-entry';
 import {useMeetingEntry} from './features/messages/useMeetingEntry';
 import {InlineOpening} from './components/InlineOpening';
 import {clearNotificationUrl,notificationFromUrl,notificationTarget,type NotificationTarget} from './pwa/notification-target';
@@ -41,22 +42,25 @@ import {vaultLocation} from './receiz/vault/location';
 const VaultPage=lazy(()=>import('./features/vault/VaultPage').then(module=>({default:module.VaultPage})));
 const EmailPaymentEntry=lazy(()=>import('./features/account/EmailPaymentEntry').then(module=>({default:module.EmailPaymentEntry})));
 const EmailMeetingEntry=lazy(()=>import('./features/account/EmailMeetingEntry').then(module=>({default:module.EmailMeetingEntry})));
+const EmailMessageEntry=lazy(()=>import('./features/account/EmailMessageEntry').then(module=>({default:module.EmailMessageEntry})));
 export default function App() {
  const [emailMeetingOpened,setEmailMeetingOpened]=useState(false);
+ const [emailMessageOpened,setEmailMessageOpened]=useState<EmailMessageObservation|null>(null);
  if(!emailMeetingOpened&&location.pathname==='/'&&new URLSearchParams(location.search).getAll('emailMeeting').length===1&&new URLSearchParams(location.search).get('emailMeeting')==='1')return <Suspense fallback={<AccountOpening resuming/>}><EmailMeetingEntry onOpened={()=>setEmailMeetingOpened(true)}/></Suspense>;
+ if(!emailMessageOpened&&location.pathname==='/'&&new URLSearchParams(location.search).getAll('emailMessage').length===1&&new URLSearchParams(location.search).get('emailMessage')==='1')return <Suspense fallback={<AccountOpening resuming/>}><EmailMessageEntry onOpened={setEmailMessageOpened}/></Suspense>;
  if(['/receive','/receive/'].includes(location.pathname))return <Suspense fallback={<InlineOpening label="Reading your invitation"/>}><EmailPaymentEntry/></Suspense>;
- return <MainApp/>;
+ return <MainApp verifiedEmailMessage={emailMessageOpened}/>;
 }
-function MainApp() {
+function MainApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObservation|null}) {
  const [receipt,setReceipt]=useState(location.pathname==='/receipt/'?location.href:null);
  const [vault,setVault]=useState(()=>vaultLocation(location.href));
  const bankMounted=useRef(!receipt&&!vault);
  useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);setVault(vaultLocation(location.href));if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
  const session=readCardReturn(location.search);
- return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status"><InlineOpening label="Preparing the record"/></main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+ return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp verifiedEmailMessage={verifiedEmailMessage}/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status"><InlineOpening label="Preparing the record"/></main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
 }
 const EMPTY_MARKET_ITEMS:import('./receiz/public-market').PublicMarketItem[]=[];
-function BankApp() {
+function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObservation|null}) {
   const [onBank, setOnBank] = useState(location.pathname === '/');
   useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
@@ -116,7 +120,7 @@ function BankApp() {
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} investments={investments} investmentHistory={investmentHistory} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} historyItems={publicMarket.historyCatalog?.items??EMPTY_MARKET_ITEMS} pulse={publicMarket.pulse} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger sourceReader={account.identity?.readHeldLedgerOriginal} active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
-    {messagesMounted.current&&<MessagesPanel initialMeeting={meetingEntry} initialBusinessRequest={businessEntry.request?.owner===account.identity?businessEntry.request:null} onBusinessConsumed={businessEntry.consume} identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinLedger.context} heldLedger={twinLedger} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
+    {messagesMounted.current&&<MessagesPanel initialEmailMessage={verifiedEmailMessage} initialMeeting={meetingEntry} initialBusinessRequest={businessEntry.request?.owner===account.identity?businessEntry.request:null} onBusinessConsumed={businessEntry.consume} identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinLedger.context} heldLedger={twinLedger} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
     {sheet && sheet.kind!=='messages' && <LiveActions onOpen={open} onVaultsEntryConsumed={consumeVaultsEntry} onOpenAssistant={()=>{if(location.pathname==='/'&&parseRoute(location.hash).sheet?.kind==='business')open({kind:'messages'});}} marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={refreshAccountSources} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell></>;
 }

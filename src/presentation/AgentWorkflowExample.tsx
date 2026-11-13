@@ -8,7 +8,7 @@ import {ContactsView,PersonView} from '../features/messages/organizer/ContactVie
 import {CalendarView,EventView} from '../features/messages/organizer/CalendarViews';
 import {LedgerInspector} from '../features/ledger/LedgerInspector';
 import {moneyExample} from '../content/money-examples.mjs';
-import type {ChatMessage} from '../receiz/native-messaging';
+import type {ChatMessage,ChatNativeMessage} from '../receiz/native-messaging';
 import type {OrganizerContact,OrganizerEvent} from '../receiz/organizer-types';
 import type {PublicRecord} from '../receiz/public-network';
 import '../features/messages/organizer/organizer.css';
@@ -16,7 +16,7 @@ import './agent-workflow.css';
 const noop=()=>{},owner='00000000-0000-4000-8000-000000000001',at='2026-10-20T12:00:00Z';
 export const workflowContacts:OrganizerContact[]=[['Mia Chen','Willow Studio','mia','Online store refresh · asked about checkout and timing.'],['Jordan Brooks','Northline Bikes','jordan','New online catalogue · interested in a first conversation.'],['Sam Rivera','June Home','sam','Booking and online payments · follow up next week.']].map(([fullName,company,handle,notes],index)=>({id:'example-contact-'+handle,linkedUserId:'00000000-0000-4000-8000-00000000000'+(index+2),fullName,company,email:handle+'@example.invalid',phone:'',notes,role:'Owner',tags:['Store project'],createdAt:at,updatedAt:at,interactions:[{id:'example-introduction-'+handle,kind:'conversation',summary:'Your approved introduction',detail:notes,occurredAt:at}]}));
 export const workflowEvent:OrganizerEvent={id:'example-mia-meeting',ownerUserId:owner,title:'Mia · Store refresh',kind:'appointment',source:'message',startAt:'2026-10-27T10:00:00Z',endAt:'2026-10-27T10:20:00Z',location:'Project call',note:'Checkout refresh. $300 setup deposit agreed. Bring the store brief from this conversation.',attendees:[workflowContacts[0].email],metadata:{contactId:workflowContacts[0].id,conversationId:'example-workflow',example:true},createdAt:at,updatedAt:at};
-const textMessage=(body:string,id:string,sender=owner):ChatMessage=>({id:'example-workflow-'+id,conversationId:'example-workflow',senderUserId:sender,senderKind:'user',senderAiId:null,senderDisplay:sender===owner?'You':'Mia Chen',body,createdAt:at,receizedAt:at,receipt:null,sealedOriginalAvailable:false});
+const textMessage=(body:string,id:string,sender=owner):ChatNativeMessage=>({id:'example-workflow-'+id,conversationId:'example-workflow',senderUserId:sender,senderKind:'user',senderAiId:null,senderDisplay:sender===owner?'You':'Mia Chen',body,createdAt:at,receizedAt:at,receipt:null,sealedOriginalAvailable:false});
 export const workflowPayment:ChatMessage={...textMessage('Store setup deposit','payment',workflowContacts[0].linkedUserId),walletTransfer:{kind:'chat_transfer',senderUserId:workflowContacts[0].linkedUserId,recipientUserId:owner,amountUsdCents:'30000',amountPhiMicro:'15000000',transferId:'example-mia-deposit',note:'Store setup deposit'}};
 const paymentRecord:PublicRecord={id:'example-mia-deposit',sourceId:'example-mia-deposit',source:'wallet',kind:'payment',title:'Payment from Mia',detail:'Store setup deposit · Example payment',time:at,actor:'Example account',amountUsdCents:'30000',kaiUpulse:null,pulse:null,sourceUrl:null,sender:'Mia Chen · Example',recipient:'Example account',evidence:{},authority:'account-source-projection',details:{publicNote:'Store setup deposit',sender:'Mia Chen · Example',recipient:'Example account',appointment:workflowEvent.title,contact:workflowContacts[0].fullName}};
 export const workflowReplies=[

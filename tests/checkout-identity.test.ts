@@ -35,3 +35,9 @@ it('cancelled PBI preserves the held identity and never creates a replacement',a
  const f=fixture(),recover=vi.fn(async()=>{throw Error('passkey_cancelled');});const s=createCheckoutIdentitySession({...f.deps,recover});
  const held=await s.open();await expect(s.recoverPbi()).rejects.toThrow('passkey_cancelled');expect(held.dispose).not.toHaveBeenCalled();expect(await s.open()).toBe(held);expect(f.create).toHaveBeenCalledOnce();s.close();
 });
+it('never drops a paid expected-account constraint into ordinary import or PBI entry before the held review exists',async()=>{
+ const f=fixture(),recover=vi.fn(async()=>f.identity),session=createCheckoutIdentitySession({...f.deps,recover});
+ await expect(session.import(new File(['record'],'record.png'),'','target@example.org')).rejects.toThrow('CHECKOUT_CURRENT_IDENTITY_REQUIRED');
+ await expect(session.recoverPbi('target@example.org')).rejects.toThrow('CHECKOUT_CURRENT_IDENTITY_REQUIRED');
+ expect(f.importIdentity).not.toHaveBeenCalled();expect(recover).not.toHaveBeenCalled();expect(f.create).not.toHaveBeenCalled();session.close();
+});

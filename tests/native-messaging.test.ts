@@ -70,3 +70,24 @@ it('forwards acknowledged messages and real AI typing lifecycle from the existin
  const request=vi.fn(async()=>new Response(events.map(event=>'data: '+JSON.stringify(event)+'\n\n').join(''),{headers:{'content-type':'text/event-stream'}}));const api=createNativeMessaging({request,accountUid:userId});const onMessage=vi.fn(),onAiStart=vi.fn(),onAiDone=vi.fn();await api.send(conversationId,'Hi',{stream:true,onMessage,onAiStart,onAiDone});
  expect(onMessage.mock.calls.map(([m])=>m.id)).toEqual(['sent','reply']);expect(onAiStart).toHaveBeenCalledWith({id:'agent',name:'Mira’s Twin'});expect(onAiDone).toHaveBeenCalledWith('agent');expect(request).toHaveBeenCalledTimes(1);
 });
+
+it('places a newly delivered earlier email between held rows and keeps equal-time order across retention',async()=>{
+ const row=(id:string,at:string):ChatMessage=>({...message(id),createdAt:at});
+ const early=row('early','2026-10-19T10:00:00Z'),late=row('late','2026-10-19T12:00:00Z');
+ const delayed:ChatMessage={...row('delayed','2026-10-19T11:00:00Z'),senderKind:'external-email',senderUserId:null,senderAiId:null,walletTransfer:null,transport:{fromEmail:'sender@example.test',recipientAlias:'alice@receiz.com'}};
+ let count=0;const api=createNativeMessaging({accountUid:userId,retained:{schema:'bankeiz.messaging-display.v1',accountUid:userId,inbox:[summary],pages:[{conversation:summary,messages:[early,late],hasMore:false,nextCursor:null}]},request:async()=>json({ok:true,conversation:summary,messages:count++?[row('equal-two',late.createdAt),delayed]:[delayed,row('equal-one',late.createdAt)],hasMore:false,nextCursor:null})});
+ expect((await api.messages(conversationId)).messages.map(row=>row.id)).toEqual(['early','delayed','late','equal-one']);
+ expect((await api.messages(conversationId)).messages.map(row=>row.id)).toEqual(['early','delayed','late','equal-one','equal-two']);
+});
+it('learns email creation capability from the existing inbox response and retains it without another opening request',async()=>{
+ const request=vi.fn(async()=>json({ok:true,conversations:[],capabilities:{emailConversations:true}})),changed=vi.fn(),api=createNativeMessaging({accountUid:userId,request,onChange:changed});
+ expect(api.emailConversationsAvailable()).toBe(false);expect(request).not.toHaveBeenCalled();await api.conversations();expect(api.emailConversationsAvailable()).toBe(true);expect(request).toHaveBeenCalledOnce();expect(changed.mock.calls[0][0].emailConversations).toBe(true);
+ const {projectMessagingDisplay,readMessagingDisplay}=await import('../src/receiz/messaging-retention');const held=readMessagingDisplay(projectMessagingDisplay(changed.mock.calls[0][0]),userId)!;expect(createNativeMessaging({accountUid:userId,request:vi.fn(),retained:held}).emailConversationsAvailable()).toBe(true);
+});
+it('requests a selected missing message through the existing member-authorized thread path and retains held rows',async()=>{
+ const selected='55555555-5555-4555-8555-555555555555',request=vi.fn(async(_path:string)=>json({ok:true,conversation:summary,messages:[message(selected,'Selected older message')],hasMore:true,nextCursor:'2026-10-19T12:00:00Z'}));
+ const api=createNativeMessaging({accountUid:userId,request,retained:{schema:'bankeiz.messaging-display.v1',accountUid:userId,inbox:[summary],pages:[{conversation:summary,messages:[message('held')],hasMore:true,nextCursor:'2026-10-19T12:00:00Z'}]}});
+ const result=await api.messages(conversationId,undefined,undefined,selected);expect(request.mock.calls[0][0]).toBe('/api/chat/conversations/'+conversationId+'/messages?limit=100&messageId='+selected);expect(result.messages.map(row=>row.id)).toEqual(['held',selected]);
+ const {permittedNativeChatPath}=await import('../src/receiz/native-chat-paths');expect(permittedNativeChatPath(new URL('https://bankeiz.com'+request.mock.calls[0][0]),'GET')).toBe(true);
+ for(const query of['messageId=','messageId='+selected+'&messageId='+selected,'before=2026-10-19T12%3A00%3A00Z&messageId='+selected])expect(permittedNativeChatPath(new URL('https://bankeiz.com/api/chat/conversations/'+conversationId+'/messages?'+query),'GET')).toBe(false);
+});

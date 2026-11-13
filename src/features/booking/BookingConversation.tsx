@@ -8,11 +8,12 @@ import {createPublicBookingConversation,type PublicTwinBookingPaymentRequest} fr
 import type {BookingAvailability} from '../../receiz/organizer-types';
 import type {createPublicBooking} from '../../receiz/public-booking';
 type Service=ReturnType<typeof createPublicBooking>;
-export default function BookingConversation({service,source,children,onPayment,paymentHandledId,onResume}:{service:Service;source:BookingAvailability;children:ReactNode;onPayment?(request:PublicTwinBookingPaymentRequest):void;paymentHandledId?:string|null;onResume?():void}){
+export default function BookingConversation({service,source,children,onPayment,paymentHandledId,onResume,identityRevision=0}:{service:Service;source:BookingAvailability;children:ReactNode;onPayment?(request:PublicTwinBookingPaymentRequest):void;paymentHandledId?:string|null;onResume?():void;identityRevision?:number}){
  const [controller]=useState(()=>createPublicBookingConversation({username:service.username,options:service.linkOptions()}));
  const state=useSyncExternalStore(controller.subscribe,controller.known,controller.known);
  const [manual,setManual]=useState(false),transcript=useRef<HTMLDivElement>(null),composer=useRef<HTMLTextAreaElement>(null),manualPanel=useRef<HTMLElement>(null),back=useRef<HTMLButtonElement>(null),choose=useRef<HTMLButtonElement>(null),following=useRef(true),mounted=useRef(false),wasManual=useRef(false);
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;queueMicrotask(()=>{if(!mounted.current)controller.dispose();});};},[controller]);
+ useEffect(()=>{mounted.current=true;controller.warmIdentity();return()=>{mounted.current=false;queueMicrotask(()=>{if(!mounted.current)controller.dispose();});};},[controller]);
+ useEffect(()=>{if(identityRevision)controller.refreshIdentity();},[controller,identityRevision]);
  useLayoutEffect(()=>{if(following.current&&transcript.current)transcript.current.scrollTop=transcript.current.scrollHeight;},[state.messages]);
  useLayoutEffect(()=>{if(manual)back.current?.focus();else if(wasManual.current)choose.current?.focus();wasManual.current=manual;},[manual]);
  useLayoutEffect(()=>{const field=composer.current;if(field){field.style.height='auto';field.style.height=Math.min(110,Math.max(44,field.scrollHeight))+'px';}},[state.draft]);

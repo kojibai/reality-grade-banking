@@ -1,5 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {bookingOverrides} from '../src/receiz/booking-link.js';
+import {BOOKING_IDENTITY_HEADERS} from '../src/receiz/booking-identity-headers.js';
 
 const ORIGIN='https://receiz.com',MAX_BODY=32*1024,MAX_EVENT=32*1024*1024;
 type RecordValue=Record<string,unknown>;
@@ -14,13 +15,13 @@ function visitor(request:Request):string|null{
  let value='';try{value=decodeURIComponent(raw??'').trim().toLowerCase().replace(/[^a-z0-9:_-]+/g,'').slice(0,120);}catch{/* Invalid public cookie establishes a new read coordinate. */}
  return value.length>=8?value:null;
 }
-async function readBody(request:Request):Promise<RecordValue>{
+async function readBody(request:Request):Promise<{body:RecordValue;bodyText:string}>{
  const reader=request.body?.getReader();if(!reader)throw Error('INVALID_REQUEST');
  let size=0;const parts:Uint8Array[]=[];
  try{for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BODY)throw Error('REQUEST_TOO_LARGE');parts.push(value);}}
  finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
- const value:unknown=JSON.parse(new TextDecoder().decode(Buffer.concat(parts)));
- if(!value||typeof value!=='object'||Array.isArray(value))throw Error('INVALID_REQUEST');return value as RecordValue;
+ const bodyText=new TextDecoder().decode(Buffer.concat(parts)),value:unknown=JSON.parse(bodyText);
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('INVALID_REQUEST');return{body:value as RecordValue,bodyText};
 }
 function accepted(value:RecordValue,username:string,messageId:string){
  return record(value.world).username===username&&typeof record(value.reply).message==='string'&&(!value.assistantMessage||record(value.assistantMessage).id===messageId);
@@ -81,12 +82,18 @@ export async function handlePublicBookingConversation(request:Request,{fetch:tra
   if(request.method==='POST'){
    if(Number(request.headers.get('content-length'))>MAX_BODY)return fail(413,'REQUEST_TOO_LARGE');
    if(request.headers.get('content-type')?.split(';')[0]!=='application/json')return fail(415,'JSON_REQUIRED');
-   let body:RecordValue;try{body=await readBody(request);}catch(cause){return fail(cause instanceof Error&&cause.message==='REQUEST_TOO_LARGE'?413:400,'INVALID_REQUEST');}
+   let body:RecordValue,bodyText:string;try{({body,bodyText}=await readBody(request));}catch(cause){return fail(cause instanceof Error&&cause.message==='REQUEST_TOO_LARGE'?413:400,'INVALID_REQUEST');}
    if(conversation){
     if(!text(body.message,6500)||!coordinate(body.clientOperationId)||!coordinate(body.clientUserMessageId)||!coordinate(body.clientAssistantMessageId)||!text(body.quoteExpiresAt,64)||!Number.isFinite(Date.parse(body.quoteExpiresAt))||body.replyToOperationId!==null&&body.replyToOperationId!==undefined&&!coordinate(body.replyToOperationId))return fail(400,'MESSAGE_REQUIRED');
     messageId=body.clientAssistantMessageId;
     const threadKey='booking:'+createHash('sha256').update(JSON.stringify([username,who,Object.fromEntries(options)])).digest('hex').slice(0,40);
     payload={action:'message',message:body.message,clientOperationId:body.clientOperationId,quoteExpiresAt:body.quoteExpiresAt,clientUserMessageId:body.clientUserMessageId,clientAssistantMessageId:messageId,replyToOperationId:body.replyToOperationId??null,visitorKey:who,threadKey,deliveryMode:'text',allowBrowserVoiceFallback:false,clientContext:{applicationName:'Bankeiz',applicationOrigin:'https://bankeiz.com',pagePath:'/book/'+username+'/',pageTitle:'Book a conversation with @'+username,pagePurpose:'Arrange an appointment with this owner using actual availability and an exact accepted review followed by explicit confirmation.',bookingLinkOptions:Object.fromEntries(options),locale:text(body.locale,32)?body.locale:null,timezone:text(body.timezone,120)?body.timezone:null}};
+    if(BOOKING_IDENTITY_HEADERS.some(name=>request.headers.has(name))){
+     const proofHeaders:Record<string,string>={};for(const name of BOOKING_IDENTITY_HEADERS){const value=request.headers.get(name);if(!value||value.length>8192)return fail(400,'BOOKING_IDENTITY_INVALID');proofHeaders[name]=value;}
+     // Native verifies the original byte-exact Bank request through its existing
+     // signed-action/account-key guard. Relay decoration is never identity proof.
+     payload.bookingIdentity={path:url.pathname+url.search,bodyText,headers:proofHeaders};
+    }
    }else{
     // Preserve the existing native manual booking fields and validators. Never
     // relay settings actions, arbitrary metadata or private account material.

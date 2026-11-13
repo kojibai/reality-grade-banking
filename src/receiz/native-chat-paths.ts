@@ -5,8 +5,9 @@ const conversation = new RegExp(`^/api/chat/conversations/${UUID}/(messages(?:/s
 const stream = new RegExp(`^/api/chat/conversations/${UUID}/(?:messages|typing)/stream$`, 'i');
 const instant = (v: string) => v.length <= 40 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(v) && Number.isFinite(Date.parse(v));
 function page(url: URL, coordinate: 'before' | 'since', min: number, max: number) {
-  if ([...url.searchParams.keys()].some(key => !['limit', coordinate].includes(key) || url.searchParams.getAll(key).length !== 1)) return false;
-  const limit = url.searchParams.get('limit'), at = url.searchParams.get(coordinate);
+  if ([...url.searchParams.keys()].some(key => !['limit',coordinate,...(coordinate==='before'?['messageId']:[])].includes(key) || url.searchParams.getAll(key).length !== 1)) return false;
+  const limit = url.searchParams.get('limit'), at = url.searchParams.get(coordinate),focus=url.searchParams.get('messageId');
+  if(url.searchParams.has('messageId')&&(coordinate!=='before'||at||!new RegExp('^'+UUID+'$','i').test(focus??'')))return false;
   return (limit === null || /^\d{1,3}$/.test(limit) && Number(limit) >= min && Number(limit) <= max) && (at === null || instant(at));
 }
 /** Transport only. The existing Receiz host must independently validate its
@@ -14,6 +15,7 @@ function page(url: URL, coordinate: 'before' | 'since', min: number, max: number
 export function permittedNativeChatPath(url: URL, method: string): boolean {
   const verb = method.toUpperCase(), path = url.pathname;
   if(new RegExp(`^/api/calendar/meetings/${UUID}/[A-Za-z0-9_-]{16,160}(?:/(?:evidence|twin|recording))?$`,'i').test(path))return !url.search&&((path.endsWith('/twin')||path.endsWith('/recording'))?verb==='POST':path.endsWith('/evidence')?verb==='GET':['GET','POST'].includes(verb));
+  if(new RegExp(`^/api/chat/messages/${UUID}/original$`,'i').test(path))return verb==='GET'&&!url.search;
   if (path === '/api/chat/notifications/push') return ['GET','POST','DELETE'].includes(verb) && !url.search;
   if (path === '/api/chat/conversations') return ['GET','POST'].includes(verb) && !url.search;
   if (['/api/chat/ai','/api/chat/calls/ice'].includes(path)) return verb === 'GET' && !url.search;

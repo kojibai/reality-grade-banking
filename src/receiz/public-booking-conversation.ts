@@ -4,6 +4,7 @@ import {readBookingSchedule} from './public-booking';
 import type {BookingPrice} from './organizer-types';
 import type {PaidBookingInput} from './paid-booking';
 import {bookingOverrides} from './booking-link';
+import {createPublicBookingIdentity,type PublicBookingIdentity,type BookingIdentityHeaders} from './public-booking-identity';
 
 export interface PublicBookingMessage {
  id:string;role:'user'|'assistant';body:string;status:'pending'|'streaming'|'accepted'|'interrupted';
@@ -26,7 +27,7 @@ export interface PublicBookingConversationSnapshot {
 }
 export interface PublicBookingConversationController {
  known():PublicBookingConversationSnapshot;subscribe(listener:()=>void):()=>void;
- setDraft(value:string):void;send():Promise<void>;retry():Promise<void>;dispose():void;
+ warmIdentity():void;refreshIdentity(identity?:PublicBookingIdentity):void;setDraft(value:string):void;send():Promise<void>;retry():Promise<void>;dispose():void;
 }
 // Match the existing public native relay; optional carried context is not visible text.
 const MAX_NATIVE_EVENT=32*1024*1024;
@@ -50,15 +51,32 @@ function paymentRequest(raw:unknown,username:string,pending:PendingBookingMessag
  return structuredClone({username,proposalOperationId:pending.replyToOperationId,bookingPrice:price,input:input as unknown as PaidBookingInput});
 }
 
-export function createPublicBookingConversation({username,options,request=globalThis.fetch}:{username:string;options:URLSearchParams;request?:typeof fetch}):PublicBookingConversationController{
+export function createPublicBookingConversation({username,options,request=globalThis.fetch,identity=createPublicBookingIdentity()}:{username:string;options:URLSearchParams;request?:typeof fetch;identity?:PublicBookingIdentity}):PublicBookingConversationController{
  if(!validUsername(username))throw Error('BOOKING_USERNAME_REQUIRED');
  const params=bookingOverrides(new URLSearchParams(options));params.sort();
  const path='/api/bank/booking/'+username+'/conversation'+(params.size?'?'+params:'');
- let state:PublicBookingConversationSnapshot={draft:'',messages:[],busy:false,pending:null,lastAcceptedOperationId:null,error:'',bookingConfirmation:null,bookingPaymentRequest:null,reply:null};
+ const empty=():PublicBookingConversationSnapshot=>({draft:'',messages:[],busy:false,pending:null,lastAcceptedOperationId:null,error:'',bookingConfirmation:null,bookingPaymentRequest:null,reply:null});
+ let state=empty(),selectedScope=identity.scope?.()??null,generation=0;
+ const scopedStates=new Map<string,PublicBookingConversationSnapshot>();
  const listeners=new Set<()=>void>();let disposed=false,active:AbortController|null=null,work:Promise<void>|null=null;
+ const operationProofs=new Map<string,Promise<BookingIdentityHeaders>|null>();
  const publish=(patch:Partial<PublicBookingConversationSnapshot>)=>{if(disposed)return;state={...state,...patch};for(const listener of listeners)listener();};
  const reviseMessage=(id:string,patch:Partial<PublicBookingMessage>)=>publish({messages:state.messages.map(row=>row.id===id?{...row,...patch}:row)});
- const assertLive=()=>{if(disposed||active?.signal.aborted)throw Error('CONVERSATION_CLOSED');};
+ const assertLive=(pending?:PendingBookingMessage,version=generation)=>{if(disposed||version!==generation||active?.signal.aborted||pending&&state.pending?.clientOperationId!==pending.clientOperationId)throw Error('CONVERSATION_CLOSED');};
+ const interrupted=(value:PublicBookingConversationSnapshot):PublicBookingConversationSnapshot=>({...value,busy:false,messages:value.messages.map(row=>row.status==='accepted'?row:{...row,status:'interrupted'})});
+ const invalidate=()=>{generation++;active?.abort();active=null;work=null;};
+ function selectScope(next:string|null){
+  if(disposed||next===selectedScope||selectedScope===null&&next!==null&&(state.pending||state.busy))return;
+  const anonymous=selectedScope===null?state:empty();
+  if(selectedScope!==null)scopedStates.set(selectedScope,interrupted(state));
+  invalidate();selectedScope=next;
+  const held=next?scopedStates.get(next):undefined;
+  if(!held){publish(next?interrupted(anonymous):empty());return;}
+  const messages=[...new Map([...held.messages,...anonymous.messages].map(row=>[row.id,row])).values()];
+  publish({...held,...(anonymous.messages.length?anonymous:{}),messages,busy:false,draft:anonymous.draft||held.draft,pending:held.pending??anonymous.pending,lastAcceptedOperationId:held.pending?held.lastAcceptedOperationId:anonymous.lastAcceptedOperationId??held.lastAcceptedOperationId,bookingConfirmation:anonymous.bookingConfirmation??held.bookingConfirmation,bookingPaymentRequest:anonymous.bookingPaymentRequest??held.bookingPaymentRequest});
+ }
+ function syncScope(){selectScope(identity.scope?.()??null);}
+
  const accept=(event:Record<string,unknown>,pending:PendingBookingMessage)=>{
   const reply=record(event.reply);
   if(record(event.world).username!==username||typeof reply.message!=='string'||event.assistantMessage&&record(event.assistantMessage).id!==pending.clientAssistantMessageId)throw Error('RECEIZ_SOURCE_MISMATCH');
@@ -96,16 +114,16 @@ export function createPublicBookingConversation({username,options,request=global
   const released=['released','rejected','quote_expired'].includes(String(status));
   publish({error,pending:released?null:pending,...(released&&!state.draft?{draft:pending.message}:{})});
  };
- async function consume(response:Response,pending:PendingBookingMessage){
+ async function consume(response:Response,pending:PendingBookingMessage,version:number){
   if(!response.ok||!response.headers.get('content-type')?.includes('text/event-stream')){
-   const value=record(await response.json());assertLive();
+   const value=record(await response.json());assertLive(pending,version);
    if(!response.ok||value.ok!==true){refuse(value,pending);return;}accept(value,pending);return;
   }
   if(!response.body)throw Error('RECEIZ_RESULT_UNCONFIRMED');
   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',complete=false,streamed='';
   const frame=(raw:string)=>{
    const data=raw.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');if(!data)return;
-   const value=record(JSON.parse(data));assertLive();
+   const value=record(JSON.parse(data));assertLive(pending,version);
    if(value.type==='error'){refuse(value,pending);complete=true;return;}
    if(['reply_start','reply_delta','reply_preview'].includes(String(value.type))&&value.messageId!==pending.clientAssistantMessageId)throw Error('RECEIZ_SOURCE_MISMATCH');
    if(value.type==='reply_delta'){
@@ -120,7 +138,7 @@ export function createPublicBookingConversation({username,options,request=global
    }else if(value.type==='reply_done'){accept(value,pending);complete=true;}
   };
   try{
-   for(;;){const {value,done}=await reader.read();assertLive();if(done)break;buffer+=decoder.decode(value,{stream:true});let match;
+   for(;;){const {value,done}=await reader.read();assertLive(pending,version);if(done)break;buffer+=decoder.decode(value,{stream:true});let match;
     while((match=/\r?\n\r?\n/.exec(buffer))){const raw=buffer.slice(0,match.index);buffer=buffer.slice(match.index+match[0].length);if(raw.length>MAX_NATIVE_EVENT)throw Error('RECEIZ_RESULT_UNCONFIRMED');frame(raw);if(complete)return;}
     if(buffer.length>MAX_NATIVE_EVENT)throw Error('RECEIZ_RESULT_UNCONFIRMED');
    }
@@ -129,25 +147,27 @@ export function createPublicBookingConversation({username,options,request=global
  }
  function dispatch(pending:PendingBookingMessage):Promise<void>{
   if(disposed)return Promise.resolve();if(work)return work;
-  active=new AbortController();
+  const version=generation,controller=new AbortController();active=controller;
   publish({busy:true,error:'',pending,messages:state.messages.map(row=>row.id===pending.clientAssistantMessageId?{...row,status:'pending'}:row)});
   const run=(async()=>{
-   try{const response=await request(path,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify(pending),signal:AbortSignal.any([active!.signal,AbortSignal.timeout(120000)])});assertLive();await consume(response,pending);}
-   catch(error){if(!disposed)publish({error:error instanceof Error?error.message:'RECEIZ_RESULT_UNCONFIRMED'});}
-   finally{if(!disposed){publish({busy:false,messages:state.messages.map(row=>(row.id===pending.clientAssistantMessageId||row.id===pending.clientUserMessageId)&&row.status!=='accepted'?{...row,status:'interrupted'}:row)});}active=null;}
+   try{const body=JSON.stringify(pending);if(!operationProofs.has(pending.clientOperationId))operationProofs.set(pending.clientOperationId,identity.sign(path,body));const proof=operationProofs.get(pending.clientOperationId),headers=new Headers({'Content-Type':'application/json',Accept:'text/event-stream'});if(proof)for(const [name,value]of Object.entries(await proof))headers.set(name,value);assertLive(pending,version);const response=await request(path,{method:'POST',credentials:'same-origin',headers,body,signal:AbortSignal.any([active!.signal,AbortSignal.timeout(120000)])});assertLive(pending,version);await consume(response,pending,version);}
+   catch(error){if(!disposed&&version===generation)publish({error:error instanceof Error?error.message:'RECEIZ_RESULT_UNCONFIRMED'});}
+   finally{if(!disposed&&version===generation){if(!state.pending)operationProofs.delete(pending.clientOperationId);publish({busy:false,messages:state.messages.map(row=>(row.id===pending.clientAssistantMessageId||row.id===pending.clientUserMessageId)&&row.status!=='accepted'?{...row,status:'interrupted'}:row)});}if(active===controller)active=null;if(!disposed&&version===generation)syncScope();}
   })();work=run;void run.finally(()=>{if(work===run)work=null;});return run;
  }
  return{
   known:()=>state,
+  warmIdentity(){void identity.warm().then(syncScope);},
+  refreshIdentity(next=createPublicBookingIdentity()){if(disposed){next.dispose();return;}if(selectedScope!==null)selectScope(null);else{invalidate();publish(interrupted(state));}identity.dispose();identity=next;void identity.warm().then(syncScope);},
   subscribe(listener){if(!disposed)listeners.add(listener);return()=>{listeners.delete(listener);};},
   setDraft(value){publish({draft:value});},
   send(){
-   if(disposed||state.pending||state.busy)return work??Promise.resolve();const message=state.draft.trim();
+   syncScope();if(disposed||state.pending||state.busy)return work??Promise.resolve();const message=state.draft.trim();
    if(!message)return Promise.resolve();if(message.length>6500){publish({error:'MESSAGE_TOO_LONG'});return Promise.resolve();}
    const pending=Object.freeze({message,clientOperationId:crypto.randomUUID(),quoteExpiresAt:new Date(Date.now()+10*60000).toISOString(),clientUserMessageId:crypto.randomUUID(),clientAssistantMessageId:crypto.randomUUID(),replyToOperationId:state.lastAcceptedOperationId,locale:typeof navigator==='undefined'?'en':navigator.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'});
    publish({draft:'',pending,messages:[...state.messages,{id:pending.clientUserMessageId,role:'user',body:message,status:'pending'},{id:pending.clientAssistantMessageId,role:'assistant',body:'',status:'pending'}]});return dispatch(pending);
   },
-  retry(){return state.pending?dispatch(state.pending):Promise.resolve();},
-  dispose(){if(disposed)return;disposed=true;active?.abort();listeners.clear();},
+  retry(){syncScope();return state.pending?dispatch(state.pending):Promise.resolve();},
+  dispose(){if(disposed)return;disposed=true;active?.abort();identity.dispose();operationProofs.clear();scopedStates.clear();listeners.clear();},
  };
 }

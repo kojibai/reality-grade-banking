@@ -1,5 +1,5 @@
 import {accountCreationPresentation,accountPersonName} from './account-presentation';
-import type {ChatConversation,ChatMessage,ChatPage,ChatPerson} from './native-messaging';
+import type {ChatConversation,ChatMessage,ChatPage,ChatPerson,ChatEmailChannel} from './native-messaging';
 import {profileAvatarUrl} from './profile-avatar';
 
 /** Optional display retention, never an artifact, grant, outbox or payment source. */
@@ -7,9 +7,10 @@ export type TwinAccessQuestion={id:string;question:string};
 export interface MessagingDisplay {
   schema:'bankeiz.messaging-display.v1';accountUid:string;inbox:ChatConversation[];pages:ChatPage[];
   twinAccess?:boolean;
+  emailConversations?:boolean;
   twinAccessQuestions?:TwinAccessQuestion[];
 }
-export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'|'twinAccessQuestions'>;
+export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'|'twinAccessQuestions'|'emailConversations'>;
 export const MESSAGING_DISPLAY_MAX_BYTES=1024*1024;
 const encoder=new TextEncoder();
 const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
@@ -21,16 +22,18 @@ function person(value:ChatPerson):ChatPerson {
 function message(value:ChatMessage,preview=false):ChatMessage {
   const payment=object(value.walletTransfer);
   const walletTransfer=payment.kind==='chat_transfer'?Object.fromEntries(['kind','senderUserId','recipientUserId','amountUsdCents','amountPhiMicro','transferId','note','transactionHref','receiptHref'].filter(key=>typeof payment[key]==='string').map(key=>[key,text(payment[key],key==='note'?280:4096)])):null;
+  if(value.senderKind==='external-email')return{id:text(value.id,200),conversationId:value.conversationId,senderKind:'external-email',senderUserId:null,senderAiId:null,senderDisplay:text(value.senderDisplay,200)||null,body:text(value.body,preview?1024:262144),createdAt:text(value.createdAt,50),receizedAt:text(value.receizedAt,50),receipt:null,sealedOriginalAvailable:false,walletTransfer:null,transport:{fromEmail:text(value.transport.fromEmail,254),recipientAlias:text(value.transport.recipientAlias,254),...(value.transport.subject?{subject:text(value.transport.subject,998)}:{})}};
   return {id:text(value.id,200),conversationId:value.conversationId,senderUserId:text(value.senderUserId,200),senderKind:value.senderKind,senderAiId:text(value.senderAiId,100)||null,senderDisplay:text(value.senderDisplay,200)||null,body:text(value.body,preview?1024:262144),createdAt:text(value.createdAt,50),receizedAt:text(value.receizedAt,50),receipt:null,sealedOriginalAvailable:false,walletTransfer};
 }
+function emailChannel(value:ChatEmailChannel|null|undefined):ChatEmailChannel|null{if(!value||!['receiz.chat.email-channel.v1','receiz.chat.email-channel.v2'].includes(value.schema))return null;return{schema:value.schema,ownerUserId:text(value.ownerUserId,200),...(value.correspondentUserId?{correspondentUserId:text(value.correspondentUserId,200)}:{}),correspondentEmail:text(value.correspondentEmail,254),displayName:text(value.displayName,200)||null,subject:text(value.subject,998)};}
 function conversation(value:ChatConversation):ChatConversation {
-  return {id:value.id,kind:value.kind,title:text(value.title,1000),members:value.members.slice(0,50).map(person),aiAgents:[],defaultAiId:text(value.defaultAiId,100)||null,unreadCount:value.unreadCount,previewMessage:value.previewMessage?message(value.previewMessage,true):null,createdAt:text(value.createdAt,50),updatedAt:text(value.updatedAt,50),lastMessageAt:text(value.lastMessageAt,50)||null};
+  return {id:value.id,kind:value.kind,emailChannel:emailChannel(value.emailChannel),emailCorrespondent:value.emailCorrespondent?person(value.emailCorrespondent):null,title:text(value.title,1000),members:value.members.slice(0,50).map(person),aiAgents:[],defaultAiId:text(value.defaultAiId,100)||null,unreadCount:value.unreadCount,previewMessage:value.previewMessage?message(value.previewMessage,true):null,createdAt:text(value.createdAt,50),updatedAt:text(value.updatedAt,50),lastMessageAt:text(value.lastMessageAt,50)||null};
 }
 // Image metadata is optional; it must never evict the conversation or messages.
 function withoutAvatars(value:ChatConversation):ChatConversation{return{...value,members:value.members.map(person=>({...person,avatarUrl:null}))};}
 export function projectMessagingDisplay(source:MessagingDisplaySource):MessagingDisplay {
   const questions=Array.isArray(source.twinAccessQuestions)?source.twinAccessQuestions.slice(-8).map(value=>{const row=object(value);return{id:text(row.id,200),question:text(row.question,1200)};}).filter(row=>row.id&&row.question):[];
-  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{}),...(questions.length?{twinAccessQuestions:questions}:{})};
+  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.emailConversations==='boolean'?{emailConversations:source.emailConversations}:{}),...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{}),...(questions.length?{twinAccessQuestions:questions}:{})};
   // Budget the exact UTF-8 JSON bytes once per row. No artifacts, attachments,
   // call state, pending writes or credentials are copied into this projection.
   let remaining=MESSAGING_DISPLAY_MAX_BYTES-size(display)-64;
@@ -52,7 +55,7 @@ export function projectMessagingDisplay(source:MessagingDisplaySource):Messaging
   return display;
 }
 function validMessage(value:unknown,conversationId:string):value is ChatMessage {
-  const v=object(value);return typeof v.id==='string'&&v.id.length<=200&&v.conversationId===conversationId&&['user','ai'].includes(String(v.senderKind))&&typeof v.body==='string'&&v.body.length<=262144&&typeof v.createdAt==='string'&&Number.isFinite(Date.parse(v.createdAt));
+  const v=object(value);return typeof v.id==='string'&&v.id.length<=200&&v.conversationId===conversationId&&['user','ai','external-email'].includes(String(v.senderKind))&&(v.senderKind!=='external-email'||v.senderUserId===null&&v.senderAiId===null&&v.walletTransfer===null&&typeof object(v.transport).fromEmail==='string'&&typeof object(v.transport).recipientAlias==='string')&&typeof v.body==='string'&&v.body.length<=262144&&typeof v.createdAt==='string'&&Number.isFinite(Date.parse(v.createdAt));
 }
 function validConversation(value:unknown):value is ChatConversation {
   const v=object(value);return typeof v.id==='string'&&/^[\da-f-]{36}$/i.test(v.id)&&['dm','group'].includes(String(v.kind))&&typeof v.title==='string'&&Array.isArray(v.members)&&v.members.length<=50&&v.members.every(p=>typeof object(p).userId==='string')&&Number.isSafeInteger(v.unreadCount)&&(!v.previewMessage||validMessage(v.previewMessage,v.id));

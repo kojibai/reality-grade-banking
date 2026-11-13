@@ -20,6 +20,22 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
  }finally{await closePbiAccount();}
 }
 
+/** Explicit paid-checkout account selection after its old unpaid reservation
+ * is closed. PBI proves the requested email's account; the existing selection
+ * retains both identities. Ordinary account creation and entry are unchanged. */
+export async function openPbiCheckoutAccount(previous:OpenIdentity,email:string):Promise<OpenIdentity>{
+ try{return await withDeviceIdentityEntry(async()=>{
+  const recovered=await recoverPbiAccountInline({existingOnly:true,email});
+  const currentUid=previous.knownWallet?.()?.wallet.userId??(await previous.prepareAccountView()).wallet.userId;
+  if(recovered.accountUid===currentUid)return previous;
+  const selection=await(await import('./identity-vault')).prepareVerifiedEmailAccountSelection({accountUid:currentUid,artifactSha256:previous.binding.artifactSha256},recovered.accountUid);
+  if(selection.saved){const saved=selection.saved,next=await openCanonicalIdentity(saved.bytes,saved.phrase,saved.filename,true,saved.protectedTransport);
+   try{if(!await next.matchesAccountEmail?.(email,recovered.accountUid)||(await next.prepareAccountView()).wallet.userId!==recovered.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');await selection.activateRetained();return next;}catch(error){next.dispose();throw error;}
+  }
+  return createRecoveredAccountDevice(Promise.resolve(recovered),undefined,async(identity,protectedTransport)=>{await selection.retainRecovered({...identity.backup(),readConsent:true,protectedTransport});},email);
+ });}finally{await closePbiAccount();}
+}
+
 /** Email possession has already been consumed and checked against the exact
  * committed recipient by the closed server transport. Canonical device bind
  * still verifies that session; a UID alone cannot select a different account. */
@@ -71,7 +87,7 @@ export async function openVerifiedInvitationAccount(accountUid:string,onIdentity
 }
 
 type RecoveredCustodyCommit=(identity:OpenIdentity,protectedTransport:import('./identity-vault').ProtectedIdentityTransport)=>Promise<void>;
-async function createRecoveredAccountDevice(recovery:Promise<{accountUid:string;credentialId?:string}>,onIdentityPrepared?:()=>void,retainCustody?:RecoveredCustodyCommit):Promise<OpenIdentity>{
+async function createRecoveredAccountDevice(recovery:Promise<{accountUid:string;credentialId?:string}>,onIdentityPrepared?:()=>void,retainCustody?:RecoveredCustodyCommit,expectedEmail?:string):Promise<OpenIdentity>{
    void recovery.catch(()=>{});
    const [sdk,resources,{createReceizOfflineSealer,createReceizIndexedDbSealStore}]=await Promise.all([loadReceiz(),loadBankProofResources(fetch),import('@receiz/sdk/offline')]);
    const store=certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer'));
@@ -101,6 +117,7 @@ async function createRecoveredAccountDevice(recovery:Promise<{accountUid:string;
    const identity=await openCanonicalIdentity(sealed.artifactBytes,'',sealed.filename,true,{bytes:new Uint8Array(protectedSeal.artifactBytes),phrase:secret},true);
    try{
     if(identity.binding.keyId!==binding.keyId||identity.binding.artifactOwnerReceizId!==binding.artifactOwnerReceizId)throw Error('PBI_DEVICE_IDENTITY_MISMATCH');
+    if(expectedEmail&&!await identity.matchesAccountEmail?.(expectedEmail,source.accountUid))throw Error('PBI_ACCOUNT_MISMATCH');
     onIdentityPrepared?.();
     const view=await identity.prepareAccountView();if(view.wallet.userId!==source.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
     if(retainCustody)await retainCustody(identity,{bytes:new Uint8Array(protectedSeal.artifactBytes),phrase:secret});
