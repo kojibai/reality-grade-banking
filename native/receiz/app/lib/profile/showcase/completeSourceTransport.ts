@@ -242,6 +242,22 @@ function completeSourceEnvelope(envelope: unknown, artifactDigest: string): Reco
     || envelope.schema !== SCHEMA || envelope.artifactDigest !== artifactDigest) invalid();
   return envelope;
 }
+/** Location parsing only. Compact delivery names its unchanged prefix; it is
+ * not a different proof format and cannot admit either the append or prefix. */
+function sparseSourceEnvelope(value: Record<string, unknown>, artifactDigest: string) {
+  if (!exactKeys(value, ["schema", "artifactDigest", "singleTransition", "carrier",
+    ...("child" in value ? ["child"] : []), ...("predecessor" in value ? ["predecessor"] : [])])
+    || value.schema !== SCHEMA || value.artifactDigest !== artifactDigest || value.singleTransition !== true) invalid();
+  const carrier=parseExactByteBlockReference(value.carrier);
+  let child:ProfileShowcaseCompleteSourceChildDescriptor|undefined;
+  if(value.child!==undefined){
+    if(!object(value.child)||!exactKeys(value.child,["reference","bytes"]))invalid();
+    child={reference:parseReference(value.child.reference),bytes:parseExactByteBlockReference(value.child.bytes)};
+  }
+  const predecessor=value.predecessor===undefined?undefined
+    :{transportVersion:2 as const,...parseCompleteSourceTransport(value.predecessor as ProfileShowcaseCompleteSourceTransport)};
+  return {carrier,child,predecessor};
+}
 async function* readCompleteSourceInventory(reference: unknown, resolve: ExactByteBlockResolver,
   capacity: CompleteSourceExecutionCapacity, reserve: (bytes: number) => void, record: () => void): AsyncGenerator<unknown> {
   const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -282,10 +298,10 @@ export type ProfileShowcaseCompleteSourceChildDescriptor = Readonly<{
  * A media consumer must bind its locator to CURRENT canonical membership and
  * reopen the enclosing child/material through the existing proof verifier.
  */
-export async function* iterateProfileShowcaseCompleteSourceChildDescriptors(
-  input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver,
+async function* iterateCompleteSourceInventoryRecords(
+  input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver, kind: "children" | "nodes",
   capacity: CompleteSourceExecutionCapacity = COMPLETE_SOURCE_EXECUTION_CAPACITY,
-): AsyncGenerator<ProfileShowcaseCompleteSourceChildDescriptor> {
+): AsyncGenerator<unknown> {
   const transport = parseCompleteSourceTransport(input);
   let blockReads = 0, retainedBytes = 0, records = 0;
   const reserve = (bytes: number, component: string, maximum: number) => {
@@ -297,16 +313,39 @@ export async function* iterateProfileShowcaseCompleteSourceChildDescriptors(
     if (++blockReads > capacity.blockReads) throw new ExactByteBlockExecutionUnavailable("complete publication traversal", blockReads, capacity.blockReads, true);
     return resolveBlock(reference);
   };
-  reserve(transport.root.contentByteLength, "complete publication envelope", capacity.envelopeBytes);
-  const bytes = await reconstructExactByteBlocks(transport.root, resolve,
-    { component: "complete publication envelope", maxContentBytes: capacity.envelopeBytes, maxBlockReads: capacity.blockReads });
-  let value: unknown;
-  try { value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); } catch { return invalid(); }
-  const envelope = completeSourceEnvelope(value, transport.artifactDigest);
-  for await (const child of readCompleteSourceInventory(envelope.children, resolve, capacity,
+  const suffix:ProfileShowcaseCompleteSourceChildDescriptor[]=[],seen=new Set<string>();
+  let cursor=transport,envelope:Record<string,unknown>;
+  for(;;){
+    if(seen.has(cursor.artifactDigest))invalid();seen.add(cursor.artifactDigest);
+    reserve(cursor.root.contentByteLength, "complete publication envelope", capacity.envelopeBytes);
+    const bytes=await reconstructExactByteBlocks(cursor.root,resolve,
+      {component:"complete publication envelope",maxContentBytes:capacity.envelopeBytes,maxBlockReads:capacity.blockReads});
+    let value:unknown;
+    try{value=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));}catch{return invalid();}
+    if(!object(value)||value.singleTransition!==true){envelope=completeSourceEnvelope(value,cursor.artifactDigest);break;}
+    const sparse=sparseSourceEnvelope(value,cursor.artifactDigest);
+    if(kind!=="children")invalid();
+    if(sparse.child){
+      if(++records>capacity.inventoryRecords)throw new ExactByteBlockExecutionUnavailable("complete publication inventory records",records,capacity.inventoryRecords,true);
+      suffix.push(sparse.child);
+    }
+    if(!sparse.predecessor)throw new TypeError("PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED");
+    cursor=parseCompleteSourceTransport(sparse.predecessor);
+  }
+  for await (const child of readCompleteSourceInventory(envelope[kind], resolve, capacity,
     length => reserve(length, "complete publication inventory", capacity.inventoryBytes), () => {
       if (++records > capacity.inventoryRecords) throw new ExactByteBlockExecutionUnavailable("complete publication inventory records", records, capacity.inventoryRecords, true);
     })) {
+    yield child;
+  }
+  for(let index=suffix.length-1;index>=0;index--)yield suffix[index];
+}
+
+export async function* iterateProfileShowcaseCompleteSourceChildDescriptors(
+  input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver,
+  capacity: CompleteSourceExecutionCapacity = COMPLETE_SOURCE_EXECUTION_CAPACITY,
+): AsyncGenerator<ProfileShowcaseCompleteSourceChildDescriptor> {
+  for await (const child of iterateCompleteSourceInventoryRecords(input, resolveBlock, "children", capacity)) {
     if (!object(child) || !exactKeys(child, ["reference", "bytes"])) invalid();
     yield Object.freeze({ reference: Object.freeze(parseReference(child.reference)), bytes: Object.freeze(parseExactByteBlockReference(child.bytes)) });
   }

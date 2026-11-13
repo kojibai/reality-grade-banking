@@ -89,6 +89,9 @@ const PERSISTENT_NODE_STORE = "bounded-immutable-persistent-nodes";
 const DATABASE_VERSION = 12;
 const RETRIABLE_PUBLICATION_REJECTION_CODES = new Set([
   "PROFILE_SHOWCASE_PUBLICATION_SAME_ORIGIN_REQUIRED",
+  // A delivery decoder's format rejection does not invalidate the already
+  // admitted Original. A later publisher rebuilds transport from that Source.
+  "PROFILE_SHOWCASE_COMPLETE_TRANSPORT_INVALID",
 ]);
 
 export type ProfileShowcaseBoundedEdgeChild = Readonly<{
