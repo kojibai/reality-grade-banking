@@ -59,6 +59,7 @@ function completeBody(output: Uint8Array) {
  * message/call effects and authorization remain in the existing Receiz host. */
 export async function relayNativeAccount(request: Request): Promise<Response> {
   if(new URL(request.url).pathname.startsWith(PREFIX+'/email-payment/'))return(await import('./email-payment-entry.js')).handleEmailPaymentEntry(request);
+  if(new URL(request.url).pathname.startsWith(PREFIX+'/email-meeting/'))return(await import('./email-meeting-entry.js')).handleEmailMeetingEntry(request);
   if(new URL(request.url).pathname.startsWith(PREFIX+'/pbi/'))return(await import('./pbi-account-transport.js')).relayPbiAccount(request);
   if(new URL(request.url).pathname===PREFIX+'/twin-upgrade')return relayTwinUpgrade(request);
   const url = new URL(request.url), path = nativeRequestPath(url.pathname + url.search, request.method);

@@ -2,6 +2,7 @@ import type {AccountPresentation} from './account-presentation';
 import type {BookingOffer} from './booking-offers';
 import {mergeCalendarSourceEvents,projectCalendarPortableOriginals,type CalendarSourceProof} from './calendar-source-projection';
 export interface OrganizerContact {
+ attendeePresentation?:Readonly<{identitySource:'account-email-association';userId:string;email:string;displayName:string|null;username:string|null}>;
  id:string;linkedUserId:string;fullName:string;email:string;phone:string;
  company?:string;role?:string;location?:string;notes?:string;tags?:string[];
  emails?:string[];phones?:string[];createdAt:string;updatedAt:string;
@@ -47,7 +48,11 @@ export function organizerContact(value:unknown):OrganizerContact {
  const v=organizerRecord(value);
  if(!text(v.id)||!v.id||v.id.length>200||!text(v.fullName)||v.fullName.length>300||!text(v.email)||!text(v.phone)||!text(v.linkedUserId)||!date(v.createdAt)||!date(v.updatedAt)||!Array.isArray(v.interactions)||v.interactions.length>20000)throw Error('ORGANIZER_CONTACT_INVALID');
  const fields=['id','linkedUserId','identityKind','identitySource','visitorKey','threadKey','entityType','fullName','company','role','email','phone','emails','phones','interestTags','profileSummary','location','tags','notes','nextStep','stage','source','inviteStatus','lastMeetingOn','lastInteractionAt','ownerMessages','twinMessages','createdAt','updatedAt','interactions'];
- return Object.fromEntries(fields.filter(key=>key in v).map(key=>[key,v[key]])) as unknown as OrganizerContact;
+ const attendee=organizerRecord(v.attendeePresentation),email=typeof attendee.email==='string'?attendee.email.trim().toLowerCase():'';
+ const presentation=attendee.identitySource==='account-email-association'&&attendee.userId===v.linkedUserId&&v.linkedUserId&&[v.email,...(Array.isArray(v.emails)?v.emails:[])].some(value=>typeof value==='string'&&value.trim().toLowerCase()===email)&&
+  (attendee.displayName===null||typeof attendee.displayName==='string'&&attendee.displayName.length<=160)&&(attendee.username===null||typeof attendee.username==='string'&&/^[a-z0-9_]{3,24}$/.test(attendee.username))
+  ?{identitySource:'account-email-association',userId:attendee.userId,email,displayName:attendee.displayName,username:attendee.username}:null;
+ return {...Object.fromEntries(fields.filter(key=>key in v).map(key=>[key,v[key]])),...(presentation?{attendeePresentation:presentation}:{})} as unknown as OrganizerContact;
 }
 export function organizerEvent(value:unknown,owner?:string):OrganizerEvent {
  const v=organizerRecord(value),invitation=organizerRecord(organizerRecord(v.metadata).bankMeetingInvitation);

@@ -113,3 +113,17 @@ it('merges the native task’s saved contact results once without reloading the 
  api.mergeSavedContacts('owner',[{...contact,fullName:'Older version',updatedAt:'2026-10-26T00:00:00Z'}]);expect(api.knownContacts()?.[0].fullName).toBe('New lead');
  expect(()=>api.mergeSavedContacts('other',[contact])).toThrow('ORGANIZER_OWNER_MISMATCH');expect(api.knownContacts()?.[0].fullName).toBe('New lead');
 });
+
+it('appends accepted booking contacts on explicit refresh while preserving newer edits and accepted deletions',async()=>{
+ const booked={...contact,id:'00000000-0000-4000-8000-000000000008',fullName:'Booked attendee'},newer={...contact,fullName:'My newer edit',updatedAt:'2026-11-13T12:00:00Z'};
+ let response=projection(uid,[booked,contact]);const request=vi.fn(async()=>Response.json(response)),api=createNativeOrganizer({accountUid:uid,request,carried:{contacts:[newer]}});
+ expect(api.knownContacts()?.map(row=>row.fullName)).toEqual(['My newer edit']);expect(request).not.toHaveBeenCalled();
+ await api.contacts(true);expect(api.knownContacts()?.map(row=>row.fullName)).toEqual(['Booked attendee','My newer edit']);
+ response=projection(uid,[]);await api.contacts(true);expect(api.knownContacts()).toHaveLength(0);
+ response=projection(other,[booked]);await expect(api.contacts(true)).rejects.toThrow();expect(api.knownContacts()).toHaveLength(0);
+});
+
+it('keeps an accepted local contact archive when an earlier complete refresh finishes',async()=>{
+ let finish!:(response:Response)=>void;const request=vi.fn((_path:string,init?:RequestInit)=>init?.method==='DELETE'?Promise.resolve(Response.json({ok:true})):new Promise<Response>(resolve=>{finish=resolve;})),api=createNativeOrganizer({accountUid:uid,request,carried:{contacts:[contact]}});
+ const reading=api.contacts(true);await api.archiveContact(contact.id);finish(Response.json(projection()));await reading;expect(api.knownContacts()).toEqual([]);expect(request).toHaveBeenCalledTimes(2);
+});

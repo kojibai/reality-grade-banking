@@ -111,6 +111,106 @@ export async function loadDeviceIdentity(): Promise<{ bytes: Uint8Array; filenam
   if (saved.protectedTransport) { const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(saved.protectedTransport.iv), additionalData: new TextEncoder().encode('receiz.bank.protected-identity-transport.v1') }, saved.wrappingKey, saved.protectedTransport.bytes); const transport = JSON.parse(new TextDecoder().decode(clear)); protectedTransport = { bytes: new Uint8Array(transport.bytes), phrase: transport.phrase }; }
   return { bytes: await identityBytes(saved), filename: saved.filename, phrase: new TextDecoder().decode(phrase), readConsent: saved.readConsent === true, protectedTransport };
 }
+
+export type RetainedDeviceIdentity = NonNullable<Awaited<ReturnType<typeof loadDeviceIdentity>>>;
+export type VerifiedEmailAccountSelection = Readonly<{
+  saved: RetainedDeviceIdentity | null;
+  activateRetained(): Promise<void>;
+  retainRecovered(identity: RetainedDeviceIdentity): Promise<void>;
+}>;
+const verifiedEmailAccountSlot = (uid: string) => {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(uid)) throw Error('VERIFIED_EMAIL_ACCOUNT_UID_INVALID');
+  return `verified-email-account:${uid}`;
+};
+async function openRetainedDeviceIdentity(saved: SavedIdentity): Promise<RetainedDeviceIdentity> {
+  if (saved.schema !== 'receiz.bank.device-identity.v1' || !saved.wrappingKey || saved.wrappingKey.extractable || !saved.bytes || saved.bytes.byteLength > 32 * 1024 * 1024 + 16) throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_INVALID');
+  const phrase = await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(saved.iv),additionalData:new TextEncoder().encode(saved.schema)},saved.wrappingKey,saved.wrappedPhrase);
+  let protectedTransport: ProtectedIdentityTransport | undefined;
+  if (saved.protectedTransport) {
+    const clear = await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(saved.protectedTransport.iv),additionalData:new TextEncoder().encode('receiz.bank.protected-identity-transport.v1')},saved.wrappingKey,saved.protectedTransport.bytes);
+    const value = JSON.parse(new TextDecoder().decode(clear));
+    protectedTransport = {bytes:new Uint8Array(value.bytes),phrase:value.phrase};
+  }
+  return {bytes:await identityBytes(saved),filename:saved.filename,phrase:new TextDecoder().decode(phrase),readConsent:saved.readConsent===true,protectedTransport};
+}
+async function prepareRetainedDeviceIdentity(input: RetainedDeviceIdentity): Promise<SavedIdentity> {
+  if (!input.readConsent || !input.bytes.length || input.bytes.length > 32 * 1024 * 1024) throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_INVALID');
+  const wrappingKey = await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12)),artifactIv = crypto.getRandomValues(new Uint8Array(12));
+  const wrappedPhrase = await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode('receiz.bank.device-identity.v1')},wrappingKey,new TextEncoder().encode(input.phrase));
+  const bytes = await crypto.subtle.encrypt({name:'AES-GCM',iv:artifactIv,additionalData:new TextEncoder().encode('receiz.bank.private-identity-source.v1')},wrappingKey,new Uint8Array(input.bytes));
+  const saved: SavedIdentity = {schema:'receiz.bank.device-identity.v1',bytes,artifactIv,filename:input.filename,wrappingKey,iv,wrappedPhrase,readConsent:true};
+  if (input.protectedTransport) {
+    const transportIv = crypto.getRandomValues(new Uint8Array(12));
+    saved.protectedTransport = {iv:transportIv,bytes:await crypto.subtle.encrypt({name:'AES-GCM',iv:transportIv,additionalData:new TextEncoder().encode('receiz.bank.protected-identity-transport.v1')},wrappingKey,new TextEncoder().encode(JSON.stringify({bytes:[...input.protectedTransport.bytes],phrase:input.protectedTransport.phrase})))};
+  }
+  return saved;
+}
+function sameRetainedIdentity(left: SavedIdentity | null | undefined, right: SavedIdentity | null | undefined) {
+  if (!left || !right) return !left && !right;
+  return left.schema === right.schema && left.readConsent === right.readConsent && equalCipher(left.bytes,right.bytes)
+    && equalCipher(left.iv,right.iv) && equalCipher(left.artifactIv,right.artifactIv) && equalCipher(left.wrappedPhrase,right.wrappedPhrase)
+    && equalCipher(left.protectedTransport?.bytes,right.protectedTransport?.bytes) && equalCipher(left.protectedTransport?.iv,right.protectedTransport?.iv)
+    && JSON.stringify(left.bankOperation) === JSON.stringify(right.bankOperation);
+}
+/** Only a custody selection beneath already-admitted account proof. Slot IDs
+ * locate opaque saved records; callers must SDK-admit and verify the target UID
+ * before activation. No lookup can authenticate an account or create one.
+ * The caller holds the existing device-entry lock for preparation and commit. */
+export async function prepareVerifiedEmailAccountSelection(previous: {accountUid:string;artifactSha256:string} | null, targetUid: string): Promise<VerifiedEmailAccountSelection> {
+  const targetSlot = verifiedEmailAccountSlot(targetUid),previousSlot = previous ? verifiedEmailAccountSlot(previous.accountUid) : null;
+  const expected = await held();
+  if (Boolean(expected) !== Boolean(previous) || previousSlot === targetSlot) throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_CHANGED');
+  if (expected && previous) {
+    const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(await identityBytes(expected))))].map(value=>value.toString(16).padStart(2,'0')).join('');
+    if (digest !== previous.artifactSha256) throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_CHANGED');
+  }
+  const db = await database();let retained: SavedIdentity | null,previousRetained: SavedIdentity | null;
+  try {
+    const records=db.transaction('identity').objectStore('identity');
+    const read=(slot:string)=>new Promise<SavedIdentity | null>((resolve,reject)=>{const value=records.get(slot);value.onsuccess=()=>resolve(value.result??null);value.onerror=()=>reject(value.error);});
+    [retained,previousRetained]=await Promise.all([read(targetSlot),previousSlot?read(previousSlot):Promise.resolve(null)]);
+  } finally {db.close();}
+  // A prior explicit import can leave another full record for the same account.
+  // Never overwrite distinct custody just because its account label matches.
+  if(previousRetained)throw Error('VERIFIED_EMAIL_ACCOUNT_RETAINED_COLLISION');
+  const saved = retained ? await openRetainedDeviceIdentity(retained) : null;
+  if (saved && !saved.readConsent) throw Error('VERIFIED_EMAIL_ACCOUNT_SAVED_ACCESS_REQUIRED');
+  const guard = expected ? await noteRemovalGuard(expected) : [];
+  let committed = false;
+  const commit = async (next: SavedIdentity) => {
+    if (committed) throw Error('VERIFIED_EMAIL_ACCOUNT_SELECTION_COMPLETED');
+    const store = await database();
+    try {await new Promise<void>((resolve,reject)=>{
+      const tx=store.transaction(['identity','operations'],'readwrite'),records=tx.objectStore('identity');
+      const currentRead=records.get('current'),targetRead=records.get(targetSlot),previousRead=previousSlot?records.get(previousSlot):null;
+      let ready=0,current:SavedIdentity|undefined,target:SavedIdentity|undefined,oldInactive:SavedIdentity|undefined,failure:unknown;
+      const refuse=(error:unknown)=>{failure=error;try{tx.abort();}catch{/* Already aborted. */}};
+      const apply=()=>{try{
+        // Preserve the actual latest complete row, including private checkpoint
+        // metadata. Its wrapping key still decrypts every old private source.
+        if (current && previousSlot) records.put(current,previousSlot);
+        records.put(next,'current');records.delete(targetSlot);
+      }catch(error){refuse(error);}};
+      const admitted=()=>{
+        if(++ready!==(previousRead?3:2))return;
+        if(!sameRetainedIdentity(current,expected)||!sameRetainedIdentity(target,retained)||!sameRetainedIdentity(oldInactive,previousRetained)){refuse(Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_CHANGED'));return;}
+        if(!guard.length){apply();return;}
+        let remaining=guard.length;
+        for(const item of guard){const read=tx.objectStore('operations').get(item.key);read.onsuccess=()=>{
+          const row=read.result as PrivateBankOperation|undefined;
+          if(!equalCipher(row?.bytes,item.row?.bytes)||!equalCipher(row?.iv,item.row?.iv)){refuse(Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_CHANGED'));return;}
+          if(--remaining===0)apply();
+        };}
+      };
+      currentRead.onsuccess=()=>{current=currentRead.result;admitted();};targetRead.onsuccess=()=>{target=targetRead.result;admitted();};
+      if(previousRead)previousRead.onsuccess=()=>{oldInactive=previousRead.result;admitted();};
+      tx.oncomplete=()=>{committed=true;resolve();};tx.onerror=()=>reject(failure??tx.error);tx.onabort=()=>reject(failure??tx.error??Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_CHANGED'));
+    });} finally {store.close();}
+  };
+  return Object.freeze({saved,activateRetained:async()=>{if(!retained)throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_MISSING');await commit(retained);},retainRecovered:async(input:RetainedDeviceIdentity)=>{if(retained)throw Error('VERIFIED_EMAIL_ACCOUNT_CUSTODY_EXISTS');await commit(await prepareRetainedDeviceIdentity(input));}});
+}
+
 /** Retain derived transport under the same original; never install identity
  * custody or overwrite a newer observation, note intent or account selection. */
 export async function saveProtectedIdentityTransport(binding: { artifactSha256: string }, transport: ProtectedIdentityTransport): Promise<void> {

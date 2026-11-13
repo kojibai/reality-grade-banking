@@ -16,6 +16,7 @@ import { Market } from './features/market/Market';
 import {ReceiptView} from './features/receipts/ReceiptView';
 import { Ledger } from './features/ledger/Ledger';
 import { Entrance } from './features/identity/Entrance';
+import {AccountOpening} from './features/identity/AccountOpening';
 import { LiveAccount } from './features/account/LiveAccount';
 import { LiveActions } from './features/account/LiveActions';
 import { parseRoute, routeHash, sheetCloseBehavior } from './core/routes';
@@ -39,7 +40,10 @@ import {consumeProfileAccountAction,readProfileAccountAction,subscribeProfileAct
 import {vaultLocation} from './receiz/vault/location';
 const VaultPage=lazy(()=>import('./features/vault/VaultPage').then(module=>({default:module.VaultPage})));
 const EmailPaymentEntry=lazy(()=>import('./features/account/EmailPaymentEntry').then(module=>({default:module.EmailPaymentEntry})));
+const EmailMeetingEntry=lazy(()=>import('./features/account/EmailMeetingEntry').then(module=>({default:module.EmailMeetingEntry})));
 export default function App() {
+ const [emailMeetingOpened,setEmailMeetingOpened]=useState(false);
+ if(!emailMeetingOpened&&location.pathname==='/'&&new URLSearchParams(location.search).getAll('emailMeeting').length===1&&new URLSearchParams(location.search).get('emailMeeting')==='1')return <Suspense fallback={<AccountOpening resuming/>}><EmailMeetingEntry onOpened={()=>setEmailMeetingOpened(true)}/></Suspense>;
  if(['/receive','/receive/'].includes(location.pathname))return <Suspense fallback={<InlineOpening label="Reading your invitation"/>}><EmailPaymentEntry/></Suspense>;
  return <MainApp/>;
 }

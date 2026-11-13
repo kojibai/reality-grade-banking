@@ -45,3 +45,25 @@ it.each([['world_profile_agent','Twin booking'],['calendar_embed','Booking page'
   const field=[...host.querySelectorAll('dt')].find(node=>node.textContent==='Channel');expect(field?.parentElement?.querySelector('dd')?.textContent).toBe(label);expect(event).toEqual(original);expect(event.metadata.channel).toBe(channel);expect(eventProof).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
 });
+
+it.each(['booking','captured','known'] as const)('shows the held %s attendee separately from guest actor evidence without a lookup',async(kind)=>{
+ const email='attendee@example.test',event:OrganizerEvent={id:'00000000-0000-4000-8000-000000000007',ownerUserId:'owner',title:'Booked appointment',kind:'appointment',source:'embed',startAt:'2026-11-14T20:30:00Z',endAt:'2026-11-14T21:00:00Z',location:'',note:'',attendees:[email],createdAt:'2026-11-13T12:00:00Z',updatedAt:'2026-11-13T12:00:00Z',metadata:{visitorIdentity:{kind:'guest',guestKey:'guest-exact-proof'},...(kind==='captured'?{capturedContact:{displayName:'Alex Attendee',email}}:{bookingName:'Alex Attendee',bookingEmail:email})}};
+ const original=structuredClone(event),eventProof=vi.fn(),api={accountUid:'owner',eventProof,knownContacts:()=>kind==='known'?[{id:'known-contact',linkedUserId:'accepted-account',fullName:'My personal label',email,emails:[email],attendeePresentation:{identitySource:'account-email-association',userId:'accepted-account',email,displayName:'Bankeiz',username:'bankeiz'}}]:[]} as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CalendarRecordDetails event={event} identity={{}as OpenIdentity} api={api}/>));expect(host.textContent).toContain('Attendee');expect(host.textContent).toContain(kind==='known'?'Bankeiz (@bankeiz)':'Alex Attendee');expect(host.textContent).toContain(email);expect(event).toEqual(original);expect(eventProof).not.toHaveBeenCalled();}
+ finally{act(()=>root.unmount());}
+});
+
+it('uses a newly held exact-email attendee profile on the same open event without changing guest proof',async()=>{
+ const email='attendee@example.test',event:OrganizerEvent={id:'same-open-event',ownerUserId:'owner',title:'Appointment',kind:'appointment',source:'embed',startAt:'2026-11-14T20:30:00Z',endAt:'2026-11-14T21:00:00Z',location:'',note:'',attendees:[email],createdAt:'2026-11-13T12:00:00Z',updatedAt:'2026-11-13T12:00:00Z',metadata:{bookingName:'Alex',bookingEmail:email,visitorIdentity:{kind:'guest',guestKey:'exact-guest'}}};
+ let contacts:unknown[]=[];const original=structuredClone(event),eventProof=vi.fn(),api={accountUid:'owner',eventProof,knownContacts:()=>contacts}as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);
+ const render=()=>root.render(<CalendarRecordDetails event={event} identity={{}as OpenIdentity} api={api}/>);
+ try{await act(async()=>render());expect(host.textContent).toContain('Alex');contacts=[{id:'accepted-contact',linkedUserId:'accepted-account',fullName:'Bankeiz (@bankeiz)',email,emails:[email]}];await act(async()=>render());expect(host.textContent).toContain('Bankeiz (@bankeiz)');expect(event).toEqual(original);expect(eventProof).not.toHaveBeenCalled();}
+ finally{act(()=>root.unmount());}
+});
+
+it('shows an email-only attendee without borrowing the anonymous actor label',async()=>{
+ const event:OrganizerEvent={id:'email-only',ownerUserId:'owner',title:'Appointment',kind:'appointment',source:'embed',startAt:'2026-11-14T20:30:00Z',endAt:'2026-11-14T21:00:00Z',location:'',note:'',attendees:['attendee@example.test'],createdAt:'2026-11-13T12:00:00Z',updatedAt:'2026-11-13T12:00:00Z',metadata:{bookingEmail:'attendee@example.test',visitorIdentity:{kind:'guest',displayName:'Guest (exact-guest)',guestKey:'exact-guest'}}};
+ const eventProof=vi.fn(),api={accountUid:'owner',eventProof}as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);
+ try{await act(async()=>root.render(<CalendarRecordDetails event={event} identity={{}as OpenIdentity} api={api}/>));expect(host.textContent).toContain('Attendee');expect(host.textContent).toContain('attendee@example.test');expect(host.textContent).not.toContain('Guest (');expect(event.metadata.visitorIdentity).toEqual({kind:'guest',displayName:'Guest (exact-guest)',guestKey:'exact-guest'});expect(eventProof).not.toHaveBeenCalled();}
+ finally{act(()=>root.unmount());}
+});

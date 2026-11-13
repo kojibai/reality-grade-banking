@@ -57,13 +57,18 @@ export function CalendarRecordDetails({event,identity,api}:{event:OrganizerEvent
   }catch{if(ticket===recordGeneration.current)setRecordError('This proof record could not be prepared. Your recorded details are preserved. Try the same download again.');}
   finally{if(ticket===recordGeneration.current){recordSaving.current=false;setSavingRecord(false);}}
  };
- const context=useMemo(()=>{const m=event.metadata,conversation=organizerRecord(proof?.conversation),visitor=organizerRecord(m.visitorIdentity),verifiedVisitor=organizerRecord(proof?.visitor),text=(v:unknown,max=64000)=>typeof v==='string'&&v.trim()&&v.length<=max?v:null;
+ const knownContacts=api.knownContacts?.();
+ const context=useMemo(()=>{const m=event.metadata,conversation=organizerRecord(proof?.conversation),visitor=organizerRecord(m.visitorIdentity),verifiedVisitor=organizerRecord(proof?.visitor),captured=organizerRecord(m.capturedContact),text=(v:unknown,max=64000)=>typeof v==='string'&&v.trim()&&v.length<=max?v:null;
+  const attendeeEmail=text(m.bookingEmail,320)??text(m.attendeeEmail,320)??text(captured.email,320),attendeeName=text(m.bookingName,300)??text(m.attendeeName,300)??text(captured.displayName,300);
+  const matches=attendeeEmail?(knownContacts??[]).filter(row=>row.linkedUserId&&[row.email,...(row.emails??[])].some(email=>email.trim().toLowerCase()===attendeeEmail.trim().toLowerCase())):[],knownAttendee=matches.length===1?matches[0]:null;
+  const associated=knownAttendee?.attendeePresentation,bound=associated&&associated.userId===knownAttendee?.linkedUserId&&associated.email.trim().toLowerCase()===attendeeEmail?.trim().toLowerCase(),sourceName=bound?(associated.displayName&&associated.username?`${associated.displayName} (@${associated.username})`:associated.displayName||(associated.username?`@${associated.username}`:null)):null;
+  const attendee=attendeeEmail||attendeeName?{name:sourceName||knownAttendee?.fullName||attendeeName,email:attendeeEmail}:null;
   const fields:Array<[string,string]>=[],labels:Record<string,string>={status:'Status',channel:'Channel',stage:'Stage',nextAction:'Next step',contactCount:'Contacts',importedCount:'Contacts imported',deliveredCount:'Delivered',bookedCount:'Appointments',targetCount:'Target',durationMinutes:'Duration (minutes)'};
   for(const[key,label]of Object.entries(labels)){const value=m[key];if(typeof value==='string'&&value.length<=1000)fields.push([label,key==='status'?value.replaceAll('_',' ').replace(/^./,v=>v.toUpperCase()):key==='channel'?calendarChannelLabel(value):value]);else if(typeof value==='number'&&Number.isFinite(value))fields.push([label,String(value)]);}
-  return{request:text(m.request)??text(conversation.request),reply:text(m.reply)??text(conversation.reply),person:text(visitor.displayName,300)??text(visitor.username,300)??(verifiedVisitor.kind!=='unknown'?text(verifiedVisitor.label,500):null),email:text(visitor.email,300)??text(verifiedVisitor.email,300),summary:text(m.summary,4000),fields};
- },[event,proof]);
+  return{request:text(m.request)??text(conversation.request),reply:text(m.reply)??text(conversation.reply),attendee:!!attendee,person:attendee?attendee.name:text(visitor.displayName,300)??text(visitor.username,300)??(verifiedVisitor.kind!=='unknown'?text(verifiedVisitor.label,500):null),email:attendee?.email??text(visitor.email,300)??text(verifiedVisitor.email,300),summary:text(m.summary,4000),fields};
+ },[event,proof,knownContacts]);
  return <section className="organizer-record" aria-label="Recorded event details">
-  {(context.person||context.email)&&<div className="organizer-card"><small>With</small>{context.person&&<h4>{context.person}</h4>}{context.email&&<p>{context.email}</p>}</div>}
+  {(context.person||context.email)&&<div className="organizer-card"><small>{context.attendee?'Attendee':'With'}</small>{context.person&&<h4>{context.person}</h4>}{context.email&&<p>{context.email}</p>}</div>}
   {context.request&&<div className="organizer-card organizer-record-conversation"><small>Visitor’s question</small><p>{context.request}</p></div>}
   {context.reply&&<div className="organizer-card organizer-record-conversation"><small>Your agent’s response</small><p>{context.reply}</p></div>}
   {context.summary&&context.summary!==event.title&&<p className="organizer-sub">{context.summary}</p>}
