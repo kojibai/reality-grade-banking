@@ -9772,7 +9772,12 @@ async function verifyReceizArtifactBytes(args) {
     signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
   });
 }
+export const authoredFileCarrier = {detectDocumentFormat,readPngTextChunks,insertPngTextChunks,stripPngTextChunksByKeyword,
+  extractReceizProofBundlesFromPdf,embedReceizProofBundleIntoPdf,PDF_RECEIZ_UPDATE_MARKER,
+  stripReceizJsonProof,embedReceizProofBundleIntoJson,parseReceizHeicProof,appendReceizHeicProof};
 export {
+  appendReceizTrailer,
+  parseReceizTrailer,
   inspectReceizZipBytes,
   readVerifiedReceizFolderPackageBytes,
   readVerifiedReceizDocumentBytes,

@@ -1,3 +1,9 @@
+export type CarriedFileAuthorship = Readonly<{
+  state:'verified';scope:'enclosing-source';pbiReceiptHash:string;
+  sourceArtifactSha256:string;originalArtifactSha256:string;
+}>;
+
+
 export type ReceizLocalAssetContinuity = Readonly<{
   state: "verified" | "historical_missing" | "invalid" | "not_applicable";
   carrier?: "portable_asset" | "ownership_provenance" | "native_record_seal";
@@ -25,6 +31,9 @@ export type ReceizLocalArtifactVerificationResult = Readonly<{
   anchor: Readonly<Record<string, unknown>> | null;
   package: Readonly<Record<string, unknown>> | null;
   assetContinuity?: ReceizLocalAssetContinuity;
+  /** Existing PBI on the exact enclosing Source carried with this native file.
+   * This does not retarget that signature to the native component's claim. */
+  carriedAuthorship?: CarriedFileAuthorship;
   denial?: Readonly<{
     status: "operational-denial";
     code: import("../verificationLimits.js").ReceizProtocolLimitCode;

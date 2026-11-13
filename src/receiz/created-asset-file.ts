@@ -59,7 +59,7 @@ export async function createdAssetOriginalFile(identity:OpenIdentity,result:Held
  if(opened.reference.artifactSha256!==result.digest||opened.source.projection.ownerReceizId!==owner)throw Error('ORIGINAL_FILE_SOURCE_MISMATCH');
  const composer=opened.source.projection.bankAsset?.composer,protectedOriginal=composer?.protectedOriginal;
  const primary=protectedOriginal?.file??composer?.files.find(value=>value.role==='primary');
- if(!primary)return file;
+ if(!primary){const authored=await runtime.readComposerAuthoredFile({file,originalFile:file,ownerReceizId:owner,username,assertCurrent});assertCurrent();if(result.pbiSigned&&!authored)throw Error('ORIGINAL_FILE_SIGNATURE_SOURCE_UNAVAILABLE');return authored??file;}
  let payload:Blob|undefined;
  if(protectedOriginal){
   if(protectedOriginal.profileIdentity!==identity.walletReceivingAddress?.()||!identity.binding?.artifactSha256)throw Error('ORIGINAL_FILE_OWNER_REQUIRED');
@@ -72,8 +72,12 @@ export async function createdAssetOriginalFile(identity:OpenIdentity,result:Held
  const bytes=new Uint8Array(await payload.arrayBuffer());assertCurrent();
  const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');assertCurrent();
  if(digest!==primary.sha256)throw Error('ORIGINAL_FILE_SOURCE_MISMATCH');
+ const originalFile=new File([bytes],primary.name,{type:primary.mime});
+ const authored=await runtime.readComposerAuthoredFile({file,originalFile,ownerReceizId:owner,username,assertCurrent});assertCurrent();
+ if(authored)return authored;
+ if(result.pbiSigned)throw Error('ORIGINAL_FILE_SIGNATURE_SOURCE_UNAVAILABLE');
  // Preserve the complete existing Original for pre-fix creations that never
  // retained a standalone sealed primary. Saving must not manufacture its seal.
  if(!await fileHasProof(bytes,primary.name,primary.mime)){if(protectedOriginal)throw Error('ORIGINAL_FILE_PROOF_INVALID');return file;}
- assertCurrent();return new File([bytes],primary.name,{type:primary.mime});
+ assertCurrent();return originalFile;
 }

@@ -3,8 +3,9 @@ import type {AssetPublicationReceipt} from './asset-publication';
 import type {BankNoteRuntimeFactory} from './offline-notes';
 import publicationBuild from '../../public/native/asset-publication.v129.manifest.json';
 import {parseExactByteBlockReference,type ExactByteBlockReference,type ExactByteBlockWriter,type ExactByteBlockResolver} from '../../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>|null;artwork?:Blob}>;
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:unknown;sourceReference:unknown;firstPaint:Readonly<{artifactDigest:string}>|null;artwork?:Blob;authoredFile?:Promise<File>}>;
 export interface AssetPublicationRuntimeModule{
+ readComposerAuthoredFile(input:{file:File;originalFile?:File;ownerReceizId:string;username:string;assertCurrent():void;resolveProtectedBlock?:ExactByteBlockResolver}):Promise<File|null>;
  readComposerPrimaryFile(file:File):Promise<{verification:{ok:boolean;bundle?:unknown;errors:readonly string[]};payload?:File}>;
  prepareConnectedComposerContent(input:{draft:AssetComposerDraft;ownerReceizId:string;writeProtectedBlock?:ExactByteBlockWriter;assertCurrent():void}):Promise<ComposerAssetContent>;
  sealConnectedComposerContent(input:{content:ComposerAssetContent;sealDocument:Parameters<BankNoteRuntimeFactory>[0]['sealDocument'];assertCurrent():void}):Promise<PreparedComposerSource>;

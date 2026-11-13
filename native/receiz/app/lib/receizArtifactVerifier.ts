@@ -95,6 +95,7 @@ export type ReceizArtifactVerificationResult = Readonly<{
   anchor: ReceizAnchorBundle | null;
   package: ReceizFolderPackageVerification | null;
   assetContinuity?: ReceizAssetContinuityVerification;
+  carriedAuthorship?: import("../../packages/receiz-sdk/src/verifier/types").CarriedFileAuthorship;
   denial?: ReceizProtocolOperationalDenial;
 }>;
 

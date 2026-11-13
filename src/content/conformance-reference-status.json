@@ -6,28 +6,28 @@
   "receizVersion": "129.0.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
-  "verifierModuleSha256": "90b61a32476c2e0fe0152ae60c00fbcf2f5bb31173191f6c1630d72be2f3f906",
-  "suiteSourceSha256": "9520390a7035288dd17e1be59aa439b951ee0a858b2690ef08752a79cb69fba9",
-  "startedAt": "2026-11-02T05:15:22.743Z",
-  "completedAt": "2026-11-02T05:15:23.058Z",
+  "verifierModuleSha256": "86d25d11f4ea9b87e502af8a775dc70a5b7ccd9acb5f3672da5fcb5be2248b76",
+  "suiteSourceSha256": "e63391692c2c22104972d5f62eff8f4e238e9d4426e5c30e08dd9bdfeb11c9c8",
+  "startedAt": "2026-11-13T04:08:36.891Z",
+  "completedAt": "2026-11-13T04:08:37.325Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 44
+      "durationMs": 47
     },
     {
       "id": "ownership",
       "passed": true,
       "evidence": null,
-      "durationMs": 39
+      "durationMs": 26
     },
     {
       "id": "atomic",
       "passed": true,
       "evidence": null,
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "recovery",
@@ -51,7 +51,7 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 66
+      "durationMs": 60
     },
     {
       "id": "source",
@@ -75,13 +75,13 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 153
+      "durationMs": 288
     },
     {
       "id": "edges",
       "passed": true,
       "evidence": null,
-      "durationMs": 8
+      "durationMs": 5
     }
   ],
   "localChecksPassed": true,
@@ -91,7 +91,7 @@
   "timestampsAreAuthority": false,
   "scope": "nonfinancial-browser-reference",
   "referenceEnvironment": {
-    "origin": "http://127.0.0.1:5210",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
+    "origin": "http://127.0.0.1:5173",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
   }
 }

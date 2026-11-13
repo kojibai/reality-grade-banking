@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.0.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "90b61a32476c2e0fe0152ae60c00fbcf2f5bb31173191f6c1630d72be2f3f906",
-  "sourceMapSha256": "81d10bb099fade0227e2d0d08598f072bf835d4a6f87098ab05f509dd19915e1",
-  "sourceTreeSha256": "0ff5999321bfe93bb4e11e7811ff538401f649ab86c98e94d2f37da3a220c99f",
-  "bytes": 2072115,
+  "moduleSha256": "86d25d11f4ea9b87e502af8a775dc70a5b7ccd9acb5f3672da5fcb5be2248b76",
+  "sourceMapSha256": "404c643228268049e7fbe04d319e1838844ce690b680857aaa9c51dcac390811",
+  "sourceTreeSha256": "8aa05a4ccc811303394baf1fe82dbb465d763821bc7345182ed31a82fdcec112",
+  "bytes": 2098460,
   "inputs": [
     {
       "path": "receiz/node_modules/.pnpm/@noble+hashes@2.3.0/node_modules/@noble/hashes/_u64.js",
@@ -42,6 +42,10 @@
     {
       "path": "receiz/packages/receiz-sdk/src/identity.ts",
       "sha256": "6179cd9ab375bb75ca0b90ce3b08d1318b40c4297910d623e219f95b3c5cd7d0"
+    },
+    {
+      "path": "receiz/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
+      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/authorityEncoding.ts",
@@ -169,39 +173,19 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/verifier/canonicalImplementation.js",
-      "sha256": "33e111935173070077238c4a54aa400460de7b4acbfef253d9a973e6d9c6ac08"
+      "sha256": "ca173008cc8df916fd044e49f95c109581d0ef27de1a6915c64f40448d0f3091"
     },
     {
-      "path": "receiz/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
-      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d"
+      "path": "receiz/packages/receiz-sdk/src/verifier/authoredFileCarrier.ts",
+      "sha256": "f800f54d6a7fb8a89374f8a4d2f02068b0c8c5e1bb28e3a3b4cfaba51d21f296"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/verifier/signatureV4.ts",
-      "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83"
+      "path": "receiz/packages/receiz-sdk/src/pbiLocalVerifier.ts",
+      "sha256": "0778a4f8e6ca1b77b0a5f56bf777231d7d265043dd0c32e486be9988c55ff440"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/verifier/roots.ts",
-      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/verifier/canonical.ts",
-      "sha256": "56189ae1e54f3c789e9631f6692905dc1d9cb5ed113bdde6554c372d2d1966d9"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/verifier/index.ts",
-      "sha256": "22126cbec9ef085b24ac5d2b1410d5d750c307d543688c4e58eaadd67d8887f5"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/exactClone.ts",
-      "sha256": "a12434b93ebb1e8931c527dfa3b7b00160a3456ae979afc6506d9f1ecb1d970c"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/artifactInput.ts",
-      "sha256": "6e9f3dfb9f7728dda7e22cd2f271199ec55bacac34c1b89492ff23cf4f5d0a6a"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/artifactVerification.ts",
-      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3"
+      "path": "receiz/packages/receiz-sdk/src/pbiLocalAuthorship.ts",
+      "sha256": "394bccb09f79c74d005f2b419cf050c929fc2da910289bd61ccc1c6ca40a2649"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/portableAssetReader.ts",
@@ -210,6 +194,10 @@
     {
       "path": "receiz/packages/receiz-sdk/src/profileShowcaseTransport.ts",
       "sha256": "21d551e1304886eb11865e45b19d577a11712d29d016b6e42667c0a5f8a37d89"
+    },
+    {
+      "path": "receiz/node_modules/.pnpm/hash-wasm@4.12.0/node_modules/hash-wasm/dist/index.esm.js",
+      "sha256": "2d6333a619d7f64adc313a38732425fc0c6f0baaa36c1419cf05672bcd89340d"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v122Canonical.ts",
@@ -238,6 +226,38 @@
     {
       "path": "receiz/packages/receiz-sdk/src/portableAsset.ts",
       "sha256": "c0d0d6b2be8360bc1a6885905fa4713257f536b8b465d074239d786159efb28c"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/carriedFileAuthorship.ts",
+      "sha256": "38be450125549f542fd54fae9265c13e5d88f8f936d9486cef5801ceb9547abe"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/signatureV4.ts",
+      "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/roots.ts",
+      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/canonical.ts",
+      "sha256": "631a1c0db6512f7ff92ae5344ccd4ca15e5cf3930fdbc16e119e543af6721fc3"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/index.ts",
+      "sha256": "22126cbec9ef085b24ac5d2b1410d5d750c307d543688c4e58eaadd67d8887f5"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/exactClone.ts",
+      "sha256": "a12434b93ebb1e8931c527dfa3b7b00160a3456ae979afc6506d9f1ecb1d970c"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/artifactInput.ts",
+      "sha256": "6e9f3dfb9f7728dda7e22cd2f271199ec55bacac34c1b89492ff23cf4f5d0a6a"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/artifactVerification.ts",
+      "sha256": "710335ab1962b04607691c2191ab4e1c12ceda90aa3751e211b4d77bfa21e9f3"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/economyShowcaseTransport.ts",
@@ -278,10 +298,6 @@
     {
       "path": "receiz/app/lib/wallet/bankNotes/sourceCodec.ts",
       "sha256": "0329d952ff212de56ba593fb1c848b13aec0325e4e8aba9cd24a5edf4d0b73c6"
-    },
-    {
-      "path": "receiz/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/browser.js",
-      "sha256": "b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1"
     },
     {
       "path": "receiz/app/utils/pngChunks.ts",
@@ -540,14 +556,6 @@
       "sha256": "1a819a82fcaa7ec92019720f45ed384be009c6c7af8b6df4044ad7763ee8746f"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/pbiLocalVerifier.ts",
-      "sha256": "0778a4f8e6ca1b77b0a5f56bf777231d7d265043dd0c32e486be9988c55ff440"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/pbiLocalAuthorship.ts",
-      "sha256": "394bccb09f79c74d005f2b419cf050c929fc2da910289bd61ccc1c6ca40a2649"
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/pbiProofObjectVerification.ts",
       "sha256": "2538c1416d59d92b1e593c3a0768c62ea0689d1b2e7f292de7af478a139b46de"
     },
@@ -796,6 +804,10 @@
       "sha256": "469c23dffc29f4318c6f788686e50284dac110ec56dfe8de6644dcf69bd514a3"
     },
     {
+      "path": "receiz/app/utils/receizProofBundle.ts",
+      "sha256": "81a6335e7e6df101be556252bd12ce29f55a4a0a1dc62e7b1f61d9da3442bcca"
+    },
+    {
       "path": "receiz/app/lib/security/receizSignatureV3.ts",
       "sha256": "df9cddd94dd49c0f0810b5e7fe260b2ef7182ddb1ded0f6a2109116cc19172a3"
     },
@@ -806,10 +818,6 @@
     {
       "path": "receiz/app/utils/signerKeyId.ts",
       "sha256": "e2b9c5fa16b09c314544d1b53da24deb30e319a209c93ab6d15101736e5db92b"
-    },
-    {
-      "path": "receiz/app/utils/receizProofBundle.ts",
-      "sha256": "81a6335e7e6df101be556252bd12ce29f55a4a0a1dc62e7b1f61d9da3442bcca"
     },
     {
       "path": "receiz/app/lib/documentSeal/verifyLink.ts",
@@ -849,7 +857,7 @@
     },
     {
       "path": "receiz/app/lib/documentSeal/jsonProof.ts",
-      "sha256": "8ae57567fb4e2464793fcc3b344bcf2d30936425c5a47eac678acd6b62595ede"
+      "sha256": "42b85e41fc7be106e3d4443e01a21f28e574212d140b2217cb447fe7a93e52dd"
     },
     {
       "path": "receiz/app/lib/documentSeal/heicProof.ts",

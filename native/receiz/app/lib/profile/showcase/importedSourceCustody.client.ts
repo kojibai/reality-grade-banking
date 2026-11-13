@@ -104,6 +104,21 @@ export function createImportedProofSourceCustody() {
   };
   return Object.freeze({
     retain,
+    /** Signature transport belongs to the retained Source, independently of
+     * publication-queue cleanup. A read is untrusted until the PBI/Source
+     * binding is checked by the existing canonical caller. No private media is
+     * duplicated here, and these records are outside public block export. */
+    async retainAuthorship(value:ImportedProofSourceReference,proof:unknown){
+      const reference=parseImportedProofSourceReference(value),key='authorship:'+sourceKey(reference);
+      await writeRecord('sources',{key,reference,proof:structuredClone(proof)});
+    },
+    async readAuthorship(value:ImportedProofSourceReference):Promise<unknown|null>{
+      const reference=parseImportedProofSourceReference(value),key='authorship:'+sourceKey(reference);
+      const stored=await readRecord('sources',key) as {key?:unknown;reference?:unknown;proof?:unknown}|undefined;
+      if(!stored)return null;
+      if(stored.key!==key||JSON.stringify(stored.reference)!==JSON.stringify(reference))throw TypeError(`${PREFIX}_AUTHORSHIP_BINDING_INVALID`);
+      return stored.proof??null;
+    },
     /** Same bounded exact-byte store used by imported source custody. This does
      * not admit an Original or mark a source complete. */
     async writeBlock(reference:ExactByteBlockReference,bytes:Uint8Array){

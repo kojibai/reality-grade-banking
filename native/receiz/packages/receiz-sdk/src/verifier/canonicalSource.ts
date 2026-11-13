@@ -22,9 +22,10 @@ import {
   embedReceizProofBundleIntoPdf,
   extractReceizProofBundlesFromPdf,
   stripReceizSealUpdatesFromPdf,
+  PDF_RECEIZ_UPDATE_MARKER,
 } from "@/app/lib/documentSeal/pdfProof";
 import { embedReceizProofBundleIntoSvg, parseReceizSvgProof } from "@/app/lib/documentSeal/svgProof";
-import { embedReceizProofBundleIntoJson, parseReceizJsonProof } from "@/app/lib/documentSeal/jsonProof";
+import { embedReceizProofBundleIntoJson, parseReceizJsonProof, stripReceizJsonProof } from "@/app/lib/documentSeal/jsonProof";
 import { appendReceizTrailer, parseReceizTrailer } from "@/app/lib/documentSeal/trailerProof";
 import {
   appendReceizHeicProof,
@@ -64,7 +65,7 @@ import {
   RECEIZ_ANCHOR_BUNDLE_CHUNK_KEY,
   type ReceizAnchorBundle,
 } from "@/app/utils/receizAnchorBundle";
-import { countPngTextChunksByKeyword, insertPngTextChunks, readPngTextChunk } from "@/app/utils/pngChunks";
+import { countPngTextChunksByKeyword, insertPngTextChunks, readPngTextChunk, readPngTextChunks, stripPngTextChunksByKeyword } from "@/app/utils/pngChunks";
 import {
   coerceReceizProofBundle,
   decodeReceizProofBundle,
@@ -2402,3 +2403,6 @@ export async function verifyReceizArtifactBytes(args: {
     signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
   });
 }
+
+export {appendReceizTrailer,parseReceizTrailer};
+export const authoredFileCarrier={detectDocumentFormat,readPngTextChunks,insertPngTextChunks,stripPngTextChunksByKeyword,extractReceizProofBundlesFromPdf,embedReceizProofBundleIntoPdf,PDF_RECEIZ_UPDATE_MARKER,stripReceizJsonProof,embedReceizProofBundleIntoJson,parseReceizHeicProof,appendReceizHeicProof};

@@ -157,7 +157,7 @@ function detectTrailingJsonChannel(current: string): JsonWhitespaceChannel | nul
   return null;
 }
 
-function stripReceizJsonProof(jsonBytes: Uint8Array): StripResult {
+export function stripReceizJsonProof(jsonBytes: Uint8Array): StripResult {
   let current = textDecoder.decode(jsonBytes);
   const encodedBundles: string[] = [];
   let removedCount = 0;

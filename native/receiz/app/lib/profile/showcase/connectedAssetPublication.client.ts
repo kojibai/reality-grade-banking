@@ -1,5 +1,5 @@
 "use client";
-import {computeLocalPbiAuthorshipActionHash} from '../../../../packages/receiz-sdk/src/pbiLocalAuthorship';
+import {computeLocalPbiAuthorshipActionHash,normalizeLocalPbiAuthorshipProof} from '../../../../packages/receiz-sdk/src/pbiLocalAuthorship';
 import {peekLocalPbiAuthorshipPublication,peekLocalPbiAuthorshipPublicationsForSource,enqueueLocalPbiAuthorshipPublication} from '../../pbi/localAuthorshipOutbox';
 import {createIncrementalAssetPublisher} from "./incrementalAssetPublication.client";
 import {prepareConnectedComposerSource,prepareConnectedComposerContent,sealConnectedComposerContent} from "../composerPreparation.client";
@@ -23,7 +23,7 @@ import type {ProfileShowcaseCompletePublicSource,ProfileShowcasePublicationSourc
 import type {ProfileShowcaseArtifactId} from "./types";
 import {retainImportedProfileOriginalMaterial} from "../materialProjection.client";
 import {attachImportedSourceMarketPreviews} from "./importedSourceMarketPreview";
-export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null;artwork?:Blob}>;
+export type ConnectedAssetLocalAdmission=Readonly<{username:string;original:import("../types").ProfileOriginal;sourceReference:import("./importedSourceReference").ImportedProofSourceReference;firstPaint:ProfileShowcaseBoundedFirstPaint|null;artwork?:Blob;authoredFile?:Promise<File>}>;
 const localDisplays=new WeakMap<import("../types").ProfileOriginal,Map<string,import("../types").ProfileOriginal>>();
 function sourceDisplay(original:import("../types").ProfileOriginal,source:Awaited<ReturnType<typeof openImportedProofSource>>,username:string,owner:string,ownerReceizId?:string){
  const key=JSON.stringify([username,owner,ownerReceizId]);
@@ -43,6 +43,44 @@ export async function admitConnectedComposerSource(input:Readonly<{file:File;own
  if(held.source.projection.ownerReceizId!==input.ownerReceizId)throw new TypeError("PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH");
  input.assertCurrent();retainImportedProfileOriginalMaterial(held.original,input.username,held.source);
  await input.onLocalAdmission?.(Object.freeze({username:input.username,original:sourceDisplay(held.original,held.source,input.username,input.profileIdentity??input.ownerReceizId,input.ownerReceizId),sourceReference:held.reference,firstPaint:null,artwork:sourceArtwork(held.source)}));input.assertCurrent();return held;
+}
+async function readRetainedComposerAuthorship(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,requiresPbi=false,readCustody=false){
+ const pbi=await import('./importedSourceAuthorship');let action:import('../../../../packages/receiz-sdk/src/pbiLocalAuthorship').LocalPbiAuthorshipInput|undefined;
+ try{action=await pbi.importedSourceAuthorshipInput(opened.source,'','');}catch(error){if(requiresPbi||!(error instanceof TypeError)||error.message!=='IMPORTED_SOURCE_PBI_SOURCE_REQUIRED')throw error;}
+ const actionHash=action?await computeLocalPbiAuthorshipActionHash(action):null;
+ let held=actionHash?peekLocalPbiAuthorshipPublication(actionHash):null;
+ if(!held&&action)for(const saved of peekLocalPbiAuthorshipPublicationsForSource(action,opened.reference.artifactSha256)){
+  try{await pbi.projectPbiSignedImportedSourceOriginal(opened.source,opened.reference,saved.proof);held=saved;break;}
+  catch(error){if(!(error instanceof TypeError)||!['IMPORTED_SOURCE_PBI_PROOF_REQUIRED','IMPORTED_SOURCE_PBI_PROOF_INVALID'].includes(error.message))throw error;}
+ }
+ const retained=held||!readCustody?null:await createImportedProofSourceCustody().readAuthorship(opened.reference);
+ const retainedProof=normalizeLocalPbiAuthorshipProof(retained);
+ if(retained&&!retainedProof)throw TypeError('IMPORTED_SOURCE_PBI_PROOF_INVALID');
+ return {pbi,action,held,retainedProof};
+}
+const authoredFiles=new WeakMap<import('./importedSource').OpenedImportedProofSource,Map<string,Promise<File>>>();
+async function retainedComposerAuthoredFile(source:import('./importedSource').OpenedImportedProofSource,reference:import('./importedSourceReference').ImportedProofSourceReference,proof:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof,
+ assertCurrent:()=>void,resolveProtectedBlock?:import('../../transport/exactByteBlocks').ExactByteBlockResolver,originalFile?:File){
+ if(source.projection.bankAsset?.composer?.protectedOriginal&&originalFile){return (await import('./composerAuthoredFile')).composerAuthoredFile({source,original:originalFile,proof,assertCurrent});}
+ let files=authoredFiles.get(source);if(!files){files=new Map();authoredFiles.set(source,files);}let file=files.get(proof.pbiReceiptHash);
+ if(!file){file=(async()=>{
+  await createImportedProofSourceCustody().retainAuthorship(reference,proof);assertCurrent();
+  const composer=source.projection.bankAsset?.composer,selected=composer?.protectedOriginal?.file??composer?.files.find(file=>file.role==='primary');
+  let original=originalFile;
+  if(!original&&selected){let body=source.composerResources?.[selected.id];
+   if(composer?.protectedOriginal){if(!resolveProtectedBlock)throw TypeError('COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED');const {readExactByteBlocks}=await import('../../transport/exactByteBlocks'),chunks:Blob[]=[];
+    for await(const bytes of readExactByteBlocks(selected.bytes,resolveProtectedBlock,{component:'signed composer Original',maxContentBytes:selected.size,maxBlockReads:131072})){assertCurrent();chunks.push(new Blob([bytes.slice().buffer as ArrayBuffer]));}body=new Blob(chunks,{type:selected.mime});}
+   if(!body)throw TypeError('ORIGINAL_FILE_SOURCE_UNAVAILABLE');original=new File([body],selected.name,{type:selected.mime});
+  }
+  original??=new File([source.exactArtifact],source.descriptor.filename,{type:source.descriptor.mimeType});assertCurrent();
+  return (await import('./composerAuthoredFile')).composerAuthoredFile({source,original,proof,assertCurrent});
+ })();files.set(proof.pbiReceiptHash,file);void file.catch(()=>files!.delete(proof.pbiReceiptHash));}
+ return file;
+}
+export async function readComposerAuthoredFile(input:Readonly<{file:File;originalFile?:File;ownerReceizId:string;username:string;assertCurrent():void;resolveProtectedBlock?:import('../../transport/exactByteBlocks').ExactByteBlockResolver}>):Promise<File|null>{
+ const opened=await admitConnectedComposerSource(input);if(opened.source.projection.bankAsset?.composer?.protectedOriginal&&!input.originalFile)throw TypeError('COMPOSER_PROTECTED_ORIGINAL_CUSTODY_REQUIRED');const {pbi,held,retainedProof}=await readRetainedComposerAuthorship(opened,false,true),proof=held?.proof??retainedProof;input.assertCurrent();if(!proof)return null;
+ const original=await pbi.projectPbiSignedImportedSourceOriginal(opened.source,opened.reference,proof);input.assertCurrent();
+ return retainedComposerAuthoredFile(opened.source,opened.reference,(original as {pbiAuthorshipProof:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof}).pbiAuthorshipProof,input.assertCurrent,input.resolveProtectedBlock,input.originalFile);
 }
 /** Composition of the canonical Receiz uploader's exact source admission,
  * placement, causal append, custody and public projection. No parallel store. */
@@ -74,24 +112,17 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
  let publisher:ReturnType<typeof openConnectedAssetPublisher>|undefined;
  const publication=()=>publisher??=openConnectedAssetPublisher(input,admitted,keyFile,retainPrivateOriginal).catch(error=>{publisher=undefined;throw error;});
  type AuthorizeMarket=(input:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput)=>Promise<import("./importedSourceAuthorship").ImportedSourceAuthorshipProof>;
- async function readSourceAuthorship(file:File,requiresPbi=false){
+ async function readSourceAuthorship(file:File,requiresPbi=false,readCustody=false){
    const opened=await admitConnectedComposerSource({file,ownerReceizId:identityAdmission.ownerReceizId!,profileIdentity:input.account.uid,username,assertCurrent:input.assertCurrent});
-   const pbi=await import("./importedSourceAuthorship");let action:import("../../../../packages/receiz-sdk/src/pbiLocalAuthorship").LocalPbiAuthorshipInput|undefined;
-   try{action=await pbi.importedSourceAuthorshipInput(opened.source,identityAdmission.actor.actorId,profileShowcaseLiveKaiUpulse());}catch(error){if(requiresPbi||!(error instanceof TypeError)||error.message!=='IMPORTED_SOURCE_PBI_SOURCE_REQUIRED')throw error;}
-   const actionHash=action?await computeLocalPbiAuthorshipActionHash(action):null;
-   let held=actionHash?peekLocalPbiAuthorshipPublication(actionHash):null;
-   if(!held&&action)for(const saved of peekLocalPbiAuthorshipPublicationsForSource(action,opened.reference.artifactSha256)){
-    try{await pbi.projectPbiSignedImportedSourceOriginal(opened.source,opened.reference,saved.proof);held=saved;break;}
-    catch(error){if(!(error instanceof TypeError)||!['IMPORTED_SOURCE_PBI_PROOF_REQUIRED','IMPORTED_SOURCE_PBI_PROOF_INVALID'].includes(error.message))throw error;}
-   }
-   const authorshipProof=signedSources.get(opened.reference.artifactSha256)??held?.proof;
+   const {pbi,action,held,retainedProof}=await readRetainedComposerAuthorship(opened,requiresPbi,readCustody);
+   const authorshipProof=signedSources.get(opened.reference.artifactSha256)??held?.proof??retainedProof;
    return{opened,pbi,action,held,authorshipProof};
 
  }
  async function publish(file:File,authorizeMarket?:AuthorizeMarket):Promise<ProfileShowcasePublicProjectionPublicationResult>;
  async function publish(file:File,authorizeMarket:undefined,requireSavedSignature:true):Promise<ProfileShowcasePublicProjectionPublicationResult|null>;
  async function publish(file:File,authorizeMarket?:AuthorizeMarket,requireSavedSignature=false):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
-   const {opened,pbi,action,held:stored,authorshipProof:savedProof}=await readSourceAuthorship(file,!!authorizeMarket);let held=stored,authorshipProof=savedProof;
+   const {opened,pbi,action,held:stored,authorshipProof:savedProof}=await readSourceAuthorship(file,!!authorizeMarket,requireSavedSignature||!!authorizeMarket);let held=stored,authorshipProof=savedProof;
    if(!authorshipProof&&authorizeMarket){if(!action)throw TypeError('IMPORTED_SOURCE_PBI_SOURCE_REQUIRED');authorshipProof=await authorizeMarket(action);}
    if(requireSavedSignature&&!authorshipProof)return null;
    input.assertCurrent();
@@ -102,7 +133,8 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
     input.assertCurrent();signedSources.set(opened.reference.artifactSha256,authorshipProof);
    }
    retainImportedProfileOriginalMaterial(original,username,opened.source);
-   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid,identityAdmission.ownerReceizId!),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source)}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
+   const authoredFile=authorshipProof?retainedComposerAuthoredFile(opened.source,opened.reference,authorshipProof,input.assertCurrent,input.resolveProtectedBlock):undefined;if(authoredFile)void authoredFile.catch(()=>{});input.assertCurrent();
+   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid,identityAdmission.ownerReceizId!),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source),...(authoredFile?{authoredFile}:{})}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
    // The already-open Source supplies private custody independently of the
    // accepted predecessor lookup. Both must finish before any public append.
    const selected=opened.source.projection.bankAsset?.composer?.protectedOriginal
@@ -119,7 +151,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
   // Reuse the exact durable PBI proof. A background resume can never open a
   // ceremony or publish an unsigned placement in place of the saved signature.
   async readSignedSource(file:File){
-   const {opened,pbi,authorshipProof}=await readSourceAuthorship(file);if(!authorshipProof)return null;
+   const {opened,pbi,authorshipProof}=await readSourceAuthorship(file,false,true);if(!authorshipProof)return null;
    const original=await pbi.projectPbiSignedImportedSourceOriginal(opened.source,opened.reference,authorshipProof);input.assertCurrent();
    retainImportedProfileOriginalMaterial(original,username,opened.source);signedSources.set(opened.reference.artifactSha256,authorshipProof);
    return Object.freeze({pbiReceiptHash:original.pbiReceiptHash!});
@@ -227,6 +259,7 @@ export async function resolveComposerBlock(reference:import("../../transport/exa
  * unsealed payload is a public preview, never a replacement for the exact file. */
 export async function readComposerPrimaryFile(file:File){
  const {readVerifiedReceizDocumentBytes}=await import('../../receizArtifactVerifier');
- const opened=await readVerifiedReceizDocumentBytes({fileBytes:new Uint8Array(await file.arrayBuffer()),filename:file.name,mime:file.type});
+ const bytes=new Uint8Array(await file.arrayBuffer()),opened=await readVerifiedReceizDocumentBytes({fileBytes:bytes,filename:file.name,mime:file.type});
+ if(opened.ok&&opened.verification.carriedAuthorship){const carried=(await import('../../../../packages/receiz-sdk/src/verifier/carriedFileAuthorship')).readCarriedFileAuthorship(bytes)!;return {verification:opened.verification,payload:new File([carried.original.slice().buffer as ArrayBuffer],file.name,{type:file.type})};}
  return {verification:opened.verification,...(opened.ok?{payload:new File([opened.payloadBytes.slice().buffer as ArrayBuffer],opened.payloadFilename,{type:opened.payloadMimeType})}:{})};
 }

@@ -1,4 +1,5 @@
 import * as implementation from "./canonicalImplementation.js";
+import {readCarriedFileAuthorship,verifyCarriedFileAuthorship} from './carriedFileAuthorship.js';
 import { createSHA256 } from "hash-wasm";
 import { isRecord } from "./crypto.js";
 import { recognizeReceizGroth16Structure } from "./groth16.js";
@@ -20,7 +21,7 @@ import {
   type ReceizSignatureV4RootPublicKey,
 } from "./signatureV4.js";
 import { receizCurrentPinnedSignatureV4Roots } from "./roots.js";
-import { receizProtocolOperationalDenial } from "../verificationLimits.js";
+import { ReceizProtocolLimitError, receizProtocolOperationalDenial } from "../verificationLimits.js";
 import type {
   ReceizArtifactContinuityAssessment,
   ReceizArtifactVerification,
@@ -168,11 +169,41 @@ export const readVerifiedReceizFolderPackageBytesCanonical = implementation.read
   input: Omit<ReceizCanonicalVerifierInput, "purpose">,
 ) => Promise<ReceizVerifiedFolderPackageReadResult>;
 
-export const readVerifiedReceizDocumentBytesCanonical = implementation.readVerifiedReceizDocumentBytes as (
-  input: Omit<ReceizCanonicalVerifierInput, "purpose">,
-) => Promise<ReceizVerifiedDocumentReadResult>;
-export const verifyReceizDocumentBytesCanonical = implementation.verifyReceizDocumentBytes as CanonicalVerify;
-export const verifyAndExtractReceizDocumentBytesCanonical = implementation.verifyAndExtractReceizDocumentBytes as CanonicalOpen;
+async function readAuthoredNativeFile(input:ReceizCanonicalVerifierInput):Promise<ReceizVerifiedDocumentReadResult|null>{
+ let carried;
+ try{carried=readCarriedFileAuthorship(input.fileBytes);}
+ catch(error){return failedAuthoredNativeFile(error);}
+ if(!carried)return null;
+ try{
+  // Each operation reads its exact sealed components once. The Source reader
+  // uses the same host-pinned roots and cannot follow a remote reference.
+  const {source,authorship:carriedAuthorship}=await verifyCarriedFileAuthorship({carried,
+   readSource:args=>implementation.readVerifiedReceizDocumentBytes({...input,...args}) as Promise<ReceizLocalArtifactOpenResult>});
+  // The enclosing Source remains this Original's authority. Its sealed payload,
+  // ownership and full carried history stay intact; the native presentation is
+  // linked by the Source's exact file commitment, including older raw inputs.
+  return {...source,access:'read-only',artifactBytes:new Uint8Array(input.fileBytes),verification:{...source.verification,carriedAuthorship}};
+ }catch(error){return failedAuthoredNativeFile(error);}
+}
+function failedAuthoredNativeFile(error:unknown):Extract<ReceizVerifiedDocumentReadResult,{ok:false}>{
+ const message=error instanceof Error?error.message:'FILE_AUTHORSHIP_INVALID';
+ if(error instanceof ReceizProtocolLimitError||error instanceof RangeError){const denial=receizProtocolOperationalDenial(error instanceof ReceizProtocolLimitError?error.code:'VERIFICATION_RESOURCE_UNAVAILABLE');return {ok:false,error:denial.code,verification:{ok:false,integrity:{ok:false,errors:[]},kind:'unknown',errors:[],warnings:[],bundle:null,anchor:null,package:null,denial}};}
+ return {ok:false,error:message,verification:{ok:false,integrity:{ok:false,errors:[message]},kind:'unknown',errors:[message],warnings:[],bundle:null,anchor:null,package:null}};
+}
+export async function readVerifiedReceizDocumentBytesCanonical(input:Omit<ReceizCanonicalVerifierInput,'purpose'>):Promise<ReceizVerifiedDocumentReadResult>{
+ return await readAuthoredNativeFile(input)??implementation.readVerifiedReceizDocumentBytes(input) as Promise<ReceizVerifiedDocumentReadResult>;
+}
+export const verifyReceizDocumentBytesCanonical:CanonicalVerify=async input=>{
+ const authored=await readAuthoredNativeFile(input);
+ return authored?authored.verification:implementation.verifyReceizDocumentBytes(input) as Promise<ReceizArtifactVerificationResult>;
+};
+export const verifyAndExtractReceizDocumentBytesCanonical:CanonicalOpen=async input=>{
+ const authored=await readAuthoredNativeFile(input);
+ if(!authored)return implementation.verifyAndExtractReceizDocumentBytes(input) as Promise<ReceizVerifiedArtifactOpenResult>;
+ if(!authored.ok)return authored;
+ // Transporting existing sealed evidence never creates native append custody.
+ return {...authored,legacyCompatibility:'verified-legacy-read'};
+};
 export const classifyReceizAssetContinuity = implementation.classifyReceizAssetContinuity as (
   originalBytes: Uint8Array,
   bundle?: Readonly<Record<string, unknown>> | null,
