@@ -14,3 +14,11 @@ export function calendarEventTitle(event:OrganizerEvent,owner=event.ownerUserId)
 
 /** Keep human notes; generated transport/debug fields remain in the proof. */
 export function calendarEventNote(event:OrganizerEvent){return event.source==='system'?event.note.split(/(?:^|\n)(?:Route:|Deterministic key:|Entry hash:|Details:)/,1)[0]!.trim():event.note;}
+
+
+/** Channel names are display labels; the recorded channel remains in metadata. */
+export function calendarChannelLabel(channel:string):string{
+ const labels:Record<string,string>={world_profile_agent:'Twin booking',calendar_embed:'Booking page',email:'Email',sms:'SMS','app-webhook':'Connected app'};
+ const value=channel.trim(),key=value.toLowerCase();
+ return Object.hasOwn(labels,key)?labels[key]:value.replace(/[_-]+/g,' ').replace(/^./,letter=>letter.toUpperCase());
+}

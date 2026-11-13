@@ -63,3 +63,14 @@ it.each([undefined,'ready'] as const)('does not print an empty offer count above
  expect([...frame.childNodes].filter(node=>node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()).map(node=>node.textContent?.trim())).toEqual([]);
  expect(f.request).toHaveBeenCalledOnce();
 });
+
+it('shows accepted chat confirmation in AM/PM with a 24-hour browser locale',async()=>{
+ const Original=Intl.DateTimeFormat;
+ const intl=vi.spyOn(Intl,'DateTimeFormat').mockImplementation(function(locales,options){return new Original(locales??'en-GB',options);});
+ try{
+  vi.stubGlobal('fetch',async(_url:string,init:RequestInit)=>{const pending=JSON.parse(String(init.body));return Response.json({ok:true,world:{username:'bjklock'},assistantMessage:{id:pending.clientAssistantMessageId},reply:{message:'Confirmed.',memory:[],bookingConfirmation:{eventId:'exact-event',title:'Conversation',startAt:'2026-11-14T20:30:00Z',endAt:'2026-11-14T21:00:00Z',attendeeName:'Alex',attendeeEmail:'alex@example.test',timezone:'America/New_York',location:''}}});});
+  const f=await mount('ready'),field=f.host.querySelector<HTMLTextAreaElement>('[aria-label="Your reply"]')!;
+  await fill(field,'Yes, confirm');await act(async()=>f.host.querySelector<HTMLButtonElement>('[aria-label="Send reply"]')!.click());
+  expect(f.host.querySelector('.booking-chat-confirmation')?.textContent).toContain('3:30 PM');
+ }finally{intl.mockRestore();}
+});

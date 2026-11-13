@@ -8,7 +8,7 @@ interface PreparedBookingCalendar {days:BookingDay[];byDay:Map<string,BookingSlo
 export function prepareBookingCalendar(source:BookingAvailability,zone:string):PreparedBookingCalendar{
  const held=prepared.get(source),previous=held?.get(zone);if(previous)return previous;
  const date=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:zone});
- const time=new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit',timeZone:zone});
+ const time=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:zone});
  const weekday=new Intl.DateTimeFormat(undefined,{weekday:'short'}),month=new Intl.DateTimeFormat(undefined,{month:'short'}),label=new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric'});
  const dayAt=(stamp:string)=>{const parts=date.formatToParts(new Date(stamp)),part=(name:string)=>parts.find(p=>p.type===name)?.value;return `${part('year')}-${part('month')}-${part('day')}`;};
  const byDay=new Map<string,BookingSlot[]>(),byStart=new Map<string,BookingSlot>(),days:BookingDay[]=[];

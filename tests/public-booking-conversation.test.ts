@@ -79,3 +79,17 @@ it('accepts the relay’s bounded native result when carried receipt context is 
 
 it('carries only the accepted owner/parent-bound paid booking handoff and never turns it into a booking or payment',async()=>{let turn=0;const input={slotStartAt:'2026-11-02T09:00:00.000Z',name:'Alex',email:'alex@example.test',timezone:'UTC',notes:'',questions:[],meeting:true,bookingPolicyRevision:'policy-one'},bookingPrice={currency:'usd',priceUsdCents:'2500',feeUsdCents:'0',policyRevision:'policy-one'};const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams(),request:async(_url,init)=>{const pending=JSON.parse(String(init?.body));return stream([accepted(pending,++turn===1?{}:{bookingPaymentRequest:{username:'alice',proposalOperationId:pending.replyToOperationId,bookingPrice,input}})]);}});controller.setDraft('Tuesday please');await controller.send();const parent=controller.known().lastAcceptedOperationId;controller.setDraft('Yes, that appointment');await controller.send();expect(controller.known()).toMatchObject({bookingPaymentRequest:{username:'alice',proposalOperationId:parent,bookingPrice,input},bookingConfirmation:null,pending:null});});
 it.each(['foreign-owner','wrong-parent','wrong-price-revision'])('refuses a mismatched %s payment handoff without granting a new operation',async(mismatch)=>{let turn=0;const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams(),request:async(_url,init)=>{const pending=JSON.parse(String(init?.body)),bookingPrice={currency:'usd',priceUsdCents:'2500',feeUsdCents:'0',policyRevision:'policy-one'};return stream([accepted(pending,++turn===1?{}:{bookingPaymentRequest:{username:mismatch==='foreign-owner'?'bravo':'alice',proposalOperationId:mismatch==='wrong-parent'?'other-parent':pending.replyToOperationId,bookingPrice,input:{slotStartAt:'2026-11-02T09:00:00.000Z',name:'Alex',email:'alex@example.test',timezone:'UTC',notes:'',questions:[],meeting:true,bookingPolicyRevision:mismatch==='wrong-price-revision'?'other-price':'policy-one'}}})]);}});controller.setDraft('Tuesday');await controller.send();controller.setDraft('Yes');await controller.send();expect(controller.known().bookingPaymentRequest).toBeNull();expect(controller.known().pending).not.toBeNull();expect(controller.known().bookingConfirmation).toBeNull();});
+
+it('includes the device timezone on the first send without a lookup and refreshes it only for a new turn',async()=>{
+ const resolved=Intl.DateTimeFormat.prototype.resolvedOptions;let zone='Asia/Kathmandu';
+ const device=vi.spyOn(Intl.DateTimeFormat.prototype,'resolvedOptions').mockImplementation(function(this:Intl.DateTimeFormat){return {...resolved.call(this),timeZone:zone};});
+ try{
+  const calls:any[]=[];
+  const controller=createPublicBookingConversation({username:'alice',options:new URLSearchParams('timezone=America/New_York'),request:async(url,init)=>{const body=JSON.parse(String(init?.body));calls.push({url,body});return calls.length===1?stream([]):stream([accepted(body)]);}});
+  expect(calls).toHaveLength(0);controller.setDraft('Tomorrow?');const sent=controller.send();
+  expect(calls).toHaveLength(1);expect(calls[0].body.timezone).toBe('Asia/Kathmandu');await sent;
+  zone='America/Los_Angeles';await controller.retry();expect(calls[1].body).toEqual(calls[0].body);
+  controller.setDraft('And the next day?');await controller.send();expect(calls).toHaveLength(3);expect(calls[2].body.timezone).toBe('America/Los_Angeles');
+  controller.dispose();
+ }finally{device.mockRestore();}
+});

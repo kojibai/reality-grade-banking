@@ -5,6 +5,7 @@ import type {OrganizerEvent,NativeOrganizer} from '../../../receiz/native-organi
 import {organizerRecord} from '../../../receiz/organizer-types';
 import {calendarProofExportInput,type CalendarProof} from '../../../receiz/calendar-proof';
 import {calendarRecord} from '../../../receiz/calendar-record';
+import {calendarChannelLabel} from '../../../receiz/calendar-labels';
 import {heldCalendarRecords,isCalendarSourceEvent,calendarSourceProofUrl} from '../../../receiz/calendar-source-projection';
 import {ledgerAssetTrade} from '../../../receiz/ledger-asset-trade';
 import {receiptLink,openLedgerReceipt} from '../../../receiz/ledger-receipts';
@@ -58,7 +59,7 @@ export function CalendarRecordDetails({event,identity,api}:{event:OrganizerEvent
  };
  const context=useMemo(()=>{const m=event.metadata,conversation=organizerRecord(proof?.conversation),visitor=organizerRecord(m.visitorIdentity),verifiedVisitor=organizerRecord(proof?.visitor),text=(v:unknown,max=64000)=>typeof v==='string'&&v.trim()&&v.length<=max?v:null;
   const fields:Array<[string,string]>=[],labels:Record<string,string>={status:'Status',channel:'Channel',stage:'Stage',nextAction:'Next step',contactCount:'Contacts',importedCount:'Contacts imported',deliveredCount:'Delivered',bookedCount:'Appointments',targetCount:'Target',durationMinutes:'Duration (minutes)'};
-  for(const[key,label]of Object.entries(labels)){const value=m[key];if(typeof value==='string'&&value.length<=1000)fields.push([label,key==='status'?value.replaceAll('_',' ').replace(/^./,v=>v.toUpperCase()):value]);else if(typeof value==='number'&&Number.isFinite(value))fields.push([label,String(value)]);}
+  for(const[key,label]of Object.entries(labels)){const value=m[key];if(typeof value==='string'&&value.length<=1000)fields.push([label,key==='status'?value.replaceAll('_',' ').replace(/^./,v=>v.toUpperCase()):key==='channel'?calendarChannelLabel(value):value]);else if(typeof value==='number'&&Number.isFinite(value))fields.push([label,String(value)]);}
   return{request:text(m.request)??text(conversation.request),reply:text(m.reply)??text(conversation.reply),person:text(visitor.displayName,300)??text(visitor.username,300)??(verifiedVisitor.kind!=='unknown'?text(verifiedVisitor.label,500):null),email:text(visitor.email,300)??text(verifiedVisitor.email,300),summary:text(m.summary,4000),fields};
  },[event,proof]);
  return <section className="organizer-record" aria-label="Recorded event details">

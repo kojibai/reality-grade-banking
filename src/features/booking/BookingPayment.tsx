@@ -39,7 +39,7 @@ function PaymentState({controller,source,input,busy,error,action,onConfirmed,onC
  useEffect(()=>{if(booking?.phase!=='confirmed-paid'||!booking.event||done.current)return;const event=organizerEvent(booking.event,source.owner.userId);done.current=true;onConfirmed({event,invitationStatus:booking.delivery,timezone:(state.preparation??state.checkout.bookingPreparation)?.input.timezone??input?.timezone});},[booking,onConfirmed,source.owner.userId]);
  const funding=checkout.walletOutcome?.status==='funding'?checkout.walletOutcome:null,retained=state.preparation??checkout.bookingPreparation;
  const date=booking?.terms.startAt??retained?.input.slotStartAt??input?.slotStartAt,timezone=retained?.input.timezone??input?.timezone;
- const timeLabel=()=>{try{const formatter=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short',...(timezone?{timeZone:timezone}:{})});return (booking?.terms.endAt?formatter.formatRange(new Date(date!),new Date(booking.terms.endAt)):formatter.format(new Date(date!)))+(timezone?' · '+timezone.replaceAll('_',' '):'');}catch{return date;}};
+ const timeLabel=()=>{try{const formatter=new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeStyle:'short',hour12:true,...(timezone?{timeZone:timezone}:{})});return (booking?.terms.endAt?formatter.formatRange(new Date(date!),new Date(booking.terms.endAt)):formatter.format(new Date(date!)))+(timezone?' · '+timezone.replaceAll('_',' '):'');}catch{return date;}};
  const review=!!booking&&booking.phase==='ready'&&!!approval&&!checkout.approvalHistory.length;
  const amount=booking?.terms.totalUsdCents;
  const remainder=approval?BigInt(approval.cardAmountUsdCents)+BigInt(approval.balanceContributionUsdCents)-BigInt(approval.amountUsdCents):0n;

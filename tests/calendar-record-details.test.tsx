@@ -36,3 +36,12 @@ it('names a failed Calendar proof check precisely and retries only when requeste
   await act(async()=>retry.click());expect(eventProof).toHaveBeenCalledTimes(2);expect(host.textContent).toContain('Meet now');expect(host.textContent).not.toContain('Calendar proof check failed');
  }finally{act(()=>root.unmount());}
 });
+
+it.each([['world_profile_agent','Twin booking'],['calendar_embed','Booking page'],['email','Email'],['sms','SMS'],['app-webhook','Connected app'],['partner_portal','Partner portal']] as const)('shows the consumer channel label for %s while preserving the exact recorded metadata',async(channel,label)=>{
+ const event:OrganizerEvent={id:'00000000-0000-4000-8000-000000000006',ownerUserId:'owner',title:'Appointment',kind:'appointment',source:'embed',startAt:'2026-11-14T20:30:00Z',endAt:'2026-11-14T21:00:00Z',location:'',note:'',attendees:[],createdAt:'2026-11-13T12:00:00Z',updatedAt:'2026-11-13T12:00:00Z',metadata:{channel,status:'confirmed',recordedSource:{channel,coordinate:'exact-original'}}};
+ const original=structuredClone(event),eventProof=vi.fn(),api={accountUid:'owner',eventProof}as unknown as NativeOrganizer,host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<CalendarRecordDetails event={event} identity={{}as OpenIdentity} api={api}/>));
+  const field=[...host.querySelectorAll('dt')].find(node=>node.textContent==='Channel');expect(field?.parentElement?.querySelector('dd')?.textContent).toBe(label);expect(event).toEqual(original);expect(event.metadata.channel).toBe(channel);expect(eventProof).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
