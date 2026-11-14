@@ -1,6 +1,6 @@
 import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicProfileArtwork} from './profile-artwork.js';
-import {accountCreationPresentation,type AccountPresentation} from './account-presentation';
+import {accountCreationPresentation,type AccountPresentation} from './account-presentation.js';
 type ArtworkCoordinates=Pick<AccountPresentation,'creationKaiMicroPulse'|'creationKaiSource'|'authorshipPbiSignedAt'|'authorshipPbiSignedKaiMicroPulse'>;
 /** Compact public presentation only; never identity or account admission. */
 export function copyProfileArtworkCoordinates(value:Record<string,unknown>):ArtworkCoordinates{
