@@ -17,7 +17,7 @@ import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribe
 import {preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/prepared-bank-catalog';
 import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
-import {observePublicProfileDirectory,receivePublicProfileForDiscovery,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
+import {observePublicProfileDirectory,publicProfileDirectoryIsLive,receivePublicProfileForDiscovery,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
 import './discover.css';
 const Document=lazy(()=>import('../public-feed/FeedDocument'));
 const categories:[DiscoveryFilter,string][]=[['All','All'],['audio','Music'],['video','Videos'],['book','Books'],['image','Images'],['essay','Essays'],['moment','Moments'],['document','Documents'],['collectible','Collectibles'],['People','People']];
@@ -74,7 +74,7 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   }
   const observer=setInterval(()=>{
    if(document.visibilityState!=='visible')return;
-   void observePublicProfileDirectory().catch(()=>{});
+   if(!publicProfileDirectoryIsLive())void observePublicProfileDirectory().catch(()=>{});
    const selected=selectedCatalog.current,revision=selected?.revision??'';
    void observePublicMarketMembership(revision,selected?.publicProfileHeadsRevision).then(next=>{
     if(!abort.signal.aborted&&next?.complete&&(selectedCatalog.current===selected||samePublicMarketMembership(selectedCatalog.current,selected))&&!samePublicMarketMembership(next,selected))publishDiscoveredPublicCatalog(next,undefined,selected);

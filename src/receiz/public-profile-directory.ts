@@ -2,6 +2,7 @@ import {curatePublicProfileHead,curatePublicProfileHeadRefusal,publicProfileHead
 import {PROFILE_DIRECTORY_PAGE_SIZE,publicProfileDescriptor,publicProfileDirectoryUid,publicProfileDirectoryBindings,type PublicProfileDescriptor} from './public-profile-directory-contract';
 import {prepareHeldPublicMarketResponse,retainPublicProfileHeaders,reusePublicMarketResponse,type PublicMarketCatalog} from './public-market';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
+import {createPublicProfileDirectoryStream} from './public-profile-directory-stream';
 type Header=PublicProfileHead|PublicProfileHeadRefusal;
 function heads(catalog:PublicMarketCatalog){return[...(catalog.publicProfileHeads??[]),...(catalog.publicProfileHeadRefusals??[])];}
 function basis(head:Header|undefined){return head?publicProfileHeaderDisplayBasis(head)??JSON.stringify(head):null;}
@@ -55,10 +56,12 @@ export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof 
   prepareHeldPublicMarketResponse(latest);reusePublicMarketResponse(latest,next);dependencies.publish(next,latest);
  }
  const refresh=()=>{if(pending)return pending;if(!consumers)return Promise.resolve();controller=new AbortController();const attempt=run(controller.signal);pending=attempt;void attempt.finally(()=>{if(pending===attempt){pending=undefined;controller=undefined;}}).catch(()=>{});return attempt;};
- return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
+ return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
 }
 const selections=new Set<()=>PublicMarketCatalog|null>();
 const observer=createPublicProfileDirectoryObserver({fetch:(input,init)=>fetch(input,init),selected:()=>retainedDiscoveredPublicCatalog()??[...selections].map(read=>read()).find(value=>value?.complete)??null,publish:(next,previous)=>publishDiscoveredPublicCatalog(next,undefined,previous)});
-export function subscribePublicProfileDirectory(selected:()=>PublicMarketCatalog|null){selections.add(selected);const stop=observer.subscribe();return()=>{selections.delete(selected);stop();};}
+let stream:ReturnType<typeof createPublicProfileDirectoryStream>|undefined;
+export function subscribePublicProfileDirectory(selected:()=>PublicMarketCatalog|null){selections.add(selected);const stop=observer.subscribe();stream??=createPublicProfileDirectoryStream({fetch:(input,init)=>fetch(input,init),receive:observer.receive,refresh:observer.refresh});return()=>{selections.delete(selected);stop();if(!selections.size){stream?.close();stream=undefined;}};}
+export const publicProfileDirectoryIsLive=()=>stream?.isLive()===true;
 export const observePublicProfileDirectory=observer.refresh;
 export const receivePublicProfileForDiscovery=observer.receive;

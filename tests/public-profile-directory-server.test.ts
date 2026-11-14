@@ -1,5 +1,5 @@
 import {expect,it,vi} from 'vitest';
-import {createPublicProfileDirectoryReader,handlePublicProfileDirectory} from '../server/public-profile-directory';
+import {createPublicProfileDirectoryReader,handlePublicProfileDirectory,handlePublicProfileDirectoryStream} from '../server/public-profile-directory';
 const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const descriptor=(n:number)=>({userId:uid(n),username:'person_'+n,updatedAt:'2026-11-14T10:00:00+00:00'});
 const head=(n:number)=>({profile:{userId:uid(n),username:'person_'+n,isPrivate:false,displayName:'Person '+n,updatedAt:descriptor(n).updatedAt,authorshipVerified:true,authorshipPbiReceiptHash:'a'.repeat(64),email:'never-forward'},viewer:{canView:true,isOwner:false,session:'never-forward'},stats:{originals:0},secret:'never-forward'});
@@ -59,4 +59,10 @@ it('rejects invalid requests before any remote work and does not forward cookies
 it('lists a new public account directly from its existing public card with no manifest or Original reads',async()=>{
  const fetcher=vi.fn<typeof fetch>(async()=>Response.json({...directory([descriptor(1)]),cards:[{...descriptor(1),displayName:'New account',createdAt:'2026-11-14T10:00:00Z',avatarUrl:null,isPrivate:false,email:'never-forward'}]}));
  const page=await createPublicProfileDirectoryReader(fetcher)();expect(fetcher).toHaveBeenCalledOnce();expect(page.publicProfileHeads).toHaveLength(1);expect(page.publicProfileHeads[0]).toMatchObject({profile:{userId:uid(1),displayName:'New account'},unavailableDecorators:['profile-details']});expect(JSON.stringify(page)).not.toContain('never-forward');
+});
+it('forwards only the fixed public stream, preserving cancellation and omitting account credentials',async()=>{
+ const abort=new AbortController(),read=vi.fn<typeof fetch>(async(_url,options)=>{expect(options).toMatchObject({credentials:'omit',redirect:'error',signal:abort.signal,headers:{accept:'text/event-stream'}});return new Response('data: {"type":"ready"}\n\n',{headers:{'content-type':'text/event-stream'}});});
+ const response=await handlePublicProfileDirectoryStream(new Request('https://bankeiz.com/api/bank/public-profile-directory/stream',{signal:abort.signal,headers:{cookie:'secret',authorization:'Bearer secret'}}),read);
+ expect(read.mock.calls[0][0]).toBe('https://receiz.com/api/profile/public-directory/stream');expect(await response.text()).toContain('"type":"ready"');
+ expect((await handlePublicProfileDirectoryStream(new Request('https://bankeiz.com/api/bank/public-profile-directory/stream?url=https://evil.test'),read)).status).toBe(400);expect(read).toHaveBeenCalledOnce();
 });

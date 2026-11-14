@@ -71,6 +71,16 @@ export function createPublicProfileDirectoryReader(fetchImpl:typeof fetch=fetch)
  };
 }
 const readDirectory=createPublicProfileDirectoryReader();
+/** Forward only the fixed anonymous public-card stream. No session or cookies. */
+export async function handlePublicProfileDirectoryStream(request:Request,read:typeof fetch=fetch):Promise<Response>{
+ const headers={'cache-control':'no-store, no-transform','x-content-type-options':'nosniff','x-accel-buffering':'no'};
+ if(request.method!=='GET')return new Response(null,{status:405,headers:{...headers,allow:'GET'}});
+ if(new URL(request.url).search)return new Response(null,{status:400,headers});
+ try{const response=await read('https://receiz.com/api/profile/public-directory/stream',{credentials:'omit',cache:'no-store',redirect:'error',signal:request.signal,headers:{accept:'text/event-stream'}});
+  if(!response.ok||!response.headers.get('content-type')?.includes('text/event-stream')||!response.body){void response.body?.cancel();return new Response(null,{status:503,headers});}
+  return new Response(response.body,{headers:{...headers,'content-type':'text/event-stream; charset=utf-8'}});
+ }catch{return new Response(null,{status:503,headers});}
+}
 export async function handlePublicProfileDirectory(request:Request,read:ReturnType<typeof createPublicProfileDirectoryReader>=readDirectory):Promise<Response>{
  const headers={'cache-control':'no-store','x-content-type-options':'nosniff'},url=new URL(request.url);
  if(request.method!=='GET')return Response.json({ok:false},{status:405,headers:{...headers,allow:'GET'}});

@@ -53,6 +53,11 @@ if(process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.url){
  const args=process.argv.slice(2);
  if(args.some(arg=>arg!=='--membership-only'&&arg!=='--selected'&&!/^--(?:membership|quotes)-file=.+/.test(arg))||args.length&&!args.includes('--membership-only'))throw Error('Use --membership-only with optional --membership-file= and --quotes-file= inputs.');
  const membershipOnly=args.includes('--membership-only');
- await seedRuntime(runtime=>membershipOnly?seedMembershipOnly(args,runtime):seedFullPublicMarket(runtime));
- if(!membershipOnly)await import('./seed-market-history.mjs');
+ try{
+  await seedRuntime(runtime=>membershipOnly?seedMembershipOnly(args,runtime):seedFullPublicMarket(runtime));
+  if(!membershipOnly)await import('./seed-market-history.mjs');
+ }catch(error){
+  if(error?.code!=='PUBLIC_MARKET_SOURCE_UNAVAILABLE'||error.transient!==true)throw error;
+  console.error(error.message);process.exitCode=75;
+ }
 }

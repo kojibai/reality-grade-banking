@@ -49,6 +49,11 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   return (local.pathname===`${PREFIX}resource`?safeImportedSourceUrl(target.href,'media'):safeReceizPublicUrl(target.href,'original')) ? target : null;
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; profileHeads?:readonly unknown[]; }
+export class PublicMarketSourceUnavailable extends Error {
+ readonly code='PUBLIC_MARKET_SOURCE_UNAVAILABLE';
+ constructor(readonly status:number){super(`Receiz public source returned ${status}.`);}
+ get transient(){return this.status===429||this.status>=500&&this.status<=599;}
+}
 class OriginalPurchaseRefusal extends Error {}
 const epochs=new Map<string,number>();
 const cache = new Map<string, CachedResponse>(), pending = new Map<string, Promise<CachedResponse>>();
@@ -77,11 +82,11 @@ async function loadPublicResponse(target: URL,afterPublication?:string,ifNoneMat
   const epoch=(epochs.get(key)??0)+1;epochs.set(key,epoch);
   const attempt = (async () => {
     const conditional=ifNoneMatch??previous?.etag;
-    const response = await fetch(target, { signal: AbortSignal.timeout(90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&conditional ? { 'If-None-Match': conditional } : {} });
+    const response = await fetch(target, { signal: AbortSignal.timeout(membership?300_000:90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&conditional ? { 'If-None-Match': conditional } : {} });
     if(response.status===304&&ifNoneMatch&&previous?.etag!==ifNoneMatch)return {bytes:new Uint8Array(),type:'application/json',etag:ifNoneMatch,fetchedAt:Date.now()};
     if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; if(epochs.get(key)===epoch)cache.set(key, current); return current; }
     if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
-    if (!response.ok) throw new Error(`Receiz public source returned ${response.status}.`);
+    if (!response.ok) {void response.body?.cancel().catch(()=>{});throw new PublicMarketSourceUnavailable(response.status);}
     let bytes = await readBounded(response);let profileHeads:readonly unknown[]|undefined;
     const type = response.headers.get('content-type') ?? 'application/octet-stream';
     if (!original) {

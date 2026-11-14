@@ -7,7 +7,7 @@
   "functions": {
     "api/index.ts": {
       "includeFiles": "{server/profile-runtime/share-history/**,public/receiz-public-market.json,public/receiz-public-sports.json}",
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "api/receipt.ts": {
       "maxDuration": 30,
