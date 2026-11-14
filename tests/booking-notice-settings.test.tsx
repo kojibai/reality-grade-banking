@@ -1,0 +1,19 @@
+// @vitest-environment happy-dom
+import {act} from 'react';
+import {createRoot} from 'react-dom/client';
+import {afterEach,expect,it,vi} from 'vitest';
+import {AvailabilityForm} from '../src/features/messages/organizer/BookingSettings';
+import {readBookingAvailability,readBookingSchedule} from '../src/receiz/public-booking';
+import {createNativeOrganizer} from '../src/receiz/native-organizer';
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+const config={timezone:'UTC',timezoneMode:'manual' as const,slotMinutes:30,hourStarts:[9],weekdayIndexes:[1],daysForward:14};
+const raw={ok:true,owner:{userId:'owner',username:'owner',displayName:'Owner',avatarUrl:null},scheduleConfig:config,savedScheduleConfig:config,customQuestions:[],savedCustomQuestions:[],slots:[]};
+const cleanups:Array<()=>void>=[];
+afterEach(()=>{for(const clean of cleanups.splice(0))clean();});
+async function form(schedule= config,custom=false){const onSave=vi.fn(),host=document.createElement('div');document.body.append(host);const root=createRoot(host);await act(()=>root.render(<AvailabilityForm initial={readBookingAvailability({...raw,scheduleConfig:schedule,savedScheduleConfig:schedule},'owner')} custom={custom} busy={false} username="owner" onSave={onSave} onBack={()=>{}} onError={()=>{}}/>));cleanups.push(()=>{act(()=>root.unmount());host.remove();});return{host,onSave};}
+async function change(host:HTMLElement,label:string,value:string){const select=host.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`);expect(select).not.toBeNull();await act(()=>{select!.value=value;select!.dispatchEvent(new Event('change',{bubbles:true}));});}
+it('saves same-day and notice preferences together through the ordinary availability save',async()=>{const{host,onSave}=await form();await change(host,'Same-day bookings','no');await change(host,'Minimum advance notice','120');await act(()=>host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(onSave).toHaveBeenCalledExactlyOnceWith({...config,allowSameDay:false,minimumNoticeMinutes:120},[]);});
+it('reopens accepted custom notice values and leaves legacy settings unchanged until edited',async()=>{const legacy=await form();expect(legacy.host.querySelector<HTMLSelectElement>('[aria-label="Minimum advance notice"]')?.value).toBe('10');await act(()=>legacy.host.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(legacy.onSave).toHaveBeenCalledExactlyOnceWith(config,[]);const saved=await form({...config,allowSameDay:false,minimumNoticeMinutes:75} as typeof config);expect(saved.host.querySelector<HTMLSelectElement>('[aria-label="Same-day bookings"]')?.value).toBe('no');expect(saved.host.querySelector<HTMLSelectElement>('[aria-label="Minimum advance notice"]')?.value).toBe('75');});
+it('keeps owner notice policy out of public custom-link controls',async()=>{const{host}=await form(config,true);expect(host.querySelector('[aria-label="Same-day bookings"]')).toBeNull();expect(host.querySelector('[aria-label="Minimum advance notice"]')).toBeNull();});
+it.each([{allowSameDay:'false'},{minimumNoticeMinutes:-1},{minimumNoticeMinutes:1.5},{minimumNoticeMinutes:43201},{minimumNoticeMinutes:'60'}])('refuses malformed advertised notice policy (%j)',policy=>{expect(()=>readBookingSchedule({...config,...policy})).toThrow('BOOKING_SOURCE_INVALID');});
+it('does not claim a notice change saved when its existing response omitted or changed the policy',async()=>{const policy={...config,allowSameDay:false,minimumNoticeMinutes:120};for(const returned of[config,{...policy,minimumNoticeMinutes:60}]){const request=vi.fn(async()=>Response.json({ok:true,scheduleConfig:returned,customQuestions:[]})),organizer=createNativeOrganizer({accountUid:'owner',request});await expect(organizer.saveAvailability('owner',policy,[])).rejects.toThrow('ORGANIZER_WRITE_UNCONFIRMED');expect(request).toHaveBeenCalledOnce();}});

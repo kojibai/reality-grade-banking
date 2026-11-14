@@ -16,7 +16,7 @@ export interface OrganizerEvent {
  createdAt:string;updatedAt:string;
 }
 export interface CalendarRange {start:string;end:string}
-export interface BookingSchedule {timezone?:string;timezoneMode?:'auto'|'manual';slotMinutes:number;hourStarts:number[];weekdayIndexes:number[];daysForward:number}
+export interface BookingSchedule {timezone?:string;timezoneMode?:'auto'|'manual';slotMinutes:number;hourStarts:number[];weekdayIndexes:number[];daysForward:number;allowSameDay?:boolean;minimumNoticeMinutes?:number}
 export interface BookingQuestion {id:string;label:string;required:boolean}
 export interface BookingSlot {id:string;startAt:string;endAt:string}
 export interface PublicBookingConversation {state:'ready'|'unavailable'|'unknown';ownerUserId:string;username:string}
