@@ -15,7 +15,7 @@ describe('existing owner Twin adapter', () => {
     expect(reply.memory).not.toBe(payload.reply.memory);
   });
   it('refuses malformed or unbounded historical memory without fabricating history', async () => {
-    for (const change of [(payload: ReturnType<typeof response>) => { payload.reply.memory[0].role = 'system'; }, (payload: ReturnType<typeof response>) => { payload.reply.memory = Array.from({ length: 33 }, (_, i) => ({ ...payload.reply.memory[0], id: String(i) })); }]) {
+    for (const change of [(payload: ReturnType<typeof response>) => { payload.reply.memory[0].role = 'system'; }, (payload: ReturnType<typeof response>) => { payload.reply.memory = Array.from({ length: 35 }, (_, i) => ({ ...payload.reply.memory[0], id: String(i) })); }]) {
       const payload = response(); change(payload);
       const twin = createNativeTwin({ accountUid: uid, username: 'owner', request: async () => Response.json(payload), assertOpen() {} });
       await expect(twin.ask(question)).rejects.toThrow('BANK_TWIN_MEMORY_INVALID');

@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import {ArrowUpRight,Mail} from 'lucide-react';
 import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
-import {accountEmailAddress} from '../../receiz/account-email';
+import {accountEmailAddress,accountEmailReceivingName,canonicalAccountEmailAddress,verifiedAccountEmailProfiles} from '../../receiz/account-email';
+import {retainedPublicProfile} from '../../receiz/public-profile';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import './account-email.css';
 
@@ -10,13 +11,31 @@ import './account-email.css';
 export function AccountEmail({identity}:{identity:OpenIdentity}){
  const [,refresh]=useState(0),[preparing,setPreparing]=useState<OpenIdentity|null>(null),[error,setError]=useState<{owner:OpenIdentity;message:string}|null>(null);
  const current=useRef<OpenIdentity|null>(identity),pending=useRef<OpenIdentity|null>(null);current.current=identity;
- const address=accountEmailAddress(identity.confirmedAccountUsername?.()),copy=useCopyFeedback(address??'');
+ const [resolved,setResolved]=useState<{owner:OpenIdentity;uid:string;name:string;fullName:string;profile:unknown}|null>(null);
+ const name=identity.confirmedAccountUsername?.()??null,uid=identity.walletReceivingAddress?.()??null;
+ const profiles=(targetName=name,targetUid=uid)=>[identity.knownProfile?.(),...(targetName?[retainedPublicProfile(targetName)]:[]),...verifiedAccountEmailProfiles(identity.localHistory,targetUid)];
+ const fullName=accountEmailReceivingName(name,uid,profiles()),qualified=resolved?.owner===identity&&resolved.uid===uid&&resolved.name===name?resolved:null;
+ const address=accountEmailAddress(name)??canonicalAccountEmailAddress(fullName,uid,fullName?retainedPublicProfile(fullName):null)??canonicalAccountEmailAddress(qualified?.fullName??null,uid,qualified?.profile),copy=useCopyFeedback(address??'');
  useEffect(()=>{current.current=identity;const updated=()=>refresh(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>{removeEventListener('bankeiz:profile-updated',updated);current.current=null;};},[identity]);
  async function prepare(){
   if(!identity.prepareReceivingUsername||pending.current===identity)return;
   pending.current=identity;setPreparing(identity);setError(null);
-  try{await identity.prepareReceivingUsername();if(current.current!==identity)return;refresh(value=>value+1);if(!accountEmailAddress(identity.confirmedAccountUsername?.()))setError({owner:identity,message:'Your email is not ready to display. Your account is unchanged.'});}
-  catch{if(current.current===identity)setError({owner:identity,message:'Your email could not be shown. Try again when your account connection is available.'});}
+  let selectedName=name,selectedUid=uid;
+  const unchanged=()=>current.current===identity&&identity.confirmedAccountUsername?.()===selectedName&&identity.walletReceivingAddress?.()===selectedUid;
+  try{
+   await identity.prepareReceivingUsername();if(current.current!==identity)return;
+   selectedName=identity.confirmedAccountUsername?.()??null;selectedUid=identity.walletReceivingAddress?.()??null;
+   if(accountEmailAddress(selectedName)){refresh(value=>value+1);return;}
+   if(!selectedName||!selectedUid||!/^receiz_[a-z0-9]{17}$/.test(selectedName))throw Error('ACCOUNT_EMAIL_NAME_REQUIRED');
+   const read=async(target:string,view:'head'|'email')=>{const response=await fetch('/api/bank/public-profile/'+target+'?view='+view,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('ACCOUNT_EMAIL_UNAVAILABLE');const value=await response.json();if(value?.schema!=='bankeiz.public-profile.v1'||value.userId!==selectedUid)throw Error('ACCOUNT_EMAIL_OWNER_MISMATCH');return value;};
+   let complete=accountEmailReceivingName(selectedName,selectedUid,profiles(selectedName,selectedUid));
+   if(!complete)complete=accountEmailReceivingName(selectedName,selectedUid,[await read(selectedName,'head')]);
+   if(!unchanged())return;if(!complete)throw Error('ACCOUNT_EMAIL_FULL_NAME_REQUIRED');
+   const canonical=retainedPublicProfile(complete),profile=canonicalAccountEmailAddress(complete,selectedUid,canonical)?canonical:await read(complete,'email');
+   if(!unchanged())return;if(!canonicalAccountEmailAddress(complete,selectedUid,profile))throw Error('ACCOUNT_EMAIL_CANONICAL_OWNER_REQUIRED');
+   setResolved({owner:identity,uid:selectedUid,name:selectedName,fullName:complete,profile});
+  }
+  catch{if(unchanged())setError({owner:identity,message:'Your email could not be confirmed. Your account is unchanged. Try again when the address is available.'});}
   finally{if(pending.current===identity)pending.current=null;if(current.current===identity)setPreparing(null);}
  }
  async function copyAddress(){

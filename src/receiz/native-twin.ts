@@ -26,6 +26,8 @@ export type NativeTwinReply = {
 export type NativeTwin = ReturnType<typeof createNativeTwin>;
 const record = (value: unknown): Record<string, unknown> | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const bounded = (value: unknown, max: number): value is string => typeof value === 'string' && value.trim().length > 0 && value.length <= max;
+// Native retains up to 32 prior entries and appends the current accepted pair.
+const REPLY_MEMORY_LIMIT = 32 + 2;
 function fail(code: string): never { throw Error(`BANK_TWIN_${code}`); }
 const validUsername = (value: unknown): value is string => typeof value === 'string' && /^[a-z0-9_]{3,24}$/.test(value);
 async function twinJson(response: Response, onDelta?: (text:string)=>void, maxText=24000) {
@@ -134,7 +136,7 @@ export function createNativeTwin(input: { accountUid: string; username: string |
       const reply = record(raw.reply), cognition = record(reply?.cognition), frame = record(cognition?.frame), owner = record(frame?.owner);
       if (owner && (owner.ownerUserId !== input.accountUid || owner.username !== username)) fail('RESPONSE_OWNER_MISMATCH');
       if (!reply || !bounded(reply.message, question.moneyTools?64000:24000) || !['upstream', 'fallback', 'local'].includes(String(reply.source)) || !Array.isArray(reply.actions) || reply.actions.length > 20) fail('RESPONSE_INVALID');
-      if (!Array.isArray(reply.memory) || reply.memory.length > 32) fail('MEMORY_INVALID');
+      if (!Array.isArray(reply.memory) || reply.memory.length > REPLY_MEMORY_LIMIT) fail('MEMORY_INVALID');
       const memoryIds = new Set<string>();
       const memory = reply.memory.map(value => {
         const row = record(value);

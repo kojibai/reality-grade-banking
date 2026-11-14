@@ -537,3 +537,8 @@ it('the confirmed account-name getter changes only after an accepted same-accoun
   await editor.update({username:'accepted_name'});expect(identity.confirmedAccountUsername?.()).toBe('accepted_name');expect(identity.username).toBe('owner');
  }finally{identity.dispose();vi.unstubAllGlobals();}
 });
+it('does not turn device-derived carried full-name metadata into canonical mail ownership',async()=>{
+ const legacy='receiz_abcdefghijklmnopq';p.known=completeObservation();p.known.source='account-genesis';p.projection={authority:'verified-identity-portable-state',portableStateVerified:true,owner:{uid:'owner'},verifiedState:{account:{userId:'bound-user'},profileView:{profile:{userId:'bound-user',username:legacy,receivingUsername:'abcdefghijklmnopqr'}}}};p.continueId.mockResolvedValue({ok:true,session:{uid:'bound-user',username:legacy}});
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'','fixture.receiz',true);
+ try{expect(identity.confirmedAccountUsername?.()).toBeNull();expect(p.continueId).not.toHaveBeenCalled();await identity.prepareReceivingUsername!();expect(identity.confirmedAccountUsername?.()).toBe(legacy);expect(p.request).not.toHaveBeenCalled();expect(identity.username).toBe('owner');}finally{identity.dispose();}
+});
