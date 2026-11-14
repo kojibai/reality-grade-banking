@@ -1,3 +1,4 @@
+import {emailGuidePage,emailGuideFaq} from '../src/content/email-guide.mjs';
 import {receivingInvitationPage} from '../src/content/receiving-invitation-page.mjs';
 import {institutionScorecardPage} from '../src/content/institution-scorecard-page.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
@@ -37,6 +38,7 @@ export const publicPages = [
  {...guidePage,id:'guide',motif:'book'},
  {...meetingPage,id:'meet',motif:'bank'},
  {...bookingGuidePage,id:'book',motif:'calendar'},
+ {...emailGuidePage,id:'email',motif:'receipt',faq:emailGuideFaq},
  {...paymentGuidePage,id:'pay',motif:'receipt',faq:paymentGuideFaq},
  {...matterPage,id:'digital-matter',siteName:standardSite,motif:'cube'},
  ...portabilityPages.map(page=>({path:page.path,id:page.slug,siteName:standardSite,title:page.title+' | Reality-Grade Banking',description:page.description,lines:page.shareLines,caption:page.shareCaption,motif:'layers'})),

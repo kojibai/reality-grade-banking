@@ -1,0 +1,11 @@
+.identity-profile .account-email{display:block;margin:4px 0 0;font-size:12px}
+.identity-profile .account-email>summary{min-height:40px;padding:9px 0;color:#64768d;font-size:12px;cursor:pointer}
+.account-email>summary svg{margin:0 7px -2px 0;color:#8390a3}
+.account-email-address{display:flex;align-items:center;gap:9px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.account-email-address code{flex:1;min-width:0;color:var(--navy);font-size:12px;line-height:1.6;overflow-wrap:anywhere;user-select:all}
+.account-email-address .icon-button{flex-shrink:0;width:30px;height:30px;color:#748195;background:transparent}
+.account-email .account-email-note{margin:10px 0 8px;color:#7b8798;line-height:1.65}
+.account-email-learn{display:inline-flex;align-items:center;gap:5px;min-height:30px;color:#718099;font-size:11px;text-decoration:none}
+.account-email-learn:hover{text-decoration:underline;text-underline-offset:3px}
+.account-email .account-email-prepare{margin:0;font-size:12px}
+.account-email :is(button,a,summary):focus-visible{outline:2px solid var(--blue);outline-offset:3px}

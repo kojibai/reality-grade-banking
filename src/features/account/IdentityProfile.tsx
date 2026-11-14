@@ -6,6 +6,7 @@ import type { OpenIdentity } from '../../receiz/native-identity';
 import {QuickProfileEditor} from './QuickProfileEditor';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
+import {AccountEmail} from './AccountEmail';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar} from '../../receiz/profile-avatar';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
@@ -83,6 +84,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
     {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
     {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
+    <AccountEmail identity={identity}/>
     <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />
     <section className="profile-device" aria-label="Device custody">

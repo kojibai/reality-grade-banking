@@ -1,0 +1,22 @@
+/** Build-only, fictional held examples. No identity or messaging service opens. */
+import {BankMark} from '../components/BankMark';
+import {ProfileAvatar} from '../components/ProfileAvatar';
+import {MessageNavigation} from '../features/messages/MessageNavigation';
+import {MessageComposer} from '../features/messages/MessagesPanel';
+import {ReplyIdentity} from '../features/messages/ReplyIdentity';
+import {EmailMessage} from '../features/messages/EmailMessage';
+import {PaymentMessage} from '../features/messages/PaymentMessage';
+import type {ChatMessage,ChatNativeMessage} from '../receiz/native-messaging';
+const noop=()=>{},owner='11111111-1111-4111-8111-111111111111',at='2026-11-13T10:24:00.000Z';
+const fields={conversationId:'example-email-conversation',senderDisplay:'Jamie',createdAt:at,receizedAt:at,receipt:null,sealedOriginalAvailable:true};
+const incoming:ChatMessage={...fields,id:'example-email-incoming',senderKind:'external-email',senderUserId:null,senderAiId:null,walletTransfer:null,body:'Can we talk about the project?',transport:{fromEmail:'jamie@example.com',recipientAlias:'maya@receiz.com',subject:'Project review'}};
+const reply:ChatNativeMessage={...fields,id:'example-email-reply',senderUserId:owner,senderKind:'user',senderAiId:null,senderDisplay:'Maya Chen',sealedOriginalAvailable:false,body:'Absolutely. Here’s my booking link. Thursday works for me.'};
+const code:ChatMessage={...incoming,id:'example-email-code',senderDisplay:'Example App',body:'Your sign-in code is 482 916.',transport:{fromEmail:'signin@example.invalid',recipientAlias:'maya@receiz.com',subject:'Your sign-in code'}};
+const appointment:ChatNativeMessage={...reply,id:'example-email-appointment',body:'Your project review is confirmed.',walletTransfer:{kind:'bankeiz.meeting.invitation',title:'Project review',startAt:'2026-11-19T14:00:00.000Z',endAt:'2026-11-19T14:30:00.000Z',url:'https://bankeiz.com/meet/55555555-5555-4555-8555-555555555555/example_meeting_key/',note:'The time, meeting link and project conversation, together.'}};
+export const emailPreviewNames=['conversation','incoming','reply','original','everyday'] as const;
+function Incoming({message=incoming}:{message?:ChatMessage}){return <div className="bank-message-other"><ReplyIdentity human name={message.senderDisplay??'Jamie'}/><EmailMessage message={message} download={async()=>{throw Error('EMAIL_EXAMPLE_HAS_NO_TRANSPORT');}}/><time dateTime={at}>10:24 AM</time></div>;}
+export function EmailPreview({screen}:{screen:typeof emailPreviewNames[number]}){
+ return <div className="email-guide-preview" data-email-example={screen}><header className="email-example-brand"><BankMark/><span>Messages</span><ProfileAvatar name="Maya Chen"/></header><section className="bank-messaging"><MessageNavigation twinFirst={false} mode="inbox" organizing={false} hasOrganizer onWarmOrganizer={noop} onOrganizer={noop} onView={noop} onNew={noop}/>
+ {screen==='original'?<section className="email-example-original"><small>Original email · fictional example</small><h3>Project review</h3><dl><div><dt>From</dt><dd>jamie@example.com</dd></div><div><dt>To</dt><dd>maya@receiz.com</dd></div><div><dt>Subject</dt><dd>Project review</dd></div></dl><pre>{'From: Jamie <jamie@example.com>\nTo: Maya <maya@receiz.com>\nSubject: Project review\nContent-Type: text/plain; charset=utf-8\n\nCan we talk about the project?'}</pre><button type="button" data-email-demo-action="conversation">Back to conversation</button></section>:<><div className="email-example-thread"><ProfileAvatar name={screen==='everyday'?'Your day':'Jamie'}/><span><strong>{screen==='everyday'?'Your day, connected':'Jamie'}</strong><small>{screen==='everyday'?'Codes, invitations and conversations':'jamie@example.com'}</small></span></div><div className="bank-conversation-scroll bank-thread-messages">{screen==='everyday'?<><Incoming message={code}/><div className="bank-message-other"><PaymentMessage message={appointment} accountUid={owner} members={[]}/></div></>:<>{screen!=='reply'&&<Incoming/>}{screen!=='incoming'&&<div className="bank-message-own"><PaymentMessage message={reply} accountUid={owner} members={[]}/><time dateTime={at}>10:25 AM</time></div>}</>}</div><MessageComposer draft={screen==='incoming'?'Thursday works for me.':''} setDraft={noop} submit={event=>event.preventDefault()} placeholder="Message…" busy={false} maxLength={16384}/></>}
+ </section></div>;
+}

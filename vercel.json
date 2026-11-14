@@ -327,6 +327,14 @@
       "destination": "/matter/index.html"
     },
     {
+      "source": "/email",
+      "destination": "/email/index.html"
+    },
+    {
+      "source": "/email/",
+      "destination": "/email/index.html"
+    },
+    {
       "source": "/book",
       "destination": "/book/index.html"
     },
