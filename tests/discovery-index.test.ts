@@ -27,3 +27,9 @@ it('indexes a public person from the carried owner header even before their firs
   expect.objectContaining({username,receivingUsername,name:'New creator',items:[]})
  ]);
 });
+
+it('applies exact owner refusals only to People while keeping independently accepted public works',()=>{
+ const owner={userId:'refused-uid',username:'bjklock',createdAt:'2026-01-01T12:00:00Z'},row=work('accepted-work',{ownerIdentity:owner}),refusal={profile:{userId:owner.userId,username:owner.username,isPrivate:true as const},viewer:{canView:false as const},stats:{}};
+ const index=buildDiscoveryIndex([row],[refusal]);expect(index.people).toEqual([]);expect(index.items).toEqual([row]);expect(index.items[0]).toBe(row);
+ const unrelated=buildDiscoveryIndex([{...row,ownerIdentity:{...owner,userId:'public-uid'}}],[refusal]);expect(unrelated.people.map(person=>person.username)).toEqual(['bjklock']);
+});

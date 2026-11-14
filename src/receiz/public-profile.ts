@@ -140,6 +140,10 @@ export function forgetPublicProfile(username:string){forgetObservedProfilePortra
 export function forgetPublicProfilesForAccount(uid:string){forgetStoredPublicHead(uid);confirmedProfilePbi.delete(uid);privateProfileAccounts.add(uid);if(privateProfileAccounts.size>24)privateProfileAccounts.delete(privateProfileAccounts.values().next().value!);for(const [name,profile]of [...held])if(profile.userId===uid)refusePublicProfile(name,'PROFILE_PRIVATE',uid);}
 export function publicProfilePageError(username:string,catalog?:PublicMarketCatalog|null):string{
  username=heldPublicProfileUsername(username,catalog);
+ if(catalog?.publicProfileHeadRefusals?.length){
+  const owner=catalog.publicProfileHeads?.find(head=>head.profile.username===username)?.profile.userId??catalog.items.find(item=>item.ownerUsername===username)?.ownerIdentity?.userId??held.get(username)?.userId;
+  if(catalog.publicProfileHeadRefusals.some(policy=>policy.profile.username===username&&(!owner||policy.profile.userId===owner)))return 'PROFILE_PRIVATE';
+ }
  if(privateProfileAccounts.size&&catalog?.items.some(item=>item.ownerUsername===username&&!!item.ownerIdentity&&privateProfileAccounts.has(item.ownerIdentity.userId)))return 'PROFILE_PRIVATE';
  const refusal=refusals.get(username);if(refusal){
   const rows=catalog?.complete&&refusal.userId?catalog.items.filter(item=>item.category==='proof'&&item.ownerUsername===username):[];

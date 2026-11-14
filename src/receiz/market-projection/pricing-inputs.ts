@@ -8,4 +8,4 @@ export type PublicMarketPricingItem=Pick<PublicMarketItem,
  // An ordinary full catalog can still name calculation explanations. Pricing
  // checkpoints omit this optional presentation field entirely.
  Pick<Partial<PublicMarketItem>,'title'>;
-export type PublicMarketPricingCatalog=Omit<PublicMarketCatalog,'items'|'publicProfileHeads'|'publicProfileHeadsRevision'>&{items:PublicMarketPricingItem[]};
+export type PublicMarketPricingCatalog=Omit<PublicMarketCatalog,'items'|'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'>&{items:PublicMarketPricingItem[]};

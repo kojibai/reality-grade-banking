@@ -1,5 +1,5 @@
 import {feedKind,type FeedKind} from '../public-feed/feed-items';
-import {readPublicProfileHeader,type PublicProfileHead} from '../receiz/public-profile-header';
+import {readPublicProfileHeader,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from '../receiz/public-profile-header';
 import {profileAvatarUrl} from '../receiz/profile-avatar';
 import {publicAccountDisplayName} from '../receiz/account-name';
 import {profileUsername,profilePageUsername} from '../receiz/public-profile';
@@ -11,15 +11,15 @@ export type DiscoveryPerson={username:string;receivingUsername?:string;name:stri
 const normalize=(value:string)=>value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
 const kinds:FeedKind[]=['image','book','audio','moment','video','essay','document','collectible'];
 /** An index of the existing public presentation; never proof or custody admission. */
-export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:readonly DiscoveryProfileHead[]=[]){
- const seen=new Set<string>(),items:PublicMarketItem[]=[],people=new Map<string,DiscoveryPerson>();
+export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:readonly DiscoveryProfileHead[]=[],refusals:readonly PublicProfileHeadRefusal[]=readPublicProfileHeadRefusals(heads)){
+ const seen=new Set<string>(),items:PublicMarketItem[]=[],people=new Map<string,DiscoveryPerson>(),refused=new Set(refusals.map(head=>head.profile.userId+'\0'+head.profile.username));
  for(const row of rows){if(seen.has(row.id))continue;seen.add(row.id);items.push(row);
-  const username=profileUsername(row.ownerUsername);if(!username||!profilePageUsername(`/${username}/`))continue;
+  const username=profileUsername(row.ownerUsername);if(!username||!profilePageUsername(`/${username}/`)||row.ownerIdentity&&refused.has(row.ownerIdentity.userId+'\0'+username))continue;
   let person=people.get(username);if(!person){person={username,...(row.ownerReceivingUsername?{receivingUsername:row.ownerReceivingUsername}:{}),name:discoveryOwnerName(row),avatarUrl:row.ownerAvatarUrl??null,items:[]};people.set(username,person);}person.items.push(row);
  }
  for(const head of heads){
   const profile=readPublicProfileHeader(head);
-  if(!profile)continue;
+  if(!profile||refused.has(profile.userId+'\0'+profile.username))continue;
   const existing=people.get(profile.username);
   if(existing?.items.some(item=>item.ownerIdentity?.userId!==profile.userId))continue;
   const thumbnail=profileAvatarUrl(head.avatarFallback);

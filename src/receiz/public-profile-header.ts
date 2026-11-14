@@ -27,6 +27,20 @@ export function curatePublicProfileHead(input:unknown){
  const stats=object(view.stats),profile:Record<string,unknown>={...Object.fromEntries(profileFields.filter(key=>Object.hasOwn(p,key)).map(key=>[key,p[key]])),links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const row=object(value),label=text(row.label,80),url=link(row.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[]};
  return{profile,viewer:{canView:viewer.canView},stats:Object.fromEntries(statsFields.map(key=>[key,number(stats[key])])),...(Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement')?{unavailableDecorators:['engagement']}:{} )};
 }
+/** Keep only the exact owner binding of an explicit public-view refusal.
+ * Missing headers and revision hashes are never privacy decisions. */
+export function curatePublicProfileHeadRefusal(input:unknown){
+ const view=object(input),p=object(view.profile),viewer=object(view.viewer),userId=text(p.userId,256),username=p.username;
+ if(!userId||typeof username!=='string'||!/^[a-z0-9_]{3,24}$/.test(username)||p.isPrivate!==true&&viewer.canView!==false)return null;
+ return{profile:{userId,username,...(p.isPrivate===true?{isPrivate:true as const}:{})},viewer:{canView:false as const}};
+}
+export type PublicProfileHeadRefusal=NonNullable<ReturnType<typeof curatePublicProfileHeadRefusal>>;
+export function readPublicProfileHeadRefusals(input:unknown):PublicProfileHeadRefusal[]{
+ if(!Array.isArray(input)||input.length>100_000)return[];
+ const selected=new Map<string,PublicProfileHeadRefusal>();
+ for(const raw of input){const policy=curatePublicProfileHeadRefusal(raw);if(policy)selected.set(policy.profile.userId+':'+policy.profile.username,policy);}
+ return [...selected.values()];
+}
 export type PublicProfileHead=NonNullable<ReturnType<typeof curatePublicProfileHead>>;
 const selectedHeads=new WeakMap<object,PublicProfileHeader>(),headerBases=new WeakMap<object,string>();
 /** Exact display equality for one compact carried header, never a freshness,

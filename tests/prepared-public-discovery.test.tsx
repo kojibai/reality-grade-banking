@@ -90,3 +90,22 @@ for(const path of ['feed','discover'] as const)it(`retains the complete large ${
   }
  }finally{fetcher.mockRestore();}
 });
+
+it('prepares and hydrates exact private-profile refusals without dropping independently accepted public works',async()=>{
+ const value=input('discover',[row('public-work','Independently accepted work')]),body=JSON.parse(value.material);
+ Object.assign(body.membership.transport.publicOriginals[0],{ownerUserId:'private-profile-uid',ownerCreatedAt:'2026-01-01T12:00:00Z'});
+ body.membership.transport.publicProfileHeads=[{profile:{userId:'private-profile-uid',username:'example',isPrivate:true,displayName:'private-profile-secret',email:'private-email-secret'},viewer:{canView:false}}];
+ const material=JSON.stringify(body),html=await renderPreparedDependentDocument({...value,material,generation:createHash('sha256').update(material).digest('hex')});
+ expect(html).not.toMatch(/private-profile-secret|private-email-secret/);
+ document.body.innerHTML=new DOMParser().parseFromString(html,'text/html').body.innerHTML;
+ const host=document.getElementById('public-discover-root')!,first=host.firstElementChild,seed=JSON.parse(document.getElementById('public-discovery-seed')!.textContent!),seedHeads=JSON.parse(document.getElementById('public-discovery-heads')!.textContent!);
+ expect(seedHeads).toEqual([{profile:{userId:'private-profile-uid',username:'example',isPrivate:true},viewer:{canView:false},stats:{}}]);
+ expect(host.querySelector('[aria-label="People to discover"] a[href="/example/"]')).toBeNull();
+ expect(host.querySelector('[aria-label="Open Independently accepted work"]')).not.toBeNull();
+ const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_SOURCE_OR_PROFILE_READ')),errors=vi.spyOn(console,'error').mockImplementation(()=>{});let root:ReturnType<typeof hydrateRoot>|undefined;
+ try{
+  await act(async()=>{root=hydrateRoot(host,<Discover seed={seed} seedHeads={seedHeads} active={false}/>,{identifierPrefix:'public-discover-'});});
+  expect(host.firstElementChild).toBe(first);expect(host.querySelector('[aria-label="People to discover"] a[href="/example/"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Open Independently accepted work"]')).not.toBeNull();expect(errors).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{if(root)await act(()=>root!.unmount());fetcher.mockRestore();errors.mockRestore();document.body.innerHTML='';}
+});

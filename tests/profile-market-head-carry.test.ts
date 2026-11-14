@@ -33,6 +33,7 @@ describe('accepted public header carried with the selected Market',()=>{
  it.each(['private','cannot-view','wrong-uid','wrong-handle','conflicting-heads'])('never uses an ineligible %s header',kind=>{
   const current=head();if(kind==='private')current.profile.isPrivate=true;if(kind==='cannot-view')current.viewer.canView=false;if(kind==='wrong-uid')current.profile.userId='another';if(kind==='wrong-handle')current.profile.username='someoneelse';
   const catalog=market.parsePublicMarket(input(kind==='conflicting-heads'?[current,head({bannerUrl:'/artwork/conflict.png'})]:[current])),selected=profiles.selectHeldPublicProfile(username,catalog)!;
+  if(kind==='private'||kind==='cannot-view'){expect(selected).toBeNull();return;}
   expect(profiles.publicProfileHasHeader(selected)).toBe(false);expect(selected.pbiReceiptHash).toBeNull();expect(selected.bannerUrl).not.toBe('https://receiz.com/artwork/cover.png');
  });
  it('applies the carried header to an already-held complete profile without replacing its collection',()=>{
@@ -75,14 +76,14 @@ describe('accepted public header carried with the selected Market',()=>{
   const cold=market.parsePublicMarket(JSON.parse(values.get('receiz-bank-public-discovery-v2')!));
   expect(profiles.selectHeldPublicProfile(username,cold)).toMatchObject({userId:uid,username,items:[],stats:{originals:0}});
  });
- it('uses the current complete profile index for a privacy withdrawal even if an older Original remains',()=>{
+ it('retains a compatible header when a versioned response is missing header delivery',()=>{
   const prior=market.parsePublicMarket(input([head()])),raw=input([]);Object.assign(raw.transport,{publicProfileHeadsRevision:'b'.repeat(64)});
   const next=market.parsePublicMarket(raw),selected=market.retainPublicProfileHeaders(next,prior);
-  expect(selected.publicProfileHeads??[]).toEqual([]);
+  expect(selected.publicProfileHeads?.[0].profile.userId).toBe(uid);
   market.rememberPublicMarketResponse(next,raw);
   const values=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value)});
   market.retainPublicMarket(next,undefined,selected,prior);
-  const cold=market.parsePublicMarket(JSON.parse(values.get('receiz-bank-public-discovery-v2')!));expect(cold.publicProfileHeads??[]).toEqual([]);
+  const cold=market.parsePublicMarket(JSON.parse(values.get('receiz-bank-public-discovery-v2')!));expect(cold.publicProfileHeads?.[0].profile.userId).toBe(uid);
  });
 
  it('keeps a newer accepted full header against its consumed older cohort, but accepts a genuinely changed header',()=>{

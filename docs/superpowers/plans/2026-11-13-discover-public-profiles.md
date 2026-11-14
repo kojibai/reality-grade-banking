@@ -10,14 +10,14 @@
 
 - [x] Verify the coverage and privacy/UID contract of existing anonymous public profile sources. Keep the existing collection as the input; do not change Receiz or add database access.
 - [x] Reproduce a header-only successor with unchanged Originals revision. Compare both membership and header revisions when observing/adopting the existing shared collection, without adding a page-opening request.
-- [x] Retain eligible zero-Original headers across genuinely thin legacy responses. A complete selected owner-header index and explicit privacy/owner rebinding must remove obsolete headers. Save the selected successor through the existing public cache.
+- [x] Retain eligible zero-Original headers across thinner responses, including versioned deliveries. A header hash detects change; it does not prove complete profile coverage. Only explicit owner-bound privacy/owner rebinding removes held headers. Save the selected successor through the existing public cache.
 - [x] Reproduce standalone cold opening against an older shipped family. Restore the already-selected saved response through the existing shared adoption channel before the old page can replace it; do not add network reads or a second storage system.
-- [ ] Run the behavioral transition, privacy/rebinding, persistence/cold-reopen and held-navigation tests. Run frozen entry checks for shared-state changes.
-- [ ] Qualify the actual compiled anonymous Discover with APIs stalled, then a header addition and cold reopen. Commit only owned application changes on main; report local build, CI and live evidence separately.
+- [x] Test behavioral transitions, explicit privacy/rebinding, persistence/cold reopening and held navigation, including rejected-header ordering and exact retained DOM.
+- Release gates: frozen entry checks, the production build, actual compiled anonymous entry with APIs stalled, a header addition, thinner delivery and cold reopening. Commit only owned application changes on main; report local tests/build, CI and live evidence separately.
 
 ## Review focus
 
-Preserve custom artwork and profile signatures, existing item references/history, current names and UID bindings. An older or thinner response cannot erase selected public headers. A complete privacy withdrawal cannot resurrect a retained header. Background failures cannot turn accepted creation or booking into a false failure. No package edits, extra authentication step, proof bypass, database discovery gate or blocking page refresh.
+Preserve custom artwork and profile signatures, existing item references/history, current names and UID bindings. An older or thinner response cannot erase selected public headers. An explicit owner-bound privacy refusal survives thinner delivery and cold reopening without retaining private profile fields. Background failures cannot turn accepted creation or booking into a false failure. No package edits, extra authentication step, proof bypass, database discovery gate or blocking page refresh.
 
 ## Remaining input boundary
 

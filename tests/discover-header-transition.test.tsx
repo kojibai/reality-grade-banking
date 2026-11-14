@@ -130,6 +130,33 @@ describe('Discover accepted owner-header transitions',()=>{
   expect(people()?.textContent).not.toContain('Withdrawn Correspondent');
  });
 
+ it('removes a refused owner from People while preserving their independently accepted public work',async()=>{
+  const first=selected(transport([head()]));await show(first);
+  const work=host.querySelector('[aria-label="Open Unchanged accepted work"]');expect(people()?.textContent).toContain('Alex Morgan');
+  const refused=selected(transport([head({isPrivate:true})],nextHeadsRevision),first);
+  await act(async()=>publication.publishDiscoveredPublicCatalog(refused));
+  expect(host.querySelector('[aria-label="People to discover"] a[href="/alexmorgan/"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Open Unchanged accepted work"]')).toBe(work);
+  await reopen();expect(host.querySelector('[aria-label="People to discover"] a[href="/alexmorgan/"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Open Unchanged accepted work"]')).not.toBeNull();
+ });
+
+ it('never falls back to an older seed when its only header is explicitly private',async()=>{
+  const initial=transport([head({...emptyOwner,displayName:'Private Correspondent'})]);
+  initial.transport.publicOriginals=[];initial.transport.publicMembership.itemCount=0;
+  const first=selected(initial);await show(first);
+  expect(people()?.textContent).toContain('Private Correspondent');
+  const update=transport([head({...emptyOwner,isPrivate:true,displayName:'Do not carry private metadata'})],nextHeadsRevision);
+  update.transport.publicOriginals=[];update.transport.publicMembership.itemCount=0;
+  const next=selected(update,first);await act(async()=>publication.publishDiscoveredPublicCatalog(next));
+  expect(people()?.textContent??'').not.toContain('Private Correspondent');
+  const saved=localStorage.getItem('receiz-bank-public-discovery-v2')!;
+  expect(saved).not.toContain('Do not carry private metadata');
+  await reopen();expect(people()?.textContent??'').not.toContain('Private Correspondent');
+  const profiles=await import('../src/receiz/public-profile');
+  expect(profiles.selectHeldPublicProfile(emptyOwner.username,coldCatalog())).toBeNull();
+ });
+
  it('does not reintroduce an old owner header after its handle is offered for a different UID',async()=>{
   const first=selected(transport([head(),head({...emptyOwner,displayName:'New Correspondent'})]));await show(first);
   const rebound=selected(transport([head({userId:'different-account',displayName:'Wrong Owner'}),head({...emptyOwner,displayName:'New Correspondent'})],nextHeadsRevision),first);

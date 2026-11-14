@@ -38,7 +38,7 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  const publicationAt=useRef(-Infinity),selectedCatalog=useRef<PublicMarketCatalog|null>(null);
  const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const scrollTools=useScrollReveal(active,'.discover-search');
- const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?.publicProfileHeads??seedHeads),[items,catalog?.publicProfileHeads,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
+ const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?(catalog.publicProfileHeads??[]):seedHeads,catalog?.publicProfileHeadRefusals),[items,catalog?.publicProfileHeads,catalog?.publicProfileHeadRefusals,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
  useEffect(()=>{
   if(!active)return;

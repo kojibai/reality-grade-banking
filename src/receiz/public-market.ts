@@ -1,4 +1,4 @@
-import {curatePublicProfileHead,readPublicProfileHeads,type PublicProfileHead} from './public-profile-header.js';
+import {curatePublicProfileHead,curatePublicProfileHeadRefusal,readPublicProfileHeads,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from './public-profile-header.js';
 import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
 import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
@@ -60,7 +60,7 @@ export interface PublicMarketItem {
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }
-export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadRefusals?:readonly PublicProfileHeadRefusal[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
 /** Both public display indexes participate in selection, including profiles
  * with no Originals. Neither revision supplies proof or transaction authority. */
 export function samePublicMarketMembership(a:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined,b:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined):boolean{
@@ -217,8 +217,8 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       ...(ownerUserId&&ownerUsername&&ownerCreatedAt&&Number.isFinite(Date.parse(ownerCreatedAt))?{ownerIdentity:{userId:ownerUserId,username:ownerUsername,createdAt:ownerCreatedAt}}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
   }
-  const publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads),headRevision=text(transport.publicProfileHeadsRevision,64);
-  const catalog: PublicMarketCatalog = { ...(publicProfileHeads.length?{publicProfileHeads}:{}),...(headRevision&&/^[a-f0-9]{64}$/.test(headRevision)?{publicProfileHeadsRevision:headRevision}:{}),items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
+  const publicProfileHeadRefusals=readPublicProfileHeadRefusals(transport.publicProfileHeads),refusedOwners=new Set(publicProfileHeadRefusals.map(head=>head.profile.userId)),publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads).filter(head=>!refusedOwners.has(String(head.profile.userId))),headRevision=text(transport.publicProfileHeadsRevision,64);
+  const catalog: PublicMarketCatalog = { ...(publicProfileHeads.length?{publicProfileHeads}:{}),...(publicProfileHeadRefusals.length?{publicProfileHeadRefusals}:{}),...(headRevision&&/^[a-f0-9]{64}$/.test(headRevision)?{publicProfileHeadsRevision:headRevision}:{}),items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
@@ -232,22 +232,23 @@ export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:
   if(!item.ownerReceivingUsername&&full&&item.assetId===prior.assetId&&item.ownerIdentity?.userId&&item.ownerIdentity.userId===prior.ownerIdentity?.userId&&item.ownerUsername&&item.ownerUsername===prior.ownerUsername&&publicProfileUsername(item.ownerUsername,full)===full){changed=true;return{...item,ownerReceivingUsername:full};}return item;
  });
  if(changed)catalog={...catalog,items};
- // A versioned owner-header index is complete and already applies public
- // policy. Only legacy thin delivery lacks this distinct index operand.
- if(catalog.publicProfileHeadsRevision||!previous.publicProfileHeads?.length)return catalog;
- const heads=catalog.publicProfileHeads??[],uids=new Set(heads.map(head=>head.profile.userId)),names=new Set(heads.map(head=>head.profile.username));
+ // A header hash detects a changed delivery, not complete profile coverage.
+ // Only an explicit owner-bound refusal can withdraw compatible held metadata.
+ const heads=catalog.publicProfileHeads??[],uids=new Set(heads.map(head=>head.profile.userId)),names=new Set(heads.map(head=>head.profile.username)),policies=catalog.publicProfileHeadRefusals??[],refused=new Set(policies.map(head=>head.profile.userId));
+ const priorPolicies=(previous.publicProfileHeadRefusals??[]).filter(head=>!uids.has(head.profile.userId)&&!refused.has(head.profile.userId));
+ for(const policy of priorPolicies)refused.add(policy.profile.userId);
  const bindings=catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity]:[]);
- const retained=previous.publicProfileHeads.filter(head=>!uids.has(head.profile.userId)&&!names.has(head.profile.username)&&!bindings.some(owner=>(owner.userId===head.profile.userId||owner.username===head.profile.username)&&(owner.userId!==head.profile.userId||owner.username!==head.profile.username)));
- return retained.length?{...catalog,publicProfileHeads:[...(catalog.publicProfileHeads??[]),...retained]}:catalog;
+ const retained=(previous.publicProfileHeads??[]).filter(head=>!uids.has(head.profile.userId)&&!names.has(head.profile.username)&&!refused.has(String(head.profile.userId))&&!bindings.some(owner=>(owner.userId===head.profile.userId||owner.username===head.profile.username)&&(owner.userId!==head.profile.userId||owner.username!==head.profile.username)));
+ return retained.length||priorPolicies.length?{...catalog,...(retained.length?{publicProfileHeads:[...heads,...retained]}:{}),...(priorPolicies.length?{publicProfileHeadRefusals:[...policies,...priorPolicies]}:{})}:catalog;
 }
 function carryPublicProfileHeaders(input:unknown,catalog:PublicMarketCatalog,previous?:PublicMarketCatalog|null):unknown{
- const source=record(input),transport=record(source.transport),selected=retainPublicProfileHeaders(catalog,previous).publicProfileHeads??[];
+ const source=record(input),transport=record(source.transport),held=retainPublicProfileHeaders(catalog,previous),selected=[...(held.publicProfileHeads??[]),...(held.publicProfileHeadRefusals??[])];
  if(!selected.length)return input;
- const raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head.profile.userId+':'+head.profile.username]:[];}));
- const missing=selected.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username));
- if(!missing.length)return input;
- const heads=new Map<string,NonNullable<ReturnType<typeof curatePublicProfileHead>>>();
- for(const value of [...missing,...raw]){const head=curatePublicProfileHead(value);if(head)heads.set(head.profile.userId+':'+head.profile.username,head);}
+ const curate=(value:unknown)=>curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value),raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curate(value);return head?[head.profile.userId+':'+head.profile.username]:[];}));
+ const missing=selected.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username)),refused=new Set((held.publicProfileHeadRefusals??[]).map(head=>head.profile.userId));
+ if(!missing.length&&!raw.some(value=>{const refusal=curatePublicProfileHeadRefusal(value);return refusal?JSON.stringify(value)!==JSON.stringify(refusal):refused.has(String(curatePublicProfileHead(value)?.profile.userId));}))return input;
+ const heads=new Map<string,NonNullable<ReturnType<typeof curate>>>();
+ for(const value of [...missing,...raw]){const head=curate(value);if(head&&(curatePublicProfileHeadRefusal(head)||!refused.has(String(head.profile.userId))))heads.set(head.profile.userId+':'+head.profile.username,head);}
  return{...source,transport:{...transport,publicProfileHeads:[...heads.values()]}};
 }
 

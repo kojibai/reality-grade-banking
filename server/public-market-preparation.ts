@@ -103,8 +103,8 @@ export function buildMembershipOnlyPublicMarketSeed({membership:input,snapshot,p
  const rows=new Map((membership.transport as SeedTransport).publicOriginals.map(row=>[row.id,row]));
  for(const item of current.items){const previousItem=known.get(item.id),retained=retainPublicMomentManifest(retainPublicArtwork(item,previousItem),previousItem),row=rows.get(item.id)!,profile=row.profileOriginal;if(item.ownerReceivingUsername)row.ownerReceivingUsername=item.ownerReceivingUsername;if(retained.artworkUrl!==item.artworkUrl)profile.artworkUrl=retained.artworkUrl;if(retained.proofManifestSource?.recordCardMediaSha256Hex!==item.proofManifestSource?.recordCardMediaSha256Hex)profile.recordCardMediaSha256Hex=retained.proofManifestSource!.recordCardMediaSha256Hex;}
  // An offered but refused/ambiguous header is distinct from absent metadata.
- const eligiblePrior=prior?{...prior,publicProfileHeads:prior.publicProfileHeads?.filter(head=>!offered.has(head.profile.userId+':'+head.profile.username))}:null,headers=retainPublicProfileHeaders(parsePublicMarket(membership),eligiblePrior).publicProfileHeads;
- return {...membership,transport:{...(membership.transport as SeedTransport),...(headers?{publicProfileHeads:headers}:{})},snapshot:publicMarketSeedQuotes(completeQuotes,new Set(items.keys())) as {data:{liveMarkets:SeedQuote[]}}};
+ const eligiblePrior=prior?{...prior,publicProfileHeads:prior.publicProfileHeads?.filter(head=>!offered.has(head.profile.userId+':'+head.profile.username))}:null,selection=retainPublicProfileHeaders(parsePublicMarket(membership),eligiblePrior),headers=[...(selection.publicProfileHeads??[]),...(selection.publicProfileHeadRefusals??[])];
+ return {...membership,transport:{...(membership.transport as SeedTransport),...(headers.length?{publicProfileHeads:headers}:{})},snapshot:publicMarketSeedQuotes(completeQuotes,new Set(items.keys())) as {data:{liveMarkets:SeedQuote[]}}};
 }
 
 /** Advance the two saved display histories at the same seed transition. The

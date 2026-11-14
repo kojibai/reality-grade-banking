@@ -1,4 +1,4 @@
-import {curatePublicProfileHead} from '../src/receiz/public-profile-header.js';
+import {curatePublicProfileHead,curatePublicProfileHeadRefusal} from '../src/receiz/public-profile-header.js';
 import {publicProfileUsername} from '../src/receiz/account-name.js';
 import {publicClaimHash} from '../src/receiz/public-claim-hash.js';
 import {publicCarriedText} from '../src/receiz/public-carried-text.js';
@@ -170,7 +170,7 @@ export function publicMarketPlugin(): Plugin { return { name: 'receiz-public-mar
 export function curatePublicMarketMembership(input:Record<string,unknown>):Record<string,unknown>{
         const transport = input.transport as Record<string,unknown>|undefined;
         if (input.ok !== true || !transport || !Array.isArray(transport.publicOriginals)) throw new Error('Receiz public collection is unavailable.');
-        input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership,...(Array.isArray(transport.publicProfileHeads)?{publicProfileHeads:transport.publicProfileHeads.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];})}:{}),...(typeof transport.publicProfileHeadsRevision==='string'&&/^[a-f0-9]{64}$/.test(transport.publicProfileHeadsRevision)?{publicProfileHeadsRevision:transport.publicProfileHeadsRevision}:{}), publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {
+        input.transport = { generatedAt: transport.generatedAt, publicMembership: transport.publicMembership,...(Array.isArray(transport.publicProfileHeads)?{publicProfileHeads:transport.publicProfileHeads.flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];})}:{}),...(typeof transport.publicProfileHeadsRevision==='string'&&/^[a-f0-9]{64}$/.test(transport.publicProfileHeadsRevision)?{publicProfileHeadsRevision:transport.publicProfileHeadsRevision}:{}), publicOriginals: transport.publicOriginals.map((item: Record<string, unknown>) => {
           const profile = item.profileOriginal as Record<string, unknown> | undefined, media = profile?.media as Record<string, unknown> | undefined,proof=profile?.proof as Record<string,unknown>|undefined,material=media?.material as Record<string,unknown>|undefined;
           // This same public boundary also receives its already-selected output.
           const rawKind=profile?.media===null?null:media?.kind,mediaKind=publicMediaKind(rawKind===undefined?profile?.mediaKind:rawKind);
