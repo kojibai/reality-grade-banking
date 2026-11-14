@@ -61,6 +61,11 @@ export interface PublicMarketItem {
   authority: 'projection-only'; canTrade: false;
 }
 export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+/** Both public display indexes participate in selection, including profiles
+ * with no Originals. Neither revision supplies proof or transaction authority. */
+export function samePublicMarketMembership(a:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined,b:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined):boolean{
+ return !!a&&!!b&&a.revision===b.revision&&(a.publicProfileHeadsRevision??'')===(b.publicProfileHeadsRevision??'');
+}
 type RecordValue = Record<string, unknown>;
 export type PublicMediaKind='image'|'video'|'audio'|'pdf'|'epub'|'file'|'moment';
 const mediaKinds=new Set(['image','video','audio','pdf','epub','file','moment']);
@@ -227,19 +232,22 @@ export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:
   if(!item.ownerReceivingUsername&&full&&item.assetId===prior.assetId&&item.ownerIdentity?.userId&&item.ownerIdentity.userId===prior.ownerIdentity?.userId&&item.ownerUsername&&item.ownerUsername===prior.ownerUsername&&publicProfileUsername(item.ownerUsername,full)===full){changed=true;return{...item,ownerReceivingUsername:full};}return item;
  });
  if(changed)catalog={...catalog,items};
- if(!previous?.publicProfileHeads?.length)return catalog;
- const keys=new Set(catalog.publicProfileHeads?.map(head=>head.profile.userId+':'+head.profile.username)),owners=new Set(catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId+':'+item.ownerIdentity.username]:[]));
- const retained=previous.publicProfileHeads.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username)&&owners.has(head.profile.userId+':'+head.profile.username));
+ // A versioned owner-header index is complete and already applies public
+ // policy. Only legacy thin delivery lacks this distinct index operand.
+ if(catalog.publicProfileHeadsRevision||!previous.publicProfileHeads?.length)return catalog;
+ const heads=catalog.publicProfileHeads??[],uids=new Set(heads.map(head=>head.profile.userId)),names=new Set(heads.map(head=>head.profile.username));
+ const bindings=catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity]:[]);
+ const retained=previous.publicProfileHeads.filter(head=>!uids.has(head.profile.userId)&&!names.has(head.profile.username)&&!bindings.some(owner=>(owner.userId===head.profile.userId||owner.username===head.profile.username)&&(owner.userId!==head.profile.userId||owner.username!==head.profile.username)));
  return retained.length?{...catalog,publicProfileHeads:[...(catalog.publicProfileHeads??[]),...retained]}:catalog;
 }
 function carryPublicProfileHeaders(input:unknown,catalog:PublicMarketCatalog,previous?:PublicMarketCatalog|null):unknown{
- const source=record(input),transport=record(source.transport),prior=previous?.publicProfileHeads??[],selected=catalog.publicProfileHeads??[];
- if(!prior.length&&!selected.length)return input;
- const raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head.profile.userId+':'+head.profile.username]:[];})),owners=new Set(catalog.items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId+':'+item.ownerIdentity.username]:[]));
- const missing=[...prior,...selected].filter(head=>owners.has(head.profile.userId+':'+head.profile.username)&&!keys.has(head.profile.userId+':'+head.profile.username));
+ const source=record(input),transport=record(source.transport),selected=retainPublicProfileHeaders(catalog,previous).publicProfileHeads??[];
+ if(!selected.length)return input;
+ const raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head.profile.userId+':'+head.profile.username]:[];}));
+ const missing=selected.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username));
  if(!missing.length)return input;
  const heads=new Map<string,NonNullable<ReturnType<typeof curatePublicProfileHead>>>();
- for(const value of [...missing,...raw]){const head=curatePublicProfileHead(value);if(head&&owners.has(head.profile.userId+':'+head.profile.username))heads.set(head.profile.userId+':'+head.profile.username,head);}
+ for(const value of [...missing,...raw]){const head=curatePublicProfileHead(value);if(head)heads.set(head.profile.userId+':'+head.profile.username,head);}
  return{...source,transport:{...transport,publicProfileHeads:[...heads.values()]}};
 }
 
@@ -296,6 +304,21 @@ export function rememberPublicMarketResponse(catalog:PublicMarketCatalog,input:u
  publicMarketResponses.set(catalog,{response:source.snapshot?null:response,input:selectedInput,basis:catalog,status:response?.status??200,contentType:response?.headers.get('content-type')??'application/json',...(quotes?{quotes}:{})});
  if(source.snapshot)void response?.body?.cancel().catch(()=>{});
 }
+let restoredPublicMarketResponse:PublicMarketCatalog|null|undefined;
+/** Reuse the public response already selected and saved on this device. This
+ * is display restoration only: no Source read or publication acknowledgment. */
+export function restorePublicMarketResponse():PublicMarketCatalog|null{
+ if(typeof document==='undefined')return null;
+ if(restoredPublicMarketResponse!==undefined)return restoredPublicMarketResponse;
+ restoredPublicMarketResponse=null;
+ try{
+  const serial=localStorage.getItem('receiz-bank-public-discovery-v2');if(!serial||serial.length>32*1024*1024)return null;
+  const input=JSON.parse(serial),catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)return null;
+  rememberPublicMarketResponse(catalog,input);rememberPublicOriginalLocators(catalog);
+  const held=publicMarketResponses.get(catalog);if(held)held.retained=true;
+  return restoredPublicMarketResponse=catalog;
+ }catch{return null;}
+}
 function carriedMomentInput(input:unknown,basis:PublicMarketCatalog,selected:PublicMarketCatalog){
  const source=record(input),transport=record(source.transport);if(!Array.isArray(transport.publicOriginals))return input;
  const known=new Map(basis.items.map(item=>[item.id,item])),current=new Map(selected.items.map(item=>[item.id,item]));let changed=false;
@@ -323,9 +346,10 @@ type PublicMembershipResponse={catalog:PublicMarketCatalog;etag:string|null};
 let selectedPublicMembership:PublicMembershipResponse|null=null;
 let publicMembershipEpoch=0;
 const publicMembershipReads=new Map<string,Promise<PublicMarketCatalog|null>>();
-async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint(),heldRevision?:string):Promise<PublicMarketCatalog|null>{
+async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint(),heldRevision?:string,heldHeadsRevision?:string):Promise<PublicMarketCatalog|null>{
   const prior=selectedPublicMembership,epoch=++publicMembershipEpoch;
-  const etag=heldRevision&&/^[a-f0-9]{64}$/.test(heldRevision)?'"'+heldRevision+'"':prior?.etag;
+  const held=heldRevision===undefined?null:{revision:heldRevision,publicProfileHeadsRevision:heldHeadsRevision};
+  const etag=held?(samePublicMarketMembership(prior?.catalog,held)?prior?.etag:!heldHeadsRevision&&/^[a-f0-9]{64}$/.test(heldRevision!)?'"'+heldRevision+'"':undefined):prior?.etag;
   const response=await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''),{signal,credentials:'omit',headers:etag&&!afterPublication?{'If-None-Match':etag}:undefined});
   if(response.status===304)return heldRevision?null:prior?.catalog??null;
   if(!response.ok)throw new Error('The public Market could not be refreshed.');
@@ -334,7 +358,7 @@ async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPu
   rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
   rememberPublicMarketResponse(catalog,input,exact);
   if(catalog.complete&&epoch===publicMembershipEpoch)selectedPublicMembership={catalog,etag:response.headers.get('etag')};
-  return catalog.revision===heldRevision?null:catalog;
+  return samePublicMarketMembership(catalog,held)?null:catalog;
 }
 export async function fetchPublicMarket(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint()):Promise<PublicMarketCatalog>{
   const catalog=await readPublicMembership(signal,afterPublication);
@@ -343,11 +367,11 @@ export async function fetchPublicMarket(signal?:AbortSignal,afterPublication=ass
 }
 /** Conditional background observation only. A held generation needs no new
  * body or presentation work. Sharing the read cannot cancel another surface. */
-export function observePublicMarketMembership(revision:string):Promise<PublicMarketCatalog|null>{
-  const current=publicMembershipReads.get(revision);if(current)return current;
-  const read=readPublicMembership(AbortSignal.timeout(90000),undefined,revision);
-  publicMembershipReads.set(revision,read);
-  void read.finally(()=>{if(publicMembershipReads.get(revision)===read)publicMembershipReads.delete(revision);}).catch(()=>{});
+export function observePublicMarketMembership(revision:string,headsRevision?:string):Promise<PublicMarketCatalog|null>{
+  const key=JSON.stringify([revision,headsRevision??'']),current=publicMembershipReads.get(key);if(current)return current;
+  const read=readPublicMembership(AbortSignal.timeout(90000),undefined,revision,headsRevision);
+  publicMembershipReads.set(key,read);
+  void read.finally(()=>{if(publicMembershipReads.get(key)===read)publicMembershipReads.delete(key);}).catch(()=>{});
   return read;
 }
 export interface PublicQuoteObservation {snapshot:unknown;receivedAt:number;}

@@ -1,4 +1,4 @@
-import {parsePublicMarket,retainPublicMarket,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {parsePublicMarket,retainPublicMarket,retainPublicProfileHeaders,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
@@ -127,7 +127,7 @@ export function forgetAssetPublicationAdmissions(username?:string){restore();if(
 let discoveredPublicCatalog:PublicMarketCatalog|null=null;
 /** The exact accepted display projection may precede its first mounted owner. */
 export const retainedDiscoveredPublicCatalog=()=>discoveredPublicCatalog;
-export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown):void{const selected=snapshot?mergePublicQuotes(catalog,snapshot):catalog;if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected);}
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown,previous:PublicMarketCatalog|null=discoveredPublicCatalog):void{const carried=retainPublicProfileHeaders(catalog,previous),selected=snapshot?mergePublicQuotes(carried,snapshot):carried;if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected,previous);}
 function publishDiscoveredPublicQuotes(snapshot:unknown):void{
  const catalog=discoveredPublicCatalog;
  if(catalog){const selected=mergePublicQuotes(catalog,snapshot);reusePublicMarketResponse(catalog,selected);discoveredPublicCatalog=selected;retainPublicMarket(catalog,snapshot,selected);}

@@ -9,7 +9,7 @@ import {ProfileAvatar} from '../components/ProfileAvatar';
 import {PublicOwnerAvatar} from '../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectibleArtwork';
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
-import {observePublicMarketMembership,safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
+import {observePublicMarketMembership,samePublicMarketMembership,safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
 import {profilePagePath} from '../receiz/public-profile';
 import {appendFeedItems,feedKind,feedText,refreshFeedItems} from '../public-feed/feed-items';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
@@ -68,9 +68,9 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   }
   const observer=setInterval(()=>{
    if(document.visibilityState!=='visible')return;
-   const revision=selectedCatalog.current?.revision??'';
-   void observePublicMarketMembership(revision).then(next=>{
-    if(!abort.signal.aborted&&next?.complete&&selectedCatalog.current?.revision===revision&&next.revision!==revision)publishDiscoveredPublicCatalog(next);
+   const selected=selectedCatalog.current,revision=selected?.revision??'';
+   void observePublicMarketMembership(revision,selected?.publicProfileHeadsRevision).then(next=>{
+    if(!abort.signal.aborted&&next?.complete&&(selectedCatalog.current===selected||samePublicMarketMembership(selectedCatalog.current,selected))&&!samePublicMarketMembership(next,selected))publishDiscoveredPublicCatalog(next,undefined,selected);
    }).catch(()=>{});
   },60_000);
   return()=>{abort.abort();unsubscribe();clearInterval(observer);};
@@ -78,7 +78,7 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
   // Undefined notifications are local admission/delivery changes. This surface
   // adopts only a dated public response, never the pending local overlay.
-  if(!catalog?.complete||catalog.revision===selectedCatalog.current?.revision)return;
+  if(!catalog?.complete||samePublicMarketMembership(catalog,selectedCatalog.current))return;
   const observedAt=Date.parse(catalog.observedAt??'');
   if(!/^[a-f0-9]{64}$/.test(catalog.revision)&&(!Number.isFinite(observedAt)||observedAt<Math.max(publicationAt.current,Date.parse(selectedCatalog.current?.observedAt??'')||-Infinity)))return;
   publicationAt.current=observedAt;

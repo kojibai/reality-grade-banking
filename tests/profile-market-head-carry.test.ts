@@ -66,6 +66,24 @@ describe('accepted public header carried with the selected Market',()=>{
   const catalog=market.parsePublicMarket(input([head()],[])),selected=profiles.selectHeldPublicProfile(username,catalog)!;
   expect(selected).toMatchObject({userId:uid,username,authorshipVerified:true,stats:{originals:0},items:[],nextCursor:null});expect(profiles.publicProfileHasHeader(selected)).toBe(true);
  });
+ it('keeps an accepted zero-Original profile across a thin response and a serialized cold reopen',()=>{
+  const priorInput=input([head()],[]),prior=market.parsePublicMarket(priorInput),nextInput=input([],[]),next=market.parsePublicMarket(nextInput);
+  const selected=market.retainPublicProfileHeaders(next,prior);expect(selected.publicProfileHeads?.[0].profile.userId).toBe(uid);
+  market.rememberPublicMarketResponse(next,nextInput);
+  const values=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value)});
+  market.retainPublicMarket(next,undefined,selected,prior);
+  const cold=market.parsePublicMarket(JSON.parse(values.get('receiz-bank-public-discovery-v2')!));
+  expect(profiles.selectHeldPublicProfile(username,cold)).toMatchObject({userId:uid,username,items:[],stats:{originals:0}});
+ });
+ it('uses the current complete profile index for a privacy withdrawal even if an older Original remains',()=>{
+  const prior=market.parsePublicMarket(input([head()])),raw=input([]);Object.assign(raw.transport,{publicProfileHeadsRevision:'b'.repeat(64)});
+  const next=market.parsePublicMarket(raw),selected=market.retainPublicProfileHeaders(next,prior);
+  expect(selected.publicProfileHeads??[]).toEqual([]);
+  market.rememberPublicMarketResponse(next,raw);
+  const values=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>values.set(key,value)});
+  market.retainPublicMarket(next,undefined,selected,prior);
+  const cold=market.parsePublicMarket(JSON.parse(values.get('receiz-bank-public-discovery-v2')!));expect(cold.publicProfileHeads??[]).toEqual([]);
+ });
 
  it('keeps a newer accepted full header against its consumed older cohort, but accepts a genuinely changed header',()=>{
   const a=market.parsePublicMarket(input([head({bannerUrl:'/artwork/old-a.png',updatedAt:'2026-11-01T10:00:00Z'})]));profiles.retainPublicProfile(profiles.selectHeldPublicProfile(username,a)!);

@@ -1,12 +1,18 @@
-import {fetchPublicMarket,parsePublicMarket,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
+import {fetchPublicMarket,parsePublicMarket,restorePublicMarketResponse,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
-import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
+import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
 import {readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog;generation:string}|null};
 let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=null;
 let preparedGeneration:string|null=null,revision=0;
 let preparedCatalog:PublicMarketCatalog|null=null,replacedPreparedCatalog:PublicMarketCatalog|null=null;
 const preparedListeners=new Set<(catalog:PublicMarketCatalog)=>void>();
+// Standalone discovery can open before the Market module. Restore its already
+// selected response through the same shared publication/retention channel;
+// an older shipped page cannot erase a received public-profile addition.
+if(typeof document!=='undefined'&&!retainedDiscoveredPublicCatalog()){
+ const saved=restorePublicMarketResponse();if(saved)publishDiscoveredPublicCatalog(saved);
+}
 function publicDiscoveryDocument(){return preparedCatalog&&preparedGeneration?{catalog:preparedCatalog,generation:preparedGeneration}:null;}
 function exposeDiscoveryDocument(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicDiscoveryDocument});}
 if(typeof document!=='undefined'){exposeDiscoveryDocument();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposeDiscoveryDocument,{once:true});}

@@ -24,3 +24,13 @@ it('accepts a selected successor independently of its display timestamp and keep
  expect((await fetchPublicMarket(undefined,'')).revision).toBe(b);
  expect(fetcher.mock.calls[2][1]?.headers).toEqual({'If-None-Match':'"'+b+'"'});
 });
+it('observes a changed public profile index when the Originals membership is unchanged',async()=>{
+ const first={...member(a,'2026-11-13T22:00:00Z')},next={...member(a,'2026-11-13T22:01:00Z')};
+ Object.assign(first.transport,{publicProfileHeadsRevision:a,publicProfileHeads:[]});
+ Object.assign(next.transport,{publicProfileHeadsRevision:b,publicProfileHeads:[]});
+ const fetcher=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(first,{headers:{etag:'"first-family"'}})).mockResolvedValueOnce(Response.json(next,{headers:{etag:'"next-family"'}}));vi.stubGlobal('fetch',fetcher);
+ const {fetchPublicMarket,observePublicMarketMembership}=await import('../src/receiz/public-market');
+ await fetchPublicMarket(undefined,'');
+ const accepted=await observePublicMarketMembership(a,a);
+ expect(accepted?.revision).toBe(a);expect(accepted?.publicProfileHeadsRevision).toBe(b);
+});

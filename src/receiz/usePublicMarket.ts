@@ -190,7 +190,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
     const previousMembership=readPublicCatalog();
     const membershipRead=previousMembership?.complete&&/^[a-f0-9]{64}$/.test(previousMembership.revision)
-      ?observePublicMarketMembership(previousMembership.revision).then(next=>next??previousMembership)
+      ?observePublicMarketMembership(previousMembership.revision,previousMembership.publicProfileHeadsRevision).then(next=>next??previousMembership)
       :fetchPublicMarket(controller.signal);
     const membershipAttempt = membershipRead.then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{
       if(!currentAttempt())return;const next=membership.value,quotes=readRetainedPublicQuotes()?.snapshot??latestQuotes.current;if(!next?.complete)lastRefreshFailed=true;
