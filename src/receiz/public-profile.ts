@@ -111,6 +111,13 @@ export const knownProfilePbiAuthorship=(uid:string)=>confirmedProfilePbi.get(uid
 const listeners=new Set<()=>void>();
 function notifyProfiles(){revision++;for(const listener of listeners)listener();}
 export const subscribePublicProfiles=(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};};
+/** Reuse metadata already accepted by the public profile reader. Owner-only
+ * presentation and portable identity state never qualify through this path. */
+export function receivedPublicProfileHead(username:string):PublicProfileHead|null{
+ const profile=held.get(username);if(!profile||privateProfileAccounts.has(profile.userId)||refusals.has(username))return null;
+ return qualifiedHeaders.get(profile)??null;
+}
+export function receivedPublicProfileHeads():PublicProfileHead[]{return[...held.keys()].flatMap(username=>{const head=receivedPublicProfileHead(username);return head?[head]:[];});}
 /** The initial head already carries this profile. Its router is installed
  * after the trailing document; deliver that same metadata when its listener
  * exists, and never replay a source that has since been replaced or removed. */

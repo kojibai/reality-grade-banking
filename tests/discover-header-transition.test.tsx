@@ -56,7 +56,9 @@ beforeEach(async()=>{
 });
 afterEach(async()=>{
  if(root){await act(()=>root!.unmount());root=undefined;}
- expect(fetch).not.toHaveBeenCalled();document.body.replaceChildren();localStorage.clear();vi.unstubAllGlobals();vi.restoreAllMocks();
+ // Active Discover may observe new profile pointers after painting. Held
+ // collection/profile opening still cannot reopen any Source or manifest.
+ expect(vi.mocked(fetch).mock.calls.filter(([url])=>url!=='/api/bank/public-profile-directory')).toEqual([]);document.body.replaceChildren();localStorage.clear();vi.unstubAllGlobals();vi.restoreAllMocks();
 });
 
 describe('Discover accepted owner-header transitions',()=>{

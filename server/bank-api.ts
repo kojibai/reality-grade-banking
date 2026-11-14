@@ -12,12 +12,14 @@ import { publicNetworkMiddleware } from './public-network.js';
 import {publicLedgerProofMiddleware} from './public-ledger-proof.js';
 import { accountProofPublicMiddleware } from './account-proof-public.js';
 import {handlePublicProfile} from './public-profile.js';
+import {handlePublicProfileDirectory} from './public-profile-directory.js';
 import {handlePublicDocument} from './public-document.js';
 
 // One production entry reuses the same bounded transports as Vite. The
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
 export async function handleBankApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname==='/api/bank/public-profile-directory') return handlePublicProfileDirectory(request);
   if (url.pathname.startsWith('/api/bank/booking/')) return handlePublicBookingConversation(request);
   if (url.pathname==='/api/bank/business/dns-return'&&request.method==='GET')return dnsConnectionReturn(request);
   if (url.pathname==='/api/bank/business/dns')return relayBusinessDns(request);

@@ -1,13 +1,13 @@
 import {feedKind,type FeedKind} from '../public-feed/feed-items';
-import {readPublicProfileHeader,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from '../receiz/public-profile-header';
+import {curatePublicProfileHead,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from '../receiz/public-profile-header';
 import {profileAvatarUrl} from '../receiz/profile-avatar';
-import {publicAccountDisplayName} from '../receiz/account-name';
+import {publicAccountDisplayName,publicProfileUsername} from '../receiz/account-name';
 import {profileUsername,profilePageUsername} from '../receiz/public-profile';
 import type {PublicMarketItem} from '../receiz/public-market';
 export type DiscoveryProfileHead=PublicProfileHead&Readonly<{avatarFallback?:string}>;
 export type DiscoveryFilter='All'|'People'|FeedKind;
 export const discoveryOwnerName=(item:PublicMarketItem)=>publicAccountDisplayName({displayName:item.ownerDisplayName,username:item.ownerUsername,receivingUsername:item.ownerReceivingUsername},item.ownerUsername??'');
-export type DiscoveryPerson={username:string;receivingUsername?:string;name:string;avatarUrl:string|null;items:PublicMarketItem[]};
+export type DiscoveryPerson={username:string;receivingUsername?:string;name:string;avatarUrl:string|null;avatarProfile?:Readonly<Record<string,unknown>>;items:PublicMarketItem[]};
 const normalize=(value:string)=>value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
 const kinds:FeedKind[]=['image','book','audio','moment','video','essay','document','collectible'];
 /** An index of the existing public presentation; never proof or custody admission. */
@@ -18,13 +18,15 @@ export function buildDiscoveryIndex(rows:readonly PublicMarketItem[],heads:reado
   let person=people.get(username);if(!person){person={username,...(row.ownerReceivingUsername?{receivingUsername:row.ownerReceivingUsername}:{}),name:discoveryOwnerName(row),avatarUrl:row.ownerAvatarUrl??null,items:[]};people.set(username,person);}person.items.push(row);
  }
  for(const head of heads){
-  const profile=readPublicProfileHeader(head);
-  if(!profile||refused.has(profile.userId+'\0'+profile.username))continue;
-  const existing=people.get(profile.username);
-  if(existing?.items.some(item=>item.ownerIdentity?.userId!==profile.userId))continue;
-  const thumbnail=profileAvatarUrl(head.avatarFallback);
-  people.set(profile.username,{username:profile.username,receivingUsername:profile.receivingUsername,
-   name:profile.displayName,avatarUrl:!head.profile.avatarUrl?(thumbnail?.startsWith('data:image/webp;base64,')?thumbnail:existing?.items[0]?.ownerAvatarFallback?null:profile.avatarUrl):profile.avatarUrl,items:existing?.items??[]});
+  const selected=curatePublicProfileHead(head);if(!selected)continue;
+  const profile=selected.profile,username=String(profile.username),userId=String(profile.userId);
+  if(refused.has(userId+'\0'+username))continue;
+  const existing=people.get(username);
+  if(existing?.items.some(item=>item.ownerIdentity?.userId!==userId))continue;
+  const thumbnail=profileAvatarUrl(head.avatarFallback),custom=profileAvatarUrl(profile.avatarUrl),fallback=!custom&&thumbnail?.startsWith('data:image/webp;base64,')?thumbnail:null;
+  const receiving=typeof profile.receivingUsername==='string'&&publicProfileUsername(username,profile.receivingUsername)===profile.receivingUsername?profile.receivingUsername:undefined;
+  people.set(username,{username,receivingUsername:receiving,name:publicAccountDisplayName(profile,username),avatarUrl:custom??fallback,
+   ...(!custom&&!fallback&&!existing?.items[0]?.ownerAvatarFallback?{avatarProfile:profile}:{}),items:existing?.items??[]});
  }
  return {items,people:[...people.values()],entries:new Map(items.map(item=>[item.id,normalize(`${item.title} ${item.summary} ${item.ownerDisplayName??''} @${item.ownerUsername??''}`)]))};
 }

@@ -25,7 +25,8 @@ export function curatePublicProfileHead(input:unknown){
  const view=object(input),p=object(view.profile),viewer=object(view.viewer);
  if(!text(p.userId,256)||typeof p.username!=='string'||!/^[a-z0-9_]{3,24}$/.test(p.username)||p.isPrivate!==false||viewer.canView!==true)return null;
  const stats=object(view.stats),profile:Record<string,unknown>={...Object.fromEntries(profileFields.filter(key=>Object.hasOwn(p,key)).map(key=>[key,p[key]])),links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const row=object(value),label=text(row.label,80),url=link(row.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[]};
- return{profile,viewer:{canView:viewer.canView},stats:Object.fromEntries(statsFields.map(key=>[key,number(stats[key])])),...(Array.isArray(view.unavailableDecorators)&&view.unavailableDecorators.includes('engagement')?{unavailableDecorators:['engagement']}:{} )};
+ const decorators=Array.isArray(view.unavailableDecorators)?view.unavailableDecorators:[],unavailable=['engagement','profile-details'].filter(key=>decorators.includes(key));
+ return{profile,viewer:{canView:viewer.canView},stats:Object.fromEntries(statsFields.map(key=>[key,number(stats[key])])),...(unavailable.length?{unavailableDecorators:unavailable}:{} )};
 }
 /** Keep only the exact owner binding of an explicit public-view refusal.
  * Missing headers and revision hashes are never privacy decisions. */
@@ -52,6 +53,7 @@ export function publicProfileHeaderDisplayBasis(input:unknown):string|null{
 /** Header projection shared by full profile reads and the existing Market
  * response. PBI belongs to this profile, never to one of its Originals. */
 export function readPublicProfileHeader(input:unknown,expectedUsername?:string):PublicProfileHeader|null{
+ const decorators=object(input).unavailableDecorators;if(Array.isArray(decorators)&&decorators.includes('profile-details'))return null;
  const previous=input&&typeof input==='object'?selectedHeads.get(input):undefined;if(previous&&(expectedUsername===undefined||previous.username===expectedUsername))return previous;
  const view=curatePublicProfileHead(input);if(!view)return null;const p=view.profile;
  if(expectedUsername!==undefined&&p.username!==expectedUsername)return null;

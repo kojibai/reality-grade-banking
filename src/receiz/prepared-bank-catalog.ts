@@ -4,8 +4,9 @@ import {parseMarketCapSource,type MarketCapSource} from './market-projection/sou
 import {SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
 
 export {PREPARED_BANK_CATALOG_PATH} from './prepared-bank-cache';
-import {parsePublicMarket,rememberPublicMarketResponse,type PublicMarketCatalog} from './public-market';
-import {retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
+import {parsePublicMarket,rememberPublicMarketResponse,prepareHeldPublicMarketResponse,type PublicMarketCatalog} from './public-market';
+import {retainedDiscoveredPublicCatalog,publishDiscoveredPublicCatalog} from './asset-publication-adoption';
+import {restorePublicProfileDirectoryHeaders} from './public-profile-directory-retention';
 const MAX=32*1024*1024,HEX=/^[a-f0-9]{64}$/;
 export type PreparedBankReceipt={generation:string;build:string;bodySha256:string;state:'current'|'retained';coordinate:string;pendingCoordinate?:string};
 export type PreparedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;receipt:PreparedBankReceipt;fromCache?:true};
@@ -86,7 +87,17 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    if(!cached){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
    // Neither historical response form can replace the complete selected view.
-   if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){void cached.body?.cancel().catch(()=>{});bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+   const selected=retainedDiscoveredPublicCatalog()??marker?.publicMarketCatalog?.(),directory=cached.headers.get('x-bankeiz-profile-directory');
+   if(selected?.complete){
+    // The same cache read can hold unseen profile headers when localStorage
+    // was full. Recover those operands in the background, never its older
+    // membership/history or a prepared-document receipt.
+    if(cached.ok&&directory&&HEX.test(directory)&&/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')&&Number(cached.headers.get('content-length'))<=MAX){
+     const input=await untilAborted(cached.json(),signal),latest=retainedDiscoveredPublicCatalog()??marker?.publicMarketCatalog?.();
+     if(displayRevision===bootRevision&&latest===selected){const next=restorePublicProfileDirectoryHeaders(input,directory,selected);if(next!==selected){prepareHeldPublicMarketResponse(next);bareCatalog=immutable(next);publishDiscoveredPublicCatalog(next,undefined,selected);}}
+    }else void cached.body?.cancel().catch(()=>{});
+    bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;
+   }
    if(/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')){
     if(!cached.ok||Number(cached.headers.get('content-length'))>MAX)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
     const input=await untilAborted(cached.json(),signal);if(displayRevision!==bootRevision)return carried;

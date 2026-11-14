@@ -5,6 +5,8 @@ import type {PublicDocumentFormat} from '../core/public-document-format';
 import type {PublicMarketCatalog} from './public-market';
 import {parseMarketHistory,type MarketHistorySnapshot} from './market-projection/history';
 import type {CompactMarketHistory} from './market-projection/history-wire';
+import {inspectPublicMarketCatalog} from './public-market-catalog-inspection';
+export {inspectPublicMarketCatalog} from './public-market-catalog-inspection';
 
 /** Carried presentation bytes only; these never admit ownership or spending. */
 export type PublicMarketDocumentSeed={schema:'bank.public-market.document.v1';generation:string;path:string;catalog:PublicMarketCatalog;visibleCount:number;asOfPulse:number;format:PublicDocumentFormat;history?:CompactMarketHistory;capitalization?:MarketCapSource};
@@ -20,10 +22,12 @@ export function publicMarketDocumentSeedScript(seed:PublicMarketDocumentSeed,cat
  const {catalog,...metadata}=seed,value=catalogGzip?{...metadata,catalogGzip}:seed;
  return `<script id="public-market-seed" type="application/json">${JSON.stringify(value).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`;
 }
+/** Existing carried catalog display check, shared by inert public transports.
+ * This is never proof admission, ownership or a Source-currentness verdict. */
 function inspectSeed(value:unknown):PublicMarketDocumentSeed|null{
  try{
   const seed=value as PublicMarketDocumentSeed,items=seed?.catalog?.items;
-  if(seed.schema!=='bank.public-market.document.v1'||!/^[a-f0-9]{64}$/.test(seed.generation)||typeof seed.path!=='string'||!Number.isSafeInteger(seed.asOfPulse)||seed.asOfPulse<0||seed.asOfPulse>1e10||seed.catalog.complete!==true||!Array.isArray(items)||items.length>10000||!Number.isSafeInteger(seed.visibleCount)||seed.visibleCount<0||seed.visibleCount>items.length||new Set(items.map(item=>item.id)).size!==items.length||items.some(item=>typeof item.id!=='string'||item.authority!=='projection-only'||item.canTrade!==false))return null;
+  if(seed.schema!=='bank.public-market.document.v1'||!/^[a-f0-9]{64}$/.test(seed.generation)||typeof seed.path!=='string'||!Number.isSafeInteger(seed.asOfPulse)||seed.asOfPulse<0||seed.asOfPulse>1e10||!inspectPublicMarketCatalog(seed.catalog)||!Array.isArray(items)||!Number.isSafeInteger(seed.visibleCount)||seed.visibleCount<0||seed.visibleCount>items.length)return null;
   if(typeof seed.format?.locale!=='string'||seed.format.locale.length>128||typeof seed.format.timeZone!=='string'||seed.format.timeZone.length>128)return null;
   new Intl.DateTimeFormat(seed.format.locale,{timeZone:seed.format.timeZone});return seed;
  }catch{return null;}

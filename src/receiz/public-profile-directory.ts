@@ -1,0 +1,64 @@
+import {curatePublicProfileHead,curatePublicProfileHeadRefusal,publicProfileHeaderDisplayBasis,type PublicProfileHead,type PublicProfileHeadRefusal} from './public-profile-header';
+import {PROFILE_DIRECTORY_PAGE_SIZE,publicProfileDescriptor,publicProfileDirectoryUid,publicProfileDirectoryBindings,type PublicProfileDescriptor} from './public-profile-directory-contract';
+import {prepareHeldPublicMarketResponse,retainPublicProfileHeaders,reusePublicMarketResponse,type PublicMarketCatalog} from './public-market';
+import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
+type Header=PublicProfileHead|PublicProfileHeadRefusal;
+function heads(catalog:PublicMarketCatalog){return[...(catalog.publicProfileHeads??[]),...(catalog.publicProfileHeadRefusals??[])];}
+function basis(head:Header|undefined){return head?publicProfileHeaderDisplayBasis(head)??JSON.stringify(head):null;}
+function hints(catalog:PublicMarketCatalog,after:string|undefined){return heads(catalog).flatMap(head=>{const p=head.profile,descriptor=publicProfileDescriptor({userId:p.userId,username:p.username,updatedAt:'updatedAt'in p?p.updatedAt??null:null});return descriptor&&descriptor.userId>(after??'')?[descriptor]:[];}).sort((a,b)=>a.userId.localeCompare(b.userId)).slice(0,PROFILE_DIRECTORY_PAGE_SIZE);}
+function compatible(next:PublicProfileHead,previous:PublicProfileHead|undefined):PublicProfileHead{
+ if(!previous||previous.profile.userId!==next.profile.userId||previous.profile.username!==next.profile.username)return next;
+ if(next.unavailableDecorators?.includes('profile-details')&&!previous.unavailableDecorators?.includes('profile-details')){
+  return{...previous,profile:{...previous.profile,...next.profile,links:previous.profile.links,updatedAt:previous.profile.updatedAt}};
+ }
+ const p=next.profile,old=previous.profile,retained:Record<string,unknown>={};
+ for(const key of ['avatarUrl','bannerUrl','creationKaiMicroPulse','creationKaiSource','authorshipPbiSignedAt','authorshipPbiSignedKaiMicroPulse','receivingUsername'])if(!Object.hasOwn(p,key)&&Object.hasOwn(old,key))retained[key]=old[key];
+ if(old.authorshipVerified===true&&typeof old.authorshipPbiReceiptHash==='string'&&/^[a-f0-9]{64}$/.test(old.authorshipPbiReceiptHash)&&!(p.authorshipVerified===true&&typeof p.authorshipPbiReceiptHash==='string'&&/^[a-f0-9]{64}$/.test(p.authorshipPbiReceiptHash))){retained.authorshipVerified=true;retained.authorshipPbiReceiptHash=old.authorshipPbiReceiptHash;}
+ return Object.keys(retained).length?{...next,profile:{...p,...retained}}:next;
+}
+/** One background walk for active Discover consumers. Existing data is never
+ * gated by this delivery; every pass starts at the beginning to find new IDs
+ * that sort before a previously exhausted cursor. */
+export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof fetch;selected():PublicMarketCatalog|null;publish(next:PublicMarketCatalog,previous:PublicMarketCatalog):void}){
+ let consumers=0,pending:Promise<void>|undefined,controller:AbortController|undefined;
+ async function run(signal:AbortSignal){
+  const initial=dependencies.selected();if(!initial?.complete)return;
+  const expected=new Map(heads(initial).map(head=>[String(head.profile.userId),basis(head)])),patches=new Map<string,Header>();let after:string|undefined;
+  try{for(;;){
+   if(signal.aborted)return;const current=dependencies.selected();if(!current?.complete)return;
+   const known=hints(current,after),response=await dependencies.fetch('/api/bank/public-profile-directory'+(after?'?after='+after:''),{credentials:'omit',signal,headers:known.length?{'x-receiz-held-profile-heads':JSON.stringify(known)}:undefined});
+   if(!response.ok)throw Error('PUBLIC_PROFILE_DIRECTORY_UNAVAILABLE');
+   const input=await response.json();if(input?.ok!==true||input.schema!=='bank.public-profile-directory.v1'||!Array.isArray(input.profiles)||input.profiles.length>PROFILE_DIRECTORY_PAGE_SIZE||!Array.isArray(input.publicProfileHeads)||input.publicProfileHeads.length>2*PROFILE_DIRECTORY_PAGE_SIZE||input.nextCursor!==null&&(!publicProfileDirectoryUid(input.nextCursor)||input.nextCursor<=(after??'')))throw Error('PUBLIC_PROFILE_DIRECTORY_INVALID');
+   const descriptors=input.profiles.map(publicProfileDescriptor) as (PublicProfileDescriptor|null)[],bindings=new Map<string,PublicProfileDescriptor>();let last=after??'';
+   for(const profile of descriptors){if(!profile||profile.userId<=last||input.nextCursor!==null&&profile.userId>input.nextCursor)throw Error('PUBLIC_PROFILE_DIRECTORY_INVALID');last=profile.userId;bindings.set(profile.userId,profile);}
+   for(const profile of known)if((input.nextCursor===null||profile.userId<=input.nextCursor)&&!bindings.has(profile.userId))bindings.set(profile.userId,profile);
+   for(const raw of input.publicProfileHeads){const head=curatePublicProfileHeadRefusal(raw)??curatePublicProfileHead(raw),binding=head&&bindings.get(String(head.profile.userId));if(head&&binding?.username===head.profile.username)patches.set(String(head.profile.userId),head);}
+   if(input.nextCursor===null)break;after=input.nextCursor;
+  }}catch{/* Successful earlier pages still join the same held family. */}
+  await adopt(patches,expected,signal);
+ }
+ async function adopt(patches:Map<string,Header>,expected:Map<string,string|null>,signal:AbortSignal){
+  if(signal.aborted||!patches.size)return;
+  // Rebase only the changed owner bindings. An unrelated quote/Original update
+  // must remain selected, and a late header cannot replace a newer owner view.
+  const current=dependencies.selected();if(!current?.complete)return;const existing=new Map(heads(current).map(head=>[String(head.profile.userId),head])),accepted:Header[]=[];
+  const bound=publicProfileDirectoryBindings(current);
+  for(const [uid,patch]of patches)if(bound({userId:patch.profile.userId,username:patch.profile.username})&&basis(existing.get(uid))===(expected.get(uid)??null))accepted.push(curatePublicProfileHead(patch)?compatible(patch as PublicProfileHead,curatePublicProfileHead(existing.get(uid))??undefined):patch);
+  if(!accepted.length)return;
+  const refused=accepted.flatMap(value=>{const policy=curatePublicProfileHeadRefusal(value);return policy?[policy]:[];}),positive=accepted.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];});
+  let next=retainPublicProfileHeaders({...current,publicProfileHeads:positive,publicProfileHeadRefusals:refused},current);
+  const selection=(value:PublicMarketCatalog)=>JSON.stringify(heads(value).sort((a,b)=>String(a.profile.userId).localeCompare(String(b.profile.userId))));
+  const before=selection(current),serial=selection(next);if(serial===before)return;
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(serial));if(signal.aborted)return;
+  const latest=dependencies.selected();if(!latest?.complete||selection(latest)!==before)return;
+  next={...latest,publicProfileHeads:next.publicProfileHeads,publicProfileHeadRefusals:next.publicProfileHeadRefusals,publicProfileHeadsRevision:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')};
+  prepareHeldPublicMarketResponse(latest);reusePublicMarketResponse(latest,next);dependencies.publish(next,latest);
+ }
+ const refresh=()=>{if(pending)return pending;if(!consumers)return Promise.resolve();controller=new AbortController();const attempt=run(controller.signal);pending=attempt;void attempt.finally(()=>{if(pending===attempt){pending=undefined;controller=undefined;}}).catch(()=>{});return attempt;};
+ return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
+}
+const selections=new Set<()=>PublicMarketCatalog|null>();
+const observer=createPublicProfileDirectoryObserver({fetch:(input,init)=>fetch(input,init),selected:()=>retainedDiscoveredPublicCatalog()??[...selections].map(read=>read()).find(value=>value?.complete)??null,publish:(next,previous)=>publishDiscoveredPublicCatalog(next,undefined,previous)});
+export function subscribePublicProfileDirectory(selected:()=>PublicMarketCatalog|null){selections.add(selected);const stop=observer.subscribe();return()=>{selections.delete(selected);stop();};}
+export const observePublicProfileDirectory=observer.refresh;
+export const receivePublicProfileForDiscovery=observer.receive;

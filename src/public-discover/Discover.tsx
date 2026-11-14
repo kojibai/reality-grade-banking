@@ -6,25 +6,31 @@ import {MarketFeedPopover as Viewer} from '../features/market/MarketFeedPopover'
 import {DiscoveryVideo} from './DiscoveryVideo';
 import {BankMark} from '../components/BankMark';
 import {ProfileAvatar} from '../components/ProfileAvatar';
+import {publicProfileAvatar} from '../receiz/profile-artwork';
 import {PublicOwnerAvatar} from '../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../features/collectibles/PublicCollectibleArtwork';
 import {readAccountAppearance,subscribeAccountAppearance} from '../receiz/account-appearance';
 import {observePublicMarketMembership,samePublicMarketMembership,safeReceizArtworkUrl,type PublicMarketCatalog,type PublicMarketItem} from '../receiz/public-market';
-import {profilePagePath} from '../receiz/public-profile';
+import {profilePagePath,receivedPublicProfileHead,receivedPublicProfileHeads} from '../receiz/public-profile';
 import {appendFeedItems,feedKind,feedText,refreshFeedItems} from '../public-feed/feed-items';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
 import {preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/prepared-bank-catalog';
 import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
+import {observePublicProfileDirectory,receivePublicProfileForDiscovery,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
 import './discover.css';
 const Document=lazy(()=>import('../public-feed/FeedDocument'));
 const categories:[DiscoveryFilter,string][]=[['All','All'],['audio','Music'],['video','Videos'],['book','Books'],['image','Images'],['essay','Essays'],['moment','Moments'],['document','Documents'],['collectible','Collectibles'],['People','People']];
 const icons={image:ImageIcon,audio:Music2,video:Play,book:BookOpen,essay:FileText,moment:FileText,document:FileText,collectible:GalleryVerticalEnd};
+function PersonAvatar({person}:{person:DiscoveryPerson}){
+ const avatar=useMemo(()=>person.avatarUrl??(person.avatarProfile?publicProfileAvatar(person.avatarProfile):null),[person.avatarUrl,person.avatarProfile]);
+ return person.items[0]?<PublicOwnerAvatar item={person.items[0]} src={avatar} name={person.name}/>:<ProfileAvatar src={avatar} name={person.name}/>;
+}
 function People({people,onAll,active,expanded=false}:{people:DiscoveryPerson[];onAll?():void;active:boolean;expanded?:boolean}){
  const publicPeople=people.filter(person=>profileUsernameLabel(person.username,person.receivingUsername));
  const [shown,setShown]=useState(20),row=useRef<HTMLDivElement>(null),last=useRef<HTMLAnchorElement>(null);
  useEffect(()=>{if(!active||shown>=publicPeople.length||!row.current||!last.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{root:expanded?null:row.current,rootMargin:expanded?'400px 0px':'0px 400px'});observer.observe(last.current);return()=>observer.disconnect();},[active,shown,publicPeople.length,expanded]);
- return <section className="discover-people" aria-label="People to discover"><div className="discover-section-heading"><h2>People to discover</h2>{onAll&&<button onClick={onAll}>See all<ArrowRight size={15}/></button>}</div><div ref={row} className={'discover-people-list'+(expanded?' is-expanded':'')}>{publicPeople.slice(0,shown).map((person,i)=><a ref={i===Math.min(shown,publicPeople.length)-1?last:undefined} key={person.username} href={profilePagePath(profileUsernameLabel(person.username,person.receivingUsername))}>{person.items[0]?<PublicOwnerAvatar item={person.items[0]} src={person.avatarUrl} name={person.name}/>:<ProfileAvatar src={person.avatarUrl} name={person.name}/>}<strong>{person.name}</strong><span>@{profileUsernameLabel(person.username,person.receivingUsername)}</span></a>)}</div>{expanded&&shown<publicPeople.length&&<div className="discover-more"><button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button></div>}</section>;
+ return <section className="discover-people" aria-label="People to discover"><div className="discover-section-heading"><h2>People to discover</h2>{onAll&&<button onClick={onAll}>See all<ArrowRight size={15}/></button>}</div><div ref={row} className={'discover-people-list'+(expanded?' is-expanded':'')}>{publicPeople.slice(0,shown).map((person,i)=><a ref={i===Math.min(shown,publicPeople.length)-1?last:undefined} key={person.username} href={profilePagePath(profileUsernameLabel(person.username,person.receivingUsername))}><PersonAvatar person={person}/><strong>{person.name}</strong><span>@{profileUsernameLabel(person.username,person.receivingUsername)}</span></a>)}</div>{expanded&&shown<publicPeople.length&&<div className="discover-more"><button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button></div>}</section>;
 }
 function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;eager:boolean;active:boolean}){
  const kind=feedKind(item),text=kind==='moment'||kind==='essay',image=text||kind==='document'?null:safeReceizArtworkUrl(item.artworkUrl),Icon=icons[kind],ref=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(false);
@@ -68,6 +74,7 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   }
   const observer=setInterval(()=>{
    if(document.visibilityState!=='visible')return;
+   void observePublicProfileDirectory().catch(()=>{});
    const selected=selectedCatalog.current,revision=selected?.revision??'';
    void observePublicMarketMembership(revision,selected?.publicProfileHeadsRevision).then(next=>{
     if(!abort.signal.aborted&&next?.complete&&(selectedCatalog.current===selected||samePublicMarketMembership(selectedCatalog.current,selected))&&!samePublicMarketMembership(next,selected))publishDiscoveredPublicCatalog(next,undefined,selected);
@@ -75,6 +82,18 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   },60_000);
   return()=>{abort.abort();unsubscribe();clearInterval(observer);};
  },[active]);
+ useEffect(()=>{
+  if(!active||!catalog?.complete)return;
+  const stop=subscribePublicProfileDirectory(()=>selectedCatalog.current),changed=(event:Event)=>{
+   const username=(event as CustomEvent<{username?:unknown}>).detail?.username,current=selectedCatalog.current;
+   if(typeof username==='string'&&(current?.publicProfileHeads?.some(head=>head.profile.username===username||head.profile.receivingUsername===username)||current?.items.some(item=>item.ownerUsername===username)))return;
+   void observePublicProfileDirectory().catch(()=>{});
+  },received=(event:Event)=>{const username=(event as CustomEvent<{username?:unknown}>).detail?.username;if(typeof username==='string'){const head=receivedPublicProfileHead(username);if(head)void receivePublicProfileForDiscovery(head).catch(()=>{});}};
+  window.addEventListener('bankeiz:profile-updated',changed);
+  window.addEventListener('bankeiz:profile-metadata',received);
+  void receivePublicProfileForDiscovery(receivedPublicProfileHeads()).catch(()=>{});
+  return()=>{window.removeEventListener('bankeiz:profile-updated',changed);window.removeEventListener('bankeiz:profile-metadata',received);stop();};
+ },[active,!!catalog?.complete]);
  useEffect(()=>subscribeAssetPublicationAdmissions(catalog=>{
   // Undefined notifications are local admission/delivery changes. This surface
   // adopts only a dated public response, never the pending local overlay.

@@ -1,4 +1,4 @@
-import {curatePublicProfileHead,curatePublicProfileHeadRefusal,readPublicProfileHeads,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from './public-profile-header.js';
+import {readPublicProfileHeads,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from './public-profile-header.js';
 import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
 import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicCarriedText,type PublicCarriedText} from './public-carried-text.js';
@@ -17,6 +17,7 @@ import {publicMediaPlayback,type PublicPlayback} from './public-asset-embed.js';
 import {publicDocumentUrl} from './public-document.js';
 import {publicBookSource,type PublicBookSource} from './public-book.js';
 import {profileAvatarUrl} from './profile-avatar.js';
+import {createHeldPublicMarketInput,readHeldPublicMarketInput} from './public-market-held-catalog.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   originalCreator?:Readonly<{userId:string|null;username:string|null;displayName:string|null}>;
@@ -179,6 +180,9 @@ export function publicMaterialOriginalUrl(input: unknown): string | null {
   } catch { return null; }
 }
 export function parsePublicMarket(membership: unknown, snapshot?: unknown): PublicMarketCatalog {
+  if(record(membership).schema==='bank.public-market.held-catalog.v1'){
+   const held=readHeldPublicMarketInput(membership);if(!held)throw Error('Receiz held public collection is unavailable.');return mergePublicQuotes(held,snapshot);
+  }
   const envelope = record(membership), transport = record(envelope.transport), meta = record(transport.publicMembership);
   if (envelope.ok !== true || !Array.isArray(transport.publicOriginals) || transport.publicOriginals.length > 100_000) throw new Error('Receiz public collection is unavailable.');
   const items: PublicMarketItem[] = [], ids = new Set<string>();
@@ -243,13 +247,9 @@ export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:
 }
 function carryPublicProfileHeaders(input:unknown,catalog:PublicMarketCatalog,previous?:PublicMarketCatalog|null):unknown{
  const source=record(input),transport=record(source.transport),held=retainPublicProfileHeaders(catalog,previous),selected=[...(held.publicProfileHeads??[]),...(held.publicProfileHeadRefusals??[])];
- if(!selected.length)return input;
- const curate=(value:unknown)=>curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value),raw=Array.isArray(transport.publicProfileHeads)?transport.publicProfileHeads:[],keys=new Set(raw.flatMap(value=>{const head=curate(value);return head?[head.profile.userId+':'+head.profile.username]:[];}));
- const missing=selected.filter(head=>!keys.has(head.profile.userId+':'+head.profile.username)),refused=new Set((held.publicProfileHeadRefusals??[]).map(head=>head.profile.userId));
- if(!missing.length&&!raw.some(value=>{const refusal=curatePublicProfileHeadRefusal(value);return refusal?JSON.stringify(value)!==JSON.stringify(refusal):refused.has(String(curatePublicProfileHead(value)?.profile.userId));}))return input;
- const heads=new Map<string,NonNullable<ReturnType<typeof curate>>>();
- for(const value of [...missing,...raw]){const head=curate(value);if(head&&(curatePublicProfileHeadRefusal(head)||!refused.has(String(head.profile.userId))))heads.set(head.profile.userId+':'+head.profile.username,head);}
- return{...source,transport:{...transport,publicProfileHeads:[...heads.values()]}};
+ if(source.schema==='bank.public-market.held-catalog.v1')return source.catalog===held?input:{...source,catalog:held};
+ if(JSON.stringify(transport.publicProfileHeads??[])===JSON.stringify(selected)&&transport.publicProfileHeadsRevision===held.publicProfileHeadsRevision)return input;
+ return{...source,transport:{...transport,publicProfileHeads:selected,...(held.publicProfileHeadsRevision?{publicProfileHeadsRevision:held.publicProfileHeadsRevision}:{})}};
 }
 
 // Locators are public display projections, retained only for the exact artifact
@@ -285,7 +285,7 @@ export function validatePublicQuotes(snapshot: unknown): unknown {
   if (envelope.ok !== true || data.schema !== 'receiz.market.public-snapshot.v1' || !Array.isArray(data.liveMarkets) || data.liveMarkets.length > 100_000) throw new Error('Public quotes returned an unsupported response.');
   return snapshot;
 }
-const publicMarketResponses=new WeakMap<PublicMarketCatalog,{response:Response|null;input:unknown;basis:PublicMarketCatalog;status:number;contentType:string;retained?:true;snapshot?:unknown;quotes?:unknown}>();
+const publicMarketResponses=new WeakMap<PublicMarketCatalog,{response:Response|null;input:unknown;basis:PublicMarketCatalog;status:number;contentType:string;retained?:true;directory?:true;snapshot?:unknown;quotes?:unknown}>();
 function publicQuoteSnapshot(snapshot:unknown,catalog:PublicMarketCatalog,previous?:unknown){
  validatePublicQuotes(snapshot);const data=record(record(snapshot).data),prior=record(record(previous).data),rows=new Map<string,RecordValue>();
  for(const raw of [...(Array.isArray(prior.liveMarkets)?prior.liveMarkets:[]),...data.liveMarkets as unknown[]]){const quote=record(raw),id=text(quote.itemId,256);if(id&&quote.visibility==='public')rows.set(id,quote);}
@@ -302,7 +302,8 @@ export function rememberPublicMarketResponse(catalog:PublicMarketCatalog,input:u
  if(!catalog.complete)return;const source=record(input);let quotes:unknown;
  if(source.snapshot)try{quotes=publicQuoteSnapshot(source.snapshot,catalog);}catch{/* Unsupported quote fields are not retained. */}
  const selectedInput=source.snapshot?{...source,snapshot:quotes}:input;
- publicMarketResponses.set(catalog,{response:source.snapshot?null:response,input:selectedInput,basis:catalog,status:response?.status??200,contentType:response?.headers.get('content-type')??'application/json',...(quotes?{quotes}:{})});
+ const directory=typeof source.bankProfileDirectoryRevision==='string'&&/^[a-f0-9]{64}$/.test(source.bankProfileDirectoryRevision)&&source.bankProfileDirectoryRevision===catalog.publicProfileHeadsRevision;
+ publicMarketResponses.set(catalog,{response:source.snapshot?null:response,input:selectedInput,basis:catalog,status:response?.status??200,contentType:response?.headers.get('content-type')??'application/json',...(quotes?{quotes}:{}),...(directory?{directory:true as const}:{})});
  if(source.snapshot)void response?.body?.cancel().catch(()=>{});
 }
 let restoredPublicMarketResponse:PublicMarketCatalog|null|undefined;
@@ -331,15 +332,21 @@ function carriedMomentInput(input:unknown,basis:PublicMarketCatalog,selected:Pub
 /** Retain the response selected by an existing consumer. Its supported optional
  * snapshot carries public quote fields through their existing source guards. */
 export function reusePublicMarketResponse(previous:PublicMarketCatalog,selected:PublicMarketCatalog):void{const held=publicMarketResponses.get(previous);if(held)publicMarketResponses.set(selected,held);}
+/** Give an already-selected HTML family the same optional display retention
+ * channel as a parsed response. No fetch, proof work or new storage occurs. */
+export function prepareHeldPublicMarketResponse(catalog:PublicMarketCatalog):void{
+ if(!publicMarketResponses.has(catalog)){const input=createHeldPublicMarketInput(catalog);if(input)rememberPublicMarketResponse(catalog,input);}const held=publicMarketResponses.get(catalog);if(held)held.directory=true;
+}
 export function retainPublicMarket(catalog:PublicMarketCatalog,snapshot?:unknown,selected=catalog,previousCatalog?:PublicMarketCatalog|null):void{
  const inherited=previousCatalog?publicMarketResponses.get(previousCatalog)?.quotes:undefined;snapshot??=inherited;
  const held=publicMarketResponses.get(catalog);if(!held)return;publicMarketResponses.set(selected,held);
  const carried=carryPublicProfileHeaders(held.input,selected,previousCatalog),input=carriedMomentInput(carried,held.basis,selected),changed=input!==held.input;if(changed){held.input=input;void held.response?.body?.cancel().catch(()=>{});held.response=null;}
  if(!changed&&held.retained&&(!snapshot||held.snapshot===snapshot))return;
- const quotes=snapshot?publicQuoteSnapshot(snapshot,selected,held.quotes??inherited):held.quotes,retainedInput=quotes?{...record(held.input),snapshot:quotes}:held.input,serialized=JSON.stringify(retainedInput);
+ const quotes=snapshot?publicQuoteSnapshot(snapshot,selected,held.quotes??inherited):held.quotes,baseInput=quotes?{...record(held.input),snapshot:quotes}:held.input,retainedInput=held.directory&&selected.publicProfileHeadsRevision?{...record(baseInput),bankProfileDirectoryRevision:selected.publicProfileHeadsRevision}:baseInput,serialized=JSON.stringify(retainedInput);
  let previous:string|null|undefined,saved=false;
  try { previous=localStorage.getItem('receiz-bank-public-discovery-v2');localStorage.setItem('receiz-bank-public-discovery-v2',serialized);saved=true; } catch { /* Storage capacity does not change source availability. */ }
- const exact=held.response&&!snapshot?new Response(held.response.body,{status:held.status,headers:{'content-type':held.contentType}}):preparedPublicCatalogCache?new Response(serialized,{status:held.status,headers:{'content-type':held.contentType}}):null;
+ const directory:Record<string,string>=held.directory&&selected.publicProfileHeadsRevision?{'x-bankeiz-profile-directory':selected.publicProfileHeadsRevision}:{};
+ const exact=held.response&&!snapshot&&!held.directory?new Response(held.response.body,{status:held.status,headers:{'content-type':held.contentType}}):preparedPublicCatalogCache?new Response(serialized,{status:held.status,headers:{'content-type':held.contentType,...directory}}):null;
  held.response=null;held.retained=true;if(snapshot)held.snapshot=snapshot;if(quotes)held.quotes=quotes;
  if(exact)void preparedPublicCatalogCache!.write(exact,()=>{if(!saved&&previous!==undefined)try{if(localStorage.getItem('receiz-bank-public-discovery-v2')===previous)localStorage.removeItem('receiz-bank-public-discovery-v2');}catch{/* A newer or unavailable copy stays untouched. */}}).catch(()=>{/* Optional display retention never gates the selected response. */});
 }
@@ -350,7 +357,10 @@ const publicMembershipReads=new Map<string,Promise<PublicMarketCatalog|null>>();
 async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint(),heldRevision?:string,heldHeadsRevision?:string):Promise<PublicMarketCatalog|null>{
   const prior=selectedPublicMembership,epoch=++publicMembershipEpoch;
   const held=heldRevision===undefined?null:{revision:heldRevision,publicProfileHeadsRevision:heldHeadsRevision};
-  const etag=held?(samePublicMarketMembership(prior?.catalog,held)?prior?.etag:!heldHeadsRevision&&/^[a-f0-9]{64}$/.test(heldRevision!)?'"'+heldRevision+'"':undefined):prior?.etag;
+  // A locally received profile header can advance independently. Reuse the
+  // actual last Source ETag for this membership instead of downloading its
+  // unchanged complete body merely because the held header selection grew.
+  const etag=held?(prior?.catalog.revision===held.revision?prior.etag:!heldHeadsRevision&&/^[a-f0-9]{64}$/.test(heldRevision!)?'"'+heldRevision+'"':undefined):prior?.etag;
   const response=await fetch('/api/bank/public-market/membership'+(afterPublication?'?afterPublication='+afterPublication:''),{signal,credentials:'omit',headers:etag&&!afterPublication?{'If-None-Match':etag}:undefined});
   if(response.status===304)return heldRevision?null:prior?.catalog??null;
   if(!response.ok)throw new Error('The public Market could not be refreshed.');
