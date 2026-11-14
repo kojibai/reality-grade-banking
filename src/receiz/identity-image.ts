@@ -20,10 +20,10 @@ function loadArtwork(): Promise<IdentityArtworkRuntime> {
   return runtime ??= import(/* @vite-ignore */ url).catch(error => { runtime = undefined; throw error; });
 }
 
-interface Stamp { creationKaiPulse: string; accountHeadKaiPulse: string | null; savedKaiPulse: string }
+export interface Stamp { creationKaiPulse: string; accountHeadKaiPulse: string | null; savedKaiPulse: string }
 
 /** Same 1600 × 600 artwork and Kai overlay used by Receiz's PNG export. */
-async function rasterizeArtwork(svg: string, stamp: Stamp): Promise<Uint8Array> {
+export async function rasterizeArtwork(svg: string, stamp: Stamp): Promise<Uint8Array> {
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   try {
     const image = new Image();

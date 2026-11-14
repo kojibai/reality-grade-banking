@@ -68,3 +68,22 @@ it('links a generated profile by its full public name without another account re
   expect(prepare).not.toHaveBeenCalled();
  }finally{h.close();}
 });
+
+it('prepares the optional PNG only on backup click, coalesces taps and keeps exact original download after failure',async()=>{
+ let finish!:(value:{bytes:Uint8Array;filename:string;phrase:string})=>void;
+ const exported=vi.fn(()=>new Promise<{bytes:Uint8Array;filename:string;phrase:string}>(done=>{finish=done;})),backup=vi.fn(()=>({bytes:new Uint8Array([1,2]),filename:'original.receizkey',phrase:''}));
+ const identity={...unresolvedIdentity(async()=>'maya'),backup,exportIdentityRecord:exported},h=profileHarness(identity),downloads:string[]=[];
+ const url=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:synthetic-backup'),click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(this:HTMLAnchorElement){downloads.push(this.download);});
+ try{
+  expect(exported).not.toHaveBeenCalled();expect(backup).not.toHaveBeenCalled();
+  const button=h.host.querySelector<HTMLButtonElement>('.primary-button')!;await act(async()=>{button.click();button.click();});expect(exported).toHaveBeenCalledTimes(1);expect(downloads).toEqual([]);expect(button.disabled).toBe(true);
+  await act(async()=>finish({bytes:new Uint8Array([137,80,78,71]),filename:'identity_record_maya.png',phrase:''}));expect(downloads).toEqual(['identity_record_maya.png']);expect(backup).not.toHaveBeenCalled();
+  exported.mockRejectedValueOnce(Error('IDENTITY_RECORD_PRESENTATION_REQUIRED'));await act(async()=>button.click());expect(h.host.textContent).toContain('PNG');expect(downloads).toHaveLength(1);
+  const original=[...h.host.querySelectorAll('button')].find(node=>node.textContent?.includes('Download original Identity Record'));expect(original).toBeTruthy();await act(async()=>original!.click());expect(backup).toHaveBeenCalledTimes(1);expect(downloads.at(-1)).toBe('original.receizkey');
+ }finally{h.close();url.mockRestore();click.mockRestore();}
+});
+
+it('does not download a previous identity backup after account selection changes during export',async()=>{
+ let finish!:(value:{bytes:Uint8Array;filename:string;phrase:string})=>void;const first={...unresolvedIdentity(async()=>'maya'),backup:vi.fn(),exportIdentityRecord:()=>new Promise<{bytes:Uint8Array;filename:string;phrase:string}>(done=>{finish=done;})},h=profileHarness(first),download=vi.spyOn(URL,'createObjectURL');
+ try{await act(async()=>h.host.querySelector<HTMLButtonElement>('.primary-button')!.click());h.render(unresolvedIdentity(async()=>'new_owner'));await act(async()=>finish({bytes:new Uint8Array([1]),filename:'previous.png',phrase:''}));expect(download).not.toHaveBeenCalled();expect(h.host.textContent).not.toContain('original file');}finally{h.close();download.mockRestore();}
+});

@@ -15,6 +15,8 @@ const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({d
 
 export function IdentityProfile({ identity, onForget, onRefresh, active=true, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
+  const [backupBusy,setBackupBusy]=useState<OpenIdentity|null>(null),[backupError,setBackupError]=useState<{owner:OpenIdentity;message:string}|null>(null);
+  const backupPending=useRef<OpenIdentity|null>(null);
   const [vaultsOpen,setVaultsOpen]=useState<{owner:OpenIdentity;mode:'home'|'create'}|null>(null);
   // Resume the child after the owning Identity modal has rejoined the top layer.
   const [vaultsActive,setVaultsActive]=useState(false);
@@ -22,7 +24,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
   useEffect(()=>{if(active&&vaultsEntry==='create'&&identity.vaults){setVaultsOpen({owner:identity,mode:'create'});onVaultsEntryConsumed?.();}},[active,vaultsEntry,identity,onVaultsEntryConsumed]);
   const [passkeyBusy,setPasskeyBusy]=useState(false),[passkeyConnected,setPasskeyConnected]=useState(false),[passkeyError,setPasskeyError]=useState('');
   const current=useRef<OpenIdentity|null>(identity),passkeyPending=useRef(false);
-  useEffect(()=>{current.current=identity;setPasskeyConnected(false);return()=>{current.current=null;};},[identity]);
+  useEffect(()=>{current.current=identity;setPasskeyConnected(false);setBackup(false);setBackupError(null);return()=>{current.current=null;};},[identity]);
   const connectPasskey=async()=>{
     if(passkeyPending.current||passkeyConnected)return;
     passkeyPending.current=true;setPasskeyBusy(true);setPasskeyError('');
@@ -53,10 +55,17 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     finally{if(profilePending.current===identity)profilePending.current=null;if(current.current===identity)setProfileOpening(null);}
   };
   const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(knownName??publicId)?.authorshipVerified;
- const backupId = () => {
-    const held = identity.backup(), url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
+ const downloadBackup = (held:ReturnType<OpenIdentity['backup']>) => {
+    const url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
     const link = document.createElement('a'); link.href = url; link.download = held.filename; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1_000); setBackup(true);
+  };
+  const backupId=async()=>{
+    if(backupPending.current===identity)return;
+    backupPending.current=identity;setBackupBusy(identity);setBackupError(null);
+    try{const held=identity.exportIdentityRecord?await identity.exportIdentityRecord():identity.backup();if(current.current===identity)downloadBackup(held);}
+    catch{if(current.current===identity)setBackupError({owner:identity,message:'Your Identity Record PNG could not be prepared. Your original file is unchanged.'});}
+    finally{if(backupPending.current===identity)backupPending.current=null;if(current.current===identity)setBackupBusy(null);}
   };
   const remove = async () => {
     setRemovalError('');
@@ -73,7 +82,8 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     {identity.profile&&<QuickProfileEditor identity={identity} username={knownName??publicId}/>}
     {profileName?<a className="identity-public-profile-link" href={profilePagePath(profileName)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
     {profileError?.owner===identity&&<p className="error-message" role="alert">{profileError.message}</p>}
-    <button className="primary-button" onClick={backupId}><IdentityRecordIcon action="save" size={20}/>Back up my Identity Record</button>
+    <button className="primary-button" disabled={backupBusy===identity} onClick={()=>void backupId()}><IdentityRecordIcon action="save" size={20}/>{backupBusy===identity?'Preparing Identity Record':'Back up my Identity Record'}</button>
+    {backupError?.owner===identity&&<div role="alert"><p className="body-copy small-copy">{backupError.message}</p><button className="text-button" onClick={()=>{if(current.current===identity)downloadBackup(identity.backup());}}>Download original Identity Record</button></div>}
     {backup && <div className="identity-import profile-backup">
       <p className="body-copy small-copy">{identity.needsPhrase ? 'Save this recovery phrase separately from your downloaded Identity Record. It unlocks your signing key on another device.' : 'Your Identity Record opens without an unlock phrase.'}</p>
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}

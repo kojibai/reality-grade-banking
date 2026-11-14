@@ -1,6 +1,13 @@
 import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
 import {publicProfileArtwork} from './profile-artwork.js';
-export interface PublicProfileHeader {
+import {accountCreationPresentation,type AccountPresentation} from './account-presentation';
+type ArtworkCoordinates=Pick<AccountPresentation,'creationKaiMicroPulse'|'creationKaiSource'|'authorshipPbiSignedAt'|'authorshipPbiSignedKaiMicroPulse'>;
+/** Compact public presentation only; never identity or account admission. */
+export function copyProfileArtworkCoordinates(value:Record<string,unknown>):ArtworkCoordinates{
+ const fields=accountCreationPresentation({...value,authorshipPbiReceiptHash:value.authorshipPbiReceiptHash??value.pbiReceiptHash}),keys=['creationKaiMicroPulse','creationKaiSource','authorshipPbiSignedAt','authorshipPbiSignedKaiMicroPulse'] as const;
+ return Object.fromEntries(keys.flatMap(key=>fields[key]===undefined?[]:[[key,fields[key]]])) as ArtworkCoordinates;
+}
+export interface PublicProfileHeader extends ArtworkCoordinates {
  schema:'bankeiz.public-profile.v1';userId:string;username:string;receivingUsername?:string;displayName:string;bio:string|null;location:string|null;
  websiteUrl:string|null;avatarUrl:string|null;bannerUrl:string|null;socialLinks:{label:string;url:string}[];links:{label:string;url:string}[];
  authorshipVerified:boolean;pbiReceiptHash:string|null;createdAt:string|null;bookingEnabled?:boolean;
@@ -40,7 +47,7 @@ export function readPublicProfileHeader(input:unknown,expectedUsername?:string):
  * scope and exact account binding; this performs no admission or lookup. */
 export function projectProfileHeaderFields(p:Record<string,unknown>,stats:Record<string,unknown>={},unavailable=false):PublicProfileHeader{
  const username=String(p.username),images=publicProfileArtwork(p),hash=text(p.authorshipPbiReceiptHash,64);
- return{schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
+ return{...copyProfileArtworkCoordinates(p),schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
  socialLinks:[['X','socialXUrl'],['Instagram','socialInstagramUrl'],['YouTube','socialYoutubeUrl'],['LinkedIn','socialLinkedinUrl'],['GitHub','socialGithubUrl']].flatMap(([label,key])=>{const url=link(p[key]);return url?[{label,url}]:[];}),links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const row=object(value),label=text(row.label,80),url=link(row.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[],
  authorshipVerified:p.authorshipVerified===true&&!!hash&&/^[a-f0-9]{64}$/i.test(hash),pbiReceiptHash:hash&&/^[a-f0-9]{64}$/i.test(hash)?hash:null,createdAt:text(p.createdAt,64),
  stats:{originals:number(stats.originals),views:unavailable?null:number(stats.originalViews),plays:unavailable?null:number(stats.streams),seconds:unavailable?null:number(stats.witnessedSeconds),completion:unavailable?null:number(stats.streamCompletionRatePct)}};

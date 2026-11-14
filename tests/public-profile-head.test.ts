@@ -28,6 +28,12 @@ it.each(['private','denied','viewer-missing','wrong-username','missing-uid','wro
 it('keeps default artwork and public PBI metadata through the shared normalizer',async()=>{
  const value=manifest();Object.assign(value.head.profile,{avatarUrl:null,bannerUrl:null,createdAt:'2026-10-20T10:00:00Z'});const handle=await handler(vi.fn(async()=>Response.json(value))),response=await handle(new Request(endpoint));expect(response.status).toBe(200);const body=await response.json();expect(body.avatarUrl).toMatch(/^data:image\/svg\+xml/);expect(body.bannerUrl).toMatch(/^data:image\/svg\+xml/);expect(body.authorshipVerified).toBe(true);expect(body.pbiReceiptHash).toBe('a'.repeat(64));expect(body).not.toHaveProperty('items');expect(body).not.toHaveProperty('deterministicManifest');
 });
+it('retains original account creation and PBI artwork coordinates in the compact header',async()=>{
+ const value=manifest();Object.assign(value.head.profile,{creationKaiMicroPulse:'12345678900000',creationKaiSource:'sealed-receiz-identity',authorshipPbiSignedAt:'2026-10-20T10:00:00Z',authorshipPbiSignedKaiMicroPulse:'12345679000000'});
+ const handle=await handler(vi.fn(async()=>Response.json(value))),body=await(await handle(new Request(endpoint))).json();
+ expect(body).toMatchObject({creationKaiMicroPulse:'12345678900000',creationKaiSource:'sealed-receiz-identity',authorshipPbiSignedAt:'2026-10-20T10:00:00Z',authorshipPbiSignedKaiMicroPulse:'12345679000000'});
+ expect(body).not.toHaveProperty('identity');expect(body).not.toHaveProperty('portableState');
+});
 it.each(['declared','streamed'] as const)('bounds the manifest head body before projection: %s',async kind=>{
  const oversized='x'.repeat(512*1024+1),fetcher=vi.fn(async()=>kind==='declared'?new Response('{}',{headers:{'content-length':String(oversized.length)}}):new Response(oversized)),handle=await handler(fetcher),response=await handle(new Request(endpoint));expect(response.status).toBe(503);expect(await response.text()).not.toContain(oversized.slice(0,32));
 });
