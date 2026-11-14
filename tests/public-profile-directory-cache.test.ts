@@ -3,6 +3,28 @@ import {afterEach,expect,it,vi} from 'vitest';
 const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const head=(n:number)=>({profile:{userId:uid(n),username:'person_'+n,isPrivate:false,displayName:'Person '+n,updatedAt:'2026-11-14T10:00:00Z'},viewer:{canView:true},stats:{originals:0}});
 afterEach(()=>{document.body.replaceChildren();localStorage.clear();vi.restoreAllMocks();vi.unstubAllGlobals();});
+it('reopens a carried collection from its small directory checkpoint without reading another collection or waiting for Source',async()=>{
+ vi.resetModules();const {createPublicProfileDirectoryRetention}=await import('../src/receiz/public-profile-directory-retention'),{createPublicProfileDirectoryObserver}=await import('../src/receiz/public-profile-directory'),{parsePublicMarket}=await import('../src/receiz/public-market');
+ const carried=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'a'.repeat(64)},publicOriginals:[{id:'work',receizId:'work',title:'Held work',valueUsd:42}],publicProfileHeads:[head(1)]}});
+ let saved:Response|undefined;const cache={read:vi.fn(async()=>saved?.clone()??null),write:vi.fn(async(value:Response)=>{saved=value.clone();}),discard:vi.fn()};
+ const first=createPublicProfileDirectoryRetention(cache);await first.save([head(2)],'d'.repeat(64));expect(saved).toBeDefined();const checkpoint=await saved!.clone().text();expect(checkpoint).not.toContain('Held work');expect(checkpoint.length).toBeLessThan(1500);
+ let selected=carried;const fetcher=vi.fn(()=>new Promise<Response>(()=>{})),publish=vi.fn((next:typeof carried)=>{selected=next;}),observer=createPublicProfileDirectoryObserver({fetch:fetcher,selected:()=>selected,publish,retention:createPublicProfileDirectoryRetention(cache)}),stop=observer.subscribe();
+ expect(selected).toBe(carried);await vi.waitFor(()=>expect(selected.publicProfileHeads?.some(row=>row.profile.userId===uid(2))).toBe(true));expect(selected.items).toBe(carried.items);expect(selected.items[0].title).toBe('Held work');expect(publish).toHaveBeenCalledOnce();stop();
+});
+it('cannot restore a cached public header over a selected privacy refusal',async()=>{
+ const {restorePublicProfileDirectoryHeaders}=await import('../src/receiz/public-profile-directory-retention'),{parsePublicMarket}=await import('../src/receiz/public-market');
+ const current=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:0,revision:'a'.repeat(64)},publicOriginals:[],publicProfileHeads:[{profile:{userId:uid(2),username:'person_2'},viewer:{canView:false}}]}});
+ expect(restorePublicProfileDirectoryHeaders({transport:{publicProfileHeads:[head(2)]}},'d'.repeat(64),current)).toBe(current);
+});
+it('does not delay a live addition or replace it when an older checkpoint finishes later',async()=>{
+ vi.resetModules();const {createPublicProfileDirectoryRetention}=await import('../src/receiz/public-profile-directory-retention'),{createPublicProfileDirectoryObserver}=await import('../src/receiz/public-profile-directory'),{parsePublicMarket}=await import('../src/receiz/public-market');
+ let release!:(response:Response)=>void;const reading=new Promise<Response>(done=>release=done),cache={read:vi.fn(()=>reading),write:vi.fn(async()=>{}),discard:vi.fn()};
+ let selected=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:0,revision:'a'.repeat(64)},publicOriginals:[],publicProfileHeads:[head(1)]}});
+ const observer=createPublicProfileDirectoryObserver({fetch:()=>new Promise(()=>{}),selected:()=>selected,publish:next=>{selected=next;},retention:createPublicProfileDirectoryRetention(cache)}),stop=observer.subscribe();
+ await observer.receive(head(2));expect(selected.publicProfileHeads?.find(row=>row.profile.userId===uid(2))?.profile.displayName).toBe('Person 2');
+ const bytes=new TextEncoder().encode(JSON.stringify({schema:'bank.public-profile-directory.retained.v1',revision:'c'.repeat(64),heads:[{...head(2),profile:{...head(2).profile,displayName:'Older name',updatedAt:'2026-01-01T00:00:00Z'}}]}));release(new Response(bytes,{headers:{'content-length':String(bytes.length)}}));
+ await vi.waitFor(()=>expect(cache.write).toHaveBeenCalledOnce());expect(selected.publicProfileHeads?.find(row=>row.profile.userId===uid(2))?.profile.displayName).toBe('Person 2');stop();
+});
 it('restores cached directory headers beside a complete older carried family when localStorage has no room',async()=>{
  vi.resetModules();const {parsePublicMarket}=await import('../src/receiz/public-market'),{createPreparedBankCatalogReader}=await import('../src/receiz/prepared-bank-catalog'),{retainedDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');
  const current=parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision:'a'.repeat(64)},publicOriginals:[{id:'work',receizId:'work',title:'Current work',valueUsd:42}],publicProfileHeads:[head(1)]}});

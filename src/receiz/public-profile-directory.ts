@@ -3,6 +3,7 @@ import {PROFILE_DIRECTORY_PAGE_SIZE,publicProfileDescriptor,publicProfileDirecto
 import {prepareHeldPublicMarketResponse,retainPublicProfileHeaders,reusePublicMarketResponse,type PublicMarketCatalog} from './public-market';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from './asset-publication-adoption';
 import {createPublicProfileDirectoryStream} from './public-profile-directory-stream';
+import {createPublicProfileDirectoryRetention,restorePublicProfileDirectoryHeaders} from './public-profile-directory-retention';
 type Header=PublicProfileHead|PublicProfileHeadRefusal;
 function heads(catalog:PublicMarketCatalog){return[...(catalog.publicProfileHeads??[]),...(catalog.publicProfileHeadRefusals??[])];}
 function basis(head:Header|undefined){return head?publicProfileHeaderDisplayBasis(head)??JSON.stringify(head):null;}
@@ -20,7 +21,8 @@ function compatible(next:PublicProfileHead,previous:PublicProfileHead|undefined)
 /** One background walk for active Discover consumers. Existing data is never
  * gated by this delivery; every pass starts at the beginning to find new IDs
  * that sort before a previously exhausted cursor. */
-export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof fetch;selected():PublicMarketCatalog|null;publish(next:PublicMarketCatalog,previous:PublicMarketCatalog):void}){
+export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof fetch;selected():PublicMarketCatalog|null;publish(next:PublicMarketCatalog,previous:PublicMarketCatalog):void;retention?:ReturnType<typeof createPublicProfileDirectoryRetention>}){
+ const retention=dependencies.retention??createPublicProfileDirectoryRetention();
  let consumers=0,pending:Promise<void>|undefined,controller:AbortController|undefined;
  async function run(signal:AbortSignal){
   const initial=dependencies.selected();if(!initial?.complete)return;
@@ -54,9 +56,13 @@ export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof 
   const latest=dependencies.selected();if(!latest?.complete||selection(latest)!==before)return;
   next={...latest,publicProfileHeads:next.publicProfileHeads,publicProfileHeadRefusals:next.publicProfileHeadRefusals,publicProfileHeadsRevision:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')};
   prepareHeldPublicMarketResponse(latest);reusePublicMarketResponse(latest,next);dependencies.publish(next,latest);
+  void retention.save(accepted,next.publicProfileHeadsRevision!).catch(()=>{});
  }
  const refresh=()=>{if(pending)return pending;if(!consumers)return Promise.resolve();controller=new AbortController();const attempt=run(controller.signal);pending=attempt;void attempt.finally(()=>{if(pending===attempt){pending=undefined;controller=undefined;}}).catch(()=>{});return attempt;};
- return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
+ return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;if(consumers===1)void retention.read().then(saved=>{
+  const current=dependencies.selected();if(!consumers||!saved||!current?.complete)return;
+  const next=restorePublicProfileDirectoryHeaders(saved.input,saved.revision,current);if(next!==current){prepareHeldPublicMarketResponse(current);reusePublicMarketResponse(current,next);dependencies.publish(next,current);}
+ }).catch(()=>{});void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
 }
 const selections=new Set<()=>PublicMarketCatalog|null>();
 const observer=createPublicProfileDirectoryObserver({fetch:(input,init)=>fetch(input,init),selected:()=>retainedDiscoveredPublicCatalog()??[...selections].map(read=>read()).find(value=>value?.complete)??null,publish:(next,previous)=>publishDiscoveredPublicCatalog(next,undefined,previous)});
