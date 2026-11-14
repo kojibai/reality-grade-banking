@@ -1,3 +1,4 @@
+import {emailReplyDisplay} from './email-reply-display';
 import {accountCreationPresentation,accountPersonName} from './account-presentation';
 import type {ChatConversation,ChatMessage,ChatPage,ChatPerson,ChatEmailChannel} from './native-messaging';
 import {profileAvatarUrl} from './profile-avatar';
@@ -20,6 +21,7 @@ function person(value:ChatPerson):ChatPerson {
   return {...accountCreationPresentation(value as unknown as Record<string,unknown>),kind:value.kind,userId:text(value.userId,200),username:text(value.username,100)||null,displayName:value.kind==='user'?accountPersonName(value):text(value.displayName,200)||null,avatarUrl:profileAvatarUrl(value.avatarUrl),aiAgentId:text(value.aiAgentId,100)||null};
 }
 function message(value:ChatMessage,preview=false):ChatMessage {
+  value=emailReplyDisplay(value);
   const payment=object(value.walletTransfer);
   const walletTransfer=payment.kind==='chat_transfer'?Object.fromEntries(['kind','senderUserId','recipientUserId','amountUsdCents','amountPhiMicro','transferId','note','transactionHref','receiptHref'].filter(key=>typeof payment[key]==='string').map(key=>[key,text(payment[key],key==='note'?280:4096)])):null;
   if(value.senderKind==='external-email')return{id:text(value.id,200),conversationId:value.conversationId,senderKind:'external-email',senderUserId:null,senderAiId:null,senderDisplay:text(value.senderDisplay,200)||null,body:text(value.body,preview?1024:262144),createdAt:text(value.createdAt,50),receizedAt:text(value.receizedAt,50),receipt:null,sealedOriginalAvailable:false,walletTransfer:null,transport:{fromEmail:text(value.transport.fromEmail,254),recipientAlias:text(value.transport.recipientAlias,254),...(value.transport.subject?{subject:text(value.transport.subject,998)}:{})}};

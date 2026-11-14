@@ -1,7 +1,9 @@
+import {emailReplyDisplay} from '../../receiz/email-reply-display';
 import {useState} from 'react';
 import type {ChatMessage} from '../../receiz/native-messaging';
 /** Email is plain content, never executable HTML or a payment instruction. */
 export function EmailMessage({message,download}:{message:ChatMessage;download:()=>Promise<void>}){
+ message=emailReplyDisplay(message);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false);
  if(message.senderKind!=='external-email')return <p>{message.body}</p>;
  const pieces=message.body.split(/(https?:\/\/[^\s<>"']+)/g);
