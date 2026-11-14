@@ -18,6 +18,15 @@ async function fixture(){
 it('retains the existing guide directory module when its route participates in the installed public shell',async()=>{
  const f=await fixture();try{const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile}),bytes=await readFile(join(f.root,'learn/guide-directory.js'));expect(report.resources.find(row=>row.url==='/learn/guide-directory.js')).toEqual({url:'/learn/guide-directory.js',bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}finally{await f.dispose();}
 });
+it('installs the email guide and its actual walkthrough in the existing shared offline guide shell',async()=>{
+ const f=await fixture();try{
+  const runtime=await readFile('public/learn/email.js','utf8');await f.put('learn/email.js',runtime);await f.put('email/index.html','<main data-email-guide>Your username. Your email.</main>');
+  await f.put('index.html','<script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{'/email/':{content:'<main data-email-guide>Your username. Your email.</main>'}}})+'</script>');
+  const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile});expect(report.pages['/email/']).toBe('/learn/');expect(report.pages['/email']).toBe('/learn/');
+  expect(report.resources.find(row=>row.url==='/learn/email.js')).toEqual({url:'/learn/email.js',bytes:Buffer.byteLength(runtime),sha256:createHash('sha256').update(runtime).digest('hex')});expect(report.resources.some(row=>row.url==='/email/')).toBe(false);
+  await f.put('index.html','<script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{'/not-a-public-guide/':{content:'Unknown'}}})+'</script>');await expect(buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile})).rejects.toThrow('OFFLINE_PUBLIC_ROUTE_INVALID');
+ }finally{await f.dispose();}
+});
 it('retains the real producer entry and every emitted lazy module, refusing altered metadata and excluding stale files',async()=>{
  const f=await fixture();try{
   const result=await writeOriginalsQualificationAssets(f.root);await f.put('learn/index.html','<html><head>'+result.head+'</head><body>Guide</body></html>');await f.put('learn/originals-qualification-main-STALE.js','unrelated stale output');

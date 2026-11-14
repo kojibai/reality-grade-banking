@@ -1,4 +1,5 @@
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
+import {emailGuidePage} from '../src/content/email-guide.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
 import {publicIllustrations} from '../src/content/public-imagery.mjs';
 import {momentsPage} from '../src/content/personal-moments.mjs';
@@ -99,6 +100,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(economyPages.some(page=>page.path===canonicalPath)||canonicalPath==='/coops/'){urls.add('/learn/economy.js');urls.add('/learn/economy-model.mjs');}
     if(canonicalPath===momentsPage.path){urls.add('/learn/moments.js');urls.add('/learn/moments-model.mjs');}
     if(canonicalPath===bookingGuidePage.path)urls.add('/learn/book.js');
+    if(canonicalPath===emailGuidePage.path)urls.add('/learn/email.js');
     if(canonicalPath==='/pay/')urls.add('/learn/pay.js');
     if(canonicalPath==='/accept/'){urls.add('/learn/accept-money.js');urls.add('/learn/accept-money-model.js');}
     if(canonicalPath==='/build/'){urls.add('/learn/independent-bank.js');urls.add('/learn/independent-bank-model.js');urls.add('/learn/accept-money-model.js');}
@@ -112,7 +114,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
       }
     }
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
-    const knownGuide=['/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=['/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,emailGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
