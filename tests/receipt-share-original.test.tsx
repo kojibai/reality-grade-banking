@@ -38,9 +38,9 @@ function environment(){
  vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(this:HTMLAnchorElement){downloads.push(this.download);});
  return{files,downloads,fetcher};
 }
-async function mount(selected:PublicRecord,originalContext?:Pick<LedgerReceiptContext,'record'|'sourceReader'>){
+async function mount(selected:PublicRecord,originalContext?:Pick<LedgerReceiptContext,'record'|'sourceReader'>,share?:{carriedLink:string}){
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);
- await act(async()=>root!.render(<ReceiptShare {...{receipt:completeLedgerReceipt(selected),originalContext,readyUrl,onClose(){}}}/>));return host;
+ await act(async()=>root!.render(<ReceiptShare {...{receipt:completeLedgerReceipt(selected),originalContext,readyUrl:share?undefined:readyUrl,carriedLink:share?.carriedLink,onClose(){}}}/>));return host;
 }
 async function download(host:HTMLElement){
  const action=[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('Download original'));
@@ -108,4 +108,20 @@ it.each(['mine','public','receipt'] as const)('carries the exact selected reader
  await download(document.querySelector<HTMLElement>('.receipt-share-panel')!);await vi.waitFor(()=>expect(env.files).toHaveLength(1));
  expect(env.downloads).toEqual(['entry-held-original.receizbundle']);expect(new Uint8Array(await env.files[0].arrayBuffer())).toEqual(bytes);
  expect(env.fetcher.mock.calls.every(([input])=>String(input).startsWith('https://receiz.com/api/public/display-snapshots/'))).toBe(true);
+});
+
+it.each(['transfer','native'] as const)('refuses the same digestless row with another %s Original locator before any selected source read',async locator=>{
+ const env=environment(),read=vi.fn(async()=>null),reader=Object.assign(read,{assertOpen:vi.fn(),transferOriginal:vi.fn(async()=>null)});
+ const selected:PublicRecord=locator==='transfer'?{...record('','same-transfer','account-source-projection'),source:'wallet',kind:'chat_transfer',evidence:{transferId:'f89f5736-4baf-46da-80f4-dc9213fbdff2'}}:{...record('','same-native','account-source-projection'),evidence:{},sourceUrl:'https://receiz.com/v/20261107_2109/62E2508A/15045683?a=62E2508A&ms=1794085740000'};
+ const other=locator==='transfer'?{...selected,evidence:{transferId:'67213e66-3949-4704-a9f6-1b7c51528470'}}:{...selected,sourceUrl:selected.sourceUrl!.replace('15045683','15045684')};
+ const host=await mount(selected,{record:other,sourceReader:reader});await download(host);
+ await vi.waitFor(()=>expect(host.textContent).toContain('No display record was substituted'));expect(read).not.toHaveBeenCalled();expect(reader.transferOriginal).not.toHaveBeenCalled();expect(reader.assertOpen).not.toHaveBeenCalled();expect(env.fetcher).not.toHaveBeenCalled();expect(env.files).toHaveLength(0);
+});
+it('keeps the carried receipt link copyable after offline short-link failure and successful held Original download',async()=>{
+ const original=await publicOriginal('offline-copy-after-original'),env=environment(),writeText=vi.fn(async(_value:string)=>{}),carriedLink=receiptLink(original.record)!;vi.stubGlobal('navigator',{clipboard:{writeText}});
+ const host=await mount(original.record,{record:original.record},{carriedLink}),copy=host.querySelector<HTMLButtonElement>('[aria-label="Copy receipt link"]')!;
+ await vi.waitFor(()=>expect(copy.textContent).toBe('Copy carried link'));expect(copy.disabled).toBe(false);
+ await download(host);await vi.waitFor(()=>expect(env.files).toHaveLength(1));expect(copy.disabled).toBe(false);expect(copy.textContent).toBe('Copy carried link');
+ await act(async()=>copy.click());expect(writeText).toHaveBeenCalledOnce();expect(writeText.mock.calls[0][0]).toContain('/receipt/');
+ expect(new Uint8Array(await env.files[0].arrayBuffer())).toEqual(original.bytes);
 });

@@ -38,6 +38,8 @@ it('runs the real Node CLI over the genuine retained PNG Original with no networ
  expect(output.cases).toHaveLength(33);
  expect(output.canonicalProof.artifactSha256).toBe(expected);
  expect(output.canonicalProof.verifiedOffline).toBe(true);
+ expect(output.canonicalProof.checkerRuntime.moduleSha256).toBe(createHash('sha256').update(await readFile('server/registry-runtime/conformance-reader.mjs')).digest('hex'));
+ expect(output.canonicalProof.checkerRuntime.module).toBe('server/registry-runtime/conformance-reader.mjs');
  expect(output.canonicalProof.ownership.state).toBe('verified');
  expect(output.canonicalProof.credentialHolder.receizId).toBe(output.canonicalProof.ownership.ownerReceizId);
  expect(output.sourceObjectDigest).toMatch(/^[a-f0-9]{64}$/);
