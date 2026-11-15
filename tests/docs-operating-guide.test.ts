@@ -15,7 +15,7 @@ it('keeps all 37 published paths and adds eight complete practical operating cha
  expect(docsArticles).toHaveLength(47);
  expect(docsArticles.map(p=>p.slug)).toEqual(expect.arrayContaining([...original,...Object.keys(operating)]));
  expect(new Set(docsArticles.map(p=>p.slug)).size).toBe(47);
- expect(docsEdition.packages).toBe('129.0.0');
+ expect(docsEdition.packages).toBe('129.5.0');
  for(const [slug,actions] of Object.entries(operating)){
   const article=docsArticles.find(p=>p.slug===slug)!;
   expect(article.sections.length,slug).toBeGreaterThanOrEqual(5);

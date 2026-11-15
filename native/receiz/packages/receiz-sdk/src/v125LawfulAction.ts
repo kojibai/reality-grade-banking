@@ -359,6 +359,11 @@ async function verifyLawfulActionCausalCompletionV125(input: Readonly<{
   evidence: unknown;
   verifierOptions: ReceizPortableExecutionAuthorityVerifierOptionsV124;
 }>): Promise<ReceizLawfulActionCausalCompletionBindingV125> {
+  // Linked historical inspection does not expand this single-resource law's
+  // planning/admission contract. Qualify that composition separately first.
+  if (input.verifierOptions.linkedParticipantEvidence !== undefined) {
+    throw new TypeError("V125_LAWFUL_ACTION_CAUSAL_COMPLETION_INVALID");
+  }
   const evidence = deepFrozenClone(input.evidence) as ReceizPortableExecutionAuthorityEvidenceV124;
   let verified: ReceizVerifiedPortableExecutionAuthorityV124;
   try {

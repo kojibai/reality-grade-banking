@@ -71,7 +71,7 @@
     },
     {
       "path": "app/lib/documentSeal/proofBearingVLink.ts",
-      "sha256": "62e73fd110b99cb0409541164334820744a98afb75320398408bbdb617d7f86e",
+      "sha256": "05f14881421fa06e47115a11feb84b8e7555276cd87fdacd772f0a91646c1893",
       "mode": 420
     },
     {
@@ -370,7 +370,7 @@
     },
     {
       "path": "app/utils/pngChunks.ts",
-      "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf",
+      "sha256": "dc62be53555aa39b461be2d0407673ce8d47f6245d61adf5ec2a71bedf725991",
       "mode": 420
     },
     {
@@ -390,12 +390,12 @@
     },
     {
       "path": "app/utils/receizOwnershipProvenanceBundle.ts",
-      "sha256": "819ecc5199ca84cad96e4d9c805733bf613b0fc8fd9f61cb845f872541cc3a79",
+      "sha256": "74eca34207d5f209c6fc6910fcd67f6ffd726d7fc7a9bf36b45409a7ba9eb648",
       "mode": 420
     },
     {
       "path": "app/utils/receizProofBundle.ts",
-      "sha256": "81a6335e7e6df101be556252bd12ce29f55a4a0a1dc62e7b1f61d9da3442bcca",
+      "sha256": "e8cca2be3f735bb0f24add12945e1da8205832e385dc8a3279ed322ec80d15d1",
       "mode": 420
     },
     {
@@ -420,7 +420,7 @@
     },
     {
       "path": "app/verify/verifyRuntime.ts",
-      "sha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe",
+      "sha256": "4a2fbc612b88e979df63d43f4cddb6f5be7c44efb78fdf94a880342b5e6b9297",
       "mode": 420
     },
     {
@@ -725,7 +725,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/currentRelease.generated.ts",
-      "sha256": "c94b7431ed37dd690c7e254ee3ddcb5235972e1837fd45b703e7f1ef4bb7e66b",
+      "sha256": "6b7736a3d56fd13b5c439b5d2f959c0eb490c07dc96239a6daeadddeeb9dea68",
       "mode": 420
     },
     {
@@ -914,13 +914,18 @@
       "mode": 420
     },
     {
+      "path": "packages/receiz-sdk/src/verifier/boundedInflate.ts",
+      "sha256": "772d5d52d8d49b31c494718b14f66fbcb080bb60b28658555f61fe988072fd68",
+      "mode": 420
+    },
+    {
       "path": "packages/receiz-sdk/src/verifier/canonical.ts",
       "sha256": "56189ae1e54f3c789e9631f6692905dc1d9cb5ed113bdde6554c372d2d1966d9",
       "mode": 420
     },
     {
       "path": "packages/receiz-sdk/src/verifier/canonicalImplementation.js",
-      "sha256": "33e111935173070077238c4a54aa400460de7b4acbfef253d9a973e6d9c6ac08",
+      "sha256": "15ebd46dc440171b2d58c1961b70b395a2a2fa04e590c744c6ac1684d3fed631",
       "mode": 420
     },
     {
@@ -1169,6 +1174,89 @@
     "packages/receiz-sdk/src/verifier/roots.ts",
     "packages/receiz-sdk/src/verifier/signatureV4.ts"
   ],
-  "moduleSha256": "9315ba02f16c34242f3282ecf1e3ee38ba74e5798b5f1f6a706013a147a9c82d",
-  "bytes": 1866721
+  "moduleSha256": "ee65f4171c0ebd9ab384d884464ef79159b1cacf7ab708343e11976023913eb4",
+  "bytes": 1868671,
+  "applicationPatches": [
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/app/utils/pngChunks.ts",
+      "baseSha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf",
+      "sha256": "dc62be53555aa39b461be2d0407673ce8d47f6245d61adf5ec2a71bedf725991",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/app/utils/receizProofBundle.ts",
+      "baseSha256": "81a6335e7e6df101be556252bd12ce29f55a4a0a1dc62e7b1f61d9da3442bcca",
+      "sha256": "e8cca2be3f735bb0f24add12945e1da8205832e385dc8a3279ed322ec80d15d1",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/app/utils/receizOwnershipProvenanceBundle.ts",
+      "baseSha256": "819ecc5199ca84cad96e4d9c805733bf613b0fc8fd9f61cb845f872541cc3a79",
+      "sha256": "74eca34207d5f209c6fc6910fcd67f6ffd726d7fc7a9bf36b45409a7ba9eb648",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/app/lib/documentSeal/proofBearingVLink.ts",
+      "baseSha256": "62e73fd110b99cb0409541164334820744a98afb75320398408bbdb617d7f86e",
+      "sha256": "05f14881421fa06e47115a11feb84b8e7555276cd87fdacd772f0a91646c1893",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/app/verify/verifyRuntime.ts",
+      "baseSha256": "64a1e5e9f24d6b82a1625031297d2e8bc5e45cd33cf98d0e38341af29e6a0bfe",
+      "sha256": "4a2fbc612b88e979df63d43f4cddb6f5be7c44efb78fdf94a880342b5e6b9297",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/packages/receiz-sdk/src/verifier/boundedInflate.ts",
+      "baseSha256": null,
+      "sha256": "772d5d52d8d49b31c494718b14f66fbcb080bb60b28658555f61fe988072fd68",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-qualified-sdk-resource-compatibility",
+      "path": "vault/packages/receiz-sdk/src/currentRelease.generated.ts",
+      "baseSha256": "c94b7431ed37dd690c7e254ee3ddcb5235972e1837fd45b703e7f1ef4bb7e66b",
+      "sha256": "6b7736a3d56fd13b5c439b5d2f959c0eb490c07dc96239a6daeadddeeb9dea68",
+      "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+    },
+    {
+      "id": "receiz-129-5-vault-canonical-resource-seams",
+      "path": "vault/packages/receiz-sdk/src/verifier/canonicalImplementation.js",
+      "baseSha256": "33e111935173070077238c4a54aa400460de7b4acbfef253d9a973e6d9c6ac08",
+      "sha256": "15ebd46dc440171b2d58c1961b70b395a2a2fa04e590c744c6ac1684d3fed631",
+      "purpose": "Generate bounded resource parser functions from the existing canonical primitive, preserving the issued Vault interpreter and export surface."
+    },
+    {
+      "id": "receiz-129-5-final-qualified-package-source",
+      "path": "vault/packages/receiz-sdk/src/currentRelease.generated.ts",
+      "baseSha256": "f20d2c1561f601296e26c5a15ef18a326f60b2554c3b3462bad22236137885eb",
+      "sha256": "6b7736a3d56fd13b5c439b5d2f959c0eb490c07dc96239a6daeadddeeb9dea68",
+      "upstreamCommit": "7ab22963685a8ccec066e938e41ccfbab9ab2310",
+      "qualifiedSdkArchiveSha256": "3c19a390fd9916643b8e5c00cdba1b77b0cbec6e2f29775fb41e7ba26e26b04a",
+      "purpose": "Final reviewed PNG operational denial, unchanged major compatibility floor, exact public function inventory and existing build resource guard. No financial/Note writer/receiving/rollback implementation change."
+    },
+    {
+      "id": "receiz-129-5-final-qualified-package-source",
+      "path": "vault/packages/receiz-sdk/src/verifier/canonicalImplementation.js",
+      "baseSha256": "b90e03d2817765ccf4f9ff6ad73c991e51bd155b19d777aa384df9830904ba36",
+      "sha256": "15ebd46dc440171b2d58c1961b70b395a2a2fa04e590c744c6ac1684d3fed631",
+      "upstreamCommit": "7ab22963685a8ccec066e938e41ccfbab9ab2310",
+      "qualifiedSdkArchiveSha256": "3c19a390fd9916643b8e5c00cdba1b77b0cbec6e2f29775fb41e7ba26e26b04a",
+      "purpose": "Final reviewed PNG operational denial, unchanged major compatibility floor, exact public function inventory and existing build resource guard. No financial/Note writer/receiving/rollback implementation change."
+    }
+  ]
 }

@@ -11,6 +11,7 @@ export const root=new URL('../',import.meta.url);
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function conformanceSourceIdentity(){
  const paths=['src/receiz/note-funding.ts','src/receiz/native-asset-backing.ts','institution/receiver-profile.json','institution/conformance-protocol.json','institution/receiving-standard.md','docs/note-continuity-standard.md','docs/connected-notes-v129.md','package.json','package-lock.json','public/native/receiver-verifier.v129.manifest.json','public/native/receiver-verifier.v129.mjs'];
+ paths.push('scripts/build-registry-runtime.mjs','native/manifest.json','native/receiz/app/utils/pngChunks.ts','native/receiz/packages/receiz-sdk/src/verifier/boundedInflate.ts','native/receiz/packages/receiz-sdk/src/verificationLimits.ts','public/conformance/renderer.wasm','public/conformance/fonts/NotoSerif-Regular.ttf','public/conformance/fonts/Inter-Regular.ttf');
  for(const dir of ['src/conformance/','docs/conformance/'])for(const entry of await readdir(new URL(dir,root),{withFileTypes:true}).catch(()=>[]))if(entry.isFile()&&(dir.startsWith('src')?/\.(?:ts|tsx|css|json)$/:/\.md$/).test(entry.name))paths.push(dir+entry.name);
  for(const entry of await readdir(new URL('scripts/',root),{withFileTypes:true}))if(entry.isFile()&&/^conformance-.*\.mjs$/.test(entry.name))paths.push('scripts/'+entry.name);
  const inputs=await Promise.all([...new Set(paths)].sort().map(async path=>({path,sha256:sha(await readFile(new URL(path,root)))})));

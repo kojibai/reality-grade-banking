@@ -13,7 +13,7 @@ npm run native:rebuild
 npm run native:rebuild -- --sdk
 ```
 
-`native:rebuild` assembles an isolated temporary source tree and compares the resulting bytes to the checked-in artifacts. It checks the exact Offline Note module, read-only receiver, normalized receiver source map, generated SDK sealing core, Kai worker and canonical parser/valuation seams. `--sdk` also compiles and compares all 211 JavaScript files from the published SDK. It performs no funding, signing, account access or network calls. `npm ci` obtains public build/runtime dependencies; no Receiz host checkout or private credentials are needed. Optional `--output /path/to/directory` writes verified modules there. `npm run receiver:build` writes the verified modules back to `public/native/` without changing their hashes or manifests.
+`native:rebuild` assembles an isolated temporary source tree and compares the resulting bytes to the checked-in artifacts. It checks the exact Offline Note module, read-only receiver, normalized receiver source map, generated SDK sealing core, Kai worker and canonical parser/valuation seams. `--sdk` also compiles and compares the complete set of 225 JavaScript files from the qualified SDK package; omitted or extra outputs refuse. It performs no funding, signing, account access or network calls. `npm ci` obtains public build/runtime dependencies; no Receiz host checkout or private credentials are needed. Optional `--output /path/to/directory` writes verified modules there. `npm run receiver:build` writes the verified modules back to `public/native/` without changing their hashes or manifests.
 
 | Material | Purpose |
 | --- | --- |
@@ -94,5 +94,22 @@ signing, or page-opening prerequisite.
 ## Direct Note delivery
 
 Bankeiz composes the existing connected Note funding, per-Note authority and canonical PNG seal into one transferable image. Save and send the original PNG; the receiver imports it and signs the existing account claim. No account signing key or private account opening is included. A copied file cannot produce a second accepted credit.
+
+## v129.5 bounded verifier source
+
+The source manifest records the SDK/resource refresh above the retained upstream
+base and existing Bank application patches. The Note writers, receiving and
+rollback implementation remain intact. The current v1–v3 financial programs
+retain their effects; SDK order-v4 functions require their separately admitted
+v4 policy and are not selected by these Bank call sites. Canonical parser
+generation targets both the SDK and the Vault's existing interpreter/export
+surface. Runtime capacity refuses as unavailable without declaring retained
+Originals invalid. Existing signed fixtures and content-addressed source
+archives remain unchanged.
+
+An unpublished local package can qualify exact consumer bytes. It does not
+change the published129.0 registry identity: coordinated SDK/MCP/AI installation,
+the normal release check and source-archive qualification remain distribution
+gates for adopting129.5.
 
 The optional recipient account UID is covered by the existing issuer and funding signatures and checked by the native handover, claim and receiver verifier. Omitted recipient terms preserve the existing bearer Note signing bytes. This browser-source patch changes no published SDK package or verification root. Its exact source and review hashes are recorded in the composition manifest.

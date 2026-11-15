@@ -5,6 +5,7 @@ import { admitReceizKksV1ProofCoordinate } from "./v125KaiAuthority.js";
 import { RECEIZ_GENERATED_CURRENT_REGISTRY_DIGEST } from "./currentRegistry.generated.js";
 import { RECEIZ_LIVING_SUBJECT_REDUCER_DIGEST } from "./livingSubjects.js";
 import type { ReceizSubjectStateV122 } from "./v122Subjects.js";
+import { readReceizOriginalOwnerKeyV129 } from "./originalOwner.js";
 
 /** Exact projection extracted from the production v122 subject admission server.
  * This builds subordinate state only; callers must establish enclosing proof and
@@ -77,6 +78,9 @@ export async function createReceizInitialSubjectStateV122(input: Readonly<{
   if (document.profile !== "document" || document.verdict !== "verified-document") throw new TypeError("V122_INITIAL_SUBJECT_DOCUMENT_ADMISSION_REQUIRED");
   if (!identity.signatureVerified || !identity.artifactOwnerReceizId || document.ownerReceizId !== identity.artifactOwnerReceizId) throw new TypeError("V122_INITIAL_SUBJECT_OWNER_MISMATCH");
   if (document.artifactSha256 === identity.artifactSha256) throw new TypeError("V122_INITIAL_SUBJECT_DISTINCT_SOURCE_REQUIRED");
+  const sourceOwner = await readReceizOriginalOwnerKeyV129(documentVerification);
+  if (sourceOwner && (sourceOwner.keyId !== identity.keyId || sourceOwner.alg !== identity.alg
+    || sourceOwner.publicKeyRawB64u !== identity.publicKeyRawB64u)) throw new TypeError("V122_INITIAL_SUBJECT_OWNER_KEY_MISMATCH");
   if (typeof idempotencyKey !== "string" || !idempotencyKey.trim()) throw new TypeError("V122_INITIAL_SUBJECT_IDEMPOTENCY_REQUIRED");
   const coordinate = await admitReceizKksV1ProofCoordinate(kksCoordinate, { expectedPreviousKaiSigilProofHead: null });
   const kai = Number(coordinate.kaiPulse);

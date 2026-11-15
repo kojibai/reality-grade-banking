@@ -1,4 +1,5 @@
-import {deflateSync,inflateSync,zipSync,unzipSync} from 'fflate';
+import {deflateSync,zipSync,unzipSync} from 'fflate';
+import {inflateReceizBounded} from './boundedInflate.js';
 import {ReceizProtocolLimitError} from '../verificationLimits.js';
 import {authoredFileCarrier as native,appendReceizTrailer,parseReceizTrailer} from './canonicalImplementation.js';
 import {base64UrlDecode,base64UrlEncode,isRecord,jcsCanonicalize} from './crypto.js';
@@ -16,7 +17,9 @@ function decode(value:string):Record<string,unknown>|null{
  if(!value.startsWith('a1:'))return null;
  const match=/^a1:([1-9][0-9]*):([A-Za-z0-9_-]+)$/.exec(value);if(!match)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');
  const size=Number(match[1]);if(!Number.isSafeInteger(size)||size>MAX_METADATA)capacity();
- const bytes=inflateSync(base64UrlDecode(match[2]!),{out:new Uint8Array(size+1)});
+ const maxCompressed=size+Math.ceil(size/16384)*5+64;
+ if(match[2]!.length>Math.ceil(maxCompressed/3)*4)capacity();
+ const bytes=inflateReceizBounded(base64UrlDecode(match[2]!),size,maxCompressed);
  if(bytes.length!==size)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');
  const object:unknown=JSON.parse(decoder.decode(bytes));if(!isRecord(object)||object.kind!==KIND)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');return object;
 }
@@ -58,7 +61,7 @@ export function carryAuthoredFile(original:Uint8Array,body:Record<string,unknown
  if(original[0]===0x50&&original[1]===0x4b)return appendZip(original,body);
  const format=native.detectDocumentFormat(original,{});
  if(format==='png'){
-  const previous=native.readPngTextChunks(original).filter(row=>row.keyword===PNG_KEY);
+  const previous=native.readPngTextChunks(original,{keyword:PNG_KEY});
   if(previous.length>1)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');
   const base=native.stripPngTextChunksByKeyword(original,PNG_KEY).pngBytes;
   return native.insertPngTextChunks(base,[{keyword:PNG_KEY,text:encode({...body,...(previous.length?{previousCarrier:previous[0]!.text}:{})})}]);
@@ -83,7 +86,7 @@ export function openAuthoredFileCarrier(bytes:Uint8Array):{original:Uint8Array;b
  if(bytes[0]===0x50&&bytes[1]===0x4b)return openZip(bytes);
  const format=native.detectDocumentFormat(bytes,{});
  if(format==='png'){
-  const rows=native.readPngTextChunks(bytes).filter(row=>row.keyword===PNG_KEY);
+  const rows=native.readPngTextChunks(bytes,{keyword:PNG_KEY});
   if(!rows.length)return null;if(rows.length!==1)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');
   const body=decode(rows[0]!.text);if(!body)throw Error('FILE_AUTHORSHIP_CARRIER_INVALID');
   let original=native.stripPngTextChunksByKeyword(bytes,PNG_KEY).pngBytes;

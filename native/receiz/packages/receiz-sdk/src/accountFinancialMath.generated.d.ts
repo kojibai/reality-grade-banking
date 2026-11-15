@@ -15,3 +15,5 @@ export declare function marketShareSellPreviewFromBudgetUsdCentsAtBid(budget:big
 export type AccountExecutionMarketFlow=Readonly<{side:'buy'|'sell';notionalUsdCents:string;atKaiUPulse:string}>;
 export type AccountExecutionMarketQuote=Readonly<{modelVersion:string;referenceMidUsdCents:bigint;quoteMidUsdCents:bigint;bidPriceUsdCents:bigint;askPriceUsdCents:bigint;spreadBps:number;shiftBps:number;allowBuys:boolean;pressure:Readonly<{targetBudgetUsdCents:bigint;softCapUsdCents:bigint;hardCapUsdCents:bigint;openInterestUsdCents:bigint}>}>;
 export declare function compileBankOfflineMarketPricing(input:unknown,openingKaiUPulse:string):Readonly<{at(positionQuantityDelta:string,localFlow:readonly AccountExecutionMarketFlow[],atKaiUPulse:string):AccountExecutionMarketQuote}>;
+export declare function marketWalletDebitFromAmounts(input:Readonly<{balance:bigint;available:bigint;settled:bigint;amount:bigint;phi:bigint;rate:bigint;nativeValueEnabled:boolean}>):{balance:bigint;available:bigint;settledSpent:bigint};
+export declare function marketPositionCostForQuantity(quantity:bigint,held:bigint,costUsd:bigint,costPhi:bigint):{usd:bigint;phi:bigint};

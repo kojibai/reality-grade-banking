@@ -13,7 +13,7 @@ it('ships complete corresponding sources, pinned suite keys, public trust roots 
  // Compare the complete 2.8 MB source map byte-for-byte in native code;
  // generic object equality walks millions of Buffer entries on CI workers.
  expect(readFileSync('public/proof-verifier/v129/verifier.js.map.bin').equals(readFileSync('public/proof-verifier/v129/verifier.js.map'))).toBe(true);
- expect(verifier.materials).toMatchObject({sdk:'129.0.0',documentSealVerificationKey:{protocol:'groth16',nPublic:2},kaiSigilVerificationKey:{protocol:'groth16',nPublic:2},signatureV4Roots:expect.arrayContaining([expect.objectContaining({alg:'Ed25519',publicKeyRawB64u:expect.any(String)})])});
+ expect(verifier.materials).toMatchObject({sdk:JSON.parse(readFileSync('native/receiz/packages/receiz-sdk/package.json','utf8')).version,documentSealVerificationKey:{protocol:'groth16',nPublic:2},kaiSigilVerificationKey:{protocol:'groth16',nPublic:2},signatureV4Roots:expect.arrayContaining([expect.objectContaining({alg:'Ed25519',publicKeyRawB64u:expect.any(String)})])});
 });
 it('refuses unsigned or changed bytes without consulting any service',async()=>{
  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NETWORK_FORBIDDEN'));try{

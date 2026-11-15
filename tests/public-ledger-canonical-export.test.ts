@@ -27,7 +27,12 @@ it('seals all 51,331 public observations including the complete shipped Ledger w
   const image=await createLocalLedgerCrystal({records:cache.records,capturedAt:cache.capturedAt,sources:Object.fromEntries(cache.coverage.map(item=>[item.source,item])),valueSource},{render:async()=>new Resvg('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#14283f"/></svg>').render().asPng(),seal:input=>sealer.seal(input)});
   expect(image.recordCount).toBe(cache.records.length);
   const verification=await fixture.runtime.offline.verifyReceizOfflineSealedFile({bytes:image.bytes,filename:image.filename,mimeType:'image/png'});expect(verification.ok).toBe(true);
-  const opened=await inspectPublicLedgerFile({bytes:image.bytes.slice(),filename:image.filename});expect(opened.archive?.records).toEqual(cache.records);expect(heldPublicLedgerFile(opened).bytes).toEqual(image.bytes);expect(network).not.toHaveBeenCalled();
+  const opened=await inspectPublicLedgerFile({bytes:image.bytes.slice(),filename:image.filename});expect(opened.archive?.records).toEqual(cache.records);
+  const held=heldPublicLedgerFile(opened).bytes;
+  expect(Boolean(held)).toBe(true);
+  expect(held.byteLength).toBe(image.bytes.byteLength);
+  expect(Buffer.from(held.buffer,held.byteOffset,held.byteLength).equals(Buffer.from(image.bytes.buffer,image.bytes.byteOffset,image.bytes.byteLength))).toBe(true);
+  expect(network).not.toHaveBeenCalled();
   const changed=image.bytes.slice();changed[50]^=1;expect((await fixture.runtime.offline.verifyReceizOfflineSealedFile({bytes:changed,filename:image.filename,mimeType:'image/png'})).ok).toBe(false);await expect(inspectPublicLedgerFile({bytes:changed,filename:image.filename})).rejects.toThrow();
  }finally{network.mockRestore();}
 },60000);

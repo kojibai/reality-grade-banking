@@ -26,7 +26,7 @@ afterAll(async () => { if (directory) await rm(directory, { recursive: true, for
 describe('public canonical SDK schema distribution', () => {
   it('publishes every installed schema as exact bytes with independently checked sizes and digests', async () => {
     const sourceFiles = (await readdir(new URL('schemas/', sdkRoot), { recursive: true })).filter(path => path.endsWith('.schema.json')).sort();
-    expect(manifest.package).toMatchObject({ name: '@receiz/sdk', version: '129.0.0' });
+    expect(manifest.package).toMatchObject({ name: '@receiz/sdk', version: '129.5.0' });
     expect(manifest.files.map(file => file.path)).toEqual(sourceFiles);
     expect(sourceFiles.length).toBeGreaterThan(40);
     for (const file of manifest.files) {
@@ -99,7 +99,7 @@ describe('public canonical SDK schema distribution', () => {
       expect(links.some(link => link.getAttribute('href') === url && link.textContent?.trim()), url).toBe(true);
     }
     for (const name of ['sdk', 'mcp-server', 'ai-skills']) {
-      expect(links.some(link => link.getAttribute('href')?.startsWith(`https://unpkg.com/@receiz/${name}@129.0.0/`)), name).toBe(true);
+      expect(links.some(link => link.getAttribute('href')?.startsWith(`https://unpkg.com/@receiz/${name}@129.5.0/`)), name).toBe(true);
     }
     expect(window.document.querySelector('main h1')?.textContent).toBeTruthy();
     expect(window.document.querySelector('script:not([type="application/ld+json"])')).toBeNull();
@@ -115,9 +115,9 @@ describe('public canonical SDK schema distribution', () => {
 it('updates every generated package instruction, schema path and release label for the coordinated next release', async () => {
   const current = JSON.parse(await readFile(join(directory, 'schemas/sdk/v129/manifest.json'), 'utf8'));
   // Upgrade metadata simulation only: no v130 package or schema bytes are invented.
-  const next = JSON.parse(JSON.stringify(current).replaceAll('129.0.0', '130.0.0').replaceAll('/sdk/v129', '/sdk/v130'));
+  const next = JSON.parse(JSON.stringify(current).replaceAll('129.5.0', '130.0.0').replaceAll('/sdk/v129', '/sdk/v130'));
   const page = publicSdkSchemasPage(next);
-  expect(page).not.toContain('129.0.0');
+  expect(page).not.toContain('129.5.0');
   expect(page).not.toContain('v129');
   for (const name of ['sdk','mcp-server','ai-skills']) expect(page).toContain(`@receiz/${name}@130.0.0`);
   expect(page).toContain('/schemas/sdk/v130/manifest.json');

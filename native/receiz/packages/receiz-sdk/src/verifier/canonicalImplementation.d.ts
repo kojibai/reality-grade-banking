@@ -22,7 +22,7 @@ export function parseReceizTrailer(input:Uint8Array):{trailerCount:number;basisB
 /** Existing native metadata codecs; transport composition issues no seal. */
 export const authoredFileCarrier: {
  detectDocumentFormat(bytes:Uint8Array,hints?:{filename?:string;mime?:string}):string;
- readPngTextChunks(bytes:Uint8Array):{keyword:string;text:string}[];
+ readPngTextChunks(bytes:Uint8Array,options?:{keyword?:string;maxCompressedBytes?:number;maxTextBytes?:number;maxTotalTextBytes?:number}):{keyword:string;text:string}[];
  insertPngTextChunks(bytes:Uint8Array,entries:{keyword:string;text:string}[]):Uint8Array;
  stripPngTextChunksByKeyword(bytes:Uint8Array,keyword:string):{pngBytes:Uint8Array;removedCount:number};
  extractReceizProofBundlesFromPdf(bytes:Uint8Array):string[];

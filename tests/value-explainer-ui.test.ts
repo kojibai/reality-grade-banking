@@ -75,7 +75,7 @@ it('downloads complete conversion operands, policy and exact cent-rounding arith
   manualPhi(root);
   vi.spyOn(URL,'createObjectURL').mockImplementation(blob=>{exported=blob as Blob;return 'blob:conversion';});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
   root.querySelector<HTMLButtonElement>('[data-phi-usd-download]')!.click();const record=JSON.parse(await exported!.text());
-  expect(record).toMatchObject({sdkVersion:'129.0.0',amountPhiMicro:'1000000',valuationKaiUPulse:'14692714000000',usdCents:converted('1').usdCents,writesPerformed:0});
+  expect(record).toMatchObject({sdkVersion:'129.5.0',amountPhiMicro:'1000000',valuationKaiUPulse:'14692714000000',usdCents:converted('1').usdCents,writesPerformed:0});
   expect(record.trace.roundedCents).toBe(Number(converted('1').usdCents));expect(record.conversion.algorithm).toBe('receiz.market-proof-usd.v129');expect(record.issuancePolicy.basePhiPerUsd).toBe(0.1);
   expect(record.quoteInputs).toMatchObject({usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0});
   expect(record.valuationPolicy.checksum).toBe('b05b2049');
@@ -140,7 +140,7 @@ it('downloads the entered cashflows with the same computed result and captured c
   expect(record.evaluationPulse).toBe(clock.pulse);
   expect(record.unsigned.inputs.pv_phi).toBe(12.5);
   expect(record.unsigned.valuePhi.toFixed(6)).toBe(root.querySelector('[data-value-amount]')!.textContent!.replaceAll(',','').replace(' Φ',''));
-  expect(record.sdkVersion).toBe('129.0.0');
+  expect(record.sdkVersion).toBe('129.5.0');
   expect(record.writesPerformed).toBe(0);
 });
 

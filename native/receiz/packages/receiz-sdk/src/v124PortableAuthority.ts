@@ -143,6 +143,8 @@ export type ReceizPortableExecutionAuthorityVerifierOptionsV124 = Readonly<{
   canonicalSignatureV4RootPublicKeys?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
   verifiedRegistryDiscovery?: ReceizRegistryDiscoveryResult;
   audience: string;
+  /** Complete counterpart originals for historical linked-operation inspection. */
+  linkedParticipantEvidence?: readonly unknown[];
 }>;
 
 export type ReceizVerifiedPortableExecutionAuthorityV124 = Readonly<{
@@ -151,6 +153,8 @@ export type ReceizVerifiedPortableExecutionAuthorityV124 = Readonly<{
   request: ReceizPortableExecutionAuthorityRequestV124;
   outcome: Readonly<Record<string, unknown>>;
   participantId: string;
+  /** Verified counterparts only; this never issues local commit or adoption custody. */
+  linkedParticipantAuthorities?: readonly ReceizVerifiedPortableExecutionAuthorityV124[];
   actorReceizId: string;
   priorHead: string;
   /** Legacy projection in whole pulses; exact coordinates are carried separately. */
@@ -290,6 +294,8 @@ export type ReceizPortableExecutionTransitionRecoveryV124 = Readonly<{
 export type ReceizRecoveredPortableExecutionTransitionSetV124 = Readonly<{
   status: "recovered-portable-execution-transition-set";
   transitions: readonly ReceizCommittedArtifactTransition[];
+  /** Exact source already admitted by recovery under the same pinned policy. */
+  transitionSet: ReceizVerifiedPortableExecutionTransitionSetV124;
   authority: Readonly<{
     recoveryIsProofAuthority: false;
     strongerTruth: "sealed-receiz-proof-object";
@@ -306,6 +312,7 @@ export type ReceizInspectedPortableExecutionTransitionRecoveryV124 = Readonly<{
   }>;
 }>;
 
+const PORTABLE_AUTHORITY_EVIDENCE_KEYS = ["schema", "profile", "participantId", "operationPlan", "request", "outcome", "planning", "predecessor", "successor", "identityArtifact", "signedCapability", "identityProof", "authority"] as const;
 const verifiedPortableAuthorities = new WeakSet<object>();
 const verifiedPortableTransitionSets = new WeakSet<object>();
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -1298,6 +1305,7 @@ async function processReceizPortableExecutionTransitionRecoveryV124(
   return freeze({
     status: "recovered-portable-execution-transition-set" as const,
     transitions: freeze(transitions),
+    transitionSet,
     authority: freeze({
       recoveryIsProofAuthority: false as const,
       strongerTruth: "sealed-receiz-proof-object" as const,
@@ -1353,11 +1361,53 @@ export async function recoverReceizPortableExecutionTransitionSetV124(
   return restored;
 }
 
+/** Inspect a complete linked original at its sealed terminal coordinate.
+ * This reuses historical authority admission, not the live recovery or commit
+ * boundary. Counterpart transport, outcomes and receipts confer no authority. */
 export async function verifyReceizPortableExecutionAuthorityEvidenceV124(
   value: unknown,
   options: ReceizPortableExecutionAuthorityVerifierOptionsV124,
 ): Promise<ReceizVerifiedPortableExecutionAuthorityV124> {
-  const record = exactObjectKeys(value, ["schema", "profile", "participantId", "operationPlan", "request", "outcome", "planning", "predecessor", "successor", "identityArtifact", "signedCapability", "identityProof", "authority"], "V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
+  if (options.linkedParticipantEvidence === undefined) return verifyPortableAuthorityMember(value, options);
+  if (!Array.isArray(options.linkedParticipantEvidence)) fail("V124_PORTABLE_AUTHORITY_LINKED_EVIDENCE_INVALID");
+  let evidence: unknown[];
+  try { evidence = structuredClone([value, ...options.linkedParticipantEvidence]); }
+  catch { fail("V124_PORTABLE_AUTHORITY_LINKED_EVIDENCE_INVALID"); }
+  const first = exactObjectKeys(evidence[0], PORTABLE_AUTHORITY_EVIDENCE_KEYS, "V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
+  const plan = await validateReceizOperationPlanV124(first.operationPlan);
+  const ids = Object.keys(plan.expectedParticipantHeads).sort();
+  const outcome = await committedOutcome(first.outcome);
+  const heads = outcome.committedHeads as Readonly<Record<string, string>>;
+  if (evidence.length !== ids.length || Object.keys(heads).sort().join("\0") !== ids.join("\0")) {
+    fail("V124_PORTABLE_AUTHORITY_LINKED_PARTICIPANT_MISMATCH");
+  }
+  const seen = new Set<string>();
+  const rawMembers = evidence.map(item => {
+    const member = exactObjectKeys(item, PORTABLE_AUTHORITY_EVIDENCE_KEYS, "V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
+    const id = text(member.participantId, "V124_PORTABLE_AUTHORITY_PARTICIPANT_INVALID");
+    if (!ids.includes(id) || seen.has(id)) fail("V124_PORTABLE_AUTHORITY_LINKED_PARTICIPANT_MISMATCH");
+    seen.add(id);
+    if (canonicalizeReceizV122(member.operationPlan) !== canonicalizeReceizV122(first.operationPlan)
+      || canonicalizeReceizV122(member.request) !== canonicalizeReceizV122(first.request)
+      || canonicalizeReceizV122(member.outcome) !== canonicalizeReceizV122(first.outcome)) {
+      fail("V124_PORTABLE_AUTHORITY_LINKED_ORIGINAL_MISMATCH");
+    }
+    return member;
+  });
+  const members: ReceizVerifiedPortableExecutionAuthorityV124[] = [];
+  for (const member of rawMembers) members.push(await verifyPortableAuthorityMember(member, options, ids));
+  const primary = members[0]!;
+  const verified = freeze({ ...primary, linkedParticipantAuthorities: freeze(members.sort((a,b) => a.participantId.localeCompare(b.participantId))) });
+  verifiedPortableAuthorities.add(verified);
+  return verified;
+}
+
+async function verifyPortableAuthorityMember(
+  value: unknown,
+  options: ReceizPortableExecutionAuthorityVerifierOptionsV124,
+  linkedParticipantIds?: readonly string[],
+): Promise<ReceizVerifiedPortableExecutionAuthorityV124> {
+  const record = exactObjectKeys(value, PORTABLE_AUTHORITY_EVIDENCE_KEYS, "V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
   if (record.schema !== "receiz.portable-execution-authority.v124" || record.profile !== "portable-state") fail("V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
   const authority = exactObjectKeys(record.authority, ["evidenceIsProofAuthority", "strongerTruth"], "V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
   if (authority.evidenceIsProofAuthority !== false || authority.strongerTruth !== "sealed-receiz-proof-object") fail("V124_PORTABLE_AUTHORITY_EVIDENCE_INVALID");
@@ -1373,8 +1423,9 @@ export async function verifyReceizPortableExecutionAuthorityEvidenceV124(
   const committedHeads = outcome.committedHeads as Readonly<Record<string, string>>;
   const committedHead = committedHeads[participantId];
   if (!expectedPriorHead || planning.expectedHead.value !== expectedPriorHead || !committedHead
-    || Object.keys(committedHeads).length !== 1
-    || Object.keys(committedHeads)[0] !== participantId) {
+    || (linkedParticipantIds
+      ? Object.keys(committedHeads).sort().join("\0") !== linkedParticipantIds.join("\0")
+      : Object.keys(committedHeads).length !== 1 || Object.keys(committedHeads)[0] !== participantId)) {
     fail("V124_PORTABLE_AUTHORITY_PARTICIPANT_MISMATCH");
   }
 

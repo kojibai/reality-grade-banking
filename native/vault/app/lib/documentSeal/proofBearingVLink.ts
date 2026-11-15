@@ -1,4 +1,5 @@
-import { deflateSync, inflateSync } from "fflate";
+import { deflateSync } from "fflate";
+import { inflateReceizBounded } from "../../../packages/receiz-sdk/src/verifier/boundedInflate";
 
 import type { ReceizProofBundle } from "@/app/utils/receizProofBundle";
 import { coerceReceizProofBundle } from "@/app/utils/receizProofBundle";
@@ -919,7 +920,7 @@ export function decodeCompactReceizProofToken(
   if (compressed.byteLength > MAX_COMPACT_RECEIZ_V_LINK_BYTES) return null;
   let inflated: Uint8Array;
   try {
-    inflated = inflateSync(compressed);
+    inflated = inflateReceizBounded(compressed, MAX_COMPACT_RECEIZ_V_LINK_JSON_BYTES, MAX_COMPACT_RECEIZ_V_LINK_BYTES);
   } catch {
     return null;
   }

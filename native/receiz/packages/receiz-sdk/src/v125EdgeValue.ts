@@ -22,7 +22,6 @@ import {
 } from "./v124Execution.js";
 import {
   recoverReceizPortableExecutionTransitionSetV124,
-  verifyReceizPortableExecutionTransitionSetV124,
   type ReceizPortableExecutionTransitionRecoveryV124,
 } from "./v124PortableAuthority.js";
 
@@ -321,20 +320,17 @@ async function settleReceizEdgeValueTransferV125(
     requiredRole: "sender" | "receiver";
   }>,
 ): Promise<ReceizSettledEdgeValueTransferV125> {
-  const recoveryRecord = record(value, "V125_EDGE_VALUE_RECOVERY_INVALID");
-  const transitionSet = await verifyReceizPortableExecutionTransitionSetV124(
-    recoveryRecord.transitionSet,
+  record(value, "V125_EDGE_VALUE_RECOVERY_INVALID");
+  const recovered = await recoverReceizPortableExecutionTransitionSetV124(
+    value as ReceizPortableExecutionTransitionRecoveryV124,
     { audience: input.applicationId },
   );
+  const transitionSet = recovered.transitionSet;
   const inspection = await inspectReceizEdgeValueTransferPlanV125(transitionSet.operationPlan, {
     participantId: input.participantId,
     expectedRail: input.expectedRail,
   });
   if (inspection.role !== input.requiredRole) fail("V125_EDGE_VALUE_ROLE_MISMATCH");
-  const recovered = await recoverReceizPortableExecutionTransitionSetV124(
-    value as ReceizPortableExecutionTransitionRecoveryV124,
-    { audience: input.applicationId },
-  );
   const memberIndex = transitionSet.members.findIndex((member) => member.participantId === input.participantId);
   const committedTransition = memberIndex < 0 ? undefined : recovered.transitions[memberIndex];
   if (!committedTransition) fail("V125_EDGE_VALUE_PARTICIPANT_MISMATCH");

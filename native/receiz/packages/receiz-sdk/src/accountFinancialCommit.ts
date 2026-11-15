@@ -6,8 +6,11 @@ import type{ReceizAdmissionStore,ReceizAdmissionAggregate}from './admissionStore
 import type{ReceizConstitutionJson}from './constitution.js';
 import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {projectReceizAccountFinancialAction,type ReceizAccountFinancialState,type ReceizAccountSendAction,type ReceizAccountMarketAction}from './accountFinancialExecution.js';
-export type ReceizAccountFinancialAction=ReceizAccountSendAction|ReceizAccountMarketAction;
-type Effect=ReturnType<typeof projectReceizAccountFinancialAction>['effect'];
+import {admitReceizAccountMarketOrderRequest,exportReceizAccountMarketOrderRequest,type ReceizVerifiedAccountMarketOrderRequest}from './accountMarketOrder.js';
+import {projectReceizAccountMarketOrderFunding}from './accountMarketOrderFunding.js';
+type ReserveAction=Readonly<{kind:'reserve-market-order';requestOriginalB64u:string}>;
+export type ReceizAccountFinancialAction=ReceizAccountSendAction|ReceizAccountMarketAction|ReserveAction;
+type Effect=ReturnType<typeof projectReceizAccountFinancialAction>['effect']|Awaited<ReturnType<typeof projectReceizAccountMarketOrderFunding>>['effect'];
 type RecordValue=Record<string,unknown>;
 const utf8=new TextEncoder(),UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u;
 function fail(code:string):never{throw new TypeError('ACCOUNT_FINANCIAL_'+code);}
@@ -18,7 +21,7 @@ function text(v:unknown):string{if(typeof v!=='string')fail('RECORD');return v;}
 function freeze<T>(v:T):T{if(v&&typeof v==='object'){for(const n of Object.values(v))freeze(n);Object.freeze(v);}return v;}
 function b64(v:unknown,length?:number){const s=text(v),b=dec(s);if(enc(b)!==s||length!==undefined&&b.length!==length)fail('ENCODING');return b;}
 const json=(v:unknown):ReceizConstitutionJson=>JSON.parse(canonical(v))as ReceizConstitutionJson;
-function actionSnapshot(v:ReceizAccountFinancialAction):ReceizAccountFinancialAction{const r=structuredClone(v);if(r.kind==='send'){const{note,...base}=r;if(note!==undefined&&typeof note!=='string')fail('NOTE');const normalized=note?.replace(/\s+/gu,' ').trim();if((normalized?.length??0)>280)fail('NOTE');return json({...base,...(normalized?{note:normalized}:{})})as ReceizAccountFinancialAction;}return json(r)as ReceizAccountFinancialAction;}
+function actionSnapshot(v:ReceizAccountFinancialAction):ReceizAccountFinancialAction{const r=structuredClone(v);if(r.kind==='reserve-market-order'){exact(r,['kind','requestOriginalB64u']);if(typeof r.requestOriginalB64u!=='string'||r.requestOriginalB64u.length>90000)fail('ORDER_REQUEST');return json(r)as ReserveAction;}if(r.kind==='send'){const{note,...base}=r;if(note!==undefined&&typeof note!=='string')fail('NOTE');const normalized=note?.replace(/\s+/gu,' ').trim();if((normalized?.length??0)>280)fail('NOTE');return json({...base,...(normalized?{note:normalized}:{})})as ReceizAccountFinancialAction;}return json(r)as ReceizAccountFinancialAction;}
 const ownerChallenge=(v:unknown)=>'receiz.account-financial-operation.owner.v1\0'+canonical(v);
 const custodyChallenge=(command:unknown,ownerConsent:unknown)=>utf8.encode('receiz.account-financial-operation.custody.v1\0'+canonical({command,ownerConsent}));
 export type ReceizVerifiedAccountFinancialOperation=Readonly<{status:'verified-account-financial-operation';artifactSha256:string;allocationId:string;operationId:string;requestDigest:string;predecessorArtifactSha256:string;predecessorOperationId:string|null;sequence:string;atKaiUPulse:string;action:ReceizAccountFinancialAction;effect:Effect;nextState:ReceizAccountFinancialState}>;
@@ -35,7 +38,7 @@ function financialEnvelope(input:Uint8Array,source:ReceizAccountFinancialSource)
  // Whole funded-original admission precedes native succession. This append
  // grants no funding independently of source custody and admitted ancestry.
  readReceizAccountFinancialSourceCustody(source);
- const original=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(original),body=exact(JSON.parse(raw),['schema','allocationId','sourceArtifactSha256','operationId','requestDigest','predecessorArtifactSha256','predecessorOperationId','sequence','atKaiUPulse','action','effect','nextState','ownerConsent','custodianSignature']);
+ const original=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(original),parsed=object(JSON.parse(raw)),body=exact(parsed,['schema','allocationId','sourceArtifactSha256','operationId','requestDigest','predecessorArtifactSha256','predecessorOperationId','sequence','atKaiUPulse','action','effect','nextState',...(parsed.schema==='receiz.account-market-order-reservation.v1'?[]:['ownerConsent','custodianSignature'])]);
  return{original,body,raw};
 }
 export async function admitReceizAccountFinancialOperation(input:Uint8Array,options:Readonly<{source:ReceizAccountFinancialSource;predecessor?:ReceizVerifiedAccountFinancialOperation|null}>):Promise<ReceizVerifiedAccountFinancialOperation>{
@@ -45,8 +48,17 @@ async function admitFinancialEnvelope(envelope:Awaited<ReturnType<typeof financi
  const custody=readReceizAccountFinancialSourceCustody(source),previous=parent?requireOperation(parent):null;
  if(previous&&previous.sourceSha256!==source.artifactSha256)fail('SOURCE_MISMATCH');
  const{original,body,raw}=envelope;
+ if(body.schema==='receiz.account-market-order-reservation.v1'){
+  const action=actionSnapshot(body.action as ReserveAction);if(action.kind!=='reserve-market-order')fail('ORDER_REQUEST');
+  const request=await admitReceizAccountMarketOrderRequest(b64(action.requestOriginalB64u),{source,predecessor:parent});
+  const projected=await projectReceizAccountMarketOrderFunding({source,predecessor:parent,request});
+  const command={schema:'receiz.account-market-order-reservation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:request.orderId,requestDigest:await requestDigest(source,request.orderId,action),predecessorArtifactSha256:request.predecessorArtifactSha256,predecessorOperationId:request.predecessorOperationId,sequence:projected.next.sequence,atKaiUPulse:request.orderKaiUPulse,action,effect:projected.effect,nextState:projected.next};
+  same(body,command);if(canonical(body)!==raw)fail('CAUSAL_ORIGINAL');
+  freeze(body);const accepted=Object.freeze({status:'verified-account-financial-operation'as const,artifactSha256:await sha256ReceizBytes(original),allocationId:source.allocationId,operationId:request.orderId,requestDigest:command.requestDigest,predecessorArtifactSha256:request.predecessorArtifactSha256,predecessorOperationId:request.predecessorOperationId,sequence:projected.next.sequence,atKaiUPulse:request.orderKaiUPulse,action,effect:body.effect as Effect,nextState:body.nextState as ReceizAccountFinancialState});
+  operations.set(accepted,{sourceSha256:source.artifactSha256,bytes:original,body,command,commandDigest:await digest(command),parent});return accepted;
+ }
  if(canonical(body)!==raw||body.schema!=='receiz.account-financial-operation.v1'||body.allocationId!==source.allocationId||body.sourceArtifactSha256!==source.artifactSha256||!UUID.test(text(body.operationId))||body.predecessorArtifactSha256!==(parent?.artifactSha256??source.artifactSha256)||body.predecessorOperationId!==(parent?.operationId??null))fail('CAUSAL_ORIGINAL');
- const action=actionSnapshot(body.action as ReceizAccountFinancialAction);same(action,body.action);
+ const action=actionSnapshot(body.action as ReceizAccountFinancialAction);if(action.kind==='reserve-market-order')fail('CAUSAL_ORIGINAL');same(action,body.action);
  if(body.requestDigest!==await requestDigest(source,text(body.operationId),action))fail('REQUEST_DIGEST');
  const state=parent?.nextState??custody.body.initialState as ReceizAccountFinancialState,projected=projectReceizAccountFinancialAction(source,state,action,text(body.atKaiUPulse));
  same(projected.effect,body.effect);same(projected.next,body.nextState);if(body.sequence!==projected.next.sequence)fail('SEQUENCE');
@@ -75,6 +87,7 @@ export async function admitReceizAccountFinancialRelease(input:Uint8Array,option
  const bytes=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(bytes),body=exact(JSON.parse(raw),['schema','allocationId','sourceArtifactSha256','financialHeadArtifactSha256','financialHeadOperationId','sequence','atKaiUPulse','ownerConsent','custodianSignature']);
  if(canonical(body)!==raw||body.schema!=='receiz.account-financial-release.v1'||body.allocationId!==source.allocationId||body.sourceArtifactSha256!==source.artifactSha256||body.financialHeadArtifactSha256!==(parent?.artifactSha256??source.artifactSha256)||body.financialHeadOperationId!==(parent?.operationId??null)||body.sequence!==(parent?.sequence??'0'))fail('RELEASE_PARENT');
  const at=text(body.atKaiUPulse),state=parent?.nextState??custody.body.initialState as ReceizAccountFinancialState;
+ if(state.orderEscrows?.length)fail('OPEN_ORDERS');
  if(!/^[1-9][0-9]{0,18}$/u.test(at)||BigInt(at)>((1n<<63n)-1n)||BigInt(at)<=BigInt(state.lastKaiUPulse))fail('RELEASE_PULSE');
  const command=Object.fromEntries(Object.entries(body).filter(([key])=>key!=='ownerConsent'&&key!=='custodianSignature')),proof=exact(body.ownerConsent,['schema','keyId','alg','challengeB64Url','signatureB64Url']);
  const program=object(custody.body.program),identity=object(program.identity),signer=object(program.custodian);
@@ -143,13 +156,21 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
  function receipt(op:ReceizVerifiedAccountFinancialOperation){return{schema:'receiz.account-financial-commit.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,atKaiUPulse:op.atKaiUPulse};}
  async function recorded(id:string,currentHead?:Awaited<ReturnType<typeof head>>):Promise<ReceizAccountFinancialCommit|null>{const r=await store.readIdempotency(idem(id));if(!r)return null;const current=currentHead??await head(),op=await open(id);same(r.receipt,receipt(op));if(r.commandDigest!==requireOperation(op).commandDigest||!lineage.has(op.artifactSha256)||current.row.revision<Number(op.sequence))fail('COMMIT_RECEIPT');const result=Object.freeze({status:'committed'as const,publication:'pending'as const,operation:op});commits.add(result);return result;}
  async function build(id:string,action:ReceizAccountFinancialAction,parent:ReceizVerifiedAccountFinancialOperation|null,state:ReceizAccountFinancialState,at:string){
+  if(action.kind==='reserve-market-order'){
+   const request=await admitReceizAccountMarketOrderRequest(b64(action.requestOriginalB64u),{source,predecessor:parent});
+   if(request.orderId!==id||request.orderKaiUPulse!==at)fail('ORDER_REQUEST');
+   const projection=await projectReceizAccountMarketOrderFunding({source,predecessor:parent,request});
+   const command={schema:'receiz.account-market-order-reservation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:id,requestDigest:await requestDigest(source,id,action),predecessorArtifactSha256:parent?.artifactSha256??source.artifactSha256,predecessorOperationId:parent?.operationId??null,sequence:projection.next.sequence,atKaiUPulse:at,action,effect:projection.effect,nextState:projection.next};
+   // The carried request already signs every input; the exact deterministic
+   // financial projection is admitted without another prompt or document seal.
+   return admitReceizAccountFinancialOperation(utf8.encode(canonical(command)),{source,predecessor:parent});
+  }
   const projection=projectReceizAccountFinancialAction(source,state,action,at);
   const command={schema:'receiz.account-financial-operation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:id,requestDigest:await requestDigest(source,id,action),predecessorArtifactSha256:parent?.artifactSha256??source.artifactSha256,predecessorOperationId:parent?.operationId??null,sequence:projection.next.sequence,atKaiUPulse:at,action,effect:projection.effect,nextState:projection.next};
   const ownerConsent=await options.signOwner(ownerChallenge(command)),custodianSignature=enc(await options.signRecord(custodyChallenge(command,ownerConsent))),body={...command,ownerConsent,custodianSignature};
   const candidate=await admitReceizAccountFinancialOperation(utf8.encode(canonical(body)),{source,predecessor:parent});same(requireOperation(candidate).body,body);return candidate;
  }
- return Object.freeze({
-  async execute(input:Readonly<{operationId:string;action:ReceizAccountFinancialAction}>){exact(input,['operationId','action']);const request={operationId:text(input.operationId),action:actionSnapshot(input.action),atKaiUPulse:clock()};if(!UUID.test(request.operationId))fail('OPERATION_ID');return serial(async()=>{
+ const execute=async(input:Readonly<{operationId:string;action:ReceizAccountFinancialAction}>)=>{exact(input,['operationId','action']);const request={operationId:text(input.operationId),action:actionSnapshot(input.action),atKaiUPulse:input.action.kind==='reserve-market-order'?text(object(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(b64(input.action.requestOriginalB64u)))).orderKaiUPulse):clock()};if(!UUID.test(request.operationId))fail('OPERATION_ID');return serial(async()=>{
    const action=request.action,wanted=await requestDigest(source,request.operationId,action),prior=await recorded(request.operationId);if(prior){if(prior.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return prior;}
    let current=await head();if(current.release){const raced=await recorded(request.operationId,current);if(raced){if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return raced;}fail('SOURCE_RELEASED');}let saved=await stage(request.operationId),op:ReceizVerifiedAccountFinancialOperation;
    if(saved){op=await open(request.operationId);if(op.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');}
@@ -168,9 +189,12 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
    try{result=await store.commit({schema:'receiz.admission.unit-of-work.v1',aggregateId:headId,commandDigest:c.commandDigest,idempotencyKey:idem(op.operationId),expectedRevision:current.row.revision,expectedHeadDigest:op.predecessorArtifactSha256,readDependencies:[{aggregateId:stageId(op.operationId),expectedHeadDigest:op.artifactSha256}],acceptedCommand:json({operationId:op.operationId,requestDigest:op.requestDigest,originalReference:stageId(op.operationId),artifactSha256:op.artifactSha256}),events:[json(receipt(op))],nextHead:{revision:Number(op.sequence),digest:op.artifactSha256,state:json({operationId:op.operationId})},resourceEffects:{},receipt:json(receipt(op)),outboxIntents:[json({kind:'account-financial-original',allocationId:source.allocationId,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,predecessorOperationId:op.predecessorOperationId})],auditReference:json({sourceArtifactSha256:source.artifactSha256,atKaiUPulse:op.atKaiUPulse})});}catch{/* Reopen actual retained acceptance after acknowledgement loss. */}
    const accepted=await recorded(op.operationId);if(accepted)return accepted;
    if(result?.status==='conflict')fail(result.code);return{status:'not-committed'as const,operationId:request.operationId};
-  });},
+  });};
+ return Object.freeze({
+  execute,
+  reserveOrder(request:ReceizVerifiedAccountMarketOrderRequest){const bytes=exportReceizAccountMarketOrderRequest(request);return execute({operationId:request.orderId,action:{kind:'reserve-market-order',requestOriginalB64u:enc(bytes)}});},
   release(){const atKaiUPulse=clock();return serial(async()=>{
-   const current=await head();if(current.release)return current.release;
+   const current=await head();if(current.release)return current.release;if(current.state.orderEscrows?.length)fail('OPEN_ORDERS');
    const reference=headId+':release:'+current.row.headDigest,prior=await store.readAggregate(reference);let release:ReceizVerifiedAccountFinancialRelease;
    if(prior){const bytes=await options.originals.read(prior.headDigest!);if(!(bytes instanceof Uint8Array))fail('ORIGINAL_RETENTION_REQUIRED');release=await admitReceizAccountFinancialRelease(bytes,{source,financialHead:current.operation});if(release.artifactSha256!==prior.headDigest)fail('HEAD_ORIGINAL');}
    else{

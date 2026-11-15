@@ -56,6 +56,7 @@ export async function openSealedConformanceEvidenceObject(bytes:Uint8Array,ports
  if(!(bytes instanceof Uint8Array)||!bytes.length||bytes.length>MAX_BYTES)return fail('CONFORMANCE_PROOF_CAPACITY');
  const file={bytes:new Uint8Array(bytes),filename:ports.filename??'bankeiz-conformance-evidence.png',mimeType:'image/png'};
  const verification=await(ports.verifyOffline??(async input=>(await offlineDefault()).verifyReceizOfflineSealedFile(input)))(file);
+ if(verification.denial?.code==='VERIFICATION_RESOURCE_UNAVAILABLE')return fail('CONFORMANCE_PROOF_CAPACITY');
  if(!verification.ok||!verification.integrity.ok||verification.kind!=='png')return fail('CONFORMANCE_PROOF_INVALID');
  const verifiedContinuity=continuity(verification),opened=await(ports.openPayload??openPayloadDefault)(file),openedContinuity=continuity(opened.verification);
  if(!opened.verification.ok||!opened.verification.integrity.ok||openedContinuity.artifactId!==verifiedContinuity.artifactId||openedContinuity.ownerReceizId!==verifiedContinuity.ownerReceizId)return fail('CONFORMANCE_PROOF_INVALID');

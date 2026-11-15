@@ -1,4 +1,6 @@
-import { deflateSync, inflateSync } from "fflate";
+import { deflateSync } from "fflate";
+import { inflateReceizBounded } from "../../packages/receiz-sdk/src/verifier/boundedInflate";
+import { ReceizProtocolLimitError } from "../../packages/receiz-sdk/src/verificationLimits";
 import { jcsCanonicalize } from "@/app/utils/jcs";
 import { base64UrlDecode, base64UrlEncode } from "@/app/utils/sha256";
 import { parseProfileUsername } from "@/app/lib/profile/username";
@@ -128,13 +130,18 @@ export function encodeReceizOwnershipProvenanceBundle(bundle: ReceizOwnershipPro
 }
 
 export function decodeReceizOwnershipProvenanceBundle(raw: string): ReceizOwnershipProvenanceBundle | null {
+  const maxCompressedBytes = MAX_PROVENANCE_DECODE_BYTES + Math.ceil(MAX_PROVENANCE_DECODE_BYTES / 16384) * 5 + 64;
+  if (raw.length > 3 + Math.ceil(maxCompressedBytes / 3) * 4) {
+    throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+  }
   const [codec, encoded] = raw.split(".", 2);
   if (codec !== RECEIZ_OWNERSHIP_PROVENANCE_CODEC || !encoded) return null;
 
   let inflated: Uint8Array;
   try {
-    inflated = inflateSync(base64UrlDecode(encoded));
-  } catch {
+    inflated = inflateReceizBounded(base64UrlDecode(encoded), MAX_PROVENANCE_DECODE_BYTES, maxCompressedBytes);
+  } catch (error) {
+    if (error instanceof ReceizProtocolLimitError) throw error;
     return null;
   }
   assertBundleSize(inflated, MAX_PROVENANCE_DECODE_BYTES, "ownership provenance bundle");

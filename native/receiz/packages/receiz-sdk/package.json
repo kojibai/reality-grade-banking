@@ -1,6 +1,6 @@
 {
   "name": "@receiz/sdk",
-  "version": "129.0.0",
+  "version": "129.5.0",
   "description": "TypeScript SDK for Receiz proof-native artifact, public proof, wallet, sports, Twin, World, and Connect integrations.",
   "type": "module",
   "main": "dist/index.js",
@@ -147,15 +147,6 @@
     "docs/registered-native-runtime.md",
     "docs/offline-proof-valuation.md"
   ],
-  "scripts": {
-    "clean": "node scripts/clean-dist.mjs",
-    "build": "pnpm clean && node ../../scripts/sync_canonical_anchor_parser.mjs --check && node ../../scripts/sync_sigil_valuation_core.mjs --check && tsc -p tsconfig.json && node scripts/compact-registry-projections.mjs",
-    "test": "pnpm test:package-boundary && pnpm build && node --import tsx --test --test-concurrency=4 test/*.test.ts",
-    "test:package-boundary": "node --import tsx --test test/v125AttestationPackageBoundary.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "prepack": "pnpm --dir ../.. test:coordinated-release-identity && pnpm build",
-    "prepublishOnly": "pnpm --dir ../.. test:coordinated-release-identity && pnpm test"
-  },
   "keywords": [
     "receiz",
     "proof",
@@ -170,7 +161,7 @@
   "dependencies": {
     "@noble/hashes": "^2.3.0",
     "hash-wasm": "^4.12.0",
-    "@receiz/ai-skills": "129.0.0",
+    "@receiz/ai-skills": "129.5.0",
     "fflate": "^0.8.3",
     "snarkjs": "^0.7.6"
   },
@@ -193,5 +184,12 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "scripts": {
+    "clean": "node scripts/clean-dist.mjs",
+    "build": "pnpm clean && node ../../scripts/sync_canonical_anchor_parser.mjs --check && node ../../scripts/sync_canonical_resource_parsers.mjs --check && node ../../scripts/sync_sigil_valuation_core.mjs --check && tsc -p tsconfig.json && node ../../scripts/sync_account_financial_math.mjs --check --dist-types && node scripts/compact-registry-projections.mjs",
+    "test": "pnpm test:package-boundary && pnpm build && node --import tsx --test --test-concurrency=4 test/*.test.ts",
+    "test:package-boundary": "node --import tsx --test test/v125AttestationPackageBoundary.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

@@ -14,7 +14,7 @@ it('reproduces current proof value separately from an earlier event and exposes 
  const record=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'event',actionKind:'proof_transfer',pulse:12000000,assetId:asset.seed,amountUsdCents:'100'}]}).records[0];
  expect(ledgerValueForRecord(record,index).amountUsdCents).toBe('1160227');
  expect(ledgerCurrentAssetValue(record,index)?.amountUsdCents).toBe('1477588');
- expect(ledgerValuationContext(record,index)).toMatchObject({sdk:'129.0.0',projectionDigest:source.proofObjectHash,seed:{claimPulse:asset.marketItem!.livePulseSeed!.claimPulse},quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},rounding:'Math.round(valuePhi × usdPerPhi × 100)'});
+ expect(ledgerValuationContext(record,index)).toMatchObject({sdk:'129.5.0',projectionDigest:source.proofObjectHash,seed:{claimPulse:asset.marketItem!.livePulseSeed!.claimPulse},quote:{referenceUsd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0},rounding:'Math.round(valuePhi × usdPerPhi × 100)'});
 });
 it('does not fabricate a current asset value from a payment or an unrelated quote',()=>{
  const row=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'payment',kind:'chat_transfer',amountUsdCents:'100'}]}).records[0];

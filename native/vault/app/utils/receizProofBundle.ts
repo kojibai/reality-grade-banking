@@ -1,4 +1,6 @@
-import { deflateSync, inflateSync } from "fflate";
+import { deflateSync } from "fflate";
+import { inflateReceizBounded } from "../../packages/receiz-sdk/src/verifier/boundedInflate";
+import { ReceizProtocolLimitError } from "../../packages/receiz-sdk/src/verificationLimits";
 import { hmacHex } from "@/app/lib/sign";
 import {
   coerceReceizBundleSignatureV3,
@@ -693,23 +695,34 @@ export function encodeReceizProofBundle(bundle: ReceizProofBundle): string {
   return `${RECEIZ_PROOF_BUNDLE_CODEC}:${base64UrlEncode(compressed)}`;
 }
 
-export function decodeReceizProofBundle(encoded: string): ReceizProofBundle {
+/** Decode bounded proof JSON only. This does not admit a proof or project its
+ * identity; historical interpreters must still compose canonical verification. */
+export function decodeReceizProofBundlePayload(encoded: string): unknown {
+  const maxCompressedBytes = MAX_BUNDLE_DECODE_BYTES + 1024;
+  if (encoded.length > 3 + Math.ceil(maxCompressedBytes / 3) * 4) {
+    throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+  }
   const [codec, payload] = encoded.split(":", 2);
   if (codec !== RECEIZ_PROOF_BUNDLE_CODEC || !payload) {
     const legacyBytes = base64UrlDecode(encoded);
-    const parsedLegacy = JSON.parse(new TextDecoder().decode(legacyBytes)) as unknown;
-    const legacyBundle = coerceReceizProofBundle(parsedLegacy);
-    if (!legacyBundle) throw new Error("Unsupported receiz proof bundle codec.");
-    return legacyBundle;
+    if (legacyBytes.byteLength > MAX_BUNDLE_DECODE_BYTES) {
+      throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+    }
+    return JSON.parse(new TextDecoder().decode(legacyBytes)) as unknown;
   }
   const compressed = base64UrlDecode(payload);
-  const inflated = inflateSync(compressed, { out: new Uint8Array(MAX_BUNDLE_DECODE_BYTES + 1) });
-  if (inflated.byteLength > MAX_BUNDLE_DECODE_BYTES) {
-    throw new Error("Receiz proof bundle payload too large.");
-  }
-  const parsed = JSON.parse(new TextDecoder().decode(inflated)) as unknown;
+  const inflated = inflateReceizBounded(compressed, MAX_BUNDLE_DECODE_BYTES, maxCompressedBytes);
+  return JSON.parse(new TextDecoder().decode(inflated)) as unknown;
+}
+
+export function decodeReceizProofBundle(encoded: string): ReceizProofBundle {
+  const parsed = decodeReceizProofBundlePayload(encoded);
   const bundle = coerceReceizProofBundle(parsed);
-  if (!bundle) throw new Error("Invalid receiz proof bundle payload.");
+  if (!bundle) {
+    const [codec, payload] = encoded.split(":", 2);
+    throw new Error(codec === RECEIZ_PROOF_BUNDLE_CODEC && payload
+      ? "Invalid receiz proof bundle payload." : "Unsupported receiz proof bundle codec.");
+  }
   return bundle;
 }
 

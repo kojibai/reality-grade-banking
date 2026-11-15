@@ -677,6 +677,16 @@ function buildOperationalDenialResult(
   };
 }
 
+// Application codecs and the SDK can be loaded through separate ESM/CommonJS
+// module instances. Preserve their explicit operational refusal across that
+// boundary; a resource refusal never establishes artifact invalidity.
+function canonicalResourceRefusalCode(error: unknown): "VERIFICATION_RESOURCE_UNAVAILABLE" | "VERIFICATION_BUDGET_EXCEEDED" | null {
+  if (!error || typeof error !== "object") return null;
+  const failure = error as { name?: unknown; artifactValidity?: unknown; code?: unknown };
+  if (failure.name !== "ReceizProtocolLimitError" || failure.artifactValidity !== "not-evaluated") return null;
+  return failure.code === "VERIFICATION_RESOURCE_UNAVAILABLE" || failure.code === "VERIFICATION_BUDGET_EXCEEDED" ? failure.code : null;
+}
+
 function zipEntryUncompressedSize(entry: unknown): number | null {
   if (!entry || typeof entry !== "object") return null;
   const data = (entry as { _data?: { uncompressedSize?: unknown } })._data;
@@ -1632,19 +1642,24 @@ async function verifyPngArtifact(args: {
   let anchorRaw: string | null = null;
 
   try {
-    proofChunkCount = countPngTextChunksByKeyword(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY);
-    proofEncoded = readPngTextChunk(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY);
-    anchorRaw = readPngTextChunk(args.pngBytes, RECEIZ_ANCHOR_BUNDLE_CHUNK_KEY);
-  } catch {
-    return buildInvalidResult("png", ["Invalid PNG. Upload the original sealed artifact."], warnings);
-  }
-
-  if (proofChunkCount !== 1) {
-    errors.push(
-      proofChunkCount > 1
+    proofChunkCount = countPngTextChunksByKeyword(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY, 2);
+    if (proofChunkCount !== 1) {
+      return buildInvalidResult("png", [proofChunkCount > 1
         ? "Duplicate proof bundles detected (proof bundle chunk count > 1)."
-        : "Missing proof bundle chunk (likely not the original sealed artifact)."
-    );
+        : "Missing proof bundle chunk (likely not the original sealed artifact)."], warnings);
+    }
+    // The proof wire fits the existing 64 KiB decoded bundle budget. Other
+    // metadata (artwork/provenance) keeps its own larger supported capacity.
+    proofEncoded = readPngTextChunk(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY, {
+      maxCompressedBytes: 128 * 1024,
+      maxTextBytes: 128 * 1024,
+      maxTotalTextBytes: 128 * 1024,
+    });
+    anchorRaw = readPngTextChunk(args.pngBytes, RECEIZ_ANCHOR_BUNDLE_CHUNK_KEY);
+  } catch (error) {
+    const refusal = canonicalResourceRefusalCode(error);
+    if (refusal) return buildOperationalDenialResult("png", refusal);
+    return buildInvalidResult("png", ["Invalid PNG. Upload the original sealed artifact."], warnings);
   }
 
   if (!proofEncoded) {
@@ -1658,6 +1673,8 @@ async function verifyPngArtifact(args: {
   try {
     bundle = decodeReceizProofBundle(proofEncoded);
   } catch (err) {
+    const refusal = canonicalResourceRefusalCode(err);
+    if (refusal) return buildOperationalDenialResult("png", refusal);
     const message = err instanceof Error ? err.message : String(err);
     return buildInvalidResult("png", [...errors, `Proof bundle decode failed: ${message}`], warnings);
   }
@@ -1669,25 +1686,31 @@ async function verifyPngArtifact(args: {
   const derivedAnchor = deriveAnchorBundleFromProofBundle(bundle);
   const anchor = proofBearingAnchorProjection(chunkAnchor, derivedAnchor);
 
-  const basisBytes = stripReceizProofAugmentationChunks(args.pngBytes);
-  const checked = await validateBundleAgainstBasis({
-    bundle,
-    basisBytes,
-    anchor,
-    optionalLink: args.optionalLink,
-    signingKey: args.signingKey,
-      signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
-  });
+  try {
+    const basisBytes = stripReceizProofAugmentationChunks(args.pngBytes);
+    const checked = await validateBundleAgainstBasis({
+      bundle,
+      basisBytes,
+      anchor,
+      optionalLink: args.optionalLink,
+      signingKey: args.signingKey,
+        signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
+    });
 
-  return {
-    ok: errors.length === 0 && checked.errors.length === 0,
-    kind: "png",
-    errors: [...errors, ...checked.errors],
-    warnings: [...warnings, ...checked.warnings],
-    bundle,
-    anchor,
-    package: null,
-  };
+    return {
+      ok: errors.length === 0 && checked.errors.length === 0,
+      kind: "png",
+      errors: [...errors, ...checked.errors],
+      warnings: [...warnings, ...checked.warnings],
+      bundle,
+      anchor,
+      package: null,
+    };
+  } catch (error) {
+    const refusal = canonicalResourceRefusalCode(error);
+    if (refusal) return buildOperationalDenialResult("png", refusal);
+    throw error;
+  }
 }
 
 async function verifyPdfArtifact(args: {
@@ -1713,6 +1736,8 @@ async function verifyPdfArtifact(args: {
   try {
     bundle = decodeReceizProofBundle(proofBundles[0] ?? "");
   } catch (err) {
+    const refusal = canonicalResourceRefusalCode(err);
+    if (refusal) return buildOperationalDenialResult("pdf", refusal);
     const message = err instanceof Error ? err.message : String(err);
     return buildInvalidResult("pdf", [...errors, `Proof bundle decode failed: ${message}`], warnings);
   }
@@ -1821,6 +1846,8 @@ async function verifySvgArtifact(args: {
   try {
     bundle = decodeReceizProofBundle(parsed.encodedBundle);
   } catch (err) {
+    const refusal = canonicalResourceRefusalCode(err);
+    if (refusal) return buildOperationalDenialResult("trailer", refusal);
     const message = err instanceof Error ? err.message : String(err);
     return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
   }
@@ -1888,6 +1915,8 @@ async function verifyJsonArtifact(args: {
   try {
     bundle = decodeReceizProofBundle(parsed.encodedBundle);
   } catch (err) {
+    const refusal = canonicalResourceRefusalCode(err);
+    if (refusal) return buildOperationalDenialResult("trailer", refusal);
     const message = err instanceof Error ? err.message : String(err);
     return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
   }

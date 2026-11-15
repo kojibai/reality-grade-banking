@@ -9,7 +9,7 @@ import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {ORIGINAL_PNG_MAX_BYTES} from './original-capacity';
 import {zipSync} from 'fflate';
 import {admittedProofInspection,retainPrivateProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
-import {offlineProofVerifierDigest} from './offline-proof-build';
+import {offlineProofVerifierDigest,offlineProofVerifierSdkVersion} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {assertTransferOriginalRecord,ledgerOriginalTransferId} from './held-transfer-original';
 
@@ -155,7 +155,7 @@ export async function downloadLedgerEvidence(record:PublicRecord,report?:Offline
  const verifier=await verifierReady,files:Record<string,Uint8Array>={},encode=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v,null,2));
  const result=await buildReady;if('error' in result)throw result.error;const buildResponse=result.response;if(!buildResponse.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const build=await buildResponse.json() as {sdk:string;files:Record<string,{sha256:string;bytes:number}>};
  const required=['verifier.js','verifier.js.map','verify.mjs','verify.html','README.txt','verification-material.json','LICENSE.txt','NOTICE.txt','THIRD_PARTY_NOTICES.md'];
- if(build.sdk!=='129.0.0'||!build.files||Object.keys(build.files).length>30||required.some(name=>!Object.hasOwn(build.files,name))||build.files['verifier.js'].sha256!==offlineProofVerifierDigest)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
+ if(build.sdk!==offlineProofVerifierSdkVersion||!build.files||Object.keys(build.files).length>30||required.some(name=>!Object.hasOwn(build.files,name))||build.files['verifier.js'].sha256!==offlineProofVerifierDigest)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
  await Promise.all(Object.entries(build.files).map(async([name,entry])=>{if(!/^[a-zA-Z0-9_.-]+$/.test(name)||entry.bytes>8*1024*1024)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');const path=name==='verifier.js.map'?name+'.bin':name;const r=await fetch(BASE+path,{credentials:'omit'});if(!r.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const bytes=await readPublicLedgerBytes(r,8*1024*1024);if(bytes.length!==entry.bytes||await verifier.sha256Hex(bytes)!==entry.sha256)throw Error('OFFLINE_VERIFIER_INTEGRITY');files[name]=bytes;}));
  files['build.json']=encode(build);files['record.json']=encode(ledgerInspectionDocument(record,ledgerValueForRecord(record)));
  files['original.receiz']=new Uint8Array(await original.arrayBuffer());files['proof-inspection.json']=encode({...selected,verificationMaterial:verifier.materials});

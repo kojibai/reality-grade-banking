@@ -1742,6 +1742,8 @@ export type WalletLedgerEvent = {
 };
 
 export type WalletLedgerFeed = {
+  /** Read-only source disclosure returned by the existing ledger transport. */
+  fundingContexts?: Record<string, unknown>;
   ok: boolean;
   cursor: string | null;
   since: string | null;

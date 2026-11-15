@@ -28,7 +28,7 @@ it('refuses unknown or changed bytes before exposing any general custom-root ins
 });
 it('packages exact existing synthetic fixtures and complete corresponding sources/licenses without a signer or funding export',()=>{
  const manifest=JSON.parse(readFileSync(root+'/build.json','utf8')),map=JSON.parse(readFileSync(root+'/verifier.mjs.map','utf8'));
- expect(manifest).toMatchObject({schema:'bankeiz.synthetic-note-demo-build.v1',sdk:'129.0.0',synthetic:true,creditAuthorized:false});
+ expect(manifest).toMatchObject({schema:'bankeiz.synthetic-note-demo-build.v1',sdk:'129.5.0',synthetic:true,creditAuthorized:false});
  for(const name of ['note.png.gz','wrong-note-authority.png.gz'])expect(readFileSync(root+'/'+name).equals(readFileSync('tests/fixtures/connected-note-delivery/'+name))).toBe(true);
  expect(map.sources.length).toBe(map.sourcesContent.length);expect(map.sourcesContent.every((value:unknown)=>typeof value==='string')).toBe(true);
  expect(readFileSync(root+'/verifier.mjs.map.bin').equals(readFileSync(root+'/verifier.mjs.map'))).toBe(true);

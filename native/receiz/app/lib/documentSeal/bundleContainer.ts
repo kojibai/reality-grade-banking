@@ -1,5 +1,6 @@
 import { jcsCanonicalize } from "@/app/utils/jcs";
-import { base64UrlDecode, base64UrlEncode } from "@/app/utils/sha256";
+import { base64UrlDecode } from "@/app/utils/sha256";
+import { receizBase64UrlEncode } from "../../../packages/receiz-sdk/src/identity";
 import { coerceReceizProofBundle, type ReceizProofBundle } from "@/app/utils/receizProofBundle";
 
 const textEncoder = new TextEncoder();
@@ -55,7 +56,7 @@ export function encodeReceizBundleEnvelope(args: {
   const envelope: ReceizBundleEnvelope = {
     kind: "receiz.bundle.v1",
     manifest: args.manifest,
-    originalBase64: base64UrlEncode(args.originalBytes),
+    originalBase64: receizBase64UrlEncode(args.originalBytes),
     proofbundle: args.proofbundle,
   };
   return textEncoder.encode(jcsCanonicalize(envelope));

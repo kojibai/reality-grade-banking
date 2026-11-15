@@ -1,9 +1,9 @@
 {
   "schema": "bankeiz.native-identity-artwork.v129",
-  "receizVersion": "129.0.0",
+  "receizVersion": "129.5.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "f63c83ef998136f53f8c120c48f26a06ccef3b5c1cad04b91b7abc3fe3923829",
-  "bytes": 62448,
+  "moduleSha256": "16289aa2bd3b4b335a8803618022147a036256068e3ab2f78dcba3f53474b922",
+  "bytes": 63999,
   "inputs": [
     {
       "path": "npm/fflate@0.8.3/esm/browser.js",
@@ -31,7 +31,15 @@
     },
     {
       "path": "receiz/app/utils/pngChunks.ts",
-      "sha256": "7a54e936bee91d58886690cf0a3bad0982da141bb8b8a8482851863531c674bf"
+      "sha256": "dc62be53555aa39b461be2d0407673ce8d47f6245d61adf5ec2a71bedf725991"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verificationLimits.ts",
+      "sha256": "2c8cc611612b3f901bc971cf3387ce0c91387a0a171a8aafaf1c05e3020dcf4e"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/boundedInflate.ts",
+      "sha256": "772d5d52d8d49b31c494718b14f66fbcb080bb60b28658555f61fe988072fd68"
     }
   ]
 }

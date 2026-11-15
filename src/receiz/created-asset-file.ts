@@ -13,6 +13,7 @@ const absentProof=new Set(['Missing proof bundle chunk (likely not the original 
 async function fileHasProof(bytes:Uint8Array,filename:string,mimeType:string){
  const {verifyReceizOfflineSealedFile}=await import('@receiz/sdk/offline');
  const verification=await verifyReceizOfflineSealedFile({bytes,filename,mimeType});
+ if(verification.denial?.code==='VERIFICATION_RESOURCE_UNAVAILABLE')throw Error('ORIGINAL_FILE_PROOF_UNAVAILABLE');
  if(verification.ok)return true;
  if(verification.bundle||verification.errors.length!==1||!absentProof.has(verification.errors[0]!))throw Error('ORIGINAL_FILE_PROOF_INVALID');
  return false;

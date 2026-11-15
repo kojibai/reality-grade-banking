@@ -16,7 +16,7 @@ it('prepares the complete receipt only inside the explicitly opened panel and sh
  const host=document.createElement('div');document.body.append(host);root=createRoot(host);expect(fetcher).not.toHaveBeenCalled();
  await act(async()=>{root!.render(<ReceiptShare receipt={receipt} onClose={()=>{}}/>);});
  await vi.waitFor(async()=>{await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});expect(host.querySelector<HTMLButtonElement>('[aria-label="Share receipt"]')?.disabled,host.textContent??'').toBe(false);});
- expect(fetcher).toHaveBeenCalledOnce();expect(host.textContent).not.toContain('PRIVATE');expect(host.querySelector('a[download]')).not.toBeNull();expect(host.querySelector('a[href*="/ledger/#record="]')).not.toBeNull();expect(share).not.toHaveBeenCalled();
+ expect(fetcher).toHaveBeenCalledOnce();expect(host.textContent).not.toContain('PRIVATE');expect([...host.querySelectorAll('button')].some(button=>button.textContent==='Download original')).toBe(true);expect(host.querySelector('a[href*="/ledger/#record="]')).not.toBeNull();expect(share).not.toHaveBeenCalled();
  const button=host.querySelector<HTMLButtonElement>('[aria-label="Share receipt"]')!;
  act(()=>button.click());expect(share).toHaveBeenCalledOnce();expect(share.mock.calls[0][0].url!.length).toBeLessThan(110);
 });

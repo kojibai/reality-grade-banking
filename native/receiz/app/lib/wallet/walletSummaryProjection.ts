@@ -3,6 +3,10 @@ import type { WalletProfileSyncSnapshot } from "../profile/server";
 import { formatPhiFromMicro, formatUsdFromCents, usdCentsFromPhiMicro } from "./amounts";
 import { composeWalletDisplayedTotals } from "./lawfulActionSettlement";
 import { buildWalletValueStatesFromBalanceCents } from "./valueStates";
+import { BANK_LOCAL_VALUE_SCHEMA } from "./bankNotes/localWalletValuation";
+import type { WalletReserveFundingSource, WalletReserveFundingDisplay } from "./reserveFundingDisplay";
+import {readWalletCashBasis,type WalletCashBasis} from "./walletCashBasis";
+import type {WalletCurrentBalanceSource} from './currentBalanceDisplay';
 
 /** Mechanical projection of already selected inputs. This does not admit proof,
  * establish scope completeness, or authorize Reserve/Settlement execution.
@@ -12,9 +16,16 @@ export type WalletSummaryProjectionInput = Readonly<{
   rollupRow: WalletRollupRow | null;
   seedRow: WalletSeedLedgerRow | null;
   creationSigilBenefitsEnabled: boolean;
+  cashBasis?: WalletCashBasis;
+  cashBasisAccepted?:boolean;
+  legacySigilClaimEnabled?: boolean;
   profileSyncSnapshot: WalletProfileSyncSnapshot | null;
   loadedLawfulActionPhiMicro: bigint | null;
   ledgerSettledUsdCents: bigint;
+  /** Original Phi backing from the same admitted native ledger prefix. Omitted
+   * legacy observations carry no exact mixed-rail unit split. */
+  ledgerReservePhiMicro?: bigint | null;
+  reserveFundingSource?: WalletReserveFundingSource;
   acceptedSettlementIds: string[];
   usdRateMicrocents: bigint;
   quote: WalletSummary["quote"];
@@ -59,20 +70,22 @@ export function projectWalletSummary(userId: string, input: WalletSummaryProject
   const totalDebitUsdCents = nonNegative(parseBigintLike(rollupRow?.total_debit_usd_cents ?? 0n, 0n));
   const profileSeedPhiMicro = nonNegative(parseBigintLike(seedRow?.amount_phi_micro ?? 0n, 0n));
   const profileSeedUsdCents = nonNegative(parseBigintLike(seedRow?.amount_usd_cents ?? 0n, 0n));
-  const transactionDeltaPhiMicro = totalCreditPhiMicro - totalDebitPhiMicro - profileSeedPhiMicro;
-  const transactionDeltaUsdCents = totalCreditUsdCents - totalDebitUsdCents - profileSeedUsdCents;
+  const cashBasis=readWalletCashBasis(input.cashBasis);
+  const projectionEnabled=creationSigilBenefitsEnabled||cashBasis!==undefined;
+  const transactionDeltaPhiMicro = totalCreditPhiMicro - totalDebitPhiMicro + (cashBasis ? BigInt(cashBasis.phiOffsetMicro) : -profileSeedPhiMicro);
+  const transactionDeltaUsdCents = totalCreditUsdCents - totalDebitUsdCents + (cashBasis ? BigInt(cashBasis.usdOffsetCents) : -profileSeedUsdCents);
 
   const artifactBasePhiMicro =
-    creationSigilBenefitsEnabled && profileSyncSnapshot
+    projectionEnabled && profileSyncSnapshot
       ? nonNegative(parseBigintLike(profileSyncSnapshot.glyphSettlementPhiMicro, 0n))
       : null;
-  if (creationSigilBenefitsEnabled && (!profileSyncSnapshot || !profileSyncSnapshot.projectionComplete)) {
+  if (projectionEnabled && (!profileSyncSnapshot || !profileSyncSnapshot.projectionComplete)) {
     throw new Error("wallet_glyph_settlement_projection_incomplete");
   }
-  const resolvedArtifactBasePhiMicro = creationSigilBenefitsEnabled ? (artifactBasePhiMicro ?? 0n) : 0n;
+  const resolvedArtifactBasePhiMicro = projectionEnabled ? (artifactBasePhiMicro ?? 0n) : 0n;
   const lawfulActionProjectionAvailable = loadedLawfulActionPhiMicro !== null;
   // Lawful-action Settlement is composed beneath the complete artifact base.
-  const lawfulActionPhiMicro = creationSigilBenefitsEnabled && profileSyncSnapshot
+  const lawfulActionPhiMicro = projectionEnabled && profileSyncSnapshot
     ? (loadedLawfulActionPhiMicro ?? 0n)
     : 0n;
 
@@ -88,13 +101,13 @@ export function projectWalletSummary(userId: string, input: WalletSummaryProject
     transactionDeltaPhiMicro,
     transactionDeltaUsdCents,
   });
-  const balancePhiMicro = creationSigilBenefitsEnabled
+  const balancePhiMicro = projectionEnabled
     ? displayedTotals.balancePhiMicro
     : accountBalancePhiMicro;
   // Total wallet value may include entitlement, profile, or proof-native PHI value.
   // External-rail conversion is stricter: only funded credits and proven settled
   // proceeds can back that rail.
-  const balanceUsdCents = creationSigilBenefitsEnabled
+  const balanceUsdCents = projectionEnabled
     ? displayedTotals.balanceUsdCents
     : rollupRow
       ? nonNegative(totalCreditUsdCents - totalDebitUsdCents)
@@ -102,17 +115,50 @@ export function projectWalletSummary(userId: string, input: WalletSummaryProject
   const accountBalanceUsdCents = usdCentsFromPhiMicro(accountBalancePhiMicro, usdRateMicrocents);
   const settledBalanceUsdCents =
     ledgerSettledUsdCents < accountBalanceUsdCents ? ledgerSettledUsdCents : accountBalanceUsdCents;
-  const effectiveCreationSigilBenefitsEnabled = creationSigilBenefitsEnabled || balanceUsdCents > settledBalanceUsdCents;
-
+  const effectiveCreationSigilBenefitsEnabled = projectionEnabled || balanceUsdCents > settledBalanceUsdCents;
+  const reservePhiMicro = typeof input.ledgerReservePhiMicro === "bigint"
+    && input.ledgerReservePhiMicro >= 0n && input.ledgerReservePhiMicro <= balancePhiMicro
+    ? input.ledgerReservePhiMicro : null;
+  // Reuse the native rail identity: gross Phi = original Reserve backing +
+  // unencumbered Settlement. Object/lawful Phi is already in gross exactly once.
+  const settlementPhiMicro = reservePhiMicro === null ? null : balancePhiMicro - reservePhiMicro;
+  const valueStates=buildWalletValueStatesFromBalanceCents(settledBalanceUsdCents,balanceUsdCents);
+  const reserveFundingSource:WalletReserveFundingDisplay|undefined=reservePhiMicro !== null && input.reserveFundingSource?.accountId === userId
+    && input.reserveFundingSource.reservePhiMicro === reservePhiMicro.toString()
+    && input.reserveFundingSource.recordedReserveUsdCents === ledgerSettledUsdCents.toString()
+    ? {...input.reserveFundingSource,displayedReserveUsdCents:settledBalanceUsdCents.toString(),displayCap:{accountBalancePhiMicro:accountBalancePhiMicro.toString(),
+      accountBalanceUsdCents:accountBalanceUsdCents.toString(),usdPerPhiMicrocents:usdRateMicrocents.toString()}}:undefined;
+  const valuationGlyphs=profileSyncSnapshot?.valuationGlyphs;
+  const currentBalanceSource:WalletCurrentBalanceSource|undefined=projectionEnabled&&profileSyncSnapshot?.projectionComplete===true
+    &&profileSyncSnapshot.truncated===false&&profileSyncSnapshot.invalidArtifactCount===0&&profileSyncSnapshot.duplicateArtifactCount===0
+    &&profileSyncSnapshot.sourceArtifactCount===profileSyncSnapshot.artifactCount&&valuationGlyphs?.length===profileSyncSnapshot.artifactCount&&lawfulActionProjectionAvailable
+    ?{userId,earningMembershipPolicy:'public-pbi-original-v1',creationSigilBenefitsEnabled:true,computedPulse:profileSyncSnapshot.computedPulse,computedAt:profileSyncSnapshot.computedAt,
+      ...(profileSyncSnapshot.valuationSourceSha256?{sourceSha256:profileSyncSnapshot.valuationSourceSha256}:{}),glyphs:valuationGlyphs,
+      artifactBasePhiMicro:resolvedArtifactBasePhiMicro.toString(),artifactBaseUsdCents:artifactBaseUsdCents.toString(),lawfulActionPhiMicro:lawfulActionPhiMicro.toString(),
+      accountBalancePhiMicro:accountBalancePhiMicro.toString(),transactionDeltaPhiMicro:transactionDeltaPhiMicro.toString(),transactionDeltaUsdCents:transactionDeltaUsdCents.toString(),
+      ...(cashBasis?{cashBasis,cashBasisAccepted:input.cashBasisAccepted===true}:{}),profileSeedPhiMicro:profileSeedPhiMicro.toString(),profileSeedUsdCents:profileSeedUsdCents.toString(),ledgerSettledUsdCents:ledgerSettledUsdCents.toString(),usdPerPhiMicrocents:usdRateMicrocents.toString(),
+      balancePhiMicro:balancePhiMicro.toString(),balanceUsdCents:balanceUsdCents.toString(),reserveUsdCents:settledBalanceUsdCents.toString(),settlementUsdCents:valueStates.ecosystemBalanceUsdCents,
+      reservePhiMicro:reservePhiMicro?.toString()??null,settlementPhiMicro:settlementPhiMicro?.toString()??null,
+      ...(profileSyncSnapshot.originalProofReferences?{originalProofReferences:profileSyncSnapshot.originalProofReferences}:{}),...(reserveFundingSource?{reserveFundingSource}:{})}:undefined;
 
   return {
     userId,
     creationSigilBenefitsEnabled: effectiveCreationSigilBenefitsEnabled,
-    creationSigilEntitlementEnabled: creationSigilBenefitsEnabled,
+    creationSigilEntitlementEnabled: projectionEnabled,
+    legacySigilClaimEnabled: input.legacySigilClaimEnabled === true,
     balancePhiMicro: balancePhiMicro.toString(),
     balancePhi: formatPhiFromMicro(balancePhiMicro),
     balanceUsd: formatUsdFromCents(balanceUsdCents),
-    valueStates: buildWalletValueStatesFromBalanceCents(settledBalanceUsdCents, balanceUsdCents),
+    ...(projectionEnabled && profileSyncSnapshot?.originalProofReferences
+      ? { originalProofReferences: profileSyncSnapshot.originalProofReferences } : {}),
+    reservePhiMicro: reservePhiMicro?.toString() ?? null,
+    settlementPhiMicro: settlementPhiMicro?.toString() ?? null,
+    ...(reservePhiMicro !== null && settlementPhiMicro !== null ? { bankNoteValueProjection: {
+      schema: BANK_LOCAL_VALUE_SCHEMA, reserveBackingPhiMicro: reservePhiMicro.toString(), settlementPhiMicro: settlementPhiMicro.toString(),
+    } } : {}),
+    ...(reserveFundingSource?{reserveFundingSource}:{}),
+    ...(currentBalanceSource?{currentBalanceSource}:{}),
+    valueStates,
     quote,
     rollup: {
       totalCreditPhiMicro: totalCreditPhiMicro.toString(),
@@ -132,11 +178,11 @@ export function projectWalletSummary(userId: string, input: WalletSummaryProject
       lawfulActionProjectionAvailable,
       transactionDeltaPhiMicro: transactionDeltaPhiMicro.toString(),
       transactionDeltaUsdCents: transactionDeltaUsdCents.toString(),
-      profileSeedPhiMicro: profileSeedPhiMicro.toString(),
+      ...(cashBasis?{cashBasis,cashBasisAccepted:input.cashBasisAccepted===true}:{}),profileSeedPhiMicro: profileSeedPhiMicro.toString(),
       accountBalancePhiMicro: accountBalancePhiMicro.toString(),
       profileProjectionKaiPulse: profileSyncSnapshot?.computedPulse ?? null,
       projectionComplete:
-        creationSigilBenefitsEnabled
+        projectionEnabled
         && lawfulActionProjectionAvailable
         && profileSyncSnapshot?.projectionComplete === true
         && profileSyncSnapshot.truncated === false,
@@ -148,7 +194,7 @@ export function projectWalletSummary(userId: string, input: WalletSummaryProject
       projectorDigest: profileSyncSnapshot?.projectorDigest ?? null,
       projectorVersion: profileSyncSnapshot?.projectorVersion ?? null,
       projectedAt: profileSyncSnapshot?.computedAt ?? null,
-      source: creationSigilBenefitsEnabled && profileSyncSnapshot ? "profile_plus_ledger_v1" : "account_only",
+      source: projectionEnabled && profileSyncSnapshot ? "profile_plus_ledger_v1" : "account_only",
       acceptedSettlementIds,
     },
     creationSigil,

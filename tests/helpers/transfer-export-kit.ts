@@ -22,12 +22,13 @@ export async function qualifyTransferExportKit(roots:unknown[],record:PublicReco
  files['verification-material.json']=text.encode(JSON.stringify(verifier.materials));
  files['verify.html']=text.encode((await readFile('institution/proof-verifier/verify.html','utf8')).replace('<!--BANK_MARK-->','').replace('<script src="verifier.js"></script>',()=>'<script>'+code.replaceAll('</script','<\\/script')+'</script>'));
  files['build.json']=text.encode(JSON.stringify({...production,files:Object.fromEntries(Object.entries(files).map(([name,b])=>[name,{bytes:b.length,sha256:sha(b)}]))}));
- vi.resetModules();vi.doMock('../../src/receiz/offline-proof-build',()=>({offlineProofVerifierDigest:sha(files['verifier.js'])}));
+ vi.resetModules();vi.doMock('../../src/receiz/offline-proof-build',()=>({offlineProofVerifierDigest:sha(files['verifier.js']),offlineProofVerifierSdkVersion:production.sdk}));
  vi.stubGlobal('location',{origin:'https://bankeiz.com'});
  vi.stubGlobal('URL',class extends NativeURL{constructor(input:string|URL,base?:string|URL){super(input,base);if(this.pathname==='/proof-verifier/v129/verifier.js')return new NativeURL(url);}});
  vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{const name=String(input).split('/').at(-1)!.replace(/\.map\.bin$/,'.map');if(!files[name])throw Error('EXTERNAL_READ_FORBIDDEN');return new Response(new Uint8Array(files[name]));});
  const api=await import('../../src/receiz/ledger-offline-proof'),zip=await api.downloadLedgerEvidence(record,null,reader),entries=unzipSync(zip);
- expect(entries['original.receiz']).toEqual(expected);for(const [name,b]of Object.entries(files))if(name==='build.json')expect(JSON.parse(new TextDecoder().decode(entries[name]))).toEqual(JSON.parse(new TextDecoder().decode(b)));else expect(entries[name]).toEqual(b);
+ const exact=(actual:Uint8Array,wanted:Uint8Array,name:string)=>{expect(Boolean(actual),name+' exists').toBe(true);expect(actual.length,name+' byte length').toBe(wanted.length);expect(Buffer.from(actual.buffer,actual.byteOffset,actual.byteLength).equals(Buffer.from(wanted.buffer,wanted.byteOffset,wanted.byteLength)),name+' exact bytes').toBe(true);};
+ exact(entries['original.receiz'],expected,'original.receiz');for(const [name,b]of Object.entries(files))if(name==='build.json')expect(JSON.parse(new TextDecoder().decode(entries[name]))).toEqual(JSON.parse(new TextDecoder().decode(b)));else exact(entries[name],b,name);
  const directory=await mkdtemp(join(tmpdir(),'bank-transfer-original-kit-'));
  try{
   for(const [name,b]of Object.entries(entries))await writeFile(join(directory,name),b);

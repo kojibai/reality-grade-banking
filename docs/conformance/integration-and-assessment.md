@@ -37,7 +37,7 @@ or claimed conformance fields are never accepted as authority.
 
 Use Node.js 24 or later and the checked-in lockfile. The documented Node
 commands use native TypeScript stripping and the public installed package
-exports. Receiz SDK, MCP and AI Skills are third-party pinned release 129.0.0;
+exports. Receiz SDK, MCP and AI Skills are third-party pinned release 129.5.0;
 registry/ruleset and operation-matrix coordinates are in the receiving profile.
 
 ```sh
@@ -274,6 +274,17 @@ Verify a saved credential offline without an account or Bankeiz service:
 ```sh
 npm run conformance:contracts -- --verify credential.png
 ```
+
+The npm command prepares the existing canonical reader for plain Node before
+verification. For direct `node scripts/conformance-contract.mjs --verify
+credential.png` use, first run `node scripts/build-registry-runtime.mjs
+--conformance-reader-only` (the full build also emits this reader). Preparation
+is local build work; inspection does not compile code, open an account or call a
+network service.
+
+The direct `conformance-certificate.mjs --check` and `--adopt` commands use
+that same prepared reader. The production build emits it before checking the
+unchanged public certificate.
 
 Bankeiz's published original is signed under its owner-designated governance
 Receiz ID. The build checks that exact public original, complete embedded

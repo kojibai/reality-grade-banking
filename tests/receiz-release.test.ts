@@ -6,7 +6,7 @@ function candidate(version='130.0.0'){
  return {application:{dependencies},lock:{packages:{'':{dependencies:{...dependencies}},...Object.fromEntries(names.map(name=>[`node_modules/${name}`,{version}]))}},installed:Object.fromEntries(names.map(name=>[name,{name,version}])),native:{receizVersion:version},nativeSdk:{name:'@receiz/sdk',version}};
 }
 it('keeps current installed packages, lockfile and retained native source in one release',async()=>{
- expect(await readReceizRelease()).toEqual({version:'129.0.0',generation:'v129',basePath:'/schemas/sdk/v129'});
+ expect(await readReceizRelease()).toEqual({version:'129.5.0',generation:'v129',basePath:'/schemas/sdk/v129'});
 });
 it('derives v130 paths only from a fully coordinated v130 candidate',()=>{
  expect(validateReceizRelease(candidate())).toEqual({version:'130.0.0',generation:'v130',basePath:'/schemas/sdk/v130'});

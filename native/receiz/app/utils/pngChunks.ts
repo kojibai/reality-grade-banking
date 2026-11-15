@@ -1,8 +1,13 @@
-import { inflateSync } from "fflate";
+import { inflateReceizBounded } from "../../packages/receiz-sdk/src/verifier/boundedInflate";
+import { ReceizProtocolLimitError } from "../../packages/receiz-sdk/src/verificationLimits";
 
 const PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 const textDecoder = new TextDecoder("utf-8");
 const textEncoder = new TextEncoder();
+const PNG_TEXT_RUNTIME_BYTES = 128 * 1024 * 1024;
+const PNG_TEXT_TOTAL_RUNTIME_BYTES = 256 * 1024 * 1024;
+// Capacity of this array-returning reader, not a protocol validity limit.
+const PNG_TEXT_ENTRY_RUNTIME_COUNT = 4096;
 
 export type PngTextChunk = Readonly<{
   keyword: string;
@@ -13,7 +18,25 @@ export type PngTextReadOptions = Readonly<{
   keyword?: string;
   maxCompressedBytes?: number;
   maxTextBytes?: number;
+  maxTotalTextBytes?: number;
 }>;
+
+type ParsedPngTextChunk = PngTextChunk & { textBytes: number };
+function pngTextCapacity(): never {
+  throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+}
+function pngTextBudget(value: number | undefined, ceiling: number): number {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) pngTextCapacity();
+  return Math.min(value ?? ceiling, ceiling);
+}
+function pngTextKeyword(data: Uint8Array): string | null {
+  const end = indexOfNull(data.subarray(0, 80), 0);
+  return end > 0 ? textDecoder.decode(data.subarray(0, end)) : null;
+}
+function pngTextValue(data: Uint8Array, keyword: string, options?: PngTextReadOptions): ParsedPngTextChunk {
+  if (data.byteLength > pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES)) pngTextCapacity();
+  return { keyword, text: textDecoder.decode(data), textBytes: data.byteLength };
+}
 
 function assertPngSignature(bytes: Uint8Array): void {
   if (bytes.length < PNG_SIGNATURE.length) {
@@ -58,7 +81,7 @@ function indexOfNull(bytes: Uint8Array, start: number): number {
   return -1;
 }
 
-function parseITXtData(data: Uint8Array): PngTextChunk | null {
+function parseITXtData(data: Uint8Array, options?: PngTextReadOptions): ParsedPngTextChunk | null {
   const keywordEnd = indexOfNull(data, 0);
   if (keywordEnd <= 0) return null;
   const keyword = textDecoder.decode(data.slice(0, keywordEnd));
@@ -75,40 +98,33 @@ function parseITXtData(data: Uint8Array): PngTextChunk | null {
   if (translatedEnd < 0) return null;
   cursor = translatedEnd + 1;
   if (cursor > data.length) return null;
-  const text = textDecoder.decode(data.slice(cursor));
-  return { keyword, text };
+  return pngTextValue(data.subarray(cursor), keyword, options);
 }
 
-function parseTextData(data: Uint8Array): PngTextChunk | null {
+function parseTextData(data: Uint8Array, options?: PngTextReadOptions): ParsedPngTextChunk | null {
   const keywordEnd = indexOfNull(data, 0);
   if (keywordEnd <= 0) return null;
   const keyword = textDecoder.decode(data.slice(0, keywordEnd));
-  const text = textDecoder.decode(data.slice(keywordEnd + 1));
-  return { keyword, text };
+  return pngTextValue(data.subarray(keywordEnd + 1), keyword, options);
 }
 
-function parseZTxtData(data: Uint8Array, options?: PngTextReadOptions): PngTextChunk | null {
+function parseZTxtData(data: Uint8Array, options?: PngTextReadOptions): ParsedPngTextChunk | null {
   const keywordEnd = indexOfNull(data, 0);
   if (keywordEnd <= 0) return null;
   const keyword = textDecoder.decode(data.slice(0, keywordEnd));
   if (options?.keyword && keyword !== options.keyword) return null;
   const compressionMethod = data[keywordEnd + 1] ?? 255;
   if (compressionMethod !== 0) return null;
-  const compressed = data.slice(keywordEnd + 2);
-  if (options?.maxCompressedBytes !== undefined && compressed.byteLength > options.maxCompressedBytes) {
-    return null;
-  }
+  const compressed = data.subarray(keywordEnd + 2);
   let inflated: Uint8Array;
   try {
-    inflated = options?.maxTextBytes !== undefined
-      ? inflateSync(compressed, { out: new Uint8Array(options.maxTextBytes + 1) })
-      : inflateSync(compressed);
-  } catch {
+    inflated = inflateReceizBounded(compressed, pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES),
+      pngTextBudget(options?.maxCompressedBytes, PNG_TEXT_RUNTIME_BYTES));
+  } catch (error) {
+    if (error instanceof ReceizProtocolLimitError) throw error;
     return null;
   }
-  if (options?.maxTextBytes !== undefined && inflated.byteLength > options.maxTextBytes) return null;
-  const text = textDecoder.decode(inflated);
-  return { keyword, text };
+  return pngTextValue(inflated, keyword, options);
 }
 
 function buildITXtData(entry: PngTextChunk): Uint8Array {
@@ -178,6 +194,7 @@ function buildITXtChunk(entry: PngTextChunk): Uint8Array {
 export function readPngTextChunks(pngBytes: Uint8Array, options?: PngTextReadOptions): PngTextChunk[] {
   assertPngSignature(pngBytes);
   const chunks: PngTextChunk[] = [];
+  let remaining = pngTextBudget(options?.maxTotalTextBytes, PNG_TEXT_TOTAL_RUNTIME_BYTES);
   let offset = 8;
   while (offset + 8 <= pngBytes.length) {
     const length = readUint32BE(pngBytes, offset);
@@ -185,18 +202,26 @@ export function readPngTextChunks(pngBytes: Uint8Array, options?: PngTextReadOpt
     const dataStart = offset + 8;
     const dataEnd = dataStart + length;
     if (dataEnd + 4 > pngBytes.length) break;
-    const data = pngBytes.slice(dataStart, dataEnd);
+    if (type !== "iTXt" && type !== "tEXt" && type !== "zTXt") {
+      offset = dataEnd + 4; if (type === "IEND") break; continue;
+    }
+    const data = pngBytes.subarray(dataStart, dataEnd);
+    const keyword = pngTextKeyword(data);
+    if (!keyword || options?.keyword && options.keyword !== keyword) { offset = dataEnd + 4; continue; }
+    const bounded = { ...options, maxTextBytes: Math.min(pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES), remaining) };
     const parsed =
-      type === "iTXt" ? parseITXtData(data) : type === "tEXt" ? parseTextData(data) : type === "zTXt" ? parseZTxtData(data, options) : null;
-    if (parsed && (!options?.keyword || parsed.keyword === options.keyword)) chunks.push(parsed);
+      type === "iTXt" ? parseITXtData(data, bounded) : type === "tEXt" ? parseTextData(data, bounded) : parseZTxtData(data, bounded);
+    if (parsed) {
+      if (chunks.length >= PNG_TEXT_ENTRY_RUNTIME_COUNT) pngTextCapacity();
+      remaining -= parsed.textBytes; chunks.push({ keyword: parsed.keyword, text: parsed.text });
+    }
     offset = dataEnd + 4;
-    if (type === "IEND") break;
   }
   return chunks;
 }
 
-export function readPngTextChunk(pngBytes: Uint8Array, keyword: string): string | null {
-  const chunks = readPngTextChunks(pngBytes);
+export function readPngTextChunk(pngBytes: Uint8Array, keyword: string, options?: PngTextReadOptions): string | null {
+  const chunks = readPngTextChunks(pngBytes, { ...options, keyword });
   for (const chunk of chunks) {
     if (chunk.keyword === keyword) return chunk.text;
   }
@@ -240,8 +265,20 @@ export function insertPngTextChunks(pngBytes: Uint8Array, entries: PngTextChunk[
   return out;
 }
 
-export function countPngTextChunksByKeyword(pngBytes: Uint8Array, keyword: string): number {
-  return readPngTextChunks(pngBytes).filter((chunk) => chunk.keyword === keyword).length;
+export function countPngTextChunksByKeyword(pngBytes: Uint8Array, keyword: string, stopAfter = Infinity): number {
+  assertPngSignature(pngBytes);
+  let count=0,remaining=PNG_TEXT_TOTAL_RUNTIME_BYTES;
+  for(let offset=8;offset+8<=pngBytes.length;){
+    const length=readUint32BE(pngBytes,offset),type=chunkType(pngBytes,offset+4),end=offset+8+length;
+    if(end+4>pngBytes.length)break;
+    if((type==='iTXt'||type==='tEXt'||type==='zTXt')&&pngTextKeyword(pngBytes.subarray(offset+8,end))===keyword){
+      const data=pngBytes.subarray(offset+8,end),options={keyword,maxTextBytes:Math.min(PNG_TEXT_RUNTIME_BYTES,remaining)};
+      const parsed=type==='iTXt'?parseITXtData(data,options):type==='tEXt'?parseTextData(data,options):parseZTxtData(data,options);
+      if(parsed){remaining-=parsed.textBytes;if(++count>=stopAfter)return count;}
+    }
+    offset=end+4;if(type==='IEND')break;
+  }
+  return count;
 }
 
 export function stripPngTextChunksByKeyword(
@@ -249,46 +286,23 @@ export function stripPngTextChunksByKeyword(
   keyword: string,
 ): { pngBytes: Uint8Array; removedCount: number } {
   assertPngSignature(pngBytes);
-
-  const retainedChunks: Uint8Array[] = [];
-  retainedChunks.push(pngBytes.slice(0, PNG_SIGNATURE.length));
-
-  let offset = PNG_SIGNATURE.length;
-  let removedCount = 0;
-
-  while (offset + 8 <= pngBytes.length) {
-    const length = readUint32BE(pngBytes, offset);
-    const type = chunkType(pngBytes, offset + 4);
-    const dataStart = offset + 8;
-    const dataEnd = dataStart + length;
-    const chunkEnd = dataEnd + 4;
-    if (chunkEnd > pngBytes.length) break;
-
-    let shouldRemove = false;
-    if (type === "iTXt" || type === "tEXt" || type === "zTXt") {
-      const data = pngBytes.slice(dataStart, dataEnd);
-      const parsed =
-        type === "iTXt" ? parseITXtData(data) : type === "tEXt" ? parseTextData(data) : parseZTxtData(data);
-      if (parsed?.keyword === keyword) shouldRemove = true;
+  const retained:Uint8Array[]=[];
+  let offset=PNG_SIGNATURE.length,start=0,removedCount=0,remaining=PNG_TEXT_TOTAL_RUNTIME_BYTES;
+  while(offset+8<=pngBytes.length){
+    const length=readUint32BE(pngBytes,offset),type=chunkType(pngBytes,offset+4),dataStart=offset+8,dataEnd=dataStart+length,chunkEnd=dataEnd+4;
+    if(chunkEnd>pngBytes.length)break;
+    if((type==='iTXt'||type==='tEXt'||type==='zTXt')&&pngTextKeyword(pngBytes.subarray(dataStart,dataEnd))===keyword){
+      const data=pngBytes.subarray(dataStart,dataEnd),options={keyword,maxTextBytes:Math.min(PNG_TEXT_RUNTIME_BYTES,remaining)};
+      const parsed=type==='iTXt'?parseITXtData(data,options):type==='tEXt'?parseTextData(data,options):parseZTxtData(data,options);
+      if(parsed){
+        remaining-=parsed.textBytes;removedCount++;
+        if(start<offset)retained.push(pngBytes.subarray(start,offset));start=chunkEnd;
+      }
     }
-
-    if (shouldRemove) {
-      removedCount += 1;
-    } else {
-      retainedChunks.push(pngBytes.slice(offset, chunkEnd));
-    }
-
-    offset = chunkEnd;
-    if (type === "IEND") break;
+    offset=chunkEnd;if(type==='IEND')break;
   }
-
-  const totalLength = retainedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const out = new Uint8Array(totalLength);
-  let cursor = 0;
-  for (const chunk of retainedChunks) {
-    out.set(chunk, cursor);
-    cursor += chunk.length;
-  }
-
-  return { pngBytes: out, removedCount };
+  if(start<offset)retained.push(pngBytes.subarray(start,offset));
+  const out=new Uint8Array(retained.reduce((total,part)=>total+part.length,0));
+  let cursor=0;for(const part of retained){out.set(part,cursor);cursor+=part.length;}
+  return {pngBytes:out,removedCount};
 }

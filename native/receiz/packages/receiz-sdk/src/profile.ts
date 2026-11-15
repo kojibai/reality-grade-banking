@@ -1,9 +1,13 @@
+export {projectReceizAccountDisplayName} from "./accountDisplayName.js";
+
 export type ReceizProfileUpdateInput = Readonly<{
   username?: string;
   displayName?: string | null;
   bio?: string | null;
   location?: string | null;
   websiteUrl?: string | null;
+  /** Ordered named links; omission preserves the current list, [] clears it. Maximum 20, label 80 characters, HTTPS URL 2048 characters; no credentials. */
+  links?: readonly Readonly<{ label: string; url: string }>[];
   socialXUrl?: string | null;
   socialInstagramUrl?: string | null;
   socialYoutubeUrl?: string | null;

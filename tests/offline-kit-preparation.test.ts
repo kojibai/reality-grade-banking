@@ -53,6 +53,8 @@ it('keeps build refusal retryable and refuses altered or incomplete verifier-kit
  const failed=expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_UNAVAILABLE');open();await failed;
  fetcher.mockResolvedValueOnce(Response.json({...build,files:{...build.files,'README.txt':{sha256:'a'.repeat(64),bytes:3}}}));
  await expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_INTEGRITY');
+ fetcher.mockResolvedValueOnce(Response.json({...build,sdk:build.sdk==='129.0.0'?'129.5.0':'129.0.0'}));
+ await expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_BUILD_INVALID');
  const {['verify.html']:omitted,...incomplete}=build.files;expect(omitted).toBeDefined();fetcher.mockResolvedValueOnce(Response.json({...build,files:incomplete}));
  await expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_BUILD_INVALID');
 });

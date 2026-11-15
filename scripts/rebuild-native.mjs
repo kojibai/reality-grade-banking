@@ -6,6 +6,7 @@ import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { build, version } from 'esbuild';
+import { verifySdkOutputInventory } from './sdk-output-inventory.mjs';
 
 const bank = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const refreshComposition = process.argv.includes('--refresh-composition');
@@ -48,7 +49,7 @@ try {
   const inputList = await Promise.all(Object.keys(notes.metafile.inputs).sort().map(async path => ({ path: relative(source, resolve(source, path)), sha256: hash(await readFile(resolve(source, path))) })));
   if (refreshComposition) { manifest.notesInputs = inputList; await writeFile(resolve(bank, 'native/manifest.json'), JSON.stringify(manifest, null, 2) + '\n'); }
   else assert.deepEqual(inputList, manifest.notesInputs, 'Native input closure differs.');
-  if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
+  if (refreshComposition) await writeFile(notesManifestPath, JSON.stringify({ ...notesManifest, version: manifest.receizVersion, moduleSha256: hash(notesBytes), sourceTreeSha256: hash(JSON.stringify(inputList)), inputs: inputList.length, bytes: notesBytes.length, applicationPatches: manifest.applicationPatches ?? [] }, null, 2) + '\n');
 
   // Next normally supplies these public build-time defaults. This standalone
   // browser composition uses the included pinned roots, not a Node global or
@@ -80,6 +81,7 @@ try {
   if (!refreshComposition) assert.equal(hash(receiverBytes), receiverManifest.moduleSha256, 'Receiver rebuild differs.');
   const map = JSON.parse(new TextDecoder().decode(receiver.outputFiles.find(file => file.path.endsWith('.map')).contents));
   if (refreshComposition) {
+    receiverManifest.version = manifest.receizVersion;
     const canonicalSource = await realpath(source), canonicalBank = await realpath(bank);
     receiverManifest.inputs = map.sources.map((name, i) => {
       const absolute = resolve(bank, 'public/native', name);
@@ -99,14 +101,15 @@ try {
   assert.equal('// Generated from the canonical app seal core by scripts/build_offline_sdk_runtime.mjs.\n' + core.outputFiles[0].text, await readFile(resolve(source, 'packages/receiz-sdk/src/offlineSealImplementation.js'), 'utf8'), 'Preferred SDK sealing source differs.');
   const worker = await build({ ...common, entryPoints: ['packages/receiz-sdk/src/offlineKaiProofNodeWorker.ts'], platform: 'node', external: ['snarkjs', 'hash-wasm', '@noble/hashes/*'], legalComments: 'none' });
   assert.equal('// Generated from the SDK live KaiSigil proof composition by scripts/build_offline_sdk_runtime.mjs.\n' + worker.outputFiles[0].text, await readFile(resolve(source, 'packages/receiz-sdk/offline-resources/kai-proof-worker.mjs'), 'utf8'), 'Preferred Kai worker source differs.');
-  for (const name of ['sync_canonical_anchor_parser.mjs', 'sync_sigil_valuation_core.mjs', 'sync_account_financial_math.mjs']) execFileSync(process.execPath, [resolve(source, 'scripts', name), '--check', ...(name==='sync_account_financial_math.mjs'?['--esbuild-from',bank]:[])], { cwd: source, stdio: 'pipe' });
+  for (const name of ['sync_canonical_anchor_parser.mjs', 'sync_canonical_resource_parsers.mjs', 'sync_sigil_valuation_core.mjs', 'sync_account_financial_math.mjs']) execFileSync(process.execPath, [resolve(source, 'scripts', name), '--check', ...(name==='sync_account_financial_math.mjs'?['--esbuild-from',bank]:[])], { cwd: source, stdio: 'pipe' });
+  execFileSync(process.execPath,[resolve(source,'scripts/sync_canonical_resource_parsers.mjs'),'--check','--output',resolve(bank,'native/vault/packages/receiz-sdk/src/verifier/canonicalImplementation.js')],{cwd:source,stdio:'pipe'});
 
   if (process.argv.includes('--sdk')) {
     const sdk = resolve(source, 'packages/receiz-sdk');
     execFileSync(process.execPath, [resolve(bank, 'node_modules/typescript/bin/tsc'), '-p', resolve(sdk, 'tsconfig.json')], { cwd: sdk, stdio: 'pipe' });
     execFileSync(process.execPath, [resolve(sdk, 'scripts/compact-registry-projections.mjs')], { cwd: sdk, stdio: 'pipe' });
-    for (const entry of manifest.sdkOutputs) assert.equal(hash(await readFile(resolve(sdk, entry.path))), entry.sha256, `SDK output differs: ${entry.path}`);
-    console.log(`SDK preferred source reproduces ${manifest.sdkOutputs.length} published JavaScript files.`);
+    await verifySdkOutputInventory(sdk,manifest.sdkOutputs);
+    console.log(`SDK preferred source reproduces all ${manifest.sdkOutputs.length} qualified JavaScript files.`);
   }
   if (process.argv.includes('--output')) {
     const output = resolve(process.argv[process.argv.indexOf('--output') + 1]); await mkdir(output, { recursive: true });

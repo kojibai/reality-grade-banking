@@ -1,6 +1,5 @@
 import {readLedgerShareCertificate,isCertificateMovement} from './ledger-share-certificate';
 import {readLedgerFundingContext} from './ledger-funding-context';
-import {RECEIZ_VERSION} from './client';
 import type {PublicRecord} from './public-network';
 import type {LedgerValueDisplay} from './ledger-value';
 import {readLedgerValueOperands} from './ledger-value';
@@ -80,7 +79,8 @@ export function readLedgerDetails(raw:unknown):LedgerFields {
 }
 export function readLedgerValuationTrace(raw:unknown):LedgerFields|null {
  const source=object(raw),result=select(source,['sdk','calculationKind','cardValueUsdCents','projectionDigest','projectionObservedAt','projectionPulse','valuationRow','source','sourceValueUsd','evaluationPulse','intrinsicFunction','quoteFunction','rounding']);
- if(source.sdk!==RECEIZ_VERSION||!Object.keys(result).length)return null;
+ // Retained v129 calculation wire follows the SDK's >=129.0.0 <130.0.0 compatibility range.
+ if(typeof source.sdk!=='string'||!/^129\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(source.sdk)||!Object.keys(result).length)return null;
  if(source.calculationKind==='native-copy-valuation-projection'&&typeof source.projectionPulse==='number'&&Number.isSafeInteger(source.projectionPulse)&&source.projectionPulse>=0&&source.projectionPulse<=1e10){
   const copy=readLedgerCopyValuation(source.sealedCopy,source.projectionPulse);
   if(copy&&copy.issue===source.issuePulse&&copy.copy.valuationPulse===source.observationPulse){Object.assign(result,select(source,['issuePulse','observationPulse','valuationFunction','meaning']));result.sealedCopy=JSON.parse(JSON.stringify(copy.copy)) as LedgerFields;}

@@ -1,3 +1,4 @@
+import {projectReceizAccountDisplayName} from "./accountDisplayName.js";
 import {
   isSegmentedReceizPortableStateRef,
   isReceizPortableStateSegmentComposite,
@@ -1034,7 +1035,7 @@ export async function createReceizIdIdentity(options: ReceizIdIdentityOptions = 
   const localUid = `receiz_device_${token}`.slice(0, 64);
   const generatedUsername = `receiz_${token.slice(0, 18)}`.slice(0, 30);
   const username = normalizeReceizUsername(options.username, generatedUsername);
-  const displayName = asTrimmedString(options.displayName) || "Receiz ID";
+  const displayName = projectReceizAccountDisplayName({displayName:asTrimmedString(options.displayName),createdAt});
   const deviceName = asNullableTrimmedString(options.deviceName);
   const created = await createReceizIdentityKeyFile({
     passphrase: options.passphrase,

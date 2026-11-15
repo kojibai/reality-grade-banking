@@ -12,7 +12,7 @@ try{
   const input=await readFile(args[1]),png=[137,80,78,71,13,10,26,10].every((value,index)=>input[index]===value);
   let object=null,canonicalProof;
   if(png){
-   const {openSealedConformanceEvidenceObject}=await import('../src/conformance/receiz-evidence-seal.ts');
+   const {openSealedConformanceEvidenceObject}=await import('../server/registry-runtime/conformance-reader.mjs');
    const sealed=await openSealedConformanceEvidenceObject(new Uint8Array(input),{filename:basename(args[1])});object=sealed.object;
    canonicalProof={artifactSha256:sealed.artifactSha256,ownership:sealed.verification.assetContinuity,verifiedOffline:true,credentialHolder:object.report.credentialHolder};
   }else{if(input.length>2*1024*1024)throw Error('TRANSCRIPT_LIMIT');const text=input.toString('utf8');object=text.trimStart().startsWith('<')?await openConformanceEvidenceObject(text):null;}

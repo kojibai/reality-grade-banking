@@ -8,8 +8,9 @@ import documentKey from '../../native/receiz/packages/receiz-sdk/src/verifier/do
 import kaiKey from '../../native/receiz/packages/receiz-sdk/src/kaiSigilVerificationKey';
 import {recognizeReceizGroth16Structure} from '../../native/receiz/packages/receiz-sdk/src/verifier/groth16';
 import {jcsCanonicalize,sha256Hex} from '../../native/receiz/packages/receiz-sdk/src/verifier/crypto';
+import sdkPackage from '../../native/receiz/packages/receiz-sdk/package.json';
 
-export const materials={sdk:'129.0.0',documentSealVerificationKey:documentKey,kaiSigilVerificationKey:kaiKey,signatureV4Roots:[...receizCurrentPinnedSignatureV4Roots().values()]};
+export const materials={sdk:sdkPackage.version,documentSealVerificationKey:documentKey,kaiSigilVerificationKey:kaiKey,signatureV4Roots:[...receizCurrentPinnedSignatureV4Roots().values()]};
 export const pngOriginalMaxBytes=ORIGINAL_PNG_MAX_BYTES;
 export const originalReadCapacity=(prefix:Uint8Array)=>originalReadLimit(prefix,24*1024*1024);
 /** Exact bytes and fixed roots. No caller-selected key, signer or network API. */
@@ -17,6 +18,7 @@ export async function readArtifact(bytes:Uint8Array,filename='original.receiz'){
  if(!(bytes instanceof Uint8Array)||!bytes.length||bytes.length>originalReadCapacity(bytes))throw Error('PROOF_INSPECTION_CAPACITY');
  const exact=bytes.slice(),artifactSha256=await sha256Hex(exact);
  const opened=await readVerifiedReceizDocumentBytesCanonical({fileBytes:exact,filename,signatureV4RootPublicKeys:receizCurrentPinnedSignatureV4Roots()});
+ if(opened.verification.denial?.code==='VERIFICATION_RESOURCE_UNAVAILABLE')throw Error('PROOF_INSPECTION_CAPACITY');
  if(!opened.ok||!opened.verification.integrity.ok)throw Error('ORIGINAL_CANONICAL_VERIFICATION_FAILED');
  if(exact.length>24*1024*1024&&(opened.payloadMimeType!=='image/png'||!isOriginalPng(opened.payloadBytes)||opened.payloadBytes.length>ORIGINAL_PNG_MAX_BYTES))throw Error('PROOF_INSPECTION_CAPACITY');
  const bundle=opened.verification.bundle,groth16=recognizeReceizGroth16Structure(bundle?.groth16Proof);
@@ -24,7 +26,7 @@ export async function readArtifact(bytes:Uint8Array,filename='original.receiz'){
  const payloadSha256=await sha256Hex(opened.payloadBytes);
  let value:unknown;try{value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(opened.payloadBytes));}catch{/* Non-JSON canonical payload. */}
  const transferOriginal=isTransferOriginal(value)?await inspectTransferOriginal(value):undefined;
- const report={...sourceHistory,...(transferOriginal?{transferOriginal,exportedRecord:'transfer-original' as const}:{}),schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256,artifactBytes:exact.length,payloadSha256,payloadBytes:opened.payloadBytes.length,payloadFilename:opened.payloadFilename,payloadMimeType:opened.payloadMimeType,verification:opened.verification,groth16:groth16?{version:groth16.versionMarker,proof:groth16.proof,publicSignals:groth16.publicSignals}:null,verificationMaterial:materials,scope:transferOriginal?'SDK-verified export of the retained transfer Original and its existing receipt. '+transferOriginal.scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
+ const report={...sourceHistory,...(transferOriginal?{transferOriginal,exportedRecord:'transfer-original' as const}:{}),schema:'bankeiz.offline-proof-inspection.v1',sdk:sdkPackage.version,artifactSha256,artifactBytes:exact.length,payloadSha256,payloadBytes:opened.payloadBytes.length,payloadFilename:opened.payloadFilename,payloadMimeType:opened.payloadMimeType,verification:opened.verification,groth16:groth16?{version:groth16.versionMarker,proof:groth16.proof,publicSignals:groth16.publicSignals}:null,verificationMaterial:materials,scope:transferOriginal?'SDK-verified export of the retained transfer Original and its existing receipt. '+transferOriginal.scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
  return {report,payload:{bytes:opened.payloadBytes,sha256:payloadSha256,filename:opened.payloadFilename,mimeType:opened.payloadMimeType}};
 }
 export async function inspectArtifact(bytes:Uint8Array,filename='original.receiz'){return(await readArtifact(bytes,filename)).report;}

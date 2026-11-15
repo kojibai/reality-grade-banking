@@ -1,4 +1,4 @@
-// Generated from @receiz/sdk 129.0.0 sigilValuationCore.js; do not edit.
+// Generated from @receiz/sdk 129.5.0 sigilValuationCore.js; do not edit.
 // SDK source SHA-256: fa5a54535e27851656138c387d3775f3cb23570d58e416b39d2c8d592db426b4
 // Same unsigned arithmetic; calculation tracing and reference memoization omitted for chart sampling.
 const PHI = (1 + Math.sqrt(5)) / 2, DEFAULT_STEPS_PER_BEAT = 44, PULSES_PER_STEP = 11, PULSES_PER_BEAT_CANON = DEFAULT_STEPS_PER_BEAT * PULSES_PER_STEP, PULSES_PER_DAY_EXACT = 17491.270421, RARITY_ONE_OF_ONE = PHI, RARITY_EXP = 1 / PHI, QUALITY_MAP = {

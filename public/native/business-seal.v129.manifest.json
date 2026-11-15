@@ -1,8 +1,8 @@
 {
   "schema": "bankeiz.native-business-seal.v129",
   "entry": "app/lib/profile/composerPreparation.client.ts",
-  "moduleSha256": "acc6532066212bd7b5f046f3315457e2cfa606bed2cf67c99d352683dd106d6f",
-  "sourceTreeSha256": "fc857ab0e17a5b764375cc7a5f98b5490a6f71f6e50bbc26fc2fa7d1ca90ca74",
-  "inputs": 174,
-  "bytes": 1873040
+  "moduleSha256": "2574397172c6da3562ebeba20a523433567a42d377c0d482fd0ed62b724c6ffe",
+  "sourceTreeSha256": "42baf8d881ea6da021d2387edbaab831be5da03aa41d353bf3a408f748404c87",
+  "inputs": 176,
+  "bytes": 1875556
 }

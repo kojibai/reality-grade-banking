@@ -1,3 +1,4 @@
+import {RECEIZ_VERSION} from './release-version';
 import type {LedgerCausalLineage} from './ledger-causal-source';
 import {ledgerSourceHistoryFromPayload} from './ledger-source-payload';
 import type {LedgerProofHistory} from './ledger-proof-history';
@@ -51,7 +52,7 @@ export function retainOpenedProofInspection(opened:ReceizOpenedArtifact,bytes:Ui
  if(verification?.ok!==true||(verification.integrity as {ok?:boolean}|undefined)?.ok!==true||!bundle)return null;
  const payload=opened.verifiedPayload;
  const sourceHistory=ledgerSourceHistoryFromPayload(payload.bytes,payload.mimeType);
- const report:ProofInspection={...sourceHistory,schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
+ const report:ProofInspection={...sourceHistory,schema:'bankeiz.offline-proof-inspection.v1',sdk:RECEIZ_VERSION,artifactSha256:digest.toLowerCase(),artifactBytes:bytes.length,payloadSha256:payload.sha256,payloadBytes:payload.bytes.length,payloadFilename:payload.filename,payloadMimeType:payload.mimeType,verification,groth16:carriedGroth16(bundle.groth16Proof),scope:'Canonical enclosing artifact and carried continuity only. No live spendability, account balance or execution authorization.'};
  if(publish)return retainProofInspection(report,bytes,filename);
  return retainPrivateProofInspection(report,bytes,filename);
 }

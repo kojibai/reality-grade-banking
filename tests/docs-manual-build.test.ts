@@ -20,7 +20,7 @@ it('builds the complete manual alone with matching Markdown, public source, exam
 },20000);
 it('executes the exact downloadable examples in the documented no-money sandbox',()=>{
  const output=execFileSync(process.execPath,['--input-type=module','-e',"import {sdkSandboxExample} from './docs-app/examples.mjs'; const {spawnSync}=await import('node:child_process'); const r=spawnSync(process.execPath,['--input-type=module'],{input:sdkSandboxExample,encoding:'utf8'}); process.stdout.write(r.stdout); if(r.status)throw Error(r.stderr);"],{encoding:'utf8'});
- expect(JSON.parse(output)).toMatchObject({version:'129.0.0',namespace:'sandbox.receiz.test',sandboxVerified:true,checks:{failed:0,networkCalls:0,dbCalls:0}});
+ expect(JSON.parse(output)).toMatchObject({version:'129.5.0',namespace:'sandbox.receiz.test',sandboxVerified:true,checks:{failed:0,networkCalls:0,dbCalls:0}});
 });
 
 it('executes the downloadable MCP checks without external writes',()=>{

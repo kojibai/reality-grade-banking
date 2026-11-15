@@ -1,6 +1,6 @@
 import { carriedVerifierOriginal, projectVerifiedCreatorUsername } from "./identityDisplay";
 import { executeSelectedSource, unavailableSelectedSourceExecution } from "@/app/lib/documentSeal/selectedSourceExecution";
-import { inflateSync } from "fflate";
+import { ReceizProtocolLimitError } from "../../packages/receiz-sdk/src/verificationLimits";
 import { detectDocumentFormat } from "@/app/lib/documentSeal/fileFormat";
 import { coerceReceizAnchorBundle } from "@/app/utils/receizAnchorBundle";
 import { embedReceizProofBundleIntoJson, parseReceizJsonProof } from "@/app/lib/documentSeal/jsonProof";
@@ -22,6 +22,7 @@ import {
 } from "@/app/utils/pngChunks";
 import {
   coerceReceizProofBundle,
+  decodeReceizProofBundlePayload,
   encodeReceizProofBundle,
   RECEIZ_PROOF_BUNDLE_CHUNK_KEY,
 } from "@/app/utils/receizProofBundle";
@@ -258,19 +259,17 @@ function decodeLegacyProofBundlePayload(encoded: string): unknown | null {
   const normalizedCodec = codec.toLowerCase();
   if (payload && LEGACY_BUNDLE_CODECS.has(normalizedCodec)) {
     try {
-      if (normalizedCodec === "c1") {
-        const compressed = base64UrlDecode(payload);
-        return JSON.parse(legacyTextDecoder.decode(inflateSync(compressed))) as unknown;
-      }
-      return JSON.parse(legacyTextDecoder.decode(base64UrlDecode(payload))) as unknown;
-    } catch {
+      return decodeReceizProofBundlePayload(normalizedCodec === "c1" ? `c1:${payload}` : payload);
+    } catch (error) {
+      if (error instanceof ReceizProtocolLimitError) throw error;
       // fall through
     }
   }
 
   try {
-    return JSON.parse(legacyTextDecoder.decode(base64UrlDecode(raw))) as unknown;
-  } catch {
+    return decodeReceizProofBundlePayload(raw);
+  } catch (error) {
+    if (error instanceof ReceizProtocolLimitError) throw error;
     return null;
   }
 }
@@ -324,7 +323,8 @@ export async function normalizeLegacyKaiLineArtifact(
           return { fileBytes: patched, normalized: true };
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ReceizProtocolLimitError) throw error;
       // ignore
     }
   } else if (format === "pdf") {
@@ -338,7 +338,8 @@ export async function normalizeLegacyKaiLineArtifact(
           return { fileBytes: patched, normalized: true };
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ReceizProtocolLimitError) throw error;
       // ignore
     }
   } else if (format === "svg") {
@@ -351,7 +352,8 @@ export async function normalizeLegacyKaiLineArtifact(
           return { fileBytes: patched.svgBytes, normalized: true };
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ReceizProtocolLimitError) throw error;
       // ignore
     }
   } else if (format === "json") {
@@ -364,7 +366,8 @@ export async function normalizeLegacyKaiLineArtifact(
           return { fileBytes: patched.jsonBytes, normalized: true };
         }
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof ReceizProtocolLimitError) throw error;
       // ignore
     }
   }
@@ -413,7 +416,17 @@ function snapshotSelectedHostRoots(): ReadonlyMap<string, ReceizSignatureV4RootP
 async function verifySelectedArtifactWithHostRoots(input: ArtifactBytesInput, roots: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>): Promise<{
   result: ReceizVerifierProjectionResult; normalizedLegacy: boolean;
 }> {
-  const normalized = await normalizeLegacyKaiLineArtifact(input);
+  let normalized: Awaited<ReturnType<typeof normalizeLegacyKaiLineArtifact>>;
+  try {
+    normalized = await normalizeLegacyKaiLineArtifact(input);
+  } catch (error) {
+    if (!(error instanceof ReceizProtocolLimitError)) throw error;
+    const unavailable = unavailableSelectedSourceExecution();
+    return {
+      result: failedAppendProjection(await admitCanonicalStreamingTrailerVerification(unavailable.result.verification)),
+      normalizedLegacy: false,
+    };
+  }
   const opened = await verifyAndExtractReceizDocumentBytes({
     ...input,
     fileBytes: normalized.fileBytes,

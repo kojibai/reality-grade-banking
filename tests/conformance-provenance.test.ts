@@ -40,4 +40,5 @@ it('identifies CLI orchestration and locked dependencies in standalone checker p
  const report=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',code],{cwd:root,encoding:'utf8',timeout:20000}));
  const paths=report.inputs.map((row:{path:string})=>row.path);
  for(const path of ['scripts/conformance-reference.mjs','scripts/conformance-contract.mjs','scripts/conformance-assess.mjs','scripts/conformance-adapter.mjs','package-lock.json','public/native/receiver-verifier.v129.manifest.json'])expect(paths).toContain(path);
+ for(const path of ['scripts/build-registry-runtime.mjs','native/manifest.json','native/receiz/app/utils/pngChunks.ts','native/receiz/packages/receiz-sdk/src/verifier/boundedInflate.ts','native/receiz/packages/receiz-sdk/src/verificationLimits.ts','public/conformance/renderer.wasm','public/conformance/fonts/NotoSerif-Regular.ttf','public/conformance/fonts/Inter-Regular.ttf'])expect(paths).toContain(path);
 },30_000);

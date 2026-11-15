@@ -33,6 +33,25 @@ function bounded(value: bigint): string {
  return String(value);
 }
 
+/** Mechanical funding arithmetic shared by a trade and an order partition.
+ * Amounts are derived from admitted sources by the calling financial reducer;
+ * this projection creates no funded source or custody grant. */
+export function marketWalletDebitFromAmounts(input:Readonly<{balance:bigint;available:bigint;settled:bigint;amount:bigint;phi:bigint;rate:bigint;nativeValueEnabled:boolean}>){
+ const{balance,available,settled,amount,phi,rate,nativeValueEnabled}=input;
+ if([balance,available,settled,amount,phi,rate].some(v=>typeof v!=='bigint'||v<0n||v>MAX)||typeof nativeValueEnabled!=='boolean'||amount===0n||phi===0n||rate===0n||settled>available)fail('market_invalid_accounting');
+ if(amount>available||nativeValueEnabled&&phi>balance)fail('wallet_insufficient_balance');
+ const settledSpent=amount<settled?amount:settled;
+ if(!nativeValueEnabled&&settledSpent<amount)fail('wallet_insufficient_balance');
+ const nextAvailable=available-amount;
+ return{balance:nativeValueEnabled?balance-phi:marketNotionalPhiMicroFromUsdCents(nextAvailable,rate),available:nextAvailable,settledSpent};
+}
+
+/** Preserve the existing proportional cost truncation and final-unit carry. */
+export function marketPositionCostForQuantity(quantity:bigint,held:bigint,costUsd:bigint,costPhi:bigint){
+ if([quantity,held,costUsd,costPhi].some(v=>typeof v!=='bigint'||v<0n||v>MAX)||quantity===0n||quantity>held)fail('market_insufficient_shares');
+ return{usd:quantity===held?costUsd:costUsd*quantity/held,phi:quantity===held?costPhi:costPhi*quantity/held};
+}
+
 /** Exact arithmetic of the existing share writer, including its settled-first
  * classification and proportional cost-basis truncation. Inputs must already
  * be derived from admitted sources and executable terms. This function creates
@@ -63,19 +82,15 @@ export function deriveMarketShareAccounting(input: MarketShareAccountingInput): 
  let nextBalance: bigint, nextAvailable: bigint, nextHeld: bigint, nextCostUsd: bigint, nextCostPhi: bigint;
  let realizedUsd = 0n, realizedPhi = 0n, settled: bigint;
  if (input.side === "buy") {
-  if (settlement > available || input.nativeValueEnabled && phi > balance) fail("wallet_insufficient_balance");
-  settled = settlement < settledWallet ? settlement : settledWallet;
-  if (!input.nativeValueEnabled && settled < settlement) fail("wallet_insufficient_balance");
-  nextAvailable = available - settlement;
-  nextBalance = input.nativeValueEnabled ? balance - phi : marketNotionalPhiMicroFromUsdCents(nextAvailable, rate);
+  const debit=marketWalletDebitFromAmounts({balance,available,settled:settledWallet,amount:settlement,phi,rate,nativeValueEnabled:input.nativeValueEnabled});
+  settled=debit.settledSpent;nextAvailable=debit.available;nextBalance=debit.balance;
   nextHeld = held + q; nextCostUsd = costUsd + settlement; nextCostPhi = costPhi + phi;
  } else {
   if (q > held) fail("market_insufficient_shares");
   // Direct sales do not require cash liquidity: the remainder is ecosystem
   // proceeds under the existing rule, never a new fixed-dollar cash claim.
   settled = settlement < backed ? settlement : backed;
-  realizedUsd = q === held ? costUsd : costUsd * q / held;
-  realizedPhi = q === held ? costPhi : costPhi * q / held;
+  const cost=marketPositionCostForQuantity(q,held,costUsd,costPhi);realizedUsd=cost.usd;realizedPhi=cost.phi;
   nextAvailable = available + settlement;
   nextBalance = input.nativeValueEnabled ? balance + phi : marketNotionalPhiMicroFromUsdCents(nextAvailable, rate);
   nextHeld = held - q; nextCostUsd = costUsd - realizedUsd; nextCostPhi = costPhi - realizedPhi;

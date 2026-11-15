@@ -44,8 +44,11 @@ it('invalidates cached Ledger calculation inputs when only the carried frequency
  after.valueRows.find(row=>row.marketItem?.livePulseSeed)!.marketItem!.livePulseSeed!.frequencyHz=843.362;
  expect(sameLedgerValueInputs(before,after)).toBe(false);
 });
-it('retains frequency as a reproducible receipt calculation operand',()=>{
- expect(readLedgerValuationTrace({sdk:'129.0.0',seed})).toMatchObject({seed:{frequencyHz:seed.frequencyHz}});
+it.each(['129.0.0','129.5.0','129.1.9'])('retains the carried v129 version %s and frequency as reproducible receipt operands',sdk=>{
+ expect(readLedgerValuationTrace({sdk,seed})).toMatchObject({sdk,seed:{frequencyHz:seed.frequencyHz}});
+});
+it.each(['128.0.0','130.0.0','129.01.0','129.0','129.0.0-beta',' 129.0.0'])('refuses an unsupported or malformed calculation version %s',sdk=>{
+ expect(readLedgerValuationTrace({sdk,seed})).toBeNull();
 });
 it('refuses invalid frequency in an aggregate capitalization source too',()=>{
  const source=JSON.parse(readFileSync(new URL('../public/receiz-public-capitalization.json',import.meta.url),'utf8'));

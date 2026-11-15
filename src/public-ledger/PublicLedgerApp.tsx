@@ -40,7 +40,7 @@ const PublicRow=memo(function PublicRow({record,valueSource,relations,capture,ex
   const {copied,confirm}=useCopyFeedback(record.id);
   const value=useMemo(()=>selectedReceipt?.value??capture?.value??ledgerValueForRecord(record,valueSource),[record,valueSource,capture,selectedReceipt]),valuation=useMemo(()=>selectedReceipt?selectedReceipt.valuation??undefined:capture?capture.valuation:ledgerValuationContext(record,valueSource,value),[capture,record,valueSource,value,selectedReceipt]),receipt=useMemo(()=>receiptLink(record,value,valuation),[record,value,valuation]),kind=activityCategory(record);
   const copy=async()=>{try{await copySavedReceiptLink(completeLedgerReceipt(record,value,valuation));confirm();setCopyError(false);}catch{setCopyError(true);}};
-  const share=()=>openReceiptShare(()=>completeLedgerReceipt(record,value,valuation),receipt!,()=>{confirm();setCopyError(false);});
+  const share=()=>openReceiptShare(()=>completeLedgerReceipt(record,value,valuation),receipt!,()=>{confirm();setCopyError(false);},undefined,{record});
   const currentValue=useMemo(()=>capture?capture.currentValue:/transfer|send/i.test(record.kind)?ledgerCurrentAssetValue(record,valueSource):null,[record,valueSource,capture]);
   const localReceipt=receipt?new URL(receipt).pathname+new URL(receipt).hash:null;
   return <article className={`public-ledger-row ${open?'is-open':''}`}>

@@ -9,7 +9,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 // valuation/seal extraction. This module never admits funds or commits a head.
 const entry=`export {compileBankOfflineMarketPricing} from './app/lib/wallet/bankNotes/offlineMarketPricing';
 export {compileBankOfflineWalletValuation,inspectBankOfflineWalletLedger} from './app/lib/wallet/bankNotes/offlineWalletValuation';
-export {deriveMarketShareAccounting} from './app/lib/market/shareTradeAccounting';
+export {deriveMarketShareAccounting,marketWalletDebitFromAmounts,marketPositionCostForQuantity} from './app/lib/market/shareTradeAccounting';
 export {marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid} from './app/lib/market/shareFees';
 export {marketNotionalPhiMicroFromUsdCents} from './app/lib/market/shareMath';`;
 const built=await build({absWorkingDir:root,stdin:{contents:entry,sourcefile:'account-financial-math-entry.ts',resolveDir:root,loader:'ts'},bundle:true,metafile:true,write:false,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'none',external:['@noble/hashes/*'],plugins:[{name:'reuse-canonical-sdk-valuation',setup(build){build.onResolve({filter:/valuation(?:\.[jt]s)?$/},args=>{

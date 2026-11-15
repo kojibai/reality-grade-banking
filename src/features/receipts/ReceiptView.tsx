@@ -39,7 +39,7 @@ export function ReceiptView({onBack,active=true,initialReceipt,initialHref}:{onB
  },[record,localContext]);
  const {copied,confirm}=useCopyFeedback(href);
  const copy=async()=>{if(!receipt)return;try{await copySavedReceiptLink(localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,href);confirm();setNotice('');}catch{setNotice('The receipt link could not be copied. Try again.');}};
- const share=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(href)?undefined:href,()=>{confirm();setNotice('');},receiptSnapshotDigest(href)?href:undefined);};
+ const share=()=>{if(receipt)openReceiptShare(()=>localContext?completeLedgerReceipt(localContext.record,localContext.value,localContext.valuation):receipt,receiptSnapshotDigest(href)?undefined:href,()=>{confirm();setNotice('');},receiptSnapshotDigest(href)?href:undefined,record?{record,sourceReader:localContext?.sourceReader}:undefined);};
  if(error)return <main className="receipt-page"><div className="receipt-error"><FileText size={30}/><h1>Receipt unavailable.</h1><p>{error}</p><button onClick={onBack}>Return to bank<ArrowLeft size={16}/></button></div></main>;
  if(!receipt)return null;
  const proof=/proof|market.asset/i.test(receipt.kind),value:LedgerValueDisplay=localContext?.value??receipt.value??{basis:receipt.amountUsdCents===null?'unavailable':'payment',amountUsdCents:receipt.amountUsdCents,pulse:receipt.pulse,considerationUsdCents:null},amount=value.amountUsdCents===null?'Recorded':formatMoney(value.amountUsdCents),label=proof?'Proof receipt':'Activity receipt';

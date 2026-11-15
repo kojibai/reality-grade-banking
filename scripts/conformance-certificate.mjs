@@ -1,6 +1,6 @@
 // Adopt only a verified public original. Identity Records never belong here.
 import {readFile,writeFile,copyFile} from 'node:fs/promises';
-import {openSealedConformanceEvidenceObject} from '../src/conformance/receiz-evidence-seal.ts';
+import {openSealedConformanceEvidenceObject} from '../server/registry-runtime/conformance-reader.mjs';
 const root=new URL('../',import.meta.url),metadata=new URL('src/content/conformance-certificate.json',root),url='/conformance/bankeiz-public-conformance.png';
 async function inspect(path){
  const original=await openSealedConformanceEvidenceObject(new Uint8Array(await readFile(path)),{filename:'bankeiz-public-conformance.png'}),report=original.object.report;

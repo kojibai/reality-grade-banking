@@ -1,3 +1,4 @@
+import { inflateReceizBounded } from "./boundedInflate.js";
 import { recognizeReceizGroth16Structure } from "./groth16.js";
 import { ReceizProtocolLimitError, assertReceizRuntimeMaterializationAvailable, createReceizArchiveVerificationGuard, detectReceizRecursiveArchiveFormat, receizProtocolOperationalDenial } from "../verificationLimits.ts";
 const RECEIZ_V113_CANONICAL_ARCHIVE_GUARD_REVISION = "receiz.canonical-archive-guard.v113.2";
@@ -3493,6 +3494,51 @@ async function verifyReceizBundleSignatureV4(args) {
 }
 
 // app/utils/pngChunks.ts
+const PNG_TEXT_ENTRY_RUNTIME_COUNT = 4096;
+const PNG_TEXT_TOTAL_RUNTIME_BYTES = 256 * 1024 * 1024;
+const PNG_TEXT_RUNTIME_BYTES = 128 * 1024 * 1024;
+function pngTextCapacity() {
+    throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+}
+function pngTextBudget(value, ceiling) {
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0))
+        pngTextCapacity();
+    return Math.min(value ?? ceiling, ceiling);
+}
+function pngTextKeyword(data) {
+    const end = indexOfNull(data.subarray(0, 80), 0);
+    return end > 0 ? textDecoder.decode(data.subarray(0, end)) : null;
+}
+function pngTextValue(data, keyword, options) {
+    if (data.byteLength > pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES))
+        pngTextCapacity();
+    return { keyword, text: textDecoder.decode(data), textBytes: data.byteLength };
+}
+function decodeReceizProofBundlePayload(encoded) {
+    const maxCompressedBytes = MAX_BUNDLE_DECODE_BYTES + 1024;
+    if (encoded.length > 3 + Math.ceil(maxCompressedBytes / 3) * 4) {
+        throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+    }
+    const [codec, payload] = encoded.split(":", 2);
+    if (codec !== RECEIZ_PROOF_BUNDLE_CODEC || !payload) {
+        const legacyBytes = base64UrlDecode(encoded);
+        if (legacyBytes.byteLength > MAX_BUNDLE_DECODE_BYTES) {
+            throw new ReceizProtocolLimitError('VERIFICATION_RESOURCE_UNAVAILABLE', 'verification-runtime');
+        }
+        return JSON.parse(new TextDecoder().decode(legacyBytes));
+    }
+    const compressed = base64UrlDecode(payload);
+    const inflated = inflateReceizBounded(compressed, MAX_BUNDLE_DECODE_BYTES, maxCompressedBytes);
+    return JSON.parse(new TextDecoder().decode(inflated));
+}
+function canonicalResourceRefusalCode(error) {
+    if (!error || typeof error !== "object")
+        return null;
+    const failure = error;
+    if (failure.name !== "ReceizProtocolLimitError" || failure.artifactValidity !== "not-evaluated")
+        return null;
+    return failure.code === "VERIFICATION_RESOURCE_UNAVAILABLE" || failure.code === "VERIFICATION_BUDGET_EXCEEDED" ? failure.code : null;
+}
 var PNG_SIGNATURE = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 var textDecoder = new TextDecoder("utf-8");
 var textEncoder2 = new TextEncoder();
@@ -3529,47 +3575,59 @@ function indexOfNull(bytes, start) {
   }
   return -1;
 }
-function parseITXtData(data) {
-  const keywordEnd = indexOfNull(data, 0);
-  if (keywordEnd <= 0) return null;
-  const keyword = textDecoder.decode(data.slice(0, keywordEnd));
-  let cursor = keywordEnd + 1;
-  if (cursor + 2 > data.length) return null;
-  const compressionFlag = data[cursor] ?? 0;
-  const compressionMethod = data[cursor + 1] ?? 0;
-  cursor += 2;
-  if (compressionFlag !== 0 || compressionMethod !== 0) return null;
-  const langEnd = indexOfNull(data, cursor);
-  if (langEnd < 0) return null;
-  cursor = langEnd + 1;
-  const translatedEnd = indexOfNull(data, cursor);
-  if (translatedEnd < 0) return null;
-  cursor = translatedEnd + 1;
-  if (cursor > data.length) return null;
-  const text = textDecoder.decode(data.slice(cursor));
-  return { keyword, text };
+function parseITXtData(data, options) {
+    const keywordEnd = indexOfNull(data, 0);
+    if (keywordEnd <= 0)
+        return null;
+    const keyword = textDecoder.decode(data.slice(0, keywordEnd));
+    let cursor = keywordEnd + 1;
+    if (cursor + 2 > data.length)
+        return null;
+    const compressionFlag = data[cursor] ?? 0;
+    const compressionMethod = data[cursor + 1] ?? 0;
+    cursor += 2;
+    if (compressionFlag !== 0 || compressionMethod !== 0)
+        return null;
+    const langEnd = indexOfNull(data, cursor);
+    if (langEnd < 0)
+        return null;
+    cursor = langEnd + 1;
+    const translatedEnd = indexOfNull(data, cursor);
+    if (translatedEnd < 0)
+        return null;
+    cursor = translatedEnd + 1;
+    if (cursor > data.length)
+        return null;
+    return pngTextValue(data.subarray(cursor), keyword, options);
 }
-function parseTextData(data) {
-  const keywordEnd = indexOfNull(data, 0);
-  if (keywordEnd <= 0) return null;
-  const keyword = textDecoder.decode(data.slice(0, keywordEnd));
-  const text = textDecoder.decode(data.slice(keywordEnd + 1));
-  return { keyword, text };
+function parseTextData(data, options) {
+    const keywordEnd = indexOfNull(data, 0);
+    if (keywordEnd <= 0)
+        return null;
+    const keyword = textDecoder.decode(data.slice(0, keywordEnd));
+    return pngTextValue(data.subarray(keywordEnd + 1), keyword, options);
 }
-function parseZTxtData(data) {
-  const keywordEnd = indexOfNull(data, 0);
-  if (keywordEnd <= 0) return null;
-  const keyword = textDecoder.decode(data.slice(0, keywordEnd));
-  const compressionMethod = data[keywordEnd + 1] ?? 255;
-  if (compressionMethod !== 0) return null;
-  let inflated;
-  try {
-    inflated = inflateSync(data.slice(keywordEnd + 2));
-  } catch {
-    return null;
-  }
-  const text = textDecoder.decode(inflated);
-  return { keyword, text };
+function parseZTxtData(data, options) {
+    const keywordEnd = indexOfNull(data, 0);
+    if (keywordEnd <= 0)
+        return null;
+    const keyword = textDecoder.decode(data.slice(0, keywordEnd));
+    if (options?.keyword && keyword !== options.keyword)
+        return null;
+    const compressionMethod = data[keywordEnd + 1] ?? 255;
+    if (compressionMethod !== 0)
+        return null;
+    const compressed = data.subarray(keywordEnd + 2);
+    let inflated;
+    try {
+        inflated = inflateReceizBounded(compressed, pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES), pngTextBudget(options?.maxCompressedBytes, PNG_TEXT_RUNTIME_BYTES));
+    }
+    catch (error) {
+        if (error instanceof ReceizProtocolLimitError)
+            throw error;
+        return null;
+    }
+    return pngTextValue(inflated, keyword, options);
 }
 function buildITXtData(entry) {
   const keywordBytes = textEncoder2.encode(entry.keyword);
@@ -3630,30 +3688,49 @@ function buildITXtChunk(entry) {
   writeUint32BE(chunk, 8 + length, crc);
   return chunk;
 }
-function readPngTextChunks(pngBytes) {
-  assertPngSignature(pngBytes);
-  const chunks = [];
-  let offset = 8;
-  while (offset + 8 <= pngBytes.length) {
-    const length = readUint32BE(pngBytes, offset);
-    const type = chunkType(pngBytes, offset + 4);
-    const dataStart = offset + 8;
-    const dataEnd = dataStart + length;
-    if (dataEnd + 4 > pngBytes.length) break;
-    const data = pngBytes.slice(dataStart, dataEnd);
-    const parsed = type === "iTXt" ? parseITXtData(data) : type === "tEXt" ? parseTextData(data) : type === "zTXt" ? parseZTxtData(data) : null;
-    if (parsed) chunks.push(parsed);
-    offset = dataEnd + 4;
-    if (type === "IEND") break;
-  }
-  return chunks;
+function readPngTextChunks(pngBytes, options) {
+    assertPngSignature(pngBytes);
+    const chunks = [];
+    let remaining = pngTextBudget(options?.maxTotalTextBytes, PNG_TEXT_TOTAL_RUNTIME_BYTES);
+    let offset = 8;
+    while (offset + 8 <= pngBytes.length) {
+        const length = readUint32BE(pngBytes, offset);
+        const type = chunkType(pngBytes, offset + 4);
+        const dataStart = offset + 8;
+        const dataEnd = dataStart + length;
+        if (dataEnd + 4 > pngBytes.length)
+            break;
+        if (type !== "iTXt" && type !== "tEXt" && type !== "zTXt") {
+            offset = dataEnd + 4;
+            if (type === "IEND")
+                break;
+            continue;
+        }
+        const data = pngBytes.subarray(dataStart, dataEnd);
+        const keyword = pngTextKeyword(data);
+        if (!keyword || options?.keyword && options.keyword !== keyword) {
+            offset = dataEnd + 4;
+            continue;
+        }
+        const bounded = { ...options, maxTextBytes: Math.min(pngTextBudget(options?.maxTextBytes, PNG_TEXT_RUNTIME_BYTES), remaining) };
+        const parsed = type === "iTXt" ? parseITXtData(data, bounded) : type === "tEXt" ? parseTextData(data, bounded) : parseZTxtData(data, bounded);
+        if (parsed) {
+            if (chunks.length >= PNG_TEXT_ENTRY_RUNTIME_COUNT)
+                pngTextCapacity();
+            remaining -= parsed.textBytes;
+            chunks.push({ keyword: parsed.keyword, text: parsed.text });
+        }
+        offset = dataEnd + 4;
+    }
+    return chunks;
 }
-function readPngTextChunk(pngBytes, keyword) {
-  const chunks = readPngTextChunks(pngBytes);
-  for (const chunk of chunks) {
-    if (chunk.keyword === keyword) return chunk.text;
-  }
-  return null;
+function readPngTextChunk(pngBytes, keyword, options) {
+    const chunks = readPngTextChunks(pngBytes, { ...options, keyword });
+    for (const chunk of chunks) {
+        if (chunk.keyword === keyword)
+            return chunk.text;
+    }
+    return null;
 }
 function insertPngTextChunks(pngBytes, entries) {
   if (entries.length === 0) return pngBytes;
@@ -3690,44 +3767,60 @@ function insertPngTextChunks(pngBytes, entries) {
   out.set(suffix, cursor);
   return out;
 }
-function countPngTextChunksByKeyword(pngBytes, keyword) {
-  return readPngTextChunks(pngBytes).filter((chunk) => chunk.keyword === keyword).length;
+function countPngTextChunksByKeyword(pngBytes, keyword, stopAfter = Infinity) {
+    assertPngSignature(pngBytes);
+    let count = 0, remaining = PNG_TEXT_TOTAL_RUNTIME_BYTES;
+    for (let offset = 8; offset + 8 <= pngBytes.length;) {
+        const length = readUint32BE(pngBytes, offset), type = chunkType(pngBytes, offset + 4), end = offset + 8 + length;
+        if (end + 4 > pngBytes.length)
+            break;
+        if ((type === 'iTXt' || type === 'tEXt' || type === 'zTXt') && pngTextKeyword(pngBytes.subarray(offset + 8, end)) === keyword) {
+            const data = pngBytes.subarray(offset + 8, end), options = { keyword, maxTextBytes: Math.min(PNG_TEXT_RUNTIME_BYTES, remaining) };
+            const parsed = type === 'iTXt' ? parseITXtData(data, options) : type === 'tEXt' ? parseTextData(data, options) : parseZTxtData(data, options);
+            if (parsed) {
+                remaining -= parsed.textBytes;
+                if (++count >= stopAfter)
+                    return count;
+            }
+        }
+        offset = end + 4;
+        if (type === 'IEND')
+            break;
+    }
+    return count;
 }
 function stripPngTextChunksByKeyword(pngBytes, keyword) {
-  assertPngSignature(pngBytes);
-  const retainedChunks = [];
-  retainedChunks.push(pngBytes.slice(0, PNG_SIGNATURE.length));
-  let offset = PNG_SIGNATURE.length;
-  let removedCount = 0;
-  while (offset + 8 <= pngBytes.length) {
-    const length = readUint32BE(pngBytes, offset);
-    const type = chunkType(pngBytes, offset + 4);
-    const dataStart = offset + 8;
-    const dataEnd = dataStart + length;
-    const chunkEnd = dataEnd + 4;
-    if (chunkEnd > pngBytes.length) break;
-    let shouldRemove = false;
-    if (type === "iTXt" || type === "tEXt" || type === "zTXt") {
-      const data = pngBytes.slice(dataStart, dataEnd);
-      const parsed = type === "iTXt" ? parseITXtData(data) : type === "tEXt" ? parseTextData(data) : parseZTxtData(data);
-      if (parsed?.keyword === keyword) shouldRemove = true;
+    assertPngSignature(pngBytes);
+    const retained = [];
+    let offset = PNG_SIGNATURE.length, start = 0, removedCount = 0, remaining = PNG_TEXT_TOTAL_RUNTIME_BYTES;
+    while (offset + 8 <= pngBytes.length) {
+        const length = readUint32BE(pngBytes, offset), type = chunkType(pngBytes, offset + 4), dataStart = offset + 8, dataEnd = dataStart + length, chunkEnd = dataEnd + 4;
+        if (chunkEnd > pngBytes.length)
+            break;
+        if ((type === 'iTXt' || type === 'tEXt' || type === 'zTXt') && pngTextKeyword(pngBytes.subarray(dataStart, dataEnd)) === keyword) {
+            const data = pngBytes.subarray(dataStart, dataEnd), options = { keyword, maxTextBytes: Math.min(PNG_TEXT_RUNTIME_BYTES, remaining) };
+            const parsed = type === 'iTXt' ? parseITXtData(data, options) : type === 'tEXt' ? parseTextData(data, options) : parseZTxtData(data, options);
+            if (parsed) {
+                remaining -= parsed.textBytes;
+                removedCount++;
+                if (start < offset)
+                    retained.push(pngBytes.subarray(start, offset));
+                start = chunkEnd;
+            }
+        }
+        offset = chunkEnd;
+        if (type === 'IEND')
+            break;
     }
-    if (shouldRemove) {
-      removedCount += 1;
-    } else {
-      retainedChunks.push(pngBytes.slice(offset, chunkEnd));
+    if (start < offset)
+        retained.push(pngBytes.subarray(start, offset));
+    const out = new Uint8Array(retained.reduce((total, part) => total + part.length, 0));
+    let cursor = 0;
+    for (const part of retained) {
+        out.set(part, cursor);
+        cursor += part.length;
     }
-    offset = chunkEnd;
-    if (type === "IEND") break;
-  }
-  const totalLength = retainedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const out = new Uint8Array(totalLength);
-  let cursor = 0;
-  for (const chunk of retainedChunks) {
-    out.set(chunk, cursor);
-    cursor += chunk.length;
-  }
-  return { pngBytes: out, removedCount };
+    return { pngBytes: out, removedCount };
 }
 
 // app/lib/profile/username.ts
@@ -3995,23 +4088,14 @@ function encodeReceizProofBundle(bundle) {
   return `${RECEIZ_PROOF_BUNDLE_CODEC}:${base64UrlEncode(compressed)}`;
 }
 function decodeReceizProofBundle(encoded) {
-  const [codec, payload] = encoded.split(":", 2);
-  if (codec !== RECEIZ_PROOF_BUNDLE_CODEC || !payload) {
-    const legacyBytes = base64UrlDecode(encoded);
-    const parsedLegacy = JSON.parse(new TextDecoder().decode(legacyBytes));
-    const legacyBundle = coerceReceizProofBundle(parsedLegacy);
-    if (!legacyBundle) throw new Error("Unsupported receiz proof bundle codec.");
-    return legacyBundle;
-  }
-  const compressed = base64UrlDecode(payload);
-  const inflated = inflateSync(compressed);
-  if (inflated.byteLength > MAX_BUNDLE_DECODE_BYTES) {
-    throw new Error("Receiz proof bundle payload too large.");
-  }
-  const parsed = JSON.parse(new TextDecoder().decode(inflated));
-  const bundle = coerceReceizProofBundle(parsed);
-  if (!bundle) throw new Error("Invalid receiz proof bundle payload.");
-  return bundle;
+    const parsed = decodeReceizProofBundlePayload(encoded);
+    const bundle = coerceReceizProofBundle(parsed);
+    if (!bundle) {
+        const [codec, payload] = encoded.split(":", 2);
+        throw new Error(codec === RECEIZ_PROOF_BUNDLE_CODEC && payload
+            ? "Invalid receiz proof bundle payload." : "Unsupported receiz proof bundle codec.");
+    }
+    return bundle;
 }
 function isPlainProofValue(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
@@ -9143,97 +9227,123 @@ async function readVerifiedReceizFolderPackageBytes(args) {
 }
 
 async function verifyPngArtifact(args) {
-  const errors = [];
-  const warnings = [];
-  let proofChunkCount = 0;
-  let proofEncoded = null;
-  let anchorRaw = null;
-  try {
-    proofChunkCount = countPngTextChunksByKeyword(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY);
-    proofEncoded = readPngTextChunk(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY);
-    anchorRaw = readPngTextChunk(args.pngBytes, RECEIZ_ANCHOR_BUNDLE_CHUNK_KEY);
-  } catch {
-    return buildInvalidResult("png", ["Invalid PNG. Upload the original sealed artifact."], warnings);
-  }
-  if (proofChunkCount !== 1) {
-    errors.push(
-      proofChunkCount > 1 ? "Duplicate proof bundles detected (proof bundle chunk count > 1)." : "Missing proof bundle chunk (likely not the original sealed artifact)."
-    );
-  }
-  if (!proofEncoded) {
-    if (proofChunkCount === 1) {
-      errors.push("Proof bundle chunk could not be read.");
+    const errors = [];
+    const warnings = [];
+    let proofChunkCount = 0;
+    let proofEncoded = null;
+    let anchorRaw = null;
+    try {
+        proofChunkCount = countPngTextChunksByKeyword(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY, 2);
+        if (proofChunkCount !== 1) {
+            return buildInvalidResult("png", [proofChunkCount > 1
+                    ? "Duplicate proof bundles detected (proof bundle chunk count > 1)."
+                    : "Missing proof bundle chunk (likely not the original sealed artifact)."], warnings);
+        }
+        // The proof wire fits the existing 64 KiB decoded bundle budget. Other
+        // metadata (artwork/provenance) keeps its own larger supported capacity.
+        proofEncoded = readPngTextChunk(args.pngBytes, RECEIZ_PROOF_BUNDLE_CHUNK_KEY, {
+            maxCompressedBytes: 128 * 1024,
+            maxTextBytes: 128 * 1024,
+            maxTotalTextBytes: 128 * 1024,
+        });
+        anchorRaw = readPngTextChunk(args.pngBytes, RECEIZ_ANCHOR_BUNDLE_CHUNK_KEY);
     }
-    return buildInvalidResult("png", errors, warnings);
-  }
-  let bundle;
-  try {
-    bundle = decodeReceizProofBundle(proofEncoded);
-  } catch (err2) {
-    const message = err2 instanceof Error ? err2.message : String(err2);
-    return buildInvalidResult("png", [...errors, `Proof bundle decode failed: ${message}`], warnings);
-  }
-  const chunkAnchor = anchorRaw ? decodeReceizAnchorBundle(anchorRaw) : null;
-  if (anchorRaw && !chunkAnchor) {
-    errors.push("Anchor bundle chunk exists but is invalid JSON/shape.");
-  }
-  const derivedAnchor = deriveAnchorBundleFromProofBundle(bundle);
-  const anchor = proofBearingAnchorProjection(chunkAnchor, derivedAnchor);
-  const basisBytes = stripReceizProofAugmentationChunks(args.pngBytes);
-  const checked = await validateBundleAgainstBasis({
-    bundle,
-    basisBytes,
-    anchor,
-    optionalLink: args.optionalLink,
-    signingKey: args.signingKey,
-    signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
-  });
-  return {
-    ok: errors.length === 0 && checked.errors.length === 0,
-    kind: "png",
-    errors: [...errors, ...checked.errors],
-    warnings: [...warnings, ...checked.warnings],
-    bundle,
-    anchor,
-    package: null
-  };
+    catch (error) {
+        const refusal = canonicalResourceRefusalCode(error);
+        if (refusal)
+            return buildOperationalDenialResult("png", refusal);
+        return buildInvalidResult("png", ["Invalid PNG. Upload the original sealed artifact."], warnings);
+    }
+    if (!proofEncoded) {
+        if (proofChunkCount === 1) {
+            errors.push("Proof bundle chunk could not be read.");
+        }
+        return buildInvalidResult("png", errors, warnings);
+    }
+    let bundle;
+    try {
+        bundle = decodeReceizProofBundle(proofEncoded);
+    }
+    catch (err) {
+        const refusal = canonicalResourceRefusalCode(err);
+        if (refusal)
+            return buildOperationalDenialResult("png", refusal);
+        const message = err instanceof Error ? err.message : String(err);
+        return buildInvalidResult("png", [...errors, `Proof bundle decode failed: ${message}`], warnings);
+    }
+    const chunkAnchor = anchorRaw ? decodeReceizAnchorBundle(anchorRaw) : null;
+    if (anchorRaw && !chunkAnchor) {
+        errors.push("Anchor bundle chunk exists but is invalid JSON/shape.");
+    }
+    const derivedAnchor = deriveAnchorBundleFromProofBundle(bundle);
+    const anchor = proofBearingAnchorProjection(chunkAnchor, derivedAnchor);
+    try {
+        const basisBytes = stripReceizProofAugmentationChunks(args.pngBytes);
+        const checked = await validateBundleAgainstBasis({
+            bundle,
+            basisBytes,
+            anchor,
+            optionalLink: args.optionalLink,
+            signingKey: args.signingKey,
+            signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
+        });
+        return {
+            ok: errors.length === 0 && checked.errors.length === 0,
+            kind: "png",
+            errors: [...errors, ...checked.errors],
+            warnings: [...warnings, ...checked.warnings],
+            bundle,
+            anchor,
+            package: null,
+        };
+    }
+    catch (error) {
+        const refusal = canonicalResourceRefusalCode(error);
+        if (refusal)
+            return buildOperationalDenialResult("png", refusal);
+        throw error;
+    }
 }
 async function verifyPdfArtifact(args) {
-  const errors = [];
-  const warnings = [];
-  const proofBundles = extractReceizProofBundlesFromPdf(args.pdfBytes);
-  if (proofBundles.length !== 1) {
-    errors.push(
-      proofBundles.length > 1 ? "Duplicate proof bundles detected in PDF metadata." : "Missing embedded PDF proof bundle."
-    );
-    return buildInvalidResult("pdf", errors, warnings);
-  }
-  let bundle;
-  try {
-    bundle = decodeReceizProofBundle(proofBundles[0] ?? "");
-  } catch (err2) {
-    const message = err2 instanceof Error ? err2.message : String(err2);
-    return buildInvalidResult("pdf", [...errors, `Proof bundle decode failed: ${message}`], warnings);
-  }
-  const anchor = deriveAnchorBundleFromProofBundle(bundle);
-  const stripped = stripReceizSealUpdatesFromPdf(args.pdfBytes);
-  const checked = await validateBundleAgainstBasis({
-    bundle,
-    basisBytes: stripped.pdfBytes,
-    anchor,
-    optionalLink: args.optionalLink,
-    signingKey: args.signingKey,
-    signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
-  });
-  return {
-    ok: errors.length === 0 && checked.errors.length === 0,
-    kind: "pdf",
-    errors: [...errors, ...checked.errors],
-    warnings: [...warnings, ...checked.warnings],
-    bundle,
-    anchor,
-    package: null
-  };
+    const errors = [];
+    const warnings = [];
+    const proofBundles = extractReceizProofBundlesFromPdf(args.pdfBytes);
+    if (proofBundles.length !== 1) {
+        errors.push(proofBundles.length > 1
+            ? "Duplicate proof bundles detected in PDF metadata."
+            : "Missing embedded PDF proof bundle.");
+        return buildInvalidResult("pdf", errors, warnings);
+    }
+    let bundle;
+    try {
+        bundle = decodeReceizProofBundle(proofBundles[0] ?? "");
+    }
+    catch (err) {
+        const refusal = canonicalResourceRefusalCode(err);
+        if (refusal)
+            return buildOperationalDenialResult("pdf", refusal);
+        const message = err instanceof Error ? err.message : String(err);
+        return buildInvalidResult("pdf", [...errors, `Proof bundle decode failed: ${message}`], warnings);
+    }
+    const anchor = deriveAnchorBundleFromProofBundle(bundle);
+    const stripped = stripReceizSealUpdatesFromPdf(args.pdfBytes);
+    const checked = await validateBundleAgainstBasis({
+        bundle,
+        basisBytes: stripped.pdfBytes,
+        anchor,
+        optionalLink: args.optionalLink,
+        signingKey: args.signingKey,
+        signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
+    });
+    return {
+        ok: errors.length === 0 && checked.errors.length === 0,
+        kind: "pdf",
+        errors: [...errors, ...checked.errors],
+        warnings: [...warnings, ...checked.warnings],
+        bundle,
+        anchor,
+        package: null,
+    };
 }
 async function verifyHeicArtifact(args) {
   const parsed = parseReceizHeicProof(args.heicBytes);
@@ -9266,110 +9376,118 @@ async function verifyHeicArtifact(args) {
   };
 }
 async function verifySvgArtifact(args) {
-  const errors = [];
-  const warnings = [];
-  const parsed = parseReceizSvgProof(args.svgBytes);
-  const trailerFallback = parsed.proofCount !== 1 || parsed.parseError || !parsed.encodedBundle ? parseReceizTrailer(args.svgBytes) : null;
-  if (trailerFallback && trailerFallback.trailerCount > 0 && !trailerFallback.parseError) {
-    const fallback = await verifyTrailerArtifact({
-      bytes: args.svgBytes,
-      optionalLink: args.optionalLink,
-      signingKey: args.signingKey,
-      signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
+    const errors = [];
+    const warnings = [];
+    const parsed = parseReceizSvgProof(args.svgBytes);
+    const trailerFallback = parsed.proofCount !== 1 || parsed.parseError || !parsed.encodedBundle ? parseReceizTrailer(args.svgBytes) : null;
+    if (trailerFallback && trailerFallback.trailerCount > 0 && !trailerFallback.parseError) {
+        const fallback = await verifyTrailerArtifact({
+            bytes: args.svgBytes,
+            optionalLink: args.optionalLink,
+            signingKey: args.signingKey,
+            signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
+        });
+        return {
+            ...fallback,
+            warnings: ["Used trailer proof fallback for SVG artifact.", ...fallback.warnings],
+        };
+    }
+    if (parsed.proofCount !== 1) {
+        errors.push(parsed.proofCount > 1
+            ? "Duplicate proof bundles detected in SVG metadata."
+            : "Missing embedded SVG proof bundle.");
+        return buildInvalidResult("trailer", errors, warnings);
+    }
+    if (parsed.parseError || !parsed.encodedBundle) {
+        errors.push("SVG proof bundle is malformed.");
+        return buildInvalidResult("trailer", errors, warnings);
+    }
+    let bundle;
+    try {
+        bundle = decodeReceizProofBundle(parsed.encodedBundle);
+    }
+    catch (err) {
+        const refusal = canonicalResourceRefusalCode(err);
+        if (refusal)
+            return buildOperationalDenialResult("trailer", refusal);
+        const message = err instanceof Error ? err.message : String(err);
+        return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
+    }
+    const anchor = deriveAnchorBundleFromProofBundle(bundle);
+    const checked = await validateBundleAgainstBasis({
+        bundle,
+        basisBytes: parsed.basisBytes,
+        anchor,
+        optionalLink: args.optionalLink,
+        signingKey: args.signingKey,
+        signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
     });
     return {
-      ...fallback,
-      warnings: ["Used trailer proof fallback for SVG artifact.", ...fallback.warnings]
+        ok: errors.length === 0 && checked.errors.length === 0,
+        kind: "trailer",
+        errors: [...errors, ...checked.errors],
+        warnings: [...warnings, ...checked.warnings],
+        bundle,
+        anchor,
+        package: null,
     };
-  }
-  if (parsed.proofCount !== 1) {
-    errors.push(
-      parsed.proofCount > 1 ? "Duplicate proof bundles detected in SVG metadata." : "Missing embedded SVG proof bundle."
-    );
-    return buildInvalidResult("trailer", errors, warnings);
-  }
-  if (parsed.parseError || !parsed.encodedBundle) {
-    errors.push("SVG proof bundle is malformed.");
-    return buildInvalidResult("trailer", errors, warnings);
-  }
-  let bundle;
-  try {
-    bundle = decodeReceizProofBundle(parsed.encodedBundle);
-  } catch (err2) {
-    const message = err2 instanceof Error ? err2.message : String(err2);
-    return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
-  }
-  const anchor = deriveAnchorBundleFromProofBundle(bundle);
-  const checked = await validateBundleAgainstBasis({
-    bundle,
-    basisBytes: parsed.basisBytes,
-    anchor,
-    optionalLink: args.optionalLink,
-    signingKey: args.signingKey,
-    signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
-  });
-  return {
-    ok: errors.length === 0 && checked.errors.length === 0,
-    kind: "trailer",
-    errors: [...errors, ...checked.errors],
-    warnings: [...warnings, ...checked.warnings],
-    bundle,
-    anchor,
-    package: null
-  };
 }
 async function verifyJsonArtifact(args) {
-  const errors = [];
-  const warnings = [];
-  const parsed = parseReceizJsonProof(args.jsonBytes);
-  const trailerFallback = parsed.proofCount !== 1 || parsed.parseError || !parsed.encodedBundle ? parseReceizTrailer(args.jsonBytes) : null;
-  if (trailerFallback && trailerFallback.trailerCount > 0 && !trailerFallback.parseError) {
-    const fallback = await verifyTrailerArtifact({
-      bytes: args.jsonBytes,
-      optionalLink: args.optionalLink,
-      signingKey: args.signingKey,
-      signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
+    const errors = [];
+    const warnings = [];
+    const parsed = parseReceizJsonProof(args.jsonBytes);
+    const trailerFallback = parsed.proofCount !== 1 || parsed.parseError || !parsed.encodedBundle ? parseReceizTrailer(args.jsonBytes) : null;
+    if (trailerFallback && trailerFallback.trailerCount > 0 && !trailerFallback.parseError) {
+        const fallback = await verifyTrailerArtifact({
+            bytes: args.jsonBytes,
+            optionalLink: args.optionalLink,
+            signingKey: args.signingKey,
+            signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
+        });
+        return {
+            ...fallback,
+            warnings: ["Used trailer proof fallback for JSON artifact.", ...fallback.warnings],
+        };
+    }
+    if (parsed.proofCount !== 1) {
+        errors.push(parsed.proofCount > 1
+            ? "Duplicate proof bundles detected in JSON whitespace channel."
+            : "Missing embedded JSON proof bundle.");
+        return buildInvalidResult("trailer", errors, warnings);
+    }
+    if (parsed.parseError || !parsed.encodedBundle) {
+        errors.push("JSON proof bundle is malformed.");
+        return buildInvalidResult("trailer", errors, warnings);
+    }
+    let bundle;
+    try {
+        bundle = decodeReceizProofBundle(parsed.encodedBundle);
+    }
+    catch (err) {
+        const refusal = canonicalResourceRefusalCode(err);
+        if (refusal)
+            return buildOperationalDenialResult("trailer", refusal);
+        const message = err instanceof Error ? err.message : String(err);
+        return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
+    }
+    const anchor = deriveAnchorBundleFromProofBundle(bundle);
+    const checked = await validateBundleAgainstBasis({
+        bundle,
+        basisBytes: parsed.basisBytes,
+        anchor,
+        optionalLink: args.optionalLink,
+        signingKey: args.signingKey,
+        signatureV4RootPublicKeys: args.signatureV4RootPublicKeys,
     });
     return {
-      ...fallback,
-      warnings: ["Used trailer proof fallback for JSON artifact.", ...fallback.warnings]
+        ok: errors.length === 0 && checked.errors.length === 0,
+        kind: "trailer",
+        errors: [...errors, ...checked.errors],
+        warnings: [...warnings, ...checked.warnings],
+        bundle,
+        anchor,
+        package: null,
     };
-  }
-  if (parsed.proofCount !== 1) {
-    errors.push(
-      parsed.proofCount > 1 ? "Duplicate proof bundles detected in JSON whitespace channel." : "Missing embedded JSON proof bundle."
-    );
-    return buildInvalidResult("trailer", errors, warnings);
-  }
-  if (parsed.parseError || !parsed.encodedBundle) {
-    errors.push("JSON proof bundle is malformed.");
-    return buildInvalidResult("trailer", errors, warnings);
-  }
-  let bundle;
-  try {
-    bundle = decodeReceizProofBundle(parsed.encodedBundle);
-  } catch (err2) {
-    const message = err2 instanceof Error ? err2.message : String(err2);
-    return buildInvalidResult("trailer", [...errors, `Proof bundle decode failed: ${message}`], warnings);
-  }
-  const anchor = deriveAnchorBundleFromProofBundle(bundle);
-  const checked = await validateBundleAgainstBasis({
-    bundle,
-    basisBytes: parsed.basisBytes,
-    anchor,
-    optionalLink: args.optionalLink,
-    signingKey: args.signingKey,
-    signatureV4RootPublicKeys: args.signatureV4RootPublicKeys
-  });
-  return {
-    ok: errors.length === 0 && checked.errors.length === 0,
-    kind: "trailer",
-    errors: [...errors, ...checked.errors],
-    warnings: [...warnings, ...checked.warnings],
-    bundle,
-    anchor,
-    package: null
-  };
 }
 async function verifyTrailerArtifact(args) {
   const errors = [];

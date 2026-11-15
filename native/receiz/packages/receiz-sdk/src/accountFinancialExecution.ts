@@ -4,7 +4,10 @@ import {deriveMarketShareAccounting,marketNotionalPhiMicroFromUsdCents,marketSha
 type Position=AccountExecutionPositionAmounts&Readonly<{marketItemId:string}>;
 type Capacity=Readonly<{marketItemId:string;buyCapacityUsdCents:string;backedSellLiquidityUsdCents:string;buyShareQuantityMicro?:string}>;
 type Term=Capacity&Readonly<{sourceArtifactSha256:string;bidPriceUsdCents:string;askPriceUsdCents:string;referenceMidUsdCents:string;maxSingleTradeUsdCents:string;targetBudgetUsdCents:string}>;
-export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];marketCapacity:readonly Capacity[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
+/** References to actually admitted order-custody partitions. A typed entry
+ * alone conveys no funded rights; its exact Original must be admitted. */
+export type ReceizAccountOrderEscrow=Readonly<{orderId:string;marketItemId:string;reservedShareQuantityMicro:string;fundingSourceSha256:string}>;
+export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
 type Recipient=Readonly<{recipientUserId:string;recipientOwnerReceizId:string;conversationId:string;sourceAccountArtifactSha256:string}>;
 export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string}>;
 export type ReceizAccountMarketAction=Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
@@ -13,6 +16,14 @@ const min=(a:bigint,b:bigint)=>a<b?a:b;
 function fail(code:string):never{throw new TypeError('ACCOUNT_FINANCIAL_'+code);}
 function uint(v:unknown,positive=false):bigint{if(typeof v!=='string'||!/^(0|[1-9][0-9]{0,18})$/u.test(v))fail('INTEGER');const n=BigInt(v);if(n>MAX||n<(positive?1n:0n))fail('INTEGER');return n;}
 function bounded(v:bigint):string{if(v<0n||v>MAX)fail('INTEGER');return String(v);}
+/** Owned shares keep contributing to market interest while a pending order
+ * holds them. Reservation changes spendability, never ownership or trade flow. */
+export function accountFinancialMarketPositionDelta(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,marketItemId:string){
+ const custody=readReceizAccountFinancialSourceCustody(source),opening=(custody.body.initialState as ReceizAccountFinancialState).positions.find(row=>row.marketItemId===marketItemId);
+ const free=uint(state.positions.find(row=>row.marketItemId===marketItemId)?.shareQuantityMicro??'0');
+ const reserved=(state.orderEscrows??[]).filter(row=>row.marketItemId===marketItemId).reduce((sum,row)=>sum+uint(row.reservedShareQuantityMicro),0n);
+ if(free+reserved>MAX)fail('INTEGER');return String(free+reserved-uint(opening?.shareQuantityMicro??'0'));
+}
 const indexed=new WeakMap<ReceizAccountFinancialSource,ReadonlyMap<string,Term>>();
 /** Mechanical reduction under genuine funded source custody. This returns a
  * candidate only. It neither admits a supplied successor state nor commits a
@@ -36,8 +47,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
  const term=terms.get(action.marketItemId),capacity=state.marketCapacity.find(c=>c.marketItemId===action.marketItemId);if(!term||!capacity)fail('TERMS_REQUIRED');
  const value=custody.valuation.at(state.walletLedger,source.accountUserId,atKaiUPulse),position=state.positions.find(p=>p.marketItemId===action.marketItemId)??{marketItemId:action.marketItemId,shareQuantityMicro:'0',costBasisUsdCents:'0',costBasisPhiMicro:'0'};
  const localFlow=state.marketActivity?.find(row=>row.marketItemId===action.marketItemId)?.trades??[];
- const originalPosition=(custody.body.initialState as ReceizAccountFinancialState).positions.find(row=>row.marketItemId===action.marketItemId);
- const quote=custody.marketPricingAt(action.marketItemId,String(BigInt(position.shareQuantityMicro)-BigInt(originalPosition?.shareQuantityMicro??'0')),localFlow,atKaiUPulse);
+ const quote=custody.marketPricingAt(action.marketItemId,accountFinancialMarketPositionDelta(source,state,action.marketItemId),localFlow,atKaiUPulse);
  const bid=quote?String(quote.bidPriceUsdCents):term.bidPriceUsdCents,ask=quote?String(quote.askPriceUsdCents):term.askPriceUsdCents,reference=quote?String(quote.referenceMidUsdCents):term.referenceMidUsdCents;
 
  const budget=action.amountUsdCents===undefined?undefined:uint(action.amountUsdCents,true);
@@ -57,6 +67,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
  const nextPosition={marketItemId:action.marketItemId,...accounting.position},positions=state.positions.filter(p=>p.marketItemId!==action.marketItemId).map(p=>({...p}));if(nextPosition.shareQuantityMicro!=='0')positions.push(nextPosition);positions.sort((a,b)=>a.marketItemId<b.marketItemId?-1:a.marketItemId>b.marketItemId?1:0);
  const nextCapacity={marketItemId:action.marketItemId,buyCapacityUsdCents:bounded(buy?uint(capacity.buyCapacityUsdCents)-cents:min(uint(term.buyCapacityUsdCents),uint(capacity.buyCapacityUsdCents)+cents)),backedSellLiquidityUsdCents:bounded(uint(capacity.backedSellLiquidityUsdCents)+(buy?settled:-settled)),...(capacity.buyShareQuantityMicro!==undefined?{buyShareQuantityMicro:bounded(buy?uint(capacity.buyShareQuantityMicro)-quantity:min(uint(term.buyShareQuantityMicro),uint(capacity.buyShareQuantityMicro)+quantity))}:{})};
  const next:ReceizAccountFinancialState={schema:state.schema,allocationId:state.allocationId,accountUserId:state.accountUserId,sequence:bounded(uint(state.sequence)+1n),lastKaiUPulse:atKaiUPulse,wallet:custody.valuation.at(ledger,source.accountUserId,atKaiUPulse).wallet,walletLedger:ledger,positions,marketCapacity:state.marketCapacity.map(c=>({...c,...(c.marketItemId===action.marketItemId?nextCapacity:{})})),
+ ...(state.orderEscrows?{orderEscrows:state.orderEscrows}:{}),
  ...(quote?{marketActivity:[...(state.marketActivity??[]).filter(row=>row.marketItemId!==action.marketItemId),{marketItemId:action.marketItemId,trades:[...localFlow,{side:action.kind,notionalUsdCents:accounting.notionalUsdCents,atKaiUPulse}]}].sort((a,b)=>a.marketItemId<b.marketItemId?-1:a.marketItemId>b.marketItemId?1:0)}:{})};
  return{effect:{kind:action.kind,marketItemId:action.marketItemId,shareQuantityMicro:String(quantity),executionPriceUsdCents:action.kind==='buy'?ask:bid,usdPerPhiMicrocents:value.usdPerPhiMicrocents,...(quote?{referenceMidUsdCents:reference,quoteMidUsdCents:String(quote.quoteMidUsdCents),bidPriceUsdCents:bid,askPriceUsdCents:ask,quoteModelVersion:quote.modelVersion}:{}),...accounting},next};
 }

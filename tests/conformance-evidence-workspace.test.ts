@@ -1,4 +1,7 @@
 import {execFileSync} from 'node:child_process';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 import {renderConformanceEvidencePng} from '../src/conformance/evidence-renderer';
 import {beforeAll,expect,it,vi} from 'vitest';
@@ -54,8 +57,15 @@ it.each(['removed','changed','wrong-phrase']as const)('invalidates an open works
  current=change==='removed'?null:change==='changed'?other:{...fixture.identity,phrase:'different-current-phrase'};
  expect(await workspace.stillCurrent()).toBe(false);
 });
-it('imports the helper directly in Node and uses the default pinned offline SDK verifier on a real public canonical fixture',()=>{
- const helper=new URL('../src/conformance/receiz-evidence-seal.ts',import.meta.url).href,source=new URL('./fixtures/public-essay-record.png',import.meta.url).href;
- const program=`import {readFile} from 'node:fs/promises';import {openSealedConformanceEvidenceObject} from ${JSON.stringify(helper)};try{await openSealedConformanceEvidenceObject(new Uint8Array(await readFile(new URL(${JSON.stringify(source)}))));throw Error('PUBLIC_UNOWNED_DOCUMENT_ACCEPTED');}catch(error){if(error.code!=='CONFORMANCE_CONTINUITY_REQUIRED')throw error;process.stdout.write(error.code);}`;
- expect(execFileSync(process.execPath,['--input-type=module','-e',program],{cwd:fileURLToPath(new URL('../',import.meta.url)),encoding:'utf8'})).toBe('CONFORMANCE_CONTINUITY_REQUIRED');
+it('runs the emitted helper in plain Node with the default pinned offline SDK verifier and exact Original continuity',async()=>{
+ const root=fileURLToPath(new URL('../',import.meta.url)),output=await mkdtemp(join(root,'.conformance-node-'));
+ try{
+  // Match the production Registry Node emitter, using declared dependencies.
+  // Preferred TypeScript sources are compiled; no loader or test roots enter Node.
+  const helper=join(output,'helper.mjs');
+  await build({absWorkingDir:root,entryPoints:['src/conformance/receiz-evidence-seal.ts'],outfile:helper,bundle:true,splitting:false,packages:'external',format:'esm',platform:'node',target:'node24',logLevel:'warning'});
+  const source=new URL('./fixtures/public-essay-record.png',import.meta.url).href,original=new URL('../public/conformance/bankeiz-public-conformance.png',import.meta.url).href;
+  const program=`import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {openSealedConformanceEvidenceObject} from ${JSON.stringify(helper)};let reads=0;globalThis.fetch=async()=>{reads++;throw Error('UNEXPECTED_NETWORK');};try{await openSealedConformanceEvidenceObject(new Uint8Array(await readFile(new URL(${JSON.stringify(source)}))));throw Error('PUBLIC_UNOWNED_DOCUMENT_ACCEPTED');}catch(error){if(error.code!=='CONFORMANCE_CONTINUITY_REQUIRED')throw error;}const held=await openSealedConformanceEvidenceObject(new Uint8Array(await readFile(new URL(${JSON.stringify(original)}))));assert.equal(held.artifactSha256,'42639bee60e2650d4f58901ab9e66456ed2421a88330621c88d26e4e1889d75f');assert.equal(held.object.verifiedReport.assessmentPassed,true);assert.equal(reads,0);process.stdout.write('CONFORMANCE_CONTINUITY_REQUIRED;EXACT_ORIGINAL_OFFLINE');`;
+  expect(execFileSync(process.execPath,['--input-type=module','-e',program],{cwd:resolve(root),encoding:'utf8'})).toBe('CONFORMANCE_CONTINUITY_REQUIRED;EXACT_ORIGINAL_OFFLINE');
+ }finally{await rm(output,{recursive:true,force:true});}
 });

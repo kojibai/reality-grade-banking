@@ -55,11 +55,17 @@ function fail(code: string): never {
   throw new TypeError(code);
 }
 
-let retainedLiveKaiUpulseHead: bigint | null = null;
+// ESM SDK and CommonJS server bundles can load this module independently in
+// one worker. Their sampled time must extend the same already retained causal
+// head; a module boundary cannot rewind it within a clock quantum.
+type LiveKaiHead = { upulse: bigint | null };
+const liveKaiHeadKey = Symbol.for("receiz.v124.kai-now.retained-head.v1");
+const worker = globalThis as typeof globalThis & { [liveKaiHeadKey]?: LiveKaiHead };
+const liveKaiHead = worker[liveKaiHeadKey] ??= { upulse: null };
 
 /** @internal Test isolation only; not exported by the package entry point. */
 export function __resetReceizKaiNowHeadForTests(): void {
-  retainedLiveKaiUpulseHead = null;
+  liveKaiHead.upulse = null;
 }
 
 export function receizKaiNow(): ReceizKaiNow {
@@ -74,13 +80,13 @@ export function receizKaiNow(): ReceizKaiNow {
   }
 
   let exactMicroPulses = sampledMicroPulses;
-  if (retainedLiveKaiUpulseHead !== null && sampledMicroPulses <= retainedLiveKaiUpulseHead) {
-    exactMicroPulses = retainedLiveKaiUpulseHead + BigInt(1);
+  if (liveKaiHead.upulse !== null && sampledMicroPulses <= liveKaiHead.upulse) {
+    exactMicroPulses = liveKaiHead.upulse + BigInt(1);
   }
   if (exactMicroPulses > BigInt(Number.MAX_SAFE_INTEGER)) {
     return fail("V124_KAI_NOW_RANGE_INVALID");
   }
-  retainedLiveKaiUpulseHead = exactMicroPulses;
+  liveKaiHead.upulse = exactMicroPulses;
 
   const uPulse = Number(exactMicroPulses);
   const pulse = Math.floor(uPulse / 1_000_000);

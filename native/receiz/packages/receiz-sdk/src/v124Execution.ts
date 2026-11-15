@@ -525,16 +525,13 @@ async function admitCommittedExecutionRecoveryV124(
     "V124_EXECUTION_TRANSITION_RECOVERY_RESPONSE_INVALID",
   );
   const audience = applicationId(audienceValue, "V124_EXECUTION_TRANSITION_AUDIENCE_INVALID");
-  const verified = await verifyReceizPortableExecutionTransitionSetV124(
-    recoveryRecord.transitionSet,
-    { audience },
-  );
+  const recovered = await recoverReceizPortableExecutionTransitionSetV124(recovery, { audience });
+  const verified = recovered.transitionSet;
   if (expected
     && (!canonicalEqual(recoveryRecord.transitionSet, expected.rawTransitionSet)
       || !canonicalEqual(verified.operationPlan, expected.transitionSet.operationPlan))) {
     fail("V124_EXECUTION_TRANSITION_SOURCE_SUBSTITUTION");
   }
-  const recovered = await recoverReceizPortableExecutionTransitionSetV124(recovery, { audience });
   if (recovered.transitions.length !== verified.members.length) {
     fail("V124_EXECUTION_TRANSITION_RECOVERY_PARTICIPANT_MISMATCH");
   }

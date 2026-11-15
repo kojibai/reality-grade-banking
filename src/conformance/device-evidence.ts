@@ -1,13 +1,14 @@
 import {readNoteRegistrationEvidence,type NoteRegistrationEvidence} from '../receiz/note-registration-evidence';
 import {bankNoteRpId} from '../receiz/config';
 import {loadReceiz} from '../receiz/client';
+import {RECEIZ_VERSION} from '../receiz/release-version';
 
 type Stage='availability'|'registration'|'verifier'|'assertion';
 type Extensions=AuthenticationExtensionsClientInputs & {prf?:{eval?:{first:ArrayBuffer}};largeBlob?:{support?:'preferred';read?:boolean}};
 type PublicExtensions={prfEnabled:boolean|null;prfOutputProvided:boolean;largeBlobSupported:boolean|null;largeBlobReturned:boolean};
 type AssertionObservation=Omit<NoteRegistrationEvidence,'format'> & {extensions:PublicExtensions};
 export interface DeviceCustodyEvidence {
- schema:'bankeiz.device-custody-inspection.v1';authority:'diagnostics-only';receizVersion:'129.0.0';
+ schema:'bankeiz.device-custody-inspection.v1';authority:'diagnostics-only';receizVersion:typeof RECEIZ_VERSION;
  secureContext:boolean;webAuthnAvailable:boolean;
  realm:{origin:string;rpId:string};context:'standalone'|'browser';
  platformAuthenticatorAdvertised:boolean|null;
@@ -86,7 +87,7 @@ export async function deviceCustodyProbeReadiness(signal:AbortSignal):Promise<'r
 export async function inspectDeviceCustodyEvidence(input:{signal:AbortSignal;onProgress?:(stage:Stage)=>void}):Promise<DeviceCustodyEvidence>{
  const origin=location.origin,rpId=bankNoteRpId(origin)??location.hostname;
  const standalone=typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;
- const report:DeviceCustodyEvidence={schema:'bankeiz.device-custody-inspection.v1',authority:'diagnostics-only',receizVersion:'129.0.0',secureContext:isSecureContext,webAuthnAvailable:typeof PublicKeyCredential!=='undefined'&&Boolean(navigator.credentials),realm:{origin,rpId},context:standalone?'standalone':'browser',platformAuthenticatorAdvertised:null,advertisedExtensions:{prf:null,largeBlob:null},registration:null,assertions:[],rollbackConformance:{status:'not-run'},attestationVerification:'not-assessed',custodyQualified:false,financialActionsPerformed:0};
+ const report:DeviceCustodyEvidence={schema:'bankeiz.device-custody-inspection.v1',authority:'diagnostics-only',receizVersion:RECEIZ_VERSION,secureContext:isSecureContext,webAuthnAvailable:typeof PublicKeyCredential!=='undefined'&&Boolean(navigator.credentials),realm:{origin,rpId},context:standalone?'standalone':'browser',platformAuthenticatorAdvertised:null,advertisedExtensions:{prf:null,largeBlob:null},registration:null,assertions:[],rollbackConformance:{status:'not-run'},attestationVerification:'not-assessed',custodyQualified:false,financialActionsPerformed:0};
  let stage:Stage='availability';
  try{
   input.signal.throwIfAborted();
