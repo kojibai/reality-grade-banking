@@ -17,6 +17,7 @@ import {momentsPage,momentsContent} from './moments-page.mjs';
 import {originalsQualificationContent} from './originals-qualification-template.mjs';
 import {writeOriginalsQualificationAssets} from './originals-qualification-assets.mjs';
 import {packExampleBanks} from './product-preview-bank.mjs';
+import {captureDirectMarketingEntries,assertDirectMarketingEntry} from './direct-marketing-entry.mjs';
 import {withPublicIllustration} from './public-imagery.mjs';
 import {meetingPage,meetingContent,meetingPreviewCss} from './meeting-page.mjs';
 import {bankingPage,bankingContent} from './banking-page.mjs';
@@ -242,6 +243,7 @@ const privateBankStyles = bankOwnedStyles(bankStyles,styleManifest);
 const bankCss = Object.fromEntries(await Promise.all(bankStyles.map(async url => [url,await readFile('dist'+url,'utf8')])));
 const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)[1];
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
+const directMarketingEntries=captureDirectMarketingEntries(publicPages);
 const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
 const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: privateBankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
 await writeFile('dist/learn/learn.css', publicCss);
@@ -268,7 +270,10 @@ for (const [path, page] of Object.entries(documents)) {
   const runtimeHtml = runtimeDocuments.get(path);
   const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
-  await writeFile(`dist${path}index.html`, withReadingLink(feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path));
+  const directMarketing=directMarketingEntries.get(path);
+  const document=withReadingLink(directMarketing??feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path);
+  if(directMarketing)assertDirectMarketingEntry(path,document);
+  await writeFile(`dist${path}index.html`,document);
 }
 // Independent editorial documents carry complete text and inline styling.
 // They stay outside the app/catalog navigation carrier and PWA installation.

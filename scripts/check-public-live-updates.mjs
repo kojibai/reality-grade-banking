@@ -122,7 +122,7 @@ async function isolated(entrance){
  const profile=await mkdtemp(resolve(tmpdir(),'bankeiz-live-'+entrance+'-'));extraDirectories.push(profile);context=await launch(profile);await context.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():new Promise(()=>{}));page=await context.newPage();page.on('pageerror',error=>errors.push(page.url()+': '+error.message));await page.goto(origin+'/'+entrance+'/',{waitUntil:'commit'});
  if(entrance==='feed'){await page.locator('.feed-stage[aria-hidden="false"]').waitFor();}else{await page.getByRole('textbox',{name:'Search public activity'}).waitFor();}
  await page.screenshot({path:resolve(output,'cold-'+entrance+'-held.png')});await health();
- const ready=page.waitForResponse(response=>response.url().endsWith('/api/bank/public-profile-directory')&&response.status()===200);void ready.catch(()=>{});enableDelivery();await waitUntil(()=>streams.size>0,'Fresh '+entrance+' never subscribed to the existing public delivery stream');await ready;
+ enableDelivery();await waitUntil(()=>streams.size>0,'Fresh '+entrance+' never subscribed to the existing public delivery stream');
  for(const version of [1,2]){emit(version);
  if(entrance==='feed'){
   // A bare accepted successor has no fabricated prepared-page generation.

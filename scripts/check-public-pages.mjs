@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto';
 import { phoneLaunchTargets } from './build-launch-images.mjs';
 import {publicPages,publicOrigin,escapeMetadata} from './public-page-metadata.mjs';
 import {checkClientWorkLibrary} from './check-client-work-library.mjs';
+import {directMarketingEntryPaths,assertDirectMarketingEntry} from './direct-marketing-entry.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 const html = await readFile('dist/index.html', 'utf8'), image = await readFile('dist/receiz-bank-share.png');
 await checkClientWorkLibrary();
@@ -44,8 +45,8 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
   for (const json of page.matchAll(/<script type="application\/ld\+json">([^<]+)<\/script>/g)) JSON.parse(json[1]);
   assert.ok(sitemap.includes(`https://bankeiz.com/learn/${path}`));
 }
-// Every public entry carries the same routes, including legal notices, so
-// navigation does not depend on fetching a replacement document.
+// App and guide navigation retains the same routes, including legal notices.
+// Independent marketing visits keep their selected page and use native links.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
 const carriedNavigation = JSON.parse(html.match(navigationPattern)[1]);
 const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template>/g;
@@ -105,14 +106,37 @@ assert.equal(navigation.pages['/vault/'],undefined,'Marketing Vaults must never 
 assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');
 assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
 const sharedHeader = navigation.pages['/learn/'].content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0];
+const directMarketingPaths=new Set(directMarketingEntryPaths),directMarketingSizes=[];
+const decodeExampleText=value=>value.replaceAll('&quot;','"').replaceAll('&gt;','>').replaceAll('&lt;','<').replaceAll('&amp;','&');
+const withoutExampleBanks=value=>value.replace(/<template data-(?:shared-)?example-views>[^<]*<\/template>/g,'');
+function logicalExampleBanks(content,sharedDocument){
+ const shared=JSON.parse(decodeExampleText(sharedDocument.match(/<template data-shared-example-views>([^<]*)<\/template>/)?.[1]??'[]'));
+ return [...content.matchAll(/<template data-example-views>([^<]*)<\/template>/g)].map(match=>Object.fromEntries(Object.entries(JSON.parse(decodeExampleText(match[1]))).map(([name,value])=>{
+  const view=typeof value==='number'?shared[value]:value;
+  assert.ok(view&&typeof view.html==='string','Every example destination retains its complete actual interface.');
+  return[name,view];
+ })));
+}
 for (const [path, entry] of Object.entries(navigation.pages)) {
   // Feed is a dedicated immersive document; its lean navigation and first paint
   // have their own assertions below. Existing guide documents remain identical.
   if(path==='/feed/'||path==='/discover/')continue;
   const routeHtml=await readFile(`dist${path}index.html`,'utf8');
-  assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
   const output = await readFile(`dist${path}index.html`, 'utf8');
   if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(siteFooterHtml(path)),`Carried footer differs at ${path}`);
+  if(directMarketingPaths.has(path)){
+    directMarketingSizes.push({path,bytes:assertDirectMarketingEntry(path,output)});
+    const directHead=output.match(/<head>([\s\S]*?)<\/head>/)[1].replace(/<link\b[^>]*\bdata-public-reading="(?:html|text)"[^>]*>/g,'');
+    assert.equal(directHead,entry.head,`Direct ${path} keeps the exact selected head, styles, metadata and runtime.`);
+    const directContent=output.match(/<div id="public-learn-root">([\s\S]*?)<\/div>(?:<template data-shared-example-views>[^<]*<\/template>)?<\/body>/)?.[1];
+    assert.ok(directContent,`Direct ${path} carries the actual complete page.`);
+    assert.equal(withoutExampleBanks(directContent),withoutExampleBanks(entry.content),`Direct ${path} retains the exact visible first frame and footer.`);
+    assert.deepEqual(logicalExampleBanks(directContent,output),logicalExampleBanks(entry.content,html),`Direct ${path} retains every exact walkthrough destination using only its own shared bank.`);
+    assert.ok(output.includes('src="/learn/learn.js?v=')&&output.includes('href="/#account/messages"'),`Direct ${path} keeps its public runtime and native account entrance.`);
+    assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0],sharedHeader,`Shared header links differ at ${path}`);
+    continue;
+  }
+  assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
   assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), carriedNavigation, `Public navigation differs at ${path}`);
   if (path === '/schemas/') {
     assert.ok(entry.content.includes('class="schema-header"'),'Reference retains its own existing header');
@@ -128,6 +152,8 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
   } else assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0], sharedHeader, `Shared header links differ at ${path}`);
   assert.ok(output.includes(entry.runtime?`id="public-${entry.runtime}-root"`:'id="public-learn-root"'));
 }
+assert.equal(directMarketingSizes.length,40,'Exactly the forty direct marketing documents omit the global carrier.');
+console.log(`Verified ${directMarketingSizes.length} independent marketing entries with exact first frames, local walkthrough destinations and unchanged app navigation; largest HTML ${Math.max(...directMarketingSizes.map(page=>page.bytes))} bytes.`);
 for(const route of ['/ledger/','/explore/','/verify/','/conformance/'])assert.ok(navigation.pages[route]?.runtime,'All public workspaces share retained navigation');
 const robots = await readFile('dist/robots.txt', 'utf8'); assert.match(robots, /Disallow: \/api\//); assert.ok(!sitemap.includes('#'));
 const sw = await readFile('dist/sw.js', 'utf8'); assert.ok(sw.includes('qr-decoder'), 'The decoder stays lazily executed but is cached for offline scanning.');
