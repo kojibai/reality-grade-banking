@@ -17,7 +17,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  const owner=(await r.readReceizIdentityPublicBinding(actor)).artifactOwnerReceizId,username='sdk_artist',uid='sdk-account',artifactId=`profile-showcase:${owner}`;
  const enrollment=await f.store.load(),seal=await r.createBankNativeNoteSealer({enrollment,resources:f.resources});
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),reads:string[]=[],timeline:string[]=[],publicationOriginals:string[]=[],publicationCoordinates:Array<{original:string;source:string;child:string}>=[];
- let metadataMode:'available'|'unavailable'|'stalled'='available',metadataReads=0;
+ let metadataMode:'available'|'unavailable'|'stalled'='available',metadataReads=0,rejectStalledMetadataRead:((error:Error)=>void)|undefined;
  let accepted:Record<string,unknown>={status:'unmigrated'},acceptedHead:any,finalizations=0,seals=0,finalHTTPStatus=0,interrupt=false,attemptDigest:string|undefined,active=true,switchOnUpload=false,interruptBeforeUpload=false;
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const receiverStorage=new IDBFactory(),receiverOptions={indexedDB:receiverStorage,databaseName:'retained-publication-receiver'};
@@ -28,7 +28,7 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   const url=new URL(String(input),'https://bankeiz.test');
   if(url.origin==='https://storage.test'){staged.set(url.pathname.slice(1),new Uint8Array(await new Response(init?.body).arrayBuffer()));if(switchOnUpload){switchOnUpload=false;active=false;}return new Response(null,{status:200});}
   if(url.pathname==='/api/profile/showcase/accepted-source'){
-   const block=url.searchParams.get('block');if(!block){metadataReads++;if(metadataMode==='unavailable')throw Error('FIXTURE_ACCEPTED_SOURCE_UNAVAILABLE');if(metadataMode==='stalled')return new Promise<Response>(()=>{});return Response.json(accepted);}
+   const block=url.searchParams.get('block');if(!block){metadataReads++;if(metadataMode==='unavailable')throw Error('FIXTURE_ACCEPTED_SOURCE_UNAVAILABLE');if(metadataMode==='stalled'){rejectStalledMetadataRead?.(Error('KNOWN_COMMITTED_SOURCE_WAITED_FOR_METADATA'));return new Promise<Response>(()=>{});}return Response.json(accepted);}
    const ref=JSON.parse(block);reads.push(ref.sha256);const bytes=blocks.get(ref.sha256);return new Response(bytes?.slice(),{status:bytes?200:404});
   }
   if(url.pathname===`/api/profile/${username}/originals`)return Response.json({ok:true,originals:[],page:{hasMore:false,nextCursor:null}});
@@ -246,9 +246,11 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
   // a receipt for52 must never be returned as publication of53.
   const following=await coldPending.prepare({kind:'image',title:'After durable cold retry',description:'',longForm:'The accepted retried head remains genuine mutation input',files:[{id:'photo',role:'primary',file:image}]});
   const afterPrepareSeals=seals,beforeCausalOriginals=publicationOriginals.length,beforeStalledMetadata=metadataReads;metadataMode='stalled';
-  let deadline:ReturnType<typeof setTimeout>|undefined,causalReceipt:any;
-  try{causalReceipt=await Promise.race([coldPending.publish(following.artifact),new Promise<never>((_,reject)=>{deadline=setTimeout(()=>reject(Error('KNOWN_COMMITTED_SOURCE_WAITED_FOR_METADATA')),5000);})]);expect(causalReceipt.status,'fresh module must deliver52 and append53 from exact SDK custody').toBe('published');}
-  finally{clearTimeout(deadline);metadataMode='available';}
+  // Reject the forbidden dependency itself. SDK crypto/transport work has no
+  // relationship to a short wall-clock race; metadata remains truly stalled.
+  const metadataRead=new Promise<never>((_,reject)=>{rejectStalledMetadataRead=reject;});let causalReceipt:any;
+  try{causalReceipt=await Promise.race([coldPending.publish(following.artifact),metadataRead]);expect(causalReceipt.status,'fresh module must deliver52 and append53 from exact SDK custody').toBe('published');}
+  finally{rejectStalledMetadataRead=undefined;metadataMode='available';}
   expect(metadataReads).toBe(beforeStalledMetadata);expect(seals,'only the two existing portable placement seals and one new Showcase Source are sealed').toBe(afterPrepareSeals+3);
   expect(publicationOriginals.slice(beforeCausalOriginals)).toEqual([interrupted.reference.artifactSha256,following.reference.artifactSha256]);
   const coordinates=publicationCoordinates.slice(beforeCausalOriginals);
