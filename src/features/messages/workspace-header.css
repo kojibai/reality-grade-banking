@@ -1,0 +1,12 @@
+.bank-relationship-header{flex-shrink:0;padding:14px 18px 13px;border-bottom:1px solid var(--line);background:var(--bg)}
+.bank-relationship-header>div{display:flex;align-items:center;gap:10px;min-width:0}
+.bank-relationship-header>div>button{display:grid;place-items:center;width:38px;min-width:38px;height:38px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:#64748b}
+.bank-relationship-header>div>button:hover{color:var(--navy);border-color:#d5dce7}
+.bank-relationship-header>div>span{display:grid;gap:4px;min-width:0}
+.bank-relationship-header strong{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere;letter-spacing:-.2px}
+.bank-relationship-header small{font-size:11px;line-height:1.3;color:var(--muted)}
+.bank-relationship-header nav{display:flex;gap:3px;margin-top:14px;padding:4px;background:#eff1f5;border:1px solid #e8ebf1;border-radius:13px}
+.bank-relationship-header nav button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:38px;min-width:0;flex:1;border:1px solid transparent;background:transparent;color:#778397;font:inherit;font-size:12px;font-weight:500;border-radius:9px}
+.bank-relationship-header nav button[aria-current=page]{color:var(--navy);background:var(--surface);border-color:#e1e6ee;box-shadow:0 1px 3px #172b4508}
+.bank-relationship-header nav button:hover{color:var(--navy)}
+@media(max-width:360px){.bank-relationship-header{padding-inline:14px}.bank-relationship-header nav button{gap:5px}}

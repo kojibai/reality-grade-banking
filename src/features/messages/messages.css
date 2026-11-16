@@ -255,10 +255,6 @@
 .bank-proposal-sheet .sheet-body{overflow:auto;overscroll-behavior:contain}
 .bank-proposal-activity{font-size:12px;color:var(--muted)}
 .bank-thread-messages>.bank-message-own.bank-message-document,.bank-thread-messages>.bank-message-other.bank-message-document{width:100%;max-width:100%;padding:0;background:transparent;box-shadow:none;}
-.bank-message-create{position:relative;flex:none;}
-.bank-message-create-menu{position:absolute;left:-6px;bottom:46px;z-index:12;width:224px;padding:5px;background:var(--surface,#fff);border:1px solid var(--line,#dde2eb);border-radius:13px;box-shadow:0 10px 35px #172b4526;}
-.bank-message-composer .bank-message-create-menu button{width:100%;height:44px;display:flex;gap:11px;justify-content:flex-start;padding:0 12px;background:transparent;color:var(--navy,#172b45);font-size:13px;text-align:left;}
-.bank-message-composer .bank-message-create-menu button:hover,.bank-message-composer .bank-message-create-menu button:focus-visible{background:#f0f3f8;outline:0;}
 .bank-owner-documents{margin:16px 0 4px;color:var(--navy);font-size:12px;}
 .bank-owner-documents>details{border:1px solid var(--line,#dde2eb);border-radius:12px;background:var(--surface,#fff);overflow:hidden;}
 .bank-owner-documents>details>summary{display:flex;gap:7px;align-items:center;cursor:pointer;padding:13px 14px;list-style:none;}
@@ -267,4 +263,4 @@
 .bank-owner-documents strong,.bank-owner-documents small{display:block;overflow-wrap:anywhere;}
 .bank-owner-documents small{margin-top:4px;color:var(--muted);font-size:10px;}
 
-.bank-relationship-twin{display:contents}.bank-relationship-twin[hidden]{display:none}.bank-relationship-header{flex-shrink:0;padding:8px 0 12px;border-bottom:1px solid var(--line)}.bank-relationship-header>div{display:flex;align-items:center;gap:10px}.bank-relationship-header>div>button{display:grid;place-items:center;min-width:40px;min-height:40px;border:0;background:transparent;color:var(--muted)}.bank-relationship-header>div>span{display:grid;gap:3px;min-width:0}.bank-relationship-header strong{font-size:14px;font-weight:500;overflow-wrap:anywhere}.bank-relationship-header small{font-size:11px;color:var(--muted)}.bank-relationship-header nav{display:flex;gap:5px;margin-top:10px}.bank-relationship-header nav button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;border-radius:10px}.bank-relationship-header nav button[aria-current=page]{color:var(--navy);background:#f0f2f7}.bank-relationship-prepare-reply{display:flex;align-items:center;gap:5px;font:inherit;font-size:11px;color:var(--muted);border:0;background:transparent;padding:9px 0}
+.bank-relationship-twin{display:contents}.bank-relationship-twin[hidden]{display:none}.bank-relationship-prepare-reply{display:flex;align-items:center;gap:5px;font:inherit;font-size:11px;color:var(--muted);border:0;background:transparent;padding:9px 0}

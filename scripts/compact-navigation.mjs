@@ -8,8 +8,9 @@ export function compactNavigation(input) {
   // Intern repeated markup and structured-head spans at build time. Destinations remain exact;
   // the browser joins only a visited destination, never the whole catalog.
   // Preserve complete carried JSON (including authored text) as one exact span.
-  const counts=new Map(),parts=value=>value.split(/(<script\b[^>]*\btype\s*=\s*["\']application\/json["\'][^>]*>[\s\S]*?<\/script>)/gi).flatMap((part,index)=>index%2?[part]:part.split(/([{},"<>])/g));
-  for(const page of [...Object.values(input.pages),input.bank])for(const value of [page.content,page.head])if(typeof value==='string')for(const part of parts(value))if(part.length>=16)counts.set(part,(counts.get(part)??0)+1);
+  // Keep repeated source-link prefixes together instead of repeating their attributes.
+  const counts=new Map(),parts=value=>value.split(/(<script\b[^>]*\btype\s*=\s*["\']application\/json["\'][^>]*>[\s\S]*?<\/script>|<(?:link|script)\b[^>]*?\b(?:href|src)\s*=\s*["\'])/gi).flatMap((part,index)=>index%2?[part]:part.split(/([{},"<>])/g));
+  for(const page of [...Object.values(input.pages),input.bank])for(const value of [page.content,page.head])if(typeof value==='string')for(const part of parts(value))if(part.length>=8)counts.set(part,(counts.get(part)??0)+1);
   const content=value=>{
     if(typeof value!=='string')return value;
     const result=[];let referenced=false;
@@ -29,7 +30,7 @@ export function compactNavigation(input) {
   };
   const head = value => {
     const parts = value.split(/(<style\b[^>]*>[\s\S]*?<\/style>)/gi);
-    if (parts.length === 1) return value;
+    if (parts.length === 1) return content(value);
     return parts.flatMap((part, index) => {
       if (index % 2 === 0) return content(part);
       return cssReferences(part).map(piece=>typeof piece==='string'&&piece.length>=512?intern(piece):piece);

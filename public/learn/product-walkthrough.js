@@ -68,7 +68,7 @@ function animateWorkflow(example){
 let exampleSequence=0;
 const exampleBanks=new WeakMap(),sharedExampleBanks=new WeakMap();
 function exampleSource(root,name){let views=exampleBanks.get(root);if(!views){views=JSON.parse(root.querySelector('[data-example-views]')?.content.textContent||'{}');exampleBanks.set(root,views);}const view=views[name];if(typeof view!=='number')return view;
- let shared=sharedExampleBanks.get(document);if(!shared){shared=JSON.parse(document.querySelector('[data-shared-example-views]')?.content.textContent||'[]');sharedExampleBanks.set(document,shared);}return shared[view];}
+ let shared=sharedExampleBanks.get(document);if(!shared){shared=JSON.parse(document.querySelector('[data-shared-example-views]')?.content.textContent||'[]');sharedExampleBanks.set(document,shared);}const source=shared[view];return Array.isArray(source.html)?{...source,html:source.html.map(part=>typeof part==='number'?shared[part]:part).join('')}:source;}
 function cloneExample(source){
  const holder=document.createElement('template');holder.innerHTML=source.html;
  const frame=holder.content.querySelector('.product-screen'),prefix='example-view-'+(++exampleSequence)+'-',ids=new Map();

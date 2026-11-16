@@ -34,3 +34,10 @@ it('carries complete Original text once as an intact JSON span through navigatio
  const encoded=JSON.stringify(JSON.stringify(carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')).slice(1,-1);
  expect(JSON.stringify(packed).split(encoded).length-1).toBe(1);
 });
+
+it('shares repeated source-link markup in a retained head without dropping a single destination or attribute',()=>{
+ const links=Array.from({length:240},(_,index)=>`<link rel="modulepreload" crossorigin href="/assets/exact-source-${index}.js">`).join('');
+ const original={pages:{'/guide/':{head:'<title>Guide</title>',content:'<main>Held guide</main>'}},bank:{head:'<title>Bank</title>'+links,content:'<main>Held Bank</main>'}},before=structuredClone(original),packed=compactNavigation(original),decode=(value:any)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ expect(decode(packed.bank.head)).toBe(original.bank.head);expect(decode(packed.bank.content)).toBe(original.bank.content);expect(original).toEqual(before);
+ expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.65);
+});

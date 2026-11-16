@@ -19,7 +19,10 @@ import {captureDirectMarketingEntries,assertDirectMarketingEntry,directMarketing
 const decode=(value:string)=>value.replaceAll('&quot;','"').replaceAll('&gt;','>').replaceAll('&lt;','<').replaceAll('&amp;','&');
 function exampleBanks(html:string){
  const shared=JSON.parse(decode(html.match(/<template data-shared-example-views>([^<]*)<\/template>/)?.[1]??'[]'));
- return [...html.matchAll(/<template data-example-views>([^<]*)<\/template>/g)].map(match=>Object.fromEntries(Object.entries(JSON.parse(decode(match[1]))).map(([name,view])=>[name,typeof view==='number'?shared[view]:view])));
+ return [...html.matchAll(/<template data-example-views>([^<]*)<\/template>/g)].map(match=>Object.fromEntries(Object.entries(JSON.parse(decode(match[1]))).map(([name,view])=>{
+  const source=typeof view==='number'?shared[view]:view;
+  return[name,Array.isArray(source.html)?{...source,html:source.html.map((part:string|number)=>typeof part==='number'?shared[part]:part).join('')}:source];
+ })));
 }
 const visibleMarkup=(html:string)=>html.replace(/<template data-(?:shared-)?example-views>[^<]*<\/template>/g,'');
 const taskPages=[...proposalPages,...agreementPages,...clientWorkProductPages];

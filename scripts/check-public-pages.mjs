@@ -112,7 +112,8 @@ const withoutExampleBanks=value=>value.replace(/<template data-(?:shared-)?examp
 function logicalExampleBanks(content,sharedDocument){
  const shared=JSON.parse(decodeExampleText(sharedDocument.match(/<template data-shared-example-views>([^<]*)<\/template>/)?.[1]??'[]'));
  return [...content.matchAll(/<template data-example-views>([^<]*)<\/template>/g)].map(match=>Object.fromEntries(Object.entries(JSON.parse(decodeExampleText(match[1]))).map(([name,value])=>{
-  const view=typeof value==='number'?shared[value]:value;
+  const source=typeof value==='number'?shared[value]:value;
+  const view=Array.isArray(source?.html)?{...source,html:source.html.map(part=>{const text=typeof part==='number'?shared[part]:part;assert.equal(typeof text,'string','Every example span retains its exact bytes.');return text;}).join('')}:source;
   assert.ok(view&&typeof view.html==='string','Every example destination retains its complete actual interface.');
   return[name,view];
  })));

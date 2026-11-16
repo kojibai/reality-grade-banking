@@ -211,7 +211,7 @@ it('carries shared example views once across public pages without changing their
  const pages={one:{content:productMoment({id:'one',example:'agencies'}),head:'one'},two:{content:productMoment({id:'two',example:'freelancers'}),head:'two'}};
  const packed=packExampleBanks(pages),doc=new DOMParser().parseFromString(packed.pages.one.content+packed.shared,'text/html');
  const shared=JSON.parse((doc.querySelector('[data-shared-example-views]')as HTMLTemplateElement).content.textContent!);
- expect(shared.length).toBeLessThanOrEqual(40);
+ expect(shared.filter((view:unknown)=>typeof view==='object').length).toBeLessThanOrEqual(40);
  expect(packed.pages.one.content.length).toBeLessThan(pages.one.content.length/4);expect(packed.pages.one.head).toBe('one');
  expect(doc.querySelector('[data-product-example="messages"]')?.textContent).toContain('remaining $4,800');
  vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener(){},removeEventListener(){}}));vi.stubGlobal('IntersectionObserver',class{observe(){}disconnect(){}});
