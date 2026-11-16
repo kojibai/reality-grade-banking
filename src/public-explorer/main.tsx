@@ -25,7 +25,7 @@ function PublicExplorerRoot({prepared,path,reconcilePath=false,asset,frame,profi
 }
 // Only the actual HTML module entry is a boot display. Router imports are
 // later accepted documents and must supersede pending historical cache reads.
-let initialDocumentEntry=Array.from(document.scripts).some(script=>script.type==='module'&&script.src===import.meta.url);
+let initialDocumentEntry=Array.from(document.scripts).some(script=>script.type==='module'&&(script.dataset.publicRuntimeEntry==='explore'||script.src===import.meta.url));
 const roots=new WeakMap<HTMLElement,Root>();
 const preparingRoots=new WeakMap<HTMLElement,Promise<Root|undefined>>();
 /** Reuse only the exact complete public family already retained by the Bank
