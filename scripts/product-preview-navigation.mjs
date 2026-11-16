@@ -10,6 +10,12 @@ export async function exampleNavigation(html,screen,{signingIndicator}={}){
  for(const button of frame.querySelectorAll('button')){
   const label=(button.getAttribute('aria-label')||button.querySelector('strong')?.textContent||button.textContent).replace(/\s+/g,' ').trim();
   let next=routes[label];
+  if(screen.startsWith('proposal-')){
+   const sampleRoutes={'Draft with your Twin':'proposal-draft','Preview PDF':'proposal-preview','Send proposal':'proposal-payment','Back to chat':'proposal-chat','Close':'proposal-chat','Edit details':screen==='proposal-payment'?'proposal-preview':'proposal-draft','View sample delivery':'proposal-delivery','View sample proposal':'proposal-preview','Continue sample conversation':'proposal-next'};
+   const destination=button.dataset.proposalExampleOpen||sampleRoutes[label];
+   if(destination){allow(button);button.removeAttribute('disabled');button.dataset.exampleAction=destination;button.setAttribute('aria-label',label+' · sample only');}
+   continue;
+  }
   if(label==='Unlock value with PBI')next='assets-originals-approval';
   if(label==='Close'||button.classList.contains('bank-home-mark'))next='account';
   if(label==='Account settings')next='identity';if(label==='Open your agent and messages')next='messages';
@@ -48,5 +54,5 @@ export async function exampleNavigation(html,screen,{signingIndicator}={}){
  }
  // Trusted local display art for labeled examples; never Original bytes or ownership evidence.
  for(const row of frame.querySelectorAll('.market-rows .asset-row')){const asset=exampleAssets.find(asset=>asset.title===row.querySelector('strong')?.textContent),mark=row.querySelector('.asset-mark');if(!asset||!mark)continue;mark.classList.add('market-object-artwork');const image=doc.createElement('img');image.src=asset.image;image.alt='';image.loading='lazy';image.decoding='async';image.width=60;image.height=60;mark.replaceChildren(image);}
- const result=localizeProductExampleArtwork(doc.body.innerHTML);await window.happyDOM.close();return result;
+ let result=localizeProductExampleArtwork(doc.body.innerHTML);if(screen.startsWith('proposal-'))result=result.replace(/<h1\b/g,'<h3').replace(/<\/h1>/g,'</h3>');await window.happyDOM.close();return result;
 }

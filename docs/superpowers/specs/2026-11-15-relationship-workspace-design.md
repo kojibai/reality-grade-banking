@@ -1,0 +1,21 @@
+# Relationship workspace
+
+Approved direction: the user confirmed one subtle Workspace icon, private thread/contact-focused Twin discussion, organized work and context, document creation, and explicit sending into the main conversation. The latest instruction is to finish implementation.
+
+The selected native conversation is the relationship boundary. Open its workspace without replacing its messages, draft or history. Reuse the existing owner Twin thread `api:<ownerUid>:<conversationId>` (already used by proposal drafting), native memory reader and current tool/approval execution. Twin is the default view for entitled users; free users open Work. Work, Twin and Context are one tap away. Never send private reasoning to the main thread automatically. Leaving the workspace synchronously restores the previous general Twin and invalidates late relationship work.
+
+Work collects actual proposal, invoice, agreement, signature, payment, attachment and delivery message references. Display labels are locators, not admission or paid/signed verdicts. Source selection returns to the exact message. Existing proposal, agreement, payment and appointment actions remain available. Private document outputs can be reviewed and shared as their exact retained Originals through the existing preserveOriginal upload. Each explicit share has a confirmed same-owner checkpoint and a native-message result; uncertain sends are read/check only, never automatically repeated.
+
+Context identifies the conversation and its participants, exposes held source messages and earlier-history loading, and explains the bounded excerpts used for each Twin request. Quoted source messages cannot authorize actions. Reject custody/credential material before disclosure. Do not imply that uninspected remote history was read. Other relationships and general account records are not automatically added to a relationship request.
+
+Messages prepared from Twin output are editable drafts for the main conversation. The Send action names that destination and uses the existing native send handling. Documents prepared for the conversation use the established full review and signing/payment flows. Private file sharing transmits the exact Original after its owner, digest and current source are checked. Downloads keep payload and Original distinct.
+
+Manual document creation remains available without Twin access: seven starting structures, editable sections and tables, and real PDF, DOCX, XLSX and PPTX outputs. Prefill issuer and recipient from held profile and exact matched contact details, preferring linked native identity over a unique email match. Never match by name, activate organizer access or fetch a whole contact catalog as a prerequisite. Unsupported or missing information stays blank; every field remains editable. Party details travel in the reviewed terms and actual file. The issuer is the document's prominent brand; Bankeiz attribution stays secondary.
+
+Twin controls remain visible to free users. Only an explicit Twin intent opens the existing Business explanation, retaining the question in this relationship's encrypted custody and preserving manual work. No paid provider request runs automatically. Native history is read on the first entitled visit, retained for warm reopening, and cancelled on scope change. This removes duplicate history waits; it does not promise zero model latency.
+
+Sharing is a scoped, renewable UI intent. Closing, hiding or switching away invalidates the old controller permanently. Retained attempts compare exact stage and source output before continuing; siblings remain intact. Cold recovery opens the exact relationship output descriptor and Original, even when a matching native message is already visible. Checking a possibly sent request cannot issue another POST.
+
+One new line icon in the conversation toolbar; small header with back, contact and Twin/Work/Context navigation. Mobile fits the existing Sheet. Lazy workspace/readers/styles preserve public entry and Feed budgets. No new backend database, proof authority, identity, grant, Google script, financial operation or deployment.
+
+Alternatives considered: many toolbar buttons would scatter the relationship; a separate CRM route would split the workflow. The accepted one-icon workspace uses the current chat and native Twin as its foundation.

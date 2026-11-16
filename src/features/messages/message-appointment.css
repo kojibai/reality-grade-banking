@@ -1,0 +1,21 @@
+.bank-message-appointment-action{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 9px;border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:11px;line-height:1.5;cursor:pointer;opacity:.8;}
+.bank-message-appointment-action:hover,.bank-message-appointment-action:focus-visible{opacity:1;background:color-mix(in srgb,currentColor 6%,transparent);}
+.bank-message-appointment{box-sizing:border-box;width:min(100%,370px);margin-top:10px;padding:13px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:14px;background:color-mix(in srgb,currentColor 3%,transparent);color:inherit;text-align:left;white-space:normal;}
+.bank-message-appointment-heading,.bank-message-appointment-heading>span,.bank-message-appointment-status{display:flex;align-items:center;gap:7px;}
+.bank-message-appointment-heading{justify-content:space-between;margin-bottom:12px;font-size:12px;font-weight:650;}
+.bank-message-appointment-heading>button{display:grid;place-items:center;min-width:28px;min-height:28px;padding:4px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;}
+.bank-message-appointment-form{display:grid;gap:10px;margin:0;}
+.bank-message-appointment-form label{display:grid;gap:5px;min-width:0;font-size:11px;font-weight:550;}
+.bank-message-appointment-form input,.bank-message-appointment-form select{box-sizing:border-box;width:100%;min-width:0;min-height:40px;padding:8px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;background:var(--bank-field-bg,transparent);color:inherit;font:inherit;font-size:16px;font-weight:400;line-height:1.25;}
+.bank-message-appointment-form input:focus-visible,.bank-message-appointment-form select:focus-visible{outline:2px solid var(--bank-accent,#6b9f91);outline-offset:1px;}
+.bank-message-appointment-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:9px;}
+.bank-message-appointment p{margin:0;font-size:11px;line-height:1.5;opacity:.75;overflow-wrap:anywhere;}
+.bank-message-appointment-confirm{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:8px 12px;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:9px;background:color-mix(in srgb,currentColor 9%,transparent);color:inherit;font:inherit;font-size:12px;font-weight:650;cursor:pointer;}
+.bank-message-appointment-options{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.bank-message-appointment-options button{padding:6px 8px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer;}
+.bank-message-appointment-error{opacity:1!important;color:var(--bank-error,#c45555);}
+.bank-message-appointment-recorded,.bank-message-appointment-pending{display:grid;gap:5px;}
+.bank-message-appointment-status{font-size:10px;font-weight:650;letter-spacing:.02em;opacity:.8;}
+.bank-message-appointment-recorded strong,.bank-message-appointment-pending strong{font-size:13px;font-weight:600;overflow-wrap:anywhere;}
+.bank-message-appointment time,.bank-message-appointment small{font-size:11px;line-height:1.5;opacity:.75;}
+@media(max-width:360px){.bank-message-appointment{padding:10px;}.bank-message-appointment-pair{grid-template-columns:minmax(0,1fr);}}

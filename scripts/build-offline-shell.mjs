@@ -20,6 +20,8 @@ import {togetherPages} from '../src/content/together.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
+import {proposalPages} from '../src/content/proposal-pages.mjs';
+import {agreementPages} from '../src/content/agreement-pages.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
@@ -95,6 +97,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
     const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath===bankingPage.path||canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
+    const relationshipGuide=[...proposalPages,...agreementPages].some(page=>page.path===canonicalPath);
+    if(relationshipGuide){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
+    if(relationshipGuide&&canonicalPath!=='/sign-agreements/'){urls.add('/learn/product-walkthrough.js');urls.add('/learn/proposal-example.pdf');}
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
     if(cooperative||canonicalPath==='/business/'||businessFitPages.some(page=>page.path===canonicalPath)||canonicalPath==='/vaults/')urls.add('/learn/product-walkthrough.js');
     if(economyPages.some(page=>page.path===canonicalPath)||canonicalPath==='/coops/'){urls.add('/learn/economy.js');urls.add('/learn/economy-model.mjs');}
@@ -116,12 +121,12 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
     const knownGuide=['/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,emailGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
-    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
+    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!relationshipGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of
     // identical copies of that catalog and all its embedded workspace CSS.
     const originalGuide=['/learn/receiz-id/','/learn/proof-objects/','/learn/reserve-and-settlement/'].includes(path);
-    const retained=physical((category||path==='/market-cap/')?'/explore/':knownGuide&&!originalGuide?'/learn/':path);
+    const retained=physical((category||path==='/market-cap/')?'/explore/':(knownGuide||relationshipGuide)&&!originalGuide?'/learn/':path);
     urls.add(retained); pages[path] = retained; if (path !== '/') pages[path.slice(0, -1)] = retained;
   }
   for(const [alias,path] of Object.entries(publicRouteAliases)){

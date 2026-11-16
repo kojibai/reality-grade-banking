@@ -1,4 +1,4 @@
-import {productMoment,agentWorkflowMoment,dailyMoneyWalkthrough} from './product-walkthrough.mjs';
+import {productMoment,agentWorkflowMoment,dailyMoneyWalkthrough,proposalWalkthrough} from './product-walkthrough.mjs';
 import {learnHeader} from './learn-template.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import {businessOffer,businessBenefits,businessQuestions} from '../src/content/business-offer.mjs';
@@ -15,7 +15,7 @@ export const businessFaq=()=>`<section class="learn-shell business-faq"><h2>A fe
 export const businessMobileAction=()=>`<div class="business-mobile-action"><span><strong>$149/month</strong><small>Renews until cancelled</small></span><a data-business-checkout href="${businessOffer.checkoutHref}">Get Business ${arrow}</a></div>`;
 export function businessContent(){return `${learnHeader()}<main id="main" class="business-page" data-coop>
  <section class="learn-shell business-hero" aria-labelledby="business-title">
-  <div class="business-intro"><h1 id="business-title">Less money admin.<br>More room to run your business.</h1><p>Know where your money stands. Make getting paid less work. Hand off the repeat questions, payment preparation and financial admin that eat into your day, with an agent that keeps the background together. You keep the final say.</p><a class="business-text-link" href="#how-it-works">See how it works${arrow}</a></div>
+  <div class="business-intro"><h1 id="business-title">Less money admin.<br>More room to run your business.</h1><p>Your AI counterpart—called your Twin—is an AI version of you, with your history and context, that can speak and work on your behalf when you choose. Keep the client brief, agreed work, appointments, payment review, delivery and the next conversation connected. Know where your money stands. Make getting paid less work. AI replies stay identified, and you keep the final say.</p><a class="business-text-link" href="#how-it-works">See how it works${arrow}</a></div>
   ${businessPriceCard()}
  </section>
  <section class="learn-shell business-hero-visual" aria-label="From your money records to a clear next step">${businessScene('context',['Your payments & commitments','The full picture, together','A clear next money move'],{eager:true})}<a class="business-text-link" href="/fit/">See it for your kind of business${arrow}</a></section>
@@ -27,6 +27,7 @@ export function businessContent(){return `${learnHeader()}<main id="main" class=
  <div class="learn-shell">${dailyMoneyWalkthrough({id:'business-money-ui',title:'Pay people. Get paid.<br>Know what you can spend.'})}</div>
  ${businessIncluded()}
  ${businessBanking()}
+ <section class="learn-shell">${proposalWalkthrough({id:'business-proposals',title:'The client chat.<br>The proposal. The handover.',body:'Keep the brief, exact scope, PDF, payment review and delivered work in the same conversation. Try a clearly marked sample of the actual screens.'})}<nav class="business-core-links" aria-label="Proposals and client communication"><a class="business-text-link" href="/proposals/">Explore proposals and invoices ${arrow}</a><a class="business-text-link" href="/client-communication/">Keep client communication connected ${arrow}</a></nav></section>
  ${agentWorkflowMoment({id:'business-followthrough',title:'From the next client.<br>To money in your account.',body:'Give your agent the outcome and your approved introduction. See new people become contacts, an agreed call land in your calendar, and the project deposit arrive—with the whole conversation still connected.'})}
  ${businessFaq()}
  <section class="learn-shell business-close"><h2>Run your business.<br>Spend less of your day managing money.</h2>${businessCheckout()}<p>$149/month · Renews until cancelled.<br>Or select $1,499/year in the upgrade review. Renews until cancelled.</p></section>

@@ -1,0 +1,59 @@
+.sheet.bank-proposal-sheet[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 36px);margin:auto;}
+.bank-proposal-sheet>.sheet-header{flex:none;}
+.bank-proposal-sheet>.sheet-body,.bank-messages-host .bank-proposal-sheet>.sheet-body{padding:0;overflow:auto;min-height:0;overscroll-behavior:contain;}
+.bank-proposal-composer{padding:18px 20px 24px;color:var(--navy,#172b45);font-size:13px;line-height:1.55;}
+.bank-proposal-composer button,.bank-proposal-composer input,.bank-proposal-composer select,.bank-proposal-composer textarea{font-family:inherit;}
+.bank-proposal-composer button:disabled{opacity:.5;cursor:default;}
+.bank-proposal-composer button:focus-visible,.bank-proposal-composer a:focus-visible{outline:2px solid var(--blue,#2855d9);outline-offset:3px;}
+.bank-proposal-back{display:inline-flex;align-items:center;gap:6px;min-height:32px;margin:0 0 9px;padding:0;border:0;background:transparent;color:var(--muted,#71809a);font-size:12px;cursor:pointer;}
+.bank-proposal-client{margin:0 0 16px;font-size:13px;color:var(--muted,#71809a);overflow-wrap:anywhere;}
+.bank-proposal-client strong{font-weight:550;color:var(--navy,#172b45);}
+.bank-proposal-draft-tools{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,1.5fr);align-items:end;gap:10px;}
+.bank-proposal-field{display:grid;gap:6px;min-width:0;margin:0;}
+.bank-proposal-field>span{font-size:12px;font-weight:550;color:#62748d;}
+.bank-proposal-composer input,.bank-proposal-composer textarea,.bank-proposal-composer select{box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:1px solid var(--line,#dde2eb);border-radius:10px;padding:11px 12px;background:#fff;color:var(--navy,#172b45);font-size:16px;font-weight:400;line-height:1.4;}
+.bank-proposal-composer textarea{resize:vertical;}
+.bank-proposal-composer input:focus-visible,.bank-proposal-composer textarea:focus-visible,.bank-proposal-composer select:focus-visible{outline:2px solid var(--blue,#2855d9);outline-offset:1px;}
+.bank-proposal-composer .primary-button,.bank-proposal-composer .secondary-button{min-height:46px;width:100%;display:flex;justify-content:center;align-items:center;gap:8px;border-radius:11px;padding:11px 15px;margin-top:17px;font-size:14px;font-weight:600;cursor:pointer;}
+.bank-proposal-composer .primary-button{background:var(--blue,#2855d9);color:#fff;border:1px solid transparent;}
+.bank-proposal-composer .secondary-button{border:1px solid var(--line,#dde2eb);background:transparent;color:inherit;}
+.bank-proposal-twin{display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:9px 10px;border:1px solid #d6dfed;border-radius:10px;background:#edf2fb;color:#355683;font-size:12px;font-weight:550;cursor:pointer;}
+.bank-proposal-note{margin:10px 0 14px;color:var(--muted,#71809a);font-size:11px;line-height:1.6;}
+.bank-proposal-instructions{margin:0 0 17px;color:var(--muted,#71809a);font-size:12px;}
+.bank-proposal-instructions summary{cursor:pointer;padding:4px 0;}
+.bank-proposal-instructions .bank-proposal-field{margin-top:9px;}
+.bank-proposal-editor{display:grid;gap:16px;}
+.bank-proposal-items{display:grid;gap:10px;min-width:0;}
+.bank-proposal-items h3{font-size:13px;font-weight:600;margin:2px 0 0;}
+.bank-proposal-item{position:relative;display:grid;gap:11px;min-width:0;border:1px solid var(--line,#dde2eb);border-radius:12px;margin:0;padding:12px;background:color-mix(in srgb,var(--navy,#172b45) 2%,transparent);}
+.bank-proposal-item legend{padding:0 5px;font-size:10px;color:var(--muted,#71809a);}
+.bank-proposal-item .bank-proposal-field:first-of-type{padding-right:20px;}
+.bank-proposal-remove{position:absolute;top:8px;right:7px;display:grid;place-items:center;min-width:30px;min-height:30px;padding:5px;border:0;background:transparent;color:var(--muted,#71809a);cursor:pointer;}
+.bank-proposal-item-pricing{display:grid;grid-template-columns:minmax(70px,.65fr) minmax(0,1.35fr);gap:10px;}
+.bank-proposal-add{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:7px 10px;border:1px dashed #cdd6e4;border-radius:9px;background:transparent;color:#577294;font-size:12px;cursor:pointer;}
+.bank-proposal-total{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line,#dde2eb);font-size:11px;color:var(--muted,#71809a);}
+.bank-proposal-total strong{font-size:18px;color:var(--navy,#172b45);font-weight:600;text-align:right;overflow-wrap:anywhere;}
+.bank-proposal-progress{padding:11px 12px;border-radius:10px;background:#edf2fb;color:#536e94;font-size:12px;}
+.bank-proposal-error{margin:13px 0 0;color:#a14444;font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
+.bank-proposal-preview{padding:17px;border:1px solid var(--line,#dde2eb);border-radius:13px;background:#fff;overflow-wrap:anywhere;}
+.bank-proposal-document-type{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted,#71809a);text-transform:uppercase;letter-spacing:.07em;}
+.bank-proposal-preview h3{font-size:22px;line-height:1.25;letter-spacing:-.45px;font-weight:600;margin:12px 0 6px;}
+.bank-proposal-preview-issuer{font-size:11px;color:var(--muted,#71809a);margin:0 0 20px;}
+.bank-proposal-preview p,.bank-proposal-preview li{font-size:12px;line-height:1.65;}
+.bank-proposal-prewrap{white-space:pre-wrap;}
+.bank-proposal-preview table{width:100%;table-layout:fixed;border-collapse:collapse;margin:20px 0 9px;font-size:11px;}
+.bank-proposal-preview th{color:var(--muted,#71809a);font-size:10px;font-weight:500;}
+.bank-proposal-preview td,.bank-proposal-preview th{text-align:left;vertical-align:top;padding:9px 5px 9px 0;border-bottom:1px solid #edf0f4;overflow-wrap:anywhere;}
+.bank-proposal-preview th:first-child{width:49%;}.bank-proposal-preview th:nth-child(2){width:16%;}.bank-proposal-preview td:last-child,.bank-proposal-preview th:last-child{text-align:right;padding-right:0;}
+.bank-proposal-preview h4{font-size:11px;font-weight:600;margin:20px 0 7px;}
+.bank-proposal-preview ul{padding-left:18px;margin:0;}
+.bank-proposal-review-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;margin-top:13px;}
+.bank-proposal-review-tools button,.bank-proposal-review-tools a{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 0;border:0;background:transparent;color:var(--blue,#2855d9);font-size:12px;text-decoration:none;cursor:pointer;}
+.bank-proposal-outcome{padding:25px 2px 15px;text-align:center;}
+.bank-proposal-outcome>svg{color:#597c91;}.bank-proposal-outcome h3{margin:13px 0 9px;font-size:19px;font-weight:550;letter-spacing:-.35px;}.bank-proposal-outcome p{max-width:310px;margin:0 auto;color:var(--muted,#71809a);font-size:12px;line-height:1.7;}
+@media(max-width:360px){.bank-proposal-composer{padding:15px 15px 21px;}.bank-proposal-draft-tools{grid-template-columns:minmax(0,1fr);}.bank-proposal-preview{padding:12px;}}
+.bank-proposal-generated-pdf{margin-top:16px;border:1px solid var(--line,#dde2eb);border-radius:12px;overflow:hidden;}
+.bank-proposal-generated-pdf>summary{cursor:pointer;padding:12px 14px;color:var(--muted,#71809a);font-size:12px;}
+.bank-proposal-generated-pdf .proof-pdf-reader{max-height:500px;overflow:auto;}
+
+.bank-proposal-parties{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0}.bank-proposal-parties>section{min-width:0}.bank-proposal-parties h4{margin:0 0 6px}.bank-proposal-parties p{overflow-wrap:anywhere}@media(max-width:480px){.bank-proposal-parties{grid-template-columns:minmax(0,1fr)}}

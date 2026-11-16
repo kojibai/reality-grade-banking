@@ -25,11 +25,15 @@ import {businessFitArt} from '../src/content/business-fit-art.mjs';
 import {canonicalPublicPath} from '../src/content/public-routes.mjs';
 import {protectionPage} from './vault-protection-page.mjs';
 import {clientWorkMetadata} from '../src/content/client-work-library.mjs';
+import {proposalPages,proposalQuestions} from '../src/content/proposal-pages.mjs';
+import {agreementPages,agreementQuestions} from '../src/content/agreement-pages.mjs';
 export const publicOrigin = 'https://bankeiz.com';
 const standardSite='Reality-Grade Banking';
 const infrastructureSite='Receiz';
 export const publicPages = [
  ...clientWorkMetadata,
+ ...agreementPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Bankeiz',description:page.description,lines:page.lines,caption:page.caption,size:76,motif:page.agreementPage==='documents'?'book':'fingerprint',faq:agreementQuestions[page.agreementPage]})),
+ ...proposalPages.map(page=>({path:page.path,id:page.slug,title:page.title+' | Bankeiz',description:page.description,lines:page.lines,caption:page.caption,motif:page.proposalPage==='proposals'?'book':'layers',faq:proposalQuestions[page.proposalPage]})),
  {...receivingInvitationPage,id:'receiving-invitation',title:receivingInvitationPage.title+' | Bankeiz',lines:['The next payment.','On your terms.'],caption:'Choose your receiving implementation. Keep the proof connected.',motif:'receipt'},
  {...institutionScorecardPage,id:'institution-scorecard',title:institutionScorecardPage.title,lines:['Reality-Grade Banking','Conformance Register.'],caption:'Money. Original proof. Continuous history.',motif:'badge',size:80},
  {path:'/build/',id:'build-independent-bank',siteName:standardSite,title:'Build your own bank. Receive the same money. | Reality-Grade Banking',description:'Build an independent bank, wallet or merchant receiver with Receiz. Explore complete Originals, legitimate transfers and the published receiving requirements.',lines:['Build your own bank.','Receive the same money.'],caption:'Different applications. The same necessary evidence.',motif:'code',size:75},

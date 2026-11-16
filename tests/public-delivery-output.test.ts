@@ -5,6 +5,7 @@ it('stages byte-identical immutable documents outside canonical prepared routes 
  const module=await import('../scripts/build-public-delivery-output.mjs');await module.buildPublicDeliveryOutput({source,output});
  for(const path of['index.html','explore/index.html','explore/images/index.html','ledger/index.html','ledger/proofs/index.html','feed/index.html','discover/index.html']){await expect(access(join(output,path))).rejects.toThrow();const name=path==='index.html'?'bank/index.html':path;expect(await readFile(join(output,'__bank_static_entry',name),'utf8')).toBe(await readFile(join(source,path),'utf8'));}
  expect(await readFile(join(output,'assets/app.js'),'utf8')).toBe('unchanged app');expect(await readFile(join(output,'learn/index.html'),'utf8')).toBe('unchanged guide');
+ await writeFile(join(source,'assets/app.js'),'next build');expect(await readFile(join(output,'assets/app.js'),'utf8')).toBe('unchanged app');await writeFile(join(output,'learn/index.html'),'delivery edit');expect(await readFile(join(source,'learn/index.html'),'utf8')).toBe('unchanged guide');
  }finally{await rm(root,{recursive:true,force:true});}
 });
 it('opens Bank and public views from their existing static documents without a prepared-page gate',()=>{

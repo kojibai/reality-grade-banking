@@ -8,7 +8,7 @@ import {writeOriginalsQualificationAssets} from '../scripts/originals-qualificat
 
 async function fixture(){
  const root=await mkdtemp(join(tmpdir(),'bank-guide-closure-'));
- const put=async(path:string,value:string)=>{await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),value);};
+ const put=async(path:string,value:string|Uint8Array)=>{await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),value);};
  await put('.vite/manifest.json',JSON.stringify({'index.html':{file:'assets/app.js'}}));await put('assets/app.js','installed bank');await put('proof-verifier/v129/verifier.js','verifier');
  const pages={'/learn/':{content:'All guides'},'/learn/guides/':{content:'Guide directory'}};
  await put('index.html',`<script id="receiz-navigation" type="application/json">${JSON.stringify({pages})}</script>`);await put('learn/index.html','<html>Learn</html>');await put('learn/guides/index.html','<html>All guides</html>');await put('learn/contact.js','contact');await put('learn/guide-directory.js',await readFile('public/learn/guide-directory.js','utf8'));
@@ -39,5 +39,20 @@ it('retains the real producer entry and every emitted lazy module, refusing alte
 it.each(['/receiving/','/invitation/'])('retains the complete %s extension without an invitation payload or account dependency',async path=>{
  const f=await fixture();try{const {build}=await import('esbuild'),result=await build({entryPoints:['src/adoption/receiving-public.ts'],bundle:true,platform:'browser',format:'esm',target:'es2022',minify:true,write:false}),runtime=result.outputFiles[0]!.text;await f.put('learn/receiving.js',runtime);await f.put(path.slice(1)+'index.html','<main>Receive directly.</main>');await f.put('index.html','<script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{[path]:{content:'<main data-receiving>Receive directly.</main>'}}})+'</script>');
   const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile});expect(report.resources.find(row=>row.url==='/learn/receiving.js')).toEqual({url:'/learn/receiving.js',bytes:Buffer.byteLength(runtime),sha256:createHash('sha256').update(runtime).digest('hex')});expect(report.pages[path]).toBe('/learn/');expect(runtime).not.toMatch(/\bfetch\(/);expect(JSON.stringify(report)).not.toContain('#invite=');
+ }finally{await f.dispose();}
+});
+
+it('retains the four relationship guides, actual walkthrough and sample PDF through the existing offline shell',async()=>{
+ const f=await fixture();try{
+  const paths=['/proposals/','/client-communication/','/ai-documents/','/sign-agreements/'];
+  const runtime=await readFile('public/learn/product-walkthrough.js'),sample=await readFile('public/learn/proposal-example.pdf');
+  await f.put('learn/product-walkthrough.js',runtime);await f.put('learn/proposal-example.pdf',sample);
+  for(const name of ['cooperatives.js','cooperative-twin.js'])await f.put('learn/'+name,await readFile('public/learn/'+name));
+  for(const path of paths)await f.put(path.slice(1)+'index.html','<main>Held relationship guide</main>');
+  await f.put('index.html','<script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:Object.fromEntries(paths.map(path=>[path,{content:'<main>Held relationship guide</main>'}]))})+'</script>');
+  const report=await buildOfflineShell(f.root,{fixed:[],renderBuildFile:f.renderBuildFile});
+  for(const path of paths){expect(report.pages[path]).toBe('/learn/');expect(report.pages[path.slice(0,-1)]).toBe('/learn/');expect(report.resources.some(row=>row.url===path)).toBe(false);}
+  for(const name of ['cooperatives.js','cooperative-twin.js'])expect(report.resources.some(row=>row.url==='/learn/'+name)).toBe(true);
+  for(const [url,bytes] of [['/learn/product-walkthrough.js',runtime],['/learn/proposal-example.pdf',sample]] as const)expect(report.resources.find(row=>row.url===url)).toEqual({url,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});
  }finally{await f.dispose();}
 });

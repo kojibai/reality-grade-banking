@@ -18,12 +18,14 @@ if(process.argv[1]?.endsWith('build-product-previews.mjs')){
  const server=await createServer({server:{middlewareMode:true,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:[]},appType:'custom'});
  try{
   const {ProductScreen,productScreenNames}=await server.ssrLoadModule('/src/presentation/ProductScreen.tsx');
+  const {prepareProposalExamplePdf}=await server.ssrLoadModule('/src/presentation/ProposalWorkflowExample.tsx'),proposalSamplePdf=await prepareProposalExamplePdf(),samplePdfBytes=Buffer.from(await proposalSamplePdf.arrayBuffer()),samplePdfPath='public/learn/proposal-example.pdf';
+  if(process.argv.includes('--check')){if(!(await readFile(samplePdfPath)).equals(samplePdfBytes))throw Error('PROPOSAL_EXAMPLE_PDF_OUT_OF_DATE');}else await writeFile(samplePdfPath,samplePdfBytes);
   const {InlineOpening}=await server.ssrLoadModule('/src/components/InlineOpening.tsx'),signingIndicator=renderToStaticMarkup(createElement(InlineOpening,{compact:true,label:'Signing Original'}));
   const importedStyles=[...server.environments.ssr.moduleGraph.idToModuleMap.values()].map(module=>module.file).filter(file=>file?.endsWith('.css')&&file.startsWith(resolve('src')+'/')).map(file=>relative(process.cwd(),file)).filter(file=>!styles.includes(file)).sort();
   const previewStyles=[...styles,...new Set(importedStyles)];
   const {paymentQr,paymentQrPath}=await server.ssrLoadModule('/src/receiz/payment-qr.ts');
   const screens={};const now=Date.now;Date.now=()=>Date.parse('2026-10-20T12:00:00Z');
-  try{for(const [name,example,financialStage] of [...productScreenNames.map(name=>[name,undefined]),...Object.keys(moneyExamples).map(key=>['messages',key]),...['account','receive','record'].map(name=>[name,'action-followthrough']),...dailyMoneyKeys.flatMap(key=>[['account',key,'before'],['account',key,'after']])]){let html=renderToStaticMarkup(createElement(ProductScreen,{screen:name,example,financialStage}));
+  try{for(const [name,example,financialStage] of [...productScreenNames.map(name=>[name,undefined]),...Object.keys(moneyExamples).map(key=>['messages',key]),...['account','receive','record'].map(name=>[name,'action-followthrough']),...dailyMoneyKeys.flatMap(key=>[['account',key,'before'],['account',key,'after']])]){let html=renderToStaticMarkup(createElement(ProductScreen,{screen:name,example,financialStage,proposalSamplePdf}));
    // Action controls stay inert while the native content region scrolls. Keep IDs local and
    // make its illustrative receiving QR resolve to a reserved invalid domain.
    html=html.replace(/<video\b[^>]*>[\s\S]*?<\/video>/g,'').replace(/<dialog /g,'<dialog open ').replace(/\bid="([^"]+)"/g,(_,id)=>`id="example-${name}-${id}"`).replace(/\b(aria-labelledby|aria-describedby|aria-controls)="([^"]+)"/g,(_,attr,ids)=>`${attr}="${ids.split(' ').map(id=>'example-'+name+'-'+id).join(' ')}"`).replace(/url\(#([^)]+)\)/g,(_,id)=>`url(#example-${name}-${id})`);

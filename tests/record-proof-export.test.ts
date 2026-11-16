@@ -1,5 +1,6 @@
 import {expect,it,vi} from 'vitest';
 import {existsSync} from 'node:fs';
+import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 const digest=async(bytes:Uint8Array)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(n=>n.toString(16).padStart(2,'0')).join('');
 const input=()=>({bytes:new TextEncoder().encode('{"kind":"synthetic.record","recordedAt":"2026-11-04"}'),filename:'calendar-example.json',mimeType:'application/json',recordHash:'a'.repeat(64)});
 async function fixture(){
@@ -60,3 +61,27 @@ it('read-only file saving never invokes a sealer or writes when an artifact is m
  const created=await f.controller.export(input()),seals=f.seal.mock.calls.length,writes=f.ports.write.mock.calls.length,held=await f.fresh().read(input());
  expect(new Uint8Array(await held.arrayBuffer())).toEqual(new Uint8Array(await created.arrayBuffer()));expect(f.seal).toHaveBeenCalledTimes(seals);expect(f.ports.write).toHaveBeenCalledTimes(writes);
 });
+it('reopens an exact completed export by its public descriptor after a later library failure',async()=>{
+ const f=await fixture(),capture=input(),created=await f.controller.export(capture),descriptor={recordHash:capture.recordHash,payloadSha256:await digest(capture.bytes),filename:capture.filename,mimeType:capture.mimeType};
+ await expect(Promise.reject(Error('PROOF_LIBRARY_UNAVAILABLE'))).rejects.toThrow('PROOF_LIBRARY_UNAVAILABLE');
+ const seals=f.seal.mock.calls.length,writes=f.ports.write.mock.calls.length,retains=f.ports.retain.mock.calls.length;
+ const held=await f.fresh().readDescriptor(descriptor);expect(held).not.toBeNull();expect(held!.name).toBe(created.name);expect(held!.type).toBe(created.type);expect(new Uint8Array(await held!.arrayBuffer())).toEqual(new Uint8Array(await created.arrayBuffer()));
+ expect(f.seal).toHaveBeenCalledTimes(seals);expect(f.ports.write).toHaveBeenCalledTimes(writes);expect(f.ports.retain).toHaveBeenCalledTimes(retains);
+});
+it('descriptor reads refuse wrong metadata, corrupted custody and closed owners without creating a replacement',async()=>{
+ const f=await fixture(),capture=input(),descriptor={recordHash:capture.recordHash,payloadSha256:await digest(capture.bytes),filename:capture.filename,mimeType:capture.mimeType};
+ expect(await f.controller.readDescriptor(descriptor)).toBeNull();expect(f.seal).not.toHaveBeenCalled();await f.controller.export(capture);
+ for(const change of [{recordHash:'b'.repeat(64)},{payloadSha256:'c'.repeat(64)},{filename:'other.json'},{mimeType:'text/plain'}])expect(await f.fresh().readDescriptor({...descriptor,...change})).toBeNull();
+ for(const change of [{recordHash:'bad'},{payloadSha256:'bad'},{filename:'../other.json'},{mimeType:'text/plain\n'}])await expect(f.fresh().readDescriptor({...descriptor,...change})).rejects.toThrow('RECORD_PROOF_INPUT_INVALID');
+ const state=[...f.states.values()][0],key=[...f.states.keys()][0];f.states.set(key,{...state,filename:'substituted.json'});await expect(f.fresh().readDescriptor(descriptor)).rejects.toThrow('RECORD_PROOF_CHECKPOINT_INVALID');f.states.set(key,{...state,artifact:{...state.artifact,digest:[state.artifact.digest]}});await expect(f.fresh().readDescriptor(descriptor)).rejects.toThrow('RECORD_PROOF_CHECKPOINT_INVALID');f.states.set(key,state);
+ for(const bytes of f.blobs.values())bytes[0]^=1;await expect(f.fresh().readDescriptor(descriptor)).rejects.toThrow('RECORD_PROOF_SOURCE_MISMATCH');expect(f.seal).toHaveBeenCalledOnce();f.close();await expect(f.fresh().readDescriptor(descriptor)).rejects.toThrow('IDENTITY_CLOSED');
+});
+it('recovers a real SDK Original after library retention fails without a new signature or seal',async()=>{
+ const actual=await conformanceOfflineFixture({account:true}),runtime=actual.runtime,admission=await runtime.createReceizArtifactAdmissionEngine()(await runtime.verifyReceizArtifact(actual.identity.bytes),{profile:'identity',identityPassphrase:actual.identity.phrase}),binding=await runtime.readReceizIdentityPublicBinding(admission);
+ const ownerSealer=runtime.offline.createReceizOfflineSealer({ownerIdentityAdmission:admission,store:actual.store,resources:actual.resources,fetch:async()=>{throw Error('NETWORK_FORBIDDEN');}});
+ const {createRecordProofExports}=await import('../src/receiz/record-proof-export'),states=new Map(),blobs=new Map<string,Uint8Array>();let seals=0,writes=0;const capture=input();
+ const ports={assertOpen(){},seal:async(source:{bytes:Uint8Array;filename:string;mimeType:string})=>{seals++;return ownerSealer.seal(source);},read:async(key:string)=>states.get(key)??null,write:async(key:string,value:unknown)=>{writes++;states.set(key,value);},retain:async(bytes:Uint8Array)=>{const key=await digest(bytes);blobs.set(key,new Uint8Array(bytes));return key;},restore:async(key:string)=>new Uint8Array(blobs.get(key)!)};
+ let completed:File|undefined;const createThenRetain=async()=>{completed=await createRecordProofExports(ports).export(capture);throw Error('PROOF_LIBRARY_UNAVAILABLE');};await expect(createThenRetain()).rejects.toThrow('PROOF_LIBRARY_UNAVAILABLE');
+ const held=await createRecordProofExports(ports).readDescriptor({recordHash:capture.recordHash,payloadSha256:await digest(capture.bytes),filename:capture.filename,mimeType:capture.mimeType});expect(held).not.toBeNull();expect(new Uint8Array(await held!.arrayBuffer())).toEqual(new Uint8Array(await completed!.arrayBuffer()));
+ const opened=await runtime.createReceizClient().artifacts.verifyAndOpen(held!);expect(opened.sealedArtifact.kind).toBe('receiz.native-record-seal');expect(opened.sealedArtifact.continuity.ownerReceizId).toBe(binding.artifactOwnerReceizId);expect(opened.verifiedPayload.bytes).toEqual(capture.bytes);expect(seals).toBe(1);expect(writes).toBe(1);
+},60000);

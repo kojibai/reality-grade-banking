@@ -42,7 +42,10 @@ it('makes the monthly value concrete and keeps metered usage in billing details'
  expect(hero.textContent).toContain('Make getting paid less work');
  expect(hero.textContent).toContain('Understand what came in, what went out and what needs attention');
  expect(hero.textContent).toContain('Spend less time on financial admin');
- expect(hero.textContent).not.toMatch(/credits|7,500|Twin|Creator AI/);
+ expect(hero.textContent).not.toMatch(/credits|7,500|Creator AI/);
+ expect(hero.textContent).toContain('Your AI counterpart');
+ expect(hero.textContent).toContain('called your Twin');
+ expect(hero.textContent).toContain('delivery and the next conversation');
  expect(doc.querySelector('.business-terms')?.textContent).toContain('Opens your agent. Creates a Receiz ID if needed. Review before paying.');
  expect(doc.querySelector('.business-existing')?.getAttribute('href')).toBe('/#account/messages');
  expect(doc.querySelector('.business-workflow')?.textContent).toContain('available history');

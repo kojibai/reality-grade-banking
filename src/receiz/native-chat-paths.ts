@@ -14,6 +14,8 @@ function page(url: URL, coordinate: 'before' | 'since', min: number, max: number
  * registered bearer scope, principal and conversation/call membership. */
 export function permittedNativeChatPath(url: URL, method: string): boolean {
   const verb = method.toUpperCase(), path = url.pathname;
+  if(path==='/api/receiz/attachments/upload')return verb==='POST'&&!url.search;
+  if(new RegExp(`^/api/chat/messages/${UUID}/attachment$`,'i').test(path))return verb==='GET'&&(!url.search||url.search==='?inline=1');
   if(new RegExp(`^/api/calendar/meetings/${UUID}/[A-Za-z0-9_-]{16,160}(?:/(?:evidence|twin|recording))?$`,'i').test(path))return !url.search&&((path.endsWith('/twin')||path.endsWith('/recording'))?verb==='POST':path.endsWith('/evidence')?verb==='GET':['GET','POST'].includes(verb));
   if(new RegExp(`^/api/chat/messages/${UUID}/original$`,'i').test(path))return verb==='GET'&&!url.search;
   if (path === '/api/chat/notifications/push') return ['GET','POST','DELETE'].includes(verb) && !url.search;

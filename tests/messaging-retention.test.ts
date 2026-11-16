@@ -57,3 +57,9 @@ it('does not block messages on unavailable private storage and ignores work afte
 it('stops optional retention after a competing revision instead of overwriting it',async()=>{
  const save=vi.fn(async()=>{throw Error('BANK_NOTE_INTENT_CHANGED');});const retained=await openMessagingRetention({load:async()=>null,save,isOpen:()=>true});retained.capture(source);await retained.flush();retained.capture({...source,inbox:[{...conversation,title:'New title'}]});await retained.flush();expect(save).toHaveBeenCalledTimes(1);
 });
+it('requires a confirmed durable write before exposing a proposal mutation checkpoint',async()=>{
+ let finish!:()=>void;const save=vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;})),retention=await openMessagingRetention({load:async()=>null,save,isOpen:()=>true});retention.capture(source);let done=false;const checkpoint=retention.flushRequired().then(()=>{done=true;});await vi.waitFor(()=>expect(save).toHaveBeenCalledOnce());expect(done).toBe(false);finish();await checkpoint;expect(done).toBe(true);
+});
+it('surfaces failed display custody and closed identity for mutation checkpoints while held views remain available',async()=>{
+ let open=true;const retention=await openMessagingRetention({load:async()=>null,save:async()=>{throw Error('disk full');},isOpen:()=>open});retention.capture(source);await expect(retention.flushRequired()).rejects.toThrow('CHAT_PROPOSAL_DRAFT_NOT_SAVED');expect(retention.known()?.pages[0].messages[0].body).toBe(message.body);open=false;await expect(retention.flushRequired()).rejects.toThrow('CHAT_PROPOSAL_DRAFT_NOT_SAVED');
+});

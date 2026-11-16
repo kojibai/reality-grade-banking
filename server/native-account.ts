@@ -71,7 +71,8 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
   const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(nativeRequestTimeout(path,request.method))]);
   try {
-    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',originalPath=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/original$/i.test(path),artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport||originalPath,multipartPath=artifactPath&&!certificateExport||certificateImport||path==='/api/document-verify'||path==='/api/profile/me/media';
+    const attachmentUpload=path==='/api/receiz/attachments/upload',attachmentDownload=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/attachment(?:\?inline=1)?$/i.test(path);
+    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',originalPath=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/original$/i.test(path),artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport||originalPath||attachmentDownload,multipartPath=artifactPath&&!certificateExport&&!attachmentDownload||certificateImport||attachmentUpload||path==='/api/document-verify'||path==='/api/profile/me/media';
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':originalPath?'message/rfc822, image/png':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;
@@ -90,7 +91,7 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
     if (['POST','PATCH','PUT'].includes(request.method) || request.method==='DELETE' && path==='/api/chat/notifications/push') {
       const contentType=request.headers.get('content-type');multipart=!!multipartPath&&typeof contentType==='string'&&/^multipart\/form-data;\s*boundary=(?:[A-Za-z0-9'()+_,.\/=:?-]{1,100}|"[A-Za-z0-9'()+_,.\/=:?-]{1,100}")$/i.test(contentType);
       if (!multipart&&!contentType?.startsWith('application/json')||multipartPath&&!multipart) return fail(415);
-      headers['Content-Type'] = multipart?contentType!:'application/json'; body = await bytes(request.body,certificateImport?26*1024*1024:multipart?4*1024*1024:LIMIT,signal);
+      headers['Content-Type'] = multipart?contentType!:'application/json'; body = await bytes(request.body,attachmentUpload?25*1024*1024+64*1024:certificateImport?26*1024*1024:multipart?4*1024*1024:LIMIT,signal);
     }
     signal.throwIfAborted();
     const response = await fetch(`https://receiz.com${path}`, { method: request.method, headers, body: multipart&&body?new Uint8Array(body):body?.toString('utf8'), credentials: 'omit', redirect: 'error', signal });
@@ -106,7 +107,8 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
       return new Response(streamingBody(response.body,signal,abort), {status:response.status,headers:{...base,'Cache-Control':'no-store, no-transform','Content-Type':response.headers.get('content-type')!,'X-Accel-Buffering':'no'}});
     }
     if(originalPath&&response.ok&&(!['message/rfc822','image/png'].includes(type??'')||type==='message/rfc822'&&!/^attachment;\s*filename="[A-Za-z0-9._ -]{1,150}\.eml"$/i.test(response.headers.get('content-disposition')??''))){await response.body?.cancel();return fail(503);}
-    let output = await bytes(response.body,originalPath?25*1024*1024:certificateExport?26*1024*1024:LIMIT,signal);
+    if(attachmentDownload&&response.ok&&(!type||! /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(type)||! /^(?:attachment|inline);\s*filename="[A-Za-z0-9._-]{1,160}"$/.test(response.headers.get('content-disposition')??''))){await response.body?.cancel();return fail(503);}
+    let output = await bytes(response.body,originalPath||attachmentDownload?25*1024*1024:certificateExport?26*1024*1024:LIMIT,signal);
     // Older certificate projections can omit an Original's pricing operands.
     // Reuse the exact public source already shipped for that same artifact;
     // no account, quote or discovery request belongs in this public read.

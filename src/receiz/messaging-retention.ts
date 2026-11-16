@@ -2,16 +2,61 @@ import {emailReplyDisplay} from './email-reply-display';
 import {accountCreationPresentation,accountPersonName} from './account-presentation';
 import type {ChatConversation,ChatMessage,ChatPage,ChatPerson,ChatEmailChannel} from './native-messaging';
 import {profileAvatarUrl} from './profile-avatar';
+import {retainedChatAttachment} from './chat-attachment';
+import {isOwnerTwinThreadKey} from './twin-conversations';
 
 /** Optional display retention, never an artifact, grant, outbox or payment source. */
 export type TwinAccessQuestion={id:string;question:string};
+export type OwnerDocumentWorkDisplay={threadKey:string;value:Record<string,unknown>};
+export type ProposalDraftDisplay={conversationId:string;value:Record<string,unknown>};
+export const PROPOSAL_DRAFT_MAX_BYTES=32*1024,PROPOSAL_DRAFT_MAX_ENTRIES=30;
+const conversationIdPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** UI draft JSON only. Domain content is validated by the proposal editor. */
+export function readProposalDraftDisplayValue(value:unknown):Record<string,unknown>|null {
+ try{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  const ancestors=new Set<object>();let nodes=0;
+  const valid=(entry:unknown,depth:number):boolean=>{
+   if(++nodes>4096||depth>24)return false;
+   if(entry===null||typeof entry==='string'||typeof entry==='boolean')return true;
+   if(typeof entry==='number')return Number.isFinite(entry);
+   if(typeof entry!=='object'||ancestors.has(entry))return false;
+   const array=Array.isArray(entry),prototype=Object.getPrototypeOf(entry);
+   if(array?prototype!==Array.prototype:prototype!==Object.prototype&&prototype!==null)return false;
+   if(Object.getOwnPropertySymbols(entry).length)return false;
+   const properties=Object.getOwnPropertyDescriptors(entry);ancestors.add(entry);
+   try{
+    if(array){if(entry.length>4096)return false;let bytes=entry.length>0;for(let i=0;i<entry.length;i++){const property=properties[String(i)];if(!property||!('value'in property))return false;const item=property.value;bytes=bytes&&typeof item==='number'&&Number.isInteger(item)&&item>=0&&item<=255;}if(bytes)return false;}
+    for(const [key,property]of Object.entries(properties)){
+     if(array&&key==='length')continue;
+     if(!property.enumerable||!('value'in property)||array&&! /^(0|[1-9]\d*)$/.test(key)||/token|password|passphrase|secret|credential|authorization|privatekey|artifactbytes|filebytes|^bytes$|^file$|^constructor$|^prototype$|^proto$/.test(key.toLowerCase().replace(/[^a-z]/g,''))||!valid(property.value,depth+1))return false;
+    }
+    return true;
+   }finally{ancestors.delete(entry);}
+  };
+  if(!valid(value,0))return null;const raw=JSON.stringify(value);if(new TextEncoder().encode(raw).byteLength>PROPOSAL_DRAFT_MAX_BYTES)return null;return JSON.parse(raw) as Record<string,unknown>;
+ }catch{return null;}
+}
+function proposalDrafts(value:unknown):ProposalDraftDisplay[]|null {
+ if(value===undefined)return [];
+ if(!Array.isArray(value)||value.length>PROPOSAL_DRAFT_MAX_ENTRIES)return null;
+ const seen=new Set<string>(),result:ProposalDraftDisplay[]=[];
+ for(const entry of value){const row=object(entry),draft=readProposalDraftDisplayValue(row.value);if(typeof row.conversationId!=='string'||!conversationIdPattern.test(row.conversationId)||seen.has(row.conversationId)||!draft||draft.conversationId!==undefined&&draft.conversationId!==row.conversationId)return null;seen.add(row.conversationId);result.push({conversationId:row.conversationId,value:draft});}
+ return result;
+}
+function ownerDocumentWork(value:unknown,ownerUid:string):OwnerDocumentWorkDisplay[]|null{
+ if(value===undefined)return[];if(!Array.isArray(value)||value.length>PROPOSAL_DRAFT_MAX_ENTRIES)return null;const seen=new Set<string>(),result:OwnerDocumentWorkDisplay[]=[];
+ for(const entry of value){const row=object(entry),work=readProposalDraftDisplayValue(row.value);if(!isOwnerTwinThreadKey(row.threadKey,ownerUid)||seen.has(row.threadKey)||!work||work.threadKey!==row.threadKey||work.ownerUid!==ownerUid)return null;seen.add(row.threadKey);result.push({threadKey:row.threadKey,value:work});}return result;
+}
 export interface MessagingDisplay {
   schema:'bankeiz.messaging-display.v1';accountUid:string;inbox:ChatConversation[];pages:ChatPage[];
   twinAccess?:boolean;
   emailConversations?:boolean;
   twinAccessQuestions?:TwinAccessQuestion[];
+  proposalDrafts?:ProposalDraftDisplay[];
+  ownerDocumentWork?:OwnerDocumentWorkDisplay[];
 }
-export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'|'twinAccessQuestions'|'emailConversations'>;
+export type MessagingDisplaySource=Pick<MessagingDisplay,'accountUid'|'inbox'|'pages'|'twinAccess'|'twinAccessQuestions'|'emailConversations'|'proposalDrafts'|'ownerDocumentWork'>;
 export const MESSAGING_DISPLAY_MAX_BYTES=1024*1024;
 const encoder=new TextEncoder();
 const size=(value:unknown)=>encoder.encode(JSON.stringify(value)).byteLength;
@@ -23,7 +68,7 @@ function person(value:ChatPerson):ChatPerson {
 function message(value:ChatMessage,preview=false):ChatMessage {
   value=emailReplyDisplay(value);
   const payment=object(value.walletTransfer);
-  const walletTransfer=payment.kind==='chat_transfer'?Object.fromEntries(['kind','senderUserId','recipientUserId','amountUsdCents','amountPhiMicro','transferId','note','transactionHref','receiptHref'].filter(key=>typeof payment[key]==='string').map(key=>[key,text(payment[key],key==='note'?280:4096)])):null;
+  const walletTransfer=payment.kind==='chat_transfer'?Object.fromEntries(['kind','senderUserId','recipientUserId','amountUsdCents','amountPhiMicro','transferId','note','transactionHref','receiptHref'].filter(key=>typeof payment[key]==='string').map(key=>[key,text(payment[key],key==='note'?280:4096)])):retainedChatAttachment(payment);
   if(value.senderKind==='external-email')return{id:text(value.id,200),conversationId:value.conversationId,senderKind:'external-email',senderUserId:null,senderAiId:null,senderDisplay:text(value.senderDisplay,200)||null,body:text(value.body,preview?1024:262144),createdAt:text(value.createdAt,50),receizedAt:text(value.receizedAt,50),receipt:null,sealedOriginalAvailable:false,walletTransfer:null,transport:{fromEmail:text(value.transport.fromEmail,254),recipientAlias:text(value.transport.recipientAlias,254),...(value.transport.subject?{subject:text(value.transport.subject,998)}:{})}};
   return {id:text(value.id,200),conversationId:value.conversationId,senderUserId:text(value.senderUserId,200),senderKind:value.senderKind,senderAiId:text(value.senderAiId,100)||null,senderDisplay:text(value.senderDisplay,200)||null,body:text(value.body,preview?1024:262144),createdAt:text(value.createdAt,50),receizedAt:text(value.receizedAt,50),receipt:null,sealedOriginalAvailable:false,walletTransfer};
 }
@@ -34,10 +79,11 @@ function conversation(value:ChatConversation):ChatConversation {
 // Image metadata is optional; it must never evict the conversation or messages.
 function withoutAvatars(value:ChatConversation):ChatConversation{return{...value,members:value.members.map(person=>({...person,avatarUrl:null}))};}
 export function projectMessagingDisplay(source:MessagingDisplaySource):MessagingDisplay {
+  const drafts=proposalDrafts(source.proposalDrafts),work=ownerDocumentWork(source.ownerDocumentWork,source.accountUid);if(!drafts||!work)throw Error('CHAT_PROPOSAL_DRAFT_INVALID');
   const questions=Array.isArray(source.twinAccessQuestions)?source.twinAccessQuestions.slice(-8).map(value=>{const row=object(value);return{id:text(row.id,200),question:text(row.question,1200)};}).filter(row=>row.id&&row.question):[];
-  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.emailConversations==='boolean'?{emailConversations:source.emailConversations}:{}),...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{}),...(questions.length?{twinAccessQuestions:questions}:{})};
-  // Budget the exact UTF-8 JSON bytes once per row. No artifacts, attachments,
-  // call state, pending writes or credentials are copied into this projection.
+  const display:MessagingDisplay={schema:'bankeiz.messaging-display.v1',accountUid:source.accountUid,inbox:[],pages:[],...(typeof source.emailConversations==='boolean'?{emailConversations:source.emailConversations}:{}),...(typeof source.twinAccess==='boolean'?{twinAccess:source.twinAccess}:{}),...(questions.length?{twinAccessQuestions:questions}:{}),...(drafts.length?{proposalDrafts:drafts}:{}),...(work.length?{ownerDocumentWork:work}:{})};
+  // Budget the exact UTF-8 JSON bytes once per row. Only descriptive attachment
+  // metadata is held; no artifacts, pending writes or credentials are copied.
   let remaining=MESSAGING_DISPLAY_MAX_BYTES-size(display)-64;
   for(const row of source.inbox.slice(0,256)){
     let next=conversation(row),cost=size(next)+1;if(cost>remaining/2){next=withoutAvatars(next);cost=size(next)+1;}if(cost>remaining/2)break;
@@ -77,7 +123,7 @@ export async function openMessagingRetention({load,save,isOpen}:{load:()=>Promis
   function capture(source:MessagingDisplaySource){
     if(!isOpen())return;
     const held=pending??known;
-    pending={...source,...(source.twinAccessQuestions===undefined&&held?.accountUid===source.accountUid?{twinAccessQuestions:held.twinAccessQuestions}:{})};
+    pending={...source,...(source.twinAccessQuestions===undefined&&held?.accountUid===source.accountUid?{twinAccessQuestions:held.twinAccessQuestions}:{}),...(source.proposalDrafts===undefined&&held?.accountUid===source.accountUid?{proposalDrafts:held.proposalDrafts}:{}),...(source.ownerDocumentWork===undefined&&held?.accountUid===source.accountUid?{ownerDocumentWork:held.ownerDocumentWork}:{})};
     queueMicrotask(()=>{void flush();});
   }
   async function flush():Promise<void>{
@@ -101,5 +147,12 @@ export async function openMessagingRetention({load,save,isOpen}:{load:()=>Promis
       capture({...held??{accountUid,inbox:[],pages:[]},twinAccessQuestions:questions.slice(-8)});
     },
     flush,
+    async flushRequired(){
+      await flush();
+      if(pending)await flush();
+      // Display opening remains best effort. An explicit mutation checkpoint
+      // must establish that the encrypted vault actually accepted this state.
+      if(!isOpen()||!available||pending||serialized!==JSON.stringify(known))throw Error('CHAT_PROPOSAL_DRAFT_NOT_SAVED');
+    },
   };
 }

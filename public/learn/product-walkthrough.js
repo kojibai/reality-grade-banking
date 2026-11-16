@@ -95,6 +95,9 @@ function exampleViews(root,select,refreshMotion){
 
 export function init(){document.querySelectorAll('[data-product-walkthrough]').forEach(root=>{
  if(mounted.has(root))return;mounted.add(root);
+ // Held-page navigation parses noscript children with scripting disabled.
+ // Remove that fallback before enhancing the already visible proposal frame.
+ if(root.hasAttribute('data-proposal-walkthrough'))root.querySelector('noscript')?.remove();
  const choices=[...root.querySelectorAll('[data-product-choice]')];let release=()=>{};
  const motion=()=>{release();release=()=>{};root.querySelectorAll('[data-product-example="messages"]').forEach(example=>{if(!example.closest('[hidden]'))release=animate(example);});};
  const select=button=>{const key=button.dataset.productChoice;const source=exampleSource(root,key),panel=root.querySelector(`[data-product-panel="${key}"]`),frame=panel?.querySelector('.product-screen');if(source&&frame&&frame.dataset.exampleView!==key)frame.replaceWith(cloneExample(source));const caption=root.querySelector('.product-frame-caption');if(source&&caption)caption.textContent=source.copy;choices.forEach(el=>el.setAttribute('aria-pressed',String(el===button)));root.querySelectorAll('[data-product-panel],[data-product-caption]').forEach(el=>{el.hidden=(el.dataset.productPanel??el.dataset.productCaption)!==key;});motion();};
