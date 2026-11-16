@@ -60,6 +60,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/verified-build"
           tar -xzf "$archive_path" --strip-components=1 -C "$RUNNER_TEMP/verified-build"
           cp -R dist "$RUNNER_TEMP/verified-build/dist"
+          # This final fingerprint is intentionally outside the source archive.
+          mkdir -p "$RUNNER_TEMP/verified-build/server/profile-runtime"
+          cp server/profile-runtime/public-market-render-build.json "$RUNNER_TEMP/verified-build/server/profile-runtime/public-market-render-build.json"
           tar -czf "$RUNNER_TEMP/verified-build.tgz" -C "$RUNNER_TEMP/verified-build" .
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2, Node 24
         with:
