@@ -50,14 +50,14 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   if(!active)return;
   const abort=new AbortController();
   const adopt=(next:PublicMarketCatalog|null)=>{
-   if(!next?.complete||next===selectedCatalog.current||Date.parse(next.observedAt??'')<Date.parse(selectedCatalog.current?.observedAt??''))return;
+   if(!next?.complete||next===selectedCatalog.current)return;
    selectedCatalog.current=next;
    setCatalog(next);
    setItems(held=>completeFeedItems(held,next.items));
   };
   const sync=()=>{
    const state=preparedBankCatalogState();
-   adopt((state.value??state.carried)?.seed.catalog??state.bareCatalog??null);
+   adopt(readHeldFeedCatalog()??(state.value??state.carried)?.seed.catalog??state.bareCatalog??null);
   };
   const unsubscribe=subscribePreparedBankCatalog(sync);
   const held=readHeldFeedCatalog();
@@ -98,11 +98,13 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
   // Undefined notifications are local admission/delivery changes. This surface
   // adopts only a dated public response, never the pending local overlay.
   if(!catalog?.complete||samePublicMarketMembership(catalog,selectedCatalog.current))return;
-  const observedAt=Date.parse(catalog.observedAt??'');
-  if(!/^[a-f0-9]{64}$/.test(catalog.revision)&&(!Number.isFinite(observedAt)||observedAt<Math.max(publicationAt.current,Date.parse(selectedCatalog.current?.observedAt??'')||-Infinity)))return;
+  const observedAt=Date.parse(catalog.observedAt??''),selected=catalog===readHeldFeedCatalog();
+  // The existing shared selector already accepted this public successor.
+  // Its descriptive clock cannot restore the older prepared page over it.
+  if(!selected&&!/^[a-f0-9]{64}$/.test(catalog.revision)&&(!Number.isFinite(observedAt)||observedAt<Math.max(publicationAt.current,Date.parse(selectedCatalog.current?.observedAt??'')||-Infinity)))return;
   publicationAt.current=observedAt;
   selectedCatalog.current=catalog;setCatalog(catalog);
-  setItems(held=>/^[a-f0-9]{64}$/.test(catalog.revision)?completeFeedItems(held,catalog.items):refreshFeedItems(held,catalog.items));
+  setItems(held=>selected||/^[a-f0-9]{64}$/.test(catalog.revision)?completeFeedItems(held,catalog.items):refreshFeedItems(held,catalog.items));
  }),[]);
  useEffect(()=>{setShown(20);},[query,filter]);
  useEffect(()=>{if(!active||shown>=results.items.length||!more.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{rootMargin:'500px'});observer.observe(more.current);return()=>observer.disconnect();},[active,shown,results.items.length]);

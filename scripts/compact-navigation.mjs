@@ -39,7 +39,7 @@ export function compactNavigation(input) {
   const page = value => ({ ...value, head: head(value.head),...(typeof value.content==='string'?{content:content(value.content)}:{}) });
   const pages=Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank=page(input.bank);
   if(input.bank.css)bank.css=Object.fromEntries(cssEntries.map(([url,css])=>[url,[intern(css)]]));
-  return shareStyleParts({ ...input, pages, bank, styles });
+  return shareDeclarationSpans(shareStyleParts({ ...input, pages, bank, styles }));
 }
 
 // Chunk factoring can place the same rules inside different emitted styles.
@@ -73,4 +73,30 @@ function shareStyleParts(input){
  const expand=value=>Array.isArray(value)?value.flatMap(part=>typeof part==='number'?mappings[part]:[part]):value;
  const page=value=>({...value,head:expand(value.head),...(value.content===undefined?{}:{content:expand(value.content)})});
  return{...input,styles,pages:Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank:{...page(input.bank),...(input.bank.css?{css:Object.fromEntries(Object.entries(input.bank.css).map(([path,value])=>[path,expand(value)]))}:{})}};
+}
+
+// Large destination-specific styles repeat declaration text beneath different
+// selectors. Factor those bytes without changing CSS or the flat decoder.
+// Leave frequently referenced blocks intact: expanding them at every use would
+// cost more references than it saves. Complete JSON script carriers stay whole.
+function shareDeclarationSpans(input){
+ const uses=new Map();
+ for(const page of [...Object.values(input.pages),input.bank,input.bank.css??{}])for(const value of Object.values(page))if(Array.isArray(value))for(const part of value)if(typeof part==='number')uses.set(part,(uses.get(part)??0)+1);
+ const pieces=input.styles.map((value,index)=>value.length>=1024&&uses.get(index)>0&&uses.get(index)<=2&&!/<script\b/i.test(value)?value.split(/(?<=[{};])/g):[value]);
+ const counts=new Map();
+ for(const parts of pieces)for(const part of parts)if(part.length>=16)counts.set(part,(counts.get(part)??0)+1);
+ const styles=[],indices=new Map(),intern=value=>{if(!indices.has(value)){indices.set(value,styles.length);styles.push(value);}return indices.get(value);};
+ const mappings=pieces.map(parts=>{
+  const result=[];let pending='';
+  for(const part of parts){
+   if(counts.get(part)>1){if(pending){result.push(intern(pending));pending='';}result.push(intern(part));}
+   else pending+=part;
+  }
+  if(pending)result.push(intern(pending));return result;
+ });
+ const expand=value=>Array.isArray(value)?value.flatMap(part=>typeof part==='number'?mappings[part]:[part]):value;
+ const page=value=>({...value,head:expand(value.head),...(value.content===undefined?{}:{content:expand(value.content)})});
+ const output={...input,styles,pages:Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank:{...page(input.bank),...(input.bank.css?{css:Object.fromEntries(Object.entries(input.bank.css).map(([path,value])=>[path,expand(value)]))}:{})}};
+ const size=value=>JSON.stringify(value).replaceAll('<','\\u003c').length;
+ return size(output)<size(input)?output:input;
 }

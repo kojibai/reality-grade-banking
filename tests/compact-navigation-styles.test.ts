@@ -41,3 +41,13 @@ it('shares repeated source-link markup in a retained head without dropping a sin
  expect(decode(packed.bank.head)).toBe(original.bank.head);expect(decode(packed.bank.content)).toBe(original.bank.content);expect(original).toEqual(before);
  expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.65);
 });
+
+it('keeps unique large destination styles within delivery capacity by sharing their repeated declarations losslessly',()=>{
+ const repeated='display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid #dfe5ed;border-radius:12px;background:#fff;color:#172b45;';
+ const first=Array.from({length:160},(_,i)=>`.relationship-part-${i}{${repeated}--part:${i}}`).join('');
+ const second=Array.from({length:160},(_,i)=>`.proof-part-${i}{${repeated}--proof:${i}}`).join('');
+ const original={pages:{'/one/':{head:'<style>'+first+'</style>',content:'<main>Held proof</main>'},'/two/':{head:'<style>'+second+'</style>',content:'<main>Held relationship</main>'}},bank:{head:'<title>Bank</title>',content:'<main>Account</main>',styles:[],css:{}}},before=structuredClone(original),packed=compactNavigation(original),decode=(value:any)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ for(const [path,page]of Object.entries(original.pages)){expect(decode(packed.pages[path].head)).toBe(page.head);expect(decode(packed.pages[path].content)).toBe(page.content);}
+ expect(decode(packed.bank.head)).toBe(original.bank.head);expect(decode(packed.bank.content)).toBe(original.bank.content);expect(original).toEqual(before);expect(packed.styles.every(value=>typeof value==='string')).toBe(true);
+ expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.8);
+});

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // Live delivery is exercised separately; this suite qualifies held display.
-vi.mock('../src/receiz/public-profile-directory',()=>({subscribePublicProfileDirectory:()=>()=>{}}));
+vi.mock('../src/receiz/public-profile-directory',async original=>({...await original<typeof import('../src/receiz/public-profile-directory')>(),subscribePublicProfileDirectory:()=>()=>{}}));
 import {act} from 'react';
 import {createHash} from 'node:crypto';
 import {createRoot,type Root} from 'react-dom/client';
@@ -149,4 +149,22 @@ it('rejects superseded pending Feed B before retaining it for a late Market owne
  const c=await seed(['C'],'c'.repeat(64)),reader=await import('../src/receiz/prepared-bank-catalog');expect(reader.adoptPublicDocumentCatalog(c,()=>source.reusePreparedFeedCatalog(c.catalog,c.generation))).not.toBeNull();
  finish(Response.json(membership(['superseded pending B'])));expect((await pending).map(item=>item.id)).toEqual(['C']);
  const p=await probe();await act(()=>p.root.render(<p.Probe/>));expect(p.read().historyCatalog?.items.map(item=>item.id)).toEqual(['C']);
+});
+
+it('Discover opens the already selected successor even when its descriptive clock predates the carried page, then follows the next accepted update',async()=>{
+ const a=await seed(['older prepared Original']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket');adoptPublicMarketDocument(a);
+ const {parsePublicMarket}=await import('../src/receiz/public-market'),adoption=await import('../src/receiz/asset-publication-adoption');
+ const b=parsePublicMarket(membership(['accepted public Original'],'2026-01-01T00:00:00Z'));
+ adoption.publishDiscoveredPublicCatalog(b,undefined,a.catalog);
+ const selected=adoption.retainedDiscoveredPublicCatalog();expect(selected?.items.map(item=>item.id)).toEqual(['accepted public Original']);
+ const {Discover}=await import('../src/public-discover/Discover'),host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);
+ const fetcher=vi.fn(async()=>new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);
+ await act(()=>root.render(<Discover seed={a.catalog.items} active/>));
+ expect(host.querySelector('[aria-label="Open Original accepted public Original"]')).not.toBeNull();expect(host.querySelector('[aria-label="Open Original older prepared Original"]')).toBeNull();expect(fetcher).not.toHaveBeenCalled();
+ const input=host.querySelector('input'),c=parsePublicMarket(membership(['accepted public Original','next public Original'],'2025-12-01T00:00:00Z'));
+ await act(()=>adoption.publishDiscoveredPublicCatalog(c,undefined,selected));
+ expect(host.querySelector('[aria-label="Open Original next public Original"]')).not.toBeNull();expect(host.querySelector('input')).toBe(input);
+ const current=adoption.retainedDiscoveredPublicCatalog(),empty=parsePublicMarket(membership([],'2025-11-01T00:00:00Z'));
+ await act(()=>adoption.publishDiscoveredPublicCatalog(empty,undefined,current));
+ expect(host.querySelectorAll('.discover-work')).toHaveLength(0);expect(host.querySelector('input')).toBe(input);expect(fetcher).not.toHaveBeenCalled();
 });

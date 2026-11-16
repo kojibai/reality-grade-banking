@@ -304,7 +304,8 @@ function carriedNavigationTextSize(document){
   return size+encoded.length;
  },0);
 }
-assert.ok(feedDocument.length-carriedTextSize(feedDocument,'public-feed-seed',8)<600000,'The dedicated feed interface and non-text payload stay under 600 kB uncompressed.');
+const feedInterfaceSize=feedDocument.length-carriedTextSize(feedDocument,'public-feed-seed',8);
+assert.ok(feedInterfaceSize<600000,`The dedicated feed interface and non-text payload stay under 600 kB uncompressed (observed ${feedInterfaceSize}).`);
 const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
 await checkFeedEntry('feed/index.html');

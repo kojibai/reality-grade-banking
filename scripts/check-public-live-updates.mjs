@@ -132,7 +132,11 @@ async function isolated(entrance){
   // Native mandatory snapping cannot jump directly past unmounted rows. Move
   // the virtual viewport, then restore its normal snap behavior before proof.
   await scroller.evaluate((node,at)=>{node.scrollTo({top:at*node.clientHeight,behavior:'instant'});node.dispatchEvent(new Event('scroll',{bubbles:true}));},responses[version].transport.publicOriginals.length-(version===1?2:1));
-  const current=page.locator('[data-feed-item=\"'+additions[version-1].id+'\"][aria-hidden=\"false\"]');await current.waitFor({timeout:15000});await scroller.evaluate((node,previous)=>{node.style.scrollSnapType=previous;},snap);await current.waitFor();
+   // The refreshed shipped seed may already contain the other captured
+   // addition. Locate the exact mounted neighbor instead of assuming it is
+   // still a new row at a fixed offset in this reader's accepted queue.
+   const target=page.locator('[data-feed-item=\"'+additions[version-1].id+'\"]');await target.waitFor({state:'attached',timeout:15000});await target.evaluate(node=>node.scrollIntoView({block:'start',behavior:'instant'}));
+   const current=page.locator('[data-feed-item=\"'+additions[version-1].id+'\"][aria-hidden=\"false\"]');await current.waitFor({timeout:15000});await scroller.evaluate((node,previous)=>{node.style.scrollSnapType=previous;},snap);await current.waitFor();
  }else{const search=page.getByRole('textbox',{name:'Search public activity'});await search.fill(additions[version-1].title);await page.locator('.public-ledger-row').filter({hasText:additions[version-1].title}).first().waitFor({timeout:15000});}
  await health();await page.screenshot({path:resolve(output,'cold-'+entrance+'-successor.png')});results.push({surface:entrance,firstEntrance:true,noPriorSurfaceOrRetainedSuccessor:true,event:version,successorRendered:true});console.log('PASS independent cold '+entrance+' event '+version);
  }
