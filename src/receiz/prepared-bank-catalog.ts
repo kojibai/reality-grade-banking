@@ -115,12 +115,13 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
     const latest=selectedCatalog();
     if(latest?.complete&&!initialSelection(latest)){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
     let catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)throw Error('PREPARED_PUBLIC_CATALOG_INCOMPLETE');
-    if(latest&&initialDocumentSeed&&initialSelection(latest)){
+    const initial=initialDocumentSeed as PublicMarketDocumentSeed|null;
+    if(latest&&initial&&initialSelection(latest)){
      // Only the shipped fallback's membership yields. Keep owner-bound edits
      // and privacy refusals already accepted while its local cache opened.
      const heads=(value:PublicMarketCatalog)=>[...(value.publicProfileHeads??[]),...(value.publicProfileHeadRefusals??[])],basis=(head:unknown)=>publicProfileHeaderDisplayBasis(head)??JSON.stringify(head);
-     const expected=new Map(heads(initialDocumentSeed.catalog).map(head=>[String(head.profile.userId),basis(head)])),bound=publicProfileDirectoryBindings(catalog);
-     const changed=heads(latest).filter(head=>basis(head)!==expected.get(String(head.profile.userId))&&bound(head.profile));
+     const expected=new Map(heads(initial.catalog).map(head=>[String(head.profile.userId),basis(head)])),bound=publicProfileDirectoryBindings(catalog);
+     const changed=heads(latest).filter(head=>basis(head)!==expected.get(String(head.profile.userId))&&bound({userId:head.profile.userId,username:head.profile.username}));
      if(changed.length)catalog=retainPublicProfileHeaders({...catalog,publicProfileHeads:changed.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];}),publicProfileHeadRefusals:changed.flatMap(value=>{const head=curatePublicProfileHeadRefusal(value);return head?[head]:[];})},catalog);
     }
     rememberPublicMarketResponse(catalog,input);bareCatalog=immutable(catalog);bootstrapping=false;publishDiscoveredPublicCatalog(bareCatalog,undefined,latest);publish({phase:flight?'pending':'idle',value:held,error:null});return null;
