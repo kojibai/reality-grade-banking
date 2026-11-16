@@ -1,0 +1,15 @@
+{
+  "name": "@bankeiz/payments",
+  "version": "0.1.0",
+  "description": "Bankeiz hosted checkout, merchant receiving and durable order fulfillment using existing Receiz contracts.",
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "engines": {"node": ">=24.0.0"},
+  "exports": {
+    ".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"},
+    "./sqlite": {"types": "./dist/sqlite.d.ts", "import": "./dist/sqlite.js"}
+  },
+  "files": ["dist/index.js", "dist/index.js.map", "dist/index.d.ts", "dist/sqlite.js", "dist/sqlite.js.map", "dist/sqlite.d.ts", "dist/types.d.ts", "dist/webhook.d.ts", "example/server.mjs", "example/synthetic.mjs", "example/fulfillment.mjs", "example/fulfillment.d.mts", "example/store.html", "README.md", "LICENSE", "source"],
+  "peerDependencies": {"@receiz/sdk": "129.5.0"},
+  "repository": {"type": "git", "url": "https://github.com/kojibai/reality-grade-banking", "directory": "integrations/payments"}
+}

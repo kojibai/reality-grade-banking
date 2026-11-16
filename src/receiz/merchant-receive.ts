@@ -6,21 +6,30 @@ export async function inspectMerchantPayment(raw:unknown,expected:FixedSale,acco
  if(accountUid!==sale.recipientUserId||original.recipientUserId!==accountUid||original.senderUserId===accountUid||original.amountUsdCents!==sale.amountUsdCents||original.carried.some(value=>value.note!==note||value.noteVisibility!=='public'))throw Error('MERCHANT_PAYMENT_MISMATCH');
  const{carried:_,...evidence}=original;return evidence;
 }
-type Candidate={transferId:string;clientNonce:string;sale:FixedSale};
+type Candidate={transferId:string;clientNonce:string;saleDigest:string};
 type Discovery={signature?:string;anchor?:string;cursor?:string;complete:boolean;seen:Set<string>};
 const uuid=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
+export interface MerchantReceiveCheckpoint{schema:'bank.merchant-receive-continuation.v1';accountUid:string;nextSale:number;pending:Candidate[];discovery:{saleDigest:string;signature?:string;anchor?:string;cursor?:string;complete:boolean;seen:string[]}[];}
+function readCheckpoint(raw:unknown,accountUid:string):MerchantReceiveCheckpoint|undefined{
+ if(raw===undefined)return;const v=raw as MerchantReceiveCheckpoint,fail=():never=>{throw Error('MERCHANT_CONTINUATION_INVALID');},digest=(s:unknown)=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s),cursor=(s:unknown)=>typeof s==='string'&&/^[A-Za-z0-9_-]{1,2048}$/.test(s);
+ if(!v||v.schema!=='bank.merchant-receive-continuation.v1'||v.accountUid!==accountUid||!Number.isSafeInteger(v.nextSale)||v.nextSale<0||!Array.isArray(v.pending)||!Array.isArray(v.discovery))return fail();
+ if(v.pending.some(c=>!c||!uuid(c.transferId)||!uuid(c.clientNonce)||!digest(c.saleDigest)))return fail();
+ for(const d of v.discovery)if(!d||!digest(d.saleDigest)||typeof d.complete!=='boolean'||d.signature!==undefined&&(typeof d.signature!=='string'||d.signature.length>16000)||d.anchor!==undefined&&(typeof d.anchor!=='string'||!/^.{36}:.{36}$/.test(d.anchor))||d.cursor!==undefined&&!cursor(d.cursor)||!Array.isArray(d.seen)||d.seen.some(s=>!cursor(s)))return fail();
+ if(new Set(v.discovery.map(d=>d.saleDigest)).size!==v.discovery.length||new Set(v.pending.map(c=>c.transferId+':'+c.clientNonce)).size!==v.pending.length)return fail();
+ return structuredClone(v);
+}
 export async function readMerchantResponse(response:Response):Promise<unknown>{
  if(!response.ok||!response.body)throw Error('MERCHANT_RECEIVING_UNAVAILABLE');const reader=response.body.getReader(),decoder=new TextDecoder();let size=0,text='';try{for(;;){const{done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>8*1024*1024)throw Error('MERCHANT_HISTORY_CAPACITY');text+=decoder.decode(value,{stream:true});}text+=decoder.decode();return JSON.parse(text);}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
 /** Recipient-owned fixed-sale discovery supplies references only. Each actual
  * original must still pass the existing exact receiving inspector. */
-export function createMerchantReceive(input:{accountUid:string;request(path:string,signal:AbortSignal):Promise<unknown>}){
- const admitted=new Set<string>(),unacknowledged=new Map<string,{saleId:string;evidence:MerchantPaymentEvidence}>(),pending=new Map<string,Candidate>(),discovery=new Map<string,Discovery>();let nextSale=0,unresolved=false;
- return{unresolved:()=>unresolved,remember(evidence:MerchantPaymentEvidence){const key=evidence.transferId+':'+evidence.clientNonce;admitted.add(key);unacknowledged.delete(key);},async check(sales:readonly FixedSale[],signal:AbortSignal){
+export function createMerchantReceive(input:{accountUid:string;request(path:string,signal:AbortSignal):Promise<unknown>;checkpoint?:unknown}){
+ const restored=readCheckpoint(input.checkpoint,input.accountUid),admitted=new Set<string>(),unacknowledged=new Map<string,{saleId:string;evidence:MerchantPaymentEvidence}>(),pending=new Map<string,Candidate>((restored?.pending??[]).map(c=>[c.transferId+':'+c.clientNonce,c])),discovery=new Map<string,Discovery>((restored?.discovery??[]).map(({saleDigest,seen,...d})=>[saleDigest,{...d,seen:new Set(seen)}]));let nextSale=restored?.nextSale??0,unresolved=false;
+ return{checkpoint():MerchantReceiveCheckpoint{return{schema:'bank.merchant-receive-continuation.v1',accountUid:input.accountUid,nextSale,pending:[...pending.values()].map(c=>({...c})),discovery:[...discovery].map(([saleDigest,{seen,...d}])=>({saleDigest,...d,seen:[...seen]}))};},unresolved:()=>unresolved,remember(evidence:MerchantPaymentEvidence){const key=evidence.transferId+':'+evidence.clientNonce;admitted.add(key);unacknowledged.delete(key);pending.delete(key);},async check(sales:readonly FixedSale[],signal:AbortSignal){
   signal.throwIfAborted();if(sales.some(sale=>sale.recipientUserId!==input.accountUid))throw Error('MERCHANT_ACCOUNT_MISMATCH');
   if(sales.some(sale=>!/^[a-f0-9]{64}$/.test(sale.digest)))throw Error('MERCHANT_SALE_INVALID');
   const byDigest=new Map(sales.map(sale=>[sale.digest,sale])),ordered=[...byDigest.values()];
-  for(const[key,candidate]of pending)if(!byDigest.has(candidate.sale.digest))pending.delete(key);
+  for(const[key,candidate]of pending)if(!byDigest.has(candidate.saleDigest))pending.delete(key);
   for(const digest of discovery.keys())if(!byDigest.has(digest))discovery.delete(digest);
   unresolved=ordered.some(sale=>!discovery.get(sale.digest)?.complete)||pending.size>0;
   const found=new Map<string,{saleId:string;evidence:MerchantPaymentEvidence}>();
@@ -39,7 +48,7 @@ export function createMerchantReceive(input:{accountUid:string;request(path:stri
    const keys:string[]=[];
    for(const value of body.candidates){
     if(!value||typeof value!=='object'||Array.isArray(value)||!uuid(value.transferId)||!uuid(value.clientNonce))throw Error('MERCHANT_HISTORY_UNAVAILABLE');
-    const key=value.transferId+':'+value.clientNonce;keys.push(key);if(!admitted.has(key)&&!pending.has(key))pending.set(key,{transferId:value.transferId,clientNonce:value.clientNonce,sale});
+    const key=value.transferId+':'+value.clientNonce;keys.push(key);if(!admitted.has(key)&&!pending.has(key))pending.set(key,{transferId:value.transferId,clientNonce:value.clientNonce,saleDigest:sale.digest});
    }
    return{keys,nextCursor:body.nextCursor as string|null};
   }
@@ -55,7 +64,7 @@ export function createMerchantReceive(input:{accountUid:string;request(path:stri
   // unavailable originals ahead of later payments or manufacture paid state.
   await Promise.all([...pending].slice(0,4).map(async([key,candidate])=>{
    pending.delete(key);
-   try{signal.throwIfAborted();const raw=await input.request(`/api/connect/transfers?clientNonce=${candidate.clientNonce}&transferId=${candidate.transferId}`,signal);signal.throwIfAborted();const evidence=await inspectMerchantPayment(raw,candidate.sale,input.accountUid);signal.throwIfAborted();if(evidence.transferId!==candidate.transferId||evidence.clientNonce!==candidate.clientNonce)throw Error('MERCHANT_PAYMENT_MISMATCH');admitted.add(key);const match={saleId:candidate.sale.saleId,evidence};unacknowledged.set(key,match);found.set(key,match);}
+   try{signal.throwIfAborted();const raw=await input.request(`/api/connect/transfers?clientNonce=${candidate.clientNonce}&transferId=${candidate.transferId}`,signal);signal.throwIfAborted();const selectedSale=byDigest.get(candidate.saleDigest)!;const evidence=await inspectMerchantPayment(raw,selectedSale,input.accountUid);signal.throwIfAborted();if(evidence.transferId!==candidate.transferId||evidence.clientNonce!==candidate.clientNonce)throw Error('MERCHANT_PAYMENT_MISMATCH');admitted.add(key);const match={saleId:selectedSale.saleId,evidence};unacknowledged.set(key,match);found.set(key,match);}
    catch{signal.throwIfAborted();pending.set(key,candidate);}
   }));
   unresolved=!!discoveryError||ordered.some(value=>!discovery.get(value.digest)?.complete)||pending.size>0;
@@ -63,4 +72,5 @@ export function createMerchantReceive(input:{accountUid:string;request(path:stri
   return[...found.values()];
  }};
 }
-export type MerchantReceive=ReturnType<typeof createMerchantReceive>;
+/** Existing Counter adapters need only their original three-method contract. */
+export type MerchantReceive=Pick<ReturnType<typeof createMerchantReceive>,'check'|'remember'|'unresolved'>;

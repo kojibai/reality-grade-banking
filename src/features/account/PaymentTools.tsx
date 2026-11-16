@@ -29,7 +29,8 @@ export function PaymentTools({username,amount,initialMode='button'}:{username:st
    {mode==='checkout'&&<><p className="payment-tools-caption">No website? Share your Receiz card checkout link instead. Customers choose the amount there; the optional amount above applies to your Bankeiz button.</p><div className="payment-tools-link"><a href={tools.externalCheckoutLink} target="_blank" rel="noopener noreferrer">receiz.com/payments/{tools.username}<ArrowUpRight size={15}/></a><button type="button" aria-label={feedback?.value===tools.externalCheckoutLink&&feedback.ok?'Checkout link copied':'Copy checkout link'} onClick={()=>void copy(tools.externalCheckoutLink)}><CopyFeedbackIcon copied={feedback?.value===tools.externalCheckoutLink&&feedback.ok===true}/></button></div></>}
    {feedback?.ok===false&&(feedback.value===code||feedback.value===tools.externalCheckoutLink)&&<p role="status" className="payment-tools-caption">Copying is unavailable. Select and copy the code or link above.</p>}
    <details className="payment-tools-methods"><summary>Payment methods</summary><p>Your Bankeiz button supports Reserve, Settlement and Settlement Reserve Notes through Pay with a Note. The payer approves one payment. Selected Notes confirm their credit before that payment continues. The original proof and funding composition stay connected. Receiz’s embedded widget is a separate card checkout with legacy Wallet Note compatibility.</p></details>
-   <a className="payment-tools-guide" href="/learn/get-paid/">Setup and developer guide<ArrowUpRight size={15}/></a>
+   <div className="payment-tools-guides"><a className="payment-tools-guide" href="/learn/get-paid/">Setup and developer guide<ArrowUpRight size={15}/></a>
+   <a className="payment-tools-guide" href="/docs/order-payments/">Connect a store or app<ArrowUpRight size={15}/></a></div>
   </div>
  </details>;
 }

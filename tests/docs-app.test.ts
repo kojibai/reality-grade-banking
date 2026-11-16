@@ -5,7 +5,7 @@ import {docsArticles,docsOrigin,docsEdition} from '../src/content/banking-docs.m
 import {docsDocument} from '../scripts/docs-app.mjs';
 const parse=(s:string)=>new DOMParser().parseFromString(s.replace(/<link\b[^>]*rel="stylesheet"[^>]*>/g,''),'text/html');
 it('preserves seventeen published articles within the complete task-oriented manual',()=>{
- expect(docsArticles).toHaveLength(47);expect(docsOrigin).toBe('https://docs.bankeiz.com');
+ expect(docsArticles).toHaveLength(48);expect(docsOrigin).toBe('https://docs.bankeiz.com');
  for(const page of [null,...docsArticles])expect(parse(docsDocument(page)).querySelector('.docs-footer>p')?.textContent).toBe('Proof-native economy · Reality-grade banking · Reality-grade infrastructure.');
  for(const p of docsArticles){expect(p.sections.length).toBeGreaterThanOrEqual(3);expect(p.sources.length).toBeGreaterThan(0);for(const [label,href] of p.sources){expect(label).toBeTruthy();expect(href).toMatch(/^https:\/\/(?:github.com\/kojibai\/reality-grade-banking|receiz.com\/developers|docs.receiz.com)/);}}
 });

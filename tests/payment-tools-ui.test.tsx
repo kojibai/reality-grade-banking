@@ -13,6 +13,9 @@ it('copies real installation code on demand without opening checkout, loading a 
  try{
   await act(async()=>root.render(<PaymentTools username="klok" amount="12.30"/>));
   expect(host.querySelector('details')?.open).toBe(false);
+  const integration=[...host.querySelectorAll('a')].find(a=>a.textContent?.includes('Connect a store or app'));
+  expect(integration?.getAttribute('href')).toBe('/docs/order-payments/');
+  expect(integration?.closest('.payment-tools-content')).not.toBeNull();
   expect(host.querySelector('iframe,script')).toBeNull();expect(network).not.toHaveBeenCalled();
   await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment button code"]')!.click());
   expect(copy).toHaveBeenLastCalledWith(expect.stringContaining('/pay/klok/?amount=12.30'));

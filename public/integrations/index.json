@@ -1,0 +1,8 @@
+{
+  "schema": "bankeiz.payments.distribution.v1",
+  "version": "0.1.0",
+  "sdkVersion": "129.5.0",
+  "url": "/integrations/bankeiz-payments-0.1.0.tgz",
+  "sha256": "ce123e937710c2fe63960051c751e813bdef4e5dc59e5e8968eeef1222192394",
+  "bytes": 69902
+}
