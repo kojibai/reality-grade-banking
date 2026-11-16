@@ -61,3 +61,28 @@ it('recovers a failed live observation without forgetting the completed retained
  expect(await api.check([sale],signal())).toHaveLength(0);expect(api.unresolved()).toBe(false);available=false;await expect(api.check([sale],signal())).rejects.toThrow('HISTORY_UNAVAILABLE');expect(api.unresolved()).toBe(true);
  available=true;expect(await api.check([sale],signal())).toHaveLength(0);expect(api.unresolved()).toBe(false);
 });
+
+it('continues older pages and fairly retries unavailable originals after a JSON checkpoint restart',async()=>{
+ const{sale,raw,candidate}=await fixture();let available=false;
+ const missing=Array.from({length:4},(_,i)=>({...candidate,transferId:`40000000-0000-4000-8000-${String(i).padStart(12,'0')}`}));
+ const request=async(path:string)=>{if(!isDiscovery(path))return available&&path.includes(raw.transfer.id)?raw:{ok:true,found:false};const cursor=new URL(path,'https://receiz.com').searchParams.get('cursor');return cursor==='older2'?page(sale,[candidate]):cursor==='older1'?page(sale,missing,'older2'):page(sale,[],'older1');};
+ let api=createMerchantReceive({accountUid:recipient,request});expect(await api.check([sale],signal())).toHaveLength(0);
+ api=createMerchantReceive({accountUid:recipient,request,checkpoint:JSON.parse(JSON.stringify(api.checkpoint()))});
+ expect(await api.check([sale],signal())).toHaveLength(0);available=true;
+ api=createMerchantReceive({accountUid:recipient,request,checkpoint:JSON.parse(JSON.stringify(api.checkpoint()))});
+ expect(await api.check([sale],signal())).toMatchObject([{evidence:{transferId:raw.transfer.id}}]);
+});
+
+it('restores completed discovery while still discovering a later second payment',async()=>{
+ const{sale,raw,candidate}=await fixture();let candidates:typeof candidate[]=[];
+ const request=async(path:string)=>isDiscovery(path)?page(sale,candidates):raw;
+ const first=createMerchantReceive({accountUid:recipient,request});await first.check([sale],signal());
+ const api=createMerchantReceive({accountUid:recipient,request,checkpoint:JSON.parse(JSON.stringify(first.checkpoint()))});
+ candidates=[candidate];expect(await api.check([sale],signal())).toHaveLength(1);
+ expect(JSON.stringify(api.checkpoint())).not.toContain('sealed_original');
+});
+
+it('refuses foreign or malformed continuation without using it as payment evidence',async()=>{
+ const{sale}=await fixture(),request=async()=>page(sale),api=createMerchantReceive({accountUid:recipient,request});await api.check([sale],signal());const checkpoint=api.checkpoint();
+ for(const changed of [{...checkpoint,accountUid:sender},{...checkpoint,nextSale:-1},{...checkpoint,pending:[{transferId:'bad',clientNonce:nonce,saleDigest:sale.digest}]},{...checkpoint,discovery:[{saleDigest:sale.digest,complete:true,seen:['bad cursor']}]}])expect(()=>createMerchantReceive({accountUid:recipient,request,checkpoint:changed})).toThrow('MERCHANT_CONTINUATION_INVALID');
+});

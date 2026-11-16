@@ -31,6 +31,12 @@ test-results/
 
 /dist-public/
 
+# Reproducible merchant integration outputs and local example custody
+/integrations/payments/dist/
+/integrations/payments/source/
+/integrations/payments/example/*.sqlite*
+/integrations/payments/*.sqlite*
+
 # Legacy local Registry snapshots; publication now uses the existing Receiz SDK rails.
 /.registry-data/
 /server/registry-runtime/*.mjs

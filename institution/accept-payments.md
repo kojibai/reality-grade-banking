@@ -119,6 +119,13 @@ below when your application needs a trusted order-bound card session.
 
 ## Custom card checkout
 
+For a saved order that uses the full Bankeiz Card, Balance and Note checkout,
+use the [store and app integration](https://docs.bankeiz.com/order-payments/).
+The [package guide](../integrations/payments/README.md) covers checkout creation,
+durable receiving checks, duplicate payments, fulfillment and restart recovery.
+It composes the existing fixed-sale and receiving-original contracts.
+The separate embedded-card example below remains available for card-only flows.
+
 Install the coordinated SDK version used by this repository:
 
 ```sh
