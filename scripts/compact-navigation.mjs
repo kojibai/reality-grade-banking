@@ -5,9 +5,10 @@ export function compactNavigation(input) {
   // styles and repeated body fragments use the same references and decoder.
   const styles=[],indices=new Map();
   const intern=value=>{let index=indices.get(value);if(index===undefined){index=styles.length;indices.set(value,index);styles.push(value);}return index;};
-  // Intern repeated HTML tokens at build time. Destinations remain exact;
+  // Intern repeated markup and structured-head spans at build time. Destinations remain exact;
   // the browser joins only a visited destination, never the whole catalog.
-  const counts=new Map(),parts=value=>value.split(/(<[^>]+>)/g);
+  // Preserve complete carried JSON (including authored text) as one exact span.
+  const counts=new Map(),parts=value=>value.split(/(<script\b[^>]*\btype\s*=\s*["\']application\/json["\'][^>]*>[\s\S]*?<\/script>)/gi).flatMap((part,index)=>index%2?[part]:part.split(/([{},"<>])/g));
   for(const page of [...Object.values(input.pages),input.bank])for(const value of [page.content,page.head])if(typeof value==='string')for(const part of parts(value))if(part.length>=16)counts.set(part,(counts.get(part)??0)+1);
   const content=value=>{
     if(typeof value!=='string')return value;

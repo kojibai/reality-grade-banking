@@ -16,3 +16,21 @@ it('shares rules repeated across differently factored chunks without changing CS
  expect(decode(packed.pages['/one/'].head)).toBe(original.pages['/one/'].head);expect(decode(packed.pages['/two/'].head)).toBe(original.pages['/two/'].head);expect(decode((packed.bank.css as Record<string,unknown>)['/first.css'])).toBe(first);
  expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.6);expect(packed.styles.filter(part=>part===shared)).toHaveLength(1);
 });
+
+it('shares repeated structured metadata and markup attributes while retaining exact destination bytes',()=>{
+ const description='The complete carried Original remains available with its exact proof, ownership and history. '.repeat(12)+'Quoted \"terms\", braces {intact}, and \\u003c remain unchanged.';
+ const attributeDescription=description.replaceAll('&','&amp;').replaceAll('"','&quot;');
+ const pages=Object.fromEntries(Array.from({length:12},(_,i)=>['/work-'+i+'/',{title:'Work '+i,head:'<title>Work '+i+'</title><meta data-work="'+i+'" name="description" content="'+attributeDescription+'"><script type="application/ld+json">'+JSON.stringify({'@context':'https://schema.org','@type':'WebPage',name:'Work '+i,description,publisher:{'@type':'Organization',name:'Bankeiz',url:'https://bankeiz.com/'}})+'</script><style>'+css+'</style>',content:'<main data-work="'+i+'" data-proof-description="'+attributeDescription+'"><h1>Work '+i+'</h1></main>'}]));
+ const original={pages,bank:{head:'<title>Bank</title>',content:'<main>Account</main>',styles:['/account.css'],css:{'/account.css':css}}},before=structuredClone(original),packed=compactNavigation(original),decode=(value:any)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ for(const [path,page]of Object.entries(pages)){expect(decode(packed.pages[path].head)).toBe(page.head);expect(decode(packed.pages[path].content)).toBe(page.content);}
+ expect(decode(packed.bank.head)).toBe(original.bank.head);expect(decode(packed.bank.content)).toBe(original.bank.content);expect(decode((packed.bank.css as Record<string,unknown>)['/account.css'])).toBe(css);expect(original).toEqual(before);
+ expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.6);
+});
+
+it('carries complete Original text once as an intact JSON span through navigation compaction',()=>{
+ const text='The complete carried Original remains available with its exact proof, ownership and history. '.repeat(12)+'Quoted "terms", braces {intact}, and \u003c remain unchanged.',carriedText={text},seed=JSON.stringify([{id:'selected-original',carriedText}]).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026');
+ const original={pages:{'/feed/':{head:'<title>For you</title>',content:'<script id="public-feed-seed" type="application/json">'+seed+'</script>'},'/guide/':{head:'<script type="application/ld+json">'+JSON.stringify({description:text})+'</script>',content:'<main>'+text+'</main>'}},bank:{head:'',content:''}},packed=compactNavigation(original),decode=(value:any)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ expect(decode(packed.pages['/feed/'].content)).toBe(original.pages['/feed/'].content);
+ const encoded=JSON.stringify(JSON.stringify(carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')).slice(1,-1);
+ expect(JSON.stringify(packed).split(encoded).length-1).toBe(1);
+});
