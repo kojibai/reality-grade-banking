@@ -10,6 +10,12 @@ Bankeiz must immediately display its held accepted collection and advance Profil
 - Display timestamp comparisons could veto an already selected shared successor. Feed retained an older prepared pointer. Cold Ledger had rows but did not restore the whole shared collection for subsequent delivery.
 - Thin membership delivery could omit compatible inventory, history, charts and custom artwork before other views received the successor.
 
+## Live prepared-material gate
+
+A read-only live comparison confirmed native `/api/market/public-membership` had 1,693 Originals with native revision `1693:21b3233b2c5b0c38`, while `?representation=selected` had 1,692 and retained Cadence's old `A Place Kept Open` Original. The selected representation omitted both new Cadence header and avatar Originals. Bankeiz's ordinary membership and Ledger proxy unconditionally requested that prepared representation and required its material revision header.
+
+Ordinary discovery now reads the native complete public membership through the existing curator and canonical completeness parser, using bounded opaque ETags. Explicit saved-page preparation continues to request the selected representation and enforce its exact material-root header. The public display path no longer depends on prepared publication catching up.
+
 ## Repairs and regression boundaries
 
 Existing shared consumers subscribe to the existing Receiz public delivery. Profile details and membership advance independently; explicit edits get a trailing pass and bypass descriptive-timestamp reuse. The existing membership reader handles missing or changed collection bytes, including final withdrawal to an empty collection.
