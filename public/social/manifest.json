@@ -345,6 +345,22 @@
       "bytes": 465995,
       "alt": "Bankeiz. A creative production workflow through approved delivery Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
     },
+    "/business/invoices/": {
+      "url": "/social/business-invoices-823901ab96f7252a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "823901ab96f7252aff8f51353fd2b1cd6b771bb1387e522d7e84889d49dd92d8",
+      "bytes": 464338,
+      "alt": "Bankeiz. The work. The amount. A clear invoice. Your invoice. Your review. Your final say. An engraved receipt motif on layered cobalt, clear glass and navy forms."
+    },
+    "/business/client-management/": {
+      "url": "/social/business-client-management-b600dd35c3a373dd.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b600dd35c3a373dd2aa0b09fe76a6720b4ac4d13e476c1ff907e05e1fbebfca0",
+      "bytes": 469695,
+      "alt": "Bankeiz. One client conversation. A clearer next step. The brief. The work. The next conversation. An engraved layers motif on layered cobalt, clear glass and navy forms."
+    },
     "/ai-documents/": {
       "url": "/social/ai-documents-e10ec034ae85d0c1.png",
       "width": 1730,
@@ -914,12 +930,12 @@
       "alt": "Bankeiz. Yours to hold. Yours to unlock. Your money. Your originals. Their proof. An engraved key motif on layered cobalt, clear glass and navy forms."
     },
     "/business/": {
-      "url": "/social/business-522c948cd07e40df.png",
+      "url": "/social/business-dce289fb11bac5ee.png",
       "width": 1730,
       "height": 909,
-      "sha256": "522c948cd07e40df14dbb1ccd340bc313dcf4b8951da53e34998604994fd758e",
-      "bytes": 465142,
-      "alt": "Bankeiz. Your money, clearer. Your day, easier. Less chasing. Less financial admin. Your final say. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "dce289fb11bac5ee7ff4cad3adf2ead6f9f65a725f6564be77c0e7fa75cfc129",
+      "bytes": 465696,
+      "alt": "Bankeiz. One conversation. The whole relationship. Understand. Create. Agree. Get paid. Deliver. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/fit/": {
       "url": "/social/business-for-97927d048fc837f0.png",
@@ -930,20 +946,20 @@
       "alt": "Bankeiz. Your money. Less on your plate. Make the money side of your work easier. An engraved layers motif on layered cobalt, clear glass and navy forms."
     },
     "/business/for/agencies/": {
-      "url": "/social/business-fit-agencies-411414b8f09541f3.png",
+      "url": "/social/business-fit-agencies-9f14920cd4374e6d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "411414b8f09541f3702d59223a6dbf32820e3700f7eca3c7ccaeaa70b89fffa7",
-      "bytes": 242932,
-      "alt": "Client payments, clear. Less chasing. Client payments & project costs → What needs attention → A clear follow-up, ready to review. Illustrative workflow."
+      "sha256": "9f14920cd4374e6d8e3d2f5b60fe0eb6bb4da3ff53ae57de72b5656dbb5b782a",
+      "bytes": 245377,
+      "alt": "A clear campaign scope. One client review. The campaign brief & assets → One collected client review → A clear approved-version handover. Illustrative workflow."
     },
     "/business/for/consultants/": {
-      "url": "/social/business-fit-consultants-ccd8559798a5871a.png",
+      "url": "/social/business-fit-consultants-a7221076d9eea041.png",
       "width": 1730,
       "height": 909,
-      "sha256": "ccd8559798a5871a4d68c591749fde9b71fd38234491502ccdfeadebab9a5800",
-      "bytes": 190874,
-      "alt": "Your expertise. Less money admin. Engagement & payment records → The money behind the work → The next payment step. Illustrative workflow."
+      "sha256": "a7221076d9eea041ff556e1c89e1a5b827f857e12a6ccb7ce91d1fe61ecb921f",
+      "bytes": 198429,
+      "alt": "A bounded engagement. A useful next decision. The engagement question → A bounded proposal & workshop → An action plan to review. Illustrative workflow."
     },
     "/business/for/freelancers/": {
       "url": "/social/business-fit-freelancers-c7dc32507d004a16.png",
@@ -954,12 +970,12 @@
       "alt": "Do the work. Make getting paid easier. Jobs & client payments → Paid work, clearly connected → A follow-up ready to send. Illustrative workflow."
     },
     "/business/for/designers/": {
-      "url": "/social/business-fit-designers-eba6f0f87c385267.png",
+      "url": "/social/business-fit-designers-fedba1cb94ddbec6.png",
       "width": 1730,
       "height": 909,
-      "sha256": "eba6f0f87c385267d31400167ab5063b4c2947de825f6868094b13c7b1f3af89",
-      "bytes": 291742,
-      "alt": "Good work. Clearer project money. Projects, deposits & costs → The financial picture together → A clear stage-payment request. Illustrative workflow."
+      "sha256": "fedba1cb94ddbec6adf3cc63d7d6da3f0d202d5134af7e29144c3cb139e028a3",
+      "bytes": 288577,
+      "alt": "The design brief. The final handover. The client brief & references → A specific scope & review → The final design handover. Illustrative workflow."
     },
     "/business/for/creators/": {
       "url": "/social/business-fit-creators-d7ca15d1f4a92554.png",
@@ -986,12 +1002,12 @@
       "alt": "The writing is yours. Understand what it earns. Book sales, statements & costs → The earnings picture together → The money questions, prepared. Illustrative workflow."
     },
     "/business/for/filmmakers/": {
-      "url": "/social/business-fit-filmmakers-92e4e03602258ef4.png",
+      "url": "/social/business-fit-filmmakers-0b543f9159958230.png",
       "width": 1730,
       "height": 909,
-      "sha256": "92e4e03602258ef4d31559dde12156f3da5b57342d475155b0f1f2558a7b279f",
-      "bytes": 238940,
-      "alt": "Keep production moving. Keep the money in view. Funding, costs & payments → Upcoming commitments in view → The next payment, prepared. Illustrative workflow."
+      "sha256": "0b543f9159958230656319242e21a9c26a1b648724610a952f1a988db3723b91",
+      "bytes": 232942,
+      "alt": "A clear shoot scope. The right final masters. The production brief → The shoot & edit review → Final masters & captions. Illustrative workflow."
     },
     "/business/for/podcasters/": {
       "url": "/social/business-fit-podcasters-702842f11fda58bb.png",
@@ -1002,12 +1018,12 @@
       "alt": "Your show. Your money. Less financial admin. Sponsors, sales & show costs → The money behind the episode → A useful sponsor follow-up. Illustrative workflow."
     },
     "/business/for/coaches/": {
-      "url": "/social/business-fit-coaches-13915eca56068009.png",
+      "url": "/social/business-fit-coaches-456560e41040a31d.png",
       "width": 1730,
       "height": 909,
-      "sha256": "13915eca560680091c1c595d2da6429c17f4e6f23562a03d75f65edc0bc3cdd9",
-      "bytes": 251860,
-      "alt": "Focus on your clients. Simplify the payment side. Packages, sessions & payments → The client’s money context → A clear booking or payment step. Illustrative workflow."
+      "sha256": "456560e41040a31d9154b9758155065d6d123aeba37508d2ea30cd4dba1060ef",
+      "bytes": 248976,
+      "alt": "A clear coaching package. A useful next action. The client goal & package → Session decisions & actions → The next useful follow-up. Illustrative workflow."
     },
     "/business/for/educators/": {
       "url": "/social/business-fit-educators-954764413570e2f5.png",
@@ -1018,12 +1034,12 @@
       "alt": "Teach what you know. Simplify course money. Course payments & delivery costs → The questions, connected → A clear learner payment response. Illustrative workflow."
     },
     "/business/for/accountants/": {
-      "url": "/social/business-fit-accountants-4944576ce5b51c26.png",
+      "url": "/social/business-fit-accountants-3210adb23b373677.png",
       "width": 1730,
       "height": 909,
-      "sha256": "4944576ce5b51c269c32226e4b4a0fc65538394b0b933ff2ac74f45d34a53bee",
-      "bytes": 191327,
-      "alt": "Explain the payment. Keep the source in view. Entries, receipts & client context → The source behind each question → A clearer client query. Illustrative workflow."
+      "sha256": "3210adb23b373677a2f46f6b124165eadff8e9b67c1f205baf222dfe05c70912",
+      "bytes": 194362,
+      "alt": "A clear monthly scope. The open questions, kept. The monthly engagement → Records & questions to resolve → A review pack & next step. Illustrative workflow."
     },
     "/business/for/researchers/": {
       "url": "/social/business-fit-researchers-3f64a5fc63bd6a42.png",
@@ -1122,12 +1138,12 @@
       "alt": "Keep building. Make money decisions clearer. Customer receipts & build costs → The next commitment in view → A clearer release decision. Illustrative workflow."
     },
     "/business/for/developers/": {
-      "url": "/social/business-fit-developers-e68d8fc0048dfde1.png",
+      "url": "/social/business-fit-developers-f8a8c33f9941bb57.png",
       "width": 1730,
       "height": 909,
-      "sha256": "e68d8fc0048dfde1260f3749b1aeb473e9297addcdf1a321b549af7f1f9c64be",
-      "bytes": 251846,
-      "alt": "Trace the payment. Keep the actual source. Payments, service costs & proof → The actual source behind the result → A clear client explanation. Illustrative workflow."
+      "sha256": "f8a8c33f9941bb5767dd663dd250625170ea839540cdafa90ed039f7f677f359",
+      "bytes": 252794,
+      "alt": "A bounded build. A clear source handover. The build brief & API → A tested scope & version → Source & deployment handover. Illustrative workflow."
     },
     "/business/for/startups/": {
       "url": "/social/business-fit-startups-ac2fd483437e816a.png",
@@ -1168,6 +1184,30 @@
       "sha256": "720fc043c2641062e4d2ec092df3cb31a145449aabf1936d5a5cddd306adbebd",
       "bytes": 293077,
       "alt": "Expertise that helps. Money that’s easier to run. Offers, sales & delivery costs → The money behind your expertise → A clear customer payment step. Illustrative workflow."
+    },
+    "/business/for/photographers/": {
+      "url": "/social/business-fit-photographers-173634f5786cfcb9.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "173634f5786cfcb903cb9b855f72175a383169a8a648869d156c6f98c3f3cb00",
+      "bytes": 292189,
+      "alt": "The shoot. The selection. The final images. The shoot brief & shot list → Image selection & usage → Final images & invoice. Illustrative workflow."
+    },
+    "/business/for/copywriters/": {
+      "url": "/social/business-fit-copywriters-c70a5ba8a7423e90.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "c70a5ba8a7423e90088ccdf1bd82e871220ba5272a7b4fdbd1bbe8cc55f6e8cc",
+      "bytes": 198259,
+      "alt": "The brief. The words. The reviewed final copy. The copy brief & sources → Message & factual review → Final editable copy. Illustrative workflow."
+    },
+    "/business/for/virtual-assistants/": {
+      "url": "/social/business-fit-virtual-assistants-6f1297e700e371a4.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6f1297e700e371a41e32f22d9a5123478e053390b3f645490808cc41f238c8ac",
+      "bytes": 214370,
+      "alt": "A clear admin scope. A useful weekly handover. The admin scope & hours → Clear approval boundaries → A useful weekly handover. Illustrative workflow."
     },
     "/": {
       "url": "/social/home-48ccff77499a2a0f.png",

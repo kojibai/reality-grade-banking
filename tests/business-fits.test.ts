@@ -9,9 +9,9 @@ import {readFileSync} from 'node:fs';
 import {init} from '../public/learn/business-fit.js';
 
 it('covers distinct useful fits with complete public journeys and canonical metadata',()=>{
- expect(businessFits).toHaveLength(30);
+ expect(businessFits).toHaveLength(33);
  for(const key of ['slug','headline','description','scenario']) expect(new Set(businessFits.map(fit=>fit[key as keyof typeof fit])).size).toBe(businessFits.length);
- expect(new Set(businessFits.map(fit=>fit.benefits.map(([outcome])=>outcome).join('|'))).size).toBe(30);
+ expect(new Set(businessFits.map(fit=>fit.benefits.map(([outcome])=>outcome).join('|'))).size).toBe(33);
 });
 
 it.each(businessFits)('keeps the complete public journey, offer and first task for $slug',fit=>{
@@ -29,6 +29,7 @@ it.each(businessFits)('keeps the complete public journey, offer and first task f
   expect(doc.querySelector('header')?.textContent).not.toContain('Bankeiz');
   expect(doc.querySelector('.business-offer')?.textContent).not.toMatch(/credits/i);
   expect(doc.querySelector('script,iframe')).toBeNull();
+  expect([...doc.querySelectorAll('input,textarea,select')].every(input=>input.closest('[inert],[data-client-work-root]')),fit.slug).toBe(true);
   expect(publicPage(path)?.id).toBe(`business-fit-${fit.slug}`);
   expect(businessFitPages.some(page=>page.path===path)).toBe(true);
   const outcomes=[...doc.querySelectorAll('.business-offer>ul>li')].map(li=>li.textContent);

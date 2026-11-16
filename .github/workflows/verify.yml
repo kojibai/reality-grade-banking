@@ -93,6 +93,8 @@ jobs:
       - run: npm run test:browser
       - name: Client work library without JavaScript or APIs
         run: node scripts/check-client-work-browser.mjs
+      - name: Interactive Messages examples and edited document downloads
+        run: node scripts/check-client-work-demo-browser.mjs
       - run: npm run test:vault-browser
       - name: Retain browser regression evidence
         if: always()

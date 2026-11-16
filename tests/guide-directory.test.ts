@@ -1,6 +1,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {existsSync,readFileSync} from 'node:fs';
 import {Window} from 'happy-dom';
+import {businessFits} from '../src/content/business-fits.mjs';
 const window=new Window(),document=window.document as unknown as Document;
 vi.stubGlobal('document',document);
 import {gzipSync} from 'node:zlib';
@@ -28,8 +29,8 @@ it('keeps all guide previews free of Business price advertising while retaining 
  const root=rendered(),cards=[...root.querySelectorAll<HTMLAnchorElement>('[data-guide-card]')];
  expect(cards.map(a=>a.textContent).join(' ')).not.toContain('$149');
  expect(cards.map(a=>a.dataset.search).join(' ')).not.toContain('$149');
- expect(cards.filter(a=>a.getAttribute('href')?.startsWith('/business/for/'))).toHaveLength(30);
- expect(root.querySelector('[href="/business/for/agencies/"]')?.textContent).toContain('Follow up without rebuilding the account history.');
+ expect(cards.filter(a=>a.getAttribute('href')?.startsWith('/business/for/'))).toHaveLength(businessFits.length);
+ expect(root.querySelector('[href="/business/for/agencies/"]')?.textContent).toContain('Connect brief and deliverables.');
  expect(root.querySelector('[href="/your-twin/"]')?.textContent).toContain('Your Twin');
 });
 

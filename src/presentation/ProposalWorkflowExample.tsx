@@ -1,7 +1,7 @@
 /** Build-only sample fixtures. Never mounted as an account or admitted as proof. */
 import {FileText,PackageCheck,Sparkles} from 'lucide-react';
 import {Sheet} from '../components/Sheet';
-import {MessageComposer,TypingBubble} from '../features/messages/MessagesPanel';
+import {MessageComposer,TypingBubble} from '../features/messages/MessagePresentation';
 import {PaymentMessage} from '../features/messages/PaymentMessage';
 import {ProposalComposer} from '../features/messages/proposals/ProposalComposer';
 import {WalletPaymentReview} from '../features/account/WalletSendOperation';

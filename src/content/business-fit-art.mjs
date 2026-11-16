@@ -1052,3 +1052,36 @@ export const businessFitArt={
     ]
   }
 };
+
+// Keep each established audience's object geometry; describe its now-editable
+// client-work example with the same illustration rather than replacing it.
+const clientWorkArtLabels={
+ agencies:{lines:['A clear campaign scope.','One client review.'],steps:[['THE CLIENT BRIEF','Offer, assets & channels','One named approver'],['THE CAMPAIGN REVIEW','Versions & collected notes','Media budget stays separate'],['THE ASSET HANDOVER','Approved files & next owner','The fee in context']]},
+ consultants:{lines:['A bounded engagement.','A useful next decision.'],steps:[['THE ENGAGEMENT','One process, five interviews','Inputs & decision owner'],['THE WORKSHOP','Priorities to review','Evidence & open questions'],['THE ACTION PLAN','Owners & next checks','The engagement together']]},
+ designers:{lines:['The design brief.','The final handover.'],steps:[['THE DESIGN BRIEF','Pages, assets & references','Scope before design'],['THE DESIGN REVIEW','One collected response','The chosen direction'],['THE FILE HANDOVER','Formats, versions & rights','Ready for client review']]},
+ filmmakers:{lines:['A clear shoot scope.','The right final masters.'],steps:[['THE PRODUCTION BRIEF','One shoot, four exports','Inputs & permissions'],['THE EDIT REVIEW','Notes on the exact version','Two collected rounds'],['THE FINAL MASTERS','Exports & caption files','Licences & handover']]},
+ developers:{lines:['A bounded build.','A clear source handover.'],steps:[['THE BUILD SCOPE','Existing API & acceptance','Dependencies stay visible'],['THE TESTED VERSION','Staging checks & defects','The exact source revision'],['THE SOURCE HANDOVER','Deployment notes & limits','Client release approval']]},
+ coaches:{lines:['A clear coaching package.','A useful next action.'],steps:[['THE CLIENT GOAL','Four sessions, eight weeks','A decision to work on'],['THE SESSION REVIEW','Actions & observations','The client decides'],['THE NEXT STEP','A note & a clear check','Support stays bounded']]},
+ accountants:{lines:['A clear monthly scope.','The open questions, kept.'],steps:[['THE ENGAGEMENT','Two accounts, one month','The volume assumption'],['THE RECORD REVIEW','Missing items stay visible','Questions before guessing'],['THE CLIENT PACK','The period & open items','Ready for client review']]},
+};
+for(const [slug,model] of Object.entries(clientWorkArtLabels)){
+ const existing=businessFitArt[slug];
+ businessFitArt[slug]={lines:model.lines,objects:existing.objects.map((object,index)=>({...object,title:model.steps[index][0],lines:model.steps[index].slice(1)}))};
+}
+Object.assign(businessFitArt,{
+ photographers:{lines:['The shoot. The selection.','The final images.'],objects:[
+  {kind:'moodboard',title:'THE SHOOT BRIEF',lines:['People, products & shots','Time & permissions'],variant:''},
+  {kind:'artwork',title:'THE IMAGE SELECTION',lines:['25 images to choose','Editing & usage'],variant:'design'},
+  {kind:'gallery',title:'THE FINAL HANDOVER',lines:['High-res & web files','The image list together'],variant:''},
+ ]},
+ copywriters:{lines:['The brief. The words.','The reviewed final copy.'],objects:[
+  {kind:'manuscript',title:'THE COPY BRIEF',lines:['Three pages, three emails','Sources & claims'],variant:''},
+  {kind:'story-map',title:'THE MESSAGE REVIEW',lines:['Direction & evidence','One collected response'],variant:''},
+  {kind:'handoff',title:'THE EDITABLE COPY',lines:['Labeled final versions','Facts & next owner'],variant:''},
+ ]},
+ 'virtual-assistants':{lines:['A clear admin scope.','A useful weekly handover.'],objects:[
+  {kind:'records',title:'THE ADMIN BRIEF',lines:['Tasks & 20-hour cap','Authorized access'],variant:''},
+  {kind:'calendar',title:'THE APPROVAL REVIEW',lines:['Drafts & open decisions','Ask before committing'],variant:''},
+  {kind:'handoff',title:'THE WEEKLY SUMMARY',lines:['Time, tasks & next steps','Access stays explicit'],variant:''},
+ ]},
+});

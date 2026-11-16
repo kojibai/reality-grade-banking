@@ -22,6 +22,7 @@ import {cooperativePages} from '../src/content/cooperatives.mjs';
 import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {proposalPages} from '../src/content/proposal-pages.mjs';
 import {agreementPages} from '../src/content/agreement-pages.mjs';
+import {clientWorkProductPages} from '../src/content/client-work-product-pages.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
@@ -76,6 +77,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   // The public calculator is emitted separately from Vite's app manifest.
   // Retain every lazy module so its verifier/replay also opens offline.
   for (const name of await readdir(resolve(root, 'learn'))) if (/^value-explainer-(?:main|chunk)-[A-Za-z0-9]+\.js$/.test(name)) urls.add('/learn/' + name);
+  // The public sample hydrates its carried HTML; retain its pure file exporters
+  // too, so an installed guide never needs account or Source startup to edit.
+  for (const name of await readdir(resolve(root, 'learn'))) if (/^client-work-(?:demo\.js|chunk-[A-Za-z0-9]+\.js|file-[A-Za-z0-9]+\.mjs)$/.test(name)) urls.add('/learn/' + name);
   const index = await readFile(resolve(root, 'index.html'), 'utf8');
   // Retain the exact launch artwork referenced by this document for cold PWA
   // opens after installation. These are public assets, never custody evidence.
@@ -97,7 +101,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
     const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath===bankingPage.path||canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
-    const relationshipGuide=[...proposalPages,...agreementPages].some(page=>page.path===canonicalPath);
+    const relationshipGuide=[...proposalPages,...agreementPages,...clientWorkProductPages].some(page=>page.path===canonicalPath);
     if(relationshipGuide){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}
     if(relationshipGuide&&canonicalPath!=='/sign-agreements/'){urls.add('/learn/product-walkthrough.js');urls.add('/learn/proposal-example.pdf');}
     if(cooperative){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}

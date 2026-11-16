@@ -3,18 +3,34 @@ import {expect,it} from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {businessFits} from '../src/content/business-fits.mjs';
 import {moneyExamples} from '../src/content/money-examples.mjs';
+import {clientWorkScenario} from '../src/content/client-work-scenarios.mjs';
+import {fitContent} from '../scripts/business-fit-pages.mjs';
 import {ProductScreen} from '../src/presentation/ProductScreen';
 import {productMoment} from '../scripts/product-walkthrough.mjs';
 // @ts-expect-error Static ESM template.
 import {learnHome} from '../scripts/learn-template.mjs';
 
-it('gives each audience a distinct four-turn financial conversation with retained context',()=>{
- const examples=businessFits.map(fit=>moneyExamples[fit.slug]);
+const clientWorkOnlyFits=new Map([['photographers','photography'],['copywriters','copywriting'],['virtual-assistants','virtual-assistant']]);
+const financialFits=businessFits.filter(fit=>!clientWorkOnlyFits.has(fit.slug));
+it('preserves the thirty established four-turn financial conversations with retained context',()=>{
+ expect(financialFits).toHaveLength(30);
+ const examples=financialFits.map(fit=>moneyExamples[fit.slug]);
  expect(examples.every(Boolean)).toBe(true);
  expect(new Set(examples.map(example=>example.question)).size).toBe(30);
  expect(new Set(examples.map(example=>example.answer)).size).toBe(30);
  expect(new Set(examples.map(example=>example.followupAnswer)).size).toBe(30);
  for(const example of examples){expect(example.followup.length).toBeGreaterThan(10);expect(example.balanceCents).toMatch(/^\d+$/);expect(example.followupAnswer.length).toBeGreaterThan(60);}
+});
+it('gives the three new niches their real editable client-work brief without inventing a financial result',()=>{
+ for(const [slug,scenarioId] of clientWorkOnlyFits){
+  const fit=businessFits.find(fit=>fit.slug===slug)!,sample=clientWorkScenario(scenarioId);
+  expect(sample.id).toBe(scenarioId);expect(sample.brief.length).toBeGreaterThan(100);
+  expect(moneyExamples[slug]).toBeUndefined();
+  const doc=new DOMParser().parseFromString(fitContent(fit),'text/html'),root=doc.querySelector<HTMLElement>('[data-client-work-root]')!;
+  expect(root,slug).not.toBeNull();expect(root.textContent).toContain(sample.brief);
+  expect(JSON.parse(root.dataset.clientWorkProps!).scenarioId).toBe(scenarioId);
+  expect(doc.querySelector('[data-money-outcome]')).toBeNull();
+ }
 });
 it('keeps the selected story bound to actual message components and its sample account',()=>{
  const example=moneyExamples.agencies,doc=new DOMParser().parseFromString(renderToStaticMarkup(<ProductScreen screen="messages" example="agencies"/>),'text/html');

@@ -4,13 +4,27 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {ProductScreen} from '../src/presentation/ProductScreen';
 import {dailyMoneyStories} from '../src/content/daily-money-stories.mjs';
 import {businessFits} from '../src/content/business-fits.mjs';
+import {clientWorkScenario} from '../src/content/client-work-scenarios.mjs';
+import {readProposalDraft} from '../src/receiz/chat-proposal';
+import {readBusinessDocumentDraft} from '../src/receiz/business-document';
 import {productMoment,dailyMoneyWalkthrough} from '../scripts/product-walkthrough.mjs';
 // @ts-expect-error Public enhancement stays standalone ESM.
 import {init} from '../public/learn/product-walkthrough.js';
 afterEach(()=>{document.body.innerHTML='';window.dispatchEvent(new Event('receiz-learn:page'));vi.useRealTimers();vi.unstubAllGlobals();});
+const clientWorkOnlyFits=new Map([['photographers','photography'],['copywriters','copywriting'],['virtual-assistants','virtual-assistant']]);
+const financialFits=businessFits.filter(fit=>!clientWorkOnlyFits.has(fit.slug));
 it('gives all thirty audiences a complete, distinct money workflow with a practical outcome',()=>{
- for(const fit of businessFits){const story=dailyMoneyStories[fit.slug];expect(story,fit.slug).toBeDefined();expect(story.authorization.length).toBeGreaterThan(20);expect(story.outcomeLabel.length).toBeGreaterThan(8);}
- expect(new Set(businessFits.map(fit=>dailyMoneyStories[fit.slug].outcomeLabel)).size).toBe(30);
+ expect(financialFits).toHaveLength(30);
+ for(const fit of financialFits){const story=dailyMoneyStories[fit.slug];expect(story,fit.slug).toBeDefined();expect(story.authorization.length).toBeGreaterThan(20);expect(story.outcomeLabel.length).toBeGreaterThan(8);}
+ expect(new Set(financialFits.map(fit=>dailyMoneyStories[fit.slug].outcomeLabel)).size).toBe(30);
+});
+it('uses validated editable work rather than a payment story for the three new client-work niches',()=>{
+ for(const [slug,scenarioId] of clientWorkOnlyFits){
+  const sample=clientWorkScenario(scenarioId);expect(sample.id).toBe(scenarioId);
+  expect(readProposalDraft(sample.proposal).kind).toBe('proposal');expect(readProposalDraft(sample.invoice).kind).toBe('invoice');
+  expect(readBusinessDocumentDraft(sample.document).sections.length).toBeGreaterThan(1);expect(readBusinessDocumentDraft(sample.agreement).kind).toBe('agreement');
+  expect(dailyMoneyStories[slug]).toBeUndefined();
+ }
 });
 it('reconciles every displayed account result from its exact incoming and outgoing example payments',()=>{
  for(const story of Object.values(dailyMoneyStories)){
@@ -51,8 +65,8 @@ it('preserves paid items, conditional funding and unaccepted proposals in the fi
  expect(dailyMoneyStories.founders.movements).toHaveLength(0);expect(dailyMoneyStories.startups.finalReply).toContain('counted once');
 });
 import {fitContent} from '../scripts/business-fit-pages.mjs';
-it('places each audience’s workflow directly after its practical question, before the wider benefits',()=>{
- for(const fit of businessFits){const html=fitContent(fit),question=html.indexOf('id="your-work"'),workflow=html.indexOf('data-product-walkthrough="fit-money-ui"'),benefits=html.indexOf('class="learn-shell fit-outcomes"');expect(question).toBeGreaterThan(-1);expect(workflow).toBeGreaterThan(question);expect(workflow).toBeLessThan(benefits);}
+it('places each audience’s available workflow after its practical question, before the wider benefits',()=>{
+ for(const fit of businessFits){const html=fitContent(fit),question=html.indexOf('id="your-work"'),workflow=html.indexOf(clientWorkOnlyFits.has(fit.slug)?'data-client-work-root':'data-product-walkthrough="fit-money-ui"'),benefits=html.indexOf('class="learn-shell fit-outcomes"');expect(question).toBeGreaterThan(-1);expect(workflow).toBeGreaterThan(question);expect(workflow).toBeLessThan(benefits);}
 });
 
 it('keeps a receipt open for keyboard readers instead of restarting the story',()=>{

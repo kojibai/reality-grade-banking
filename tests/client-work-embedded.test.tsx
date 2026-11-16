@@ -1,0 +1,15 @@
+import {expect,it} from 'vitest';
+import {renderToString} from 'react-dom/server';
+import {Sheet} from '../src/components/Sheet';
+import {ProposalComposer} from '../src/features/messages/proposals/ProposalComposer';
+import {DocumentComposer} from '../src/features/messages/documents/DocumentComposer';
+import type {ChatProposalWorkspace,ChatProposalWorkspaceState} from '../src/receiz/chat-proposal-workspace';
+import type {DocumentAuthoringWorkspace,DocumentAuthoringWorkspaceState} from '../src/receiz/chat-document-workspace';
+const noop=()=>{};
+const proposalState:ChatProposalWorkspaceState={phase:'review',draft:{kind:'proposal',title:'A local website proposal',summary:'Five pages.',items:[{description:'Website',quantity:'1',unitPriceUsdCents:'150000'}],deliverables:['Editable files'],timeline:'December 4',terms:'Two revisions'},proposal:null,pdf:null,sentMessage:null,error:'',clientName:'Mia',sourceCount:1,hasEarlier:false};
+const proposal:ChatProposalWorkspace={snapshot:()=>proposalState,subscribe:()=>noop,updateDraft:noop,updateBranding:noop,generate:async()=>{},preview:async()=>{},send:async()=>{},check:async()=>{}};
+const documentState:DocumentAuthoringWorkspaceState={phase:'review',draft:{kind:'agreement',title:'A local agreement draft',summary:'Work to review.',sections:[{heading:'Scope',body:'Five pages.'}],tables:[]},format:'docx',terms:null,payload:null,original:null,sentMessage:null,error:'',clientName:'Mia',sourceCount:1,hasEarlier:false};
+const document:DocumentAuthoringWorkspace={snapshot:()=>documentState,subscribe:()=>noop,updateDraft:noop,setFormat:noop,generate:async()=>{},preview:async()=>{},send:async()=>{},check:async()=>{}};
+it('renders an explicit embedded sheet as visible nonmodal content with its real controls',()=>{const html=renderToString(<Sheet presentation="embedded" title="Draft" onClose={noop}><p>Held draft</p></Sheet>);expect(html).not.toContain('<dialog');expect(html).toContain('Held draft');expect(html).toContain('aria-label="Close"');});
+it('preserves the production modal default',()=>{expect(renderToString(<Sheet title="Draft" onClose={noop}><p>Held draft</p></Sheet>)).toContain('<dialog');});
+it('renders the actual proposal and document editors inline for an explicitly labeled example',()=>{for(const html of [renderToString(<ProposalComposer workspace={proposal} presentation="embedded" example={{onAddToConversation:noop}} onClose={noop} onSent={noop}/>),renderToString(<DocumentComposer workspace={document} presentation="embedded" example={{onAddToConversation:noop}} onClose={noop}/>)]){expect(html).not.toContain('<dialog');expect(html).toContain('Scripted example');expect(html).not.toContain('Original is held');}expect(renderToString(<ProposalComposer workspace={proposal} presentation="embedded" example={{onAddToConversation:noop}} onClose={noop} onSent={noop}/>)).toContain('value="A local website proposal"');});

@@ -23,8 +23,12 @@ import {togetherPages} from '../src/content/together.mjs';
 import {cooperativePages} from '../src/content/cooperatives.mjs';
 import {paymentGuidePage} from '../src/content/payment-guide.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
+import {proposalPages} from '../src/content/proposal-pages.mjs';
+import {agreementPages} from '../src/content/agreement-pages.mjs';
+import {clientWorkProductPages} from '../src/content/client-work-product-pages.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ ...[...proposalPages,...agreementPages,...clientWorkProductPages].map(page=>({...page,group:'Banking'})),
  {...emailGuidePage,group:'Banking'},
  {...bookingGuidePage,group:'Banking'},
  {...institutionScorecardPage},
@@ -42,7 +46,7 @@ const solutionGuides=[
  ...twinSalesPages.map(page=>({...page,group:'Banking',title:page.key==='your-twin'?'Your Twin':'Business in action',description:page.key==='your-twin'?page.lead:page.description})),
  {slug:'vaults',path:'/vaults/',group:'Banking',title:'Your Vaults',description:'Hold money and originals separately, add optional passkey protection and share their proof.'},
  {slug:'protect-your-value',path:'/protect/',group:'Banking',title:'Protect your value',description:'See how separate Vault authority, optional passkey encryption and public proof protect access.'},
- {slug:'business',path:'/business/',group:'Banking',title:'Business',description:'Understand cash flow, simplify payment work and spend less time on financial admin.'},
+ {slug:'business',path:'/business/',group:'Banking',title:'Business',description:'Run client relationships from one conversation: your Twin, proposals, invoices, agreements, appointments and delivery.'},
  {...directoryPage,group:'Banking'},
  ...businessFitPages.map(page=>({...page,group:'Business by your work',title:page.fit.label,description:[page.fit.headline,...page.fit.benefits.slice(0,2).map(([title])=>title)].join(' ')})),
  ...cooperativePages.map(page=>({...page,group:'Cooperatives'})),

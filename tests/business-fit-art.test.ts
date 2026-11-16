@@ -6,7 +6,7 @@ import {publicPage} from '../scripts/public-page-metadata.mjs';
 import {shareCardSvg} from '../scripts/social/share-card-art.mjs';
 import {readFileSync} from 'node:fs';
 
-it('shows thirty distinct audience workflows as complete static artwork before motion or any network request',()=>{
+it('shows thirty-three distinct audience workflows as complete static artwork before motion or any network request',()=>{
  const stories=new Set<string>(),workflows=new Set<string>();
  for(const fit of businessFits){
   const doc=new DOMParser().parseFromString(fitContent(fit),'text/html');
@@ -27,7 +27,7 @@ it('shows thirty distinct audience workflows as complete static artwork before m
   stories.add(scene!.querySelector('.fit-art-objects')!.innerHTML.replaceAll(fit.slug,'audience'));
   expect(scene!.outerHTML.length,fit.slug).toBeLessThan(42000);
  }
- expect(stories.size).toBe(30);expect(workflows.size).toBe(30);
+ expect(stories.size).toBe(33);expect(workflows.size).toBe(33);
 });
 it('gives each social preview the same audience artwork and a specific outcome instead of a generic offer image',()=>{
  for(const fit of businessFits){
@@ -37,7 +37,7 @@ it('gives each social preview the same audience artwork and a specific outcome i
   expect(doc.querySelectorAll('svg[data-outcome-object]'),fit.slug).toHaveLength(3);
   expect(doc.documentElement.textContent,fit.slug).toContain(page.lines.join(''));
   expect(page.lines.join(' '),fit.slug).not.toMatch(/Put it to work/);
-  expect(doc.documentElement.textContent,fit.slug).not.toMatch(/149|month|credits/i);
+  expect(doc.documentElement.textContent,fit.slug).not.toMatch(/149|1,499|credits|(?:per|\/)\s*month/i);
   const image=JSON.parse(readFileSync('public/social/manifest.json','utf8')).images[page.path];
   expect(image.alt,fit.slug).toContain(fit.visualLabels[2]);
  }

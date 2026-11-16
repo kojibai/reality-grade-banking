@@ -16,7 +16,10 @@ it('presents an actionable monthly offer and direct existing-account purchase in
  expect(doc.body.textContent).toContain('use their supported value without this subscription');
  expect(doc.querySelector('.business-banking a[href="/learn/get-paid/"]')).not.toBeNull();
  expect(doc.body.textContent).toContain('records you choose');
- expect(doc.querySelector('script,iframe')).toBeNull();expect([...doc.querySelectorAll('input')].every(input=>input.closest('[inert]'))).toBe(true);
+ expect(doc.querySelector('script,iframe')).toBeNull();expect([...doc.querySelectorAll('input,textarea,select')].every(input=>input.closest('[inert],[data-client-work-root]'))).toBe(true);
+ const example=doc.querySelector<HTMLElement>('[data-client-work-root]')!;
+ expect(JSON.parse(example.dataset.clientWorkProps!)).toEqual({scenarioId:'web-design',intent:'management',idPrefix:'business-client-work'});
+ expect(example.textContent).toContain('We need a five-page website');
  expect(doc.querySelector('header')?.outerHTML).toBe(new DOMParser().parseFromString(learnHeader(),'text/html').querySelector('header')?.outerHTML);
  expect(publicPage('/business/')?.title).toContain('$149/month');
  expect(readFileSync('scripts/build-public-pages.mjs','utf8')).toContain('businessContent()');
@@ -38,14 +41,15 @@ it('connects free participation to the paid offer without describing fiat fundin
 it('makes the monthly value concrete and keeps metered usage in billing details',()=>{
  const doc=new DOMParser().parseFromString(businessContent(),'text/html');
  const hero=doc.querySelector('.business-hero')!;
- expect(hero.textContent).toContain('Know where your money stands');
- expect(hero.textContent).toContain('Make getting paid less work');
+ expect(hero.textContent).toContain('Keep the client brief, agreed work, document review, delivery and next conversation connected in Messages');
+ expect(hero.textContent).toContain('Make payment requests and follow-ups less work');
  expect(hero.textContent).toContain('Understand what came in, what went out and what needs attention');
  expect(hero.textContent).toContain('Spend less time on financial admin');
  expect(hero.textContent).not.toMatch(/credits|7,500|Creator AI/);
- expect(hero.textContent).toContain('Your AI counterpart');
- expect(hero.textContent).toContain('called your Twin');
- expect(hero.textContent).toContain('delivery and the next conversation');
+ expect(hero.textContent).toContain('Open Workspace to work with your Twin');
+ expect(hero.textContent).toContain('recent context you choose');
+ expect(hero.textContent).toContain('Edit the details yourself');
+ expect(hero.textContent).toContain('real signing, booking and payment use their existing approval steps');
  expect(doc.querySelector('.business-terms')?.textContent).toContain('Opens your agent. Creates a Receiz ID if needed. Review before paying.');
  expect(doc.querySelector('.business-existing')?.getAttribute('href')).toBe('/#account/messages');
  expect(doc.querySelector('.business-workflow')?.textContent).toContain('available history');

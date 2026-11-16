@@ -28,7 +28,9 @@ import {readWorkspaceFile} from '../../receiz/workspace-file-share';
 import {WorkspaceHeader,type RelationshipWorkspaceTab} from './WorkspaceHeader';
 import {assertBusinessContextText} from '../../receiz/business-document-context';
 import {relationshipTwinKey,relationshipContext} from '../../receiz/relationship-workspace';
-import {MessageCreateMenu,type MessageCreateKind} from './MessageCreateMenu';
+import type {MessageCreateKind} from './MessageCreateMenu';
+import {MessageComposer,TypingBubble} from './MessagePresentation';
+export {MessageComposer,TypingBubble} from './MessagePresentation';
 import type {DocumentAuthoringWorkspace} from '../../receiz/chat-document-workspace';
 import {readChatDocument,isChatDocumentSignatureBody} from '../../receiz/chat-document';
 import {RelationshipMessage} from './RelationshipMessage';
@@ -37,7 +39,7 @@ import type {ChatProposalWorkspace} from '../../receiz/chat-proposal-workspace';
 import {NotificationsControl} from './NotificationsControl';
 import type {NotificationTarget} from '../../pwa/notification-target';
 import {lazy,Suspense,useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
-import {ArrowUp,ArrowUpRight,Brain,CalendarDays,Check,ChevronLeft,DollarSign,FileText,Paperclip,Phone,Search,Users,Video,PanelRightOpen} from 'lucide-react';
+import {ArrowUpRight,Brain,CalendarDays,Check,ChevronLeft,Paperclip,Phone,Search,Users,Video,PanelRightOpen} from 'lucide-react';
 import {BankMark} from '../../components/BankMark';
 import {Sheet} from '../../components/Sheet';
 import {CallPortal} from './CallPortal';
@@ -706,13 +708,4 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLe
     {documentWorkspace&&active&&(documentOpen.current===(mode==='twin'?selectedTwinKey:mode==='thread'?selected?.id:null)||!!workspaceScope&&documentOpen.current===workspaceScope.conversationId)&&<Suspense fallback={<InlineOpening label="Opening document"/>}><DocumentComposer workspace={documentWorkspace} onClose={closeDocument} onSent={message=>{proposalUpdated(message.conversationId);closeDocument();}} canDraftWithTwin={!!agentEntitled} onTwinRequired={requireTwin} onCreated={()=>{setOwnerDocumentsVersion(value=>value+1);closeDocument();}}/></Suspense>}
     {proposalWorkspace&&active&&(mode==='thread'||!!workspaceScope)&&!!selected&&proposalOpen.current===selected.id&&<><Suspense fallback={<InlineOpening label="Opening proposal"/>}><ProposalComposer workspace={proposalWorkspace} canDraftWithTwin={!!agentEntitled} onTwinRequired={requireTwin} onClose={closeProposal} onSent={()=>{if(selected)proposalUpdated(selected.id);closeProposal();}}/></Suspense></>}
   </section></Sheet>{heldCall&&api&&<CallPortal inlineHost={callHost} expanded={active&&mode==='call'}><Suspense fallback={null}><CallPanel identity={api.callTransport} conversationId={heldCall.conversationId} conversationTitle={heldCall.title} userId={api.accountUid} initialVideo={heldCall.video} initialCallId={heldCall.callId} minimized={!active||mode!=='call'} onLiveChange={onCallLiveChange} onMinimize={()=>setMode(selected?'thread':'inbox')} onRestore={()=>{chooseView();setMode('call');if(!active)onOpen?.();}} onClose={()=>{setHeldCall(null);setCallLive(false);setMode(selected?'thread':'inbox');}}/></Suspense></CallPortal>}</div>;
-}
-export function MessageComposer({draft,setDraft,submit,placeholder,busy,disabled,connected=true,maxLength,onSendMoney,onProposal,onCreate,onBlur,focusRequest}:{focusRequest?:number;onBlur?:()=>void;connected?:boolean;onSendMoney?:()=>void;onProposal?:()=>void;onCreate?:(kind:MessageCreateKind)=>void;draft:string;setDraft(value:string):void;submit(event:FormEvent):void;placeholder:string;busy:boolean;disabled?:boolean;maxLength:number}){
-  const field=useRef<HTMLInputElement>(null);
-  useEffect(()=>{if(focusRequest!==undefined)field.current?.focus({preventScroll:true});},[focusRequest]);
-  return <form className="bank-message-composer" onSubmit={submit}>{onCreate?<MessageCreateMenu disabled={!connected||busy||disabled} onCreate={onCreate}/>:onProposal&&<button type="button" className="bank-message-proposal" aria-label="Create proposal" title="Create proposal or invoice" disabled={!connected||busy||disabled} onClick={onProposal}><FileText size={17} strokeWidth={1.7}/></button>}{onSendMoney&&<button type="button" className="bank-message-payment" aria-label="Send money" title="Send money" disabled={busy} onClick={onSendMoney}><DollarSign size={17} strokeWidth={1.7}/></button>}<input ref={field} aria-label={placeholder} placeholder={placeholder} value={draft} onChange={event=>setDraft(event.target.value)} maxLength={maxLength} disabled={disabled} onBlur={onBlur}/><button type="submit" disabled={!connected||disabled||busy||!draft.trim()} aria-label={placeholder==='Message…'?'Send message':'Ask your agent'}><ArrowUp size={19}/></button></form>;
-}
-
-export function TypingBubble({name,text,activity='responding',person,avatarUrl,status}:{name:string;text:string;activity?:'typing'|'responding'|'working';status?:string;person?:ChatPerson|null;avatarUrl?:string|null}){
-  return <div className="bank-message-other bank-message-stream" aria-label={name+(activity==='typing'?' is typing':activity==='working'?' is working':' is responding')}><ReplyIdentity name={name} person={person} avatarUrl={avatarUrl}/>{text?<p>{text}<span className="bank-stream-cursor" aria-hidden="true"/></p>:<span className="bank-typing-dots" aria-hidden="true"><i/><i/><i/></span>}{status&&<small className="bank-agent-work-status" role="status">{status}</small>}</div>;
 }
