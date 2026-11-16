@@ -94,6 +94,8 @@ jobs:
           echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run test:browser
+      - name: Messages appointment and relationship continuity
+        run: MESSAGES_VISUAL_EVIDENCE=test-results/messages-workspace node scripts/check-messages-workspace-browser.mjs
       - name: Client work library without JavaScript or APIs
         run: node scripts/check-client-work-browser.mjs
       - name: Interactive Messages examples and edited document downloads

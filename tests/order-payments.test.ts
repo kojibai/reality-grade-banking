@@ -113,10 +113,13 @@ it.each(['balance','card','reserve','settlement','composite'] as const)('connect
 
 it('retains successful siblings and rotates past stalled originals through cold checks',async()=>{
  const f=await fixture();await f.api.checkout({orderId:'one',amountUsdCents:'1000'});const original=await f.pay('one'),digest=original.source.transfer.metadata.note!.split(':')[1];vi.useFakeTimers();
- let began!:()=>void,readCount=0;const ready=new Promise<void>(resolve=>began=resolve),candidates=Array.from({length:5},(_,n)=>({transferId:n===4?original.transfer.id:`50000000-0000-4000-8000-${String(n).padStart(12,'0')}`,clientNonce:original.transfer.clientNonce}));
- const request=async<T>(path:string):Promise<T>=>{if(path.includes('saleDigest='))return{ok:true,accountUserId:merchant.userId,saleDigest:digest,candidates,nextCursor:null} as T;if(path.includes(original.transfer.id))return original as T;if(++readCount===4)began();return new Promise<T>(()=>{});};
+ let began!:()=>void,coldBegan!:()=>void,readCount=0;const ready=new Promise<void>(resolve=>began=resolve),coldReady=new Promise<void>(resolve=>coldBegan=resolve),candidates=Array.from({length:5},(_,n)=>({transferId:n===4?original.transfer.id:`50000000-0000-4000-8000-${String(n).padStart(12,'0')}`,clientNonce:original.transfer.clientNonce}));
+ const request=async<T>(path:string):Promise<T>=>{if(path.includes('saleDigest='))return{ok:true,accountUserId:merchant.userId,saleDigest:digest,candidates,nextCursor:null} as T;if(path.includes(original.transfer.id))return original as T;if(++readCount===4)began();if(readCount===5)coldBegan();return new Promise<T>(()=>{});};
  let api=createBankeizPayments({merchant,store:f.store,receiz:{request}}),checking=api.check('one'),first=expect(checking).resolves.toMatchObject({status:'pending',receiving:'incomplete'});await ready;await vi.advanceTimersByTimeAsync(15001);await first;
- api=createBankeizPayments({merchant,store:f.store,receiz:{request}});checking=api.check('one');const second=expect(checking).resolves.toMatchObject({status:'paid'});await vi.advanceTimersByTimeAsync(15001);await second;
+ api=createBankeizPayments({merchant,store:f.store,receiz:{request}});checking=api.check('one');const second=expect(checking).resolves.toMatchObject({status:'paid'});
+ // The cold SDK request includes asynchronous digest work. Wait for its
+ // stalled sibling to start before advancing the observation deadline.
+ await coldReady;await vi.advanceTimersByTimeAsync(15001);await second;
 });
 
 it('an interrupted batch advances only examined orders and fixes a lap boundary while new orders arrive',async()=>{

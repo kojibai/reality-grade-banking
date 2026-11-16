@@ -14,7 +14,7 @@ import {AvailabilityForm,BookingLinks} from './BookingSettings';
 import {Back,OrganizerFailure,localDay} from './ui';
 import './organizer.css';
 type View='contacts'|'person'|'contact-form'|'import'|'calendar'|'event'|'appointment'|'links'|'availability'|'custom';
-export interface OrganizerEntry {id:number;view:'contacts'|'calendar'|'person'|'appointment';person?:ChatPerson;appointment?:AppointmentInput}
+export interface OrganizerEntry {id:number;view:'contacts'|'calendar'|'person'|'appointment';person?:ChatPerson;correspondent?:{email:string;displayName:string};appointment?:AppointmentInput}
 export function OrganizerPanel({identity,entry,active,onBack,onMessage,returnLabel='Return to conversation'}:{identity:OpenIdentity;entry:OrganizerEntry;active:boolean;onBack():void;returnLabel?:string;onMessage?(person:ChatPerson):void}){
  const initialAppointment=useRef(entry.appointment);
  const [day,setDay]=useState(()=>localDay(new Date()));
@@ -31,7 +31,14 @@ export function OrganizerPanel({identity,entry,active,onBack,onMessage,returnLab
  const go=useCallback((next:View)=>{navigation.current++;if(scroll.current)scrolls.current.set(viewRef.current,scroll.current.scrollTop);viewRef.current=next;setView(next);setError('');setNotice('');},[]);
  useEffect(()=>{if(scroll.current)scroll.current.scrollTop=scrolls.current.get(view)??0;},[view]);
  useEffect(()=>{if(entry.id===entryRef.current)return;entryRef.current=entry.id;initialAppointment.current=entry.appointment;go(entry.view);},[entry.id,entry.view,go]);
- useEffect(()=>{if(!api||!entry.person)return;const p=entry.person,known=api.knownContacts()?.find(row=>row.linkedUserId===p.userId);if(known)setPerson({...known,username:p.username,avatarUrl:p.avatarUrl,accountPresentation:{...accountCreationPresentation(p as unknown as Record<string,unknown>),userId:p.userId,username:p.username,displayName:p.displayName}});else{const now=new Date().toISOString();setPerson({id:'conversation:'+p.userId,linkedUserId:p.userId,fullName:p.displayName||p.username||'Receiz account',email:'',phone:'',createdAt:now,updatedAt:now,interactions:[],username:p.username,avatarUrl:p.avatarUrl,accountPresentation:{...accountCreationPresentation(p as unknown as Record<string,unknown>),userId:p.userId,username:p.username,displayName:p.displayName}});}},[api,entry.id,entry.person]);
+ useEffect(()=>{
+  if(!api)return;const p=entry.person,email=entry.correspondent?.email??'';
+  if(!p&&!email){setPerson(null);return;}
+  const contacts=api.knownContacts()??[],known=(p?contacts.find(row=>row.linkedUserId===p.userId):undefined)??(email?contacts.find(row=>row.email.toLowerCase()===email.toLowerCase()&&(!p||!row.linkedUserId||row.linkedUserId===p.userId)):undefined);
+  const now=new Date().toISOString(),presentation=p?{username:p.username,avatarUrl:p.avatarUrl,accountPresentation:{...accountCreationPresentation(p as unknown as Record<string,unknown>),userId:p.userId,username:p.username,displayName:p.displayName}}:{};
+  if(known)setPerson({...known,...presentation,email:email||known.email});
+  else setPerson({id:p?'conversation:'+p.userId:'conversation:email:'+email,linkedUserId:p?.userId??'',fullName:p?.displayName||entry.correspondent?.displayName||p?.username||email||'Receiz account',email,phone:'',createdAt:now,updatedAt:now,interactions:[],...presentation});
+ },[api,entry.id,entry.person,entry.correspondent]);
  useEffect(()=>{if(!api||!active||!['contacts','person','contact-form'].includes(view))return;let current=true;const refresh=view==='contacts'&&(contactsEntry.current?.api!==api||contactsEntry.current.id!==entry.id);if(view==='contacts')contactsEntry.current={api,id:entry.id};setContacts(api.knownContacts());void api.contacts(refresh).then(rows=>{if(current&&alive.current)setContacts(rows);}).catch(cause=>{if(current&&alive.current)setError(cause);});return()=>{current=false;};},[api,active,view,entry.id]);
  const window=useMemo(()=>calendarWindow(day),[day.slice(0,7)]);
  // Held range coverage paints immediately; each explicit entry still needs its

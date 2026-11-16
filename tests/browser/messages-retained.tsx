@@ -1,21 +1,31 @@
+import {createNativeOrganizer} from '../../src/receiz/native-organizer';
 import {loadDeviceIdentity,saveDeviceIdentity,loadMessagingDisplay,saveMessagingDisplay} from '../../src/receiz/identity-vault';
 import {openMessagingRetention} from '../../src/receiz/messaging-retention';
 import {useState} from 'react';import {createRoot} from 'react-dom/client';
 import {Sheet} from '../../src/components/Sheet';import {LiveSend} from '../../src/features/account/LivePayments';
 import {MessagesPanel} from '../../src/features/messages/MessagesPanel';import {ConsoleShell} from '../../src/components/ConsoleShell';
-import {createNativeMessaging,type ChatConversation,type ChatNativeMessage} from '../../src/receiz/native-messaging';import {createNativeTwin} from '../../src/receiz/native-twin';import type {OpenIdentity} from '../../src/receiz/native-identity';
+import {createNativeMessaging,type ChatConversation,type ChatMessage,type ChatNativeMessage} from '../../src/receiz/native-messaging';import {createNativeTwin} from '../../src/receiz/native-twin';import type {OpenIdentity} from '../../src/receiz/native-identity';
 import '../../src/styles/tokens.css';import '../../src/styles/app.css';import '../../src/styles/features.css';
 const fixtureParams=new URLSearchParams(location.search),twinAccess=fixtureParams.has('twin');
 const owner='11111111-1111-4111-8111-111111111111',peer='22222222-2222-4222-8222-222222222222',threadId='33333333-3333-4333-8333-333333333333';
 const person={kind:'user' as const,userId:peer,username:'mira',displayName:'Mira',avatarUrl:null};
-const rows:ChatNativeMessage[]=[{id:'44444444-4444-4444-8444-444444444444',conversationId:threadId,senderUserId:peer,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body:'The original stays connected to its history.',createdAt:'2026-10-19T16:15:00Z',receizedAt:'2026-10-19T16:15:00Z',receipt:{},sealedOriginalAvailable:false}];
-rows.push({...rows[0],id:'66666666-6666-4666-8666-666666666666',senderUserId:owner,senderDisplay:'You',body:'Transferred $25.00 to @mira',walletTransfer:{kind:'chat_transfer',transferId:'fixture-payment',senderUserId:owner,recipientUserId:peer,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/fixture-payment'}});
+const first:ChatNativeMessage={id:'44444444-4444-4444-8444-444444444444',conversationId:threadId,senderUserId:peer,senderKind:'user',senderAiId:null,senderDisplay:'Mira',body:'The original stays connected to its history.',createdAt:'2026-10-19T16:15:00Z',receizedAt:'2026-10-19T16:15:00Z',receipt:{},sealedOriginalAvailable:false};
+const rows:ChatMessage[]=[first];
+rows.push({...first,id:'66666666-6666-4666-8666-666666666666',senderUserId:owner,senderDisplay:'You',body:'Transferred $25.00 to @mira',walletTransfer:{kind:'chat_transfer',transferId:'fixture-payment',senderUserId:owner,recipientUserId:peer,amountUsdCents:'2500',amountPhiMicro:'123456',note:'Lunch',transactionHref:'/transactions/fixture-payment'}});
 const conversations:ChatConversation[]=[{id:threadId,kind:'dm',title:'Mira',members:[person],aiAgents:[],defaultAiId:null,unreadCount:1,previewMessage:rows[0],createdAt:rows[0].createdAt,updatedAt:rows[0].createdAt,lastMessageAt:rows[0].createdAt}];
+if(fixtureParams.has('appointment')){
+ const now=new Date().toISOString(),email=fixtureParams.has('email'),own=fixtureParams.has('own');
+ rows.splice(0,rows.length,{...first,createdAt:now,body:'Could we meet tomorrow at 3pm for 45 minutes?',...(own?{senderUserId:owner,senderDisplay:'You'}:{}),...(email?{senderKind:'external-email',senderUserId:null,senderAiId:null,walletTransfer:null,transport:{fromEmail:'mira@example.test',recipientAlias:'fixture_owner@receiz.com'}}:{})} as ChatMessage);
+ Object.assign(conversations[0],{previewMessage:rows[0],...(email?{kind:'group',members:[],emailChannel:{schema:'receiz.chat.email-channel.v2',ownerUserId:owner,correspondentEmail:'mira@example.test',displayName:'Mira',subject:'Appointment'}}:{})});
+}
+const calendarWrites:unknown[]=[];Object.assign(window,{calendarWrites});
 const json=(value:unknown)=>Response.json(value);
 // Controlled HTTP-contract fixture. Production adapters and components are real;
 // all data below is synthetic and there is no external network or private account.
 const request=async(path:string,init?:RequestInit)=>{
  const body=typeof init?.body==='string'?JSON.parse(init.body):{};
+ if(path==='/api/calendar/events'&&init?.method==='POST'){calendarWrites.push(body);return json({ok:true,event:{...body,id:'77777777-7777-4777-8777-777777777777',ownerUserId:owner,kind:'appointment',location:'',note:'',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}});}
+
  if(path.includes('/conversations')&&path.includes('/api/developers/twin/')){const key=new URL(path,location.origin).searchParams.get('threadKey');if(key){const response=()=>json({ok:true,ownerUid:owner,threadKey:key,entries:[],hasMore:false,nextCursor:null,sourceDigest:'a'.repeat(64)});if(fixtureParams.has('pending-history'))return new Promise<Response>(resolve=>{Object.assign(window,{releaseWorkspaceHistory:()=>resolve(response())});});return response();}return json({ok:true,ownerUid:owner,threads:[],hasMore:false,nextCursor:null});}
  if(path.includes('/api/developers/twin/'))return json({ok:true,requestId:body.requestId,world:{username:'fixture_owner'},reply:{message:'The receipt keeps the recorded payment and its funding history together. Open the original record to inspect its sources.',source:'upstream',memoryScope:'relationship',actions:[],memory:[]}});
  if(path.includes('/users/search'))return json({ok:true,users:[person,{...person,userId:'55555555-5555-4555-8555-555555555555',username:'alex',displayName:'Alex'}]});
@@ -23,14 +33,14 @@ const request=async(path:string,init?:RequestInit)=>{
  if(path==='/api/chat/conversations')return json({ok:true,conversations});
  if(path.endsWith('/calls'))return json({ok:true,calls:[],activeCall:null});
  const thread=/conversations\/([^/]+)\//.exec(path)?.[1]??threadId;
- if(path.includes('/messages')&&init?.method==='POST'){const message={...rows[0],id:crypto.randomUUID(),conversationId:thread,senderUserId:owner,senderDisplay:'You',body:body.body,createdAt:new Date().toISOString()};rows.push(message);if(path.endsWith('/stream')){
+ if(path.includes('/messages')&&init?.method==='POST'){const message={...first,id:crypto.randomUUID(),conversationId:thread,senderUserId:owner,senderDisplay:'You',body:body.body,createdAt:new Date().toISOString()};rows.push(message);if(path.endsWith('/stream')){
   let closed=false;const source=new ReadableStream<Uint8Array>({start(sink){
    const emit=(value:unknown)=>{if(!closed)sink.enqueue(new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n'));};
    const pause=()=>new Promise(resolve=>setTimeout(resolve,500));
    void (async()=>{await pause();if(closed)return;emit({type:'user_message',message});emit({type:'ai_start',agent:{id:'mira-twin',name:'Mira’s Twin'}});
     const chunks=['The payment ','and its proof ','stay connected. ','You can inspect ','the full source ','in your ledger.'];let text='';
     for(const delta of chunks){await pause();if(closed)return;text+=delta;emit({type:'ai_delta',agentId:'mira-twin',delta});}
-    const reply={...rows[0],id:crypto.randomUUID(),senderKind:'ai' as const,senderAiId:'mira-twin',senderDisplay:'Mira’s Twin',body:text,createdAt:new Date().toISOString()};rows.push(reply);emit({type:'ai_done',agentId:'mira-twin',message:reply});emit({type:'done'});closed=true;sink.close();
+    const reply={...first,id:crypto.randomUUID(),senderKind:'ai' as const,senderAiId:'mira-twin',senderDisplay:'Mira’s Twin',body:text,createdAt:new Date().toISOString()};rows.push(reply);emit({type:'ai_done',agentId:'mira-twin',message:reply});emit({type:'done'});closed=true;sink.close();
    })();
   },cancel(){closed=true;}});return new Response(source,{headers:{'content-type':'text/event-stream'}});
  }return json({ok:true,message});}
@@ -48,6 +58,7 @@ const retention=await openMessagingRetention({load:()=>loadMessagingDisplay(bind
 const restored=retention.known();
 const offline=new URLSearchParams(location.search).has('offline');
 const api=Object.assign(createNativeMessaging({request,accountUid:owner,retained:restored,onChange:source=>retention.capture(source)}),{twin:createNativeTwin({request,accountUid:owner,username:'fixture_owner',assertOpen(){}})});
-const identity={knownTwinAccess:()=>twinAccess,knownMessagingDisplay:()=>restored,messaging:async()=>offline?new Promise<never>(()=>{}):api} as unknown as OpenIdentity;
+const organizer=createNativeOrganizer({request,accountUid:owner});
+const identity={...(fixtureParams.has('appointment')?{organizer:async()=>organizer,knownOrganizer:()=>organizer}:{}),knownTwinAccess:()=>twinAccess,knownMessagingDisplay:()=>restored,messaging:async()=>offline?new Promise<never>(()=>{}):api} as unknown as OpenIdentity;
 function Fixture(){const[open,setOpen]=useState(true),[payment,setPayment]=useState<{recipient?:{userId:string;username:string}}|null>(null);return<ConsoleShell panel="account" onNavigate={()=>{}} onDeposit={()=>{}} onProfile={()=>{}} onMessages={()=>setOpen(true)}><p style={{fontSize:12,color:'#7d8b9d'}}>{offline?'Cold reopen · connection held offline':'Live adapter fixture · synthetic data'}</p><h1>Your conversations</h1><MessagesPanel identity={identity} active={open&&!payment} onPreparePayment={recipient=>setPayment({recipient})} onClose={()=>setOpen(false)} twinContextRecords={[{id:'fixture-record',title:'Recorded payment · $25.00',text:'Synthetic Bank display excerpt: a recorded $25.00 payment.'}]}/>{payment&&<Sheet title="Send" onClose={()=>setPayment(null)}><LiveSend identity={identity} wallet={null} initialRecipient={payment.recipient} onClose={()=>setPayment(null)}/></Sheet>}</ConsoleShell>;}
 createRoot(document.getElementById('root')!).render(<Fixture/>);

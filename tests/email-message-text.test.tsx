@@ -9,3 +9,11 @@ it('presents email as readable content with usable sign-in links and private ori
 it('email contents remain inert text and never become active markup',()=>{
  const markup=renderToStaticMarkup(<EmailMessage message={{...message,body:'<script>bad()</script> javascript:bad()'}} download={async()=>{}}/>);expect(markup).not.toContain('<script>');expect(markup).not.toContain('href="javascript:');expect(markup).toContain('&lt;script&gt;');
 });
+
+it('recognizes appointment candidates only in the new email reply and preserves the exact Original',()=>{
+ const original={...message,body:'Thanks, I will send the brief.\n\nOn Friday, Someone wrote:\n> Could we meet tomorrow at 3pm?',createdAt:'2100-11-15T15:00:00Z',sealedOriginal:{transport:{inReplyTo:'prior-email'}}} as ChatMessage;
+ const before=JSON.stringify(original),appointment={identity:{organizer:async()=>{throw Error('No calendar command on rendering');}} as unknown as import('../src/receiz/native-identity').OpenIdentity,accountUid:'owner',attendees:['alex@example.test'],title:'Alex'};
+ const markup=renderToStaticMarkup(<EmailMessage message={original} download={async()=>{}} appointment={appointment}/>);
+ expect(markup).toContain('Thanks, I will send the brief.');expect(markup).not.toContain('Review appointment from message');expect(JSON.stringify(original)).toBe(before);
+ const proposed=renderToStaticMarkup(<EmailMessage message={{...original,body:'Could we meet tomorrow at 3pm?'}} download={async()=>{}} appointment={appointment}/>);expect(proposed).toContain('Review appointment from message');
+});
