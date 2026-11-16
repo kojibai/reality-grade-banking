@@ -10,7 +10,7 @@ import {publicAssetTitle,publicAuthoredAssetTitle} from '../src/receiz/asset-tit
 import {publicMediaPlayback} from '../src/receiz/public-asset-embed.js';
 import {publicDocumentUrl} from '../src/receiz/public-document.js';
 import {publicDocumentMiddleware} from './public-document.js';
-import { publicMaterialOriginalUrl,publicMediaArtworkUrl,publicMediaKind,publicProfileOriginalCreator,publicOriginalProvenance,safeReceizArtworkUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
+import { parsePublicMarket,publicMaterialOriginalUrl,publicMediaArtworkUrl,publicMediaKind,publicProfileOriginalCreator,publicOriginalProvenance,safeReceizArtworkUrl, safeReceizPublicUrl } from '../src/receiz/public-market.js';
 import {publicMarketPulseSeed,publicSportsValueRow} from '../src/receiz/market-projection/source.js';
 import {publicSportsSealedCopies,publicSportsSealedBirths} from '../src/receiz/market-projection/sealed-copies.js';
 import {boundSportsHistoryObservation,publicSportsGroupIdentity,publicSportsHistorySnapshot} from '../src/receiz/market-projection/sports-observations.js';
@@ -19,9 +19,12 @@ import {projectPublicCollectiblePresentation} from '../src/receiz/public-collect
 
 const PREFIX = '/api/bank/public-market/';
 const MAX_BYTES = 128 * 1024 * 1024;
+// Public delivery revisions are opaque HTTP entity tags, including native
+// membership coordinates. They do not supply proof or prepared-page authority.
+function membershipEtag(value:unknown):string|undefined{return typeof value==='string'&&/^(?:W\/)?"[\x21\x23-\x7e]{1,256}"$/.test(value)?value:undefined;}
 export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   const local = new URL(requestUrl, 'http://localhost');
-  if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership?representation=selected');
+  if (local.pathname === `${PREFIX}membership` && (!local.search||local.searchParams.size===1&&local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??''))) return new URL('https://receiz.com/api/market/public-membership');
   if (local.pathname === `${PREFIX}sports` && !local.search) return new URL('https://receiz.com/api/game/sports/economy');
   if (local.pathname === `${PREFIX}capitalization` && !local.search) return new URL('https://receiz.com/api/proof-graph/market-cap');
   if(local.pathname===`${PREFIX}quotes`&&(!local.search||local.searchParams.size===1&&(local.searchParams.getAll('afterTrade').length===1&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(local.searchParams.get('afterTrade')??'')||local.searchParams.getAll('afterPublication').length===1&&/^[a-f0-9]{64}$/.test(local.searchParams.get('afterPublication')??'')))){const target=new URL('https://receiz.com/api/market/public-snapshot?detail=full&projection=asset-quotes');if(local.searchParams.has('afterTrade'))target.searchParams.set('afterTrade',local.searchParams.get('afterTrade')!);return target;}
@@ -100,9 +103,13 @@ async function loadPublicResponse(target: URL,afterPublication?:string,ifNoneMat
         for(const key of Object.keys(input))delete input[key];Object.assign(input,projected);
       } else if (target.pathname.endsWith('public-membership')) {
         const raw=input?.transport?.publicProfileHeads;if(Array.isArray(raw)&&raw.every((head:Record<string,unknown>)=>{const profile=head?.profile as Record<string,unknown>|undefined,viewer=head?.viewer as Record<string,unknown>|undefined,stats=head?.stats as Record<string,unknown>|undefined;return profile?.isPrivate===false&&typeof profile.userId==='string'&&typeof profile.username==='string'&&viewer?.canView===true&&viewer.isOwner===false&&viewer.isSignedIn===false&&viewer.canEdit===false&&Number.isSafeInteger(stats?.originals)&&Number(stats?.originals)>=0&&Number.isSafeInteger(stats?.signedOriginals)&&Number(stats?.signedOriginals)>=0&&Number(stats?.signedOriginals)<=Number(stats?.originals);}))profileHeads=raw.map(({profile,viewer,stats}:Record<string,unknown>)=>({profile,viewer,stats}));
-        const selected=response.headers.get('x-receiz-public-material-revision');
-        if(!selected||!/^[a-f0-9]{64}$/.test(selected)||input.transport?.publicMembership?.revision!==selected)throw Error('The selected public collection is unavailable.');
+        const prepared=target.searchParams.get('representation')==='selected';
+        if(prepared){
+         const selected=response.headers.get('x-receiz-public-material-revision');
+         if(!selected||!/^[a-f0-9]{64}$/.test(selected)||input.transport?.publicMembership?.revision!==selected)throw Error('The selected public collection is unavailable.');
+        }
         curatePublicMarketMembership(input);
+        if(!prepared){const catalog=parsePublicMarket(input);if(!catalog.complete||!catalog.revision)throw Error('Receiz public collection is unavailable.');}
       } else if (target.pathname === '/api/game/sports/economy') {
         if (input.ok !== true || input.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(input.cards) || input.cards.length > 100000) throw new Error('Public sports inventory is unavailable.');
         const fields = ['collectibleId', 'claimHash', 'athlete', 'sport', 'rarity', 'issueLine', 'liveValueUsd', 'totalValueUsd', 'issuedCount', 'vaultCount', 'pricedCount', 'route'];
@@ -128,7 +135,8 @@ async function loadPublicResponse(target: URL,afterPublication?:string,ifNoneMat
       } else if (input.data) { input.data = { schema: input.data.schema, ...(typeof input.data.generatedAt==='string'&&Number.isFinite(Date.parse(input.data.generatedAt))?{generatedAt:input.data.generatedAt}:{}), ...(typeof input.data.serverPulse==='number'&&Number.isSafeInteger(input.data.serverPulse)&&input.data.serverPulse>=0||typeof input.data.serverPulse==='string'&&/^\d{1,24}$/.test(input.data.serverPulse)?{serverPulse:input.data.serverPulse}:{}), liveMarkets: input.data.liveMarkets }; }
       bytes = new TextEncoder().encode(JSON.stringify(input));
     }
-    const current = { bytes, type, etag: response.headers.get('etag'), fetchedAt: Date.now(),...(profileHeads?{profileHeads}:{}) };
+    const etag=response.headers.get('etag');
+    const current = { bytes, type, etag: membership?membershipEtag(etag)??null:etag, fetchedAt: Date.now(),...(profileHeads?{profileHeads}:{}) };
     if (!original) if(epochs.get(key)===epoch)cache.set(key, current); return current;
   })().finally(() => pending.delete(pendingKey));
   pending.set(pendingKey, attempt); return attempt;
@@ -139,7 +147,7 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   if (request.method !== 'GET') { response.writeHead(405, { Allow: 'GET' }); response.end(); return; }
   const target = resolvePublicMarketTarget(request.url); if (!target) { response.writeHead(400); response.end(); return; }
   try { const conditional=request.headers?.['if-none-match'];
-   const selected=target.pathname.endsWith('/public-membership')&&typeof conditional==='string'&&/^"[a-f0-9]{64}"$/.test(conditional)?conditional:undefined;
+   const selected=target.pathname.endsWith('/public-membership')?membershipEtag(conditional):undefined;
    const result = await loadPublicResponse(target,new URL(request.url,'http://localhost').searchParams.get('afterPublication')??new URL(request.url,'http://localhost').searchParams.get('afterTrade')??undefined,selected); response.setHeader('Content-Type', result.type);
    if(target.pathname.endsWith('/public-membership')&&result.etag){
      response.setHeader('ETag',result.etag);
@@ -153,6 +161,9 @@ export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes'
   if(afterPublication!==undefined&&(kind!=='membership'||!/^[a-f0-9]{64}$/.test(afterPublication)))throw new Error('Unsupported publication freshness reference.');
   if(options?.selectionKey!==undefined&&!/^[a-f0-9]{64}$/.test(options.selectionKey))throw Error('Unsupported public preparation coordinate.');
   const target = resolvePublicMarketTarget(`${PREFIX}${kind}`); if (!target) throw new Error('Unsupported public source.');
+  // Only write-side preparation asks for its selected material root. Ordinary
+  // discovery and Ledger reuse native complete Showcase membership directly.
+  if(kind==='membership'&&(options?.fresh||options?.selectionKey))target.searchParams.set('representation','selected');
   const response=await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined));if(kind==='membership'&&response.profileHeads)options?.onPublicProfileHeads?.(response.profileHeads);return JSON.parse(new TextDecoder().decode(response.bytes));
 }
 /** Only public fields used by the canonical display projector cross this boundary. */

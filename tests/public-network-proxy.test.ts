@@ -4,6 +4,7 @@ import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import {groupLedgerPaymentRecords} from '../src/receiz/ledger-payment-records';
 import {createHash} from 'node:crypto';
 const selectedRevision='a'.repeat(64);
+const membership=(itemCount:number)=>({version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount,revision:selectedRevision});
 const selectedHeaders={'x-receiz-public-material-revision':selectedRevision,etag:'"'+selectedRevision+'"'};
 
 it('permits only the shared public source families and bounded cursors', () => {
@@ -18,14 +19,14 @@ it('permits a bounded publication freshness hint only for the public proof colle
  expect(parsePublicNetworkRequest(path)).toEqual({source:'proofs',afterPublication:digest});
  for(const bad of [path+'&afterPublication='+digest,path.replace(digest,'invalid'),path.replace('source=proofs','source=wallet'),path+'&cursor=next'])expect(parsePublicNetworkRequest(bad)).toBeNull();
 });
-it('refreshes Ledger proofs past cached pre-publication membership through the fixed selected collection without private authority',async()=>{
+it('refreshes Ledger proofs past cached pre-publication membership through the existing native collection without private authority',async()=>{
  vi.resetModules();const {readSharedPublicSource:read}=await import('../server/public-network');
- const request=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[]}},{headers:selectedHeaders})).mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:{revision:selectedRevision},publicOriginals:[{id:'published-original',receizId:'published-original',title:'Published Original'}]}},{headers:selectedHeaders}));vi.stubGlobal('fetch',request);
+ const request=vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:membership(0),publicOriginals:[]}},{headers:selectedHeaders})).mockResolvedValueOnce(Response.json({ok:true,transport:{publicMembership:membership(1),publicOriginals:[{id:'published-original',receizId:'published-original',title:'Published Original'}]}},{headers:selectedHeaders}));vi.stubGlobal('fetch',request);
  try{
   await read('proofs');
   const fresh=await read('proofs',undefined,'b'.repeat(64)) as {transport:{publicOriginals:{id:string}[]}};
   expect(fresh.transport.publicOriginals[0].id).toBe('published-original');
-  expect(request).toHaveBeenCalledTimes(2);expect(String(request.mock.calls[1][0])).toBe('https://receiz.com/api/market/public-membership?representation=selected');expect(request.mock.calls[1][1]).toMatchObject({credentials:'omit',redirect:'error',cache:'no-store'});
+  expect(request).toHaveBeenCalledTimes(2);expect(String(request.mock.calls[1][0])).toBe('https://receiz.com/api/market/public-membership');expect(request.mock.calls[1][1]).toMatchObject({credentials:'omit',redirect:'error',cache:'no-store'});
   request.mockResolvedValueOnce(new Response(null,{status:304}));
   expect((await read('proofs'))).toEqual(fresh);expect(request).toHaveBeenCalledTimes(3);
  }finally{vi.unstubAllGlobals();}
@@ -55,4 +56,11 @@ it('keeps background fresh SDK reads separate from pending ordinary readers with
   for(const [,init] of request.mock.calls){const headers=new Headers(init?.headers);expect(headers.has('authorization')).toBe(false);expect(headers.has('cookie')).toBe(false);}
   waiting.forEach(resolve=>resolve());await Promise.all([ordinary,fresh]);
  }finally{waiting.forEach(resolve=>resolve());vi.unstubAllGlobals();}
+});
+
+it('projects Ledger proofs from native complete membership without waiting for an older prepared collection',async()=>{
+ vi.resetModules();const {readSharedPublicSource:read}=await import('../server/public-network');
+ const raw={ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:2,revision:'1693:21b129a474850ca4'},publicOriginals:[{id:'held',receizId:'held',title:'Held'},{id:'accepted-new',receizId:'accepted-new',title:'Accepted new Original'}]}};
+ const fetcher=vi.fn<typeof fetch>(async input=>new URL(String(input)).searchParams.has('representation')?Response.json({ok:true,transport:{publicMembership:membership(0),publicOriginals:[]}},{headers:selectedHeaders}):Response.json(raw));vi.stubGlobal('fetch',fetcher);
+ try{const result=await read('proofs');expect(parsePublicNetworkPage('proofs',result).records.map(row=>row.sourceId)).toEqual(['held','accepted-new']);expect(fetcher).toHaveBeenCalledOnce();expect(String(fetcher.mock.calls[0][0])).toBe('https://receiz.com/api/market/public-membership');}finally{vi.unstubAllGlobals();}
 });
