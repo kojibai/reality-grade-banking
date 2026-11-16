@@ -1,6 +1,6 @@
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile,readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 const manifest = JSON.parse(await readFile('dist/offline-build.json', 'utf8'));
 assert.equal(manifest.schema, 'bankeiz.offline-build.v1');
@@ -9,6 +9,15 @@ assert.match(manifest.publicRenderBuild, /^[a-f0-9]{64}$/);
 const sw = await readFile('dist/sw.js', 'utf8');
 assert.ok(sw.includes("const PUBLIC_RENDER_BUILD = '"+manifest.publicRenderBuild+"'"),'Worker and offline closure must bind the actual same renderer.');
 assert.equal(manifest.publicRenderBuild,JSON.parse(await readFile('server/profile-runtime/public-market-render-build.json','utf8')).sha256);
+const generated=await readdir('dist/assets');
+assert.ok(Array.isArray(manifest.runtimeAssets),'The runtime archive needs the complete generated operand inventory.');
+assert.deepEqual(manifest.runtimeAssets.map(entry=>entry.url).sort(),generated.map(name=>'/assets/'+name).sort(),'Runtime archival cannot omit a generated worker or lazy file.');
+const rendererFiles=new Map(JSON.parse(await readFile('server/profile-runtime/public-market-render-build.json','utf8')).files.map(entry=>[entry.path,entry]));
+for(const entry of manifest.runtimeAssets){
+ const bytes=await readFile('dist'+entry.url);
+ assert.equal(bytes.length,entry.bytes,entry.url);assert.equal(createHash('sha256').update(bytes).digest('hex'),entry.sha256,entry.url);
+ const fingerprint=rendererFiles.get('dist'+entry.url);assert.equal(fingerprint?.sha256,entry.sha256,'Renderer fingerprint must bind '+entry.url);assert.equal(fingerprint?.bytes,entry.bytes,entry.url);
+}
 const shell = JSON.parse(sw.match(/const SHELL = (\[[\s\S]*?\]);/)[1]);
 assert.deepEqual(shell, manifest.resources.map(entry => entry.url));
 assert.equal(new Set(shell).size, shell.length);

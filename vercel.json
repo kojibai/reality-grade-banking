@@ -59,6 +59,10 @@
   ],
   "rewrites": [
     {
+      "source": "/assets/:file",
+      "destination": "/api/runtime-asset?file=:file"
+    },
+    {
       "source": "/registry/index.html",
       "destination": "/api/registry?document=1"
     },

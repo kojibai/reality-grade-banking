@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {access,readFile,writeFile} from 'node:fs/promises';
 import {resolve,relative,dirname} from 'node:path';
+import {generatedRuntimeAssets} from './generated-runtime-assets.mjs';
 
 // This identifies the actual renderer, template and browser code. Changing a
 // deployment alias or route without changing these bytes keeps the same key.
@@ -22,6 +23,9 @@ const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8')),see
 async function browser(key){if(seen.has(key))return;seen.add(key);const entry=manifest[key];if(!entry)throw Error('PUBLIC_MARKET_RENDER_BROWSER_GRAPH_INVALID');await include('dist/'+entry.file);for(const css of entry.css??[])await include('dist/'+css);for(const child of [...(entry.imports??[]),...(entry.dynamicImports??[])])await browser(child);}
 await browser('explore/index.html');
 for(const entry of ['index.html','ledger/index.html','feed/index.html','discover/index.html'])if(manifest[entry]){await include('dist/'+entry);await browser(entry);}
+// The renderer key must change with every archived generated operand, including
+// workers and file resources that Vite omits from its manifest import graph.
+for(const resource of await generatedRuntimeAssets('dist'))await include('dist'+resource.url);
 const inputs=[...files.values()].sort((a,b)=>a.path.localeCompare(b.path)),digest=sha(JSON.stringify(inputs));
 await writeFile('server/profile-runtime/public-market-render-build.json',JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:digest,files:inputs}));
 console.log(JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:digest,files:inputs.length}));

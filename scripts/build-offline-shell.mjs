@@ -23,6 +23,7 @@ import {businessFitPages,directoryPage} from '../src/content/business-fits.mjs';
 import {proposalPages} from '../src/content/proposal-pages.mjs';
 import {agreementPages} from '../src/content/agreement-pages.mjs';
 import {clientWorkProductPages} from '../src/content/client-work-product-pages.mjs';
+import {generatedRuntimeAssets} from './generated-runtime-assets.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
@@ -72,8 +73,10 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['explore/index.html']) {visit('explore/index.html');urls.add('/explore/index.html');}
   if (manifest['feed/index.html']) {visit('feed/index.html');urls.add('/feed/index.html');}
   if (manifest['discover/index.html']) {visit('discover/index.html');urls.add('/discover/index.html');}
-  // Vite emits module-worker files outside the entry's manifest dependency list.
-  for (const name of await readdir(resolve(root, 'assets'))) if (/^worker-[\w-]+\.js$/.test(name)) urls.add('/assets/' + name);
+  // Archive every generated operand without broadening the Bank installation.
+  // Its two supported workers are emitted outside Vite's manifest graph.
+  const runtimeAssets=await generatedRuntimeAssets(root);
+  for(const row of runtimeAssets)if(/^\/assets\/(?:composite-wallet-)?worker-[\w-]+\.js$/.test(row.url))urls.add(row.url);
   // The public calculator is emitted separately from Vite's app manifest.
   // Retain every lazy module so its verifier/replay also opens offline.
   for (const name of await readdir(resolve(root, 'learn'))) if (/^value-explainer-(?:main|chunk)-[A-Za-z0-9]+\.js$/.test(name)) urls.add('/learn/' + name);
@@ -161,7 +164,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   }
   const template = await readFile(new URL('../src/pwa/sw.template.js', import.meta.url), 'utf8');
   const version = hash(JSON.stringify({ resources, pages, publicRenderBuild }) + template).slice(0, 24);
-  const report = { schema: 'bankeiz.offline-build.v1', version, publicRenderBuild, resources, pages };
+  const report = { schema: 'bankeiz.offline-build.v1', version, publicRenderBuild, resources, runtimeAssets, pages };
   const integrity = Object.fromEntries(resources.map(({ url, ...entry }) => [url, entry]));
   const worker = template.replaceAll('__CACHE_VERSION__', version).replace('__SHELL_ASSETS__', JSON.stringify(resources.map(entry => entry.url)))
     .replace('__RESOURCE_HASHES__', JSON.stringify(integrity)).replace('__PAGE_ROUTES__', JSON.stringify(pages)).replaceAll('__PUBLIC_RENDER_BUILD__',publicRenderBuild);

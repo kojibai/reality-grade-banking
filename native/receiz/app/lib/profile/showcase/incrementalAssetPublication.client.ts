@@ -15,6 +15,7 @@ import {readProfileShowcaseAppendTransport,readProfileShowcaseCarrierTransport,w
 import {admitProfileShowcaseAppendTransport} from './appendTransportAdmission';
 import {publishProfileShowcaseTransport,type ProfileShowcasePublicProjectionPublicationResult} from './publicProjectionPublication';
 import {createImportedProofSourceCustody} from './importedSourceCustody.client';
+import {peekRecoveredAccountShowcaseScope} from './recoveredAccountScope.client';
 import {sealAndAdmitImportedSourcePlacement} from './importedSourcePlacement.client';
 import {decodeReceizBundleEnvelope} from '../../documentSeal/bundleContainer';
 import {decodeProfileOriginalRouteProjectionAppend} from './routeProjectionEncoding';
@@ -77,20 +78,23 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
  const commitDomain={scheme:'receiz-commit-domain.v1' as const,value:`profile-showcase:${input.owner}:local`};
  const readCommit=(predecessor:string)=>createReceizBrowserAdmissionStore({databaseName,namespace:`profile-showcase-local:${predecessor}`})
   .readAggregate(`${commitDomain.value}\u0000${input.artifactId}`);
- const readPreparedAction=async(reference:ImportedProofSourceReference,authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof)=>{
+ const readPreparedAction=async(reference:ImportedProofSourceReference|undefined,authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof,artifactDigest?:string)=>{
   let predecessor:{body:any;context:DeliveryContext;pbiReceiptHash?:string}|null=null;
   for(const entry of Object.values(readLocalSignedActionOutbox().entries)){
    if(entry.envelope.actor.uid!==input.uid||entry.envelope.actor.receizKeyId!==input.keyFile.keyId||entry.envelope.request.path!=='/api/profile/showcase/publication')continue;
    let body;try{body=JSON.parse(entry.envelope.request.bodyReplayText??'');}catch{continue;}
-   if(body.action!=='finalize'||body.publicationSourceArtifactSha256!==reference.artifactSha256||body.scope?.profileIdentity!==input.uid
-    ||body.scope.username!==input.username||body.scope.artifactId!==input.artifactId||! /^[a-f0-9]{64}$/.test(body.publicationPredecessorArtifactDigest??''))continue;
-   const committed=await readCommit(body.publicationPredecessorArtifactDigest);
+   if(body.action!=='finalize'||(reference&&body.publicationSourceArtifactSha256!==reference.artifactSha256)||body.scope?.profileIdentity!==input.uid
+    ||body.scope.username!==input.username||body.scope.artifactId!==input.artifactId||(artifactDigest&&body.scope.artifactDigest!==artifactDigest))continue;
+   const hasPredecessor=/^[a-f0-9]{64}$/.test(body.publicationPredecessorArtifactDigest??'');
+   if(reference&&!hasPredecessor)continue;
+   const committed=hasPredecessor?await readCommit(body.publicationPredecessorArtifactDigest):null;
    // The existing SDK commit and durable signed action identify this exact
    // delivery attempt. Retrying transport creates no local transition or new
    // admission; the receiver still admits the exact source and signed consent.
-   if((committed?.state as any)?.artifactDigest!==body.scope.artifactDigest)continue;
+   if(hasPredecessor&&(committed?.state as any)?.artifactDigest!==body.scope.artifactDigest)continue;
    const context=await readContext(body.transport,custody.resolveBlock);
    if(context.transport.artifactDigest!==body.scope.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
+   if(!reference)return{body,context};
    const child=childOf(context,body.publicationChildArtifactDigest);
    if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
    input.assertCurrent();
@@ -104,7 +108,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    // prerequisite only while it directly extends the current accepted head.
    // An older or already accepted unsigned action is not a signature retry.
    if(selected.pbiReceiptHash===authorshipProof.pbiReceiptHash)return selected;
-   if(body.publicationPredecessorArtifactDigest===(accepted as any)?.transport?.artifactDigest)predecessor??=selected;
+   if(body.publicationPredecessorArtifactDigest===((accepted as any)?.transport?.artifactDigest??heldHead?.prior.admission.artifactSha256))predecessor??=selected;
   }return predecessor;
  };
  const emitTree=async(ref:ExactByteBlockReference,write:ExactByteBlockWriter)=>{
@@ -156,10 +160,66 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   input.assertCurrent();
   const publicationKey=opened.reference.artifactSha256+(authorshipProof?':'+authorshipProof.pbiReceiptHash:'');
   const known=published.get(publicationKey);if(known)return known;
-  // The runtime already captured this exact current-head metadata. Reuse it
-  // to distinguish a pending predecessor from a completed historical action.
-  accepted??=await input.readAccepted();
-  const replay=await readPreparedAction(opened.reference,authorshipProof);
+  const readHead=async()=>{
+   if(!validAccepted(accepted)){
+    const binding=peekRecoveredAccountShowcaseScope({username:input.username,accountId:input.uid,artifactId:input.artifactId});
+    if(!binding)return null;
+    const anchor=binding.locator.acceptedArtifactDigest;
+    const anchorAdmission=await input.vault.reopenRetainedHead(input.artifactId,anchor);if(!anchorAdmission)return null;
+    const anchorCarrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(anchorAdmission);
+    // Outbox coordinates select exact existing SDK custody only. The retained
+    // proof and verified causal ancestry decide which parent can be reused.
+    const coordinates=new Map<string,string|undefined>();
+    for(const entry of Object.values(readLocalSignedActionOutbox().entries)){
+     if(entry.envelope.actor.uid!==input.uid||entry.envelope.actor.receizKeyId!==input.keyFile.keyId||entry.envelope.request.path!=='/api/profile/showcase/publication')continue;
+     let body;try{body=JSON.parse(entry.envelope.request.bodyReplayText??'');}catch{continue;}
+     if(body.action==='finalize'&&body.scope?.profileIdentity===input.uid&&body.scope.username===input.username&&body.scope.artifactId===input.artifactId
+      &&/^[a-f0-9]{64}$/.test(body.scope.artifactDigest??''))coordinates.set(body.scope.artifactDigest,body.publicationPredecessorArtifactDigest);
+    }
+    const parents=new Set(coordinates.values()),tips=[...coordinates].filter(([digest])=>!parents.has(digest));
+    const candidates=new Set([...tips.flatMap(([digest,parent])=>parent?[digest,parent]:[digest]),anchor]);
+    let selected:AcceptedContext|undefined;
+    for(const digest of candidates){
+     if(selected&&await input.vault.isVerifiedPublicationAncestor(input.artifactId,digest,selected.prior.admission.artifactSha256))continue;
+     const local=await input.vault.reopenRetainedHead(input.artifactId,digest);if(!local)continue;
+     if(!await input.vault.isVerifiedPublicationAncestor(input.artifactId,anchor,digest))continue;
+     const saved=await readPreparedAction(undefined,undefined,digest);if(!saved)continue;
+     const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(local);
+     if(carrier.artifactId!==input.artifactId||carrier.ownerReceizIdentity!==input.owner||carrier['profile-showcase'].profileIdentity!==anchorCarrier['profile-showcase'].profileIdentity)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
+     const value={context:saved.context,prior:{admission:local,carrier,io:await input.vault.createTransitionPersistentStateIO(input.artifactId,digest,local),
+      resolveHistorical:async(count:number)=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,digest,count)}};
+     if(selected&&!await input.vault.isVerifiedPublicationAncestor(input.artifactId,selected.prior.admission.artifactSha256,digest)){
+      if(await input.vault.isVerifiedPublicationAncestor(input.artifactId,digest,selected.prior.admission.artifactSha256))continue;
+      throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+     }
+     selected=value;
+    }
+    if(selected){
+     // A presentation pointer is only a locator. If its genuine SDK Source
+     // extends this delivery prefix without retained transport, that operand
+     // is missing; use the existing bounded reader rather than fork its proof.
+     const coordinate=await input.vault.readPublicationHead(input.artifactId);
+     if(coordinate&&coordinate.artifactDigest!==selected.prior.admission.artifactSha256
+      &&!await input.vault.isVerifiedPublicationAncestor(input.artifactId,coordinate.artifactDigest,selected.prior.admission.artifactSha256)
+      &&await input.vault.reopenRetainedHead(input.artifactId,coordinate.artifactDigest)
+      &&await input.vault.isVerifiedPublicationAncestor(input.artifactId,selected.prior.admission.artifactSha256,coordinate.artifactDigest))return null;
+     remember(selected);
+    }return selected??null;
+   }
+   const selected=shared!.get((accepted as any).transport.artifactDigest);if(selected)return selected;
+   const local=await input.vault.reopenRetainedHead(input.artifactId,(accepted as any).transport.artifactDigest);
+   if(local){const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(local),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,local.artifactSha256,local);
+    const value={prior:{admission:local,carrier,io,resolveHistorical:async(count:number)=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,local.artifactSha256,count)}};remember(value);return value;}
+   const context=await readContext((accepted as any).transport);
+   if(context.envelope.legacyPredecessor||context.envelope.checkpointBoundary)return null;
+   try{const admitted=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve,predecessorTransports:(accepted as any).predecessorTransports});const value={context,prior:{...admitted,resolveHistorical:async(count:number)=>admitted.resolveHistorical(count)}};remember(value);return value;}
+   catch(error){if(error instanceof Error&&error.message==='PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED')return null;throw error;}
+  };
+  // Exact committed Source and its signed delivery action precede weaker
+  // remote metadata. Only an unmatched PBI prerequisite needs that selection.
+  let replay=await readPreparedAction(opened.reference,authorshipProof);
+  if(!replay&&!heldHead)heldHead=await readHead()??undefined;
+  if(!replay&&authorshipProof){if(!heldHead)accepted??=await input.readAccepted();replay=await readPreparedAction(opened.reference,authorshipProof);}
   if(replay){
    const {body,context:prepared}=replay;
    // Replay transport only: the saved signature and unchanged server verifier
@@ -170,39 +230,42 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    // then sign its admitted current head; it is never a signed acknowledgment.
    if(replay.pbiReceiptHash===authorshipProof.pbiReceiptHash){published.set(publicationKey,result);return result;}
   }
-  if((accepted as any)?.status==='unmigrated')return null;
-  if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
-  const readHead=async()=>{
-   const selected=shared!.get((accepted as any).transport.artifactDigest);if(selected)return selected;
-   const local=await input.vault.reopenRetainedHead(input.artifactId,(accepted as any).transport.artifactDigest);
-   if(local){const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(local),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,local.artifactSha256,local);
-    const value={prior:{admission:local,carrier,io,resolveHistorical:async(count:number)=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,local.artifactSha256,count)}};remember(value);return value;}
-   const context=await readContext((accepted as any).transport);
-   if(context.envelope.legacyPredecessor||context.envelope.checkpointBoundary)return null;
-   try{const admitted=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve,predecessorTransports:(accepted as any).predecessorTransports});const value={context,prior:{...admitted,resolveHistorical:async(count:number)=>admitted.resolveHistorical(count)}};remember(value);return value;}
-   catch(error){if(error instanceof Error&&error.message==='PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED')return null;throw error;}
-  };
-  if(!heldHead){const next=await readHead();if(!next)return null;heldHead=next;}
+  if(!heldHead){accepted??=await input.readAccepted();if((accepted as any)?.status==='unmigrated')return null;
+   if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+   const next=await readHead();if(!next)return null;heldHead=next;}
   // Another tab may have advanced this exact local commit domain while this
   // runtime was warm. Refresh only on actual divergence, inside the append lock.
   const committed=await readCommit(heldHead.prior.admission.artifactSha256);
   if(committed?.headDigest&&committed.headDigest!==heldHead.prior.admission.proofHistoryHead!.headDigest){
-   accepted=await input.readAccepted(true);input.assertCurrent();if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
-   let next=await readHead();if(!next)return null;
+   let next=heldHead;
+   const digest=(committed.state as any)?.artifactDigest;
+   if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+   const store=createReceizBrowserArtifactTransitionStore({databaseName,namespace:`profile-showcase-local:${next.prior.admission.artifactSha256}`,commitDomain});
+   const candidate=await store.resolveCandidate({algorithm:'sha-256',binds:'exact-artifact-bytes',value:digest});
+   if(!candidate){
+    accepted=await input.readAccepted(true);input.assertCurrent();if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
+    const delivered=await readHead();if(!delivered)return null;next=delivered;
+   }
    if(next.prior.admission.artifactSha256===heldHead.prior.admission.artifactSha256){
     // Earlier publishers committed before preparing a delivery action. Locate
     // that exact candidate, then admit its direct succession and carried child.
     // Neither the local pointer nor its projection is proof authority.
-    const digest=(committed.state as any)?.artifactDigest;
-    if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
-    const {prior}=next,store=createReceizBrowserArtifactTransitionStore({databaseName,namespace:`profile-showcase-local:${prior.admission.artifactSha256}`,commitDomain});
-    const candidate=await store.resolveCandidate({algorithm:'sha-256',binds:'exact-artifact-bytes',value:digest});
+    const {prior}=next;
     if(!candidate)throw TypeError('PROFILE_SHOWCASE_COMMITTED_CANDIDATE_UNAVAILABLE');
     const admission=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,
      candidateArtifact:{artifact:new File([candidate.exactBytes.slice().buffer as ArrayBuffer],candidate.filename,{type:candidate.mimeType})},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
     if(admission.artifactSha256!==digest||admission.proofHistoryHead?.headDigest!==committed.headDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
     const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
-    const localIO=await input.vault.createTransitionPersistentStateIO(input.artifactId,digest);
+    const retainedAction=await readPreparedAction(undefined,undefined,digest);
+    if(retainedAction){
+     const child=childOf(retainedAction.context,retainedAction.body.publicationChildArtifactDigest);if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
+     const exact=await reconstructExactByteBlocks(child.bytes,custody.resolveBlock,{component:'committed Original proof recovery',maxContentBytes:16*1024*1024,maxBlockReads:131072});
+     const sourceReference=await readImportedSourceTransportReference(exact);if(!sourceReference)throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
+     const recovered=await deliverPrepared(retainedAction.body,retainedAction.context,sourceReference);
+     if(recovered.status!=='published'||(!authorshipProof&&jcsCanonicalize(sourceReference)===jcsCanonicalize(opened.reference)))return recovered;
+     next={context:retainedAction.context,prior:nextPrior(prior,admission,carrier)};remember(next);
+    }else{
+    const localIO=await input.vault.createTransitionPersistentStateIO(input.artifactId,digest,admission);
     // Resolve only the actual changed placement against the admitted root.
     // Historical Original bodies and complete membership are not mutation input.
     const delta=Array.isArray(head.directDelta)&&head.directDelta.length===1?head.directDelta[0] as Record<string,unknown>:null;
@@ -220,22 +283,23 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
     if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
     const childAdmission=child.admittedArtifact;if(!childAdmission.openedArtifact)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
     const childBytes=new Uint8Array(await childAdmission.openedArtifact.sealedArtifact.artifact.arrayBuffer());
+    const sourceReference=await readImportedSourceTransportReference(childBytes);
     if(childAdmission.profile!=='portable-state'||childAdmission.artifactSha256!==child.reference.childArtifactDigest
-     ||childAdmission.artifactId!==child.reference.stableChildArtifactId||childAdmission.payloadSha256!==child.reference.contentDigest
-     ||jcsCanonicalize(await readImportedSourceTransportReference(childBytes))!==jcsCanonicalize(opened.reference))throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
+     ||childAdmission.artifactId!==child.reference.stableChildArtifactId||childAdmission.payloadSha256!==child.reference.contentDigest||!sourceReference)throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
     input.assertCurrent();
     const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,child:{reference:child.reference,exactSealedArtifactBytes:childBytes}},custody.writeBlock,{acceptedPredecessor:next.context?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
     const prepared=await readContext(transport,custody.resolveBlock),signer=await actor();input.assertCurrent();
-    const body={action:'finalize',scope:scope(digest),transport,publicationSourceArtifactSha256:opened.reference.artifactSha256,
+    const body={action:'finalize',scope:scope(digest),transport,publicationSourceArtifactSha256:sourceReference.artifactSha256,
      publicationChildArtifactDigest:childAdmission.artifactSha256,publicationPredecessorArtifactDigest:prior.admission.artifactSha256,identityBinding:signer.binding};
     const action=await enqueueSourceBoundPublicationAction(JSON.stringify(body),signer.custody),held=action&&readLocalSignedActionOutbox().entries[action.actionId];
     if(!action||held?.signatureB64Url!==action.signatureB64Url||held.envelope.request.bodyReplayText!==action.envelope.request.bodyReplayText)throw TypeError('PROFILE_SHOWCASE_PUBLICATION_ACTION_NOT_RETAINED');
-    input.assertCurrent();const recovered=await deliverPrepared(body,prepared,opened.reference);
-    if(!authorshipProof||recovered.status!=='published')return recovered;
+    input.assertCurrent();const recovered=await deliverPrepared(body,prepared,sourceReference);
+    if(recovered.status!=='published'||(!authorshipProof&&jcsCanonicalize(sourceReference)===jcsCanonicalize(opened.reference)))return recovered;
     // That exact interrupted commit may be the unsigned placement. Its
     // acknowledgment settles delivery only; now append the requested PBI
     // addition to the same already admitted head, without reading history.
     next={context:prepared,prior:nextPrior(prior,admission,carrier)};remember(next);
+    }
    }
    heldHead=next;
   }

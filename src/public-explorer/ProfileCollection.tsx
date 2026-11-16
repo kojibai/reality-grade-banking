@@ -2,7 +2,8 @@ import {InlineOpening} from '../components/InlineOpening';
 import {AssetObject} from '../features/media/AssetObject';
 import {AssetProofBack} from '../features/media/AssetProofBack';
 import {PublicImageDialog} from '../features/media/ProofMedia';
-import {useEffect,useState,useRef} from 'react';
+import {useContext,useEffect,useMemo,useState,useRef} from 'react';
+import {PublicDocumentFormatContext} from '../core/public-document-format';
 import {ArrowDownRight,ArrowUpRight,BookOpen,FileText,Grid2X2,GalleryVerticalEnd,Image,Music2,Play,Plus,RectangleHorizontal,Search,Video} from 'lucide-react';
 import type {PublicProfile} from '../receiz/public-profile';
 import {formatPublicPrice,publicAssetImagePreviewUrl,type PublicMarketItem} from '../receiz/public-market';
@@ -17,10 +18,10 @@ import {MarketFeedPopover} from '../features/market/MarketFeedPopover';
 import {beginPublicAssetTrade} from '../receiz/public-asset-trade';
 import {ProfileValuePeek} from './ProfileValuePeek';
 const preferences=new Map<string,{columns:1|2;filter:MarketContentFilter;query:string;count:number}>();
-const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
 // Square grid slots reserve their geometry for native lazy covers. Natural-height
 // single-column images retain eager loading so unloaded rows do not collapse.
 export function ProfileCollection({profile,items,active,onMore,onCreate,busy=false}:{profile:PublicProfile;items:PublicMarketItem[];active:boolean;onMore?:()=>void;onCreate?:()=>void;busy?:boolean}){
+ const format=useContext(PublicDocumentFormatContext),percent=useMemo(()=>new Intl.NumberFormat(format?.locale,{maximumFractionDigits:2}),[format?.locale]);
  const [feedOpen,setFeedOpen]=useState(false),feedMounted=useRef(false);
  useEffect(()=>{if(!active)setFeedOpen(false);},[active]);
  const [saved]=useState(()=>preferences.get(profile.userId)),[columns,setColumns]=useState<1|2>(saved?.columns??2),[filter,setFilter]=useState<MarketContentFilter>(saved?.filter??'All'),[query,setQuery]=useState(saved?.query??''),[opened,setOpened]=useState<string|null>(null),[preview,setPreview]=useState<PublicMarketItem|null>(null);

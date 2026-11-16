@@ -1007,7 +1007,7 @@
       "id": "bankeiz-incremental-original-delivery",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": null,
-      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Apply existing SDK bounded accepted-transition delivery while preserving Bankeiz PBI ceremony, durable signing/outbox/retry, local admission, identity/account entry and exact Source/ownership/integrity guards. Reuse held SDK context and immutable predecessor evidence; no SDK package changes.",
       "upstreamCommit": "b303a752c7e58cdb706241a101e76d78a95bb116"
     },
@@ -1043,7 +1043,7 @@
       "id": "bankeiz-direct-pbi-incrementalAssetPublication.client",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": "0b235648281b4f529cf51ef3a4dd3d003ce2cce112793d3ba76a39c14e2304f2",
-      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Use existing Showcase PBI action, canonical opened Source and durable PBI outbox before connected delivery. Preserve actual signature verification, original bytes, exact retry, native entry and financial primitives."
     },
     {
@@ -1071,7 +1071,7 @@
       "id": "bankeiz-signed-original-current-head-selection",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": "35d65a77e85c91b9e1f5d474134e96c2acd8af055cd17bec0bd11aedec3d9af7",
-      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Replay the exact saved PBI addition; an unsigned delivery is a prerequisite only when it directly extends the already-captured accepted head. No extra account/history reads or changes to SDK admission."
     },
     {
@@ -1190,7 +1190,7 @@
       "id": "bankeiz-omit-unused-precommit-carrier",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": "eba44f0ff83f0aa5634ac46b3c16fe47835f01b5bbe9986fcb5daa17643f160a",
-      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Remove only the unused carrier/head derivation after genuine SDK successor admission. Preserve exact transport bytes, atomic commit admission, the consumed post-commit carrier, PBI ceremony, custody, identity, source and ownership checks."
     },
     {
@@ -1218,7 +1218,7 @@
       "id": "bankeiz-original-delivery-continuity",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": "dfcabd62a6067c1035f5064ceebc2c29789b38d510dd7e1b679381a5cb0b571b",
-      "sha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Carry the exact accepted predecessor byte coordinate and reuse installed SDK admission on cold append; keep local signing independent of the one existing first-delivery promise. Preserve frozen entry, PBI, ownership, exact-source and custody guards. SDK package sources and outputs are unchanged."
     },
     {
@@ -1827,6 +1827,13 @@
       "upstreamCommit": "7ab22963685a8ccec066e938e41ccfbab9ab2310",
       "qualifiedSdkArchiveSha256": "3c19a390fd9916643b8e5c00cdba1b77b0cbec6e2f29775fb41e7ba26e26b04a",
       "purpose": "Final reviewed PNG operational denial, unchanged major compatibility floor, exact public function inventory and existing build resource guard. No financial/Note writer/receiving/rollback implementation change."
+    },
+    {
+      "id": "bankeiz-committed-source-before-delivery-metadata",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
+      "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
+      "purpose": "Reuse existing exact SDK-committed Source, owner-bound retained parent and durable signed transport before remote accepted metadata. Preserve SDK identity/owner/causal admission, exact PBI matching, missing-input readers, historical-media bounds, pending successor ordering and frozen account entry."
     }
   ]
 }

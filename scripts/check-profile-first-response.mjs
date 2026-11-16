@@ -44,7 +44,7 @@ await new Promise(done=>server.listen(0,'127.0.0.1',done));const origin='http://
 try{
  browser=await chromium.launch({headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})});
  for(const name of ['alexmorgan',fullName,'bjklock']){
-  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[],pending=[];let entryReady;const entryRequested=new Promise(done=>{entryReady=done;});
+  const context=await browser.newContext({viewport:{width:390,height:844},locale:'de-DE',timezoneId:'Pacific/Honolulu',serviceWorkers:'block'}),page=await context.newPage(),errors=[],pending=[];let entryReady;const entryRequested=new Promise(done=>{entryReady=done;});
   try{
    page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error'&&/hydrat|didn't match|server rendered|react.dev\/errors\/(?:418|423|425)/i.test(message.text()))errors.push(message.text());});
    await page.route('**/api/**',route=>{
@@ -63,6 +63,12 @@ try{
    await page.waitForFunction(()=>{const node=document.querySelector('.profile-hero');return !!node&&Object.keys(node).some(key=>key.startsWith('__reactFiber$'));},{timeout:20000});
    assert.equal(await page.evaluate(()=>window.firstProfileNode===document.querySelector('.profile-hero')),true,'Hydrate the existing real profile DOM');
    assert.equal(await page.locator('.profile-unavailable,[data-profile-opening],.public-entry-placeholder').count(),0);assert.deepEqual(errors,[],name+' hydration');
+   if(name==='bjklock'){
+    const before=await page.locator('.profile-asset').count();
+    await page.getByRole('button',{name:'More assets',exact:true}).click();
+    await page.waitForFunction(count=>document.querySelectorAll('.profile-asset').length>count,before);
+    assert.deepEqual(errors,[],name+' interactive expansion');
+   }
    results.push({name,realFirstHTML:true,APIResponsesStalled:true,sameDOM:true,sourceReads:reads.filter(value=>value===name).length});
   }catch(error){await writeFile(resolve(output,name+'-failed.html'),await page.content());console.error(JSON.stringify({name,heroes:await page.locator('.profile-hero').count(),url:page.url(),body:(await page.locator('body').innerText()).slice(0,1000)}));throw error;}finally{await context.close();}
  }

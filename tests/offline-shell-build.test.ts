@@ -8,12 +8,15 @@ it('versions complete final pages and fixed-path native resources and includes l
   const dir = await mkdtemp(join(tmpdir(), 'bankeiz-offline-build-'));
   try {
     await mkdir(join(dir, '.vite')); await mkdir(join(dir, 'assets'));
-    await writeFile(join(dir, '.vite/manifest.json'), JSON.stringify({ 'pay/checkout.html':{file:'assets/checkout.js',css:['assets/checkout.css']}, 'index.html': { file: 'assets/bank.js', dynamicImports: ['qr'] }, qr: { file: 'assets/qr-decoder.js' }, 'verify/index.html': { file: 'assets/verify.js' }, 'ledger/index.html': { file: 'assets/ledger.js', css: ['assets/ledger.css'], imports: ['ledger-reader'] }, 'ledger-reader': { file: 'assets/ledger-reader.js' }, 'conformance/index.html': { file: 'assets/conformance.js' } }));
+    await writeFile(join(dir, '.vite/manifest.json'), JSON.stringify({ 'pay/checkout.html':{file:'assets/checkout.js',css:['assets/checkout.css']}, 'index.html': { file: 'assets/bank.js', dynamicImports: ['qr'] }, qr: { file: 'assets/qr-decoder.js',assets:['assets/pdf.worker.min-Abcdef56.mjs'] }, 'verify/index.html': { file: 'assets/verify.js' }, 'ledger/index.html': { file: 'assets/ledger.js', css: ['assets/ledger.css'], imports: ['ledger-reader'] }, 'ledger-reader': { file: 'assets/ledger-reader.js' }, 'conformance/index.html': { file: 'assets/conformance.js' } }));
     await mkdir(join(dir,'pay'));await writeFile(join(dir,'pay/checkout.html'),'static checkout shell');await writeFile(join(dir,'assets/checkout.js'),'checkout');await writeFile(join(dir,'assets/checkout.css'),'checkout css');
     await mkdir(join(dir, 'ledger')); await writeFile(join(dir, 'ledger/index.html'), 'public ledger');
     for (const file of ['ledger.js', 'ledger.css', 'ledger-reader.js']) await writeFile(join(dir, 'assets', file), file);
     await mkdir(join(dir, 'verify')); await writeFile(join(dir, 'verify/index.html'), 'public verifier'); await writeFile(join(dir, 'assets/verify.js'), 'verify');
     await writeFile(join(dir, 'assets/bank.js'), 'bank'); await writeFile(join(dir, 'assets/qr-decoder.js'), 'qr'); await writeFile(join(dir, 'assets/conformance.js'), 'console');
+    await writeFile(join(dir,'assets/worker-Abcdef12.js'),'public projection worker');
+    await writeFile(join(dir,'assets/composite-wallet-worker-Abcdef34.js'),'wallet worker');
+    await writeFile(join(dir,'assets/pdf.worker.min-Abcdef56.mjs'),'lazy PDF worker');
     const pages = { ...Object.fromEntries(['economy','farmers','fuel','repairs','grocers','housing','workers'].map(name=>['/'+name+'/',{content:name}])), '/your-twin/':{content:'Your Twin'},'/action/':{content:'Both sides'},'/banking/':{content:'Banking'}, '/guide/':{content:'User guide'}, '/protect/':{content:'Protection'},'/vaults/':{content:'Vaults'},'/fit/':{content:'Fits'},'/coops/':{content:'Cooperatives'}, '/learn/protect-your-value/':{content:'Protection'},'/cooperatives/':{content:'Cooperatives'},'/cooperatives/producers/':{content:'Producers'}, '/business/for/':{content:'Fits'},'/business/for/agencies/':{content:'Agency'},'/business/':{content:'Business'}, '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
     Object.assign(pages,{'/registry/':{content:'Institution conformance directory'}});
     await mkdir(join(dir,'registry'),{recursive:true});
@@ -54,6 +57,8 @@ it('versions complete final pages and fixed-path native resources and includes l
     expect(first.resources.some((v: { url: string }) => v.url === '/assets/qr-decoder.js')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url === '/launch/iphone-402-874-3-portrait.png')).toBe(true);
     expect(first.resources.some((v: { url: string }) => v.url.includes('conformance'))).toBe(false);
+    expect(first.runtimeAssets.some((v: { url: string }) => v.url==='/assets/conformance.js')).toBe(true);
+    for(const url of ['/assets/worker-Abcdef12.js','/assets/composite-wallet-worker-Abcdef34.js','/assets/pdf.worker.min-Abcdef56.mjs'])expect(first.resources.some(resource=>resource.url===url),url).toBe(true);
     for(const url of ['/pay/checkout.html','/assets/checkout.js','/assets/checkout.css'])expect(first.resources.some((v:{url:string})=>v.url===url),url).toBe(true);
     expect(first.pages['/pay/checkout.html']).toBe('/pay/checkout.html');
     expect(first.pages).toMatchObject({ '/learn/': '/learn/', '/legal/': '/legal/', '/your-twin/':'/learn/','/your-twin':'/learn/','/in-action/':'/learn/','/in-action':'/learn/' });
@@ -82,5 +87,6 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'learn/contact.js'),'updated shared in-place contact');const fourth=await buildOfflineShell(dir,{fixed:[native],renderBuildFile});
     expect(fourth.version).not.toBe(third.version);expect(fourth.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256).not.toBe(first.resources.find(resource=>resource.url==='/learn/contact.js')?.sha256);
     const sw = await readFile(join(dir, 'sw.js'), 'utf8'); expect(sw).not.toContain('__RESOURCE_HASHES__'); expect(sw).toContain(native);
+    expect(sw).not.toContain('/assets/conformance.js');
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

@@ -4,13 +4,17 @@ import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
 import {marketContentLabel} from '../receiz/market-categories';
 import type {PublicMarketItem} from '../receiz/public-market';
 import {useProfileFeed} from './useProfileFeed';
-
-const dayFormat=new Intl.DateTimeFormat(undefined,{month:'long',day:'numeric',year:'numeric'});
-const timeFormat=new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'});
+import {useContext,useMemo} from 'react';
+import {PublicDocumentFormatContext} from '../core/public-document-format';
 
 /** Publication history from the carried public collection. No private account
  * events, balances or additional source reads enter this view. */
 export function ProfileActivity({items,hasMore,onMore,busy=false,active=true}:{items:PublicMarketItem[];hasMore:boolean;onMore:()=>void;busy?:boolean;active?:boolean}){
+ const format=useContext(PublicDocumentFormatContext);
+ const {dayFormat,timeFormat}=useMemo(()=>({
+  dayFormat:new Intl.DateTimeFormat(format?.locale,{month:'long',day:'numeric',year:'numeric',timeZone:format?.timeZone}),
+  timeFormat:new Intl.DateTimeFormat(format?.locale,{hour:'numeric',minute:'2-digit',timeZone:format?.timeZone}),
+ }),[format?.locale,format?.timeZone]);
  const feed=useProfileFeed({length:items.length,boundary:items[0]?.id+':'+items.length,hasMore,active,busy,onMore});
  let previousDay='';
  return <section className="profile-activity" aria-label="Public activity">
