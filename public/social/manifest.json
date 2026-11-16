@@ -1,6 +1,350 @@
 {
   "schema": "bankeiz.public-social-images.v1",
   "images": {
+    "/learn/resources/": {
+      "url": "/social/client-work-resources-be9b152dfeff9bca.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "be9b152dfeff9bca094f00b9d6c0ea93c7f8db7316fcd0ee78f20916a420d467",
+      "bytes": 469649,
+      "alt": "Bankeiz. Client work resources: templates, answers and examples Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/": {
+      "url": "/social/client-work-templates-9788a1060b2b2506.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9788a1060b2b250605b02ea87fd72bc0ad46b97db01678fbe6dd4f563cff029d",
+      "bytes": 467475,
+      "alt": "Bankeiz. Client work templates with complete examples and text downloads Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/examples/": {
+      "url": "/social/client-work-examples-b37ec60fbdceada6.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b37ec60fbdceada6e36d1967f24899805dfc054bcbda6acd2e48f4fc9ede2acd",
+      "bytes": 465006,
+      "alt": "Bankeiz. Client workflow examples from the brief to the handover Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/web-design-proposal/": {
+      "url": "/social/resource-template-web-design-proposal-4be3ffd488c53a68.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "4be3ffd488c53a68f7a220917c14909fa99c716bb644370c9f227a25c5b37025",
+      "bytes": 459810,
+      "alt": "Bankeiz. Web design proposal template for a defined website Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/website-scope-of-work/": {
+      "url": "/social/resource-template-website-scope-of-work-a687f7090053e9c1.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "a687f7090053e9c114f8612321053eb44762e5134cd7a0f0fa423f002f945cbc",
+      "bytes": 466753,
+      "alt": "Bankeiz. Website scope of work template with acceptance checks Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/graphic-design-proposal/": {
+      "url": "/social/resource-template-graphic-design-proposal-53dfbafda9dd0ed8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "53dfbafda9dd0ed87ce4f040c9d164c6533c453f9f79f32d6249bff21d9b8967",
+      "bytes": 464453,
+      "alt": "Bankeiz. Graphic design proposal template for a defined asset package Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/graphic-design-client-brief/": {
+      "url": "/social/resource-template-graphic-design-client-brief-0c6f4cd1cb12912d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0c6f4cd1cb12912d710b76cd867486f06d23320cb0bd28cd4eb676ca0d14f41c",
+      "bytes": 463016,
+      "alt": "Bankeiz. Graphic design client brief template with useful references Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/consulting-proposal/": {
+      "url": "/social/resource-template-consulting-proposal-3495e7f4d6ee74e2.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "3495e7f4d6ee74e2aed7b9ef958b7dcc524c24d15db17ca6b6a20447b96a4828",
+      "bytes": 462918,
+      "alt": "Bankeiz. Consulting proposal template built around a client decision Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/consulting-scope-of-work/": {
+      "url": "/social/resource-template-consulting-scope-of-work-e7c772115d9459d5.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e7c772115d9459d556464ea93092aa5787a4b8b4c23dbfe57f176e1dff47f66a",
+      "bytes": 468172,
+      "alt": "Bankeiz. Consulting scope of work template with clear dependencies Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/marketing-agency-proposal/": {
+      "url": "/social/resource-template-marketing-agency-proposal-59aeb8b661b01546.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "59aeb8b661b01546e456b5e88573255025fcbd030a1ca035931deffbf1d9d066",
+      "bytes": 467978,
+      "alt": "Bankeiz. Marketing agency proposal template for a defined campaign Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/agency-client-onboarding/": {
+      "url": "/social/resource-template-agency-client-onboarding-675b3652f5297a55.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "675b3652f5297a55d1c9fd00be67709a9a7019e058b59fa09b22084c8c41b864",
+      "bytes": 459173,
+      "alt": "Bankeiz. Agency client onboarding checklist for the first week Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/photography-proposal/": {
+      "url": "/social/resource-template-photography-proposal-4bace8ad563e2d6a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "4bace8ad563e2d6a8803624e6c5e23c9f7754d2e86b43c3ed31638fe2e20eb85",
+      "bytes": 471300,
+      "alt": "Bankeiz. Photography proposal template for a clearly defined shoot Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/photography-invoice/": {
+      "url": "/social/resource-template-photography-invoice-6025ef35de3bc4d7.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6025ef35de3bc4d7487f3520361c005dff4090ef91fc2528587f7036ae2da3ae",
+      "bytes": 463604,
+      "alt": "Bankeiz. Photography invoice template and itemized fictional example Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/video-production-proposal/": {
+      "url": "/social/resource-template-video-production-proposal-e7b955960515e8dd.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e7b955960515e8dd40adde9a43e866b96163b2e97713fe6fc88f9ed899278a21",
+      "bytes": 468102,
+      "alt": "Bankeiz. Video production proposal template from planning to final export Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/video-project-handover/": {
+      "url": "/social/resource-template-video-project-handover-0d54ae36181cf3c0.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "0d54ae36181cf3c068ccb34f96379118609860c025515db2e45b6fe722a58278",
+      "bytes": 465045,
+      "alt": "Bankeiz. Video project handover checklist for inspectable final files Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/copywriting-proposal/": {
+      "url": "/social/resource-template-copywriting-proposal-cf0ac94743fd4721.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "cf0ac94743fd47210399dcddc70fcd360fb74c659625e9497a4c788f5c552e21",
+      "bytes": 467363,
+      "alt": "Bankeiz. Copywriting proposal template with pages, inputs and edit rounds Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/copywriting-client-brief/": {
+      "url": "/social/resource-template-copywriting-client-brief-e5d8a8c5b9b86eb8.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e5d8a8c5b9b86eb8565d63cb948d8762a9b19f2012ae6e1b89d47268559781a8",
+      "bytes": 464001,
+      "alt": "Bankeiz. Copywriting client brief template for evidence-based drafts Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/social-media-management-proposal/": {
+      "url": "/social/resource-template-social-media-management-proposal-80e2d5d5c5d833a4.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "80e2d5d5c5d833a47732c71a91e5911a74664295fd5dd1af675820f10e13ce4e",
+      "bytes": 470044,
+      "alt": "Bankeiz. Social media management proposal template with monthly limits Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/social-media-client-approval/": {
+      "url": "/social/resource-template-social-media-client-approval-f90b1802dae407ad.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "f90b1802dae407ad5ff6d2e7aa5fe9b4e09bb930a43ccfe270ae60daa5112087",
+      "bytes": 464342,
+      "alt": "Bankeiz. Social media client approval message for a named content batch Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/software-development-proposal/": {
+      "url": "/social/resource-template-software-development-proposal-db8fcd9305d53762.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "db8fcd9305d53762e252e0a2b03e41cbdaeddb43b9eb78b5a520b0038c34b08a",
+      "bytes": 473690,
+      "alt": "Bankeiz. Software development proposal template with acceptance criteria Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/software-project-handover/": {
+      "url": "/social/resource-template-software-project-handover-881b2e729b207cec.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "881b2e729b207cec55b57bfcb05c84a3b27c8bca6ef7c5b2d241f4c3df465ddc",
+      "bytes": 464945,
+      "alt": "Bankeiz. Software project handover checklist without credential collection Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/business-coaching-proposal/": {
+      "url": "/social/resource-template-business-coaching-proposal-74a7d5ecccbab05e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "74a7d5ecccbab05ee747aa0d13650009583e16a09c42fa7c157d4bc95d08ce7a",
+      "bytes": 469417,
+      "alt": "Bankeiz. Business coaching proposal template for a defined session package Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/coaching-session-follow-up/": {
+      "url": "/social/resource-template-coaching-session-follow-up-dc91f15bf1828fdf.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "dc91f15bf1828fdfcd313344f9b1a096102fe5fbec53964cffe30ab9d5e35572",
+      "bytes": 462908,
+      "alt": "Bankeiz. Coaching session follow-up template with owned actions Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/virtual-assistant-proposal/": {
+      "url": "/social/resource-template-virtual-assistant-proposal-29a7f9048b87934c.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "29a7f9048b87934c89cf55f94813c082f07542f29f8a0f0b8b1c6ab45e371dde",
+      "bytes": 467381,
+      "alt": "Bankeiz. Virtual assistant proposal template with task and availability limits Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/virtual-assistant-onboarding/": {
+      "url": "/social/resource-template-virtual-assistant-onboarding-98dbb7853b176f3f.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "98dbb7853b176f3f8ff52c0b5b3bc1712f484abc13924d7a2f6b91575ca28cd3",
+      "bytes": 460792,
+      "alt": "Bankeiz. Virtual assistant onboarding checklist for approved work Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/bookkeeping-engagement-proposal/": {
+      "url": "/social/resource-template-bookkeeping-engagement-proposal-5b5e4677f223498b.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "5b5e4677f223498ba344e5012fd2d977beaba191f6f7af9390c6e31451fe58be",
+      "bytes": 476626,
+      "alt": "Bankeiz. Bookkeeping engagement proposal template with period boundaries Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/templates/bookkeeping-client-information-request/": {
+      "url": "/social/resource-template-bookkeeping-client-information-request-262003859c2c1451.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "262003859c2c1451f3275ff40f53f46e6f10092cee2ef1ad8a7d837d1fbff1b9",
+      "bytes": 465657,
+      "alt": "Bankeiz. Bookkeeping client information request template for missing records Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/follow-up-on-proposal/": {
+      "url": "/social/resource-guide-follow-up-on-proposal-ba8bd995267f4f5c.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ba8bd995267f4f5c0fe0cb51d1d7b6ae086460c331fef48daf07dd332564c7ac",
+      "bytes": 465407,
+      "alt": "Bankeiz. How to follow up on a proposal without restarting the conversation Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/proposal-contract-invoice/": {
+      "url": "/social/resource-guide-proposal-contract-invoice-75896a2ca4a63039.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "75896a2ca4a630396a4c32b6d6721d353ea0e610f700c6b750a629da05efa113",
+      "bytes": 462281,
+      "alt": "Bankeiz. Proposal vs contract vs invoice: what each one is for Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/request-client-deposit/": {
+      "url": "/social/resource-guide-request-client-deposit-efe457376b5a776e.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "efe457376b5a776ee9ea0f0ba023f907cb80309b9c0644334d6d143028b65adb",
+      "bytes": 459854,
+      "alt": "Bankeiz. How to request a client deposit with clear terms Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/client-scope-change/": {
+      "url": "/social/resource-guide-client-scope-change-3f9adf038115be4d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "3f9adf038115be4da7611c9543b49140c62ca339d8be793e0b0c1ea273519b84",
+      "bytes": 454838,
+      "alt": "Bankeiz. How to handle a scope change with a client Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/ask-client-for-feedback/": {
+      "url": "/social/resource-guide-ask-client-for-feedback-69cc5351accd94ad.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "69cc5351accd94ade726d8d925e928a8e75736ee81b324a7b2c9a955eb59a49b",
+      "bytes": 460028,
+      "alt": "Bankeiz. How to ask a client for feedback they can act on Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/project-handover/": {
+      "url": "/social/resource-guide-project-handover-9045ac885a2f1dd3.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "9045ac885a2f1dd32665c09da23a3ff53b98a072abe08a4cb3e6b92ed76c8c3f",
+      "bytes": 452965,
+      "alt": "Bankeiz. How to hand over a completed project Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/write-freelance-invoice/": {
+      "url": "/social/resource-guide-write-freelance-invoice-3f7437628c43f631.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "3f7437628c43f631f0e62d08a832b2aedcbb74df931894f485c127ec123fd636",
+      "bytes": 457587,
+      "alt": "Bankeiz. How to write a freelance invoice the client can check Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/client-brief-to-proposal/": {
+      "url": "/social/resource-guide-client-brief-to-proposal-b6ee24e8be9d2fd7.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b6ee24e8be9d2fd742b86dd6b4c080def7ca8e9880c7ef4f8f48f00b69ac113b",
+      "bytes": 454696,
+      "alt": "Bankeiz. How to turn a client brief into a proposal Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/schedule-from-conversation/": {
+      "url": "/social/resource-guide-schedule-from-conversation-8cb772a48f34ba43.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "8cb772a48f34ba439461a9570b6f0bf59d33c64f7569d04483f5c6efa5d7dda4",
+      "bytes": 460724,
+      "alt": "Bankeiz. How to schedule a meeting from a client conversation Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/changed-agreement-version/": {
+      "url": "/social/resource-guide-changed-agreement-version-ac06edb5bd87dfbc.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ac06edb5bd87dfbc033eb10f07ed14cc4d56231aaa80f13bbda0fc38ce9690d5",
+      "bytes": 459025,
+      "alt": "Bankeiz. What to review when a signed agreement changes Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/client-documents-and-payments/": {
+      "url": "/social/resource-guide-client-documents-and-payments-45b0c4bf6e207785.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "45b0c4bf6e2077851ee1b592258cd3d5548ac773072412c9973bb8b9b0885b65",
+      "bytes": 459283,
+      "alt": "Bankeiz. How to keep client documents and payments together Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/resources/client-payment-reminder/": {
+      "url": "/social/resource-guide-client-payment-reminder-6f831bcb17ebe4dd.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "6f831bcb17ebe4dd6915cd61c1b24aa30254fab8821594792a9b9230514bd912",
+      "bytes": 458518,
+      "alt": "Bankeiz. How to prepare a client payment reminder Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/examples/website-client-workflow/": {
+      "url": "/social/resource-example-website-client-workflow-ecb504b95a1fdd2d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "ecb504b95a1fdd2da07a89c22cad5654c6885c91708446d732acf4f8c4000d59",
+      "bytes": 459866,
+      "alt": "Bankeiz. A website client workflow from brief to delivery Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/examples/consulting-client-workflow/": {
+      "url": "/social/resource-example-consulting-client-workflow-334b36ae46d1abd7.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "334b36ae46d1abd791fdc7505425ef717497cdd16710da6ba76bc0d1c7cbe1b0",
+      "bytes": 462583,
+      "alt": "Bankeiz. A consulting engagement from first scope to the next project Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/examples/coaching-client-workflow/": {
+      "url": "/social/resource-example-coaching-client-workflow-b23d517131ba964a.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "b23d517131ba964a794d9f7752ce4c12d52c3bfa8fc7e81e460f1e34f4edda01",
+      "bytes": 464502,
+      "alt": "Bankeiz. A coaching package from first question to the next session Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/examples/creative-client-workflow/": {
+      "url": "/social/resource-example-creative-client-workflow-e6a23b90b5bb8292.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "e6a23b90b5bb82927349680989cda71942cf7bcbc01df57b84d59bd4fb362952",
+      "bytes": 465995,
+      "alt": "Bankeiz. A creative production workflow through approved delivery Client work. A clearer next step. An engraved book motif on layered cobalt, clear glass and navy forms."
+    },
     "/invitation/": {
       "url": "/social/receiving-invitation-d6a2fb4753dfe90d.png",
       "width": 1730,

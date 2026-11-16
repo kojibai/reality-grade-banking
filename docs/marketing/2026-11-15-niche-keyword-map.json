@@ -1,0 +1,2690 @@
+[
+  {
+    "id": "design-build-web-designers",
+    "family": "Design and build",
+    "niche": "Web designers",
+    "problem": "A client adds pages after approving the redesign, but the new scope, revision allowance and stage invoice live in separate threads.",
+    "keywords": [
+      "client management software for web designers",
+      "website redesign proposal and contract",
+      "collect website project feedback and approvals",
+      "website design invoice and milestone payments"
+    ],
+    "example": "Branded website redesign proposal PDF, page inventory XLSX and final handover checklist.",
+    "workflow": "Start with one redesign brief. Use selected notes in Twin to draft the proposal and page inventory; review the agreement, request each person's Receiz ID signature, discuss revisions, invoice approved stages and deliver the handover in the same conversation.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-graphic-designers",
+    "family": "Design and build",
+    "niche": "Graphic designers",
+    "problem": "Logo revisions keep arriving after the agreed rounds, leaving the designer to reconstruct which version and fee the client accepted.",
+    "keywords": [
+      "graphic design client portal",
+      "logo design revision approval process",
+      "branding package proposal template",
+      "graphic designer contract and invoice software"
+    ],
+    "example": "Brand identity proposal PDF, revision log XLSX and final brand-guidelines PDF.",
+    "workflow": "Bring one branding request and the chosen reference files. Review Twin's scope and revision wording, get explicit signatures, invoice the agreed package and keep accepted artwork and later brand work with that client.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-software-developers",
+    "family": "Design and build",
+    "niche": "Software developers",
+    "problem": "A small development engagement grows through chat requests while acceptance criteria and milestone payments lose their connection to the original scope.",
+    "keywords": [
+      "freelance developer client management",
+      "software development statement of work template",
+      "track client change requests for software projects",
+      "milestone billing for freelance developers"
+    ],
+    "example": "Feature specification DOCX, acceptance checklist XLSX and release handover PDF.",
+    "workflow": "Open a conversation for one paid build. Select the technical brief for Twin, review the statement of work, have each person sign, agree change requests, invoice accepted milestones and deliver release documents with their source records.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/developers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-ux-product-designers",
+    "family": "Design and build",
+    "niche": "UX and product designers",
+    "problem": "Stakeholders approve different prototype directions in different meetings, making the research phase and design decision hard to hand over.",
+    "keywords": [
+      "UX design project proposal",
+      "product design stakeholder approval workflow",
+      "UX research readout presentation template",
+      "client portal for UX freelancers"
+    ],
+    "example": "Research readout PPTX, decision record DOCX and prototype handover PDF.",
+    "workflow": "Start with one product-design engagement. Turn selected interview notes into a reviewed readout, record the chosen direction in the client conversation, agree the next phase and carry that decision into the next invoice and handover.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-interior-designers",
+    "family": "Design and build",
+    "niche": "Interior designers",
+    "problem": "A room's selections and allowance change after the consultation, and the client cannot tell which design fee covers the revised specification.",
+    "keywords": [
+      "interior design client communication software",
+      "room design proposal and fee schedule",
+      "interior design selections approval sheet",
+      "interior designer consultation invoice"
+    ],
+    "example": "Room-design proposal PDF and finishes-selection XLSX with client decisions.",
+    "workflow": "Bring one room brief. Review Twin's proposal and selection sheet, schedule the consultation, sign the design engagement explicitly and record approved substitutions before requesting the next payment.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-motion-designers",
+    "family": "Design and build",
+    "niche": "Motion designers",
+    "problem": "Storyboards are approved casually, then a late script change creates unpaid animation work and uncertainty about the final deliverables.",
+    "keywords": [
+      "motion design proposal template",
+      "animation storyboard client approval",
+      "motion graphics revision scope agreement",
+      "motion designer project invoice"
+    ],
+    "example": "Storyboard review PDF, animation scope DOCX and delivery-format checklist XLSX.",
+    "workflow": "Use one animation brief and selected script versions. Review a phased proposal, obtain signatures, keep storyboard decisions in the conversation and agree a priced change before invoicing and handing over final files.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-landscape-designers",
+    "family": "Design and build",
+    "niche": "Landscape designers",
+    "problem": "A planting plan changes after a site visit, but the designer's revisions, installation exclusions and plan-delivery fee are unclear.",
+    "keywords": [
+      "landscape design consultation proposal",
+      "garden design client brief template",
+      "landscape plan revision agreement",
+      "landscape designer stage payment invoice"
+    ],
+    "example": "Garden-design scope PDF and planting schedule XLSX; installation remains a separately specified service.",
+    "workflow": "Start with a site-design brief, record the visit appointment, review scope and exclusions, sign the agreed design work and keep approved plan revisions beside the design invoices and final plan.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "design-build-architectural-visualizers",
+    "family": "Design and build",
+    "niche": "Architectural visualizers",
+    "problem": "The client sends new model files during rendering, so camera approval, model revisions and the price for additional views become tangled.",
+    "keywords": [
+      "architectural visualization client portal",
+      "3D rendering proposal for property developers",
+      "architectural render revision approval",
+      "invoice template for extra render views"
+    ],
+    "example": "Render-view schedule XLSX, visualization proposal PDF and camera-approval document.",
+    "workflow": "Bring one visualization request and the selected model references. Review a priced view list, record client camera decisions, agree extra renders explicitly and deliver the approved image set with the corresponding invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-marketing-agencies",
+    "family": "Marketing and growth services",
+    "niche": "Marketing agencies",
+    "problem": "A retainer client requests campaign extras in messages, while the team separately tracks approvals, reporting and what the monthly fee includes.",
+    "keywords": [
+      "client management software for marketing agencies",
+      "marketing agency retainer proposal",
+      "campaign approval workflow for clients",
+      "agency scope creep change order template"
+    ],
+    "example": "Campaign proposal PDF, monthly plan XLSX and results presentation PPTX.",
+    "workflow": "Start with one client campaign. Select the brief and prior decisions for Twin, review a branded retainer proposal, obtain each person's signature, collect campaign approvals and invoice the agreed work while keeping follow-up and delivery in the relationship.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/agencies/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-copywriters",
+    "family": "Marketing and growth services",
+    "niche": "Copywriters",
+    "problem": "The approved brief changes between draft rounds, leaving copy acceptance and the fee for new pages or messages open to argument.",
+    "keywords": [
+      "client portal for freelance copywriters",
+      "copywriting proposal with revision limits",
+      "copy approval process for clients",
+      "copywriter contract and invoice"
+    ],
+    "example": "Website-copy proposal PDF and reviewed copy deck DOCX with an agreed page list.",
+    "workflow": "Bring one copy brief and chosen brand references. Review the scope in Twin, sign it explicitly, record draft feedback in the conversation, agree additional copy before billing and deliver the final DOCX for continued client work.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-social-media-managers",
+    "family": "Marketing and growth services",
+    "niche": "Social media managers",
+    "problem": "A client approves posts in scattered messages and adds urgent requests after the monthly content allowance has been used.",
+    "keywords": [
+      "social media manager client management software",
+      "social media retainer agreement template",
+      "monthly content calendar client approval",
+      "invoice for extra social media content"
+    ],
+    "example": "Monthly content calendar XLSX, service agreement DOCX and performance summary PPTX.",
+    "workflow": "Begin with one month's brief. Review Twin's calendar and service boundaries, get signatures, collect explicit client content decisions, request the agreed fee and use the held conversation to prepare next month's plan.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/agencies/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-seo-consultants",
+    "family": "Marketing and growth services",
+    "niche": "SEO consultants",
+    "problem": "Recommendations are delivered, but implementation responsibility and the scope of the next audit are unclear to the client.",
+    "keywords": [
+      "SEO consulting proposal template",
+      "SEO audit client handover",
+      "SEO retainer scope of work",
+      "how to invoice a technical SEO audit"
+    ],
+    "example": "Technical audit DOCX, prioritized action sheet XLSX and implementation-responsibility summary.",
+    "workflow": "Start with one audit request and selected client material. Review a scoped proposal, sign it, deliver the reviewed recommendations and use the conversation to agree follow-on work without implying ranking results.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-paid-media-specialists",
+    "family": "Marketing and growth services",
+    "niche": "Paid media specialists",
+    "problem": "Ad creative and service fees are confused with platform spend, and the client changes campaign instructions after approving the plan.",
+    "keywords": [
+      "PPC client onboarding checklist",
+      "paid media management agreement",
+      "ad creative approval process for clients",
+      "PPC management fee invoice template"
+    ],
+    "example": "Campaign brief PDF and service-fee versus supplied ad-spend worksheet XLSX.",
+    "workflow": "Bring the client's supplied campaign brief and budget. Review a service proposal that distinguishes fees from platform spend, record approvals and invoice services; any supported Bankeiz payment remains a separate user-approved action.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/agencies/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-email-marketing-specialists",
+    "family": "Marketing and growth services",
+    "niche": "Email marketing specialists",
+    "problem": "A launch sequence gains extra emails after approval, and subject-line, copy and delivery responsibilities are left in separate chats.",
+    "keywords": [
+      "email marketing project proposal",
+      "email sequence client approval workflow",
+      "email marketing retainer deliverables",
+      "email copywriting scope change template"
+    ],
+    "example": "Launch-sequence DOCX and approval calendar XLSX; campaign deployment uses the client's chosen external process.",
+    "workflow": "Start with one sequence brief, review scope and delivery responsibilities, sign the engagement and collect copy decisions in the conversation before invoicing and handing over reviewed campaign files.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/agencies/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-public-relations-consultants",
+    "family": "Marketing and growth services",
+    "niche": "Public relations consultants",
+    "problem": "A client expects press coverage from a retained media-relations effort and cannot see which messaging and outreach deliverables were actually agreed.",
+    "keywords": [
+      "PR consultant retainer proposal",
+      "public relations scope of work template",
+      "client approval for press release",
+      "PR agency monthly report template"
+    ],
+    "example": "Messaging brief DOCX, press-release draft DOCX and activity report PDF.",
+    "workflow": "Begin with one communications brief. Review deliverables and exclusions, obtain signatures, prepare drafts from chosen source material and retain client approval and the service invoice; publication and outreach decisions stay with the people responsible.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "marketing-market-research-firms",
+    "family": "Marketing and growth services",
+    "niche": "Market research firms",
+    "problem": "Questionnaire changes arrive after fieldwork planning, causing disagreement about sample scope, revised costs and which findings belong in the readout.",
+    "keywords": [
+      "market research project proposal",
+      "client sign off survey questionnaire",
+      "market research change request template",
+      "research findings presentation for clients"
+    ],
+    "example": "Research-plan PDF, questionnaire DOCX, supplied-results XLSX and readout PPTX.",
+    "workflow": "Bring the study brief and selected research material. Review the plan and fee, sign the engagement, record questionnaire decisions and separately approve scope changes before delivering a reviewed research readout.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/researchers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-photographers",
+    "family": "Photography, video and production services",
+    "niche": "Photographers",
+    "problem": "A shoot is booked before usage, image count and delivery timing are agreed, then the final selection and remaining balance require repeated follow-up.",
+    "keywords": [
+      "photography client management software",
+      "photography proposal contract invoice in one place",
+      "client photo selection approval process",
+      "commercial photography shoot booking agreement"
+    ],
+    "example": "Commercial-shoot proposal PDF, shot-list XLSX and reviewed delivery agreement DOCX.",
+    "workflow": "Start with one shoot inquiry. Review Twin's proposal using chosen shoot details, schedule the session, get each person's signature, invoice the agreed fee and keep selection decisions and final delivery in the client conversation.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-videographers",
+    "family": "Photography, video and production services",
+    "niche": "Videographers",
+    "problem": "A client treats a new cut and extra aspect ratios as part of the original shoot, while edit acceptance and final payment remain unresolved.",
+    "keywords": [
+      "videographer client portal",
+      "video production proposal and contract",
+      "video edit revision approval workflow",
+      "video production milestone invoice"
+    ],
+    "example": "Video-production proposal PDF, shoot plan XLSX and edit-delivery specification DOCX.",
+    "workflow": "Bring one video brief. Review shoot, edit and revision scope, sign the agreement, book production appointments, record cut decisions and invoice accepted stages before handing over the agreed formats.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/filmmakers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-photo-retouchers",
+    "family": "Photography, video and production services",
+    "niche": "Photo retouchers",
+    "problem": "Reference looks and image batches change after the quote, making per-image revisions and final acceptance difficult to reconcile.",
+    "keywords": [
+      "photo retouching client workflow",
+      "retouching quote per image template",
+      "client approval for photo retouching",
+      "photo retouching batch invoice"
+    ],
+    "example": "Batch manifest XLSX, retouching brief DOCX and sample-look approval PDF.",
+    "workflow": "Start with a selected sample and batch list. Review the per-image scope, record acceptance of the sample look, agree added images and deliver the reviewed batch beside its invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-video-editors",
+    "family": "Photography, video and production services",
+    "niche": "Video editors",
+    "problem": "New footage arrives after assembly approval, and the editor needs a clear decision on recutting, revision rounds and added fees.",
+    "keywords": [
+      "freelance video editor client management",
+      "video editing statement of work",
+      "client feedback log for video edits",
+      "charge for additional video editing revisions"
+    ],
+    "example": "Edit-scope PDF, timestamped feedback DOCX and delivery checklist XLSX.",
+    "workflow": "Bring one editing brief and selected feedback. Review the cut scope and rounds, sign the engagement, capture approval of each agreed cut and prepare an added-work proposal before invoicing extra editing.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/filmmakers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-drone-media-operators",
+    "family": "Photography, video and production services",
+    "niche": "Drone media operators",
+    "problem": "The client changes the site and shot requirements after booking, but the quoted deliverables and reshoot responsibility remain vague.",
+    "keywords": [
+      "drone photography service proposal",
+      "aerial video client shot list",
+      "drone filming booking agreement",
+      "drone media delivery invoice"
+    ],
+    "example": "Aerial-media shot-list XLSX and booking scope PDF; operating permissions remain the operator's responsibility.",
+    "workflow": "Begin with one site's media brief, review deliverables and rescheduling terms, arrange the visit and obtain signatures. Keep shot changes, delivery and invoices in the conversation without claiming flight authorization.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-livestream-producers",
+    "family": "Photography, video and production services",
+    "niche": "Livestream producers",
+    "problem": "Speaker changes and rehearsal additions arrive late, leaving event coverage, technical responsibilities and extra production time unpriced.",
+    "keywords": [
+      "livestream production proposal template",
+      "virtual event run of show document",
+      "livestream rehearsal client approval",
+      "live streaming production invoice"
+    ],
+    "example": "Run-of-show XLSX, responsibility matrix DOCX and production proposal PDF.",
+    "workflow": "Start with the event brief. Review a scoped production offer, book the rehearsal, sign the service agreement and record changes to the run of show before invoicing and delivering the agreed recording or handover.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/filmmakers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-colorists",
+    "family": "Photography, video and production services",
+    "niche": "Colorists",
+    "problem": "Reference grades are approved informally, then new shots and different delivery specifications expand the finishing session.",
+    "keywords": [
+      "freelance colorist booking agreement",
+      "color grading client approval workflow",
+      "color grading project quote",
+      "color grading delivery specifications template"
+    ],
+    "example": "Finishing-specification DOCX, shot-count XLSX and reference-grade approval PDF.",
+    "workflow": "Bring one finishing request and selected look references. Review session scope, record look decisions and new-shot requests, then deliver the approved masters with the finishing invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/filmmakers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "photo-video-production-sound-recordists",
+    "family": "Photography, video and production services",
+    "niche": "Production sound recordists",
+    "problem": "A shoot adds locations and overtime after the sound package is quoted, making the crew's fee and file handover harder to agree.",
+    "keywords": [
+      "production sound mixer rate agreement",
+      "location sound booking form",
+      "sound recordist overtime invoice",
+      "production audio handover checklist"
+    ],
+    "example": "Location-sound service agreement DOCX and audio-delivery manifest XLSX.",
+    "workflow": "Start with the call details supplied by production. Review time, package and handover scope, sign the booking, record approved schedule changes and issue the service invoice with the audio handover record.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/filmmakers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "Consultants",
+    "problem": "An advisory engagement moves from diagnosis to implementation without a clear new scope, signed deliverables or payment milestone.",
+    "keywords": [
+      "client management software for consultants",
+      "consulting proposal agreement and invoice",
+      "consulting engagement scope change",
+      "consulting deliverables client approval"
+    ],
+    "example": "Diagnostic proposal PDF, engagement agreement DOCX and executive recommendations PPTX.",
+    "workflow": "Start with one management-consulting conversation. Select relevant client context for Twin, review the proposal and agreement, get each person's Receiz ID signature, book working sessions and invoice agreed milestones through delivery and follow-on work.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-operations-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "Operations consultants",
+    "problem": "A process redesign produces recommendations, but the client has not accepted who owns each implementation task or the next phase.",
+    "keywords": [
+      "operations consulting statement of work",
+      "business process improvement proposal",
+      "SOP handover checklist for clients",
+      "operations consultant implementation agreement"
+    ],
+    "example": "Process-map presentation PPTX and reviewed SOP handover DOCX.",
+    "workflow": "Bring one operations brief and selected process notes. Review the diagnostic scope, sign the engagement, deliver the proposed SOPs and capture the client's phase-two decision and corresponding invoice in the same conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-hr-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "HR consultants",
+    "problem": "A handbook project expands into manager training and policy revisions before the consultant and client agree what is included.",
+    "keywords": [
+      "HR consultant client engagement template",
+      "employee handbook consulting proposal",
+      "HR project scope of work",
+      "HR consultant training invoice"
+    ],
+    "example": "Handbook-project scope DOCX and manager-workshop proposal PDF; employer review remains required.",
+    "workflow": "Start with a non-sensitive organizational brief. Review the work and client review responsibilities, obtain signatures, book workshops and agree extra revisions before delivering the reviewed files and service invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-procurement-advisors",
+    "family": "Consulting and organizational expertise",
+    "niche": "Procurement advisors",
+    "problem": "A sourcing review turns into ongoing negotiation support, while the evidence behind supplier recommendations and the advisory fee are scattered.",
+    "keywords": [
+      "procurement consulting proposal",
+      "supplier evaluation matrix template",
+      "strategic sourcing consulting scope",
+      "procurement advisory retainer agreement"
+    ],
+    "example": "Supplier-comparison XLSX and sourcing-recommendation PPTX based on client-supplied offers.",
+    "workflow": "Bring selected supplier offers into the engagement. Review the advisory scope, sign it, prepare a checked comparison in Twin and retain the client's decisions and agreed follow-on fee without implying purchasing authority.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-sustainability-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "Sustainability consultants",
+    "problem": "A client asks for a public sustainability statement from a limited data review, creating uncertainty about evidence, exclusions and additional research.",
+    "keywords": [
+      "sustainability consulting project proposal",
+      "sustainability assessment scope of work",
+      "client sustainability data request template",
+      "sustainability report review process"
+    ],
+    "example": "Evidence-request XLSX and reviewed assessment DOCX with stated inputs and limitations.",
+    "workflow": "Begin with the client's chosen source records. Review a bounded assessment proposal, agree evidence gaps, sign the engagement and deliver the reviewed report; any public claim requires the client's substantiation and approval.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-sales-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "Sales consultants",
+    "problem": "A sales-playbook engagement gains extra team training, but coaching sessions and the revised deliverable list have no agreed fee.",
+    "keywords": [
+      "sales consulting retainer proposal",
+      "sales playbook project scope",
+      "sales training workshop agreement",
+      "sales consultant client progress report"
+    ],
+    "example": "Sales-playbook DOCX, workshop plan PDF and progress presentation PPTX.",
+    "workflow": "Start with one sales-team brief. Review the playbook scope and workshop plan, sign it, book sessions and capture client approval of additional training before invoicing and handing over the revised playbook.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-grant-consultants",
+    "family": "Consulting and organizational expertise",
+    "niche": "Grant consultants",
+    "problem": "The applicant changes the project narrative near a deadline, and the consultant must separate writing support from funding decisions and new submission work.",
+    "keywords": [
+      "grant writing consultant agreement",
+      "grant proposal development scope",
+      "grant writer client document checklist",
+      "grant application revision fee"
+    ],
+    "example": "Application-material checklist XLSX and applicant-reviewed narrative DOCX.",
+    "workflow": "Bring one funding brief and the applicant's selected records. Review writing scope and deadline responsibilities, obtain signatures and retain client approval of the narrative and service fee; funding and submission outcomes are not promised.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "consulting-organizational-facilitators",
+    "family": "Consulting and organizational expertise",
+    "niche": "Organizational facilitators",
+    "problem": "A strategy workshop creates follow-up requests that were never included in the session design or agreed reporting fee.",
+    "keywords": [
+      "strategy workshop facilitation proposal",
+      "facilitator client agreement template",
+      "workshop decision record template",
+      "facilitation follow up report"
+    ],
+    "example": "Workshop agenda DOCX, decision-record XLSX and team readout PPTX.",
+    "workflow": "Start with the workshop objective, review the design and reporting scope, sign the engagement and book sessions. Use selected notes to prepare a reviewed decision record and agree any follow-up work with its own fee.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-business-coaches",
+    "family": "Coaching, teaching and education services",
+    "niche": "Business coaches",
+    "problem": "A coaching package begins with vague outcomes and session entitlements, so rescheduling, follow-up work and renewal become awkward client conversations.",
+    "keywords": [
+      "client management software for business coaches",
+      "business coaching package agreement",
+      "coaching session booking and invoice",
+      "business coaching action plan template"
+    ],
+    "example": "Coaching proposal PDF, package agreement DOCX and action-plan XLSX.",
+    "workflow": "Start with one coaching inquiry. Use chosen goals in Twin to draft a reviewed package, have each person sign, book sessions, invoice the agreed package and keep action plans and a reviewed renewal offer in the relationship.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/coaches/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-tutors",
+    "family": "Coaching, teaching and education services",
+    "niche": "Independent tutors",
+    "problem": "A family requests extra preparation and make-up lessons without a clear record of the lesson package or who approved the changes.",
+    "keywords": [
+      "private tutor booking and invoicing software",
+      "tutoring package agreement template",
+      "tutoring lesson plan for parents",
+      "tutor cancellation and makeup lesson policy"
+    ],
+    "example": "Tutoring-plan DOCX and session-entitlement XLSX, with the responsible adult as the contracting participant where appropriate.",
+    "workflow": "Bring one tutoring request. Review goals, session terms and responsibilities, obtain explicit participant signatures as appropriate, book lessons and keep reviewed progress summaries and package invoices in the conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-language-teachers",
+    "family": "Coaching, teaching and education services",
+    "niche": "Independent language teachers",
+    "problem": "A learner's travel date changes the lesson pace, but the new preparation tasks and package boundaries have not been agreed.",
+    "keywords": [
+      "language teacher client management",
+      "private language lesson package template",
+      "language learning progress report template",
+      "invoice for online language lessons"
+    ],
+    "example": "Travel-focused learning-plan DOCX and lesson-pack invoice PDF.",
+    "workflow": "Start with the learner's selected goals. Review a lesson package, sign the teaching agreement, arrange appointments and use chosen session notes to prepare a checked progress plan and the next package offer.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-career-coaches",
+    "family": "Coaching, teaching and education services",
+    "niche": "Career coaches",
+    "problem": "A resume review expands into repeated interview preparation and document rewrites beyond the original coaching package.",
+    "keywords": [
+      "career coaching client intake form",
+      "career coach service agreement",
+      "resume review coaching package",
+      "interview coaching action plan"
+    ],
+    "example": "Career-coaching scope PDF, resume-feedback DOCX and interview-practice plan XLSX.",
+    "workflow": "Begin with one career goal and selected candidate material. Review deliverables and session limits, sign the engagement, schedule practice sessions and keep reviewed document delivery and added-session fees together.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/coaches/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-corporate-trainers",
+    "family": "Coaching, teaching and education services",
+    "niche": "Corporate trainers",
+    "problem": "A company adds learners and asks for custom exercises after approving a workshop, leaving preparation effort and follow-up materials unpriced.",
+    "keywords": [
+      "corporate training proposal template",
+      "custom workshop scope of work",
+      "training participant workbook template",
+      "corporate trainer booking agreement"
+    ],
+    "example": "Workshop proposal PDF, participant workbook DOCX and training deck PPTX.",
+    "workflow": "Bring one team-training brief. Review participant count and customization scope, obtain signatures, book the training and agree added preparation before invoicing and delivering the reviewed workbook and slides.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-course-creators",
+    "family": "Coaching, teaching and education services",
+    "niche": "Course creators",
+    "problem": "A paid cohort promises live support, but learners and the creator have different expectations about feedback, office hours and final materials.",
+    "keywords": [
+      "cohort course enrollment agreement",
+      "online course learner onboarding documents",
+      "course feedback and office hours schedule",
+      "course creator customer management"
+    ],
+    "example": "Cohort welcome guide PDF, session schedule XLSX and learner workbook DOCX.",
+    "workflow": "Start with the course offer. Review support boundaries and enrollment terms, obtain the required participant agreement, arrange live sessions and keep individual learner questions, reviewed materials and payment requests connected.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-music-teachers",
+    "family": "Coaching, teaching and education services",
+    "niche": "Music teachers",
+    "problem": "A student alternates between exam preparation and performance goals, while missed-lesson arrangements and package usage become hard to explain.",
+    "keywords": [
+      "music teacher lesson booking invoice",
+      "private music lesson agreement",
+      "music student practice plan template",
+      "music lesson cancellation policy template"
+    ],
+    "example": "Practice-plan DOCX and lesson-package record XLSX.",
+    "workflow": "Bring one student's selected goals. Review the lesson package and scheduling terms, sign with the responsible contracting participant, book lessons and keep practice updates and reviewed renewal invoices in the relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "coaching-education-sports-coaches",
+    "family": "Coaching, teaching and education services",
+    "niche": "Sports skills coaches",
+    "problem": "A player books individual technique sessions but expects team assessment and tournament support beyond the agreed coaching package.",
+    "keywords": [
+      "private sports coaching booking software",
+      "sports skills coaching agreement",
+      "athlete training session plan template",
+      "private coaching package invoice"
+    ],
+    "example": "Skills-session plan DOCX and coaching-package proposal PDF, without clinical or health-treatment claims.",
+    "workflow": "Start with a skill-development inquiry. Review the coaching service and session boundaries, obtain the appropriate signatures, schedule appointments and retain reviewed practice notes and package fees for the next conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/coaches/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-virtual-assistants",
+    "family": "Administration and finance operations",
+    "niche": "Virtual assistants",
+    "problem": "An hourly support client assigns tasks across chats and expects unbudgeted extras, making the retainer, approvals and monthly handover difficult to reconcile.",
+    "keywords": [
+      "client management software for virtual assistants",
+      "virtual assistant retainer agreement",
+      "virtual assistant client onboarding checklist",
+      "virtual assistant monthly report template"
+    ],
+    "example": "Retainer proposal PDF, task-and-hours XLSX and monthly handover DOCX.",
+    "workflow": "Start with one support-client brief. Review Twin's task boundaries and retainer, have each person sign, record decisions in the conversation and prepare a reviewed monthly handover and invoice before discussing the next month.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-bookkeepers",
+    "family": "Administration and finance operations",
+    "niche": "Bookkeepers",
+    "problem": "Month-end work stalls because the client has not answered transaction questions or supplied the documents included in the engagement.",
+    "keywords": [
+      "bookkeeping client portal",
+      "bookkeeping engagement letter template",
+      "monthly bookkeeping client document checklist",
+      "bookkeeping client query tracker"
+    ],
+    "example": "Document-request XLSX, engagement DOCX and client-reviewed month-end summary PDF.",
+    "workflow": "Bring one client's selected source records. Review the engagement and missing-item list in Twin, obtain explicit signatures, discuss transaction questions and deliver a checked summary with the service invoice; no tax or filing guarantee is implied.",
+    "stage": "Launch",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/accountants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-fractional-finance-leads",
+    "family": "Administration and finance operations",
+    "niche": "Fractional finance leads",
+    "problem": "A founder asks for a cash forecast from incomplete inputs, then treats new scenario work as part of an undefined advisory retainer.",
+    "keywords": [
+      "fractional CFO engagement scope",
+      "cash flow forecast client input checklist",
+      "fractional finance monthly report template",
+      "finance advisory retainer proposal"
+    ],
+    "example": "Assumptions-based cash-plan XLSX and board discussion PPTX from supplied records.",
+    "workflow": "Begin with selected financial records and stated assumptions. Review a bounded planning engagement, sign it, prepare a checked working forecast and agree additional scenario work before invoicing; investment or solvency outcomes are not promised.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/consultants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-payroll-administrators",
+    "family": "Administration and finance operations",
+    "niche": "Payroll administration services",
+    "problem": "The client supplies changed pay instructions after the agreed cutoff, creating uncertainty about what the administrator was authorized to prepare.",
+    "keywords": [
+      "payroll administration service agreement",
+      "client payroll change approval form",
+      "payroll input cutoff checklist",
+      "payroll service client onboarding"
+    ],
+    "example": "Client-input checklist XLSX and reviewed instruction-approval DOCX; payroll execution stays in the client's authorized process.",
+    "workflow": "Start with a service brief rather than sensitive employee detail. Review responsibilities and cutoffs, sign the engagement and retain reviewed client instructions and the service invoice without claiming payroll compliance or direct system access.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/accountants/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-billing-administrators",
+    "family": "Administration and finance operations",
+    "niche": "Outsourced billing administrators",
+    "problem": "The client has different versions of an agreed fee, so the administrator cannot confidently prepare the next invoice or explain a disputed charge.",
+    "keywords": [
+      "outsourced billing service proposal",
+      "client invoice approval workflow",
+      "billing query log template",
+      "accounts receivable service agreement"
+    ],
+    "example": "Fee-source checklist XLSX and draft billing-explanation DOCX.",
+    "workflow": "Bring the client's selected agreement and billing records. Review the support scope, sign it, prepare invoices or explanations for human review and retain the accepted source and service-fee record in the conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-remote-office-managers",
+    "family": "Administration and finance operations",
+    "niche": "Remote office managers",
+    "problem": "A small team requests onboarding packs, supplier coordination and meeting preparation without a common record of which monthly support tasks are included.",
+    "keywords": [
+      "remote office management retainer",
+      "small business office support proposal",
+      "remote team onboarding pack template",
+      "office manager monthly handover report"
+    ],
+    "example": "Office-support agreement DOCX, onboarding pack PDF and monthly handover XLSX.",
+    "workflow": "Start with one team's support brief. Review recurring responsibilities, obtain signatures, organize relevant appointments and prepare checked handover documents and service invoices from the context the client chooses to supply.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/teams/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-presentation-specialists",
+    "family": "Administration and finance operations",
+    "niche": "Presentation specialists",
+    "problem": "An executive requests new storylines after approving slide polish, so the scope shifts from formatting to full deck development without a revised fee.",
+    "keywords": [
+      "presentation design service proposal",
+      "pitch deck revision approval process",
+      "PowerPoint design client brief",
+      "presentation specialist project invoice"
+    ],
+    "example": "Client presentation PPTX plus scope-and-revision PDF.",
+    "workflow": "Bring one deck and selected executive notes. Review the difference between editing and new content, sign the scope, record storyline decisions and deliver a reviewed PPTX with an invoice for the agreed work.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/designers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "admin-finance-research-assistants",
+    "family": "Administration and finance operations",
+    "niche": "Independent research assistants",
+    "problem": "A client keeps widening a desk-research question, and the assistant needs a clear boundary on sources, evidence quality and the final briefing format.",
+    "keywords": [
+      "freelance research assistant proposal",
+      "desk research scope of work",
+      "research briefing document template",
+      "research assistant client source log"
+    ],
+    "example": "Source-log XLSX and referenced briefing DOCX with the research limits stated.",
+    "workflow": "Start with one bounded question and client-selected material. Review the source and deliverable scope, obtain signatures, prepare a checked briefing with its underlying references and agree extensions before further billing.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/researchers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-remodelers",
+    "family": "Home services and trades",
+    "niche": "Residential remodelers",
+    "problem": "A homeowner approves an extra item verbally, then disputes whether the revised price was included in the original renovation scope.",
+    "keywords": [
+      "remodeling estimate and change order software",
+      "home renovation scope of work template",
+      "homeowner approval for extra construction work",
+      "remodeling progress payment invoice"
+    ],
+    "example": "Renovation proposal PDF, itemized scope XLSX and reviewed change-order DOCX.",
+    "workflow": "Start with one project inquiry. Review scope and payment stages, have the parties explicitly sign, schedule client meetings and record a separately accepted change before preparing the next invoice and handover.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-electricians",
+    "family": "Home services and trades",
+    "niche": "Independent electricians",
+    "problem": "A quoted visit uncovers additional work, and the customer needs a clear written choice before the extra job is scheduled and billed.",
+    "keywords": [
+      "electrician quote acceptance software",
+      "electrical service estimate template",
+      "customer approval for additional electrical work",
+      "electrician service visit invoice"
+    ],
+    "example": "Service estimate PDF and added-work approval DOCX; technical work and certification remain with the qualified provider.",
+    "workflow": "Bring the service request and the provider's own assessment. Review the estimate, arrange the appointment, obtain agreement to added work and keep the resulting invoice and completion document with the customer conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-plumbers",
+    "family": "Home services and trades",
+    "niche": "Plumbing service businesses",
+    "problem": "The customer expects a repair to include replacement parts and a second visit that were never specified in the original estimate.",
+    "keywords": [
+      "plumbing estimate approval app",
+      "plumbing repair scope of work",
+      "plumber follow up visit agreement",
+      "plumbing parts and labor invoice"
+    ],
+    "example": "Repair-scope PDF and parts-and-visit breakdown XLSX.",
+    "workflow": "Start with one customer inquiry. Review the provider-prepared repair scope and visit terms, sign where required, arrange the appointment and retain the customer's decision on further work beside the invoice and completion notes.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-hvac-services",
+    "family": "Home services and trades",
+    "niche": "HVAC service businesses",
+    "problem": "A seasonal service customer confuses the inspection visit with a replacement installation and needs a clear next quote and appointment.",
+    "keywords": [
+      "HVAC maintenance proposal template",
+      "HVAC service agreement customer approval",
+      "HVAC replacement estimate follow up",
+      "HVAC service appointment invoice"
+    ],
+    "example": "Maintenance-service scope PDF and separate replacement proposal PDF.",
+    "workflow": "Bring one service inquiry and the provider's findings. Review the maintenance boundaries, arrange the visit and use the conversation to present a separately reviewed replacement offer and its invoice rather than merging the two jobs.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-painting-contractors",
+    "family": "Home services and trades",
+    "niche": "Painting contractors",
+    "problem": "Room counts, surface preparation and paint selections change between the estimate and work date, causing disagreement about what the price covers.",
+    "keywords": [
+      "painting contractor estimate approval",
+      "painting scope of work rooms and prep",
+      "paint color client sign off form",
+      "painting contractor change order template"
+    ],
+    "example": "Room-and-preparation schedule XLSX, estimate PDF and color-decision DOCX.",
+    "workflow": "Start with the room brief. Review preparation and material assumptions, sign the scope, book the work dates and capture approved color or room changes before invoicing and delivering the completion record.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-landscape-maintenance-firms",
+    "family": "Home services and trades",
+    "niche": "Landscape maintenance firms",
+    "problem": "A recurring customer requests seasonal cleanup and extra plantings while assuming they are included in the regular maintenance fee.",
+    "keywords": [
+      "landscape maintenance service agreement",
+      "lawn care recurring client communication",
+      "seasonal garden cleanup quote",
+      "landscaping extra work approval"
+    ],
+    "example": "Maintenance-plan PDF and seasonal add-on quote XLSX.",
+    "workflow": "Bring one property-maintenance brief. Review recurring inclusions, obtain agreement, schedule client-facing appointments and keep seasonal add-on decisions and separately approved payment requests in the same relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-cleaning-services",
+    "family": "Home services and trades",
+    "niche": "Cleaning services",
+    "problem": "The client books a standard clean but expects move-out tasks, extra rooms and a different visit frequency without a revised quote.",
+    "keywords": [
+      "cleaning business booking contract invoice",
+      "house cleaning scope checklist template",
+      "move out cleaning quote approval",
+      "recurring cleaning client agreement"
+    ],
+    "example": "Cleaning-checklist XLSX and service-frequency agreement DOCX.",
+    "workflow": "Start with one cleaning inquiry. Review rooms, exclusions and frequency, sign the service terms, arrange appointments and agree an expanded clean before preparing the corresponding invoice and follow-up.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "home-trades-handypersons",
+    "family": "Home services and trades",
+    "niche": "Handyperson services",
+    "problem": "A small punch list grows during the visit, and the customer loses track of which tasks, materials and return trip were actually approved.",
+    "keywords": [
+      "handyman estimate approval software",
+      "handyman punch list template",
+      "handyman additional work authorization",
+      "handyman labor and materials invoice"
+    ],
+    "example": "Task-and-materials XLSX and short service proposal PDF.",
+    "workflow": "Bring the customer's task list. Review the work and visit scope, obtain explicit agreement, record additions in the conversation and deliver a checked completion list with the agreed invoice and next-visit offer.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-hair-stylists",
+    "family": "Personal and local services",
+    "niche": "Independent hair stylists",
+    "problem": "A special-occasion booking expands to a larger party, but the consultation, travel fee and service schedule have not been revised.",
+    "keywords": [
+      "independent hairstylist booking agreement",
+      "bridal party hair service quote",
+      "hairstylist consultation form template",
+      "mobile hair stylist travel fee invoice"
+    ],
+    "example": "Party-service proposal PDF and appointment plan XLSX.",
+    "workflow": "Start with one styling inquiry. Review participants, location and service terms, schedule the consultation, obtain agreement and keep approved party changes, invoice and later bookings in the client conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-makeup-artists",
+    "family": "Personal and local services",
+    "niche": "Makeup artists",
+    "problem": "The client adds a trial, additional looks and assistants after accepting a simple event-makeup quote.",
+    "keywords": [
+      "makeup artist client contract and invoice",
+      "makeup trial booking agreement",
+      "event makeup service proposal",
+      "makeup artist additional look fee"
+    ],
+    "example": "Makeup-service proposal PDF, trial brief DOCX and event schedule XLSX.",
+    "workflow": "Bring one event brief and selected style references. Review the trial and final-service scope, obtain signatures, book appointments and agree additional looks before invoicing and continuing the client relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-personal-stylists",
+    "family": "Personal and local services",
+    "niche": "Personal stylists",
+    "problem": "A wardrobe session turns into shopping support and return coordination, while the client cannot tell which hours and deliverables belong to the package.",
+    "keywords": [
+      "personal stylist client questionnaire",
+      "wardrobe styling service agreement",
+      "personal shopping package proposal",
+      "personal stylist lookbook template"
+    ],
+    "example": "Wardrobe-package proposal PDF and reviewed lookbook PPTX.",
+    "workflow": "Start with the client's chosen wardrobe goals. Review session and shopping-support limits, sign the agreement, schedule the session and deliver the checked lookbook with the agreed service invoice and follow-up offer.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-professional-organizers",
+    "family": "Personal and local services",
+    "niche": "Professional organizers",
+    "problem": "A room-organizing project gains donation runs and additional rooms, but the original estimate does not say who handles those tasks.",
+    "keywords": [
+      "professional organizer client agreement",
+      "home organizing project proposal",
+      "decluttering session scope checklist",
+      "professional organizer additional hours invoice"
+    ],
+    "example": "Room-project checklist XLSX and organizing agreement DOCX.",
+    "workflow": "Bring one organizing brief. Review room boundaries, time and customer responsibilities, obtain signatures, schedule appointments and record approved added tasks before delivering the completion checklist and invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-pet-sitters",
+    "family": "Personal and local services",
+    "niche": "Pet sitters",
+    "problem": "A booking changes dates and care instructions, leaving the sitter uncertain about which visits and customer-approved extras are included.",
+    "keywords": [
+      "pet sitter booking agreement",
+      "pet sitting client instructions template",
+      "pet sitter holiday booking changes",
+      "pet sitting visit invoice"
+    ],
+    "example": "Owner-provided care-instruction DOCX and visit schedule XLSX, without veterinary advice.",
+    "workflow": "Start with one owner's booking request. Review dates, supplied instructions and service limits, sign the booking, schedule visits and retain accepted changes and the invoice for the next stay.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-mobile-auto-detailers",
+    "family": "Personal and local services",
+    "niche": "Mobile auto detailers",
+    "problem": "The vehicle condition requires extra work beyond the selected package, and the customer needs to approve the revised service before the visit proceeds.",
+    "keywords": [
+      "mobile detailing customer booking software",
+      "car detailing package agreement",
+      "auto detailing extra service approval",
+      "mobile detailer estimate and invoice"
+    ],
+    "example": "Vehicle-service proposal PDF and package-selection XLSX.",
+    "workflow": "Bring one detailing inquiry. Review the provider's assessed package and location requirements, arrange the appointment and record customer approval of extras before preparing the invoice and follow-up maintenance offer.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-local-tour-guides",
+    "family": "Personal and local services",
+    "niche": "Local tour guides",
+    "problem": "A private group changes its size, meeting point and itinerary after booking, but the guide's hours and revised fee have not been confirmed.",
+    "keywords": [
+      "private tour guide booking agreement",
+      "custom walking tour proposal",
+      "private tour itinerary client approval",
+      "tour guide group size invoice"
+    ],
+    "example": "Private-tour itinerary PDF and group booking agreement DOCX.",
+    "workflow": "Start with one group's interests and constraints. Review a custom itinerary, obtain agreement, schedule the tour and keep client-approved itinerary changes and fee requests together for future visits.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/hospitality/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "personal-local-personal-chefs",
+    "family": "Personal and local services",
+    "niche": "Personal chefs",
+    "problem": "A dinner client changes guest count and menu expectations after accepting a cooking-service proposal, leaving purchasing and service fees unclear.",
+    "keywords": [
+      "personal chef client proposal",
+      "private dinner menu approval form",
+      "personal chef service agreement",
+      "private chef guest count change invoice"
+    ],
+    "example": "Menu proposal PDF and ingredient-assumption XLSX from client-provided dietary requirements.",
+    "workflow": "Bring one dinner brief. Review guest count, menu and provider responsibilities, sign the service agreement, schedule the event and approve changes before invoicing; dietary safety and food compliance remain with the qualified provider.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/hospitality/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-podcasters",
+    "family": "Creators, publishing and media",
+    "niche": "Podcasters",
+    "problem": "A sponsor asks for additional placements and approval rounds without a clear record of which episodes and deliverables the booking includes.",
+    "keywords": [
+      "podcast sponsorship proposal template",
+      "podcast sponsor agreement deliverables",
+      "podcast guest booking workflow",
+      "podcast sponsor invoice template"
+    ],
+    "example": "Sponsor proposal PDF, episode-placement XLSX and guest brief DOCX.",
+    "workflow": "Start with one sponsor or guest conversation. Review the selected episode context in Twin, prepare and sign the sponsorship scope, arrange recording appointments and retain approved placements, delivery records and the agreed invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/podcasters/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-newsletter-publishers",
+    "family": "Creators, publishing and media",
+    "niche": "Newsletter publishers",
+    "problem": "A sponsor buys a placement but later expects extra mentions and copy changes that were never included in the issue booking.",
+    "keywords": [
+      "newsletter sponsorship booking agreement",
+      "newsletter advertising proposal template",
+      "newsletter sponsor copy approval",
+      "newsletter sponsorship invoice"
+    ],
+    "example": "Issue-booking proposal PDF and sponsor-copy approval DOCX.",
+    "workflow": "Bring one issue's sponsor brief. Review placement, copy and revision terms, obtain signatures, record the sponsor's copy decision and retain the agreed invoice and delivered issue reference for the next booking.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/knowledge-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-authors",
+    "family": "Creators, publishing and media",
+    "niche": "Authors and independent writers",
+    "problem": "A commissioned book project gains extra interviews and rewrites without a clear chapter scope, delivery acceptance or revised fee.",
+    "keywords": [
+      "author client commission agreement",
+      "ghostwriting project proposal",
+      "manuscript revision scope template",
+      "book writing milestone invoice"
+    ],
+    "example": "Book-project proposal PDF, chapter-plan XLSX and manuscript DOCX.",
+    "workflow": "Start with one writing commission. Review the chapter plan and revision scope using selected source material, get explicit signatures, book interviews and keep accepted drafts, milestone invoices and final manuscript delivery in the relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/authors/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-musicians-producers",
+    "family": "Creators, publishing and media",
+    "niche": "Musicians and music producers",
+    "problem": "A recording client adds mixes and alternate versions while the original session quote leaves deliverables and revision rounds unclear.",
+    "keywords": [
+      "music production client agreement",
+      "recording session booking proposal",
+      "mix revision approval workflow",
+      "music producer milestone invoice"
+    ],
+    "example": "Recording-scope DOCX, session schedule XLSX and mix-delivery checklist PDF.",
+    "workflow": "Bring one recording brief and selected references. Review the session and mix scope, obtain signatures, schedule sessions and agree extra versions before invoicing and delivering the approved audio files without rights guarantees.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/musicians/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-illustrators",
+    "family": "Creators, publishing and media",
+    "niche": "Illustrators",
+    "problem": "A commission's intended use and revision scope change after the sketch is accepted, and the artist needs a reviewed record of the additional work.",
+    "keywords": [
+      "illustration commission proposal",
+      "illustrator client usage agreement template",
+      "illustration sketch approval process",
+      "illustration revision fee invoice"
+    ],
+    "example": "Commission proposal PDF and sketch-stage decision DOCX with party-reviewed usage wording.",
+    "workflow": "Start with one illustration brief. Review deliverables, proposed usage terms and revision limits, have the parties sign, record sketch decisions and invoice added work before delivering the accepted art; no copyright outcome is guaranteed.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-voice-actors",
+    "family": "Creators, publishing and media",
+    "niche": "Voice actors",
+    "problem": "The client revises a script after recording and assumes new reads and extra usage are covered by the original session fee.",
+    "keywords": [
+      "voice over client booking agreement",
+      "voice actor script change fee",
+      "voice over usage proposal template",
+      "voiceover pickup approval workflow"
+    ],
+    "example": "Script DOCX, recording proposal PDF and pickup-request XLSX.",
+    "workflow": "Bring the selected script and client brief. Review session deliverables and party-reviewed usage terms, sign the booking, arrange the session and agree pickups before invoicing and handing over approved recordings.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-independent-journalists",
+    "family": "Creators, publishing and media",
+    "niche": "Independent journalists",
+    "problem": "An editor changes the assignment angle and reporting requirement after commissioning, while the delivery date and additional fee remain unsettled.",
+    "keywords": [
+      "freelance journalist assignment agreement",
+      "article commission scope template",
+      "freelance reporting expense approval",
+      "journalist invoice for commissioned article"
+    ],
+    "example": "Assignment-confirmation DOCX and editor-reviewed article DOCX with a supplied-source list.",
+    "workflow": "Start with one editorial commission. Review length, reporting scope, expenses and deadline, record agreement, arrange interviews and retain editor decisions, delivery and the service invoice without implying fact-checking or publication guarantees.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/authors/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "creators-media-audio-editors",
+    "family": "Creators, publishing and media",
+    "niche": "Audio editors",
+    "problem": "A client supplies replacement recordings after approving an episode edit, making cleanup, recutting and extra deliverables difficult to price.",
+    "keywords": [
+      "podcast editing service agreement",
+      "audio editing client revision process",
+      "podcast episode production quote",
+      "audio editor delivery checklist"
+    ],
+    "example": "Episode-edit scope PDF and audio-delivery manifest XLSX.",
+    "workflow": "Bring one episode-edit brief and selected notes. Review cleanup and revision scope, sign the engagement, record acceptance of the cut and agree replacements before delivering the finished files and invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/podcasters/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-real-estate-agents",
+    "family": "Real estate, property and facilities",
+    "niche": "Real estate agents",
+    "problem": "A seller cannot find the latest marketing plan and next appointment among document requests and status messages.",
+    "keywords": [
+      "real estate agent client communication portal",
+      "seller onboarding document checklist",
+      "real estate listing presentation template",
+      "seller marketing plan approval"
+    ],
+    "example": "Seller-facing marketing presentation PPTX and appointment-and-document checklist XLSX.",
+    "workflow": "Start with one seller relationship. Review a marketing brief from selected materials, arrange meetings and retain reviewed proposals and client decisions; professional forms and regulated transaction duties remain with authorized practitioners.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-property-managers",
+    "family": "Real estate, property and facilities",
+    "niche": "Property managers",
+    "problem": "An owner is asked to approve repairs without the quote, prior decision and service invoice in the same conversation.",
+    "keywords": [
+      "property owner maintenance approval portal",
+      "property manager owner update template",
+      "rental property repair quote approval",
+      "property management service proposal"
+    ],
+    "example": "Owner-update PDF, supplied repair-quote comparison XLSX and service agreement DOCX.",
+    "workflow": "Bring one owner's selected property records. Review the management-service scope, sign where appropriate, present supplied repair choices and retain explicit owner decisions and fee records without claiming tenancy-system or trust-account functions.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-tenant-placement-coordinators",
+    "family": "Real estate, property and facilities",
+    "niche": "Tenant-placement coordinators",
+    "problem": "A property owner requests additional marketing and viewing work after agreeing to a narrowly scoped placement-support service.",
+    "keywords": [
+      "tenant placement service proposal",
+      "rental listing marketing scope template",
+      "property viewing appointment coordination",
+      "tenant placement service invoice"
+    ],
+    "example": "Placement-support scope PDF and viewing schedule XLSX, without screening or eligibility decisions.",
+    "workflow": "Start with one owner's service inquiry. Review permitted administrative work and responsibilities, obtain agreement, arrange viewing appointments and record scope changes and service invoices; regulated placement activity requires separate qualification.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-home-stagers",
+    "family": "Real estate, property and facilities",
+    "niche": "Home stagers",
+    "problem": "A staging client adds rooms and extends the installation period without agreeing to the new scope and rental-related charges.",
+    "keywords": [
+      "home staging proposal template",
+      "home staging client agreement",
+      "staging installation appointment checklist",
+      "home staging extension invoice"
+    ],
+    "example": "Room-staging proposal PDF and item-and-date schedule XLSX.",
+    "workflow": "Bring one property's staging brief. Review rooms, installation timing and supplied-item terms, sign the engagement, arrange appointments and agree extensions before invoicing and delivering the staged-project handover.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-transaction-coordinators",
+    "family": "Real estate, property and facilities",
+    "niche": "Real estate transaction coordinators",
+    "problem": "Participants send different checklist versions, and the coordinator needs a clear record of outstanding administrative documents and agreed service scope.",
+    "keywords": [
+      "real estate transaction coordinator service agreement",
+      "transaction coordinator client checklist",
+      "real estate closing document request tracker",
+      "transaction coordinator fee invoice"
+    ],
+    "example": "Administrative document-request XLSX and service-scope DOCX; not a closing or title system.",
+    "workflow": "Start with the responsible professional's selected checklist. Review authorized administrative duties, sign the service engagement and retain reviewed document requests, appointments and fee records without claiming regulatory or closing completion.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-short-term-rental-hosts",
+    "family": "Real estate, property and facilities",
+    "niche": "Short-term rental hosts",
+    "problem": "A direct-booking guest changes dates and requests extra services, while the host's original offer and charges are buried in messages.",
+    "keywords": [
+      "direct booking guest agreement template",
+      "holiday rental guest communication workflow",
+      "vacation rental extra service approval",
+      "short term rental welcome guide template"
+    ],
+    "example": "Guest welcome PDF and booking-terms DOCX reviewed by the host.",
+    "workflow": "Start with one guest inquiry. Review the stay offer and service boundaries, obtain the appropriate agreement, arrange guest-facing appointments and retain accepted changes and separately approved payment actions without platform synchronization claims.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/hospitality/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-property-inspectors",
+    "family": "Real estate, property and facilities",
+    "niche": "Property inspectors",
+    "problem": "The client expects specialist testing and a rapid follow-up visit that were excluded from the original inspection engagement.",
+    "keywords": [
+      "property inspection booking agreement",
+      "home inspection scope exclusions template",
+      "property inspection report delivery workflow",
+      "inspection follow up visit invoice"
+    ],
+    "example": "Provider-reviewed inspection-scope PDF and report-delivery checklist XLSX.",
+    "workflow": "Bring one inspection inquiry and the provider's own scope. Review exclusions and delivery responsibilities, sign the engagement, arrange the appointment and deliver the provider-reviewed report with the service invoice; certification is not supplied by Bankeiz.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/real-estate/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "property-facilities-managers",
+    "family": "Real estate, property and facilities",
+    "niche": "Independent facilities managers",
+    "problem": "A client asks for urgent vendor coordination without identifying which owner-approved tasks and follow-up report are part of the service contract.",
+    "keywords": [
+      "facilities management service proposal",
+      "facility maintenance owner approval workflow",
+      "facilities manager client handover report",
+      "building services coordination agreement"
+    ],
+    "example": "Facilities-support proposal PDF and action-and-owner XLSX.",
+    "workflow": "Start with one site's support brief. Review coordination scope and approval responsibilities, sign the service agreement and keep supplied vendor information, customer decisions, meetings and reviewed handover reports with the service invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/project-leaders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-corporate-event-planners",
+    "family": "Events and occasion services",
+    "niche": "Corporate event planners",
+    "problem": "A company changes attendee count and agenda after approving an event plan, creating unpriced coordination work and confused supplier decisions.",
+    "keywords": [
+      "corporate event planning proposal",
+      "event planning client approval workflow",
+      "corporate event scope change form",
+      "event planner milestone invoice"
+    ],
+    "example": "Event proposal PDF, budget XLSX and run-of-show DOCX.",
+    "workflow": "Start with one company event brief. Review the plan and coordination fee, obtain signatures, book planning appointments and retain client-approved changes, supplied vendor choices and milestone invoices through the final handover.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-wedding-planners",
+    "family": "Events and occasion services",
+    "niche": "Wedding planners",
+    "problem": "A couple and family members give conflicting decisions on the wedding plan, and additions arrive without a shared approval and fee record.",
+    "keywords": [
+      "wedding planner client portal",
+      "wedding planning service agreement",
+      "wedding budget client approval sheet",
+      "wedding planner change request template"
+    ],
+    "example": "Planning agreement DOCX, decision-and-budget XLSX and day plan PDF.",
+    "workflow": "Begin with the couple's chosen planning brief. Review decision responsibilities and service scope, request each person's explicit signature as required, arrange meetings and record accepted changes before invoicing and delivering the day plan.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-caterers",
+    "family": "Events and occasion services",
+    "niche": "Caterers",
+    "problem": "Guest count and service requirements change after menu approval, while the client still expects the original quote to cover staff and extras.",
+    "keywords": [
+      "catering proposal and contract template",
+      "catering guest count change approval",
+      "catering menu sign off form",
+      "catering service final invoice"
+    ],
+    "example": "Menu proposal PDF and headcount-and-service XLSX.",
+    "workflow": "Bring one event's catering brief and client-provided requirements. Review menu, headcount and service terms, sign the agreement, arrange planning appointments and record approved changes before the invoice; food safety remains the provider's responsibility.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/hospitality/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-event-venues",
+    "family": "Events and occasion services",
+    "niche": "Event venues",
+    "problem": "An organizer requests extra setup time and included equipment that were not part of the venue's agreed hire package.",
+    "keywords": [
+      "event venue booking agreement",
+      "venue hire proposal template",
+      "venue setup access schedule",
+      "event venue additional hours invoice"
+    ],
+    "example": "Venue-hire proposal PDF, access schedule XLSX and agreed-use DOCX.",
+    "workflow": "Start with one event inquiry. Review access, included services and hire terms, obtain explicit agreement, schedule the site visit and retain accepted time changes, invoices and post-event follow-up in the organizer relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-djs",
+    "family": "Events and occasion services",
+    "niche": "DJs and event entertainers",
+    "problem": "The event host adds ceremony audio and extra performance time after booking a reception-only package.",
+    "keywords": [
+      "DJ booking contract and invoice",
+      "DJ event client questionnaire",
+      "DJ additional hours agreement",
+      "DJ event music planning form"
+    ],
+    "example": "Entertainment proposal PDF and event-preferences XLSX.",
+    "workflow": "Bring the host's selected event brief. Review performance and equipment scope, sign the booking, schedule the planning conversation and agree extra coverage before invoicing and retaining the final event plan for repeat bookings.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-florists",
+    "family": "Events and occasion services",
+    "niche": "Event florists",
+    "problem": "A client changes arrangement counts and installation locations after accepting the design, but the revised materials and setup fee are not confirmed.",
+    "keywords": [
+      "wedding florist proposal template",
+      "event floral design client approval",
+      "floral arrangement order change form",
+      "event florist delivery setup invoice"
+    ],
+    "example": "Floral proposal PDF and arrangement-count XLSX.",
+    "workflow": "Start with the event design brief. Review quantities, substitution assumptions and setup scope, get agreement, arrange the planning appointment and keep approved floral changes and the final invoice beside the design decisions.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-event-rental-firms",
+    "family": "Events and occasion services",
+    "niche": "Event rental firms",
+    "problem": "An organizer changes item quantities and collection times, creating disagreement about what was reserved and which extra charges were accepted.",
+    "keywords": [
+      "event rental quote acceptance",
+      "party rental order change form",
+      "event equipment hire agreement",
+      "event rental delivery collection schedule"
+    ],
+    "example": "Rental-item XLSX and hire-agreement DOCX, using the provider's supplied availability.",
+    "workflow": "Bring one event rental request. Review item quantities and hire responsibilities, sign the agreement, arrange delivery-related appointments and record accepted changes and payment requests without claiming live inventory integration.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "events-officiants",
+    "family": "Events and occasion services",
+    "niche": "Ceremony officiants",
+    "problem": "A couple expects multiple script rewrites and a rehearsal when the original booking only specified a ceremony service.",
+    "keywords": [
+      "celebrant client service agreement",
+      "ceremony script client approval",
+      "wedding officiant booking proposal",
+      "celebrant rehearsal additional fee"
+    ],
+    "example": "Ceremony-service proposal PDF and client-reviewed script DOCX.",
+    "workflow": "Start with one ceremony inquiry. Review service boundaries and script rounds, obtain agreement, book consultations and retain script decisions, added rehearsal fees and final document delivery; legal marriage requirements remain separately verified.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/events/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-equipment-service-firms",
+    "family": "B2B, technical and industrial services",
+    "niche": "Commercial equipment service firms",
+    "problem": "A business customer requests added repair work after a service visit, but the quote, authorization and report are separated from the invoice.",
+    "keywords": [
+      "commercial equipment service proposal",
+      "equipment repair customer authorization form",
+      "field service report template for clients",
+      "equipment maintenance service invoice"
+    ],
+    "example": "Provider-prepared service report DOCX and repair-options XLSX.",
+    "workflow": "Bring one customer's service request and the technician's findings. Review a bounded service proposal, obtain agreement, arrange the visit and retain the customer's added-work decision and reviewed report with the invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-fabrication-shops",
+    "family": "B2B, technical and industrial services",
+    "niche": "Custom fabrication shops",
+    "problem": "A buyer revises dimensions after approving a quote, and the shop needs an accepted drawing reference and revised price before proceeding.",
+    "keywords": [
+      "custom fabrication quote approval",
+      "fabrication drawing client sign off",
+      "metal fabrication change order template",
+      "fabrication milestone billing"
+    ],
+    "example": "Quote PDF and drawing-reference decision DOCX with a supplied bill-of-materials XLSX.",
+    "workflow": "Start with one buyer's specification. Review quoted scope and referenced files, sign the order agreement, retain explicit revision decisions and invoice agreed stages before delivering the order handover documents.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-technical-writers",
+    "family": "B2B, technical and industrial services",
+    "niche": "Technical writing services",
+    "problem": "A customer adds product variants and documentation formats after approving a manual project, making acceptance and the revision fee unclear.",
+    "keywords": [
+      "technical writing services proposal",
+      "user manual project scope of work",
+      "technical documentation client review process",
+      "technical writer project invoice"
+    ],
+    "example": "Manual DOCX, review-checklist XLSX and delivery PDF.",
+    "workflow": "Bring one documentation brief and selected product sources. Review variants, formats and rounds, sign the engagement, collect client technical review decisions and deliver the checked manual with the agreed invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/freelancers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-commercial-printers",
+    "family": "B2B, technical and industrial services",
+    "niche": "Commercial printing firms",
+    "problem": "The buyer changes the proof or print quantity after quote acceptance, leaving production approval and the revised price disconnected.",
+    "keywords": [
+      "print proof approval workflow",
+      "commercial printing quote acceptance",
+      "print order quantity change form",
+      "printing job invoice template"
+    ],
+    "example": "Print-quote PDF and proof-and-quantity approval DOCX.",
+    "workflow": "Start with one supplied print specification. Review the quote and proof responsibilities, obtain agreement, record the buyer's selected proof and quantity and retain accepted changes and the invoice with the job conversation.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-translation-localization-firms",
+    "family": "B2B, technical and industrial services",
+    "niche": "Translation and localization firms",
+    "problem": "A client updates the source text and adds file formats after translation begins, but the word-count basis and review responsibility remain unclear.",
+    "keywords": [
+      "translation client project proposal",
+      "localization statement of work template",
+      "translation source text change approval",
+      "translation delivery review checklist"
+    ],
+    "example": "Language-and-file XLSX, translation-scope PDF and reviewed translated DOCX.",
+    "workflow": "Bring one language-service brief and selected source files. Review languages, source version and reviewer responsibilities, sign the scope and agree new-source work before invoicing and handing over the reviewed translations.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-quality-inspection-providers",
+    "family": "B2B, technical and industrial services",
+    "niche": "Independent quality inspection providers",
+    "problem": "A buyer expects additional samples and a certification statement from a limited inspection visit that never included those tasks.",
+    "keywords": [
+      "supplier quality inspection service proposal",
+      "inspection scope and sample checklist",
+      "client inspection report approval workflow",
+      "quality inspection service invoice"
+    ],
+    "example": "Provider-reviewed inspection report DOCX and sample-scope XLSX; no accreditation or certification claim.",
+    "workflow": "Start with one buyer's inspection brief. Review sampling scope and report responsibilities, sign the service agreement, arrange the visit and retain the provider's reviewed report and invoice without representing it as a Bankeiz certification.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/service-businesses/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-exhibit-builders",
+    "family": "B2B, technical and industrial services",
+    "niche": "Trade-show exhibit builders",
+    "problem": "A buyer changes booth graphics and installation requirements after approving the design, leaving build scope and extra on-site work unpriced.",
+    "keywords": [
+      "trade show booth build proposal",
+      "exhibition stand client design approval",
+      "exhibit installation scope change",
+      "trade show exhibit milestone invoice"
+    ],
+    "example": "Exhibit proposal PDF, build schedule XLSX and graphics-decision DOCX.",
+    "workflow": "Bring one exhibit brief. Review build and installation responsibilities, obtain signatures, arrange planning appointments and retain client-approved graphic or installation changes before invoicing and delivering the handover pack.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/project-leaders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "b2b-industrial-equipment-trainers",
+    "family": "B2B, technical and industrial services",
+    "niche": "Commercial equipment trainers",
+    "problem": "An operator adds shifts, learner groups and custom exercises after booking a single equipment-training session.",
+    "keywords": [
+      "equipment training service proposal",
+      "operator training workshop agreement",
+      "equipment training participant workbook",
+      "onsite training additional session invoice"
+    ],
+    "example": "Trainer-reviewed participant workbook DOCX and session plan XLSX, without a certification guarantee.",
+    "workflow": "Start with the customer's training brief. Review learner groups, equipment responsibilities and materials, sign the engagement, arrange appointments and agree additional sessions before delivering the reviewed workbook and invoice.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/educators/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-nonprofit-program-teams",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Nonprofit program teams",
+    "problem": "A funder asks for an update, but the agreed program deliverables, supplied spending records and partner decisions are scattered.",
+    "keywords": [
+      "nonprofit partner project agreement",
+      "nonprofit funder update template",
+      "program delivery budget spreadsheet",
+      "nonprofit stakeholder communication workspace"
+    ],
+    "example": "Partner-agreement DOCX, supplied-budget XLSX and program-update PDF.",
+    "workflow": "Start with one partner relationship. Select relevant program records for Twin, review the proposed deliverables, obtain explicit agreement and retain reviewed updates, meetings and supported payment records without issuing tax-status assurances.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/nonprofits/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-membership-associations",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Membership associations",
+    "problem": "Members do not know which services their selected membership includes, and renewal questions require repeatedly reconstructing the offer.",
+    "keywords": [
+      "membership association renewal communication",
+      "association member welcome pack template",
+      "membership service agreement",
+      "association sponsor proposal template"
+    ],
+    "example": "Member welcome PDF and membership-offer DOCX.",
+    "workflow": "Bring one member or sponsor inquiry. Review the offered services and terms, obtain the required agreement, arrange relevant appointments and retain reviewed renewal offers and individually approved payment requests in the relationship.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-neighborhood-groups",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Neighborhood groups",
+    "problem": "A small shared project collects promises and supplier quotes in chat without a clear record of who accepted each task and cost.",
+    "keywords": [
+      "neighborhood project planning template",
+      "community cleanup volunteer task sheet",
+      "neighborhood group expense agreement",
+      "community project update document"
+    ],
+    "example": "Cleanup task XLSX and neighbor-reviewed project plan DOCX.",
+    "workflow": "Start with one shared project conversation. Review the plan and task choices, have participants explicitly accept relevant agreements and retain supplied quotes, meetings and separately approved payment actions with the final update.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-cooperatives",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Cooperatives",
+    "problem": "Members agree to a shared service arrangement informally, then cannot find the accepted responsibilities or supplied cost basis when a new member joins.",
+    "keywords": [
+      "cooperative member service agreement",
+      "worker cooperative project proposal",
+      "cooperative shared cost spreadsheet",
+      "cooperative member onboarding documents"
+    ],
+    "example": "Member-service DOCX and supplied-cost allocation XLSX, without a governance or statutory-compliance claim.",
+    "workflow": "Begin with one service or project relationship. Review responsibilities using member-selected records, obtain the required explicit signatures and retain accepted documents, appointments and reviewed cost explanations for later participants.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-mutual-aid-organizers",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Mutual aid organizers",
+    "problem": "A volunteer agrees to deliver a specific service, but changing requests and unclear responsibility make handover and reimbursement discussion difficult.",
+    "keywords": [
+      "mutual aid project coordination template",
+      "volunteer reimbursement request form",
+      "mutual aid handover checklist",
+      "community support project agreement"
+    ],
+    "example": "Volunteer handover DOCX and organizer-reviewed expense-request XLSX.",
+    "workflow": "Start with one bounded support project using only necessary shared information. Review responsibilities, record relevant participant agreement and retain reviewed handovers and separately approved reimbursements without claiming benefits eligibility or regulated fund administration.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-alumni-clubs",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Alumni clubs",
+    "problem": "A reunion sponsor and organizing volunteers have different expectations about event benefits, attendance updates and what the sponsorship fee covers.",
+    "keywords": [
+      "alumni reunion sponsorship proposal",
+      "alumni club event agreement",
+      "reunion planning committee task template",
+      "alumni sponsor update report"
+    ],
+    "example": "Reunion sponsor PDF, organizer-task XLSX and update PPTX.",
+    "workflow": "Bring one reunion or sponsor brief. Review benefits and organizer responsibilities, obtain signatures where needed, arrange meetings and retain accepted changes, updates and approved payment requests through the next event.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-volunteer-coordinators",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Volunteer coordinators",
+    "problem": "A partner expects volunteers to deliver extra activities without an agreed briefing, handover or point of contact.",
+    "keywords": [
+      "volunteer project partner agreement",
+      "volunteer briefing document template",
+      "volunteer project handover checklist",
+      "volunteer program partner update"
+    ],
+    "example": "Partner-scope DOCX and volunteer-briefing PDF.",
+    "workflow": "Start with one partner's project brief. Review activities and responsibilities, obtain the required agreement, arrange planning appointments and prepare checked briefing and handover documents from the records the organizer chooses to share.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/nonprofits/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "community-faith-community-administrators",
+    "family": "Communities, cooperatives and nonprofits",
+    "niche": "Faith-community administrators",
+    "problem": "A community event uses multiple volunteer teams, while venue instructions, supplier decisions and contribution questions sit in different messages.",
+    "keywords": [
+      "faith community event planning template",
+      "church event vendor agreement",
+      "community hall event booking proposal",
+      "faith community project expense summary"
+    ],
+    "example": "Event-plan DOCX, supplied-expense XLSX and vendor proposal PDF.",
+    "workflow": "Bring one community event brief. Review responsibilities and vendor offers, obtain relevant signatures, arrange meetings and retain accepted documents and separately approved payments without making donation, tax or religious-governance claims.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-startup-founders",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "Startup founders",
+    "problem": "A founder promises a pilot's scope in calls, then cannot easily distinguish the accepted customer deliverables from proposed product features.",
+    "keywords": [
+      "startup customer pilot agreement",
+      "paid pilot proposal template",
+      "startup customer onboarding documents",
+      "pilot project success criteria template"
+    ],
+    "example": "Pilot proposal PDF, success-criteria DOCX and milestone XLSX.",
+    "workflow": "Start with one prospective pilot customer. Review a bounded offer using chosen discovery notes, obtain signatures, arrange working sessions and retain approved scope changes, invoices and the final pilot readout for renewal discussions.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/startups/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-saas-customer-success-teams",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "SaaS customer success teams",
+    "problem": "A customer requests extra onboarding and training beyond the accepted plan, but renewal conversations lack a single reviewed record of those decisions.",
+    "keywords": [
+      "SaaS customer success mutual action plan",
+      "SaaS onboarding services agreement",
+      "customer renewal proposal template",
+      "customer success handover document"
+    ],
+    "example": "Mutual action-plan XLSX and renewal proposal PDF from supplied account context.",
+    "workflow": "Bring one customer relationship and selected account notes. Review the service plan, get explicit agreement where needed, arrange sessions and retain reviewed handover and renewal documents; data is not assumed to synchronize from an external CRM.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/teams/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-saas-implementation-partners",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "SaaS implementation partners",
+    "problem": "A customer adds configuration and migration expectations after the implementation proposal without agreeing to the additional service scope.",
+    "keywords": [
+      "SaaS implementation partner proposal",
+      "software implementation statement of work",
+      "implementation client change request",
+      "implementation handover checklist template"
+    ],
+    "example": "Implementation-scope DOCX and client-reviewed handover XLSX.",
+    "workflow": "Start with the client's supplied implementation brief. Review responsibilities and exclusions, sign the scope, record accepted changes and invoice agreed milestones before delivering the handover; implementation and integrations occur through separately chosen tools.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/developers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-productized-service-founders",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "Productized-service founders",
+    "problem": "A fixed-price package attracts requests that do not match the advertised inputs, revisions or delivery promise.",
+    "keywords": [
+      "productized service client onboarding",
+      "fixed scope service agreement template",
+      "productized service proposal",
+      "service package revision limit wording"
+    ],
+    "example": "Package-scope PDF and intake-and-delivery checklist XLSX.",
+    "workflow": "Bring one package inquiry. Review fit, required inputs and revision boundaries, obtain signatures, arrange any needed appointments and retain approved exceptions, invoices and delivery records before proposing repeat work.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/founders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-no-code-builders",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "No-code builders",
+    "problem": "A client assumes a prototype includes ongoing workflow maintenance and platform changes that the original build quote never covered.",
+    "keywords": [
+      "no code development proposal",
+      "no code client maintenance agreement",
+      "no code project acceptance checklist",
+      "no code build scope change template"
+    ],
+    "example": "Build proposal PDF, acceptance XLSX and maintenance-offer DOCX.",
+    "workflow": "Start with one no-code service brief. Review build and maintenance boundaries, sign the engagement, record acceptance and priced changes and deliver the reviewed handover with the agreed invoice; platform access remains separately authorized.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/developers/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-api-service-providers",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "API service providers",
+    "problem": "A business customer expects custom setup and support outside the purchased API offer, with no agreed service deliverable or human handover.",
+    "keywords": [
+      "API customer onboarding services proposal",
+      "API integration support agreement",
+      "API service implementation scope",
+      "API customer support handover document"
+    ],
+    "example": "Customer setup-scope DOCX and reviewed support-handover PDF.",
+    "workflow": "Bring one customer's selected service question. Review the custom support offer and responsibilities, obtain agreement and retain meetings, approved scope changes, service invoices and delivered documents without claiming Bankeiz performs external API integrations.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/product-builders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-accelerator-operators",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "Accelerator operators",
+    "problem": "A founder and mentor disagree about what the program promises, which sessions are included and what follow-up support will be delivered.",
+    "keywords": [
+      "startup accelerator participant agreement",
+      "accelerator mentor onboarding pack",
+      "startup program session schedule template",
+      "accelerator founder progress update"
+    ],
+    "example": "Program welcome PDF, participant agreement DOCX and session XLSX.",
+    "workflow": "Start with one participant or mentor relationship. Review program terms and responsibilities, obtain relevant explicit signatures, schedule sessions and retain reviewed updates and fee requests; funding or investment outcomes are not promised.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/startups/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "startup-saas-indie-app-studios",
+    "family": "Startups, SaaS and product businesses",
+    "niche": "Indie app studios",
+    "problem": "A business buyer asks for a custom app edition and support, but the studio has only a general product offer and no accepted customer-specific scope.",
+    "keywords": [
+      "custom app licensing proposal",
+      "indie software customer service agreement",
+      "white label app project scope",
+      "custom app support renewal proposal"
+    ],
+    "example": "Customer-specific app-service proposal PDF and support-scope DOCX with party-reviewed license wording.",
+    "workflow": "Begin with one buyer's customization brief. Review the service and proposed license terms, get explicit signatures and retain approved changes, milestones and handover documents for the next support-renewal conversation without legal guarantees.",
+    "stage": "Expand",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/product-builders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "regulated-public-legal-practices",
+    "family": "Regulated services and public sector",
+    "niche": "Legal practices",
+    "problem": "A practice may want a clearer non-substantive client-engagement handover, but confidentiality, professional duties and signature requirements have not been qualified.",
+    "keywords": [
+      "law firm client engagement workflow",
+      "legal client onboarding document checklist",
+      "law practice appointment coordination",
+      "legal engagement communication software"
+    ],
+    "example": "Research mock-up of an administrative engagement checklist using synthetic material only.",
+    "workflow": "Interview a qualified practice administrator about one administrative handover. Test a synthetic checklist and review exact data and signature requirements before considering a page; do not claim legal validity, privilege, trust-account functions or case-management suitability.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/legal-practices/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-medical-practices",
+    "family": "Regulated services and public sector",
+    "niche": "Medical practices",
+    "problem": "A practice may have fragmented non-clinical scheduling and service documents, but handling patient information and clinical context is unqualified.",
+    "keywords": [
+      "medical practice administrative client communication",
+      "clinic non clinical appointment workflow",
+      "medical practice service document handover",
+      "clinic administrative software requirements"
+    ],
+    "example": "Synthetic administrative-service checklist, with no patient or clinical records.",
+    "workflow": "Interview an authorized practice administrator about a non-clinical workflow. Validate permitted information, procurement and system requirements before any test beyond synthetic materials; do not claim a clinical system or health-data compliance.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/medical-practices/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-mental-health-practices",
+    "family": "Regulated services and public sector",
+    "niche": "Mental-health practices",
+    "problem": "A provider may need clearer non-clinical service inquiries, but confidentiality, crisis handling and care-record requirements make a generic conversation workflow unproven.",
+    "keywords": [
+      "therapy practice administrative workflow",
+      "mental health practice appointment software requirements",
+      "counseling service inquiry process",
+      "therapy practice administrative document checklist"
+    ],
+    "example": "Synthetic inquiry-to-administration map, excluding care notes and crisis content.",
+    "workflow": "Research the administrative boundary with a qualified provider. Keep discovery synthetic and qualify information, retention and escalation requirements before considering any product fit; no therapeutic, crisis-response or clinical-compliance claim is authorized.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/mental-health-practices/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-financial-advisors",
+    "family": "Regulated services and public sector",
+    "niche": "Financial-advisory practices",
+    "problem": "An advisory firm may want to explain engagement documents in one relationship, but regulated advice, recordkeeping and approval rules have not been evaluated.",
+    "keywords": [
+      "financial advisor client onboarding workflow",
+      "financial advisory engagement document checklist",
+      "advisor client communication requirements",
+      "financial advice firm software evaluation"
+    ],
+    "example": "Synthetic service-engagement checklist without account credentials or investment recommendations.",
+    "workflow": "Interview a qualified firm operator about administrative communication. Validate jurisdiction, approved records and review obligations before page creation or deployment; do not imply investment advice, suitability assessment, custody or regulatory compliance.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/financial-advisory-practices/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-insurance-agencies",
+    "family": "Regulated services and public sector",
+    "niche": "Insurance agencies",
+    "problem": "An agency may need clearer service-document requests, but policy transactions, sensitive client information and regulated communications require qualification.",
+    "keywords": [
+      "insurance agency client document workflow",
+      "insurance service inquiry process",
+      "insurance agency customer communication requirements",
+      "insurance agency software procurement checklist"
+    ],
+    "example": "Synthetic administrative document-request flow without policy binding or risk decisions.",
+    "workflow": "Interview an authorized agency operator about a bounded administrative task. Qualify permitted data, approvals and professional obligations before any page or deployment; do not promise underwriting, policy issuance, claims decisions or compliance.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/insurance-agencies/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-public-agencies",
+    "family": "Regulated services and public sector",
+    "niche": "Public agencies",
+    "problem": "A public team may want clearer supplier handovers, but procurement, accessibility, public-record retention and permitted systems have not been assessed.",
+    "keywords": [
+      "public sector supplier communication workflow",
+      "government project handover document checklist",
+      "public agency collaboration software requirements",
+      "public sector document approval process"
+    ],
+    "example": "Synthetic supplier-project handover DOCX used only for requirements discovery.",
+    "workflow": "Interview the responsible public-sector operator and document actual requirements. Evaluate a synthetic vendor handover before proposing a page or pilot; no procurement, accessibility, security accreditation or statutory-recordkeeping claim is authorized.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/public-agencies/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-schools",
+    "family": "Regulated services and public sector",
+    "niche": "Schools and education authorities",
+    "problem": "A school may need a clearer external-provider relationship, but child information, authority to contract and institutional data rules are unqualified.",
+    "keywords": [
+      "school external provider agreement workflow",
+      "school vendor onboarding checklist",
+      "education authority software procurement requirements",
+      "school administrative document approval"
+    ],
+    "example": "Synthetic external-provider checklist that excludes student records.",
+    "workflow": "Research one adult-to-adult supplier workflow with an authorized administrator. Qualify data, consent, procurement and safeguarding requirements before a page or pilot; do not infer a student-information system or education-compliance claim.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/schools-and-education-authorities/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "regulated-public-defense-contractors",
+    "family": "Regulated services and public sector",
+    "niche": "Defense-sector contractors",
+    "problem": "A supplier may want simpler commercial handovers, but controlled information, approved environments and contractual security requirements could exclude this workflow.",
+    "keywords": [
+      "defense supplier commercial document workflow",
+      "defense contractor collaboration software requirements",
+      "defense procurement handover checklist",
+      "controlled information vendor communication requirements"
+    ],
+    "example": "Synthetic public-information commercial handover only, with no controlled or classified material.",
+    "workflow": "Interview an authorized commercial operator about public-information administration. Qualify exact contract and information-handling limits before any proposed page or pilot; no controlled-data, clearance, export-control or security-certification claim is authorized.",
+    "stage": "Discovery",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/defense-sector-contractors/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "people-commerce-independent-art-sellers",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Independent art sellers",
+    "problem": "A buyer asks about a commissioned original, but the accepted brief, source record, delivery promise and purchase discussion are separated.",
+    "keywords": [
+      "artist commission client management",
+      "original art commission agreement",
+      "art commission payment and delivery terms",
+      "share artwork provenance with buyer"
+    ],
+    "example": "Commission proposal PDF and the actual supported Original with its existing proof source when available.",
+    "workflow": "Start with one buyer conversation. Review the commission and delivery terms, get explicit signatures and separately approve any supported payment. Deliver the artwork with its actual retained source and continuity when present; do not substitute display JSON or promise authenticity.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/collectors/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "people-commerce-custom-goods-makers",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Custom-goods makers",
+    "problem": "A buyer changes a bespoke item's measurements or finish after accepting the quote, leaving the maker's material cost and delivery expectations unclear.",
+    "keywords": [
+      "custom order approval form",
+      "bespoke product quote and agreement",
+      "handmade order design sign off",
+      "custom goods additional work invoice"
+    ],
+    "example": "Custom-order proposal PDF and measurement-and-finish XLSX.",
+    "workflow": "Bring one bespoke-order inquiry. Review specifications and delivery assumptions, obtain agreement, retain the buyer's selected finish and approved changes and issue the agreed invoice before handing over the item record.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/ecommerce/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "people-commerce-digital-template-sellers",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Digital-template sellers",
+    "problem": "A customer buys a template and expects custom editing and ongoing support beyond the stated digital-file offer.",
+    "keywords": [
+      "digital template customer support workflow",
+      "template customization service agreement",
+      "digital download delivery terms template",
+      "custom spreadsheet template proposal"
+    ],
+    "example": "Reviewed template XLSX and customization-scope PDF with party-reviewed usage wording.",
+    "workflow": "Start with one buyer's request. Review file delivery and support limits, obtain agreement for custom work and retain reviewed revisions and separately approved payment records without claiming copyright protection or marketplace integration.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/ecommerce/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "people-commerce-collectors",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Collectors",
+    "problem": "A prospective buyer sees an image of an object but cannot connect the seller's supplied records, offered terms and actual carried proof source.",
+    "keywords": [
+      "collector private sale document checklist",
+      "collectible purchase record template",
+      "art purchase provenance questions",
+      "collector sale agreement and receipt"
+    ],
+    "example": "Purchase-discussion checklist DOCX and the existing supported enclosing Original and continuity where actually held.",
+    "workflow": "Begin with one seller relationship. Inspect the supplied source through supported views, review the proposed terms, have each person sign and separately approve a supported payment; retain the actual source rather than a display summary and make no authenticity or title guarantee.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/collectors/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "people-commerce-family-coordinators",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Family coordinators",
+    "problem": "Relatives arrange a shared occasion and vendors in separate chats, then lose track of who agreed to each booking and expense.",
+    "keywords": [
+      "family event planning shared checklist",
+      "family reunion expense agreement",
+      "coordinate family vendor bookings",
+      "family project budget template"
+    ],
+    "example": "Family-event checklist XLSX and participant-reviewed vendor brief DOCX.",
+    "workflow": "Start with one family project. Select only the useful shared context for Twin, review the plan, record relevant agreements, arrange appointments and keep vendor documents and separately approved payments with the continuing family conversation.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/family-projects/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "people-commerce-household-project-clients",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Household project clients",
+    "problem": "A homeowner receives several proposals and forgets which contractor assumptions, appointment and added cost they accepted.",
+    "keywords": [
+      "compare contractor quotes spreadsheet",
+      "home project contractor communication",
+      "home renovation decision log",
+      "household project payment checklist"
+    ],
+    "example": "Supplied-quote comparison XLSX and homeowner decision-record DOCX.",
+    "workflow": "Bring one household project and chosen vendor quotes. Review a checked comparison in Twin, discuss the selected offer with the provider, sign the relevant agreement and separately approve supported payments while retaining delivery records for the next project.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "proposed",
+      "path": "/business/for/household-projects/",
+      "allocation": "Proposed research allocation only; no page created or indexing authorized."
+    }
+  },
+  {
+    "id": "people-commerce-career-changers",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Career changers",
+    "problem": "A person buys coaching, portfolio help and interview preparation but cannot keep each provider's promises and delivered documents together.",
+    "keywords": [
+      "career change support plan template",
+      "manage career coach and resume services",
+      "career transition project checklist",
+      "career services package comparison"
+    ],
+    "example": "Career-transition plan XLSX and provider-comparison DOCX from supplied offers.",
+    "workflow": "Start with one career transition and selected goals. Review a working plan in Twin, discuss and sign each provider's relevant scope, arrange appointments and retain reviewed deliverables and separately approved payments without promising employment outcomes.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/career-builders/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  },
+  {
+    "id": "people-commerce-peer-learning-groups",
+    "family": "People, independent commerce and creator sales",
+    "niche": "Peer learning groups",
+    "problem": "A small learning circle agrees to paid facilitation and shared materials, but session responsibilities and the facilitator's offer remain informal.",
+    "keywords": [
+      "peer learning group agreement",
+      "paid study group facilitator proposal",
+      "learning circle session plan template",
+      "peer group shared resource checklist"
+    ],
+    "example": "Learning-circle agreement DOCX and session plan XLSX.",
+    "workflow": "Start with one circle's goals. Review participant responsibilities and any facilitator offer, obtain explicit agreement where appropriate, arrange sessions and retain reviewed resources and separately approved fees for continued learning.",
+    "stage": "Adjacent",
+    "validation_status": "seed_unmeasured",
+    "existing_or_proposed_page": {
+      "status": "existing",
+      "path": "/business/for/communities/",
+      "allocation": "Reuse the existing shared audience page; use a niche section or example before considering a separate page."
+    }
+  }
+]

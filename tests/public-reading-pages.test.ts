@@ -34,3 +34,27 @@ it('retains every catalog item and public Ledger record across small linked page
  await writePublicReadingPages({outdir:root,pages:{},catalog:{items,observedAt:null},ledger:{records:items.map(publicMarketRecord),capturedAt:null}});
  expect(await readFile(join(root,'read/catalog/index.html'),'utf8')).toContain('/read/catalog/2/');expect(await readFile(join(root,'read/catalog/2/index.html'),'utf8')).toContain('Original 50');expect(await readFile(join(root,'read/catalog/3/index.txt'),'utf8')).toContain('Original 100');
 });
+
+it('advertises only self-canonical reading documents while keeping every alternate page discoverable',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'bank-reading-'));roots.push(root);
+ const items=Array.from({length:101},(_,i)=>({...item,id:'profile:artist:work-'+i,title:'Original '+i})),input={outdir:root,pages:{'/guide/':{title:'Practical guide',description:'Use the existing public controls.',content:'<main><p>Existing authored copy.</p></main>'}},catalog:{items,observedAt:null},ledger:{records:items.map(publicMarketRecord),capturedAt:null}},before=JSON.stringify(input);
+ await writePublicReadingPages(input);
+ const window=new Window(),parse=(html:string)=>new window.DOMParser().parseFromString(html,'text/html'),canonical=(html:string)=>parse(html).querySelector('link[rel="canonical"]')?.getAttribute('href');
+ const directory=await readFile(join(root,'read/public/index.html'),'utf8'),guide=await readFile(join(root,'read/pages/guide/index.html'),'utf8'),sitemap=await readFile(join(root,'reading-sitemap.xml'),'utf8'),urls=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
+ expect.soft(canonical(directory)).toBe('https://bankeiz.com/read/public/');
+ expect(canonical(guide)).toBe('https://bankeiz.com/guide/');
+ expect(parse(directory).querySelector('a[href="https://bankeiz.com/read/pages/guide/"]')).not.toBeNull();
+ expect(await readFile(join(root,'read/pages/guide/index.txt'),'utf8')).toContain('Existing authored copy.');
+ for(const [kind,application]of [['catalog','discover'],['ledger','ledger']])for(let page=1;page<=3;page++){
+  const path='/read/'+kind+'/'+(page===1?'':page+'/'),html=await readFile(join(root,path,'index.html'),'utf8'),document=parse(html);
+  expect(canonical(html)).toBe('https://bankeiz.com/'+application+'/');
+  expect(document.body.textContent).toContain('Original '+(page-1)*50);
+  expect(await readFile(join(root,path,'index.txt'),'utf8')).toContain('Original '+(page-1)*50);
+  if(page<3)expect(document.querySelector('a[href="https://bankeiz.com/read/'+kind+'/'+(page+1)+'/"]')).not.toBeNull();
+  if(page>1)expect(document.querySelector('a[href="https://bankeiz.com/read/'+kind+'/'+(page===2?'':page-1+'/')+'"]')).not.toBeNull();
+ }
+ expect(urls).toEqual(['https://bankeiz.com/read/public/']);
+ for(const url of urls)expect(canonical(await readFile(join(root,new URL(url).pathname,'index.html'),'utf8'))).toBe(url);
+ expect(JSON.stringify(input)).toBe(before);
+ await window.happyDOM.abort();
+});

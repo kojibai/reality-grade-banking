@@ -27,6 +27,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Public SEO HTTP diagnostics
+        run: node --test tests/public-seo-audit.node-test.mjs
 
   build_verify:
     name: Production build and source inventory
@@ -89,6 +91,8 @@ jobs:
           echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run test:browser
+      - name: Client work library without JavaScript or APIs
+        run: node scripts/check-client-work-browser.mjs
       - run: npm run test:vault-browser
       - name: Retain browser regression evidence
         if: always()

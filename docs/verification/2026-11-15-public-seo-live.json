@@ -1,0 +1,2370 @@
+{
+  "checkedAt": "2026-11-16T01:40:29.766Z",
+  "origin": "https://bankeiz.com",
+  "scope": "Registered intended-indexable public pages and explicitly supplied public paths; response heads only. Not a search indexing or performance audit.",
+  "summary": {
+    "checked": 166,
+    "passed": 148,
+    "failed": 18
+  },
+  "intentionalExclusions": [
+    "/invitation/",
+    "/booking/",
+    "/legal/",
+    "/receipt/"
+  ],
+  "results": [
+    {
+      "path": "/ai-documents/",
+      "status": 404,
+      "canonical": null,
+      "title": null,
+      "description": null,
+      "httpRobots": null,
+      "htmlRobots": [],
+      "headBytes": 0,
+      "issues": [
+        "http_status_404"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/sign-agreements/",
+      "status": 404,
+      "canonical": null,
+      "title": null,
+      "description": null,
+      "httpRobots": null,
+      "htmlRobots": [],
+      "headBytes": 0,
+      "issues": [
+        "http_status_404"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/proposals/",
+      "status": 404,
+      "canonical": null,
+      "title": null,
+      "description": null,
+      "httpRobots": null,
+      "htmlRobots": [],
+      "headBytes": 0,
+      "issues": [
+        "http_status_404"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/client-communication/",
+      "status": 404,
+      "canonical": null,
+      "title": null,
+      "description": null,
+      "httpRobots": null,
+      "htmlRobots": [],
+      "headBytes": 0,
+      "issues": [
+        "http_status_404"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/registry/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/registry/",
+      "title": "Reality-Grade Banking Conformance Register",
+      "description": "Inspect Reality-Grade Banking conformance certificates and receiving assessments by institution or implementation. Compare each result’s original evidence, assessed scope and exact build.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/build/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/build/",
+      "title": "Build your own bank. Receive the same money. | Reality-Grade Banking",
+      "description": "Build an independent bank, wallet or merchant receiver with Receiz. Explore complete Originals, legitimate transfers and the published receiving requirements.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81901,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/accept/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/accept/",
+      "title": "Accept the money. Keep it moving. | Reality-Grade Banking",
+      "description": "See the difference between a payment notification and independently verifiable financial value. Explore receiving, ownership and onward payments through working demonstrations.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/merchant/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/merchant/",
+      "title": "Counter: your products, stock and payments | Bankeiz",
+      "description": "Bring your offerings, prices and stock together. Tap to build a sale, share one checkout and keep the complete payment record.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12418,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/moments/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/moments/",
+      "title": "Your moments. Your value. The Proof-Native Economy",
+      "description": "Everyone can originate eligible value from their own moments. See why personal origination and exchange belong together, how value accumulates, and how to inspect the rules.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/banking/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/banking/",
+      "title": "See your banking, from the first step to the payment record",
+      "description": "Walk through the actual account, deposits, receiving, sending, transaction records and private Vault interface. Explore a clearly labeled example, then open your own account.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 393216,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/guide/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/guide/",
+      "title": "How to use Bankeiz: your practical user guide",
+      "description": "Send, receive, add money, create Originals, move ownership, plan meetings and use your Twin. Follow the actual controls, confirmed result and evidence in 45 sourced operating chapters.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12015,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/meet/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/meet/",
+      "title": "Meet here. Keep everything connected.",
+      "description": "One meeting link. Full-screen video, shared conversation, optional Twin, payments in the conversation, a retained meeting record and an agreed follow-up, connected to your calendar.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 212992,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/book/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/book/",
+      "title": "Calendar and appointments",
+      "description": "Share your availability, book free or paid appointments, invite people and meet with the conversation, payment and next step connected.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 180224,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/email/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/email/",
+      "title": "Your username. Your email.",
+      "description": "Send and receive email in Bankeiz Messages. Your Receiz address connects ordinary email, conversations, invitations and the next appointment.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 163840,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/pay/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/pay/",
+      "title": "Simple payments. A record that stays with you.",
+      "description": "See the Bankeiz payment experience. Pay by balance, card or Note, share your payment link and keep the completed payment and its proof together.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 32582,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/matter/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/matter/",
+      "title": "Digital Matter",
+      "description": "Measured reality, sealed into an Original. Explore how physical evidence, identity, ownership and history stay together in a portable proof object.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 375230,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/crypto/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/crypto/",
+      "title": "Your crypto should do more than sit in a wallet. | Reality-Grade Banking",
+      "description": "Give the crypto you hold a useful next step. Carry inspectable source proof, understand supported payment paths and keep control through reality-grade banking.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/nfts/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/nfts/",
+      "title": "Your collection should have a life beyond the marketplace. | Reality-Grade Banking",
+      "description": "Keep your collection, its recorded ownership and source proof connected. Explore portable proof objects and useful next experiences through reality-grade banking.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/economy/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/economy/",
+      "title": "You Already Have What Someone Else Needs. | Reality-Grade Banking",
+      "description": "Your goods, work and trading relationships already exist. Reality-Grade Banking moves money with its proof between people, businesses and applications that follow the standard.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81920,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/farmers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/farmers/",
+      "title": "You Grew It. Now Use It. | Reality-Grade Banking",
+      "description": "Your harvest has value before the buyer pays. Explore fuel, inputs and repairs through trading relationships with the source, rights and payment evidence connected.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81919,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/fuel/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/fuel/",
+      "title": "Your Customers Have Value. Give Them Another Way to Pay. | Reality-Grade Banking",
+      "description": "Explore accepting proof-native payments for fuel with exact receiving evidence and a useful onward route for the value your business receives.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81919,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/repairs/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/repairs/",
+      "title": "You Fixed It. You Earned It. Now Use It. | Reality-Grade Banking",
+      "description": "Connect completed repair work, clear payment terms and receiving with compensation you can put to work with your suppliers and providers.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81918,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/grocers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/grocers/",
+      "title": "People Need Food. Farmers Already Grow It. Let’s Connect Them. | Reality-Grade Banking",
+      "description": "Explore supported customer receiving, farm relationships and onward stock purchases through Reality-Grade Banking while keeping your store and operating terms.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81919,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/housing/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/housing/",
+      "title": "Your Home Is Part of the Economy. | Reality-Grade Banking",
+      "description": "Connect housing obligations, member decisions, maintenance and willing suppliers with clear source, authority and supported payment records.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81919,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/workers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/workers/",
+      "title": "Your Work Should Support Your Life. | Reality-Grade Banking",
+      "description": "Explore how your work, agreed compensation and providers can connect to food, housing and transport with the financial source and result kept intact.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81920,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/trust/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/trust/",
+      "title": "Reality-grade banking: trust you can inspect | Reality-Grade Banking",
+      "description": "Your identity, value and ownership have an original you can inspect. Reality-grade banking preserves that proof through the next action and the next person.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12559,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/money/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/money/",
+      "title": "Reality-grade banking: your value and its source | Reality-Grade Banking",
+      "description": "See what you hold, where it came from and what the next action actually does. The proof-native economy keeps value connected to its source.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12643,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/deposit/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/deposit/",
+      "title": "Reality-grade banking: bring value into proof | Reality-Grade Banking",
+      "description": "Fund the next payment, deposit an original Note or bring an asset into the supported intake path. Start with the source and keep the confirmed result.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12608,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/fees/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/fees/",
+      "title": "Reality-grade banking: costs and clear review | Reality-Grade Banking",
+      "description": "The open software, a connected financial operation and an optional subscription have different costs. Review the actual charge in the flow that creates it.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12472,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/help/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/help/",
+      "title": "Reality-grade banking: help and exact recovery | Reality-Grade Banking",
+      "description": "A payment question, an account recovery or an unfinished operation starts with the source you already have. Keep the original and continue from its actual state.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12512,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/about/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/about/",
+      "title": "Reality-grade banking: an open standard for the proof-native economy | Reality-Grade Banking",
+      "description": "The proof-native economy is the economic system. Reality-grade banking is how you interact with it. Receiz is the reality-grade infrastructure that makes those operations executable.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12897,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/in-practice/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/in-practice/",
+      "title": "Reality-grade banking: the standard in everyday use | Reality-Grade Banking",
+      "description": "A payment, an original, a working relationship. See how the same standard keeps the source, the person and the next step connected.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12489,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/accept-payments/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/accept-payments/",
+      "title": "Reality-grade banking: accept a payment with its proof | Reality-Grade Banking",
+      "description": "Give the person paying a clear next step. Keep the confirmed payment connected to the recipient, amount and original evidence.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12533,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/start/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/start/",
+      "title": "Reality-grade banking: begin with your own source | Reality-Grade Banking",
+      "description": "Open your account, preserve your identity original and use one supported operation. Understand the source and retain the result from the beginning.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12451,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/privacy/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/privacy/",
+      "title": "Reality-grade banking: information and deliberate disclosure | Reality-Grade Banking",
+      "description": "Private authority, account access and public evidence have different scopes. Understand what stays on the device and what a connected operation shares.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12516,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/terms/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/terms/",
+      "title": "Reality-grade banking: use, authority and responsibilities | Reality-Grade Banking",
+      "description": "The open-source software, a proof-native operation and an online service have distinct terms. Understand the scope you are using and the action you authorize.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12603,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/",
+      "title": "Reality-grade banking: the asset market, from source to trade | Reality-Grade Banking",
+      "description": "A market begins with something you can inspect. Follow an original, understand the ownership offered, review the trade and keep the actual result.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12570,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/buy/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/buy/",
+      "title": "Reality-grade banking: buy ownership with a complete record | Reality-Grade Banking",
+      "description": "Inspect the asset and its rights, choose the amount and review the supported purchase. Keep the original result connected to the position it creates.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12561,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/sell/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/sell/",
+      "title": "Reality-grade banking: sell a position and inspect the proceeds | Reality-Grade Banking",
+      "description": "Take cash begins with a position you hold and a supported sale review. The exact trade record establishes what sold and what the operation returned.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12614,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/value/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/value/",
+      "title": "Reality-grade banking: understand value, price and performance | Reality-Grade Banking",
+      "description": "A calculation, a quoted preview and a recorded execution answer different questions. Understand which one you are looking at before making a decision.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12557,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/ownership/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/ownership/",
+      "title": "Reality-grade banking: understand the ownership and rights offered | Reality-Grade Banking",
+      "description": "Know which asset and share units you are acquiring, who has authority and what the original evidence actually establishes.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12597,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/history/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/history/",
+      "title": "Reality-grade banking: trade records and position continuity | Reality-Grade Banking",
+      "description": "Keep the asset, share quantity, financial result and original attempt connected. Understand the position without losing the evidence behind it.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12585,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market/costs/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market/costs/",
+      "title": "Reality-grade banking: fees, liquidity and available trade routes | Reality-Grade Banking",
+      "description": "A market is useful when its rights, costs and available execution are clear. Read the current operation and the source behind it.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12570,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/agent/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/agent/",
+      "title": "An agent that keeps your context across apps | Bankeiz",
+      "description": "Stop starting over with your AI agent. Continue from your identity, chosen records and conversation history across apps that follow the standard, with authorized tools and connected client relationships.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 425984,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/fraud/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/fraud/",
+      "title": "Payment fraud: inspect the source before you approve | Reality-Grade Banking",
+      "description": "A familiar name, changed payment details or a payment screenshot is not authority. Inspect original proof, review the actual recipient and amount, and retain the verified result.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 16384,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/recover/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/recover/",
+      "title": "New device. The same identity. | Reality-Grade Banking",
+      "description": "Continue with the Receiz identity you already hold. Understand original Identity Record recovery, supported PBI account recovery and the history your admitted sources carry.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 16384,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/get-paid/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/get-paid/",
+      "title": "Get paid. Keep the whole story. | Reality-Grade Banking",
+      "description": "Send a clear payment request, let the payer review the real recipient and amount, and keep the confirmed payment connected to its receipt and funding history.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 16384,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/proof/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/proof/",
+      "title": "Don’t take their word. Open the proof. | Reality-Grade Banking",
+      "description": "Inspect an original proof object, what its verified source establishes, its supported ownership and its carried history. Keep evidence separate from appearance.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 16384,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/id/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/id/",
+      "title": "Your identity shouldn’t start over every time you open an app | Bankeiz",
+      "description": "Open Bankeiz with your established Receiz identity. Understand passkey authentication, verified account recovery, supported history and each application’s own permissions.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 31494,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/your-twin/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/your-twin/",
+      "title": "Your Twin: be there, even when you’re elsewhere | Bankeiz",
+      "description": "Let clients get payment answers and a clear next step while you work. Keep their context together, understand selected money records and reduce financial admin. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 425984,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/action/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/action/",
+      "title": "Business in action: your money, your context, your next step | Bankeiz",
+      "description": "See both sides of a Twin conversation: a visitor gets answers and books a time; the owner keeps shared contacts, context and the confirmed calendar event connected.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 425984,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/",
+      "title": "You create the value. Let it go further. Together. | Reality-Grade Banking",
+      "description": "Keep the proof of what you create, share supported value directly and build a connected proof-native economy through reality-grade banking.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/creators/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/creators/",
+      "title": "Make something worth keeping. Share more than a link. | Reality-Grade Banking",
+      "description": "Carry your authorship, ownership and supported rights with your music, images, writing and films. Connect directly with the people who value your work.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/independent-work/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/independent-work/",
+      "title": "Put the value of your work in the conversation. | Reality-Grade Banking",
+      "description": "Connect your expertise, defined deliverables, agreements and supported payments so the next person can see what you bring.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/businesses/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/businesses/",
+      "title": "Put what your business already has to work. | Reality-Grade Banking",
+      "description": "Connect goods, services, accepted rights and supported payments with source evidence across your trading relationships.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/communities/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/communities/",
+      "title": "What you bring can help someone here. | Reality-Grade Banking",
+      "description": "Connect the contributions, needs and willing exchanges in your community through proof-native originals and reality-grade banking.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/how-it-works/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/how-it-works/",
+      "title": "From what you create to what someone can use. | Reality-Grade Banking",
+      "description": "Follow the source, supported value, ownership handover and proof of one exchange in the proof-native economy.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/together/connect/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/together/connect/",
+      "title": "Bring your question. Leave with a next step. | Reality-Grade Banking",
+      "description": "Talk directly with BJ Klock’s Receiz Twin, explore the proof-native economy and book a time in the same connected conversation.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/protect/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/protect/",
+      "title": "Protect your value. Keep the keys. | Bankeiz",
+      "description": "Keep complete Notes and Originals in a private image. Choose passkey encryption and a separate recovery Original for independent offline recovery.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 31217,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/coops/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/coops/",
+      "title": "Your Members Already Produce the Value. Why Are They Borrowing Just to Move It? | Reality-Grade Banking",
+      "description": "Connect your cooperative’s goods, services and trading relationships to the proof-native economy through reality-grade banking.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81920,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/producers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/producers/",
+      "title": "The harvest is ready. Your next move should be, too. | Reality-Grade Banking",
+      "description": "Put identified inventory, member deliveries and buyer relationships to work without losing the source behind the goods.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/manufacturing/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/manufacturing/",
+      "title": "Finished goods. Waiting for dollars. Another production run on hold. | Reality-Grade Banking",
+      "description": "Connect finished goods, equipment rights and supplier exchange with inspectable ownership and payment records.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/distribution/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/distribution/",
+      "title": "Your stock moves. Your dollars get stuck in the middle. | Reality-Grade Banking",
+      "description": "Keep inventory, supplier obligations, accepted delivery claims and repeated payments connected across the trading chain.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/workers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/workers/",
+      "title": "The work is done. The cooperative still needs paying. | Reality-Grade Banking",
+      "description": "Connect member authority, defined services, accepted deliverables and payment evidence without giving up member control.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/energy/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/energy/",
+      "title": "You produce the power. Keep its records connected. | Reality-Grade Banking",
+      "description": "Connect defined energy delivery claims, meter evidence, member authority and the payment that follows.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/housing/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/housing/",
+      "title": "Keep the homes cared for. Keep the decisions clear. | Reality-Grade Banking",
+      "description": "Connect property-related rights, maintenance work, member authority and recurring payment records.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/federations/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/federations/",
+      "title": "Your members already trade. Give the network continuity. | Reality-Grade Banking",
+      "description": "Connect independent cooperatives through common proof, receiving and payment infrastructure while preserving member governance.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/infrastructure/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/infrastructure/",
+      "title": "See the exchange. Inspect the infrastructure. | Reality-Grade Banking",
+      "description": "Walk through existing proof objects, ownership, receiving, payments and Settlement, with source evidence and organization-specific qualification.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/cooperatives/connect/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/cooperatives/connect/",
+      "title": "What do your members have that others need? | Reality-Grade Banking",
+      "description": "Talk through your cooperative’s operating needs with BJ Klock’s Receiz Twin, ask questions and book an available time in the same conversation.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/vaults/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/vaults/",
+      "title": "Vaults: yours to hold | Bankeiz",
+      "description": "One private, portable file for funded Notes and owned Originals. Keep their complete proof, open it offline and choose optional PBI protection.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360447,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/",
+      "title": "Less money admin. More control of your day. | Business — $149/month",
+      "description": "Understand cash flow, simplify payment requests and follow-ups, and spend less time on financial admin. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376531,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/fit/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/fit/",
+      "title": "Find your fit: money help for 30 kinds of work | Business",
+      "description": "Find the money work Business can take off your plate: client payments, cash-flow questions, costs and financial admin for thirty kinds of work.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 31279,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/agencies/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/agencies/",
+      "title": "Know what clients paid. Know what needs chasing. | Agencies — $149/month",
+      "description": "Know what clients paid. Know what needs chasing. See the money around each project. Follow up without rebuilding the account history. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376733,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/consultants/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/consultants/",
+      "title": "Keep your attention on the client. Get the money admin handled. | Consultants — $149/month",
+      "description": "Keep your attention on the client. Get the money admin handled. See the engagement and its money together. Make the next payment conversation easier. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/freelancers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/freelancers/",
+      "title": "Do the work. Make getting paid less work. | Freelancers &amp; independent professionals — $149/month",
+      "description": "Do the work. Make getting paid less work. Know which payment belongs to which job. Get the follow-up off your list. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376764,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/designers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/designers/",
+      "title": "Keep making good work. Keep the money side clear. | Designers &amp; studios — $149/month",
+      "description": "Keep making good work. Keep the money side clear. See the payment in its project context. Make the client’s next step clear. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376728,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/creators/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/creators/",
+      "title": "Understand what your work earns. Keep more time for creating. | Creators &amp; personal brands — $149/month",
+      "description": "Understand what your work earns. Keep more time for creating. See the money around your next launch. Make sponsors and customers easier to handle. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/musicians/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/musicians/",
+      "title": "Spend more time on the music. Less on tracing the money. | Musicians &amp; producers — $149/month",
+      "description": "Spend more time on the music. Less on tracing the money. Make the statements easier to understand. Keep the next release grounded in the money. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376827,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/authors/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/authors/",
+      "title": "Make sense of the money behind your writing. | Authors &amp; writers — $149/month",
+      "description": "Make sense of the money behind your writing. Understand the statement you actually received. Take the admin out of the next release. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376757,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/filmmakers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/filmmakers/",
+      "title": "Keep the production moving. Keep the money in view. | Filmmakers &amp; video teams — $149/month",
+      "description": "Keep the production moving. Keep the money in view. See the next cost in the whole production. Prepare the next payment with its background. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/podcasters/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/podcasters/",
+      "title": "Know what the show brings in. Get the money admin out of the way. | Podcasters &amp; interviewers — $149/month",
+      "description": "Know what the show brings in. Get the money admin out of the way. Put sponsor payments beside the agreement. Make the next sponsor follow-up easier. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/coaches/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/coaches/",
+      "title": "Stay present with your clients. Make the payment side easier. | Coaches &amp; mentors — $149/month",
+      "description": "Stay present with your clients. Make the payment side easier. Connect the payment to the package. Give clients a clear way to book and pay. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/educators/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/educators/",
+      "title": "Make the money side of teaching easier to run. | Educators &amp; course builders — $149/month",
+      "description": "Make the money side of teaching easier to run. See course money in its teaching context. Handle repeat payment questions with less effort. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/accountants/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/accountants/",
+      "title": "Get to the explanation behind the payment faster. | Accountants &amp; bookkeepers — $149/month",
+      "description": "Get to the explanation behind the payment faster. Keep the source beside the question. Prepare a cleaner client query or handover. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/researchers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/researchers/",
+      "title": "Spend less time on the money admin around the work. | Researchers &amp; analysts — $149/month",
+      "description": "Spend less time on the money admin around the work. Bring funding and costs into the same discussion. Prepare the financial explanation once. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/founders/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/founders/",
+      "title": "Know where the money stands. Get back to running the business. | Founders &amp; owner-operators — $149/month",
+      "description": "Know where the money stands. Get back to running the business. Get a clearer view of cash flow. Move the repeat money work off your plate. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/service-businesses/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/service-businesses/",
+      "title": "Finish the job. Make the payment side less work. | Service businesses — $149/month",
+      "description": "Finish the job. Make the payment side less work. See the money beside the job. Make requests and follow-ups easier. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/real-estate/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/real-estate/",
+      "title": "Keep property payments and their context together. | Property professionals — $149/month",
+      "description": "Keep property payments and their context together. Understand an amount in the right property context. Prepare a clearer follow-up or handover. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/ecommerce/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/ecommerce/",
+      "title": "Know what the sales leave you with. | Online shops &amp; ecommerce — $149/month",
+      "description": "Know what the sales leave you with. Work through the money behind the sales. Take repeat payment questions off your day. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376710,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/hospitality/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/hospitality/",
+      "title": "Keep serving people. Make the money admin lighter. | Hospitality &amp; local experiences — $149/month",
+      "description": "Keep serving people. Make the money admin lighter. Bring the day’s money together. Prepare the next payment or customer answer. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376805,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/teams/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/teams/",
+      "title": "Give the team a clearer way to handle money work. | Small teams — $149/month",
+      "description": "Give the team a clearer way to handle money work. Put the reason beside the amount. Prepare the handover before the next approval. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376767,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/communities/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/communities/",
+      "title": "Keep shared money clear. Keep more time for people. | Community builders — $149/month",
+      "description": "Keep shared money clear. Keep more time for people. Explain the money with its sources. Make repeat money questions easier to answer. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376815,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/events/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/events/",
+      "title": "Keep the event moving. Keep the money under control. | Event organisers — $149/month",
+      "description": "Keep the event moving. Keep the money under control. See the money around the event. Get the next follow-up ready. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376735,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/nonprofits/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/nonprofits/",
+      "title": "Spend less time explaining the money. More on the mission. | Nonprofits &amp; mission-led organisations — $149/month",
+      "description": "Spend less time explaining the money. More on the mission. Connect the funding to the work it supports. Prepare a clearer donor or team update. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/project-leaders/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/project-leaders/",
+      "title": "Keep the next cost and the next decision together. | Project leads &amp; operators — $149/month",
+      "description": "Keep the next cost and the next decision together. See the financial context behind the next stage. Hand over a payment with its explanation. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/product-builders/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/product-builders/",
+      "title": "Build the product. Make the money decisions clearer. | Product builders — $149/month",
+      "description": "Build the product. Make the money decisions clearer. Bring the product and its money together. Prepare the financial work around the next release. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/developers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/developers/",
+      "title": "Keep the payment source. Lose the repeated money admin. | Developers &amp; integration builders — $149/month",
+      "description": "Keep the payment source. Lose the repeated money admin. Follow the money back to the actual event. Make the client explanation easier to repeat correctly. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/startups/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/startups/",
+      "title": "Keep cash decisions clear while everything moves. | Startup teams — $149/month",
+      "description": "Keep cash decisions clear while everything moves. Work through the cash picture you actually have. Give the next decision a useful starting point. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376803,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/collectors/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/collectors/",
+      "title": "Keep the value, the ownership and the money story together. | Collectors &amp; independent artists — $149/month",
+      "description": "Keep the value, the ownership and the money story together. Connect the amount to the actual object. Prepare the next transaction with the background. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/professionals/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/professionals/",
+      "title": "Make your money easier to stay on top of. | Busy professionals — $149/month",
+      "description": "Make your money easier to stay on top of. Get a clearer answer about your money. Put less financial admin on your evening. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376716,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/career-builders/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/career-builders/",
+      "title": "Make the money side of independent work easier. | Independent career builders — $149/month",
+      "description": "Make the money side of independent work easier. Work through the money before the next commitment. Make the next payment conversation less work. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/business/for/knowledge-businesses/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/business/for/knowledge-businesses/",
+      "title": "Turn expertise into an offer. Keep the money around it clear. | Knowledge businesses &amp; publishers — $149/month",
+      "description": "Turn expertise into an offer. Keep the money around it clear. Understand the money behind your offer. Handle the repeat money questions with less effort. Business is an optional $149/month banking upgrade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376832,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/",
+      "title": "Reality-grade banking | The proof-native economy",
+      "description": "The open standard for interacting with the proof-native economy. Hold originals, verify ownership and move value through Receiz reality-grade infrastructure.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 409600,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/",
+      "title": "Reality-Grade Banking explained | Proof-native economy",
+      "description": "Learn how reality-grade banking connects your identity, verifiable asset ownership, Reserve funds and Settlement value in one account.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 376021,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/guides/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/guides/",
+      "title": "All guides: banking, assets &amp; economic standards | Reality-Grade Banking",
+      "description": "Explore the complete Bankeiz guide collection: your account, payments, Notes, assets, markets, transaction history and implementation standards.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13266,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/receiz-id/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/receiz-id/",
+      "title": "Receiz ID and Identity Records | Bankeiz",
+      "description": "Open your existing identity, receive through a username and protect the original Identity Record that holds your authority.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12731,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/proof-objects/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/proof-objects/",
+      "title": "Proof objects and ownership | Reality-Grade Banking",
+      "description": "Inspect the source, authorship, ownership, rights and history carried by a sealed asset.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13145,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/reserve-and-settlement/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/reserve-and-settlement/",
+      "title": "Settlement and Reserve | Reality-Grade Banking",
+      "description": "Use one account while complete funding sources, ownership and history stay connected beneath it. Understand what receiving institutions must preserve.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13131,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/account-access/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/account-access/",
+      "title": "Account access &amp; read permissions | Bankeiz",
+      "description": "See what opening your Bankeiz account authorizes, how private account reads work and why financial actions need separate approval.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 6842,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/signing-key/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/signing-key/",
+      "title": "Device-held signing &amp; Identity Record protection | Bankeiz",
+      "description": "Understand your device-held signing key, protected Identity Record transport, backups and the authority needed to authorize an action.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 6864,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/reality-grade-banking/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/reality-grade-banking/",
+      "title": "Reality-Grade Banking: value with its proof | Open standard",
+      "description": "Explore Reality-Grade Banking: verifiable ownership, source-carried history, proof-native value, proof-backed funds and an open implementation.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 6882,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/how-value-works/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/how-value-works/",
+      "title": "How proof value &amp; Phi to USD are calculated | Reality-Grade Banking",
+      "description": "Inspect the deterministic proof valuation rules, live Kai pulse basis and exact Phi-to-USD display calculation. Reconstruct supported values locally.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 6581,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/conformance/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/conformance/",
+      "title": "Proof-continuity conformance checks | Reality-Grade Banking",
+      "description": "Run Receiz reference checks, inspect original funded Notes and examine verification, ownership and history requirements for receiving systems.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 63170,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/verify/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/verify/",
+      "title": "Verify an original account proof | Bankeiz",
+      "description": "Inspect a public account proof on your device. Check its Receiz ID binding, disclosed Reserve funds, Settlement value and carried history without logging in.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 16384,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/ledger/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/ledger/",
+      "title": "Public Ledger: transactions &amp; proof history | Bankeiz",
+      "description": "Explore public transactions, transfers and source-carried proof history. Inspect original evidence and save the loaded Ledger as a local Memory Crystal.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81920,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/discover/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/discover/",
+      "title": "Discover people and their work | Bankeiz",
+      "description": "Discover music, videos, books, images and moments. Search public Originals and connect with their creators.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 30155,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/feed/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/feed/",
+      "title": "For you: watch, listen and read | Bankeiz",
+      "description": "Discover public Originals in your Bankeiz feed. Watch films, listen to music, read books and connect directly with their creators.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 32768,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/",
+      "title": "Asset explorer: public proof objects &amp; live value | Bankeiz",
+      "description": "Explore public proof objects and assets without an account. Inspect live valuations, sealed moments, ownership and the original evidence behind each listing.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/schemas/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/schemas/",
+      "title": "Receiz SDK schemas &amp; proof formats | Receiz",
+      "description": "Inspect and download the original Receiz SDK schemas, source documentation and integrity digests for independent proof-object integrations.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 32768,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/receiving/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/receiving/",
+      "title": "Receive directly | Bankeiz",
+      "description": "Share your receiving details, receive a reviewed payment and keep its proof. Explore the existing receiving flow and optional institutional integration.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 32768,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/earn-from-originals/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/earn-from-originals/",
+      "title": "Earn from Originals | Bankeiz",
+      "description": "Your Original is already earning. Sign it to unlock its value. Verify the proof and follow its continuous history.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360448,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/people/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/people/",
+      "title": "For people and families | Reality-Grade Banking",
+      "description": "Pay someone, collect a shared expense and keep a clear record of what arrived and what you sent.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12905,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/businesses/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/businesses/",
+      "title": "For businesses | Reality-Grade Banking",
+      "description": "Collect supported customer payments, review supplier and worker payments, and keep the receipts useful for your books.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12806,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/independent-work/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/independent-work/",
+      "title": "For independent work | Reality-Grade Banking",
+      "description": "Move from an agreed job to a clear payment request, confirmed receipt and retained record of your work.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12831,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/creators/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/creators/",
+      "title": "For creators | Reality-Grade Banking",
+      "description": "Publish supported music, art and writing with an inspectable original, defined rights and connected ownership history.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12618,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/communities/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/communities/",
+      "title": "For communities | Reality-Grade Banking",
+      "description": "Collect for a shared plan, make deliberate payments and share the records your group needs.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13111,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/institutions/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/institutions/",
+      "title": "For finance and custody teams | Reality-Grade Banking",
+      "description": "Work through a reconciliation exception using original receipts, exact funding evidence and a defined receiving or custody scope.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13122,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/public-finance/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/public-finance/",
+      "title": "For public finance | Reality-Grade Banking",
+      "description": "Connect an authorized public expenditure to its payment receipt, funding evidence and the records used for review.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12755,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/for/platforms/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/for/platforms/",
+      "title": "For platforms and developers | Reality-Grade Banking",
+      "description": "Connect account actions, asset discovery and original receipts to an application without duplicating financial authority.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12692,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/your-account/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/your-account/",
+      "title": "Your account | Bankeiz",
+      "description": "Understand your available balance, saved observations and received Notes in one account.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360447,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/payments/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/payments/",
+      "title": "Payments | Bankeiz",
+      "description": "Send and receive through Receiz ID with an exact review, a signed operation and a connected receipt.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360447,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/get-paid/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/get-paid/",
+      "title": "Get paid | Bankeiz",
+      "description": "Share one checkout page through a link, website button or in-person QR. Get paid by card, balance or Note.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360447,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/payment-requests/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/payment-requests/",
+      "title": "Payment requests | Bankeiz",
+      "description": "Understand receiving links, QR codes and recipient selection before any payment is authorized.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13912,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/deposits/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/deposits/",
+      "title": "Deposits | Bankeiz",
+      "description": "Bring money and assets into one account, fund what comes next and keep the proof of where value came from.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12933,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/notes/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/notes/",
+      "title": "Notes | Bankeiz",
+      "description": "Create, carry, receive and deposit a Note through one simple experience, with its exact funded value and complete proof intact.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12565,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/messages/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/messages/",
+      "title": "Messages and your agent | Bankeiz",
+      "description": "Your conversations, memories and next steps in one account. Understand a payment, revisit your history and prepare what comes next.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 360437,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/creating-an-asset/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/creating-an-asset/",
+      "title": "Create an asset | Bankeiz",
+      "description": "Seal a moment, define its claim and publish the admitted original to your Receiz Showcase and the public Market.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12720,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/ownership/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/ownership/",
+      "title": "Ownership | Reality-Grade Banking",
+      "description": "Understand current ownership authority, recipient-bound handovers and the history preserved by an asset transfer.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12900,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/fractional-ownership/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/fractional-ownership/",
+      "title": "Fractional ownership | Reality-Grade Banking",
+      "description": "Inspect share units, supply, custody claims and the exact scope of a fractional ownership position.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 14356,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/physical-assets/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/physical-assets/",
+      "title": "Physical assets | Reality-Grade Banking",
+      "description": "Connect a physical item to its custodian, admitted receipt and defined transferable ownership claim.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12718,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/asset-rights-and-backing/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/asset-rights-and-backing/",
+      "title": "Rights and backing | Reality-Grade Banking",
+      "description": "Distinguish source integrity, authorship, ownership, licenses, physical custody, funding and enforceable rights.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13527,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/proof-native-economy/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/proof-native-economy/",
+      "title": "The proof-native economy | Reality-Grade Banking",
+      "description": "Follow value from an original asset through ownership, account funding, payments and independently inspectable history.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13065,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/markets/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/markets/",
+      "title": "Markets | Bankeiz",
+      "description": "Discover publicly listed assets, inspect ownership and understand the difference between a valuation and a completed trade.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13527,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/market-cap/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market-cap/",
+      "title": "Global Market Cap | Reality-Grade Banking",
+      "description": "Examine the public valuation universe, historical entry dates, current aggregate and exact boundaries of Global Market Cap.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/learn/circulation/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/circulation/",
+      "title": "Circulation and listings | Reality-Grade Banking",
+      "description": "Distinguish circulating assets, issued units, public listings and the subset with supported valuations.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 14601,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/price-history/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/price-history/",
+      "title": "Value over time | Reality-Grade Banking",
+      "description": "Read opening values, dated records, deterministic projections and current asset valuations without confusing them with trade prices.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12712,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/receipts/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/receipts/",
+      "title": "Transaction receipts | Bankeiz",
+      "description": "Inspect participants, amount, moment, authorization, source evidence and the recorded result in a shared transaction receipt.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12800,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/source-of-funds/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/source-of-funds/",
+      "title": "Source of funds | Bankeiz",
+      "description": "Follow funding events, proof objects and calculated FIFO attribution through the complete supported causal chain.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12948,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/memory-crystals/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/memory-crystals/",
+      "title": "Memory Crystals | Bankeiz",
+      "description": "Retain loaded Ledger evidence and original proof sources in a local, independently reopenable record.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12739,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/time-and-ordering/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/time-and-ordering/",
+      "title": "Time and ordering | Reality-Grade Banking",
+      "description": "Understand local dates, Kai-Klok KKSv1, exact pulse coordinates and the separate requirement for exclusive consumption.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12837,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/standards/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/standards/",
+      "title": "Reality-Grade Banking standard | Reality-Grade Banking",
+      "description": "The full receiving standard for source, identity, authority, ownership, exact value, temporal order and continuity across independent implementations.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 64449,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/institutions/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/institutions/",
+      "title": "For institutions | Reality-Grade Banking",
+      "description": "Plan an evidence-preserving integration across identity, funds, assets, custody, receiving and independent verification.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13520,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/developers/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/developers/",
+      "title": "For developers | Reality-Grade Banking",
+      "description": "Build on Receiz SDK, MCP and AI Skills with exact sources, existing authority and independently testable boundaries.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12706,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/security/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/security/",
+      "title": "Security and authority | Reality-Grade Banking",
+      "description": "Understand identity custody, exact action approval, proof verification, replay protection and honest recovery boundaries.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12648,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/releases/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/releases/",
+      "title": "Releases and qualification | Reality-Grade Banking",
+      "description": "Inspect the 4.0.0 release source, complete product recap, reproducible conformance evidence and capability-specific qualification.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 13207,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/glossary/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/glossary/",
+      "title": "Glossary | Reality-Grade Banking",
+      "description": "Plain definitions of proof objects, balance, Reserve, Settlement, custody, valuation, attribution and conformance.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12703,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/learn/questions/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/learn/questions/",
+      "title": "Questions and answers | Reality-Grade Banking",
+      "description": "Practical answers about opening an account, paying, receiving Notes, asset value, originals and conformance.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 12699,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/explore/music/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/music/",
+      "title": "Music: explore public assets | Bankeiz",
+      "description": "Audio works, recordings and music sources. Inspect the authored original, its ownership and the rights actually carried.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/images/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/images/",
+      "title": "Images: explore public assets | Bankeiz",
+      "description": "Photography, visual art and image-based originals. Follow each image to its claim, author and supported ownership history.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/videos/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/videos/",
+      "title": "Videos: explore public assets | Bankeiz",
+      "description": "Moving-image originals and their carried sources. Review the work, its context and the rights defined by the object.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/books/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/books/",
+      "title": "Books: explore public assets | Bankeiz",
+      "description": "Book-length works with their original publication evidence. Access, ownership and distribution rights remain defined by each source.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/essays/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/essays/",
+      "title": "Essays: explore public assets | Bankeiz",
+      "description": "Long-form writing and authored arguments. Read the source and inspect the moment, attribution and history it records.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/moments/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/moments/",
+      "title": "Moments: explore public assets | Bankeiz",
+      "description": "Sealed moments with an explicit claim and context. Examine what was recorded and the evidence the source actually establishes.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/collectibles/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/collectibles/",
+      "title": "Collectibles: explore public assets | Bankeiz",
+      "description": "Sports cards, signal cards and other collectible originals. Inspect supported live value, opening coordinates and ownership history.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/documents/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/documents/",
+      "title": "Documents: explore public assets | Bankeiz",
+      "description": "Document sources and their inspectable records. Check authorship, integrity, rights and the evidence carried by the original.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/bjklock/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/bjklock/",
+      "title": "BJ Klock | Bankeiz",
+      "description": "Copies fail, Originals Verify.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    }
+  ]
+}

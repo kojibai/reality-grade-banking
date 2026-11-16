@@ -34,10 +34,12 @@ export function readingPageContent(content,canonical){
 
 export async function writePublicReadingPages({outdir,pages,catalog,ledger}){
  if(ledger.records.some(row=>row.authority!=='public-source-projection'))throw Error('READING_PUBLIC_SOURCE_REQUIRED');
- const paths=[],write=async(path,document)=>{
+ const paths=[],sitemapPaths=[],write=async(path,document)=>{
   if(!/^\/read\/[a-z0-9_/-]+\/$/.test(path))throw Error('READING_PATH_INVALID');
   await mkdir(join(outdir,path),{recursive:true});
   await Promise.all([writeFile(join(outdir,path,'index.html'),renderReadingDocument(document,'html')),writeFile(join(outdir,path,'index.txt'),renderReadingDocument(document,'text'))]);paths.push(path);
+  // Alternate reading representations keep their application canonical and links.
+  if(document.canonical==='https://bankeiz.com'+path)sitemapPaths.push(path);
  };
  const guideLinks=[];
  for(const [path,page]of Object.entries(pages)){
@@ -47,10 +49,10 @@ export async function writePublicReadingPages({outdir,pages,catalog,ledger}){
  }
  for(let page=1;page<=Math.max(1,Math.ceil(catalog.items.length/READING_PAGE_SIZE));page++)await write('/read/catalog/'+(page===1?'':page+'/'),publicCatalogReading(catalog.items,catalog.observedAt,page));
  for(let page=1;page<=Math.max(1,Math.ceil(ledger.records.length/READING_PAGE_SIZE));page++)await write('/read/ledger/'+(page===1?'':page+'/'),publicLedgerReading(ledger.records,ledger.capturedAt,page));
- await write('/read/public/',createReadingDocument('Bankeiz public reading','Public text, source observations and evidence without running the account app.','https://bankeiz.com/',[
+ await write('/read/public/',createReadingDocument('Bankeiz public reading','Public text, source observations and evidence without running the account app.','https://bankeiz.com/read/public/',[
   readingParagraph('Open a named Original for its complete carried public text, price observation, valuation inputs, proof references and permitted material links. Private identities, accounts and receipts are not part of this directory.'),
   readingLinks('Public content',[{label:'Public Originals and owners',href:'/read/catalog/'},{label:'Public Ledger capture',href:'/read/ledger/'}]),readingLinks('Public pages',guideLinks),
  ]));
- await writeFile(join(outdir,'reading-sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(path=>`<url><loc>https://bankeiz.com${escapeReading(path)}</loc></url>`).join('')+'</urlset>');
+ await writeFile(join(outdir,'reading-sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+sitemapPaths.map(path=>`<url><loc>https://bankeiz.com${escapeReading(path)}</loc></url>`).join('')+'</urlset>');
  return{pages:paths.length,assets:catalog.items.length,publicRecords:ledger.records.length};
 }

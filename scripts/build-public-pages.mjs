@@ -32,6 +32,8 @@ import {twinSalesPages,twinPageContent} from './twin-page.mjs';
 import {togetherPages,togetherContent} from './together-page.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {compactNavigation} from './compact-navigation.mjs';
+import {clientWorkPages} from '../src/content/client-work-library.mjs';
+import {writeClientWorkLibrary} from './client-work-library.mjs';
 import {bankOwnedStyles} from './public-bank-styles.mjs';
 import {withPageFooter,siteFooterHtml} from './site-footer.mjs';
 import {cooperativePages,cooperativeContent} from './cooperative-page.mjs';
@@ -54,7 +56,7 @@ import {independentBankPage,independentBankContent,independentBankStyles} from '
 import { valueExplainerPage, valueExplainerContent } from './value-explainer-template.mjs';
 import { writePublicSdkSchemas } from './build-public-schemas.mjs';
 import { writeValueExplainerAssets } from './value-explainer-assets.mjs';
-import {publicPages as metadataPages,publicPage,applyPublicMetadata,publicEntryFallback} from './public-page-metadata.mjs';
+import {publicPages as metadataPages,publicPage,applyPublicMetadata,publicEntryFallback,socialMetadata,structuredMetadata} from './public-page-metadata.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 import {noteContinuityGuideSections} from '../src/content/note-continuity.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
@@ -258,6 +260,14 @@ for (const [path, page] of Object.entries(documents)) {
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
   await writeFile(`dist${path}index.html`, withReadingLink(feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path));
 }
+// Independent editorial documents carry complete text and inline styling.
+// They stay outside the app/catalog navigation carrier and PWA installation.
+const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWorkPages,footer:siteFooterHtml,footerCss:await readFile('src/styles/site-footer.css','utf8'),head:page=>{
+ const metadata=publicPage(page.path),image=socialImages.images[page.path];
+ if(!metadata||!image)throw Error('RESOURCE_METADATA_REQUIRED');
+ return socialMetadata(metadata,image)+`<script type="application/ld+json">${JSON.stringify(structuredMetadata(metadata,image)).replaceAll('<','\\u003c')}</script>`;
+}});
+console.log(`Built ${libraryResult.pages} complete static client-work resources and ${libraryResult.downloads} usable text downloads, without app startup payloads.`);
 await mkdir('dist/ledger/proofs',{recursive:true});
 await writeFile('dist/ledger/proofs/index.html',runtimeDocumentHtml(runtimeDocuments.get('/ledger/proofs/'),'ledger'));
 const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
