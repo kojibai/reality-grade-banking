@@ -80,3 +80,25 @@ it.each(['foreign-redirect','missing-secure','oversized-json','wrong-adopt-recip
  const held=jar();held.retain(await relayNativeAccount(new Request(base+'start?'+query)));const opened=await relayNativeAccount(post(held.read()));
  if(failure==='wrong-adopt-recipient'){expect(opened.ok).toBe(true);held.retain(opened);expect((await relayNativeAccount(post(held.read(),'adopt'))).ok).toBe(false);}else{expect(opened.ok).toBe(false);expect(opened.headers.getSetCookie().join(';')).not.toContain('__Secure-bankeiz-pbi=');}
 });
+
+it('a new cross-site email link replaces the previous closed message only after its own canonical recipient is verified',async()=>{
+ const nextConversation='20000000-0000-4000-8000-000000000004',nextMessage='20000000-0000-4000-8000-000000000005',nextUid='20000000-0000-4000-8000-000000000002',nextEmail='next@example.test';
+ const firstToken=jwt(),nextToken=jwt(nextUid,nextEmail),nextObservation={ok:true,recipient:{userId:nextUid,email:nextEmail},invitation:{conversationId:nextConversation,messageId:nextMessage}};
+ const redemptions:string[]=[],adoptions:string[]=[];
+ vi.stubGlobal('fetch',async(input:RequestInfo|URL,init?:RequestInit)=>{
+  const url=String(input);
+  if(url.includes('/auth/verify?')){const token=new URL(url).searchParams.get('token')!;redemptions.push(token);return canonical(token==='next-email-token'?nextToken:firstToken);}
+  const selected=url.includes(nextConversation)?nextObservation:observation,expectedToken=url.includes(nextConversation)?nextToken:firstToken;
+  expect(new Headers(init?.headers).get('cookie')).toBe(`receiz_session=${expectedToken}`);
+  if(url.endsWith('/adopt')){adoptions.push(url);return Response.json({...selected,adopted:true});}
+  return Response.json(selected);
+ });
+ const held=jar();held.retain(await relayNativeAccount(new Request(base+'start?'+query)));held.retain(await relayNativeAccount(post(held.read())));
+ // Browser omits SameSite=Strict closed-session cookies on an email's
+ // cross-site navigation, so start cannot clear the previous message itself.
+ const next=await relayNativeAccount(new Request(base+'start?'+new URLSearchParams({token:'next-email-token',conversationId:nextConversation,messageId:nextMessage}),{headers:{'sec-fetch-site':'cross-site'}}));held.retain(next);
+ const pending=await relayNativeAccount(state(held.read()));expect(pending.status).toBe(200);expect(await pending.json()).toEqual({ok:true,pending:true,autoContinue:true});
+ expect(redemptions).toEqual(['synthetic-email-token']);expect((await relayNativeAccount(post(held.read(),'adopt'))).ok).toBe(false);expect(adoptions).toEqual([]);
+ const opened=await relayNativeAccount(post(held.read()));expect(opened.status).toBe(200);held.retain(opened);expect(await opened.json()).toEqual(nextObservation);
+ expect(await (await relayNativeAccount(post(held.read(),'adopt'))).json()).toEqual({...nextObservation,adopted:true});expect(redemptions).toEqual(['synthetic-email-token','next-email-token']);expect(adoptions).toEqual([`https://receiz.com/api/chat/email-entries/${nextConversation}/${nextMessage}/adopt`]);
+});

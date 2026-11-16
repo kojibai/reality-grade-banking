@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+vi.mock('../src/receiz/public-profile-directory',()=>({subscribePublicProfileDirectory:()=>()=>{}}));
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
@@ -9,7 +10,7 @@ import {parsePublicMarket} from '../src/receiz/public-market';
 const mocks=vi.hoisted(()=>({load:vi.fn(),save:vi.fn(async()=>true),seed:vi.fn(async()=>null),listeners:new Set<(catalog?:PublicMarketCatalog)=>void>()}));
 vi.mock('../src/receiz/public-network-cache',async original=>({...await original<object>(),loadPublicNetworkCache:mocks.load,savePublicNetworkCache:mocks.save,loadPublicNetworkSeed:mocks.seed}));
 vi.mock('../src/receiz/public-ledger-continuity',()=>({readHeldPublicLedger:async()=>null,synchronizePublicLedger:async()=>null,publicLedgerDisplayRows:async(_review:unknown,records:PublicRecord[])=>records}));
-vi.mock('../src/receiz/asset-publication-adoption',()=>({assetPublicationFreshnessHint:()=>undefined,subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog)=>void)=>{mocks.listeners.add(listener);return()=>{mocks.listeners.delete(listener);};}}));
+vi.mock('../src/receiz/asset-publication-adoption',()=>({assetPublicationFreshnessHint:()=>undefined,retainedDiscoveredPublicCatalog:()=>null,subscribeAssetPublicationAdmissions:(listener:(catalog?:PublicMarketCatalog)=>void)=>{mocks.listeners.add(listener);return()=>{mocks.listeners.delete(listener);};}}));
 import {usePublicNetwork} from '../src/receiz/usePublicNetwork';
 const row=(source:'wallet'|'proofs',id:string):PublicRecord=>({id:source+':'+id,sourceId:id,source,kind:source==='wallet'?'transfer':'proof recorded',title:id,detail:'Public retained record',time:null,actor:null,amountUsdCents:null,kaiUpulse:null,pulse:null,sourceUrl:null,evidence:{},authority:'public-source-projection'});
 const old=row('wallet','old'),added=row('wallet','new'),visible=row('proofs','visible'),withdrawn=row('proofs','withdrawn');

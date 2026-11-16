@@ -47,3 +47,28 @@ it('cancels an already superseded success body without parsing the discarded ful
  const read=profiles.fetchPublicProfile(username),selected=accept('projected-append'),response=Response.json(full()),parse=vi.spyOn(response,'json'),cancel=vi.spyOn(response.body!,'cancel');
  finish(response);expect((await read)===selected).toBe(true);expect(parse).not.toHaveBeenCalled();expect(cancel).toHaveBeenCalledOnce();expect(profiles.retainedPublicProfile(username)===selected).toBe(true);expect(fetcher).toHaveBeenCalledTimes(1);
 });
+it('advances a directly held full profile when the shared reader selects a subsequent Showcase collection',async()=>{
+ const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');const first=market(['accepted']);publishDiscoveredPublicCatalog(first);
+ const original=profiles.retainPublicProfile(full()),next=market(['accepted','new-showcase-original']);publishDiscoveredPublicCatalog(next);
+ const selected=profiles.selectHeldPublicProfile(username,next)!;
+ expect(selected.items.map(item=>item.assetId)).toEqual(['new-showcase-original','accepted']);expect(selected.bio).toBe(original.bio);expect(selected.avatarUrl).toBe(original.avatarUrl);expect(selected.userId).toBe(original.userId);
+});
+it('withdraws the last Original from a directly held full profile when the shared complete selection becomes empty',async()=>{
+ const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');publishDiscoveredPublicCatalog(market(['accepted']));const previous=profiles.retainPublicProfile(full()),next=market([]);publishDiscoveredPublicCatalog(next);
+ const selected=profiles.selectHeldPublicProfile(username,next)!;expect(selected.items).toEqual([]);expect(selected.bio).toBe(previous.bio);expect(selected.stats.originals).toBe(0);
+});
+it('keeps a newer full reader collection through a shared header-only edit',async()=>{
+ const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');const first=market(['accepted']);publishDiscoveredPublicCatalog(first);const previous=profiles.retainPublicProfile(full()),next={...first,publicProfileHeadsRevision:'b'.repeat(64)};publishDiscoveredPublicCatalog(next);
+ expect(profiles.selectHeldPublicProfile(username,next)!.items).toBe(previous.items);
+});
+it('does not replace a newer full reader with the first unassociated saved family',async()=>{
+ const previous=profiles.retainPublicProfile(full()),{publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption'),saved=market(['old-saved-work']);publishDiscoveredPublicCatalog(saved);expect(profiles.selectHeldPublicProfile(username,saved)!.items).toBe(previous.items);
+});
+
+it('keeps the exact enclosing document basis when a saved successor arrives before its full profile is decoded',async()=>{
+ const documentCatalog=market(['document-original']),successor=market(['saved-successor']),{publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');publishDiscoveredPublicCatalog(successor);
+ const value={...full(),schema:'bankeiz.public-profile.v1'},seed={textContent:JSON.stringify(value),remove:vi.fn()};
+ vi.stubGlobal('document',{getElementById:(id:string)=>id==='public-profile-seed'?seed:null});
+ const carried=profiles.retainedPublicProfile(username,documentCatalog)!;expect(carried.items).toHaveLength(value.items.length);expect(seed.remove).toHaveBeenCalledOnce();
+ const selected=profiles.selectHeldPublicProfile(username,successor)!;expect(selected.items.map(item=>item.assetId)).toEqual(['saved-successor']);expect(selected.bio).toBe(carried.bio);
+});

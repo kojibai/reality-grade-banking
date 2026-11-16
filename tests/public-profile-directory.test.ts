@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import {expect,it,vi} from 'vitest';
 import {createPublicProfileDirectoryObserver} from '../src/receiz/public-profile-directory';
-import {parsePublicMarket,type PublicMarketCatalog} from '../src/receiz/public-market';
+import {parsePublicMarket,rememberPublicMarketResponse,type PublicMarketCatalog} from '../src/receiz/public-market';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../src/receiz/asset-publication-adoption';
 import {createHeldPublicMarketInput} from '../src/receiz/public-market-held-catalog';
 const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
@@ -12,7 +12,7 @@ const page=(heads:unknown[],nextCursor:string|null=null)=>({ok:true,schema:'bank
 it('traverses every page, shares subscribers, adds zero-Original accounts and persists the same held catalog',async()=>{
  localStorage.clear();let selected=empty();const initialItems=selected.items;let cycle=0;
  const fetcher=vi.fn<typeof fetch>(async input=>{const after=new URL(String(input),'https://bankeiz.com').searchParams.get('after');return Response.json(!after?page([head(1)],uid(1)):page([head(cycle?3:2)]));});
- const publish=vi.fn((next:PublicMarketCatalog,previous:PublicMarketCatalog)=>{publishDiscoveredPublicCatalog(next,undefined,previous);selected=retainedDiscoveredPublicCatalog()!;});
+ const publish=vi.fn((next:PublicMarketCatalog,previous:PublicMarketCatalog|null)=>{publishDiscoveredPublicCatalog(next,undefined,previous);selected=retainedDiscoveredPublicCatalog()!;});
  const observer=createPublicProfileDirectoryObserver({fetch:fetcher,selected:()=>selected,publish}),a=observer.subscribe(),b=observer.subscribe();await observer.refresh();
  expect(fetcher).toHaveBeenCalledTimes(2);expect(publish).toHaveBeenCalledOnce();expect(selected.items).toBe(initialItems);expect(selected.publicProfileHeads?.map(h=>h.profile.userId)).toEqual([uid(1),uid(2)]);
  const saved=JSON.parse(localStorage.getItem('receiz-bank-public-discovery-v2')!);expect(parsePublicMarket(saved).publicProfileHeads).toHaveLength(2);
@@ -73,4 +73,28 @@ it('reuses only the existing public reader projection, excluding private or owne
  expect(receivedPublicProfileHeads()).toContain(received);expect(JSON.stringify(received)).not.toMatch(/private@example|secret|Private draft|Do not duplicate/);
  retainPublicProfile({...profile,username:'owneronlycopy'});expect(receivedPublicProfileHead('owneronlycopy')).toBeNull();
  expect(receivedPublicProfileHead('missing')).toBeNull();
+});
+it('projects each accepted Showcase successor independently of stalled profile metadata and retains the selected prefix',async()=>{
+ let selected=empty(),version=0;
+ const membership=vi.fn(async()=>{const input={ok:true,transport:{generatedAt:'2026-01-01T00:00:00Z',publicOriginals:Array.from({length:++version},(_,i)=>({id:'original-'+i,receizId:'original-'+i,title:'Work '+i,ownerUsername:'person_1',ownerUserId:uid(1),ownerCreatedAt:'2026-01-01T00:00:00Z'})),publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:version,revision:String(version).repeat(64)}}};const next=parsePublicMarket(input);rememberPublicMarketResponse(next,input);return next;});
+ const observer=createPublicProfileDirectoryObserver({fetch:()=>new Promise(()=>{}),membership,selected:()=>selected,publish:(next,previous)=>{publishDiscoveredPublicCatalog(next,undefined,previous);selected=retainedDiscoveredPublicCatalog()!;}}),stop=observer.subscribe();
+ try{
+  await vi.waitFor(()=>expect(selected.items.map(item=>item.id)).toEqual(['original-0']));
+  void observer.refresh(true);await vi.waitFor(()=>expect(selected.items.map(item=>item.id)).toEqual(['original-0','original-1']));
+  const saved=JSON.parse(localStorage.getItem('receiz-bank-public-discovery-v2')!);expect(parsePublicMarket(saved).items.map(item=>item.id)).toEqual(['original-0','original-1']);
+ }finally{stop();}
+});
+it('rechecks a notification received during an older directory walk instead of losing that edit',async()=>{
+ let selected:PublicMarketCatalog={...empty(),publicProfileHeads:[head(1)]},finish!:(response:Response)=>void,reads=0;
+ const fetcher=vi.fn<typeof fetch>(()=>++reads===1?new Promise(resolve=>{finish=resolve;}):Promise.resolve(Response.json(page([{...head(1,'Latest'),profile:{...head(1,'Latest').profile,bio:'Latest biography',updatedAt:'2026-11-15T10:00:00Z'}}]))));
+ const observer=createPublicProfileDirectoryObserver({fetch:fetcher,selected:()=>selected,publish:next=>{selected=next;}}),stop=observer.subscribe();
+ try{const refresh=observer.refresh(true);finish(Response.json(page([])));await refresh;expect(fetcher).toHaveBeenCalledTimes(2);expect(selected.publicProfileHeads?.[0].profile.bio).toBe('Latest biography');}finally{stop();}
+});
+it('resolves an explicitly received profile edit even when its descriptive directory timestamp is unchanged',async()=>{
+ const {createPublicProfileDirectoryReader}=await import('../server/public-profile-directory');let changed=false;
+ const descriptor={userId:uid(1),username:'person_1',updatedAt:head(1).profile.updatedAt};
+ const read=createPublicProfileDirectoryReader(async input=>String(input).includes('/public-directory')?Response.json({ok:true,schema:'receiz.public-profile-directory.v1',profiles:[descriptor],nextCursor:null}):Response.json({ok:true,head:{...head(1),profile:{...head(1).profile,bio:changed?'Accepted new biography':'Previous biography'}}}));
+ let selected:PublicMarketCatalog={...empty(),publicProfileHeads:[{...head(1),profile:{...head(1).profile,bio:'Previous biography'}}]};
+ const observer=createPublicProfileDirectoryObserver({fetch:async(_input,init)=>Response.json(await read(undefined,JSON.parse(new Headers(init?.headers).get('x-receiz-held-profile-heads')??'[]'))),selected:()=>selected,publish:next=>{selected=next;}}),stop=observer.subscribe();
+ try{await observer.refresh();changed=true;await observer.receive({...head(1),unavailableDecorators:['profile-details']});await observer.refresh(true);expect(selected.publicProfileHeads?.[0].profile.bio).toBe('Accepted new biography');}finally{stop();}
 });

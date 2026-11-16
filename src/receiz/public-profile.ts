@@ -4,7 +4,7 @@ import {publicAccountDisplayName,publicProfileUsername} from './account-name.js'
 import {curatePublicProfileHead,publicProfileHeaderDisplayBasis,readPublicProfileHeader,type PublicProfileHead,type PublicProfileHeader} from './public-profile-header.js';
 import {copyPublicProfileHeader,storedPublicHead,retainStoredPublicHead,retainStoredPublicHeader,forgetStoredPublicHead} from './public-head-cache.js';
 import {afterPublicNavigationReady} from '../core/public-document-entry.js';
-import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets} from './asset-publication-adoption.js';
+import {mergeAdmittedProfileAssets,forgetAssetPublicationAdmissions,acceptDiscoveredProfileAssets,retainedDiscoveredPublicCatalog} from './asset-publication-adoption.js';
 import {parsePublicMarket,type PublicMarketItem,type PublicMarketCatalog} from './public-market.js';
 import {profileAvatarUrl,rememberObservedProfilePortrait,forgetObservedProfilePortrait} from './profile-avatar.js';
 import {retainRecipientPortrait,forgetRecipientPortrait} from './recipient-portrait.js';
@@ -92,6 +92,9 @@ export function heldPublicProfileUsername(username:string,catalog:PublicMarketCa
 const refusals=new Map<string,{code:string;userId?:string}>(),privateProfileAccounts=new Set<string>();
 let revision=0;
 export const publicProfilesRevision=()=>revision;
+// Associate a full reader result with the shared display it superseded. Only
+// a subsequently selected Showcase can replace that result's membership.
+const fullProfileSelections=new WeakMap<PublicProfile,PublicMarketCatalog|null>();
 const catalogProfiles=new WeakMap<PublicProfile,{items:PublicMarketItem[];header:boolean}>();
 const selectedCatalogProfiles=new WeakMap<PublicMarketItem[],Map<string,{base:PublicProfile|null;profile:PublicProfile;head?:PublicProfileHeader}>>();
 const selectedHeaders=new WeakMap<PublicProfile,PublicProfileHeader>(),supersededHeaders=new WeakMap<PublicProfile,string>();
@@ -100,11 +103,13 @@ const selectedHeaders=new WeakMap<PublicProfile,PublicProfileHeader>(),supersede
 const qualifiedHeaders=new WeakMap<PublicProfile,PublicProfileHead>(),rawSelectedHeaders=new WeakMap<PublicProfile,PublicProfileHead>(),catalogHeaderBases=new WeakMap<PublicProfile,string>();
 // Only actual successful public readers mark projected HTTP display input.
 const qualifiedReaderHeaders=new WeakMap<PublicProfile,PublicProfileHeader>(),projectedHeaders=new WeakMap<PublicProfile,PublicProfileHeader>();
-function heldCatalogHeader(profile:PublicProfile):unknown{
+function heldProfileCatalog():PublicMarketCatalog|null{
  if(typeof document==='undefined')return null;
  const marker=document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
- try{return marker?.publicMarketCatalog?.()?.publicProfileHeads?.find(head=>head.profile.userId===profile.userId&&head.profile.username===profile.username)??null;}catch{return null;}
+ try{return marker?.publicMarketCatalog?.()??null;}catch{return null;}
 }
+function heldCatalogHeader(profile:PublicProfile):unknown{return heldProfileCatalog()?.publicProfileHeads?.find(head=>head.profile.userId===profile.userId&&head.profile.username===profile.username)??null;}
+
 const profileReadEpoch=new Map<string,number>();
 const confirmedProfilePbi=new Map<string,string>();
 export const knownProfilePbiAuthorship=(uid:string)=>confirmedProfilePbi.get(uid)??null;
@@ -127,6 +132,7 @@ function publishProfileMetadata(profile:PublicProfile){
  afterPublicNavigationReady(publish);
 }
 export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt&&(!input.authorshipVerified||!input.pbiReceiptHash)?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)refusePublicProfile(name,'PROFILE_CHANGED',profile.userId);held.delete(profile.username);held.set(profile.username,profile);const selectedHead=selectedHeaders.get(input),projection=catalogProfiles.get(input),previousHeader=previous?.userId===profile.userId?selectedHeaders.get(previous):undefined;
+ if(!projection)fullProfileSelections.set(profile,fullProfileSelections.has(input)?fullProfileSelections.get(input)!:retainedDiscoveredPublicCatalog()??heldProfileCatalog());
  const observedBasis=!projection&&!selectedHead?publicProfileHeaderDisplayBasis(heldCatalogHeader(profile)):null;
  const superseded=supersededHeaders.get(input)??(!projection&&!selectedHead?publicProfileHeaderDisplayBasis(previousHeader)??observedBasis:previous?.userId===profile.userId?supersededHeaders.get(previous):null);
  const qualified=qualifiedHeaders.get(input),raw=qualified??rawSelectedHeaders.get(input);
@@ -160,11 +166,11 @@ export function publicProfilePageError(username:string,catalog?:PublicMarketCata
  }
  if(typeof document==='undefined')return '';try{const value=JSON.parse(document.getElementById('public-profile-error')?.textContent??'null');return value?.username===username&&Date.now()-value.at<15_000&&['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_UNAVAILABLE'].includes(value.code)?value.code:'';}catch{return '';}
 }
-export function retainedPublicProfile(username:string):PublicProfile|null{
+export function retainedPublicProfile(username:string,documentCatalog?:PublicMarketCatalog):PublicProfile|null{
  username=heldPublicProfileUsername(username);
  const previous=held.get(username);if(previous)return previous;
  if(typeof document==='undefined')return null;
- try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&(value.username===username||/^(?:receiz_)?[a-z0-9]{18}$/.test(username)&&value.resolvedReceivingUsername===username.replace(/^receiz_/,''))&&profileUsername(value.username)&&typeof value.userId==='string'&&Array.isArray(value.items)){const header=copyPublicProfileHeader(value,value.username);if(header)qualifiedReaderHeaders.set(value,header);const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
+ try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&(value.username===username||/^(?:receiz_)?[a-z0-9]{18}$/.test(username)&&value.resolvedReceivingUsername===username.replace(/^receiz_/,''))&&profileUsername(value.username)&&typeof value.userId==='string'&&Array.isArray(value.items)){const header=copyPublicProfileHeader(value,value.username);if(header)qualifiedReaderHeaders.set(value,header);if(documentCatalog)fullProfileSelections.set(value,documentCatalog);const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
 }
 /** A held Market row already supplies this public display binding. It does
  * not become profile PBI, owner authority, or an anonymous private account. */
@@ -181,7 +187,9 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
  const displayHead=restored?restored.head:rawHead,carried=restored?.header??(displayHead?readPublicProfileHeader(displayHead,username)??undefined:undefined);
  if(carried&&privateProfileAccounts.has(carried.userId))return null;
  const matchingHead=(uid:string,createdAt:string|null)=>carried?.userId===uid&&(!carried.createdAt||!createdAt||carried.createdAt===createdAt)?carried:undefined;
- if(previous&&!basis){
+ const baseline=previous?fullProfileSelections.get(previous):null,selectedSuccessor=catalog.complete&&catalog===retainedDiscoveredPublicCatalog()&&!!baseline&&catalog.revision!==baseline.revision;
+ if(previous&&!basis&&!baseline&&catalog.complete&&catalog===retainedDiscoveredPublicCatalog())fullProfileSelections.set(previous,catalog);
+ if(previous&&!basis&&!selectedSuccessor){
   const incoming=catalog.complete?catalog.items.find(item=>item.category==='proof'&&item.ownerUsername===username)?.ownerIdentity:null;
   if((!incoming&&!carried)||incoming?.userId===previous.userId||!incoming&&carried?.userId===previous.userId){
    const head=matchingHead(previous.userId,previous.createdAt);
@@ -199,15 +207,15 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
    const matching=previous?.userId===carried.userId?previous:null,profile:PublicProfile={...carried,...(matching?.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:matching.pbiReceiptHash}:{}),items:matching?.items.length===0?matching.items:[],stats:{...carried.stats,originals:0},nextCursor:null};
    selectedHeaders.set(profile,carried);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:true});selections.set(username,{base:previous,profile,head:carried});return profile;
   }
-  if(!previous||!basis||!catalog.complete)return previous;
+  if(!previous||!basis&&!selectedSuccessor||!catalog.complete)return previous;
   const profile={...previous,items:[],stats:{...previous.stats,originals:0},nextCursor:null};
-  catalogProfiles.set(profile,{items:catalog.items,header:basis.header});selections.set(username,{base:previous,profile});return profile;
+  catalogProfiles.set(profile,{items:catalog.items,header:basis?.header??true});selections.set(username,{base:previous,profile});return profile;
  }
  const owner=items[0].ownerIdentity;
  if(new Set(items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId]:[])).size>1)return null;
  if(!owner||owner.username!==username||items.some(item=>!item.ownerIdentity||item.ownerIdentity.username!==username||item.ownerIdentity.userId!==owner.userId||item.ownerIdentity.createdAt!==owner.createdAt))return previous;
  const matching=previous?.userId===owner.userId?previous:null,head=matchingHead(owner.userId,owner.createdAt);
- const ordered=matching&&basis?.items===catalog.items?matching.items:items.slice().sort(compareProfileOriginals),known=!!head||!!matching&&basis?.header===true;
+ const ordered=matching&&basis?.items===catalog.items?matching.items:items.slice().sort(compareProfileOriginals),known=!!head||!!matching&&(!basis||basis.header===true);
  const images=head?{avatarUrl:head.avatarUrl,bannerUrl:head.bannerUrl}:known?{avatarUrl:matching!.avatarUrl,bannerUrl:matching!.bannerUrl}:publicProfileArtwork({...owner,avatarUrl:items.find(item=>item.ownerAvatarUrl)?.ownerAvatarUrl});
  const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:owner.userId,username,...(items[0].ownerReceivingUsername?{receivingUsername:items[0].ownerReceivingUsername}:{}),displayName:items[0].ownerDisplayName??username,bio:null,location:null,websiteUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:owner.createdAt,...(known&&matching?matching:{}),...head,...images,
  ...(matching?.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:matching.pbiReceiptHash}:{}),stats:{...(head?.stats??matching?.stats??{views:null,plays:null,seconds:null,completion:null}),originals:catalog.complete?ordered.length:matching?.stats.originals??null},items:ordered,nextCursor:catalog.complete?null:'all:'+owner.userId};

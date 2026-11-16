@@ -4,7 +4,9 @@ import {parseMarketCapSource,type MarketCapSource} from './market-projection/sou
 import {SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
 
 export {PREPARED_BANK_CATALOG_PATH} from './prepared-bank-cache';
-import {parsePublicMarket,rememberPublicMarketResponse,prepareHeldPublicMarketResponse,type PublicMarketCatalog} from './public-market';
+import {parsePublicMarket,rememberPublicMarketResponse,prepareHeldPublicMarketResponse,retainPublicProfileHeaders,type PublicMarketCatalog} from './public-market';
+import {curatePublicProfileHead,curatePublicProfileHeadRefusal,publicProfileHeaderDisplayBasis} from './public-profile-header';
+import {publicProfileDirectoryBindings} from './public-profile-directory-contract';
 import {retainedDiscoveredPublicCatalog,publishDiscoveredPublicCatalog} from './asset-publication-adoption';
 import {restorePublicProfileDirectoryHeaders} from './public-profile-directory-retention';
 const MAX=32*1024*1024,HEX=/^[a-f0-9]{64}$/;
@@ -13,6 +15,7 @@ export type PreparedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:Ma
 export type PreparedBankIdentity={generation:string;build:string;bodySha256:string};
 export type CarriedBankCatalog={seed:PublicMarketDocumentSeed;capitalization:MarketCapSource;history:MarketHistorySnapshot;identity?:PreparedBankIdentity;receivedAt:number;fromCache?:true};
 export type PublicDocumentHandoff={state:'current'|'retained';identity:unknown};
+export type PublicDocumentAdoption={initialDocument?:boolean};
 export type CarriedBankCatalogInput={seedText:string;hint:unknown};
 export type PreparedBankCatalogState={phase:'idle'|'pending'|'carried'|'ready'|'fallback';value:PreparedBankCatalog|null;error:string|null;carried?:CarriedBankCatalog;bootstrapping?:true;bareCatalog?:PublicMarketCatalog};
 type Fetcher=(path:string,init:RequestInit)=>Promise<Response>;
@@ -65,6 +68,9 @@ function retainedResponse(value:Awaited<ReturnType<typeof openedResponse>>){
  * bytes are decoded in the background; account entry never awaits this work. */
 export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fetch(path,init),input?:CarriedBankCatalogInput,storage?:PreparedBankCache){
  let state:PreparedBankCatalogState=immutable({phase:'idle',value:null,error:null}),held:PreparedBankCatalog|null=null,flight:Promise<PreparedBankCatalog|null>|undefined,controller:AbortController|undefined,epoch=0;
+ let initialDocumentSeed:PublicMarketDocumentSeed|null=null;
+ const selectedCatalog=()=>{const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;return retainedDiscoveredPublicCatalog()??marker?.publicMarketCatalog?.()??null;};
+ const initialSelection=(catalog:PublicMarketCatalog|null)=>!!initialDocumentSeed&&!!catalog&&catalog.revision===initialDocumentSeed.catalog.revision;
  const listeners=new Set<()=>void>();let bareCatalog:PublicMarketCatalog|null=null,carried:CarriedBankCatalog|null=null,bootstrapping=!!input||!!storage,carriedBodyVerified=false,displayRevision=0,acceptedIdentity:PublicMarketDocumentSeed|null=null,acceptedAt=0;const observedDocuments=new Set<string>(),appliedFamilies=new WeakSet<PublicMarketDocumentSeed>();
  const publish=(next:PreparedBankCatalogState,beforeNotify?:()=>void)=>{const value={...next,...(bareCatalog?{bareCatalog}:{}),...(carried?{carried}:{}),...(bootstrapping?{bootstrapping:true as const}:{})};if(value.phase===state.phase&&value.value===state.value&&value.error===state.error&&state.carried===value.carried&&state.bareCatalog===value.bareCatalog&&state.bootstrapping===value.bootstrapping)return;state=immutable(value);beforeNotify?.();for(const listener of listeners)listener();};
  // Capture all caller-owned input before asynchronous decode. This identity is
@@ -87,8 +93,13 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    if(!cached){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
    // Neither historical response form can replace the complete selected view.
-   const selected=retainedDiscoveredPublicCatalog()??marker?.publicMarketCatalog?.(),directory=cached.headers.get('x-bankeiz-profile-directory');
-   if(selected?.complete){
+   const selected=selectedCatalog(),directory=cached.headers.get('x-bankeiz-profile-directory');
+   if(initialDocumentSeed&&!/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')){
+    // Only the retained selected membership response can supersede first HTML.
+    // An older prepared HTML copy does not become a newly accepted document.
+    void cached.body?.cancel().catch(()=>{});bootstrapping=false;publish({phase:flight?'pending':'carried',value:held,error:null});return carried;
+   }
+   if(selected?.complete&&!initialSelection(selected)){
     // The same cache read can hold unseen profile headers when localStorage
     // was full. Recover those operands in the background, never its older
     // membership/history or a prepared-document receipt.
@@ -101,9 +112,18 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    if(/^application\/json(?:;|$)/i.test(cached.headers.get('content-type')??'')){
     if(!cached.ok||Number(cached.headers.get('content-length'))>MAX)throw Error('PREPARED_PUBLIC_CATALOG_INVALID');
     const input=await untilAborted(cached.json(),signal);if(displayRevision!==bootRevision)return carried;
-    if(retainedDiscoveredPublicCatalog()||marker?.publicMarketCatalog?.()?.complete){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
-    const catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)throw Error('PREPARED_PUBLIC_CATALOG_INCOMPLETE');
-    rememberPublicMarketResponse(catalog,input);bareCatalog=immutable(catalog);bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;
+    const latest=selectedCatalog();
+    if(latest?.complete&&!initialSelection(latest)){bootstrapping=false;publish({phase:flight?'pending':'idle',value:held,error:null});return null;}
+    let catalog=parsePublicMarket(input,input?.snapshot);if(!catalog.complete)throw Error('PREPARED_PUBLIC_CATALOG_INCOMPLETE');
+    if(latest&&initialDocumentSeed&&initialSelection(latest)){
+     // Only the shipped fallback's membership yields. Keep owner-bound edits
+     // and privacy refusals already accepted while its local cache opened.
+     const heads=(value:PublicMarketCatalog)=>[...(value.publicProfileHeads??[]),...(value.publicProfileHeadRefusals??[])],basis=(head:unknown)=>publicProfileHeaderDisplayBasis(head)??JSON.stringify(head);
+     const expected=new Map(heads(initialDocumentSeed.catalog).map(head=>[String(head.profile.userId),basis(head)])),bound=publicProfileDirectoryBindings(catalog);
+     const changed=heads(latest).filter(head=>basis(head)!==expected.get(String(head.profile.userId))&&bound(head.profile));
+     if(changed.length)catalog=retainPublicProfileHeaders({...catalog,publicProfileHeads:changed.flatMap(value=>{const head=curatePublicProfileHead(value);return head?[head]:[];}),publicProfileHeadRefusals:changed.flatMap(value=>{const head=curatePublicProfileHeadRefusal(value);return head?[head]:[];})},catalog);
+    }
+    rememberPublicMarketResponse(catalog,input);bareCatalog=immutable(catalog);bootstrapping=false;publishDiscoveredPublicCatalog(bareCatalog,undefined,latest);publish({phase:flight?'pending':'idle',value:held,error:null});return null;
    }
    const value=await untilAborted(openedResponse(cached,signal),signal);if(displayRevision!==bootRevision)return carried;
    const length=cached.headers.get('content-length');if(length!==null&&(!/^\d+$/.test(length)||Number(length)!==value.bytes.byteLength))throw Error('PREPARED_PUBLIC_CATALOG_SIZE_MISMATCH');
@@ -138,16 +158,26 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
   }catch{if(selectedRead())publish({phase:'fallback',value:held,error:'Prepared public collection unavailable.'});return null;}
   })();flight=job;void job.finally(()=>{if(flight===job){flight=undefined;controller=undefined;}}).catch(()=>{});return job;
  }
- function adoptDocument(seed:PublicMarketDocumentSeed,accept:(display:CarriedBankCatalog)=>void,qualification?:PublicDocumentHandoff){
+ function adoptDocument(seed:PublicMarketDocumentSeed,accept:(display:CarriedBankCatalog)=>void,qualification?:PublicDocumentHandoff,options:PublicDocumentAdoption={}){
+  const selected=selectedCatalog();
+  // First HTML is a ready fallback, not a new input that can revoke a durable
+  // reader selection which finished restoring before this module mounted.
+  if(options.initialDocument&&(bareCatalog?.complete||selected?.complete&&selected!==seed.catalog&&selected.items!==seed.catalog.items&&!initialSelection(selected))){observedDocuments.add(seed.generation);return null;}
   const current=held??carried;
   const keep=()=>{if(!current||appliedFamilies.has(current.seed))return null;appliedFamilies.add(current.seed);const display=held?{seed:held.seed,capitalization:held.capitalization,history:held.history,receivedAt:acceptedAt}:carried!;accept(display);return display;};
   // A real current Bank packet keeps its exact parsed identity. A retained or
   // late public response cannot replace a stronger family observed meanwhile.
   if(current?.seed.generation===seed.generation)return keep();
-  if(current&&(qualification?.state!=='current'||qualification.identity!==acceptedIdentity))return keep();
+  if(current&&current.seed!==initialDocumentSeed&&(qualification?.state!=='current'||qualification.identity!==acceptedIdentity))return keep();
   if(observedDocuments.has(seed.generation))return null;
   const history=publicMarketDocumentHistory(seed);if(!seed.catalog.complete||!seed.capitalization||!history||history.historyPolicy!==SHARE_MARKET_HISTORY_POLICY||seed.asOfPulse<history.summary.serverPulse)return null;
   const capitalization=parseMarketCapSource({ok:true,marketCapProjection:seed.capitalization}),display=immutable({seed,history,capitalization,receivedAt:Date.now()});
+  if(options.initialDocument&&!current&&!bareCatalog&&displayRevision===bootRevision){
+   initialDocumentSeed=seed;observedDocuments.add(seed.generation);appliedFamilies.add(seed);carried=display;acceptedIdentity=seed;acceptedAt=display.receivedAt;
+   // Keep the bounded local restore alive beside the immediate first frame.
+   publish({phase:'carried',value:null,error:null},()=>accept(display));return display;
+  }
+  initialDocumentSeed=null;
   // No Bank data-body hint or Source currentness verdict is manufactured.
   if(identity?.generation&&HEX.test(identity.generation))observedDocuments.add(identity.generation);if(held)observedDocuments.add(held.seed.generation);if(carried)observedDocuments.add(carried.seed.generation);observedDocuments.add(seed.generation);appliedFamilies.add(seed);++displayRevision;++epoch;controller?.abort();controller=undefined;flight=undefined;held=null;bareCatalog=null;carried=display;carriedBodyVerified=false;bootstrapping=false;acceptedIdentity=seed;acceptedAt=display.receivedAt;
   publish({phase:'carried',value:null,error:null},()=>accept(display));return display;

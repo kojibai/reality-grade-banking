@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+// Live delivery is exercised separately; this suite qualifies held display.
+vi.mock('../src/receiz/public-profile-directory',()=>({subscribePublicProfileDirectory:()=>()=>{}}));
 import {act,type ComponentProps} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';

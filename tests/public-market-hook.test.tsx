@@ -156,7 +156,7 @@ it('keeps standalone pricing current and restores every collection price on retu
  const input=sourceInput(['a','b']),seed={kind:'sigil',claimPulse:14000000,beat:0,stepIndex:0,creatorVerified:true};
  for(const item of input.transport.publicOriginals)Object.assign(item,{pulse:'14000000',livePulseSeed:seed});
  localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));network.membership.mockRejectedValue(Error('offline'));network.quotes.mockRejectedValue(Error('offline'));
- const fetch=vi.fn(async()=>new Response('',{status:404}));vi.stubGlobal('fetch',fetch);
+ const fetch=vi.fn(async(input:RequestInfo|URL)=>String(input).endsWith('/public-profile-directory/stream')?new Response(new ReadableStream(),{headers:{'content-type':'text/event-stream'}}):new Response('',{status:404}));vi.stubGlobal('fetch',fetch);
  let state!:ReturnType<typeof usePublicMarket>;const root=createRoot(document.createElement('div'));
  function Probe({selection}:{selection:string|null}){state=usePublicMarket(true,true,selection);return null;}
  try{
@@ -276,4 +276,10 @@ it('ignores superseded trade replies and aborts the fresh read when the surface 
   await act(async()=>first.resolve(shareQuoteInput('4000000','14710104000000')));expect(read().catalog?.items[0].shareInventory?.outstandingShareQuantityMicro).toBe('1000000');expect(read().quoteStatus).toBe('loading');
  });
  expect(currentSignal?.aborted).toBe(true);await act(async()=>second.resolve(shareQuoteInput('5000000','14710105000000')));
+});
+it('selects the accepted Showcase successor without letting a display timestamp veto its new Originals',async()=>{
+ const initial=sourceInput(['old']),next=sourceInput(['old','new']);Object.assign(initial.transport,{generatedAt:'2026-11-15T12:00:00Z'});Object.assign(next.transport,{generatedAt:'2026-01-01T00:00:00Z'});next.transport.publicMembership.revision='r2';
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(initial));network.membership.mockImplementation(()=>new Promise(()=>{}));network.quotes.mockImplementation(()=>new Promise(()=>{}));vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:503})));
+ let state!:ReturnType<typeof usePublicMarket>;function Probe(){state=usePublicMarket(false,true);return null;}const root=createRoot(document.createElement('div'));
+ try{await act(async()=>root.render(<Probe/>));const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');await act(async()=>publishDiscoveredPublicCatalog(parsePublicMarket(next)));expect(state.historyCatalog?.items.map(item=>item.id)).toEqual(['old','new']);}finally{act(()=>root.unmount());}
 });

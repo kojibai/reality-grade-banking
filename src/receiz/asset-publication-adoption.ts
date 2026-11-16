@@ -1,8 +1,9 @@
-import {parsePublicMarket,retainPublicMarket,retainPublicProfileHeaders,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {retainPublicMomentManifest} from './public-asset-manifest.js';
+import {parsePublicMarket,retainPublicMarketSports,retainPublicArtwork,retainPublicMarket,retainPublicProfileHeaders,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
-import {compatibleShareInventory} from './market-share-inventory.js';
+import {mergeShareInventory,compatibleShareInventory} from './market-share-inventory.js';
 import {projectAssetPublicationReceipt,isAssetPublicationDeliveryConfirmed,type AssetPublicationReceipt} from './asset-publication.js';
 import {readPublicShowcaseRelease} from './public-showcase-release.js';
 import type {ConnectedAssetLocalAdmission} from './asset-publication-runtime';
@@ -61,7 +62,8 @@ export function pendingAssetPublicationSignatures(identityDigest:string,accountU
 /** Match the existing Create result: public observation or its accepted receipt
  * enables signing. A local pending preview alone is not an accepted head. */
 export function locallyPendingAssetPublication(sourceDigest:string,username:string):boolean{restore();const entry=additions.get(sourceDigest);return !!entry&&entry.username===username&&entry.sourceReceipt?.status!=='published'&&entry.receipt?.status!=='published'&&!entry.sourceSeen&&!entry.marketSeen&&!entry.profileSeen;}
-export function subscribeAssetPublicationAdmissions(listener:(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
+const publicDisplayReaders=new Set<()=>PublicMarketCatalog|null>();
+export function subscribeAssetPublicationAdmissions(listener:(catalog?:PublicMarketCatalog,snapshot?:unknown)=>void,selected?:()=>PublicMarketCatalog|null){listeners.add(listener);if(selected)publicDisplayReaders.add(selected);return()=>{listeners.delete(listener);if(selected)publicDisplayReaders.delete(selected);};}
 /** Only the canonical runtime's local-admission callback calls this seam.
  * These are public display additions, never ownership or financial authority. */
 export function retainAssetPublicationAdmission(admission:ConnectedAssetLocalAdmission,owner:Owner):void{
@@ -127,7 +129,31 @@ export function forgetAssetPublicationAdmissions(username?:string){restore();if(
 let discoveredPublicCatalog:PublicMarketCatalog|null=null;
 /** The exact accepted display projection may precede its first mounted owner. */
 export const retainedDiscoveredPublicCatalog=()=>discoveredPublicCatalog;
-export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown,previous:PublicMarketCatalog|null=discoveredPublicCatalog):void{const carried=retainPublicProfileHeaders(catalog,previous),selected=snapshot?mergePublicQuotes(carried,snapshot):carried;if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected,previous);}
+function carriedPublicCatalog():PublicMarketCatalog|null{
+ const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicDiscoveryDocument?:()=>{catalog:PublicMarketCatalog}|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog}|null})|null;
+ try{const selected=marker?.publicMarketCatalog?.()??marker?.publicDiscoveryDocument?.()?.catalog??marker?.publicMarketDocument?.()?.catalog;if(selected?.complete)return selected;}catch{/* A missing navigation marker does not erase an existing display. */}
+ for(const read of publicDisplayReaders)try{const selected=read();if(selected?.complete)return selected;}catch{/* Optional display continuation. */}return null;
+}
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown,previous:PublicMarketCatalog|null=carriedPublicCatalog()??discoveredPublicCatalog):void{
+ let carried=retainPublicProfileHeaders(catalog,previous);
+ // Carry compatible held display once, before every surface receives this
+ // successor. These public operands never become financial authority.
+ if(previous&&carried.items!==previous.items){
+  const known=new Map(previous.items.map(item=>[item.id,item]));let changed=false;
+  const items=carried.items.map(item=>{
+   const prior=known.get(item.id);if(!prior||prior.assetId!==item.assetId||prior.originalDigest!==item.originalDigest||prior.ownerIdentity?.userId!==item.ownerIdentity?.userId||prior.ownerUsername!==item.ownerUsername)return item;
+   let next=retainPublicMomentManifest(retainPublicArtwork(item,prior),prior);
+   const inventory=mergeShareInventory(compatibleShareInventory(item,prior.shareInventory),compatibleShareInventory(item,item.shareInventory)??null);
+   if(inventory!==next.shareInventory)next={...next,shareInventory:inventory};
+   if(!next.chart.length&&prior.chart.length)next={...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart};
+   if(!next.livePulseSeed&&prior.livePulseSeed)next={...next,livePulseSeed:prior.livePulseSeed,valuationBinding:prior.valuationBinding};
+   if(next!==item)changed=true;return next;
+  });if(changed)carried={...carried,items};
+  if(!carried.items.some(item=>item.category==='sports')&&previous.items.some(item=>item.category==='sports'))carried=retainPublicMarketSports(carried,previous);
+ }
+ const selected=snapshot?mergePublicQuotes(carried,snapshot):carried;
+ if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected,previous);
+}
 function publishDiscoveredPublicQuotes(snapshot:unknown):void{
  const catalog=discoveredPublicCatalog;
  if(catalog){const selected=mergePublicQuotes(catalog,snapshot);reusePublicMarketResponse(catalog,selected);discoveredPublicCatalog=selected;retainPublicMarket(catalog,snapshot,selected);}

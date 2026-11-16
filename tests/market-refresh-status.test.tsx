@@ -2,6 +2,8 @@
 import {act} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {beforeEach,afterEach,expect,it,vi} from 'vitest';
+// Display/quote behavior controls its own operands; directory delivery has separate integration coverage.
+vi.mock('../src/receiz/public-profile-directory',async original=>({...await original<typeof import('../src/receiz/public-profile-directory')>(),subscribePublicProfileDirectory:()=>()=>{}}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const roots:Root[]=[];
 beforeEach(()=>{vi.resetModules();localStorage.clear();document.body.replaceChildren();history.replaceState(null,'','/');vi.spyOn(document,'visibilityState','get').mockReturnValue('visible');vi.stubGlobal('Worker',undefined);});

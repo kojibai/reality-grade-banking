@@ -10,7 +10,7 @@ import {flushSync} from 'react-dom';
 import {PublicExplorer} from './PublicExplorer';
 import {assetPageId,assetPageSeed} from '../receiz/public-asset-page';
 import type {PublicMarketItem} from '../receiz/public-market';
-import {profilePageUsername} from '../receiz/public-profile';
+import {profilePageUsername,retainedPublicProfile} from '../receiz/public-profile';
 import {startProfileDocumentRuntime} from './profile-document-entry';
 import '../styles/tokens.css';
 import '../styles/app.css';
@@ -23,6 +23,9 @@ function PublicExplorerRoot({prepared,path,reconcilePath=false,asset,frame,profi
  const preparedHistory=prepared?publicMarketDocumentHistory(prepared):undefined,preparedSource=profileSource?{catalog:null,historyCatalog:null,pulse:frame!.pulse,quoteStatus:'stale' as const,sportsStatus:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:prepared||asset?{catalog:prepared?.catalog??null,historyCatalog:prepared?.catalog??null,pulse:prepared?.asOfPulse??frame!.pulse,quoteStatus:'stale' as const,sportsStatus:prepared?.catalog.items.some(item=>item.category==='sports')?'retained' as const:'missing' as const,status:'stale' as const,error:null,refresh:async()=>{}}:undefined;
  return <PublicDocumentCapabilitiesContext.Provider value={initial?{intersectionObserver:false}:undefined}><PublicDocumentFormatContext.Provider value={initial?(profileSource?frame:prepared?.format??frame):undefined}><PublicDocumentPulseContext.Provider value={initial&&(asset||profileSource)?frame?.pulse:undefined}><PublicExplorer active={active&&!initial} initialPath={profileSource?path:prepared?path??'/'+prepared.path+'/':undefined} initialSource={initial?preparedSource:undefined} initialVisibleCount={prepared?.visibleCount} initialHistory={preparedHistory} initialAsset={initial?asset:undefined} initialAsOfPulse={initial?(profileSource?frame?.pulse:prepared?.asOfPulse??frame?.pulse):undefined}/></PublicDocumentPulseContext.Provider></PublicDocumentFormatContext.Provider></PublicDocumentCapabilitiesContext.Provider>;
 }
+// Only the actual HTML module entry is a boot display. Router imports are
+// later accepted documents and must supersede pending historical cache reads.
+let initialDocumentRoot=Array.from(document.scripts).some(script=>script.type==='module'&&script.src===import.meta.url)?document.querySelector<HTMLElement>('[data-public-runtime="explore"]'):null;
 const roots=new WeakMap<HTMLElement,Root>();
 const preparingRoots=new WeakMap<HTMLElement,Promise<Root|undefined>>();
 /** Reuse only the exact complete public family already retained by the Bank
@@ -40,7 +43,9 @@ function publicDocumentSeedElement(root:HTMLElement){
 function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocumentSeed|null,reconcilePath=false){
  const mounted=roots.get(root);if(mounted)return mounted;
  const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
- if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined);
+ const initialDocument=root===initialDocumentRoot;initialDocumentRoot=null;
+ const profileName=profilePageUsername(location.pathname);if(prepared&&profileName)retainedPublicProfile(profileName,prepared.catalog);
+ if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined,{initialDocument});
  if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
  const profileEntry=!!prepared&&root.hasAttribute('data-public-profile-entry'),profilePath=profileEntry&&profilePageUsername(location.pathname)?location.pathname:undefined;
  const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;

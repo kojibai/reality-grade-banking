@@ -10,6 +10,8 @@ const pdf=vi.hoisted(()=>({
  refs:new Map<string,number>(),acquired:[] as string[],released:[] as string[],workers:0,
  tasks:[] as {url:string;destroyed:boolean;resolve:(document:unknown)=>void}[],
 }));
+// Worker bytes are part of the controlled PDF transport, not this lifetime test.
+vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url',()=>({default:'/synthetic-pdf-worker.js'}));
 vi.mock('pdfjs-dist',()=>({
  GlobalWorkerOptions:{},
  PDFWorker:class {destroyed=false;constructor(){pdf.workers++;}},

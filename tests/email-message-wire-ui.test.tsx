@@ -46,3 +46,37 @@ it('keeps saved-account custody refusal in consumer language without adoption or
 it('reports an unreadable or unavailable staged handoff without exposing transport details or opening an account',async()=>{
  vi.stubGlobal('fetch',async()=>{throw Error('INTERNAL_EMAIL_SESSION_OBSERVER_UNAVAILABLE');});const page=mount();await page.render();expect(page.host.querySelector('[role=alert]')?.textContent).toContain('Your saved accounts are preserved.');expect(page.host.textContent).not.toContain('INTERNAL_EMAIL_SESSION');expect(page.host.querySelector('button')).toBeNull();expect(recovery.open).not.toHaveBeenCalled();expect(page.opened).not.toHaveBeenCalled();
 });
+
+it('reopens the original email after local account failure without redeeming its one-shot token again',async()=>{
+ const token=`e30.${Buffer.from(JSON.stringify({iat:Math.floor(Date.now()/1000),uid,email,iss:'receiz',aud:'receiz-web'})).toString('base64url')}.signature`;
+ const jar=new Map<string,string>(),readCookies=()=>[...jar].map(([name,value])=>name+'='+value).join('; '),retain=(response:Response)=>{for(const cookie of response.headers.getSetCookie()){const raw=cookie.split(';')[0],at=raw.indexOf('=');if(raw.slice(at+1))jar.set(raw.slice(0,at),raw.slice(at+1));else jar.delete(raw.slice(0,at));}};
+ const calls:string[]=[],opened=vi.fn();let attempts=0;
+ recovery.open.mockImplementation(async(accountUid:string)=>{
+  expect(accountUid).toBe(uid);attempts++;
+  // The account opener closes its temporary PBI cookie even when preparation
+  // fails. Exercise the actual close handler without changing saved custody.
+  const closed=await relayNativeAccount(new Request('https://bankeiz.com/api/bank/native/pbi/close',{method:'POST',headers:{origin:'https://bankeiz.com',cookie:readCookies(),'content-type':'application/json'},body:'{}'}));retain(closed);
+  if(attempts===1)throw Error('Your account balance source is temporarily unavailable. Your Identity Record is unchanged. Try again when its source is available.');
+  return{dispose:recovery.dispose};
+ });
+ vi.stubGlobal('fetch',async(input:RequestInfo|URL,init?:RequestInit)=>{
+  const url=String(input);calls.push(url);
+  if(url.startsWith('/api/bank/native/email-message/')){const headers=new Headers(init?.headers);headers.set('cookie',readCookies());headers.set('sec-fetch-site','same-origin');if(init?.method==='POST')headers.set('origin','https://bankeiz.com');const response=await relayNativeAccount(new Request('https://bankeiz.com'+url,{...init,headers}));retain(response);return response;}
+  if(url.startsWith('https://receiz.com/auth/verify?')){
+   if(calls.filter(value=>value.includes('/auth/verify?')).length>1)return new Response(null,{status:307,headers:{location:'https://receiz.com/signin'}});
+   return new Response(null,{status:307,headers:{location:'https://receiz.com/account','set-cookie':`receiz_session=${token}; HttpOnly; Secure; Path=/`}});
+  }
+  expect(new Headers(init?.headers).get('cookie')).toBe(`receiz_session=${token}`);
+  if(url.endsWith('/adopt')){expect(attempts).toBe(2);return Response.json({...value,adopted:true});}
+  expect(url).toBe(`https://receiz.com/api/chat/email-entries/${conversationId}/${messageId}/recipient`);return Response.json(value);
+ });
+ const start='https://bankeiz.com/api/bank/native/email-message/start?'+new URLSearchParams({token:'synthetic-email-token',conversationId,messageId});
+ retain(await relayNativeAccount(new Request(start)));
+ const first=mount(opened);await first.render();await vi.waitFor(()=>expect(first.host.querySelector('[role=alert]')?.textContent).toContain('Your saved accounts are preserved.'));
+ expect(opened).not.toHaveBeenCalled();expect(calls.some(url=>url.endsWith('/adopt'))).toBe(false);expect(jar.has('__Secure-bankeiz-pbi')).toBe(false);expect(jar.has('__Secure-bankeiz-message-session')).toBe(true);
+ // Strict cookies are absent on the external email navigation and return on
+ // same-origin API reads after the clean page has loaded.
+ retain(await relayNativeAccount(new Request(start,{headers:{'sec-fetch-site':'cross-site'}})));
+ const retry=mount(opened);await retry.render();await vi.waitFor(()=>expect(opened).toHaveBeenCalledOnce());
+ expect(opened.mock.calls[0][0]).toEqual(value);expect(attempts).toBe(2);expect(calls.filter(url=>url.includes('/auth/verify?'))).toHaveLength(1);expect(calls.filter(url=>url==='/api/bank/native/email-message/adopt')).toHaveLength(1);expect(recovery.dispose).toHaveBeenCalledOnce();
+});

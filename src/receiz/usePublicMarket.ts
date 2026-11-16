@@ -1,3 +1,4 @@
+import {subscribePublicProfileDirectory} from './public-profile-directory';
 import {untilAborted,preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog,prepareCarriedBankCatalog,adoptPublicDocumentCatalog,type PublicDocumentHandoff,type PreparedBankCatalog} from './prepared-bank-catalog';
 import {readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from './public-market-document-seed';
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
@@ -57,16 +58,19 @@ function readPublicCatalog(){
  if(!restored){restored=true;retainedCatalog=restoreAdoptedCatalog();}return retainedCatalog;}
 /** The existing public entry has already qualified its saved document. Adopt
  * its parsed family once; no new Bank receipt or caller funding is inferred. */
-export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualification?:PublicDocumentHandoff){
- const adopted=adoptPublicDocumentCatalog(seed,display=>{retainedCatalog=adoptCatalog(display.seed.catalog);restored=true;preparedDocument=true;adoptedCarried=display.seed;lastRefreshAt=display.receivedAt;adoptMarketDisplaySource(display.capitalization);},qualification);
+export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualification?:PublicDocumentHandoff,options?:{initialDocument?:boolean}){
+ const previous=readPublicCatalog();
+ const adopted=adoptPublicDocumentCatalog(seed,display=>{retainedCatalog=adoptCatalog(display.seed.catalog);restored=true;preparedDocument=true;adoptedCarried=display.seed;lastRefreshAt=display.receivedAt;adoptMarketDisplaySource(display.capitalization);},qualification,options);
  const held=preparedBankCatalogState();if(adopted||(held.value??held.carried)?.seed.generation===seed.generation)preparedDocument=true;
- if(adopted){rememberPublicOriginalLocators(retainedCatalog!);for(const listener of catalogListeners)listener();}
+ if(adopted){rememberPublicOriginalLocators(retainedCatalog!);if(seed.catalog.complete)publishDiscoveredPublicCatalog(seed.catalog,undefined,previous);for(const listener of catalogListeners)listener();}
  return adopted;
 }
-function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
+function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>,selectedSuccessor=false){
   const current=readPublicCatalog(),candidate=typeof next==='function'?next(current):next;
+  // An already selected shared successor cannot be vetoed by a display
+  // clock. Unselected legacy reads retain their late-response rollback guard.
   const currentAt=Date.parse(current?.observedAt??''),candidateAt=Date.parse(candidate?.observedAt??'');
-  if(candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return current;
+  if(!selectedSuccessor&&candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return current;
   const updated=adoptCatalog(candidate?retainPublicProfileHeaders(candidate,current):candidate);
   if(updated===current)return current;retainedCatalog=updated;for(const listener of catalogListeners)listener();return updated;
 }
@@ -74,10 +78,10 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>){
 // Market consumer is hidden or unmounted. The prepared receipt stays separate.
 subscribeAssetPublicationAdmissions((accepted,snapshot)=>{const before=readPublicCatalog(),selected=publishPublicCatalog(current=>{
  if(!accepted)return snapshot&&current?mergePublicQuotes(current,snapshot):current;
- if(!accepted.complete&&current)return current;const previous=new Map(current?.items.map(item=>[item.id,item]));
+ if(!accepted.complete&&current)return current;if(accepted===retainedDiscoveredPublicCatalog())return accepted;const previous=new Map(current?.items.map(item=>[item.id,item]));
  const updated=mergePublicSports({...accepted,items:accepted.items.map(item=>{const prior=previous.get(item.id),sameSource=prior?.assetId===item.assetId&&prior.originalDigest===item.originalDigest,next={...retainPublicMomentManifest(retainPublicArtwork(item,prior),prior),shareInventory:mergeShareInventory(sameSource?compatibleShareInventory(item,prior?.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null)};return sameSource&&!item.chart.length&&prior?.chart.length?{...next,priceUsd:prior.priceUsd,changePct:prior.changePct,chart:prior.chart}:next;})},retainedSports,current);
  return snapshot?mergePublicQuotes(updated,snapshot):updated;
-});if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);membershipRevision++;lastRefreshAt=Date.now();lastRefreshFailed=false;}});
+},accepted?.complete===true&&accepted===retainedDiscoveredPublicCatalog());if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);membershipRevision++;lastRefreshAt=Date.now();lastRefreshFailed=false;}},readPublicCatalog);
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
 if(typeof document!=='undefined'){void prepareCarriedBankCatalog().then(()=>{const prepared=preparedBankCatalogState();if(!prepared.bareCatalog&&!prepared.value&&!prepared.carried)return;const before=retainedCatalog;readPublicCatalog();if(before!==retainedCatalog)for(const listener of catalogListeners)listener();});exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
 let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
@@ -121,6 +125,9 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   // Market polling. A genuinely missing local collection uses its shipped
   // reader once; available RAM/cache state never waits for this restoration.
   const catalog=useSyncExternalStore(active||displayActive?subscribeCatalog:inactiveCatalog,readPublicCatalog,()=>null),setCatalog=publishPublicCatalog;
+  // All public Market/profile consumers share Receiz's existing directory
+  // delivery. A held header paints immediately; edits arrive independently.
+  useEffect(()=>{if(!displayActive||!catalog?.complete)return;return subscribePublicProfileDirectory(readPublicCatalog);},[displayActive,!!catalog?.complete]);
   const [displayLocalSettled,setDisplayLocalSettled]=useState(false);
   const displayLocalPending=prepareProfileDisplay&&!active&&displayActive&&!catalog?.complete&&!displayLocalSettled;
   useEffect(()=>{if(!displayLocalPending)return;let alive=true;void prepareCarriedBankCatalog().then(async()=>{if(alive&&!readPublicCatalog()?.complete)await prepareShippedCatalog();}).catch(()=>{}).finally(()=>{if(alive)setDisplayLocalSettled(true);});return()=>{alive=false;};},[displayLocalPending]);

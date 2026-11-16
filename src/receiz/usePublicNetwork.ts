@@ -1,7 +1,10 @@
+import {prepareCarriedBankCatalog,preparedBankCatalogState} from './prepared-bank-catalog';
+import {restorePublicMarketResponse} from './public-market';
+import {subscribePublicProfileDirectory} from './public-profile-directory';
 import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PUBLIC_SOURCES, PUBLIC_NETWORK_INSPECTION_VERSION, mergePublicRecords, publicMarketRecord, readPublicNetworkPage, type PublicRecord, type PublicSource } from './public-network';
-import {assetPublicationFreshnessHint,subscribeAssetPublicationAdmissions} from './asset-publication-adoption';
+import {assetPublicationFreshnessHint,subscribeAssetPublicationAdmissions,retainedDiscoveredPublicCatalog,publishDiscoveredPublicCatalog} from './asset-publication-adoption';
 import { loadPublicNetworkCache, loadPublicNetworkSeed, savePublicNetworkCache } from './public-network-cache';
 import {restorePublicNetworkRows} from './public-network-bootstrap';
 import {subscribePublicLedgerSync} from './public-ledger-sync';
@@ -15,15 +18,29 @@ type Sources = Record<PublicSource, PublicSourceState>;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;subscribePublicMarketCatalog?:(listener:()=>void)=>()=>void};
 function heldProofCatalog(){
+  const selected=retainedDiscoveredPublicCatalog();if(selected?.complete)return selected;
   if(typeof document==='undefined')return null;
   try{const catalog=(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketCatalog?.();return catalog?.complete?catalog:null;}catch{return null;}
 }
 export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache) {
+  // Ledger paints its held rows first. The shared delivery reader obtains only
+  // a genuinely missing catalog and publishes later Showcase changes once.
+  useEffect(()=>{
+    if(!active)return;let alive=true,stop:(()=>void)|undefined;
+    const attach=()=>{if(alive)stop=subscribePublicProfileDirectory(heldProofCatalog);};
+    const saved=heldProofCatalog()??restorePublicMarketResponse();
+    if(saved){if(!heldProofCatalog())publishDiscoveredPublicCatalog(saved);attach();}
+    else void prepareCarriedBankCatalog().then(()=>{
+      if(!alive)return;const restored=preparedBankCatalogState(),local=restored.bareCatalog??(restored.value??restored.carried)?.seed.catalog;
+      if(!heldProofCatalog()&&local?.complete)publishDiscoveredPublicCatalog(local);attach();
+    }).catch(attach);
+    return()=>{alive=false;stop?.();};
+  },[active]);
   const [initialProofs]=useState(()=>{
-    const catalog=heldProofCatalog(),at=Date.parse(catalog?.observedAt??''),preparedAt=initialSnapshot?.coverage.find(row=>row.source==='proofs'&&row.complete)?.observedAt;
-    // Prepared document coverage carries the actual Source capture. Unlike
-    // restored IDB receipt clocks, it can order this held Market projection.
-    if(preparedAt!==undefined&&(!Number.isFinite(at)||at<preparedAt))return null;
+    // Hydrate the exact saved first frame. The existing effect adopts a newer
+    // shared family immediately afterward without replacing that DOM.
+    if(initialSnapshot)return null;
+    const catalog=heldProofCatalog();
     return catalog?{catalog,records:catalog.items.filter(item=>item.category==='proof').map(publicMarketRecord)}:null;
   });
   const [records, setRecords] = useState<PublicRecord[]>(()=>initialProofs?mergePublicRecords(initialSnapshot?.records.filter(row=>row.source!=='proofs')??[],initialProofs.records):initialSnapshot?.records??[]), rows = useRef(records);
@@ -65,7 +82,10 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
   // opening or returning to Ledger does not rediscover the same Originals.
   const reuseHeldProofs=useCallback(()=>{
     const catalog=heldProofCatalog();if(!catalog)return false;
-    if(selectedProofCatalog.current===catalog||!acceptsProofCapture(catalog.observedAt))return true;
+    if(selectedProofCatalog.current===catalog||catalog!==retainedDiscoveredPublicCatalog()&&!acceptsProofCapture(catalog.observedAt))return true;
+    // The exact shared successor is already selected. Its display clock may
+    // not veto it; unselected legacy markers retain their rollback guard.
+    acceptsProofCapture(catalog.observedAt);
     selectedProofCatalog.current=catalog;proofRevision.current++;
     const proofs=catalog.items.filter(item=>item.category==='proof').map(publicMarketRecord);
     append('proofs',proofs,true);capture(catalog.observedAt);

@@ -22,3 +22,8 @@ it('closing the last observer cancels its request and prevents a later queued ev
  const stream=createPublicProfileDirectoryStream({fetch:async(_url,options)=>{signal=options?.signal??undefined;return new Response(new ReadableStream({cancel(){cancelled=true;}}),{headers:{'content-type':'text/event-stream'}});},receive:received,refresh:()=>{}});
  await new Promise(done=>setTimeout(done,0));stream.close();await new Promise(done=>setTimeout(done,0));expect(signal?.aborted).toBe(true);expect(cancelled).toBe(true);expect(received).not.toHaveBeenCalled();
 });
+it('requests updated public details after a profile edit rather than treating a connected card stream as complete metadata',async()=>{
+ let controller!:ReadableStreamDefaultController<Uint8Array>;const refresh=vi.fn(),receive=vi.fn(async()=>{});
+ const stream=createPublicProfileDirectoryStream({fetch:async()=>new Response(new ReadableStream<Uint8Array>({start(value){controller=value;}}),{headers:{'content-type':'text/event-stream'}}),receive,refresh});
+ try{controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({type:'profile',card})+'\n\n'));await vi.waitFor(()=>expect(receive).toHaveBeenCalledOnce());await vi.waitFor(()=>expect(refresh).toHaveBeenCalledWith(true));}finally{stream.close();}
+});

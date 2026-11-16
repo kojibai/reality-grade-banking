@@ -97,3 +97,87 @@ it('restores the complete saved Market and chart before first Market activation 
   await act(async()=>root.render(createElement(Probe,{active:true})));expect(host.textContent).toBe('Saved complete cold Market');expect(firstMarket.length).toBeGreaterThan(0);expect(firstMarket.every(value=>value.title==='Saved complete cold Market'&&value.points>0&&value.status==='stale')).toBe(true);expect(fetcher).not.toHaveBeenCalled();expect(cache.match).toHaveBeenCalledOnce();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
 });
+
+
+const rawMembership=(title:string,empty=false)=>({ok:true,transport:{publicOriginals:empty?[]:[{id:'retained-original',receizId:'retained-original',title}],publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:empty?0:1,revision:title}}});
+async function initialSeed(title='Shipped A',generation='a'.repeat(64)){
+ const p=await packet(title,generation),{preparePublicMarketSeedText}=await import('../src/receiz/public-market-document-seed');
+ return (await preparePublicMarketSeedText(p.body.match(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>/)![1]))!;
+}
+async function freshRawReader(){
+ vi.resetModules();document.body.innerHTML='<script id="receiz-navigation" type="application/json">{}</script>';localStorage.clear();
+ const fetcher=vi.fn(async()=>{throw Error('Source must not be opened');});vi.stubGlobal('fetch',fetcher);
+ const module=await import('../src/receiz/prepared-bank-catalog'),adoption=await import('../src/receiz/asset-publication-adoption');
+ return{module,adoption,fetcher};
+}
+it.each([false,true])('restores the selected raw cache over its initial shipped fallback, including empty=%s',async empty=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),cache=storage();let finish!:(response:Response)=>void;
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));
+ const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);let displayed:PublicMarketDocumentSeed|undefined;
+ try{
+  expect(reader.adoptDocument(seed,display=>{displayed=display.seed;},undefined,{initialDocument:true})).not.toBeNull();
+  expect(displayed).toBe(seed);expect(reader.getSnapshot().bootstrapping).toBe(true);adoption.publishDiscoveredPublicCatalog(seed.catalog);
+  finish(Response.json(rawMembership('Retained B',empty)));await reader.bootstrap();
+  const selected=adoption.retainedDiscoveredPublicCatalog()!;expect(selected.observedAt).toBeNull();expect(selected.items.map(row=>row.title)).toEqual(empty?[]:['Retained B']);
+  expect(reader.getSnapshot().bareCatalog).toBe(selected);expect(reader.getSnapshot().value).toBeNull();expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+it('keeps raw cache selected when it finishes before the initial shipped document is mounted',async()=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),reader=module.createPreparedBankCatalogReader(fetcher,undefined,storage(Response.json(rawMembership('Retained B'))));
+ try{
+  await reader.bootstrap();const selected=adoption.retainedDiscoveredPublicCatalog();expect(selected?.items[0].title).toBe('Retained B');
+  const accept=vi.fn();expect(reader.adoptDocument(seed,accept,undefined,{initialDocument:true})).toBeNull();expect(accept).not.toHaveBeenCalled();expect(adoption.retainedDiscoveredPublicCatalog()).toBe(selected);expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+it.each([false,true])('rejects delayed raw cache after a genuine document replaces the initial fallback, including empty=%s',async empty=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),c={...await initialSeed('Genuine C','c'.repeat(64)),catalog:parsePublicMarket(rawMembership('Genuine C',empty))},cache=storage();let finish!:(response:Response)=>void;
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);
+ try{
+  reader.adoptDocument(seed,()=>{},undefined,{initialDocument:true});adoption.publishDiscoveredPublicCatalog(seed.catalog);
+  expect(reader.adoptDocument(c,()=>{})).not.toBeNull();adoption.publishDiscoveredPublicCatalog(c.catalog);
+  const old=Response.json(rawMembership('Retained B')),json=vi.spyOn(old,'json');finish(old);await reader.bootstrap();
+  expect(reader.getSnapshot().carried?.seed).toBe(c);expect(adoption.retainedDiscoveredPublicCatalog()?.items.map(row=>row.title)).toEqual(empty?[]:['Genuine C']);expect(json).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+it('rejects delayed raw cache after a genuinely selected RAM membership supersedes its initial fallback',async()=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),cache=storage();let finish!:(response:Response)=>void;
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);
+ try{
+  reader.adoptDocument(seed,()=>{},undefined,{initialDocument:true});adoption.publishDiscoveredPublicCatalog(seed.catalog);
+  const c=parsePublicMarket(rawMembership('RAM C'));adoption.publishDiscoveredPublicCatalog(c);const selected=adoption.retainedDiscoveredPublicCatalog();
+  const old=Response.json(rawMembership('Retained B')),json=vi.spyOn(old,'json');finish(old);await reader.bootstrap();
+  expect(adoption.retainedDiscoveredPublicCatalog()).toBe(selected);expect(json).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+it('rebases accepted header and privacy changes onto raw cache membership restored over an initial fallback',async()=>{
+ const {module,adoption,fetcher}=await freshRawReader(),base=await initialSeed(),cache=storage();let finish!:(response:Response)=>void;
+ const head=(n:number,bio:string)=>({profile:{userId:'00000000-0000-4000-8000-'+String(n).padStart(12,'0'),username:'person_'+n,isPrivate:false,bio},viewer:{canView:true as const},stats:{}});
+ const first=head(1,'Initial biography'),second=head(2,'Public at boot'),seed={...base,catalog:{...base.catalog,publicProfileHeads:[first,second]}};
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);
+ try{
+  reader.adoptDocument(seed,()=>{},undefined,{initialDocument:true});adoption.publishDiscoveredPublicCatalog(seed.catalog);
+  adoption.publishDiscoveredPublicCatalog({...seed.catalog,publicProfileHeads:[head(1,'Accepted new biography')],publicProfileHeadRefusals:[{profile:{userId:second.profile.userId,username:second.profile.username},viewer:{canView:false}}]});
+  const input={...rawMembership('Retained B'),transport:{...rawMembership('Retained B').transport,publicProfileHeads:[first,second]}};finish(Response.json(input));await reader.bootstrap();
+  const selected=adoption.retainedDiscoveredPublicCatalog()!;expect(selected.items[0].title).toBe('Retained B');expect(selected.publicProfileHeads?.find(row=>row.profile.userId===first.profile.userId)?.profile.bio).toBe('Accepted new biography');expect(selected.publicProfileHeadRefusals?.[0].profile.userId).toBe(second.profile.userId);expect(selected.publicProfileHeads?.some(row=>row.profile.userId===second.profile.userId)).toBe(false);expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+
+it('keeps the initial shipped fallback over an older full HTML cache without fabricating a receipt',async()=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),older=await packet('Older saved HTML','e'.repeat(64)),cache=storage();let finish!:(response:Response)=>void;
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);
+ try{
+  reader.adoptDocument(seed,()=>{},undefined,{initialDocument:true});adoption.publishDiscoveredPublicCatalog(seed.catalog);finish(older.response());await reader.bootstrap();
+  expect(reader.getSnapshot().carried?.seed).toBe(seed);expect(reader.getSnapshot().value).toBeNull();expect(adoption.retainedDiscoveredPublicCatalog()).toBe(seed.catalog);expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});
+it('restores durable membership after quote-only decoration of the initial shipped fallback',async()=>{
+ const {module,adoption,fetcher}=await freshRawReader(),seed=await initialSeed(),cache=storage();let finish!:(response:Response)=>void;
+ cache.read.mockImplementation(()=>new Promise<Response>(resolve=>{finish=resolve;}));const reader=module.createPreparedBankCatalogReader(fetcher,undefined,cache);
+ try{
+  reader.adoptDocument(seed,()=>{},undefined,{initialDocument:true});adoption.publishDiscoveredPublicCatalog(seed.catalog);
+  adoption.publishDiscoveredPublicCatalog({...seed.catalog,items:seed.catalog.items.map(item=>({...item,priceUsd:4,chart:[3,4]}))});
+  const input=rawMembership('Retained B');input.transport.publicOriginals=[{id:'synthetic-prepared-original',receizId:'synthetic-prepared-original',title:'Retained B'},{id:'new-original',receizId:'new-original',title:'New Original'}];input.transport.publicMembership.itemCount=2;
+  finish(Response.json(input));await reader.bootstrap();const selected=adoption.retainedDiscoveredPublicCatalog()!;
+  expect(selected.revision).toBe('Retained B');expect(selected.items.map(row=>row.title)).toEqual(['Retained B','New Original']);expect(selected.items[0].chart).toEqual([3,4]);expect(selected.items[0].priceUsd).toBe(4);expect(fetcher).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();document.body.innerHTML='';localStorage.clear();}
+});

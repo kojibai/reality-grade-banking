@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+// Live delivery is exercised separately; this suite qualifies held display.
+vi.mock('../src/receiz/public-profile-directory',()=>({subscribePublicProfileDirectory:()=>()=>{}}));
 import {act} from 'react';
 import {gzipSync} from 'node:zlib';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';

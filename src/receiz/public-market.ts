@@ -226,6 +226,19 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
+/** Reuse separately selected Sports rows without reopening their operands. */
+export function retainPublicMarketSports(catalog:PublicMarketCatalog,held?:PublicMarketCatalog|null):PublicMarketCatalog{
+  // A Showcase membership response carries Originals only. Collectibles are
+  // selected independently and remain available while that operand refreshes.
+  const heldSports = held?.items.filter(item => item.category === 'sports');
+  if (held && heldSports?.length) {
+    const selected = new Set(catalog.items.map(item => item.assetId.toLowerCase()));
+    catalog = { ...catalog, items: [...catalog.items, ...heldSports.filter(item => !selected.has(item.assetId.toLowerCase()))],
+      sportsCoverage: held.sportsCoverage, sportsObservedAt: held.sportsObservedAt,
+      sportsSealedBirthsObservedAt: held.sportsSealedBirthsObservedAt, sportsHistorySnapshot: held.sportsHistorySnapshot };
+  }
+  return catalog;
+}
 /** A thinner public refresh cannot erase metadata already held for the same
  * still-public account. An absent/rebound owner never inherits another head. */
 export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:PublicMarketCatalog|null|undefined):PublicMarketCatalog{
@@ -325,8 +338,9 @@ function carriedMomentInput(input:unknown,basis:PublicMarketCatalog,selected:Pub
  const source=record(input),transport=record(source.transport);if(!Array.isArray(transport.publicOriginals))return input;
  const known=new Map(basis.items.map(item=>[item.id,item])),current=new Map(selected.items.map(item=>[item.id,item]));let changed=false;
  const originals=transport.publicOriginals.map(raw=>{const row=record(raw),id=text(row.id,256),original=id?known.get(id):null,hint=id?current.get(id):null;if(!original||!hint)return raw;
-  const retained=retainPublicMomentManifest(original,hint),hash=retained.proofManifestSource?.recordCardMediaSha256Hex,profile=record(row.profileOriginal);
-  if(retained===original||!hash||profile.recordCardMediaSha256Hex===hash)return raw;changed=true;return{...row,profileOriginal:{...profile,recordCardMediaSha256Hex:hash}};
+  const retained=retainPublicMomentManifest(original,hint),hash=retained.proofManifestSource?.recordCardMediaSha256Hex,profile=record(row.profileOriginal),artwork=retainPublicArtwork(original,hint).artworkUrl;
+  const fields={...(retained!==original&&hash&&profile.recordCardMediaSha256Hex!==hash?{recordCardMediaSha256Hex:hash}:{}),...(artwork&&artwork!==original.artworkUrl&&profile.artworkUrl!==artwork?{artworkUrl:artwork}:{})};
+  if(!Object.keys(fields).length)return raw;changed=true;return{...row,profileOriginal:{...profile,...fields}};
  });return changed?{...source,transport:{...transport,publicOriginals:originals}}:input;
 }
 /** Retain the response selected by an existing consumer. Its supported optional

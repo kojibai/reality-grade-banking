@@ -64,7 +64,7 @@ export function createPublicProfileDirectoryReader(fetchImpl:typeof fetch=fetch)
    const card=page.cards.get(p.userId);
    // Existing profile cards already carry the public name/portrait. New
    // accounts need no Original or per-profile manifest to enter Discover.
-   const head=card&&!knownByUid.has(p.userId)?card:await header(p,!byUid.has(p.userId));
+   const head=card&&!knownByUid.has(p.userId)?card:await header(p,!byUid.has(p.userId)||knownByUid.get(p.userId)?.updatedAt===null);
    return{profile:p,head:head??card??null};
   }));
   return{ok:true,schema:'bank.public-profile-directory.v1',profiles,publicProfileHeads:resolved.flatMap(row=>row.head?[row.head]:[]),unavailable:resolved.filter(row=>!row.head).map(row=>row.profile),nextCursor};

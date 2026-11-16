@@ -1,4 +1,4 @@
-import { safeReceizArtworkUrl,safeReceizPublicUrl, type PublicMarketCatalog, type PublicMarketItem } from './public-market';
+import { safeReceizArtworkUrl,safeReceizPublicUrl,retainPublicMarketSports, type PublicMarketCatalog, type PublicMarketItem } from './public-market';
 import {readPublicSportsValueRow} from './market-projection/source';
 import {publicSportsSealedBirths} from './market-projection/sealed-copies';
 import {boundSportsHistoryObservation,publicSportsHistoryObservation,publicSportsHistorySnapshot} from './market-projection/sports-observations';
@@ -102,15 +102,7 @@ function applyCopyMetadata(item:PublicMarketItem,card:Record<string,unknown>,pri
  if(item.circulationCount===1&&item.sealedCopies.length===1){const copy=item.sealedCopies[0];item.sealedAt=copy.sealedAt;item.ownerUsername=copy.ownerUsername;item.ownerProfileUrl=copy.ownerProfileUrl;item.ownerDisplayName=copy.ownerDisplayName;}
 }
 export function mergePublicSports(catalog: PublicMarketCatalog, input: unknown, held?: PublicMarketCatalog | null): PublicMarketCatalog {
-  // A Showcase membership response carries Originals only. Collectibles are
-  // selected independently and remain available while that operand refreshes.
-  const heldSports = held?.items.filter(item => item.category === 'sports');
-  if (held && heldSports?.length) {
-    const selected = new Set(catalog.items.map(item => item.assetId.toLowerCase()));
-    catalog = { ...catalog, items: [...catalog.items, ...heldSports.filter(item => !selected.has(item.assetId.toLowerCase()))],
-      sportsCoverage: held.sportsCoverage, sportsObservedAt: held.sportsObservedAt,
-      sportsSealedBirthsObservedAt: held.sportsSealedBirthsObservedAt, sportsHistorySnapshot: held.sportsHistorySnapshot };
-  }
+  catalog=retainPublicMarketSports(catalog,held);
   const data = object(input);
   if (data.ok !== true || data.schema !== 'receiz.sports_economy.live_inventory.v1' || !Array.isArray(data.cards) || data.cards.length > 100000) return catalog.sportsCoverage ? catalog : { ...catalog, sportsCoverage: 'missing' };
   const birthsFresh=!olderCapture(catalog.sportsSealedBirthsObservedAt,metadataAt(data));

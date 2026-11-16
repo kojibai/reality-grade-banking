@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+// Actual optional delivery is qualified by profile-live-updates and compiled browser checks.
+vi.mock('../src/receiz/public-profile-directory',()=>({subscribePublicProfileDirectory:()=>()=>{}}));
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -466,4 +468,8 @@ it('keeps the held record list across unchanged complete source refreshes',async
   expect(read().records).toBe(held);
   expect(network.read).toHaveBeenCalledTimes(8);
  });
+});
+it('projects the shared selected Showcase successor into Ledger without a display-clock freshness veto',async()=>{
+ const selected=heldMarket(parsePublicMarket(proofInput('2026-11-15T12:00:00Z',['old'])));network.read.mockImplementation(()=>new Promise(()=>{}));
+ await observe(async read=>{expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(['old']);const next=parsePublicMarket(proofInput('2026-01-01T00:00:00Z',['old','new']));const {publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');await act(async()=>{publishDiscoveredPublicCatalog(next);selected.select(next);});expect(read().records.filter(row=>row.source==='proofs').map(row=>row.sourceId)).toEqual(expect.arrayContaining(['old','new']));});
 });

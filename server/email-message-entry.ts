@@ -78,8 +78,12 @@ export async function handleEmailMessageEntry(request:Request):Promise<Response>
  if(url.search||(request.headers.has('origin')?request.headers.get('origin')!==url.origin:request.headers.get('sec-fetch-site')!=='same-origin')||prefetch(request))return fail(403);
  const names=(request.headers.get('cookie')??'').split(';').map(value=>value.trim().split('=')[0]);
  if([pendingName,sessionName,contextName].some(name=>names.filter(value=>value===name).length>1))return fail(409);
- const pending=readCookie<Pending>(request,pendingName),held=session(request);
- if(pending&&held&&!sameLink(pending,held))return fail(409);
+ const pending=readCookie<Pending>(request,pendingName),previous=session(request);
+ // Strict session cookies are absent on an email's cross-site /start request,
+ // then return on this same-origin read. The newly staged link must therefore
+ // select its own redemption; the older session cannot authorize its adoption.
+ const conflicting=!!(pending&&previous&&!sameLink(pending,previous)),held=conflicting?null:previous;
+ if(conflicting&&!['state','open'].includes(operation))return fail(409);
  if(operation==='state'&&request.method==='GET'){
   if(![pendingName,sessionName,contextName].some(name=>names.includes(name)))return Response.json({ok:true,invitation:false},{headers:base});
   if(held?.verified)try{return Response.json({...await nativeOperation(request,held,'recipient'),pending:false},{headers:base});}catch{return fail(401);}

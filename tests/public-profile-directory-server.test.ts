@@ -66,3 +66,7 @@ it('forwards only the fixed public stream, preserving cancellation and omitting 
  expect(read.mock.calls[0][0]).toBe('https://receiz.com/api/profile/public-directory/stream');expect(await response.text()).toContain('"type":"ready"');
  expect((await handlePublicProfileDirectoryStream(new Request('https://bankeiz.com/api/bank/public-profile-directory/stream?url=https://evil.test'),read)).status).toBe(400);expect(read).toHaveBeenCalledOnce();
 });
+it('bypasses a cached header for an explicit missing-details hint even when the Source timestamp is unchanged',async()=>{
+ let biography='Previous',reads=0;const fetcher=vi.fn<typeof fetch>(async input=>String(input).includes('/public-directory')?Response.json(directory([descriptor(1)])):(reads++,Response.json({ok:true,head:{...head(1),profile:{...head(1).profile,bio:biography}}})));
+ const read=createPublicProfileDirectoryReader(fetcher);await read();biography='Accepted edit';const next=await read(undefined,[{...descriptor(1),updatedAt:null}]);expect(next.publicProfileHeads[0]).toMatchObject({profile:{bio:'Accepted edit'}});expect(reads).toBe(2);
+});

@@ -1,3 +1,4 @@
+import {subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
 import {createRoot,hydrateRoot,type Root} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {useEffect,useLayoutEffect,useState} from 'react';
@@ -11,14 +12,15 @@ import '../styles/tokens.css';
 type HeldPublicDocument={catalog:PublicMarketCatalog;generation:string};
 type FeedMarker=HTMLElement&{publicMarketDocument?:()=>HeldPublicDocument|null;subscribePublicMarketDocument?:(listener:()=>void)=>()=>void;subscribePublicMarketCatalog?:(listener:()=>void)=>()=>void};
 function FeedRoot({seed,completeCatalog}:{seed:PublicMarketItem[];completeCatalog:boolean}){
- const [complete,setComplete]=useState(completeCatalog);
+ const [complete,setComplete]=useState(completeCatalog),active=usePublicRuntimeActive('feed');
+ useEffect(()=>{if(active)return subscribePublicProfileDirectory(readHeldFeedCatalog);},[active]);
  useEffect(()=>subscribePreparedFeedCatalog(()=>setComplete(true)),[]);
  useLayoutEffect(()=>{
   const sync=()=>{readHeldFeedCatalog();};
   const marker=document.getElementById('receiz-navigation') as FeedMarker|null,unsubscribe=marker?.subscribePublicMarketCatalog?.(sync)??marker?.subscribePublicMarketDocument?.(sync);
   sync();addEventListener('receiz-bank:surface',sync);return()=>{unsubscribe?.();removeEventListener('receiz-bank:surface',sync);};
  },[]);
- return <PublicFeed seed={seed} active={usePublicRuntimeActive('feed')} completeCatalog={complete}/>;
+ return <PublicFeed seed={seed} active={active} completeCatalog={complete}/>;
 }
 const roots=new WeakMap<HTMLElement,Root>(),mounted=new WeakSet<HTMLElement>();
 /** Mount only the already accepted public display family, never a second

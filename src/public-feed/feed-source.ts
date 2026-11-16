@@ -1,6 +1,6 @@
 import {fetchPublicMarket,parsePublicMarket,restorePublicMarketResponse,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
-import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
+import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
 import {readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog;generation:string}|null};
 let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=null;
@@ -13,6 +13,12 @@ const preparedListeners=new Set<(catalog:PublicMarketCatalog)=>void>();
 if(typeof document!=='undefined'&&!retainedDiscoveredPublicCatalog()){
  const saved=restorePublicMarketResponse();if(saved)publishDiscoveredPublicCatalog(saved);
 }
+// The selected collection can advance before the Market runtime is loaded.
+// Reuse that same family and retire only this older prepared projection.
+subscribeAssetPublicationAdmissions(catalog=>{
+ if(!catalog?.complete||catalog!==retainedDiscoveredPublicCatalog()||preparedCatalog===catalog)return;
+ replacedPreparedCatalog=preparedCatalog;reusePreparedFeedCatalog(catalog,null);
+});
 function publicDiscoveryDocument(){return preparedCatalog&&preparedGeneration?{catalog:preparedCatalog,generation:preparedGeneration}:null;}
 function exposeDiscoveryDocument(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicDiscoveryDocument});}
 if(typeof document!=='undefined'){exposeDiscoveryDocument();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposeDiscoveryDocument,{once:true});}
@@ -35,7 +41,7 @@ export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:
 export function readHeldFeedCatalog():PublicMarketCatalog|null{
  if(typeof document==='undefined')return null;
  const marker=document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
- const selected=marker?.publicMarketCatalog?.(),family=marker?.publicMarketDocument?.();
+ const selected=marker?.publicMarketCatalog?.()??retainedDiscoveredPublicCatalog(),family=marker?.publicMarketDocument?.();
  // An explicit bare successor replaces this exact older prepared projection,
  // even before the optional shared Market selection module has loaded.
  if((!selected?.complete||selected===replacedPreparedCatalog)&&family?.catalog===replacedPreparedCatalog&&preparedCatalog&&preparedGeneration===null)return preparedCatalog;

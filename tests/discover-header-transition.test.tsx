@@ -2,6 +2,8 @@
 import {act} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+// Display/quote behavior controls its own operands; directory delivery has separate integration coverage.
+vi.mock('../src/receiz/public-profile-directory',async original=>({...await original<typeof import('../src/receiz/public-profile-directory')>(),subscribePublicProfileDirectory:()=>()=>{}}));
 import {profileFixture} from './fixtures/public-profile';
 import type {PublicMarketCatalog} from '../src/receiz/public-market';
 
