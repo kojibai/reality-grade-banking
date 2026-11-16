@@ -1,0 +1,38 @@
+{
+  "notice": "Compact display facts from CI run 43846410707 and its exact captured accepted additions; no proof or ownership authority.",
+  "owner": {
+    "userId": "28d34eaa-76f4-4cef-8ac8-bced08718cf2",
+    "username": "cadence",
+    "createdAt": "2026-11-08T18:36:40.412+00:00"
+  },
+  "artwork": {
+    "avatarUrl": "/api/storage/object?bucket=receiz-profile-media&path=profile%2F28d34eaa-76f4-4cef-8ac8-bced08718cf2%2Favatar%2F20261116013808_eff19b49d1419ca06f10.webp",
+    "bannerUrl": "/api/storage/object?bucket=receiz-profile-media&path=profile%2F28d34eaa-76f4-4cef-8ac8-bced08718cf2%2Fbanner%2F20261116013918_88a47cd3e5d4d39ecde3.webp"
+  },
+  "predecessor": {
+    "id": "profile:cadence:imported-80a5558336e28de7d72d68d0b8dff5357867c3755b24ac9db9f47e2fe6c55f38",
+    "assetId": "imported-80a5558336e28de7d72d68d0b8dff5357867c3755b24ac9db9f47e2fe6c55f38",
+    "title": "A Place Kept Open",
+    "pulse": "15058737",
+    "sealedAt": "2026-11-08T21:08:37.068Z",
+    "originalDigest": "eccbec5d6cf09b430ad0e4b8e1d05349c3e5911df153a5a6c486a836969ce495"
+  },
+  "additions": [
+    {
+      "id": "profile:cadence:1e2a4e1a-1695-4e08-af09-44470b7c8e44",
+      "assetId": "1e2a4e1a-1695-4e08-af09-44470b7c8e44",
+      "title": "Profile header sealed by @cadence",
+      "pulse": "15177346",
+      "sealedAt": "2026-11-16T01:39:19.522Z",
+      "originalDigest": null
+    },
+    {
+      "id": "profile:cadence:957fd313-e9ea-46d8-967b-82d224082b19",
+      "assetId": "957fd313-e9ea-46d8-967b-82d224082b19",
+      "title": "Profile avatar sealed by @cadence",
+      "pulse": "15177332",
+      "sealedAt": "2026-11-16T01:38:11.155Z",
+      "originalDigest": null
+    }
+  ]
+}

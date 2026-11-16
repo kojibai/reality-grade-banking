@@ -95,6 +95,9 @@ export const publicProfilesRevision=()=>revision;
 // Associate a full reader result with the shared display it superseded. Only
 // a subsequently selected Showcase can replace that result's membership.
 const fullProfileSelections=new WeakMap<PublicProfile,PublicMarketCatalog|null>();
+// Serialized entry may be consumed before its carried catalog is prepared.
+// Only that entry's explicit catalog can finish this display association.
+const unboundDocumentProfiles=new WeakSet<PublicProfile>();
 const catalogProfiles=new WeakMap<PublicProfile,{items:PublicMarketItem[];header:boolean}>();
 const selectedCatalogProfiles=new WeakMap<PublicMarketItem[],Map<string,{base:PublicProfile|null;profile:PublicProfile;head?:PublicProfileHeader}>>();
 const selectedHeaders=new WeakMap<PublicProfile,PublicProfileHeader>(),supersededHeaders=new WeakMap<PublicProfile,string>();
@@ -132,6 +135,7 @@ function publishProfileMetadata(profile:PublicProfile){
  afterPublicNavigationReady(publish);
 }
 export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt&&(!input.authorshipVerified||!input.pbiReceiptHash)?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)refusePublicProfile(name,'PROFILE_CHANGED',profile.userId);held.delete(profile.username);held.set(profile.username,profile);const selectedHead=selectedHeaders.get(input),projection=catalogProfiles.get(input),previousHeader=previous?.userId===profile.userId?selectedHeaders.get(previous):undefined;
+ if(unboundDocumentProfiles.has(input))unboundDocumentProfiles.add(profile);
  if(!projection)fullProfileSelections.set(profile,fullProfileSelections.has(input)?fullProfileSelections.get(input)!:retainedDiscoveredPublicCatalog()??heldProfileCatalog());
  const observedBasis=!projection&&!selectedHead?publicProfileHeaderDisplayBasis(heldCatalogHeader(profile,fullProfileSelections.has(input)?fullProfileSelections.get(input)!:undefined)):null;
  const superseded=supersededHeaders.get(input)??(!projection&&!selectedHead?publicProfileHeaderDisplayBasis(previousHeader)??observedBasis:previous?.userId===profile.userId?supersededHeaders.get(previous):null);
@@ -168,9 +172,9 @@ export function publicProfilePageError(username:string,catalog?:PublicMarketCata
 }
 export function retainedPublicProfile(username:string,documentCatalog?:PublicMarketCatalog):PublicProfile|null{
  username=heldPublicProfileUsername(username);
- const previous=held.get(username);if(previous)return previous;
+ const previous=held.get(username);if(previous){if(documentCatalog&&unboundDocumentProfiles.delete(previous)){fullProfileSelections.set(previous,documentCatalog);notifyProfiles();}return previous;}
  if(typeof document==='undefined')return null;
- try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&(value.username===username||/^(?:receiz_)?[a-z0-9]{18}$/.test(username)&&value.resolvedReceivingUsername===username.replace(/^receiz_/,''))&&profileUsername(value.username)&&typeof value.userId==='string'&&Array.isArray(value.items)){const header=copyPublicProfileHeader(value,value.username);if(header)qualifiedReaderHeaders.set(value,header);if(documentCatalog)fullProfileSelections.set(value,documentCatalog);const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
+ try{const seed=document.getElementById('public-profile-seed'),value=JSON.parse(seed?.textContent??'null');if(value?.schema==='bankeiz.public-profile.v1'&&(value.username===username||/^(?:receiz_)?[a-z0-9]{18}$/.test(username)&&value.resolvedReceivingUsername===username.replace(/^receiz_/,''))&&profileUsername(value.username)&&typeof value.userId==='string'&&Array.isArray(value.items)){const header=copyPublicProfileHeader(value,value.username);if(header)qualifiedReaderHeaders.set(value,header);if(documentCatalog)fullProfileSelections.set(value,documentCatalog);else unboundDocumentProfiles.add(value);const retained=retainPublicProfile(value);if(seed){seed.textContent='';seed.remove();}return retained;}}catch{/* No carried public page. */}return null;
 }
 /** A held Market row already supplies this public display binding. It does
  * not become profile PBI, owner authority, or an anonymous private account. */
@@ -195,6 +199,7 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
    const head=matchingHead(previous.userId,previous.createdAt);
    if(!head||selectedHeaders.get(previous)===head||supersededHeaders.get(previous)===publicProfileHeaderDisplayBasis(head)||projectedHeaders.get(previous)===head||!!rawSelectedHeaders.get(previous)&&publicProfileHeaderDisplayBasis(rawSelectedHeaders.get(previous))===publicProfileHeaderDisplayBasis(head))return previous;
    const profile={...previous,...head,stats:{...head.stats,originals:previous.stats.originals},...(previous.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:previous.pbiReceiptHash}:{}),items:previous.items,nextCursor:previous.nextCursor};
+   if(unboundDocumentProfiles.has(previous))unboundDocumentProfiles.add(profile);
    selectedHeaders.set(profile,head);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);return profile;
   }
  }
