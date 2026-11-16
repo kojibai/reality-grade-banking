@@ -2,7 +2,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {CreatedAssetResult} from '../src/features/assets/CreatedAssetResult';
-import {createAssetPublication,type AssetPublicationReceipt,type AssetPublicationState} from '../src/receiz/asset-publication';
+import {createAssetPublication,isAssetPublicationDeliveryConfirmed,type AssetPublicationReceipt,type AssetPublicationState} from '../src/receiz/asset-publication';
 import * as adoption from '../src/receiz/asset-publication-adoption';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import type {PublicProfile} from '../src/receiz/public-profile';
@@ -15,42 +15,46 @@ const catalog=()=>parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'pr
 const release={schema:'receiz.native-public-showcase-release.v1',ownerUserId:'owner',username:'artist',artifactDigest:'f'.repeat(64),operationCount:2,revision:'1'.repeat(64)} as const;
 const profile=(extra={})=>({schema:'bankeiz.public-profile.v1',userId:'owner',username:'artist',displayName:'Artist',bio:null,location:null,websiteUrl:null,avatarUrl:null,bannerUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:null,stats:{originals:1,views:null,plays:null,seconds:null,completion:null},items:catalog().items,nextCursor:null,...extra} as PublicProfile);
 afterEach(()=>{adoption.forgetAssetPublicationAdmissions();localStorage.clear();vi.unstubAllGlobals();vi.useRealTimers();});
-it('retains Source acceptance and its explicit pending saved-family status in durable creation and delivery',async()=>{
+it('retains delivered Source without carrying the obsolete saved-page readiness status',async()=>{
  let state:AssetPublicationState|null=null;const file=new File(['source'],'original.receizbundle');
  const api=createAssetPublication({ownerReceizId:'owner.receiz.id',assertOpen(){},lock:async run=>run(),read:async()=>state,write:async next=>{state=next;},seal:async()=>file,retain:async()=>digest,restore:async()=>file,readIntent:async()=>({title:'Exact Original'}),publish:async()=>pending});
  const result=await api.create({title:'Exact Original'});
- expect(result.publication).toMatchObject({status:'published',showcaseArtifactDigest:'f'.repeat(64),publicFamilyStatus:'pending'});
- expect(state).toMatchObject({status:'published',receipt:pending});
+ expect(result.publication).toEqual({status:'published',showcaseArtifactDigest:'f'.repeat(64)});
+ expect(state).toMatchObject({status:'published',receipt:{status:'published',artifactDigest:pending.artifactDigest,operationCount:2,visibleChildCount:1}});
+ expect(state).not.toHaveProperty('receipt.publicFamilyStatus');
 });
-it('does not turn raw membership or an unqualified profile into saved-family confirmation',()=>{
+it('retires duplicated local projections once both public surfaces carry the exact Source',()=>{
  adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,pending,hash);
  adoption.acceptDiscoveredPublicAssets(catalog());adoption.acceptDiscoveredProfileAssets(profile());
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published',publicFamilyStatus:'pending'});
- expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toMatchObject({status:'published',publicFamilyStatus:'pending'});
+ expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published'});
+ expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toMatchObject({status:'published'});
  adoption.mergeAdmittedPublicAssets(catalog());adoption.mergeAdmittedProfileAssets(profile());
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({publicFamilyStatus:'pending'});
+ expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toBeNull();
 });
-it('confirms only the matching Original and PBI in the vector-released profile, including a later released head',()=>{
+it('does not let a page release replace the existing native Source acceptance',()=>{
  adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,pending,hash);
  for(const changed of [{ownerUserId:'different'},{username:'renamed'},{revision:'invalid'}]){
   adoption.acceptDiscoveredProfileAssets(profile({publicShowcaseRelease:{...release,...changed}}));
-  expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({publicFamilyStatus:'pending'});
+  expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published'});
  }
  adoption.acceptDiscoveredProfileAssets(profile({publicShowcaseRelease:{...release,artifactDigest:'2'.repeat(64),operationCount:3}}));
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published',publicFamilyStatus:'ready'});
+ expect(isAssetPublicationDeliveryConfirmed(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist'))).toBe(true);
 });
-it('keeps a signed result pending publicly while preserving its exact source and opening actions',()=>{
- const html=renderToStaticMarkup(<CreatedAssetResult result={{title:'Exact Original',digest,pbiSigned:true,publication:{status:'published'},marketPublication:{status:'published',publicFamilyStatus:'pending'} as never}} settings={{symbol:'ORIG',units:'1000'}} busy={false} error="" username="artist" publicItem={{id:'profile:artist:imported-new'}} onRetryDelivery={()=>{}} onPublishMarket={()=>{}} onOpenAsset={()=>{}} onSave={()=>{}} onClose={()=>{}}/>);
- expect(html).toContain('Your Original is signed.');expect(html).not.toContain('Your Original is signed and public.');expect(html).not.toContain('Bankeiz Market listing is confirmed.');expect(html).toContain('Market listing delivery is pending.');expect(html).toContain('Open your asset');expect(html).toContain('Public delivery progress');expect(html).not.toContain('Finish publishing');
+it('opens the accepted signed Source while saved-page readiness remains pending',()=>{
+ const html=renderToStaticMarkup(<CreatedAssetResult result={{title:'Exact Original',digest,pbiSigned:true,publication:{status:'published'},marketPublication:{status:'published'} as never}} settings={{symbol:'ORIG',units:'1000'}} busy={false} error="" username="artist" publicItem={{id:'profile:artist:imported-new'}} onRetryDelivery={()=>{}} onPublishMarket={()=>{}} onOpenAsset={()=>{}} onSave={()=>{}} onClose={()=>{}}/>);
+ expect(html).toContain('Your Original is signed and public.');expect(html).toContain('Bankeiz Market listing is confirmed.');expect(html).not.toContain('Market listing delivery is pending.');expect(html).toContain('Open your asset');expect(html).not.toContain('Public delivery progress');expect(html).not.toContain('Finish publishing');
 });
 
-it('an unsigned release reply in flight cannot confirm a newer PBI delivery',async()=>{
- vi.useFakeTimers();let resolve!:(response:Response)=>void;const reply=new Promise<Response>(ready=>{resolve=ready;});vi.stubGlobal('fetch',vi.fn(()=>reply));
- adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,pending);
+it('an unsigned accepted receipt cannot confirm a later PBI append or start page polling',()=>{
+ const request=vi.spyOn(globalThis,'fetch');
+ adoption.retainAssetPublicationAdmission({...admission,original:{...original,hasPbiSignature:false,pbiReceiptHash:undefined}},owner);
+ adoption.acknowledgeAssetPublication(digest,pending);
+ adoption.retainAssetPublicationAdmission(admission,owner);
+ expect(isAssetPublicationDeliveryConfirmed(adoption.admittedAssetPublicationDelivery(digest,'artist'))).toBe(true);
+ expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toBeNull();
+ adoption.acknowledgeAssetPublication(digest,pending,'9'.repeat(64));
+ expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toBeNull();
  adoption.acknowledgeAssetPublication(digest,{...pending,artifactDigest:'2'.repeat(64),operationCount:3},hash);
- resolve(Response.json(release));
- await vi.waitFor(()=>expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toMatchObject({publicFamilyStatus:'ready'}));
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({publicFamilyStatus:'pending'});
- vi.mocked(fetch).mockResolvedValue(Response.json({...release,artifactDigest:'2'.repeat(64),operationCount:3}));await vi.advanceTimersByTimeAsync(2000);
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({publicFamilyStatus:'ready'});
+ expect(isAssetPublicationDeliveryConfirmed(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist'))).toBe(true);
+ expect(request).not.toHaveBeenCalled();
 });

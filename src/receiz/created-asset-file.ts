@@ -3,6 +3,8 @@ import type {OpenIdentity} from './native-identity';
 import type {AssetComposerDraft} from './asset-composer';
 import {loadAssetPublicationRuntime} from './asset-publication-runtime';
 import {retainedAssetPublicationSource} from './asset-publication-adoption';
+import {openCanonicalProofFile} from './proof-capture';
+import {detectDocumentFormat} from '../../native/receiz/app/lib/documentSeal/fileFormat';
 type SourceFile=Readonly<{id:string;role:string;name:string;mime:string;size:number;sha256:string;bytes:import('../../native/receiz/packages/receiz-sdk/src/exactByteBlocks').ExactByteBlockReference}>;
 type OpenedFileSource=Readonly<{reference:{artifactSha256:string};source:{projection:{ownerReceizId:string|null;bankAsset?:{composer?:{files:readonly SourceFile[];protectedOriginal?:{profileIdentity:string;file:SourceFile}}}};composerResources?:Readonly<Record<string,Blob>>}}>;
 
@@ -47,18 +49,42 @@ export async function prepareCreatedAssetPrimary(input:{draft:AssetComposerDraft
  const file=new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType==='application/octet-stream'?primary.file.type:sealed.mimeType});
  return {...input.draft,files:input.draft.files.map(value=>value===primary?{...value,file}:value)};
 }
+/** MIME follows the verified native carrier; trailer formats stay opaque. */
+async function preserveVerifiedOriginalFile(file:File,opened:Awaited<ReturnType<typeof openCanonicalProofFile>>,assertCurrent:()=>void):Promise<File>{
+ let kind=opened.verification.kind;
+ if(opened.verification.carriedAuthorship){
+  kind=detectDocumentFormat(new Uint8Array(await file.arrayBuffer()),{filename:file.name,mime:file.type});assertCurrent();
+ }
+ const mime=({png:'image/png',pdf:'application/pdf',svg:'image/svg+xml',json:'application/json',heic:'image/heic',bundle:'application/vnd.receiz.bundle+json'} as Record<string,string>)[kind]??'application/octet-stream';
+ return file.type===mime?file:new File([file],file.name,{type:mime});
+}
 /** Save only the already-sealed primary held by the exact composer Original.
  * It never creates a seal, exports a new record, or replaces the parent Source. */
 export async function createdAssetOriginalFile(identity:OpenIdentity,result:HeldDeposit,assertCurrent:()=>void):Promise<File>{
  assertCurrent();
- const file=retainedAssetPublicationSource(result.digest)??new File([new Uint8Array(result.bytes)],result.filename,{type:'application/vnd.receiz.bundle+json'});
- const username=identity.accountUsername?.()??identity.username,owner=identity.binding?.artifactOwnerReceizId;
- if(!username||!owner)throw Error('ORIGINAL_FILE_OWNER_REQUIRED');
+ const file=retainedAssetPublicationSource(result.digest)??new File([new Uint8Array(result.bytes)],result.filename,{type:/\.receizbundle$/i.test(result.filename)?'application/vnd.receiz.bundle+json':'application/octet-stream'});
+ const owner=identity.binding?.artifactOwnerReceizId;if(!owner)throw Error('ORIGINAL_FILE_OWNER_REQUIRED');
+ // Read the exact private proof before selecting any composer custody. An
+ // already-authored native file carries its stronger enclosing Source and PBI;
+ // unwrapping it would discard proof that is already present in these bytes.
+ const canonical=await openCanonicalProofFile(file);assertCurrent();
+ if(canonical.sealedArtifact.artifactSha256!==result.digest||canonical.sealedArtifact.continuity.ownerReceizId!==owner)throw Error('ORIGINAL_FILE_SOURCE_MISMATCH');
+ if(canonical.verification.carriedAuthorship)return preserveVerifiedOriginalFile(file,canonical,assertCurrent);
+ let content:unknown;
+ if(canonical.verifiedPayload.mimeType==='application/json')try{content=JSON.parse(new TextDecoder().decode(canonical.verifiedPayload.bytes));}catch{/* Ordinary verified JSON remains its complete native proof. */}
+ const directComposer=!!content&&typeof content==='object'&&(content as {schema?:unknown}).schema==='receiz.bank.asset-content.v2';
+ const continuity=canonical.verification.assetContinuity as {state?:unknown;carrier?:unknown;document?:{payload?:{mimeType?:unknown}}}|undefined;
+ // The canonical imported-source placement already binds its nested Source.
+ // Let the existing importer resolve that verified reference and native primary.
+ const sourcePlacement=continuity?.state==='verified'&&continuity.carrier==='portable_asset'&&continuity.document?.payload?.mimeType==='application/vnd.receiz.imported-proof-source+json';
+ if(!directComposer&&!sourcePlacement)return preserveVerifiedOriginalFile(file,canonical,assertCurrent);
+ const username=identity.accountUsername?.()??identity.username;if(!username)throw Error('ORIGINAL_FILE_OWNER_REQUIRED');
  const runtime=await loadAssetPublicationRuntime();assertCurrent();
  const opened=await runtime.admitConnectedComposerSource({file,ownerReceizId:owner,username,assertCurrent}) as OpenedFileSource;
  assertCurrent();
  if(opened.reference.artifactSha256!==result.digest||opened.source.projection.ownerReceizId!==owner)throw Error('ORIGINAL_FILE_SOURCE_MISMATCH');
  const composer=opened.source.projection.bankAsset?.composer,protectedOriginal=composer?.protectedOriginal;
+ if(!composer)return preserveVerifiedOriginalFile(file,canonical,assertCurrent);
  const primary=protectedOriginal?.file??composer?.files.find(value=>value.role==='primary');
  if(!primary){const authored=await runtime.readComposerAuthoredFile({file,originalFile:file,ownerReceizId:owner,username,assertCurrent});assertCurrent();if(result.pbiSigned&&!authored)throw Error('ORIGINAL_FILE_SIGNATURE_SOURCE_UNAVAILABLE');return authored??file;}
  let payload:Blob|undefined;

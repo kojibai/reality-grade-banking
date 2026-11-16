@@ -1,0 +1,57 @@
+import {act,type ComponentProps} from 'react';
+import type {Root} from 'react-dom/client';
+import {afterEach,expect,it,vi} from 'vitest';
+import {IDBFactory,IDBKeyRange} from 'fake-indexeddb';
+import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
+import type {PublicProfilePage as ProfilePage} from '../src/public-explorer/PublicProfilePage';
+import type {ConnectedAssetLocalAdmission} from '../src/receiz/asset-publication-runtime';
+import {Window} from 'happy-dom';
+Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+let root:Root|undefined;
+let browser:Window|undefined;
+afterEach(async()=>{if(root)await act(()=>root!.unmount());root=undefined;browser?.close();browser=undefined;vi.restoreAllMocks();vi.unstubAllGlobals();});
+
+it.each(['carried-header','other-owner-identity'] as const)('opens the real profile from a canonically admitted Source plus %s while all fetches remain stalled',async basis=>{
+ vi.resetModules();const storage=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(key:string)=>storage.get(key)??null,setItem:(key:string,value:string)=>storage.set(key,value),removeItem:(key:string)=>storage.delete(key)});
+ vi.stubGlobal('indexedDB',new IDBFactory());vi.stubGlobal('IDBKeyRange',IDBKeyRange);
+ const network=vi.fn(()=>new Promise<Response>(()=>{}));vi.stubGlobal('fetch',network);
+ const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const actor=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:f.identity.phrase});
+ expect(actor.verdict).toBe('canonical-identity');
+ const ownerReceizId=(await r.readReceizIdentityPublicBinding(actor)).artifactOwnerReceizId,uid='eecb99a0-9c6a-4e89-813b-f76331ea9c41',username='bjklock',createdAt='2026-10-20T10:00:00Z';
+ const sealDocument=await r.createBankNativeNoteSealer({enrollment:await f.store.load(),resources:f.resources}),custody=r.createImportedProofSourceCustody();
+ const prepared=await r.composer.prepareConnectedComposerSource({draft:{kind:'moment',title:'The exact newly sealed Original',description:'Its chosen creator is already known.',longForm:'The exact complete work remains attached.',files:[]},ownerReceizId,creatorUsername:username,sealDocument,writeBlock:custody.writeBlock,assertCurrent(){}});
+ const market=await import('../src/receiz/public-market'),adoption=await import('../src/receiz/asset-publication-adoption'),profiles=await import('../src/receiz/public-profile');
+ const head={profile:{userId:uid,username,displayName:'Chosen public creator',createdAt,isPrivate:false},viewer:{canView:true},stats:{originals:0}};
+ const base=market.parsePublicMarket({ok:true,transport:{publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:basis==='carried-header'?0:1,revision:'held-profile-source'},publicProfileHeads:basis==='carried-header'?[head]:[],publicOriginals:basis==='carried-header'?[]:[{id:'profile:bjklock:existing',receizId:'existing',title:'Already held Original',ownerUsername:username,ownerUserId:uid,ownerCreatedAt:createdAt,profileOriginal:{media:null}}]}});
+ let admission!:ConnectedAssetLocalAdmission;
+ await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId,username,profileIdentity:uid,assertCurrent(){},onLocalAdmission:(value:ConnectedAssetLocalAdmission)=>{admission=value;adoption.retainAssetPublicationAdmission(value,{identityDigest:'d'.repeat(64),accountUid:uid});}});
+ const catalog=adoption.mergeAdmittedPublicAssets(base),local=catalog.items.find(row=>row.originalDigest===prepared.reference.artifactSha256)!;
+ expect(local.ownerIdentity).toBeUndefined();expect(local.admittedOwnerUserId).toBe(uid);expect(profiles.retainedPublicProfile(username)).toBeNull();
+ // A forged display field cannot stand in for the canonical Source retained
+ // by admission. Neither a missing birth nor a mismatched UID may be invented.
+ const forged=market.parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'profile:bjklock:forged',receizId:'forged',title:'Forged display field',ownerUsername:username,admittedOwnerUserId:uid,profileOriginal:{media:null}}]}}).items[0];
+ expect(forged.admittedOwnerUserId).toBeUndefined();
+ expect(profiles.selectHeldPublicProfile(username,{...catalog,items:[forged],publicProfileHeads:[head]})).toBeNull();
+ expect(profiles.selectHeldPublicProfile(username,{...catalog,items:[{...local,admittedOwnerUserId:'different-owner'}],publicProfileHeads:[head]})).toBeNull();
+ expect(profiles.selectHeldPublicProfile(username,{...catalog,items:[local],publicProfileHeads:[]})).toBeNull();
+ browser=new Window({url:'https://bankeiz.com/bjklock/'});
+ for(const key of ['window','document','location','history','navigator','HTMLElement','Element','Node','Event','CustomEvent','MutationObserver','getComputedStyle'] as const)vi.stubGlobal(key,key==='window'?browser:browser[key]);
+ vi.stubGlobal('addEventListener',browser.addEventListener.bind(browser));vi.stubGlobal('removeEventListener',browser.removeEventListener.bind(browser));vi.stubGlobal('dispatchEvent',browser.dispatchEvent.bind(browser));
+ vi.stubGlobal('requestAnimationFrame',browser.requestAnimationFrame.bind(browser));vi.stubGlobal('cancelAnimationFrame',browser.cancelAnimationFrame.bind(browser));
+ document.body.innerHTML='<script id="receiz-navigation" type="application/json">{}</script>';
+ const {createRoot}=await import('react-dom/client'),{PublicProfilePage}=await import('../src/public-explorer/PublicProfilePage'),host=document.createElement('section');document.body.append(host);root=createRoot(host);
+ const source={catalog,historyCatalog:catalog,pulse:15000000,status:'stale',quoteStatus:'stale',sportsStatus:'missing',error:null,displayLocalPending:true,refresh:async()=>{}} as ComponentProps<typeof ProfilePage>['source'];
+ await act(()=>root!.render(<PublicProfilePage username={username} source={source} active/>));
+ expect(host.querySelector('.profile-hero')).not.toBeNull();expect(host.textContent).toContain('The exact newly sealed Original');
+ const selected=profiles.retainedPublicProfile(username)!;
+ expect(selected.userId).toBe(uid);expect(selected.createdAt).toBe(createdAt);expect(selected.items.some(row=>row.originalDigest===prepared.reference.artifactSha256)).toBe(true);
+ expect(selected.items.find(row=>row.originalDigest===prepared.reference.artifactSha256)?.originalCreator).toMatchObject({userId:uid,username});
+ adoption.forgetAssetPublicationAdmissions();
+ expect(profiles.selectHeldPublicProfile(username,{...catalog,items:[...catalog.items]})?.items.some(row=>row.originalDigest===prepared.reference.artifactSha256)).toBe(true);
+ const mixed={...catalog,items:[...catalog.items,{...local,id:'profile:bjklock:other',assetId:'other',admittedOwnerUserId:'other-account'}]};
+ expect(profiles.selectHeldPublicProfile(username,mixed)).toBeNull();
+ const privateCatalog={...catalog,publicProfileHeadRefusals:[{profile:{userId:uid,username,isPrivate:true as const},viewer:{canView:false as const}}]};
+ expect(profiles.selectHeldPublicProfile(username,privateCatalog)).toBeNull();expect(network).not.toHaveBeenCalled();
+ expect((admission.original as {importedSource:{ownerReceizId:string}}).importedSource.ownerReceizId).toBe(ownerReceizId);
+});

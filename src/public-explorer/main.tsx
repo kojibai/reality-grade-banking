@@ -40,13 +40,16 @@ function publicDocumentSeedElement(root:HTMLElement){
  const sibling=document.getElementById('public-market-seed'),source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&(sibling.nextElementSibling?.id==='receiz-navigation'||sibling.nextElementSibling?.id==='public-profile-seed'&&sibling.nextElementSibling.nextElementSibling?.id==='receiz-navigation')?sibling:null);
  return source;
 }
+function adoptResolvedPublicDocument(prepared:PublicMarketDocumentSeed,initialDocument:boolean,profileName=profilePageUsername(location.pathname)){
+ const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
+ if(profileName)retainedPublicProfile(profileName,prepared.catalog);
+ adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined,{initialDocument});
+ if(prepared.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
+}
 function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocumentSeed|null,reconcilePath=false){
  const mounted=roots.get(root);if(mounted)return mounted;
- const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
  const initialDocument=initialDocumentEntry&&root===document.querySelector<HTMLElement>('[data-public-runtime="explore"]');initialDocumentEntry=false;
- const profileName=profilePageUsername(location.pathname);if(prepared&&profileName)retainedPublicProfile(profileName,prepared.catalog);
- if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined,{initialDocument});
- if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
+ if(prepared)adoptResolvedPublicDocument(prepared,initialDocument);
  const profileEntry=!!prepared&&root.hasAttribute('data-public-profile-entry'),profilePath=profileEntry&&profilePageUsername(location.pathname)?location.pathname:undefined;
  const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;
  const profileSource=root.hasAttribute('data-public-profile-source');
@@ -64,12 +67,22 @@ export function mountPublicDocument(root=publicRuntimeRoot('explore')){
  const held=preparingRoots.get(root);if(held)return held;
  const source=publicDocumentSeedElement(root),prepared=readPublicMarketDocumentSeed({getElementById:()=>source});
  if(prepared||!source)return mountResolvedPublicDocument(root,prepared);
+ const profileName=root.hasAttribute('data-public-profile-source')&&readPublicFirstFrame(root)?profilePageUsername(location.pathname):null;
+ const sourceProfile=!!profileName&&retainedPublicProfile(profileName)?.nextCursor===null,profileEntry=root.dataset.publicProfileEntry;
+ const initialDocument=initialDocumentEntry&&root===document.querySelector<HTMLElement>('[data-public-runtime="explore"]');
  const text=source.textContent,pending=preparePublicMarketDocumentSeed({getElementById:()=>source}).then(seed=>{
-  const mounted=roots.get(root);if(mounted)return mounted;
+  const mounted=roots.get(root);
+  if(mounted){
+   if(sourceProfile&&seed&&root.isConnected&&root.dataset.publicRuntime==='explore'&&root.hasAttribute('data-public-profile-source')&&root.dataset.publicProfileEntry===profileEntry&&source.textContent===text&&publicDocumentSeedElement(root)===source)adoptResolvedPublicDocument(seed,initialDocument,profileName);
+   return mounted;
+  }
   if(!root.isConnected||root.dataset.publicRuntime!=='explore'||source.textContent!==text||publicDocumentSeedElement(root)!==source)return undefined;
   return mountResolvedPublicDocument(root,seed,true);
  }).finally(()=>{if(preparingRoots.get(root)===pending)preparingRoots.delete(root);});
- preparingRoots.set(root,pending);return pending;
+ preparingRoots.set(root,pending);
+ // The complete Source profile and its actual first frame already suffice.
+ // Attach normal interactivity now; unrelated cohort decoding only adopts data.
+ return sourceProfile?mountResolvedPublicDocument(root,null):pending;
 }
 const start=()=>{mountPublicDocument();};
 if(profilePageUsername(location.pathname))startProfileDocumentRuntime(start);else if(document.querySelector('[data-public-runtime="explore"]')||/^\/(?:explore|explorer|market-cap|asset|shares)(?:\/|$)/.test(location.pathname))startPublicDocumentRuntime('explore',start);

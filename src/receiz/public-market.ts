@@ -191,7 +191,11 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     if (!id || !assetId || !title || ids.has(id) || source.visibility === 'private') continue;
     ids.add(id);
     const profile=record(source.profileOriginal),media = record(profile.media), material = record(media.material);
-    const digest = text(media.originalDownloadSha256Hex ?? material.sealedArtifactSha256Hex, 64);
+    // The canonical imported Source encloses the composer and its media. A
+    // protected primary's download digest identifies that file, not this Source.
+    const imported=record(profile.importedSource),reference=record(imported.reference),carriesSource=profile.importedSource!==undefined&&profile.importedSource!==null;
+    const importedOriginal=carriesSource?safeImportedSourceUrl('/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)}),'artifact'):null;
+    const digest = carriesSource ? importedOriginal ? text(reference.artifactSha256,64) : null : text(media.originalDownloadSha256Hex ?? material.sealedArtifactSha256Hex, 64);
     const materialOriginal = typeof material.sealedArtifactSha256Hex === 'string' && material.sealedArtifactSha256Hex.toLowerCase() === digest?.toLowerCase() ? publicMaterialOriginalUrl(material.originalArtifactSrc) ?? publicMaterialOriginalUrl(material.proofObjectUrl) : null;
     const verifyUrl=safeReceizPublicUrl(source.verifyHref,'proof'),readingTz=profile.readingTzMinutesEast??media.receiptTzMinutesEast;
     let readingUrl=verifyUrl;if(readingUrl&&typeof readingTz==='number'&&Number.isInteger(readingTz)&&readingTz>=-840&&readingTz<=840){const coordinate=new URL(readingUrl);coordinate.searchParams.set('tz',String(readingTz));readingUrl=coordinate.href;}
@@ -203,7 +207,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
     items.push({ id, assetId, title,...(originalCreator?{originalCreator}:{}),...(publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)?.sourceArtifactSha256===digest?.toLowerCase()?{sourceProvenance:publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)}:{}),...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
-      originalUrl: materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original'), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
+      originalUrl: importedOriginal ?? (carriesSource ? null : materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original')), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),
       ...(publicCarriedText(profile.longForm)?{carriedText:publicCarriedText(profile.longForm)}:{}),
       hasLongForm:typeof profile.hasLongForm==='boolean'?profile.hasLongForm:Object.hasOwn(profile,'longForm')?Boolean(profile.longForm):undefined,

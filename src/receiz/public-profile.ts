@@ -217,9 +217,12 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
   const profile={...previous,items:[],stats:{...previous.stats,originals:0},nextCursor:null};
   catalogProfiles.set(profile,{items:catalog.items,header:basis?.header??true});selections.set(username,{base:previous,profile});return profile;
  }
- const owner=items[0].ownerIdentity;
- if(new Set(items.flatMap(item=>item.ownerIdentity?[item.ownerIdentity.userId]:[])).size>1)return null;
- if(!owner||owner.username!==username||items.some(item=>!item.ownerIdentity||item.ownerIdentity.username!==username||item.ownerIdentity.userId!==owner.userId||item.ownerIdentity.createdAt!==owner.createdAt))return previous;
+ // Canonical local admission already carries the selected account UID. Reuse
+ // its held public header or another exact owner identity for display fields;
+ // neither a repeated row identity nor a delivery read is required to show it.
+ const owner=items.find(item=>item.ownerIdentity)?.ownerIdentity??(carried?{userId:carried.userId,username:carried.username,createdAt:carried.createdAt}:undefined);
+ if(new Set(items.flatMap(item=>[item.ownerIdentity?.userId,item.admittedOwnerUserId].filter((uid):uid is string=>typeof uid==='string'&&!!uid))).size>1)return null;
+ if(!owner||owner.username!==username||items.some(item=>item.ownerIdentity?item.ownerIdentity.username!==username||item.ownerIdentity.userId!==owner.userId||item.ownerIdentity.createdAt!==owner.createdAt:item.admittedOwnerUserId!==owner.userId))return previous;
  const matching=previous?.userId===owner.userId?previous:null,head=matchingHead(owner.userId,owner.createdAt);
  const ordered=matching&&basis?.items===catalog.items?matching.items:items.slice().sort(compareProfileOriginals),known=!!head||!!matching&&(!basis||basis.header===true);
  const images=head?{avatarUrl:head.avatarUrl,bannerUrl:head.bannerUrl}:known?{avatarUrl:matching!.avatarUrl,bannerUrl:matching!.bannerUrl}:publicProfileArtwork({...owner,avatarUrl:items.find(item=>item.ownerAvatarUrl)?.ownerAvatarUrl});

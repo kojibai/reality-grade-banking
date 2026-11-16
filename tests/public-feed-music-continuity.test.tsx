@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import {act} from 'react';
-import {createRoot} from 'react-dom/client';
+import {createRoot,hydrateRoot} from 'react-dom/client';
+import {renderToString} from 'react-dom/server';
 import {afterEach,expect,it,vi} from 'vitest';
 import {PublicFeed} from '../src/public-feed/PublicFeed';
 import {MusicMiniPlayer} from '../src/public-feed/MusicMiniPlayer';
@@ -35,4 +36,11 @@ it('keeps the same playing audio and floating controls after closing For you and
   await act(async()=>document.querySelector<HTMLButtonElement>('[aria-label="Stop music and close player"]')!.click());
   expect(feedMusicSnapshot().itemId).toBeNull();expect(audio.hasAttribute('src')).toBe(false);
  }finally{act(()=>{root.unmount();controls.unmount();});host.remove();controlsHost.remove();history.replaceState({},'',before);}
+});
+
+it('carries the first music Play control through SSR and hydration without creating a player before intent',async()=>{
+ const playersBefore=[...document.querySelectorAll('audio')],host=document.createElement('div');document.body.append(host);host.innerHTML=renderToString(<PublicFeed seed={[song]} active={false} discover={false}/>,{identifierPrefix:'music-first-'});
+ const button=host.querySelector('[aria-label="Play music"]');expect(button).not.toBeNull();expect(host.querySelector('audio')).toBeNull();
+ const first=host.firstElementChild,errors=vi.spyOn(console,'error').mockImplementation(()=>{});let root:ReturnType<typeof hydrateRoot>|undefined;
+ try{await act(()=>{root=hydrateRoot(host,<PublicFeed seed={[song]} active discover={false}/>,{identifierPrefix:'music-first-'});});expect(host.firstElementChild).toBe(first);expect(host.querySelector('[aria-label="Play music"]')).toBe(button);expect([...document.querySelectorAll('audio')]).toEqual(playersBefore);expect(errors).not.toHaveBeenCalled();}finally{if(root)await act(()=>root!.unmount());host.remove();}
 });

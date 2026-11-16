@@ -8,23 +8,24 @@ import type {OpenIdentity} from '../src/receiz/native-identity';
 // The compiled runtime and verifier are selected below under explicit synthetic
 // roots. Both are the real unchanged Receiz implementations; no admission guard
 // or cryptographic verdict is replaced by a permissive implementation.
-const selected=vi.hoisted(()=>({runtime:null as any,verify:null as any}));
+const selected=vi.hoisted(()=>({runtime:null as any,verify:null as any,sdk:null as any}));
 vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>selected.runtime}));
+vi.mock('../src/receiz/client',async original=>({...await original<typeof import('../src/receiz/client')>(),loadReceiz:async()=>selected.sdk}));
 vi.mock('@receiz/sdk/offline',()=>({verifyReceizOfflineSealedFile:(input:unknown)=>selected.verify(input)}));
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 function pdf(){let text='%PDF-1.4\n';const offsets=[0],objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 72 72] >>'];for(let i=0;i<objects.length;i++){offsets.push(text.length);text+=`${i+1} 0 obj\n${objects[i]}\nendobj\n`;}const xref=text.length;text+=`xref\n0 4\n0000000000 65535 f \n${offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;return new TextEncoder().encode(text);}
 function wav(){const b=new Uint8Array(46),v=new DataView(b.buffer),text=(at:number,value:string)=>b.set(new TextEncoder().encode(value),at);text(0,'RIFF');v.setUint32(4,38,true);text(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);text(36,'data');v.setUint32(40,2,true);b.set([128,128],44);return b;}
 it('seals format-native primaries during creation once and saves their exact bytes without another seal',async()=>{
  vi.stubGlobal('indexedDB',composerCustodyIdb());
- const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
+ const f=await conformanceOfflineFixture({composer:true,account:true}),r=f.runtime;
  vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('FILE_EXPORT_NETWORK_FORBIDDEN');}));
  const admitted=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:f.identity.phrase});
  const owner=(await r.readReceizIdentityPublicBinding(admitted)).artifactOwnerReceizId;
- const sealDocument=await r.createBankNativeNoteSealer({enrollment:await f.store.load(),resources:f.resources});
+ const sealDocument=vi.fn<(input:unknown)=>Promise<{artifactBytes:Uint8Array;downloadName:string;kind:string}>>(await r.createBankNativeNoteSealer({enrollment:await f.store.load(),resources:f.resources}));
  const sealer=r.offline.createReceizOfflineSealer({store:f.store,resources:f.resources,ownerIdentityAdmission:admitted});
  const seal=vi.fn((input:unknown)=>sealer.seal(input)),forbidden=vi.fn(async()=>{throw Error('DOWNLOAD_MUST_NOT_SEAL_OR_EXPORT');});
  const identity={binding:{artifactOwnerReceizId:owner},accountUsername:()=> 'artist',sealRecordExport:forbidden}as unknown as OpenIdentity;
- selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
+ selected.sdk=r;selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
  const inputs=[{kind:'pdf',name:'original.pdf',mime:'application/pdf',bytes:pdf()},
   {kind:'image',name:'original.png',mime:'image/png',bytes:new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64'))},
   {kind:'image',name:'original.jpg',mime:'image/jpeg',bytes:new Uint8Array(readFileSync('public/receiz-bank-learn-share.jpg'))},
@@ -40,10 +41,27 @@ it('seals format-native primaries during creation once and saves their exact byt
   const sealed=new Uint8Array(await file.arrayBuffer()),verified=await r.offline.verifyReceizOfflineSealedFile({bytes:sealed,filename:file.name,mimeType:file.type});expect(verified.ok).toBe(true);
   const opened=await r.openPayload({fileBytes:sealed,filename:file.name,mime:file.type,signatureV4RootPublicKeys:new Map(f.roots.map((root:{kid:string})=>[root.kid,root]))});expect(opened.ok).toBe(true);expect(opened.payloadBytes).toEqual(input.bytes);
   const damaged=new Uint8Array(sealed);damaged[10]^=1;expect((await r.offline.verifyReceizOfflineSealedFile({bytes:damaged,filename:file.name,mimeType:file.type})).ok).toBe(false);
-  selected.runtime=(await f.reloadRuntime()).connectedComposer;const reopened=await createdAssetOriginalFile(identity,original,()=>{});expect(new Uint8Array(await reopened.arrayBuffer())).toEqual(sealed);expect(seal).toHaveBeenCalledTimes(count+1);expect(original.bytes).toEqual(before);
+  selected.sdk=await f.reloadRuntime();selected.runtime=selected.sdk.connectedComposer;const reopened=await createdAssetOriginalFile(identity,original,()=>{});expect(new Uint8Array(await reopened.arrayBuffer())).toEqual(sealed);expect(seal).toHaveBeenCalledTimes(count+1);expect(original.bytes).toEqual(before);
+  if(input.mime==='image/png'){
+   const openedSource=await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,username:'artist',assertCurrent(){}});
+   const placement=await r.showcasePlacement.sealAndAdmitImportedSourcePlacement({source:openedSource.source,reference:openedSource.reference,ownerReceizId:owner,immutableVersion:'1',seal:async(args:any)=>{
+    const sealed=await sealDocument({fileBytes:args.payloadBytes,filename:args.filename,mime:args.mimeType,options:{forceBundleEnvelope:true,nativeRecordSeal:{ownerReceizId:args.ownerReceizId,recordId:args.recordId}}});
+    return new File([new Uint8Array(sealed.artifactBytes)],sealed.downloadName,{type:'application/vnd.receiz.bundle+json'});
+   }});
+   const artifact=placement.admission.openedArtifact.sealedArtifact,placementBytes=new Uint8Array(await artifact.artifact.arrayBuffer()),sealsBeforeSave=sealDocument.mock.calls.length;
+   selected.sdk=await f.reloadRuntime();selected.runtime=selected.sdk.connectedComposer;
+   const placementSaved=await createdAssetOriginalFile(identity,{digest:artifact.artifactSha256,bytes:placementBytes,filename:artifact.filename} as HeldDeposit,()=>{});
+   expect(placementSaved.name).toBe(file.name);expect(placementSaved.type).toBe('image/png');expect(new Uint8Array(await placementSaved.arrayBuffer())).toEqual(sealed);
+   expect((await r.offline.verifyReceizOfflineSealedFile({bytes:new Uint8Array(await placementSaved.arrayBuffer()),filename:placementSaved.name,mimeType:placementSaved.type})).ok).toBe(true);
+   expect(sealDocument).toHaveBeenCalledTimes(sealsBeforeSave);expect(new Uint8Array(await artifact.artifact.arrayBuffer())).toEqual(placementBytes);
+  }
   captured=original;exported=file;
  }
  expect(fetch).not.toHaveBeenCalled();expect(forbidden).not.toHaveBeenCalled();
+ const native=await sealer.seal({bytes:inputs[1].bytes,filename:inputs[1].name,mimeType:inputs[1].mime}),nativeBytes=new Uint8Array(native.artifactBytes),nativeDigest=await r.sha256ReceizBytes(nativeBytes);
+ const runtime=selected.runtime,publicCustody=vi.fn(async()=>{throw Error('ORDINARY_PROOF_MUST_NOT_ENTER_COMPOSER_CUSTODY');});selected.runtime={...runtime,admitConnectedComposerSource:publicCustody};
+ const ordinary=await createdAssetOriginalFile(identity,{digest:nativeDigest,bytes:nativeBytes,filename:native.filename,pbiSigned:true} as HeldDeposit,()=>{});
+ expect(ordinary.name).toBe(native.filename);expect(ordinary.type).toBe('image/png');expect(new Uint8Array(await ordinary.arrayBuffer())).toEqual(nativeBytes);expect(publicCustody).not.toHaveBeenCalled();selected.runtime=runtime;
  await expect(createdAssetOriginalFile({...identity,binding:{artifactOwnerReceizId:'another.receiz.id'}}as OpenIdentity,captured!,()=>{})).rejects.toThrow();
  const raw=inputs[0],old=await r.composer.prepareConnectedComposerSource({draft:{title:'Earlier raw PDF',description:'',kind:'pdf',longForm:'',files:[{id:'primary',role:'primary',file:new File([raw.bytes],raw.name,{type:raw.mime})}]},ownerReceizId:owner,sealDocument,assertCurrent(){}});
  const countBeforeOld=seal.mock.calls.length,oldBytes=new Uint8Array(await old.artifact.arrayBuffer()),oldSaved=await createdAssetOriginalFile(identity,{digest:old.reference.artifactSha256,bytes:oldBytes,filename:old.artifact.name}as HeldDeposit,()=>{});

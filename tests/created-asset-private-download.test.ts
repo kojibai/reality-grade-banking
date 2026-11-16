@@ -10,8 +10,9 @@ import type {AssetComposerDraft} from '../src/receiz/asset-composer';
 
 // Select the real bundled runtime and real offline verifier under the fixture's
 // explicit synthetic roots. No SDK guard or verification result is replaced.
-const selected=vi.hoisted(()=>({runtime:null as any,verify:null as any}));
+const selected=vi.hoisted(()=>({runtime:null as any,verify:null as any,sdk:null as any}));
 vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>selected.runtime}));
+vi.mock('../src/receiz/client',async original=>({...await original<typeof import('../src/receiz/client')>(),loadReceiz:async()=>selected.sdk}));
 vi.mock('@receiz/sdk/offline',()=>({verifyReceizOfflineSealedFile:(input:unknown)=>selected.verify(input)}));
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 const uid='11111111-1111-4111-8111-111111111111';
@@ -30,7 +31,7 @@ async function putPrivateOperation(row:Cipher){
 
 it('saves exact canonically sealed protected PDF/audio from encrypted owner custody after a cold runtime reload, without public blocks or resealing',async()=>{
  vi.stubGlobal('indexedDB',new IDBFactory());vi.stubGlobal('IDBKeyRange',IDBKeyRange);
- const fixture=await conformanceOfflineFixture({composer:true}),r=fixture.runtime;
+ const fixture=await conformanceOfflineFixture({composer:true,account:true}),r=fixture.runtime;
  const network=vi.fn(async()=>{throw Error('PRIVATE_ORIGINAL_EXPORT_NETWORK_FORBIDDEN');});vi.stubGlobal('fetch',network);
  const admitted=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(fixture.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:fixture.identity.phrase});
  expect(admitted.verdict).toBe('canonical-identity');const owner=(await r.readReceizIdentityPublicBinding(admitted)).artifactOwnerReceizId;
@@ -42,7 +43,7 @@ it('saves exact canonically sealed protected PDF/audio from encrypted owner cust
  const sealer=r.offline.createReceizOfflineSealer({store:fixture.store,resources:fixture.resources,ownerIdentityAdmission:admitted});
  const seal=vi.fn((input:unknown)=>sealer.seal(input)),forbidden=vi.fn(async()=>{throw Error('PRIVATE_ORIGINAL_SAVE_MUST_NOT_RESEAL');});
  const identity={binding,accountUsername:()=> 'artist',walletReceivingAddress:()=>uid,sealRecordExport:forbidden} as unknown as OpenIdentity;
- selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
+ selected.sdk=r;selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
  const inputs=[{kind:'pdf',name:'private-original.pdf',mime:'application/pdf',bytes:pdf()},
   {kind:'audio',name:'private-original.wav',mime:'audio/wav',bytes:wav()}] as const;
  let captured:{original:HeldDeposit;descriptor:{name:string;mime:string;sha256:string;bytes:{sha256:string}};bytes:Uint8Array}|undefined;
@@ -50,7 +51,7 @@ it('saves exact canonically sealed protected PDF/audio from encrypted owner cust
   const draft:AssetComposerDraft={title:'Protected '+input.name,description:'Its exact sealed Original stays private.',kind:input.kind,longForm:'',
    collection:{allowOriginalDownload:true,allowDerivativeDownload:false,allowMomentRecordDownload:false,gateAudioPlayback:input.kind==='audio',originalDownloadLimit:3,derivativeDownloadLimit:null,originalDownloadPriceCents:125,derivativeDownloadPriceCents:null},
    files:[{id:'primary',role:'primary',file:new File([input.bytes],input.name,{type:input.mime})}]};
-  selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
+  selected.sdk=r;selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
   const count=seal.mock.calls.length,preparedDraft=await prepareCreatedAssetPrimary({draft,profileIdentity:uid,seal,assertCurrent(){}});
   expect(seal).toHaveBeenCalledTimes(count+1);expect(preparedDraft.files).toEqual([]);expect(preparedDraft.protectedOriginal?.profileIdentity).toBe(uid);
   const exactFile=preparedDraft.protectedOriginal!.file,exact=new Uint8Array(await exactFile.arrayBuffer());
@@ -66,7 +67,7 @@ it('saves exact canonically sealed protected PDF/audio from encrypted owner cust
   const verified=await r.offline.verifyReceizOfflineSealedFile({bytes,filename:file.name,mimeType:file.type});expect(verified.ok).toBe(true);
   const opened=await r.openPayload({fileBytes:bytes,filename:file.name,mime:file.type,signatureV4RootPublicKeys:new Map(fixture.roots.map((root:{kid:string})=>[root.kid,root]))});
   expect(opened.ok).toBe(true);expect(opened.payloadBytes).toEqual(input.bytes);
-  const cold=await fixture.reloadRuntime();selected.runtime=cold.connectedComposer;selected.verify=cold.offline.verifyReceizOfflineSealedFile;
+  const cold=await fixture.reloadRuntime();selected.sdk=cold;selected.runtime=cold.connectedComposer;selected.verify=cold.offline.verifyReceizOfflineSealedFile;
   const coldPublic=cold.createImportedProofSourceCustody();await expect(coldPublic.resolveBlock(descriptor.bytes)).rejects.toThrow('IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING');
   const reopened=await createdAssetOriginalFile(identity,original,()=>{});expect(new Uint8Array(await reopened.arrayBuffer())).toEqual(exact);
   expect((await cold.offline.verifyReceizOfflineSealedFile({bytes:new Uint8Array(await reopened.arrayBuffer()),filename:reopened.name,mimeType:reopened.type})).ok).toBe(true);

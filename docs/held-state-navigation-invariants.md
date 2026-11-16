@@ -1,5 +1,29 @@
 # Static entry and held-state navigation
 
+## Source is the only authority
+
+The sealed proof object is Source. A transport receipt records delivery; a page,
+catalog row, callback, server response or database does not approve the object.
+Known verified Source is ready to project immediately. There is no separate
+public-page readiness state or readback confirmation prerequisite.
+
+- A protected primary file's digest never replaces its enclosing Source digest.
+- A display observer, calendar listener or unusable display row cannot veto
+  canonical Source delivery.
+- Signing an exact held Original uses its existing owner/PBI operation without
+  waiting for a public page, receipt or membership observation.
+- Feed, Market and profile compose the same existing Source projection. An
+  older delivered collection cannot erase an already-held verified addition.
+- Saving a native sealed file preserves its exact proof-bearing bytes, including
+  carried authorship. It never unwraps stronger proof into an inner payload.
+
+Executable contracts: `asset-publication-source-binding`,
+`asset-publication-source-authority`, `asset-source-no-readback-gate`,
+`asset-public-family-delivery`, `feed-sealed-source`,
+`live-asset-original-download`, and `created-asset-file`. These run in the normal
+unit/contract CI job. A test that requires network confirmation before known
+Source can appear or be signed is wrong and must be replaced by the Source law.
+
 Static entry and accepted, already-held display state are sufficient to open the existing interface. Freshness is not a prerequisite for showing that interface. This applies to the native homepage, public runtime navigation, return to the app, and worker handling.
 
 The Source-gated homepage in ffc29835 and duplicate prepared-document navigation introduced unnecessary waits. Do not reintroduce those mechanisms under a different name.
@@ -91,7 +115,7 @@ Generate default portrait/banner artwork locally from the existing deterministic
 
 ## Creation editor completion and file saving
 
-A new Original keeps its result and optional Sign action throughout the current creation visit. The canonical native PBI admission must retain its exact receipt hash in that Original's existing owner-bound encrypted creation checkpoint before a later delivery can finish. Signed state is independent of public-delivery status: a pending or older unsigned response must preserve the saved PBI result. The immutable unsigned Original is not a reason to forget its verified native authorship append.
+A new Original keeps its result and optional Sign action throughout the current creation visit. Canonical native PBI admission durably retains its exact Source-bound proof before delivery. The existing owner-bound encrypted creation checkpoint indexes that proof for editor recovery; its successful write remains awaited, but an index-write failure cannot veto the already-retained proof or its delivery. Cold recovery uses the existing native saved-proof selector. Signed state is independent of public-delivery status: a pending or older unsigned response must preserve the saved PBI result. The immutable unsigned Original is not a reason to forget its verified native authorship append.
 
 Done or X finishes the current completion visit through that same exact source checkpoint. Neither dismissal nor a saved PBI flag acknowledges public delivery, grants transaction authority, removes proof bytes or rewrites another creation. The recovery reader returns no completion for a published, signed or dismissed checkpoint before reopening its source. For an older checkpoint lacking the PBI result, reuse the native saved-proof selector and verify that exact source's existing append once, without a ceremony, new seal or publication request; retain its result in the checkpoint. Assets preserves the Original and its supported actions.
 

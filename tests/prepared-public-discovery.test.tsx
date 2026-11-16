@@ -77,12 +77,18 @@ for(const path of ['feed','discover'] as const)it(`retains the complete large ${
  const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_SOURCE_READ'));
  try{
   for(const count of [613,614]){
-   const originals=Array.from({length:count},(_,n)=>({...row('held-'+n,'Held Original '+n),ownerUsername:head.profile.username,ownerUserId:head.profile.userId,ownerCreatedAt:'2026-01-01T00:00:00Z',ownerAvatarUrl:head.profile.avatarUrl})),value=input(path,originals),body=JSON.parse(value.material);
+   const originals=Array.from({length:count},(_,n)=>({...row('held-'+n,'Held Original '+n+(n===0?' </script><script>inert authored text</script>':'')),ownerUsername:head.profile.username,ownerUserId:head.profile.userId,ownerCreatedAt:'2026-01-01T00:00:00Z',ownerAvatarUrl:head.profile.avatarUrl})),value=input(path,originals),body=JSON.parse(value.material);
    head.stats.originals=count;body.membership.transport.publicProfileHeads=[head];
    const material=JSON.stringify(body),html=await renderPreparedDependentDocument({...value,material,generation:createHash('sha256').update(material).digest('hex')});
    expect(Buffer.byteLength(html)).toBeLessThan(32*1024*1024);
    const raw=html.match(/<script id="public-market-seed" type="application\/json">([\s\S]*?)<\/script>/)![1];
    expect(JSON.parse(raw).catalogGzip).toBeDefined();
+   if(path==='feed'){
+    const doc=new DOMParser().parseFromString(html,'text/html'),host=doc.getElementById('public-feed-root')!;
+    const opening=JSON.parse(doc.getElementById('public-feed-seed')!.textContent!);
+    expect(opening).toHaveLength(8);expect(opening.map((item:{assetId:string})=>item.assetId)).toEqual(originals.slice(0,8).map(item=>item.receizId));
+    expect(host.querySelector('script')).toBeNull();
+   }
    const cold=await preparePublicMarketSeedText(raw);expect(cold?.catalog.complete).toBe(true);expect(cold?.catalog.items).toHaveLength(count);
    expect(cold!.catalog.items.map(item=>item.assetId)).toEqual(originals.map(item=>item.receizId));
    expect(cold!.catalog.items.every(item=>item.ownerAvatarUrl===head.profile.avatarUrl)).toBe(true);

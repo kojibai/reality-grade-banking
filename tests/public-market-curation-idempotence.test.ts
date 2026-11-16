@@ -44,3 +44,12 @@ it('keeps the existing raw media kind and cover priority before falling back to 
  expect(rows.find(x=>x.receizId==='public-moment')!.profileOriginal).toMatchObject({mediaKind:'moment',media:null});
  expect(curatePublicMarketMembership(JSON.parse(JSON.stringify(first)))).toEqual(JSON.parse(JSON.stringify(first)));
 });
+
+it('carries the enclosing canonical Source through anonymous delivery independently of a protected media digest',()=>{
+ const canonical='4'.repeat(64),payload='5'.repeat(64),reference={schema:'receiz.imported-proof-source.v1',artifactSha256:canonical,byteLength:200,bytes:{kind:'bytes',sha256:canonical,byteLength:200,contentByteLength:200,height:0},filename:'asset-content.receized.receizbundle',mimeType:'application/vnd.receiz.bundle+json'};
+ const input=source();for(const original of input.transport.publicOriginals){Object.assign(original.profileOriginal,{importedSource:{reference,privateSession:'omit-private-field'},ownershipKind:'creator',ownershipRole:'creator'});if(original.profileOriginal.media)original.profileOriginal.media.originalDownloadSha256Hex=payload;}
+ const first=curatePublicMarketMembership(structuredClone(input)),second=curatePublicMarketMembership(structuredClone(first));expect(second).toEqual(first);expect(JSON.stringify(first)).not.toContain('omit-private-field');
+ const rows=(first.transport as {publicOriginals:Array<{profileOriginal:Record<string,unknown>}>}).publicOriginals;
+ expect(rows.every(row=>JSON.stringify((row.profileOriginal.importedSource as {reference:unknown})?.reference)===JSON.stringify(reference))).toBe(true);
+ const catalog=parsePublicMarket(second);expect(catalog.items).toHaveLength(5);expect(catalog.items.every(row=>row.originalDigest===canonical)).toBe(true);expect(catalog.items.every(row=>row.originalUrl?.includes('/api/profile/showcase/imported-source?'))).toBe(true);
+});

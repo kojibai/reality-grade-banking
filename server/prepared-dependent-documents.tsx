@@ -69,14 +69,15 @@ export async function renderPreparedDependentDocument({material,generation,path,
   const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
   const seedHeads=path==='discover'?(catalog.publicProfileHeadRefusals??[]).filter(policy=>seed.some(row=>row.ownerUsername===policy.profile.username&&row.ownerIdentity?.userId===policy.profile.userId)).map(policy=>({...policy,stats:{}})):[];
   const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} seedHeads={seedHeads} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
-  const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`+(seedHeads.length?`<script id="public-discovery-heads" type="application/json">${JSON.stringify(seedHeads).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:''):'';
-  const compressed=compressedCatalog(catalog),script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}},compressed.large?compressed.packet:undefined);
-  // Feed keeps its existing complete cohort reader. Passive Discover retains
-  // the producer's full source-bound seed beside the legacy 12-item hydration seed.
+  const compressed=compressedCatalog(catalog);
+  const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`+(seedHeads.length?`<script id="public-discovery-heads" type="application/json">${JSON.stringify(seedHeads).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:''):compressed.large?`<script id="public-feed-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';
+  const script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}},compressed.large?compressed.packet:undefined);
+  // Keep each exact first frame interactive from its bounded carried seed.
+  // A large complete cohort stays outside React and decodes through its existing reader.
   const clean=template.replace(/<script id="public-(?:feed-seed|discovery-(?:seed|heads))" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;
-  let html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+(path==='feed'?script:'')+end;});
+  let html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+(path==='feed'&&!compressed.large?script:'')+end;});
   if(!replaced)throw Error('PUBLIC_DISCOVERY_PREPARED_TEMPLATE_INVALID');
-  if(path==='discover')html=html.replace('<script id="receiz-navigation"',()=>legacySeed+script+'<script id="receiz-navigation"');
+  if(path==='discover'||path==='feed'&&compressed.large)html=html.replace('<script id="receiz-navigation"',()=>legacySeed+script+'<script id="receiz-navigation"');
   return alignPreparedPublicNavigation(html,path,content+legacySeed,generation,renderBuild);
  }
  const {snapshot,packets}=await prepare(material,generation);

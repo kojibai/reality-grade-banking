@@ -541,7 +541,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   };
   const retainCalendarOriginal=(uid:string,original:unknown)=>{
     if(lifetime.signal.aborted||uid!==(accountUid??carriedAccountUid??knownWallet?.wallet.userId))return;
-    localCalendarEvents=mergeCalendarSourceEvents(localCalendarEvents,projectCalendarOriginal(uid,original));heldOrganizer?.syncHeldEvents();
+    localCalendarEvents=mergeCalendarSourceEvents(localCalendarEvents,projectCalendarOriginal(uid,original));
+    try{heldOrganizer?.syncHeldEvents();}catch{/* Calendar display observers cannot veto the already-held Original or its publication. */}
   };
 
   const knownOrganizer=()=>{if(lifetime.signal.aborted)return null;return heldOrganizer?.accountUid===(accountUid??carriedAccountUid??knownWallet?.wallet.userId)?heldOrganizer:null;};
@@ -1657,8 +1658,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const reference=admission.sourceReference as {artifactSha256?:unknown},original=admission.original as {hasPbiSignature?:unknown;pbiReceiptHash?:unknown};
     const flight=typeof reference.artifactSha256==='string'?assetSigningFlights.get(reference.artifactSha256):undefined;
     if(typeof reference.artifactSha256==='string'&&original.hasPbiSignature===true&&typeof original.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/.test(original.pbiReceiptHash)){
-      const {retainAssetCreationSignature}=await import('./asset-publication');await retainAssetCreationSignature(assetCreationState(),reference.artifactSha256,original.pbiReceiptHash);noteOpen();
-      if(flight){flight.signaturePbiReceiptHash=original.pbiReceiptHash;if(context?.signing)return waitForAssetPublicationDelivery(binding.artifactOwnerReceizId,reference.artifactSha256);}
+      if(flight)flight.signaturePbiReceiptHash=original.pbiReceiptHash;
+      // The SDK already verified and durably retained this exact PBI proof.
+      // Editor recovery records it when possible; that index cannot veto Source.
+      const {retainAssetCreationSignature}=await import('./asset-publication');
+      try{await retainAssetCreationSignature(assetCreationState(),reference.artifactSha256,original.pbiReceiptHash);}catch{/* Cold recovery reuses the native saved-proof selector. */}noteOpen();
+      if(flight&&context?.signing){try{await waitForAssetPublicationDelivery(binding.artifactOwnerReceizId,reference.artifactSha256);}catch{/* Join the completed attempt, not its host checkpoint outcome. */}noteOpen();}
     }
   }
   function publishAssetSignature(digest:string,resumeOnly=false):Promise<import('./asset-publication').AssetPublicationReceipt|null>{
@@ -1680,7 +1685,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt,signaturePbiReceiptHash);
     if(receipt.status==='published'){
       const {acknowledgePublishedAssetSource}=await import('./asset-publication'),{loadAssetPublicationState,saveAssetPublicationState}=await import('./identity-vault');noteOpen();
-      await acknowledgePublishedAssetSource({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),lock:async run=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())},digest,receipt);noteOpen();
+      try{await acknowledgePublishedAssetSource({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),lock:async run=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())},digest,receipt);}catch{/* A delivered canonical Source does not depend on the editor checkpoint. */}noteOpen();
     }
     // A pending reply can follow accepted public Source (for example a cold
     // saved-page repair). Reconcile its exact public observation as well.

@@ -1,8 +1,8 @@
 export type AssetCreationProgress={stage:'preparing'|'sealing'|'saving';ratio?:number};
-export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number;publicFamilyStatus?:'pending'|'ready'}|{status:'pending'|'rejected';code:string};
+export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number}|{status:'pending'|'rejected';code:string};
 export type AssetPublicationSourceState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;creationDismissed?:true};
 export type AssetPublicationState=AssetPublicationSourceState&{pendingSources?:readonly AssetPublicationSourceState[]};
-export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string;publicFamilyStatus?:'pending'|'ready'};
+export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string};
 type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;readSignature?(source:File):Promise<{pbiReceiptHash:string}|null>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 type DeliveryFlight={promise:Promise<AssetPublicationReceipt>;state:AssetPublicationSourceState};
@@ -23,11 +23,13 @@ export const assetPublicationDeliveryTiming=(ownerReceizId:string,sourceDigest:s
 export function waitForAssetPublicationDelivery(ownerReceizId:string,sourceDigest:string):Promise<void>|undefined{return deliveries.get(deliveryKey(ownerReceizId,sourceDigest))?.promise.then(()=>{});}
 export function subscribeAssetPublicationDeliveries(listener:(attempt:AssetPublicationAttempt)=>void){deliveryListeners.add(listener);return()=>{deliveryListeners.delete(listener);};}
 function notifyDelivery(attempt:AssetPublicationAttempt){for(const listener of deliveryListeners){try{listener(attempt);}catch{/* A display observer cannot change the publication outcome. */}}}
-export const projectAssetPublicationReceipt=(receipt:AssetPublicationReceipt):AssetPublicationDelivery=>receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest,...(receipt.publicFamilyStatus?{publicFamilyStatus:receipt.publicFamilyStatus}:{})}:{status:receipt.status,code:receipt.code};
-export const isAssetPublicationDeliveryConfirmed=(delivery:AssetPublicationDelivery|undefined|null)=>delivery?.status==='published'&&delivery.publicFamilyStatus!=='pending';
-/** Source acceptance and a confirmed family cannot regress behind a late reply. */
+export const projectAssetPublicationReceipt=(receipt:AssetPublicationReceipt):AssetPublicationDelivery=>receipt.status==='published'?{status:'published',showcaseArtifactDigest:receipt.artifactDigest}:{status:receipt.status,code:receipt.code};
+/** Source is authority. This records only completed transport; a page or
+ * readback cannot add an acceptance condition to the delivered object. */
+export const isAssetPublicationDeliveryConfirmed=(delivery:AssetPublicationDelivery|undefined|null)=>delivery?.status==='published';
+/** Accepted Source delivery cannot regress behind a late display reply. */
 export function retainAssetPublicationDelivery(previous:AssetPublicationDelivery|undefined,next:AssetPublicationDelivery|undefined):AssetPublicationDelivery|undefined{
- if(!next||previous?.status==='published'&&next.status!=='published'||isAssetPublicationDeliveryConfirmed(previous)&&!isAssetPublicationDeliveryConfirmed(next))return previous;
+ if(!next||previous?.status==='published'&&next.status!=='published')return previous;
  return next;
 }
 const projectReceipt=projectAssetPublicationReceipt;
@@ -42,9 +44,7 @@ function replaceSource(state:AssetPublicationState,next:AssetPublicationSourceSt
 }
 function rememberFlight(state:AssetPublicationSourceState){const flight=deliveries.get(deliveryKey(state.ownerReceizId,state.sourceDigest));if(flight)flight.state=state;}
 function strongestReceipt(previous:AssetPublicationSourceState,next:AssetPublicationReceipt):AssetPublicationReceipt{
- if(previous.status!=='published')return next;
- const held=previous.receipt!;
- return next.status==='published'&&held.status==='published'&&held.publicFamilyStatus==='pending'&&next.publicFamilyStatus==='ready'?next:held;
+ return previous.status==='published'?previous.receipt!:next;
 }
 /** A later canonical signed-publication acknowledgment also includes its exact
  * Original. Settle only that saved creation so cold reopening cannot restore an
@@ -104,11 +104,11 @@ export function readPendingAssetPublicationDigests(value:unknown,ownerReceizId?:
 }
 function readReceipt(value:unknown):AssetPublicationReceipt{
  const receipt=value as AssetPublicationReceipt;
- if(!receipt||'publicFamilyStatus'in receipt&&(receipt.status!=='published'||!['pending','ready'].includes(receipt.publicFamilyStatus!)))throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
+ if(!receipt)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
  if(receipt.status==='published'){
   if(!hex(receipt.artifactDigest)||!Number.isSafeInteger(receipt.operationCount)||receipt.operationCount<0||!Number.isSafeInteger(receipt.visibleChildCount)||receipt.visibleChildCount<0)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
  }else if(!['pending','rejected'].includes(receipt.status)||typeof receipt.code!=='string'||!receipt.code)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');
- return receipt;
+ return receipt.status==='published'?{status:'published',artifactDigest:receipt.artifactDigest,operationCount:receipt.operationCount,visibleChildCount:receipt.visibleChildCount}:{status:receipt.status,code:receipt.code};
 }
 /** Exact source custody precedes distribution. A timeout retains the same
  * intent and original; retries only replay its existing Showcase placement. */
@@ -155,7 +155,9 @@ export function createAssetPublication(dependencies:Dependencies){
     dependencies.assertOpen();let receipt:AssetPublicationReceipt;
     try{receipt=readReceipt(await dependencies.publish(file));}catch(error){receipt={status:'pending',code:error instanceof Error&&/^(?:PROFILE_SHOWCASE|IMPORTED_SOURCE|BANK_ASSET_PUBLICATION)_[A-Z0-9_]+$/.test(error.message)?error.message:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'};}
     dependencies.assertOpen();
-    await dependencies.lock(async()=>{
+    const accepted=receipt.status==='published';
+    if(accepted)selectedFlight.state={...selectedFlight.state,status:'published',receipt};
+    try{await dependencies.lock(async()=>{
      dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId),current=selectedSource(root,held.state.sourceDigest);
      if(!root||!current){if(selectedFlight.state.status==='published'){receipt=selectedFlight.state.receipt!;return;}throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');}
      if(current.intentDigest!==held.state.intentDigest)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
@@ -163,7 +165,7 @@ export function createAssetPublication(dependencies:Dependencies){
      receipt=strongestReceipt(current,receipt);const next={...current,status:receipt.status,receipt};
      if(current.status!=='published'||receipt!==current.receipt)await dependencies.write(replaceSource(root,next),prior);
      selectedFlight.state=next;
-    });
+    });}catch(error){dependencies.assertOpen();if(!accepted)throw error;/* Canonical delivery is already accepted; host recovery metadata cannot revoke it. */}
     return receipt;
    })();
    flight=selectedFlight;deliveries.set(key,flight);
@@ -175,6 +177,8 @@ export function createAssetPublication(dependencies:Dependencies){
   // or network acknowledgment sits between durable local truth and its display.
   if(localFirst)return project(held.state,file);
   await flight.promise;dependencies.assertOpen();
+  const delivered=flight.state;
+  if(delivered.status==='published')return project(delivered,file);
   const root=readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId),current=selectedSource(root,held.state.sourceDigest);
   if(!root||!current&&flight.state.status!=='published')throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
   return project(current??flight.state,file);

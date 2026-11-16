@@ -94,7 +94,9 @@ function prepareShippedCatalog():Promise<void>{
     if(!response.ok)throw Error('Public collection snapshot unavailable.');
     const input=await untilAborted(response.json(),signal),cached=parsePublicMarket(input,input.snapshot);rememberPublicOriginalLocators(cached);
     publishPublicCatalog(current=>{
-      if(!current||cached.complete&&(!Number.isFinite(Date.parse(current.observedAt??''))||Date.parse(cached.observedAt??'')>Date.parse(current.observedAt??'')))return mergePublicSports(cached,retainedSports,current);
+      // A shipped copy seeds missing membership. It can only enrich the
+      // already selected family, including one carrying local Source additions.
+      if(!current||current.revision==='local-admission')return mergePublicSports(cached,retainedSports,current);
       const hints=new Map(cached.items.map(item=>[item.id,item]));
       const updated={...current,items:current.items.map(item=>{
         const hint=hints.get(item.id);
@@ -129,8 +131,8 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
   // delivery. A held header paints immediately; edits arrive independently.
   useEffect(()=>{if(!displayActive||!catalog?.complete)return;return subscribePublicProfileDirectory(readPublicCatalog);},[displayActive,!!catalog?.complete]);
   const [displayLocalSettled,setDisplayLocalSettled]=useState(false);
-  const displayLocalPending=prepareProfileDisplay&&!active&&displayActive&&!catalog?.complete&&!displayLocalSettled;
-  useEffect(()=>{if(!displayLocalPending)return;let alive=true;void prepareCarriedBankCatalog().then(async()=>{if(alive&&!readPublicCatalog()?.complete)await prepareShippedCatalog();}).catch(()=>{}).finally(()=>{if(alive)setDisplayLocalSettled(true);});return()=>{alive=false;};},[displayLocalPending]);
+  const displayLocalPending=prepareProfileDisplay&&!active&&displayActive&&(!catalog||catalog.revision==='local-admission')&&!displayLocalSettled;
+  useEffect(()=>{if(!displayLocalPending)return;let alive=true;void prepareCarriedBankCatalog().then(async()=>{const current=readPublicCatalog();if(alive&&(!current||current.revision==='local-admission'))await prepareShippedCatalog();}).catch(()=>{}).finally(()=>{if(alive)setDisplayLocalSettled(true);});return()=>{alive=false;};},[displayLocalPending]);
   const [status, setStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(catalog ? 'stale' : 'loading');
   const [quoteStatus, setQuoteStatus] = useState<'loading' | 'fresh' | 'stale'>(()=>preparedBankCatalogEnabled()&&preparedBankCatalogState().value?.receipt.state==='current'?'fresh':'stale');
   const [sportsStatus, setSportsStatus] = useState<'loading' | 'fresh' | 'retained' | 'missing'>(catalog?.items.some(item => item.category === 'sports') ? 'retained' : 'loading');

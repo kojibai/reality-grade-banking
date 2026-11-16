@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import {gzipSync} from 'node:zlib';
 import {act} from 'react';
 import {renderToString} from 'react-dom/server';
 import {afterEach,expect,it,vi} from 'vitest';
@@ -36,4 +37,30 @@ it('hydrates the normal saved Feed once after a prior Bank-side module import, p
  vi.resetModules();markup();const api=await import('../src/public-feed/main'),{PublicFeed}=await import('../src/public-feed/PublicFeed'),host=root(),current=catalog(['Saved work']);host.hidden=true;
  host.innerHTML=renderToString(<PublicFeed seed={current.items} active={false} completeCatalog/>,{identifierPrefix:'public-feed-'})+'<script id="public-market-seed" type="application/json">'+JSON.stringify({schema:'bank.public-market.document.v1',generation:'c'.repeat(64),path:'feed',catalog:current,visibleCount:1,asOfPulse:14900000,format:{locale:'en-US',timeZone:'UTC'}})+'</script>';
  const first=host.firstElementChild,errors=vi.spyOn(console,'error').mockImplementation(()=>{}),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);expect(api.mountPublicDocument).toBeTypeOf('function');await act(()=>{api.mountPublicDocument(host);});await act(()=>{api.mountPublicDocument(host);});expect(host.firstElementChild).toBe(first);expect(host.textContent).toContain('Saved work');expect(state.hydrates).toBe(1);expect(state.creates).toBe(0);expect(errors).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('hydrates a legacy compressed saved Feed once from its carried catalog without replacing the first frame or requesting Source',async()=>{
+ vi.resetModules();markup();const api=await import('../src/public-feed/main'),{PublicFeed}=await import('../src/public-feed/PublicFeed'),host=root(),current=catalog(['Exact saved work']);host.hidden=true;
+ const bytes=Buffer.from(JSON.stringify(current)),packet={schema:'bank.public-market.document.v1',generation:'e'.repeat(64),path:'feed',catalogGzip:{gzipB64u:gzipSync(bytes).toString('base64url'),bytes:bytes.length},visibleCount:1,asOfPulse:14900000,format:{locale:'en-US',timeZone:'UTC'}};
+ host.innerHTML=renderToString(<PublicFeed seed={current.items} active={false} completeCatalog/>,{identifierPrefix:'public-feed-'})+'<script id="public-market-seed" type="application/json">'+JSON.stringify(packet)+'</script>';
+ const first=host.firstElementChild,errors=vi.spyOn(console,'error').mockImplementation(()=>{}),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ await act(async()=>{api.mountPublicDocument(host);api.mountPublicDocument(host);await vi.waitFor(()=>expect(state.hydrates).toBe(1));});
+ expect(host.firstElementChild).toBe(first);expect(host.textContent).toContain('Exact saved work');expect(state.creates).toBe(0);expect(errors).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('keeps a new compressed Feed interactive from its exact opening seed while local cohort decode is pending',async()=>{
+ vi.resetModules();markup();let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
+ vi.doMock('../src/receiz/public-document-gzip',async original=>{const actual=await original<typeof import('../src/receiz/public-document-gzip')>();return {...actual,decodePublicDocumentGzip:async(...args:Parameters<typeof actual.decodePublicDocumentGzip>)=>{await gate;return actual.decodePublicDocumentGzip(...args);}};});
+ const api=await import('../src/public-feed/main'),{PublicFeed}=await import('../src/public-feed/PublicFeed'),source=await import('../src/public-feed/feed-source'),host=root(),current=catalog(Array.from({length:20},(_,i)=>'Opening Original '+i)),opening=current.items.slice(0,8),bytes=Buffer.from(JSON.stringify(current));
+ host.innerHTML=renderToString(<PublicFeed seed={opening} active={false} completeCatalog/>,{identifierPrefix:'public-feed-'});
+ const openingScript=document.createElement('script');openingScript.id='public-feed-seed';openingScript.type='application/json';openingScript.textContent=JSON.stringify(opening);host.after(openingScript);
+ const full=document.createElement('script');full.id='public-market-seed';full.type='application/json';full.textContent=JSON.stringify({schema:'bank.public-market.document.v1',generation:'f'.repeat(64),path:'feed',catalogGzip:{gzipB64u:gzipSync(bytes).toString('base64url'),bytes:bytes.length},visibleCount:8,asOfPulse:14900000,format:{locale:'en-US',timeZone:'UTC'}});openingScript.after(full);
+ const first=host.firstElementChild,scroll=host.querySelector('.feed-scroll'),errors=vi.spyOn(console,'error').mockImplementation(()=>{}),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ try{
+  await act(()=>{api.mountPublicDocument(host);});expect(state.hydrates).toBe(1);expect(host.firstElementChild).toBe(first);expect(host.querySelector('.feed-scroll')).toBe(scroll);
+  await act(()=>host.querySelector<HTMLButtonElement>('[aria-label="Browse feed"]')!.click());expect(host.querySelector('.feed-filters')).not.toBeNull();
+  await act(()=>[...host.querySelectorAll<HTMLButtonElement>('.feed-filters button')].find(button=>button.textContent==='Moments')!.click());
+  await act(async()=>{release();await source.prepareFeedItems();});expect(host.firstElementChild).toBe(first);expect(host.querySelector('.feed-scroll')).toBe(scroll);expect((await source.prepareFeedItems()).length).toBe(20);
+  expect(errors).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+ }finally{release();vi.doUnmock('../src/receiz/public-document-gzip');}
 });

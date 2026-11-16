@@ -1,6 +1,6 @@
 import {fetchPublicMarket,parsePublicMarket,restorePublicMarketResponse,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
-import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
+import {mergeAdmittedPublicAssets,publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
 import {readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;publicMarketDocument?:()=>{catalog:PublicMarketCatalog;generation:string}|null};
 let held:PublicMarketItem[]|null=null,pending:Promise<PublicMarketItem[]>|null=null;
@@ -16,8 +16,9 @@ if(typeof document!=='undefined'&&!retainedDiscoveredPublicCatalog()){
 // The selected collection can advance before the Market runtime is loaded.
 // Reuse that same family and retire only this older prepared projection.
 subscribeAssetPublicationAdmissions(catalog=>{
+ if(!catalog){readHeldFeedCatalog();return;}
  if(!catalog?.complete||catalog!==retainedDiscoveredPublicCatalog()||preparedCatalog===catalog)return;
- replacedPreparedCatalog=preparedCatalog;reusePreparedFeedCatalog(catalog,null);
+ if(preparedCatalog?.complete||!replacedPreparedCatalog)replacedPreparedCatalog=preparedCatalog;reusePreparedFeedCatalog(catalog,null);
 });
 function publicDiscoveryDocument(){return preparedCatalog&&preparedGeneration?{catalog:preparedCatalog,generation:preparedGeneration}:null;}
 function exposeDiscoveryDocument(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicDiscoveryDocument});}
@@ -31,6 +32,10 @@ export function subscribePreparedFeedCatalog(listener:(catalog:PublicMarketCatal
 /** The complete current document cohort replaces an older shipped expansion.
  * These are presentation bytes, never proof or account admission. */
 export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:string|null):PublicMarketCatalog{
+ // The canonical Source is already verified and held. Reuse the same public
+ // projection as Market/Profile; delivery is not permission to display it.
+ const admitted=mergeAdmittedPublicAssets(catalog);
+ if(admitted!==catalog){replacedPreparedCatalog??=catalog;catalog=admitted;generation=null;}
  if(preparedCatalog===catalog&&preparedGeneration===generation)return preparedCatalog;
  if(generation&&catalog!==replacedPreparedCatalog)replacedPreparedCatalog=null;
  preparedGeneration=generation;preparedCatalog=catalog;revision++;held=orderFeedItems(catalog.items);for(const listener of preparedListeners)listener(catalog);
@@ -44,9 +49,11 @@ export function readHeldFeedCatalog():PublicMarketCatalog|null{
  const selected=marker?.publicMarketCatalog?.()??retainedDiscoveredPublicCatalog(),family=marker?.publicMarketDocument?.();
  // An explicit bare successor replaces this exact older prepared projection,
  // even before the optional shared Market selection module has loaded.
- if((!selected?.complete||selected===replacedPreparedCatalog)&&family?.catalog===replacedPreparedCatalog&&preparedCatalog&&preparedGeneration===null)return preparedCatalog;
- const catalog=selected?.complete?selected:family?.catalog.complete?family.catalog:null;
- return catalog?reusePreparedFeedCatalog(catalog,family?.catalog===catalog&&/^[a-f0-9]{64}$/.test(family.generation)?family.generation:null):preparedCatalog;
+ if((!selected?.complete||selected===replacedPreparedCatalog)&&(!family||family.catalog===replacedPreparedCatalog)&&preparedCatalog&&preparedGeneration===null)return reusePreparedFeedCatalog(preparedCatalog,null);
+ const catalog=selected?.complete?selected:family?.catalog.complete?family.catalog:preparedCatalog??selected;
+ if(catalog)return reusePreparedFeedCatalog(catalog,family?.catalog===catalog&&/^[a-f0-9]{64}$/.test(family.generation)?family.generation:catalog===preparedCatalog?preparedGeneration:null);
+ const admitted=mergeAdmittedPublicAssets({items:[],complete:false,revision:'local-admission',observedAt:null,sourceCount:0});
+ return admitted.items.length?reusePreparedFeedCatalog(admitted,null):null;
 }
 export function readPreparedFeedCatalog(root:Element,path:'feed'|'discover'){
  const element=root.querySelector('#public-market-seed');if(!element)return null;
