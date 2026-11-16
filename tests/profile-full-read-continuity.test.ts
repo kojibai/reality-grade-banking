@@ -66,9 +66,10 @@ it('does not replace a newer full reader with the first unassociated saved famil
 });
 
 it('keeps the exact enclosing document basis when a saved successor arrives before its full profile is decoded',async()=>{
- const documentCatalog=market(['document-original']),successor=market(['saved-successor']),{publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');publishDiscoveredPublicCatalog(successor);
+ const {curatePublicProfileHead}=await import('../src/receiz/public-profile-header'),raw=profileFixture().profile,headA=curatePublicProfileHead(raw)!,headB=curatePublicProfileHead({...raw,profile:{...raw.profile,bio:'Saved successor biography'}})!;
+ const documentCatalog={...market(['document-original']),publicProfileHeads:[headA]},successor={...market(['saved-successor']),publicProfileHeads:[headB]},{publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');publishDiscoveredPublicCatalog(successor);
  const value={...full(),schema:'bankeiz.public-profile.v1'},seed={textContent:JSON.stringify(value),remove:vi.fn()};
- vi.stubGlobal('document',{getElementById:(id:string)=>id==='public-profile-seed'?seed:null});
+ vi.stubGlobal('document',{getElementById:(id:string)=>id==='public-profile-seed'?seed:id==='receiz-navigation'?{publicMarketCatalog:()=>successor}:null});
  const carried=profiles.retainedPublicProfile(username,documentCatalog)!;expect(carried.items).toHaveLength(value.items.length);expect(seed.remove).toHaveBeenCalledOnce();
- const selected=profiles.selectHeldPublicProfile(username,successor)!;expect(selected.items.map(item=>item.assetId)).toEqual(['saved-successor']);expect(selected.bio).toBe(carried.bio);
+ const selected=profiles.selectHeldPublicProfile(username,successor)!;expect(selected.items.map(item=>item.assetId)).toEqual(['saved-successor']);expect(selected.bio).toBe('Saved successor biography');
 });

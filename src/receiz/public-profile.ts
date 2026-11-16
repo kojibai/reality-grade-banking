@@ -108,7 +108,7 @@ function heldProfileCatalog():PublicMarketCatalog|null{
  const marker=document.getElementById('receiz-navigation') as (HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null})|null;
  try{return marker?.publicMarketCatalog?.()??null;}catch{return null;}
 }
-function heldCatalogHeader(profile:PublicProfile):unknown{return heldProfileCatalog()?.publicProfileHeads?.find(head=>head.profile.userId===profile.userId&&head.profile.username===profile.username)??null;}
+function heldCatalogHeader(profile:PublicProfile,catalog:PublicMarketCatalog|null=heldProfileCatalog()):unknown{return catalog?.publicProfileHeads?.find(head=>head.profile.userId===profile.userId&&head.profile.username===profile.username)??null;}
 
 const profileReadEpoch=new Map<string,number>();
 const confirmedProfilePbi=new Map<string,string>();
@@ -133,7 +133,7 @@ function publishProfileMetadata(profile:PublicProfile){
 }
 export function retainPublicProfile(input:PublicProfile){const previous=held.get(input.username),receipt=confirmedProfilePbi.get(input.userId)??(previous?.userId===input.userId?previous.pbiReceiptHash:null),profile=mergeAdmittedProfileAssets(receipt&&(!input.authorshipVerified||!input.pbiReceiptHash)?{...input,authorshipVerified:true,pbiReceiptHash:input.pbiReceiptHash??receipt}:input);for(const [name,previous]of held)if(name!==profile.username&&previous.userId===profile.userId)refusePublicProfile(name,'PROFILE_CHANGED',profile.userId);held.delete(profile.username);held.set(profile.username,profile);const selectedHead=selectedHeaders.get(input),projection=catalogProfiles.get(input),previousHeader=previous?.userId===profile.userId?selectedHeaders.get(previous):undefined;
  if(!projection)fullProfileSelections.set(profile,fullProfileSelections.has(input)?fullProfileSelections.get(input)!:retainedDiscoveredPublicCatalog()??heldProfileCatalog());
- const observedBasis=!projection&&!selectedHead?publicProfileHeaderDisplayBasis(heldCatalogHeader(profile)):null;
+ const observedBasis=!projection&&!selectedHead?publicProfileHeaderDisplayBasis(heldCatalogHeader(profile,fullProfileSelections.has(input)?fullProfileSelections.get(input)!:undefined)):null;
  const superseded=supersededHeaders.get(input)??(!projection&&!selectedHead?publicProfileHeaderDisplayBasis(previousHeader)??observedBasis:previous?.userId===profile.userId?supersededHeaders.get(previous):null);
  const qualified=qualifiedHeaders.get(input),raw=qualified??rawSelectedHeaders.get(input);
  const selectedRaw=raw&&profile.authorshipVerified&&profile.pbiReceiptHash&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{...raw,profile:{...raw.profile,authorshipVerified:true,authorshipPbiReceiptHash:profile.pbiReceiptHash}}:raw;

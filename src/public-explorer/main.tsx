@@ -25,7 +25,7 @@ function PublicExplorerRoot({prepared,path,reconcilePath=false,asset,frame,profi
 }
 // Only the actual HTML module entry is a boot display. Router imports are
 // later accepted documents and must supersede pending historical cache reads.
-let initialDocumentRoot=Array.from(document.scripts).some(script=>script.type==='module'&&script.src===import.meta.url)?document.querySelector<HTMLElement>('[data-public-runtime="explore"]'):null;
+let initialDocumentEntry=Array.from(document.scripts).some(script=>script.type==='module'&&script.src===import.meta.url);
 const roots=new WeakMap<HTMLElement,Root>();
 const preparingRoots=new WeakMap<HTMLElement,Promise<Root|undefined>>();
 /** Reuse only the exact complete public family already retained by the Bank
@@ -43,7 +43,7 @@ function publicDocumentSeedElement(root:HTMLElement){
 function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocumentSeed|null,reconcilePath=false){
  const mounted=roots.get(root);if(mounted)return mounted;
  const navigation=document.getElementById('receiz-navigation') as (HTMLElement&{pages?:Record<string,{preparedRevision?:string;preparedState?:string;preparedBankIdentity?:unknown}>})|null,page=navigation?.pages?.[location.pathname.replace(/\/?$/,'/')];
- const initialDocument=root===initialDocumentRoot;initialDocumentRoot=null;
+ const initialDocument=initialDocumentEntry&&root===document.querySelector<HTMLElement>('[data-public-runtime="explore"]');initialDocumentEntry=false;
  const profileName=profilePageUsername(location.pathname);if(prepared&&profileName)retainedPublicProfile(profileName,prepared.catalog);
  if(prepared)adoptPublicMarketDocument(prepared,page?.preparedRevision===prepared.generation&&(page.preparedState==='current'||page.preparedState==='retained')?{state:page.preparedState,identity:page.preparedBankIdentity}:undefined,{initialDocument});
  if(prepared?.capitalization&&!preparedBankCatalogState().value&&!preparedBankCatalogState().carried)publishMarketDisplaySource(prepared.capitalization);
