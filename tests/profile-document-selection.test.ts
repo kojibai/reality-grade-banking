@@ -54,6 +54,24 @@ it('retains the pending document binding through an early header-only selection'
  expect(selected.items.map(row=>row.id)).toEqual(fixture.additions.map(row=>row.id));expect(selected.bio).toBe('Accepted header v2');
  for(const item of selected.items)expect(item).toBe(next.items.find(row=>row.id===item.id));
 });
+it('preserves an already-bound document baseline when a restored header updates the old first frame after its successor arrived',async()=>{
+ const {before,next,original}=setup();
+ const carried=profiles.retainedPublicProfile(fixture.owner.username,before)!;
+ adoption.publishDiscoveredPublicCatalog(next);
+ const {retainStoredPublicHead}=await import('../src/receiz/public-head-cache'),{publicProfileHeaderDisplayBasis}=await import('../src/receiz/public-profile-header');
+ const head=structuredClone(before.publicProfileHeads![0]);head.profile.bio='Compiled live profile biography 2.';
+ retainStoredPublicHead(head,publicProfileHeaderDisplayBasis(before.publicProfileHeads![0]));
+ // Initial React paint still uses this document's old carried source, while
+ // the durable shared successor and its newer compact header are available.
+ const headerOnly=profiles.selectHeldPublicProfile(fixture.owner.username,before)!;
+ expect(headerOnly).not.toBe(carried);expect(headerOnly.items).toBe(carried.items);expect(headerOnly.bio).toBe('Compiled live profile biography 2.');
+ profiles.retainPublicProfile(headerOnly);
+ const selected=profiles.selectHeldPublicProfile(fixture.owner.username,adoption.retainedDiscoveredPublicCatalog())!;
+ expect(selected.items.map(row=>row.id)).toEqual(fixture.additions.map(row=>row.id));
+ expect(selected.items.some(row=>row.id===fixture.predecessor.id)).toBe(false);
+ expect(selected).toMatchObject({bio:'Compiled live profile biography 2.',avatarUrl:original.avatarUrl,bannerUrl:original.bannerUrl,stats:{originals:2}});
+ for(const item of selected.items)expect(item).toBe(next.items.find(row=>row.id===item.id));
+});
 it('keeps the full-reader guard for a result that did not come from this document seed',()=>{
  const {before,next,original}=setup();document.getElementById('public-profile-seed')!.remove();adoption.publishDiscoveredPublicCatalog(next);
  const full=profiles.retainPublicProfile(structuredClone(original));

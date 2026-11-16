@@ -199,6 +199,7 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
    const head=matchingHead(previous.userId,previous.createdAt);
    if(!head||selectedHeaders.get(previous)===head||supersededHeaders.get(previous)===publicProfileHeaderDisplayBasis(head)||projectedHeaders.get(previous)===head||!!rawSelectedHeaders.get(previous)&&publicProfileHeaderDisplayBasis(rawSelectedHeaders.get(previous))===publicProfileHeaderDisplayBasis(head))return previous;
    const profile={...previous,...head,stats:{...head.stats,originals:previous.stats.originals},...(previous.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:previous.pbiReceiptHash}:{}),items:previous.items,nextCursor:previous.nextCursor};
+   if(fullProfileSelections.has(previous))fullProfileSelections.set(profile,fullProfileSelections.get(previous)!);
    if(unboundDocumentProfiles.has(previous))unboundDocumentProfiles.add(profile);
    selectedHeaders.set(profile,head);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);return profile;
   }
