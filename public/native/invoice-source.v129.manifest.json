@@ -1,7 +1,7 @@
 {
   "schema": "bankeiz.native-invoice-source.v129",
-  "moduleSha256": "fbcd6b5f918e9afda5deb20f6269e6a115cb4c012eaef4e7069f3f8deb298fa6",
-  "sourceTreeSha256": "998c5721f73fa766f773a22e46e6093db138cad0e396ae048345e6e8a370fed8",
+  "moduleSha256": "c8d0799fbffc9fd2c0e4239f69f683bbb26083f54093600c0cddd721e492b988",
+  "sourceTreeSha256": "264357d68061a0f372e71bd41ed565212fce26c2bfe44a00a9725e9d968e9fd7",
   "inputs": 30,
-  "bytes": 30984
+  "bytes": 30740
 }
