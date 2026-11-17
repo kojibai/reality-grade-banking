@@ -4,7 +4,7 @@ import {act,useState} from 'react';
 import {createRoot,type Root} from 'react-dom/client';
 import {PublicAssetDetail} from '../src/features/market/PublicAssetDetail';
 import {PublicProfilePage} from '../src/public-explorer/PublicProfilePage';
-import {fetchPublicProfile,forgetPublicProfile,parsePublicProfile,retainPublicProfile} from '../src/receiz/public-profile';
+import {fetchPublicProfile,forgetPublicProfile,forgetPublicProfilesForAccount,parsePublicProfile,retainedPublicProfile,retainPublicProfile} from '../src/receiz/public-profile';
 import {profileFixture} from './fixtures/public-profile';
 vi.mock('../src/features/market/PublicAssetChart',()=>({PublicAssetChart:()=>null}));
 vi.mock('../src/receiz/market-projection/usePublicAssetPeriods',()=>({usePublicAssetPeriods:()=>null}));
@@ -53,9 +53,18 @@ it('reads a genuinely missing owner only on profile selection and reuses that co
 it('does not restore an explicitly cleared portrait from an older profile',async()=>{
  retainPublicProfile(fixture());await render(<PublicAssetDetail item={{...asset(),ownerAvatarUrl:null}} standalone/>);expect(element.querySelector('.asset-profile-byline img')).toBeNull();
 });
-it('removes a retained portrait when the profile refresh refuses public access without retrying in a loop',async()=>{
- retainPublicProfile(fixture());const now=Date.now();vi.spyOn(Date,'now').mockReturnValue(now+16_000);const request=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'PROFILE_PRIVATE'},{status:403}));
- await render(<PublicAssetDetail item={asset()} standalone/>);expect(element.querySelector('.asset-profile-byline img')).not.toBeNull();expect(request).not.toHaveBeenCalled();
- await act(async()=>{await expect(fetchPublicProfile('alexmorgan')).rejects.toThrow('PROFILE_PRIVATE');});await settle();
- expect(element.querySelector('.asset-profile-byline img')).toBeNull();expect(element.querySelector('h1')?.textContent).toBe('Authored title');expect(request).toHaveBeenCalledTimes(1);
+it.each([403,404,409])('keeps the held owner portrait after HTTP %d without retrying in a loop',async status=>{
+ const selected=retainPublicProfile(fixture()),now=Date.now();vi.spyOn(Date,'now').mockReturnValue(now+16_000);const request=vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'PROFILE_PRIVATE'},{status}));
+ await render(<PublicAssetDetail item={asset()} standalone/>);const portrait=element.querySelector('.asset-profile-byline img');expect(portrait?.getAttribute('src')).toBe(selected.avatarUrl);expect(request).not.toHaveBeenCalled();
+ await act(async()=>{await expect(fetchPublicProfile('alexmorgan')).rejects.toThrow(status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE');});await settle();
+ await act(()=>vi.advanceTimersByTimeAsync(60_000));
+ expect(element.querySelector('.asset-profile-byline img')).toBe(portrait);expect(retainedPublicProfile('alexmorgan')).toBe(selected);expect(element.querySelector('h1')?.textContent).toBe('Authored title');expect(request).toHaveBeenCalledTimes(1);
+});
+it('withdraws the portrait only through the existing accepted privacy callback for that owner',async()=>{
+ const selected=retainPublicProfile(fixture()),request=vi.spyOn(globalThis,'fetch');await render(<PublicAssetDetail item={asset()} standalone/>);const portrait=element.querySelector('.asset-profile-byline img');expect(portrait).not.toBeNull();
+ // native-identity.profile.publish invokes this callback only after the
+ // accepted editor result has passed its account UID and lifetime checks.
+ await act(()=>forgetPublicProfilesForAccount('f331b3e8-9f00-45a6-9f21-14588bfcb220'));expect(element.querySelector('.asset-profile-byline img')).toBe(portrait);expect(retainedPublicProfile('alexmorgan')).toBe(selected);
+ await act(()=>forgetPublicProfilesForAccount(selected.userId));
+ expect(element.querySelector('.asset-profile-byline img')).toBeNull();expect(retainedPublicProfile('alexmorgan')).toBeNull();expect(element.querySelector('h1')?.textContent).toBe('Authored title');await act(()=>vi.advanceTimersByTimeAsync(60_000));expect(request).not.toHaveBeenCalled();
 });
