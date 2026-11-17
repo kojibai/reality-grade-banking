@@ -93,12 +93,13 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
  return state;
 }
 export const hasPendingAssetPublication=(value:unknown)=>{const state=readAssetPublicationState(value);return state?.status==='pending'||!!state?.pendingSources?.some(source=>source.status==='pending');};
-/** Bounded delivery work coordinates only. This neither opens a Source nor
- * selects public membership, account state or financial authority. */
+/** Bounded unconfirmed delivery coordinates, including an earlier rejected
+ * transport. The Source is re-opened by its existing verifier on each retry;
+ * this index never supplies membership, account or proof authority. */
 export function readPendingAssetPublicationDigests(value:unknown,ownerReceizId?:string,limit=16,afterSourceDigest?:string):readonly string[]{
  if(!Number.isSafeInteger(limit)||limit<1||limit>64||afterSourceDigest!==undefined&&!hex(afterSourceDigest))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  const state=readAssetPublicationState(value,ownerReceizId),selected:string[]=[];
- const consider=(source:AssetPublicationSourceState)=>{if(source.status!=='pending'||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
+ const consider=(source:AssetPublicationSourceState)=>{if(source.status==='published'||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
  if(state){consider(state);for(const source of state.pendingSources??[])consider(source);}
  return selected;
 }

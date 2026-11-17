@@ -38,11 +38,11 @@ describe('held profile header enrichment',()=>{
   expect(profiles.selectHeldPublicProfile(username,market())).toBe(selected);expect(profiles.selectHeldPublicProfile(username,null)).toBe(selected);expect(fetcher).not.toHaveBeenCalled();
  });
 
- it.each([403,404,409])('keeps a confirmed %s refusal from resurrecting through the same held Market',async status=>{
+ it.each([403,404,409])('keeps the held collection when a header transport returns %s without accepted policy',async status=>{
   const catalog=market(),selected=hold(catalog),fetcher=vi.fn(async()=>new Response(null,{status}));vi.stubGlobal('fetch',fetcher);
-  await expect(profiles.fetchPublicProfileHeader(selected)).rejects.toThrow(status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_CHANGED');
+  await expect(profiles.fetchPublicProfileHeader(selected)).rejects.toThrow(status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE');
   const now=Date.now();vi.spyOn(Date,'now').mockReturnValue(now+60_000);
-  expect(profiles.retainedPublicProfile(username)).toBeNull();expect(profiles.selectHeldPublicProfile(username,catalog)).toBeNull();expect(profiles.selectHeldPublicProfile(username,{...catalog})).toBeNull();expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(profiles.retainedPublicProfile(username)).toBe(selected);expect(profiles.selectHeldPublicProfile(username,catalog)).toBe(selected);expect(profiles.selectHeldPublicProfile(username,{...catalog})!.items).toBe(selected.items);expect(profiles.publicProfilePageError(username)).toBe('');expect(fetcher).toHaveBeenCalledTimes(1);
  });
 
  it('keeps available public display and its exact items when distinct metadata is temporarily unavailable',async()=>{
@@ -118,10 +118,10 @@ describe('held profile header enrichment',()=>{
   expect(profiles.selectHeldPublicProfile(username,mixed)===null).toBe(true);expect(fetcher).not.toHaveBeenCalled();
  });
 
- it.each([403,404,409])('keeps refused UID A blocked after %s while accepting an unambiguous complete public UID B',async status=>{
+ it.each([403,404,409])('keeps UID A through HTTP %s and accepts a subsequent complete public UID B binding',async status=>{
   const oldCatalog=market(),selected=hold(oldCatalog),fetcher=vi.fn(async()=>new Response(null,{status}));vi.stubGlobal('fetch',fetcher);
-  await expect(profiles.fetchPublicProfileHeader(selected)).rejects.toThrow(status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_CHANGED');
-  expect(profiles.selectHeldPublicProfile(username,oldCatalog)===null).toBe(true);expect(profiles.selectHeldPublicProfile(username,{...oldCatalog,items:[...oldCatalog.items]})===null).toBe(true);
+  await expect(profiles.fetchPublicProfileHeader(selected)).rejects.toThrow(status===403?'PROFILE_PRIVATE':status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE');
+  expect(profiles.retainedPublicProfile(username)).toBe(selected);expect(profiles.selectHeldPublicProfile(username,oldCatalog)).toBe(selected);expect(profiles.selectHeldPublicProfile(username,{...oldCatalog,items:[...oldCatalog.items]})!.items.map(item=>item.assetId)).toEqual(selected.items.map(item=>item.assetId));
   const next=market(['new-public'],'account-2'),current=profiles.selectHeldPublicProfile(username,next);
   expect(current?.userId).toBe('account-2');expect(current!.items).toHaveLength(1);expect(current!.items[0]).toBe(next.items[0]);expect(current!.bio).toBeNull();expect(current!.pbiReceiptHash).toBeNull();expect(current!.authorshipVerified).toBe(false);expect(profiles.publicProfileHasHeader(current!)).toBe(false);expect(fetcher).toHaveBeenCalledTimes(1);
  });

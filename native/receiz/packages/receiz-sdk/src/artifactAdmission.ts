@@ -7,6 +7,7 @@ import {
   sha256ReceizBytes,
   type ReceizOpenedArtifact,
 } from "./artifacts.js";
+import { sourceJsonDigestBasis } from "./sourceJsonDigestBasis.js";
 import { digestReceizAuthority } from "./authorityEncoding.js";
 import { authorityFailure, type ReceizAuthorityFailure } from "./authorityResults.js";
 import {
@@ -422,12 +423,6 @@ function freezeRecord<T extends Readonly<Record<string, unknown>>>(value: T): T 
   return deepFreeze(structuredClone(value)) as T;
 }
 
-function containsNonAuthorityNumber(value: unknown): boolean {
-  if (typeof value === "number") return !Number.isSafeInteger(value);
-  if (value && typeof value === "object") return Object.values(value).some(containsNonAuthorityNumber);
-  return false;
-}
-
 function cloneRoots(
   roots: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>,
 ): ReadonlyMap<string, ReceizSignatureV4RootPublicKey> {
@@ -722,8 +717,8 @@ async function verifiedResult(input: {
   // projections. Bind that exact JSON through the existing canonical serializer;
   // do not turn its numbers into integer authority or alter the returned state.
   // Preserve every existing integer-only admission digest byte-for-byte.
-  const recoveredStateBasis = input.profile === "identity" && containsNonAuthorityNumber(recoveredState)
-    ? canonicalizeReceizConstitution(recoveredState)
+  const recoveredStateBasis = input.profile === "identity"
+    ? sourceJsonDigestBasis(recoveredState)
     : recoveredState;
   const assessments = deepFreeze({ ...input.assessments });
   const verifierContextDigest = await digestReceizAuthority(

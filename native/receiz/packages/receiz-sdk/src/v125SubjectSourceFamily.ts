@@ -43,7 +43,8 @@ function snapshotSources(input: Readonly<{ artifacts: readonly ReceizPortableSea
       exactBytesB64u: record.exactBytesB64u as string, filename: text(record.filename, shapeError), mimeType: text(record.mimeType, shapeError),
       artifactSha256: digest(record.artifactSha256, shapeError), payloadSha256: digest(record.payloadSha256, shapeError) });
     const prior = artifacts.get(artifact.artifactSha256);
-    if (prior && canonicalizeReceizV122(prior) !== canonicalizeReceizV122(artifact)) fail("DUPLICATE_CONFLICT");
+    if (prior && (prior.exactBytesB64u !== artifact.exactBytesB64u
+      || prior.payloadSha256 !== artifact.payloadSha256)) fail("DUPLICATE_CONFLICT");
     artifacts.set(artifact.artifactSha256, artifact);
   }
   const bindings = new Map<string, ReceizSubjectSourceFamilyBindingV125>();

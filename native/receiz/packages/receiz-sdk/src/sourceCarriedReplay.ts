@@ -3,6 +3,7 @@ import type { ReceizDomainReplayAdditionV124 } from "./v124Replay.js";
 import type { ReceizPortableSealedArtifactV124 } from "./v124PortableAuthority.js";
 import {
   inspectReceizDomainReplaySegmentSourceCoordinateV124,
+  parseReceizPortableReplaySourceArtifactV124,
   readReceizDomainReplaySegmentSourceV124,
   type ReceizDomainReplaySegmentSourceCoordinateV124,
   type ReceizDomainReplaySegmentSourceExpectationV124,
@@ -47,13 +48,6 @@ const openedFamilies = new WeakSet<object>();
 
 function fail(code: string): never {
   throw new TypeError(code);
-}
-
-function exactArtifactFingerprint(artifact: ReceizPortableSealedArtifactV124): string {
-  return digestReceizCompositeCanonical({
-    kind: "receiz.source-carried-exact-artifact-fingerprint.v124",
-    artifact,
-  });
 }
 
 function assertSameFamily(
@@ -152,26 +146,24 @@ export async function openReceizSourceCarriedReplayFamilyV124(input: Readonly<{
   }
   if (input.artifacts.length === 0) fail("RECEIZ_SOURCE_FAMILY_EMPTY");
 
-  const uniqueArtifacts = new Map<string, Readonly<{
-    artifact: ReceizPortableSealedArtifactV124;
-    fingerprint: string;
-  }>>();
-  for (const artifact of input.artifacts) {
-    const artifactDigest = artifact?.artifactSha256;
+  const uniqueArtifacts = new Map<string, ReceizPortableSealedArtifactV124>();
+  for (const value of input.artifacts) {
+    const artifactDigest = value?.artifactSha256;
     if (typeof artifactDigest !== "string") fail("RECEIZ_SOURCE_FAMILY_INPUT_INVALID");
-    const fingerprint = exactArtifactFingerprint(artifact);
+    const artifact = parseReceizPortableReplaySourceArtifactV124(value);
     const prior = uniqueArtifacts.get(artifactDigest);
     if (prior !== undefined) {
-      if (prior.fingerprint !== fingerprint) {
+      if (prior.exactBytesB64u !== artifact.exactBytesB64u
+        || prior.payloadSha256 !== artifact.payloadSha256) {
         fail("RECEIZ_SOURCE_FAMILY_DUPLICATE_CONFLICT");
       }
       continue;
     }
-    uniqueArtifacts.set(artifactDigest, Object.freeze({ artifact, fingerprint }));
+    uniqueArtifacts.set(artifactDigest, artifact);
   }
 
   const inspected = await Promise.all(
-    [...uniqueArtifacts.values()].map(async ({ artifact }) => Object.freeze({
+    [...uniqueArtifacts.values()].map(async (artifact) => Object.freeze({
       artifact,
       coordinate: await inspectReceizDomainReplaySegmentSourceCoordinateV124(
         artifact,

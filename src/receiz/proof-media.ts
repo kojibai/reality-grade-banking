@@ -110,7 +110,15 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  signal?.throwIfAborted();const retained=source.kind==='public'?retainedAssetPublicationSource(source.digest):null;
  if(source.kind==='held'&&(!source.bytes.length||source.bytes.length>originalReadLimit(source.bytes,MAX)))throw Error('This original exceeds the supported reader capacity.');
  if(source.kind==='public'&&!retained&&!safeReceizPublicUrl(source.url,'original'))throw Error('This original source is not supported.');
- const inspected=source.kind==='public'&&!retained?await reuseProofInspection(source.digest,true):null;signal?.throwIfAborted();
+ // Capture an already-running inspection before this media operation registers
+ // itself. Its optional result cannot hold an exact SDK-held Source open.
+ const preparedInspection=source.kind==='public'&&!retained?reuseProofInspection(source.digest,true):null;void preparedInspection?.catch(()=>{});
+ // The exact carried reference also addresses existing canonical SDK custody.
+ // A bounded presentation handoff cannot turn a held Source into a remote read.
+ const coordinate=source.kind==='public'&&typeof indexedDB!=='undefined'?safeImportedSourceUrl(source.url,'artifact'):null;
+ let held:Awaited<ReturnType<ReturnType<import('./asset-publication-runtime').AssetPublicationRuntimeModule['createImportedProofSourceCustody']>['readHeld']>>=null;
+ if(coordinate){const reference=JSON.parse(new URL(coordinate).searchParams.get('reference')!);if(reference.artifactSha256!==source.digest.toLowerCase())throw Error('The original does not match the selected proof.');const runtime=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();held=(await runtime.readHeldImportedProfileOriginalMaterial(reference,coordinate))?.source??null;signal?.throwIfAborted();}
+ const inspected=held?null:await preparedInspection;signal?.throwIfAborted();
  const readBytes=async()=>{let bytes:Uint8Array,filename:string;
  if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else if(inspected){bytes=new Uint8Array(inspected.bytes);filename=inspected.filename;}else{
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
@@ -127,22 +135,28 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  };
  // Observe code failure independently; the exact source keeps its original
  // refusal/receiving result even when verifier preparation fails first.
- const preparedVerifier=loadOfflineProofVerifier().then(value=>({ok:true as const,value}),()=>({ok:false as const}));
- const {bytes,filename}=await readBytes();signal?.throwIfAborted();
- const prepared=await preparedVerifier;signal?.throwIfAborted();
- if(!prepared.ok)throw Error('This original could not be opened as verified media. Inspect its proof source for details.');
- const verifier=prepared.value;
- // Rendering needs the canonical read contract, including older carriers.
- // Append/admission custody is separate and is never relaxed by this reader.
- let opened;try{opened=await verifier.readArtifact(bytes,filename);}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}signal?.throwIfAborted();
+ let opened:{report:{artifactSha256:string;verification:unknown};payload:ReceizVerifiedPayload},inspection:Parameters<typeof retainProofInspection>|undefined;
+ if(held){
+  const payload=held.projection.bankAsset?held.sourcePayload:held.payload,bytes=new Uint8Array(await payload.arrayBuffer());
+  const sha256=held.projection.bankAsset?[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(byte=>byte.toString(16).padStart(2,'0')).join(''):held.projection.payloadSha256;
+  opened={report:{artifactSha256:held.descriptor.artifactSha256,verification:held.verification},payload:{bytes,filename:held.projection.payloadFilename,mimeType:payload.type||held.projection.payloadMimeType,sha256}};
+ }else{
+  const preparedVerifier=loadOfflineProofVerifier().then(value=>({ok:true as const,value}),()=>({ok:false as const}));
+  const {bytes,filename}=await readBytes();signal?.throwIfAborted();
+  const prepared=await preparedVerifier;signal?.throwIfAborted();
+  if(!prepared.ok)throw Error('This original could not be opened as verified media. Inspect its proof source for details.');
+  try{const canonical=await prepared.value.readArtifact(bytes,filename);opened=canonical;inspection=[canonical.report,bytes,filename,false,source.kind==='public'];}catch{throw Error('This original could not be opened as verified media. Inspect its proof source for details.');}
+ }signal?.throwIfAborted();
  if(opened.report.artifactSha256.toLowerCase()!==source.digest.toLowerCase())throw Error('This original does not match the selected proof.');
- retainProofInspection(opened.report,bytes,filename,false,source.kind==='public');
- const json=readMediaJson(opened.payload);
+ if(inspection)retainProofInspection(...inspection);
+ const carriedComposer=held?.projection.bankAsset?.composer;
+ const json=carriedComposer?{text:'',value:carriedComposer,valid:true}:readMediaJson(opened.payload);
  const verification=opened.report.verification as {bundle?:{nativeRecordSeal?:{ownerReceizId?:string}}};
  const composer:ComposerMediaContext|undefined=json?.value?.schema==='receiz.bank.asset-content.v2'?{
   ownerReceizId:verification.bundle?.nativeRecordSeal?.ownerReceizId??'',
   resolveFile:async file=>{
    signal?.throwIfAborted();
+   if(held){const resource=held.composerResources?.[file.id];if(!resource)throw Error('The original file is not available in this view.');return new Uint8Array(await resource.arrayBuffer());}
    if(source.kind==='public'&&!retained){
     const safe=safeImportedSourceUrl(source.url,'artifact');if(!safe)throw Error('The original file coordinate is unavailable.');
     const target=new URL(safe),reference=JSON.parse(target.searchParams.get('reference')!);if(reference.artifactSha256!==source.digest.toLowerCase())throw Error('The original file coordinate does not match its source.');target.searchParams.set('file',file.id);

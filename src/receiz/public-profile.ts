@@ -242,7 +242,9 @@ export function fetchPublicProfileHeader(profile:PublicProfile):Promise<PublicPr
  const epoch=profileReadEpoch.get(username)??0;
  const attempt=(async()=>{
   const response=await fetch(`/api/bank/public-profile/${username}?view=head`,{credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10_000)});
-  if(!response.ok){const code=response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':response.status===409?'PROFILE_CHANGED':'PROFILE_UNAVAILABLE';if([403,404,409].includes(response.status)&&(profileReadEpoch.get(username)??0)===epoch)refusePublicProfile(username,code,userId);throw Error(code);}
+  // An HTTP refusal is transport evidence, not an accepted owner policy.
+  // The existing native privacy/name paths govern held Source withdrawal.
+  if(!response.ok){const code=response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE';throw Error(code);}
   const header=await response.json() as PublicProfileHeader;
   if(header.schema!=='bankeiz.public-profile.v1'||header.username!==username||typeof header.userId!=='string')throw Error('PROFILE_RESPONSE_INVALID');
   const current=retainedPublicProfile(username);
@@ -259,7 +261,7 @@ export function fetchPublicProfile(username:string,cursor?:string,priority:Reque
  const key=username+':'+(cursor??'');const pending=reads.get(key);if(pending)return pending;
  const epoch=profileReadEpoch.get(username)??0,selected=held.get(username);
  const attempt=(async()=>{const response=await fetch(`/api/bank/public-profile/${username}${cursor?'?cursor='+encodeURIComponent(cursor):''}`,{credentials:'omit',redirect:'error',cache:'no-store',priority,signal:AbortSignal.timeout(30_000)});
-  if(!response.ok){if([403,404,409].includes(response.status)&&(profileReadEpoch.get(username)??0)===epoch&&held.get(username)===selected)refusePublicProfile(username,response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_CHANGED');throw Error(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':response.status===409?'PROFILE_CHANGED':'PROFILE_UNAVAILABLE');}
+  if(!response.ok){throw Error(response.status===403?'PROFILE_PRIVATE':response.status===404?'PROFILE_NOT_FOUND':'PROFILE_UNAVAILABLE');}
   if((profileReadEpoch.get(username)??0)!==epoch||held.get(username)!==selected){await response.body?.cancel().catch(()=>{});const current=retainedPublicProfile(username);if(current)return current;throw Error('PROFILE_CHANGED');}
   const value=await response.json() as PublicProfile;if(value.schema!=='bankeiz.public-profile.v1'||value.username!==username&&value.resolvedReceivingUsername!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1')&&publicProfileUsername(value.username,value.receivingUsername)!==username.replace(/^receiz_([a-z0-9]{18})$/,'$1')||typeof value.userId!=='string'||!Array.isArray(value.items)||value.items.length>10_000)throw Error('PROFILE_RESPONSE_INVALID');
   if((profileReadEpoch.get(username)??0)!==epoch||held.get(username)!==selected){const current=retainedPublicProfile(username);if(current)return current;throw Error('PROFILE_CHANGED');}

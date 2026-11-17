@@ -52,6 +52,7 @@ import { createImportedProofSourceCustody } from "./showcase/importedSourceCusto
 import { requireOpenedImportedProofSource, type OpenedImportedProofSource } from "./showcase/importedSource";
 
 export type VerifiedProfileOriginalMaterialResource = Readonly<{
+  source?: OpenedImportedProofSource;
   proofObjectUrl: string;
   carriesMaterialCoordinate: boolean;
   sealedSourceOnly?: boolean;
@@ -225,7 +226,7 @@ function releaseOldestAdmittedResourceIfNeeded(): void {
   releaseUnusedMaterialResources(admittedResources);
 }
 
-function retainMountedMaterial(requestKey: string): () => void {
+export function retainMountedMaterial(requestKey: string): () => void {
   mountedMaterialConsumers.set(requestKey, (mountedMaterialConsumers.get(requestKey) ?? 0) + 1);
   let released = false;
   return () => {
@@ -562,9 +563,9 @@ export function retainImportedProfileOriginalMaterial(original: ProfileOriginal,
   // A Moment retains its receipt/card and exact Source separately. No uploaded
   // payload means no media-cache resource, not an invalid or missing Original.
   if (!original.media) return;
-  if (!historicalResources.has(key)) rememberHistoricalMaterial(key, importedMaterialResource(original, {
+  if (!historicalResources.has(key)) rememberHistoricalMaterial(key, Object.freeze({...importedMaterialResource(original, {
     exactArtifact: source.exactArtifact, payload: source.payload, payloadFilename: source.projection.payloadFilename, payloadMimeType: source.projection.payloadMimeType,
-  }));
+  }),source}));
 }
 
 /** Project the exact payload already opened beneath the original canonical
@@ -747,6 +748,45 @@ export function peekHeldProfileOriginalMaterial(proofObjectUrl: string, sealedAr
   return matches(admittedResources.get(proofObjectUrl)) ?? matches(heldResources.get(proofObjectUrl))
     ?? [...historicalResources.values()].find(resource => resource.proofObjectUrl === proofObjectUrl
       && resource.sealedArtifactSha256Hex === sealedArtifactSha256) ?? null;
+}
+
+/** Realize a public role of an exact locally held Source. The existing SDK
+ * opener owns canonical admission/privacy; resource URLs remain disposable. */
+export async function readHeldImportedProfileOriginalMaterial(
+  reference: import("./showcase/importedSourceReference").ImportedProofSourceReference,
+  resourceUrl: string,
+  selection: Readonly<{file?:string;assetFile?:number}> = {},
+): Promise<VerifiedProfileOriginalMaterialResource | null> {
+  const known=heldResources.get(resourceUrl);
+  if(known){if(known.sealedArtifactSha256Hex!==reference.artifactSha256)throw new TypeError("IMPORTED_SOURCE_RESOURCE_BINDING_INVALID");return known;}
+  const pending=pendingResources.get(resourceUrl);
+  const opening=pending??(async()=>{
+    const knownSource=[...heldResources.values(),...historicalResources.values(),...admittedResources.values()].find(resource=>resource.source?.descriptor.artifactSha256===reference.artifactSha256)?.source;
+    // Different public roles of one Source share the existing in-flight
+    // canonical open; a thumbnail and text reader cannot reverify it together.
+    const preparing=knownSource?undefined:[...pendingResources].find(([key])=>{try{return JSON.parse(new URL(key,"https://receiz.com").searchParams.get("reference")??"null")?.artifactSha256===reference.artifactSha256;}catch{return false;}})?.[1];
+    const carried=knownSource??(preparing?(await preparing).source:undefined);
+    const source=carried??await createImportedProofSourceCustody().readHeld(reference);if(!source)throw new TypeError("IMPORTED_SOURCE_LOCAL_PRESENTATION_UNAVAILABLE");
+    requireOpenedImportedProofSource(source);
+    // The canonical Source binds exact bytes. Transport labels do not change
+    // those bytes or outrank an already admitted Source used by another role.
+    if(source.descriptor.artifactSha256!==reference.artifactSha256||source.descriptor.byteLength!==reference.byteLength)throw new TypeError("IMPORTED_SOURCE_RESOURCE_BINDING_INVALID");
+    let payload=source.payload,filename=source.projection.payloadFilename,mime=source.projection.payloadMimeType,sha256=source.projection.payloadSha256;
+    if(selection.file!==undefined){
+      const file=source.projection.bankAsset?.composer?.files.find(file=>file.id===selection.file),body=file?source.composerResources?.[file.id]:undefined;
+      if(!file||!body)throw new TypeError("IMPORTED_SOURCE_PUBLIC_RESOURCE_MISSING");
+      payload=body;filename=file.name;mime=file.mime;sha256=file.sha256;
+    }else if(selection.assetFile!==undefined){
+      const file=source.projection.bankAsset?.files[selection.assetFile];if(!file)throw new TypeError("IMPORTED_SOURCE_PUBLIC_RESOURCE_MISSING");
+      payload=new Blob([copiedArrayBuffer(file.bytes)],{type:file.mimeType});filename=file.filename;mime=file.mimeType;sha256=file.sha256;
+    }
+    const resource=Object.freeze({source,proofObjectUrl:resourceUrl,carriesMaterialCoordinate:false,...localPayloadObjectUrls(payload),...localSealedObjectUrl(source.exactArtifact),payloadFilename:filename,payloadMimeType:mime,payloadSha256Hex:sha256,sealedFilename:source.descriptor.filename,sealedMimeType:source.descriptor.mimeType,sealedArtifactSha256Hex:source.descriptor.artifactSha256});
+    heldResources.set(resourceUrl,resource);releaseOldestResourceIfNeeded();return resource;
+  })();
+  // Missing exact custody is not a resource entry. It keeps the existing bounded
+  // public reader available; invalid proof/privacy never falls through.
+  if(!pending)pendingResources.set(resourceUrl,opening);
+  try{return await opening;}catch(error){if(error instanceof TypeError&&error.message==="IMPORTED_SOURCE_LOCAL_PRESENTATION_UNAVAILABLE")return null;throw error;}finally{if(pendingResources.get(resourceUrl)===opening)pendingResources.delete(resourceUrl);}
 }
 
 /**

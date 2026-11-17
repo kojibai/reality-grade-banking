@@ -8,6 +8,8 @@ import {verifyReceizArtifact,createReceizArtifactAdmissionEngine,readReceizIdent
 import type {receizeDocumentBytesClient} from "@/app/lib/documentSeal/receizeDocumentBytesClient";
 import {createProfileShowcaseBoundedEdgeVault} from "./boundedEdgeVault";
 import {createImportedProofSourceCustody} from "./importedSourceCustody.client";
+export {createImportedProofSourceCustody} from "./importedSourceCustody.client";
+export {readHeldImportedProfileOriginalMaterial,peekHeldProfileOriginalMaterial,retainMountedMaterial} from "../materialProjection.client";
 import {openImportedProofSource} from "./importedSource";
 import {projectImportedSourceOriginal,readImportedSourceTransportReference} from "./importedSourceProjection";
 import {sealAndAdmitImportedSourcePlacement} from "./importedSourcePlacement.client";

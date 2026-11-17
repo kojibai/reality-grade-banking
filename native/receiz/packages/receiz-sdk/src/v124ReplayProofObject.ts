@@ -1896,6 +1896,9 @@ async function parseCheckpointProjection(value: unknown, receipt: ReceizCheckpoi
 export function parseReceizPortableReplaySourceArtifactV124(value: unknown): ReceizPortableSealedArtifactV124 {
   const code = "V124_REPLAY_PROOF_ARTIFACT_INVALID", record = closedRecord(value, ["schema", "exactBytesB64u", "filename", "mimeType", "artifactSha256", "payloadSha256"], code);
   if (record.schema !== "receiz.sealed-artifact-bytes.v124") fail(code);
+  const held = typeof record.artifactSha256 === "string"
+    ? readRememberedVerifiedSegmentSource(record.artifactSha256) : undefined;
+  if (held !== undefined && held.artifact === value) return held.artifact;
   const bytes = exactBase64Url(record.exactBytesB64u, code); if (bytes.byteLength === 0 || receizBase64UrlEncode(bytes) !== record.exactBytesB64u) fail(code);
   return freeze({ schema: "receiz.sealed-artifact-bytes.v124" as const, exactBytesB64u: record.exactBytesB64u as string, filename: text(record.filename, code), mimeType: text(record.mimeType, code), artifactSha256: digest(record.artifactSha256, code), payloadSha256: digest(record.payloadSha256, code) });
 }
@@ -2022,6 +2025,50 @@ function readRememberedVerifiedSegmentSource(
   const source = verifiedSegmentSourcesByArtifactSha256.get(artifactSha256)?.deref();
   if (source === undefined) verifiedSegmentSourcesByArtifactSha256.delete(artifactSha256);
   return source;
+}
+
+function readRememberedExactSegmentSource(
+  artifact: ReceizPortableSealedArtifactV124,
+): ReceizReadDomainReplaySegmentSourceV124 | undefined {
+  const source = readRememberedVerifiedSegmentSource(artifact.artifactSha256);
+  return source?.artifact.exactBytesB64u === artifact.exactBytesB64u
+    && source.artifact.payloadSha256 === artifact.payloadSha256 ? source : undefined;
+}
+
+function assertSegmentSourceExpectation(
+  source: Pick<ReceizReadDomainReplaySegmentSourceV124, "head" | "replay" | "sourceAuthority">,
+  expected: ReturnType<typeof parseSourceExpectation>,
+): void {
+  const { head, replay, sourceAuthority } = source;
+  if (head.applicationId !== expected.applicationId
+    || (expected.domainId !== undefined && head.domainId !== expected.domainId)
+    || (expected.expectedRegistryDigest !== undefined && head.registryDigest !== expected.expectedRegistryDigest)
+    || (expected.expectedReducerDigest !== undefined && head.reducerDigest !== expected.expectedReducerDigest)
+    || (expected.afterHead !== undefined && replay.afterHead !== expected.afterHead)
+    || (expected.afterCursor !== undefined && replay.afterCursor !== expected.afterCursor)) {
+    fail("V124_REPLAY_SOURCE_EXPECTATION_MISMATCH");
+  }
+  if (sourceAuthority.audience !== expected.audience) fail("V124_REPLAY_SOURCE_AUTHORITY_BINDING_MISMATCH");
+}
+
+function projectSegmentSourceCoordinate(
+  artifactSha256: string,
+  head: ReceizDomainReplayProofHeadV124,
+  predecessorArtifactSha256: string | null,
+): ReceizDomainReplaySegmentSourceCoordinateV124 {
+  return freeze({
+    schema: "receiz.domain-replay-segment-source-coordinate.v124" as const,
+    artifactSha256,
+    predecessorArtifactSha256,
+    proofObjectId: head.proofObjectId,
+    applicationId: head.applicationId,
+    domainId: head.domainId,
+    registryDigest: head.registryDigest,
+    reducerDigest: head.reducerDigest,
+    head: head.head,
+    headDigest: head.headDigest,
+    authority: freeze({ coordinateIsProofAuthority: false as const, strongerTruth: "sealed-receiz-proof-object" as const }),
+  });
 }
 
 /**
@@ -2216,6 +2263,8 @@ async function openReceizPinnedDomainReplaySegmentHeadV124(
 export async function inspectReceizDomainReplaySegmentSourceCoordinateV124(
   artifact: ReceizPortableSealedArtifactV124,
 ): Promise<ReceizDomainReplaySegmentSourceCoordinateV124> {
+  const held = readRememberedExactSegmentSource(parseReceizPortableReplaySourceArtifactV124(artifact));
+  if (held) return projectSegmentSourceCoordinate(held.artifactSha256, held.head, held.carrier.predecessor?.artifactSha256 ?? null);
   const opened = await openReceizPinnedDomainReplaySegmentHeadV124(artifact);
   const carrier = (await verifyAndReadReceizDomainReplayProofObjectV124(
     artifact,
@@ -2253,22 +2302,7 @@ export async function inspectReceizDomainReplaySegmentSourceCoordinateV124(
     || opened.head.segmentCount !== 1) {
     fail("V124_REPLAY_PROOF_PREDECESSOR_MISMATCH");
   }
-  return freeze({
-    schema: "receiz.domain-replay-segment-source-coordinate.v124" as const,
-    artifactSha256: opened.artifactSha256,
-    predecessorArtifactSha256,
-    proofObjectId: opened.head.proofObjectId,
-    applicationId: opened.head.applicationId,
-    domainId: opened.head.domainId,
-    registryDigest: opened.head.registryDigest,
-    reducerDigest: opened.head.reducerDigest,
-    head: opened.head.head,
-    headDigest: opened.head.headDigest,
-    authority: freeze({
-      coordinateIsProofAuthority: false as const,
-      strongerTruth: "sealed-receiz-proof-object" as const,
-    }),
-  });
+  return projectSegmentSourceCoordinate(opened.artifactSha256, opened.head, predecessorArtifactSha256);
 }
 
 /** Pinned verification and full reconstruction of one immutable replay segment. */
@@ -2282,6 +2316,20 @@ export async function readReceizDomainReplaySegmentSourceV124(input: Readonly<{
     : ["artifact", "expected"];
   const holder = closedRecord(input, keys, "V124_REPLAY_SOURCE_INPUT_INVALID");
   const expected = parseSourceExpectation(holder.expected as ReceizDomainReplaySegmentSourceExpectationV124);
+  const held = readRememberedExactSegmentSource(parseReceizPortableReplaySourceArtifactV124(holder.artifact));
+  if (held) {
+    assertSegmentSourceExpectation(held, expected);
+    if (Object.prototype.hasOwnProperty.call(holder, "predecessorArtifact")) {
+      if (held.predecessorArtifact === null) fail("V124_REPLAY_PROOF_PREDECESSOR_UNEXPECTED");
+      const predecessor = parseReceizPortableReplaySourceArtifactV124(holder.predecessorArtifact);
+      if (predecessor.artifactSha256 !== held.predecessorArtifact.artifactSha256
+        || predecessor.payloadSha256 !== held.predecessorArtifact.payloadSha256
+        || predecessor.exactBytesB64u !== held.predecessorArtifact.exactBytesB64u) {
+        fail("V124_REPLAY_PROOF_PREDECESSOR_MISMATCH");
+      }
+    }
+    return held;
+  }
   const opened = await verifyAndReadReceizDomainReplayProofObjectV124(holder.artifact);
   const carrierRecord = closedRecord(opened.carrier, ["schema", "proofObjectId", "applicationId", "domainId", "registryDigest", "reducerDigest", "predecessor", "segment", "fibonacciWitnesses", "head", "authority"], "V124_REPLAY_PROOF_SEGMENT_CARRIER_INVALID");
   if (carrierRecord.schema !== "receiz.domain-replay-segment-proof.v124" || !Array.isArray(carrierRecord.fibonacciWitnesses)) fail("V124_REPLAY_PROOF_SEGMENT_CARRIER_INVALID");
@@ -2335,15 +2383,14 @@ export async function readReceizDomainReplaySegmentSourceV124(input: Readonly<{
       segmentId: segment.segmentId,
     })) fail("V124_REPLAY_PROOF_SEGMENT_BINDING_MISMATCH");
 
-  if (sourceAuthority.applicationId !== application || sourceAuthority.audience !== expected.audience
+  if (sourceAuthority.applicationId !== application
     || sourceAuthority.domainId !== domain || sourceAuthority.acceptedHead !== replay.head
     || head.head !== replay.head || head.cursor !== replay.cursor
     || head.namespace.name !== replay.namespace.name || head.namespace.head !== replay.namespace.head
     || head.namespace.digest !== replay.namespace.digest
     || head.kai.pulse !== opened.artifactKaiPulse || childKai.pulse !== opened.artifactKaiPulse
     || head.kai.uPulse !== childKai.uPulse) fail("V124_REPLAY_SOURCE_AUTHORITY_BINDING_MISMATCH");
-  if (expected.afterHead !== undefined && replay.afterHead !== expected.afterHead) fail("V124_REPLAY_SOURCE_EXPECTATION_MISMATCH");
-  if (expected.afterCursor !== undefined && replay.afterCursor !== expected.afterCursor) fail("V124_REPLAY_SOURCE_EXPECTATION_MISMATCH");
+  assertSegmentSourceExpectation({ head, replay, sourceAuthority }, expected);
 
   let predecessorSource: Readonly<{
     artifact: ReceizPortableSealedArtifactV124;

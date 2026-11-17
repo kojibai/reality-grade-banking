@@ -665,7 +665,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/artifactAdmission.ts",
-      "sha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f",
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a",
       "mode": 420
     },
     {
@@ -790,7 +790,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc",
       "mode": 420
     },
     {
@@ -961,6 +961,11 @@
     {
       "path": "packages/receiz-sdk/src/verifier/signatureV4.ts",
       "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
       "mode": 420
     }
   ],
@@ -1172,10 +1177,11 @@
     "packages/receiz-sdk/src/verifier/groth16.ts",
     "packages/receiz-sdk/src/verifier/index.ts",
     "packages/receiz-sdk/src/verifier/roots.ts",
-    "packages/receiz-sdk/src/verifier/signatureV4.ts"
+    "packages/receiz-sdk/src/verifier/signatureV4.ts",
+    "packages/receiz-sdk/src/sourceJsonDigestBasis.ts"
   ],
-  "moduleSha256": "ee65f4171c0ebd9ab384d884464ef79159b1cacf7ab708343e11976023913eb4",
-  "bytes": 1868671,
+  "moduleSha256": "a6c5e05df105a81ddc10e6f25d511c351eeef3b56337f05219ec3e4e49c8b6ad",
+  "bytes": 1868703,
   "applicationPatches": [
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",
@@ -1257,6 +1263,34 @@
       "upstreamCommit": "7ab22963685a8ccec066e938e41ccfbab9ab2310",
       "qualifiedSdkArchiveSha256": "3c19a390fd9916643b8e5c00cdba1b77b0cbec6e2f29775fb41e7ba26e26b04a",
       "purpose": "Final reviewed PNG operational denial, unchanged major compatibility floor, exact public function inventory and existing build resource guard. No financial/Note writer/receiving/rollback implementation change."
+    },
+    {
+      "id": "receiz-129-5-held-proof-history-issued-reference",
+      "path": "packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "purpose": "Reuse the qualified SDK-issued frozen proof-history reference through its existing private issuer guard; preserve all Source admission and ownership checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "packages/receiz-sdk/src/artifactAdmission.ts",
+      "baseSha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f",
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "baseSha256": null,
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
     }
   ]
 }
