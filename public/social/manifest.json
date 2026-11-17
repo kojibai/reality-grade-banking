@@ -1369,6 +1369,22 @@
       "bytes": 463337,
       "alt": "Bankeiz. The record. Stays connected. Transaction evidence. Preserved. An engraved receipt motif on layered cobalt, clear glass and navy forms."
     },
+    "/learn/offline-banking/": {
+      "url": "/social/offline-banking-3c118d3c797a7770.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "3c118d3c797a7770a796b82baf643fb90325e7976d03e0833aa79851296131c9",
+      "bytes": 464262,
+      "alt": "Bankeiz. No connection. Keep the original. Keep the original. Know your next step. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
+    "/learn/banking-outage/": {
+      "url": "/social/banking-outage-361837b2e7383cef.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "361837b2e7383cefed25cf03417f568f6e74caa38687dd4fba418bbe2d4e4185",
+      "bytes": 466657,
+      "alt": "Bankeiz. Prepare calmly. Keep what matters. A calmer plan for an interrupted connection. An engraved bank motif on layered cobalt, clear glass and navy forms."
+    },
     "/receiving/": {
       "url": "/social/receiving-2fde2f8bae7fa01b.png",
       "width": 1730,
@@ -1490,12 +1506,12 @@
       "alt": "Bankeiz. Deposits. The complete picture. Bring your money into proof. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/notes/": {
-      "url": "/social/notes-d96d3dfb530b924e.png",
+      "url": "/social/notes-335025c0961cd815.png",
       "width": 1730,
       "height": 909,
-      "sha256": "d96d3dfb530b924e5a8b66bb123593f01ccba6fefae64c134c5b84496ee391b4",
-      "bytes": 454962,
-      "alt": "Bankeiz. Notes. The complete picture. Your money. Ready to carry. An engraved bank motif on layered cobalt, clear glass and navy forms."
+      "sha256": "335025c0961cd815716eb9704d86d7b216fa81621daacb1f24baae80f39ee482",
+      "bytes": 461013,
+      "alt": "Bankeiz. Your money. Ready to carry. Your money. Ready to carry. An engraved bank motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/messages/": {
       "url": "/social/messages-fff7d123b3db23a9.png",
@@ -1642,12 +1658,12 @@
       "alt": "Reality-Grade Banking. For developers. The complete picture. Build the experience. Preserve the protocol. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/learn/security/": {
-      "url": "/social/security-eecb09b7f57843f6.png",
+      "url": "/social/security-a530b8f2b0bc9a6c.png",
       "width": 1730,
       "height": 909,
-      "sha256": "eecb09b7f57843f6c93072042c87338c9e606df3de33bf56d651c4625dbdd556",
-      "bytes": 470194,
-      "alt": "Reality-Grade Banking. Security and authority. The complete picture. Authority stays explicit. Evidence stays connected. An engraved badge motif on layered cobalt, clear glass and navy forms."
+      "sha256": "a530b8f2b0bc9a6c0fe3994a6b8fe7fef4159ff3cc41f371dca2635c02627158",
+      "bytes": 462559,
+      "alt": "Bankeiz. Your account. In your hands. Authority stays explicit. Evidence stays connected. An engraved badge motif on layered cobalt, clear glass and navy forms."
     },
     "/releases/": {
       "url": "/social/releases-7a3c383690fa107f.png",

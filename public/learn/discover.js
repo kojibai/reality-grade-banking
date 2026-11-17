@@ -37,7 +37,7 @@ async function load(path,previous,build){
   const start=text.indexOf('<div id="public-learn-root">'),end=text.indexOf('<script id="receiz-navigation"'),close=text.lastIndexOf('</div>',end);
   if(!HEX.test(previous?.contentSha256??'')||start<0||end<0||close<start||await sha(text.slice(start+28,close))!==previous.contentSha256)throw Error('DISCOVERY_DOCUMENT_INVALID');
   if(previous.headSha256){const raw=text.match(/<head>([\s\S]*?)<\/head>/)?.[1];if(!HEX.test(previous.headSha256)||!Number.isSafeInteger(previous.headLength)||previous.headLength<1||previous.headLength>MAX||!raw||raw.length<previous.headLength)throw Error('DISCOVERY_DOCUMENT_INVALID');head=raw.slice(0,previous.headLength);if(await sha(head)!==previous.headSha256)throw Error('DISCOVERY_DOCUMENT_INVALID');}
-  if(previous.sharedExampleSha256){shared=text.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'';if(await sha(shared)!==previous.sharedExampleSha256)throw Error('DISCOVERY_DOCUMENT_INVALID');}
+  if(previous.sharedExampleSha256){shared=globalThis.__bankNavigationEnvelope?.decodeNavigationEnvelope(doc.getElementById('receiz-navigation')?.textContent??'{}').shared||(text.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'');if(await sha(shared)!==previous.sharedExampleSha256)throw Error('DISCOVERY_DOCUMENT_INVALID');}
  }
 
  if(values){

@@ -1,3 +1,4 @@
+import {navigationScript,decodeNavigationEnvelope} from '../scripts/navigation-envelope.mjs';
 // @vitest-environment node
 import {readFileSync} from 'node:fs';
 import {Window,type HTMLStyleElement as TestStyleElement} from 'happy-dom';
@@ -16,14 +17,14 @@ async function navigation(){
  const declaration=line('privateBankStyles');
  if(declaration){const {bankOwnedStyles}=await import('../scripts/public-bank-styles.mjs');privateBankStyles=new Function('bankStyles','styleManifest','bankOwnedStyles',declaration+';return privateBankStyles;')(allStyles,manifest,bankOwnedStyles);}
  const pages={'/feed/':{runtime:'feed',entry:'/feed.js',title:'Feed',head:'<title>Feed</title><style data-public-page-style="feed">.feed-scroll{display:block}</style>',content:'<main class="feed-scroll">Retained Feed'+controls+'<a href="/">Return</a></main>'}};
- const text=new Function('compactNavigation','feedState','publicPages','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',line('bundle')+';return bundle;')(compactNavigation,{profileNames:[]},pages,{},'<title>Bank</title>','/bank.js',allStyles,privateBankStyles,css,'<main class="console">Held Bank'+controls+'</main><nav class="bottom-nav">Bank navigation</nav>',{shared:''});
+ const text=new Function('navigationScript','compactNavigation','feedState','publicPages','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',line('bundle')+';return bundle;')(navigationScript,compactNavigation,{profileNames:[]},pages,{},'<title>Bank</title>','/bank.js',allStyles,privateBankStyles,css,'<main class="console">Held Bank'+controls+'</main><nav class="bottom-nav">Bank navigation</nav>',{shared:''});
  return{pages,text,privateBankStyles};
 }
 async function setup(coldPublic=false){
  const data=await navigation(),window=new Window({url:coldPublic?'https://bankeiz.com/feed/':'https://bankeiz.com/#market',settings:{disableCSSFileLoading:true,disableIframePageLoading:true}});windows.push(window);window.scrollTo=()=>{};
  const document=window.document;document.head.innerHTML=coldPublic?data.pages['/feed/'].head:'<title>Bank</title>'+Object.entries(css).map(([url,text])=>`<style data-bank-stylesheet="${url}">${text}</style>`).join('');
  document.body.innerHTML=(coldPublic?'<div id="public-feed-root" data-public-runtime="feed">'+data.pages['/feed/'].content+'</div>':'<div id="root"><input value="Retained draft"><nav class="bottom-nav">Held nav</nav></div>')+data.text;
- const load=vi.fn(async()=>({mountPublicDocument:(root:HTMLElement)=>{if(root.dataset.publicRuntime==='feed'&&!root.firstChild)root.innerHTML=data.pages['/feed/'].content;}})),fetcher=vi.fn();Object.assign(window,{__navigationImport:load,fetch:fetcher});window.eval(router.replaceAll('import(','window.__navigationImport('));
+ const load=vi.fn(async()=>({mountPublicDocument:(root:HTMLElement)=>{if(root.dataset.publicRuntime==='feed'&&!root.firstChild)root.innerHTML=data.pages['/feed/'].content;}})),fetcher=vi.fn();Object.assign(window,{__bankNavigationEnvelope:{decodeNavigationEnvelope},__navigationImport:load,fetch:fetcher});window.eval(router.replaceAll('import(','window.__navigationImport('));
  const api=document.getElementById('receiz-navigation') as unknown as{navigate(path:string):void};return{window,document,api,load,fetcher,...data};
 }
 afterEach(()=>{for(const window of windows.splice(0)){window.happyDOM.abort();window.close();}});

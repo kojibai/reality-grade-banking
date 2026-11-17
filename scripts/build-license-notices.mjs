@@ -1,3 +1,4 @@
+import {decodeNavigationEnvelope,navigationScript as writeNavigationScript} from './navigation-envelope.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import { readFile, readdir, mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -91,13 +92,14 @@ const navigationPattern = /<script id="receiz-navigation" type="application\/jso
 const navigationScript = bankHtml.match(navigationPattern)?.[0];
 const sharedExamples=bankHtml.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'';
 if (!navigationScript) throw Error('Build public pages before legal notices.');
-const navigation = JSON.parse(navigationScript.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, ''));
+const opened=decodeNavigationEnvelope(navigationScript.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, ''));
+const navigation=opened.navigation;
 navigation.pages['/legal/'] = {
   head: publicLegalHtml.match(/<head>([\s\S]*?)<\/head>/)[1],
   content: publicLegalHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1],
 };
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(navigation).replaceAll('<', '\\u003c')}</script>`;
-await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}${sharedExamples}</body>`));
+const bundle = writeNavigationScript(navigation,opened.shared||sharedExamples);
+await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`));
 // The dedicated Feed keeps its lean source/asset navigation. Its Legal link
 // opens the complete legal document through normal navigation.
 for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})].filter(path => path !== '/legal/' && path !== '/feed/' && path !== '/discover/').map(path => `dist${path}index.html`)]) {

@@ -691,6 +691,10 @@ export const standardPages=[
     ],
     "sections": [
       [
+        "Public guide measurement.",
+        "Selected public guides use Vercel Web Analytics to count visits and public guide or Open account link clicks. Measurement uses fixed public page paths and coarse events, without account identities, payment details, form content, or URL queries and fragments. It honors Do Not Track and Global Privacy Control and skips private entry pages and potentially private referrers. The provider processes request metadata to produce aggregate statistics without analytics cookies; its privacy documentation explains that processing. Measurement never confirms an account opening or payment."
+      ],
+      [
         "Private custody on the device.",
         "Bankeiz uses device-held signing material and retains supported protected identity, pending-operation and Note records locally. A service’s account display cannot replace that authority. Protect the original, the device and any required phrase."
       ],
@@ -708,6 +712,10 @@ export const standardPages=[
       ]
     ],
     "related": [
+      [
+        "https://vercel.com/docs/analytics/privacy-policy",
+        "Public analytics privacy"
+      ],
       [
         "https://receiz.com/privacy",
         "Connected-service privacy policy"

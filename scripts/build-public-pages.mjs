@@ -33,6 +33,7 @@ import {twinSalesPages,twinPageContent} from './twin-page.mjs';
 import {togetherPages,togetherContent} from './together-page.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {compactNavigation} from './compact-navigation.mjs';
+import {navigationScript} from './navigation-envelope.mjs';
 import {clientWorkPages} from '../src/content/client-work-library.mjs';
 import {writeClientWorkLibrary} from './client-work-library.mjs';
 import {bankOwnedStyles} from './public-bank-styles.mjs';
@@ -245,7 +246,7 @@ const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const directMarketingEntries=captureDirectMarketingEntries(publicPages);
 const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
-const bundle = `<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: privateBankStyles,css:bankCss,content:bankContent } })).replaceAll('<', '\\u003c')}</script>`+exampleBanks.shared;
+const bundle = navigationScript(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: privateBankStyles,css:bankCss,content:bankContent } }),exampleBanks.shared);
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bundle}</body>`);

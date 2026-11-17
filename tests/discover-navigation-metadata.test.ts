@@ -1,3 +1,4 @@
+import {navigationScript,decodeNavigationEnvelope} from '../scripts/navigation-envelope.mjs';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
@@ -15,13 +16,13 @@ const pages={
 };
 const builder=readFileSync('scripts/build-public-pages.mjs','utf8');
 const statement=(name:string)=>builder.split('\n').find(line=>line.startsWith(`const ${name}`))!;
-const read=(html:string)=>JSON.parse(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/.exec(html)![1]);
+const read=(html:string)=>decodeNavigationEnvelope(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/.exec(html)![1]).navigation;
 const expand=(value:unknown,styles:string[])=>Array.isArray(value)?value.map(part=>typeof part==='number'?styles[part]:part).join(''):value;
 const bankStyles=['/assets/bank.css','/assets/public-host.css'],bankCss={'/assets/bank.css':'.console{display:grid}','/assets/public-host.css':'.form-field{display:grid}'};
 const privateBankStyles=bankOwnedStyles(bankStyles,{host:{name:'PublicAssetTradeHost',file:'assets/public-host.js',css:['assets/public-host.css']}});
 
 it('carries the existing small Discover body beside Bank while Feed stays lightweight',()=>{
- const bundle=new Function('publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',statement('bundle =')+';return bundle;')(pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''});
+ const bundle=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',statement('bundle =')+';return bundle;')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''});
  const value=read(bundle),discover=value.pages['/discover/'];
  expect(discover).toMatchObject({runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz'});
  expect(expand(discover.head,value.styles)).toBe(discoverHead);

@@ -1,3 +1,4 @@
+import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
 import {emailGuidePage} from '../src/content/email-guide.mjs';
 import {matterPage} from '../src/content/digital-matter.mjs';
@@ -89,7 +90,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   // Retain the exact launch artwork referenced by this document for cold PWA
   // opens after installation. These are public assets, never custody evidence.
   for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="(\/launch\/[\w-]+\.png)"/g)) urls.add(match[1]);
-  const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null');
+  const navigation = decodeNavigationEnvelope(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1] ?? 'null').navigation;
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');
   urls.add('/learn/contact.js');
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };

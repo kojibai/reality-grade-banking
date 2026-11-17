@@ -70,7 +70,9 @@
 (() => {
   const element = document.getElementById('receiz-navigation');
   if (!element?.textContent) return;
-  const { pages, bank, aliases={}, styles:sharedStyleBlocks=[], reserved=['api','asset','assets','auth','docs','market','native','offline','source'] } = JSON.parse(element.textContent);
+  const openedNavigation=typeof __bankNavigationEnvelope!=='undefined'?__bankNavigationEnvelope.decodeNavigationEnvelope(element.textContent):{navigation:JSON.parse(element.textContent),shared:''};
+  if(openedNavigation.shared&&!document.querySelector('template[data-shared-example-views]')){const template=document.createElement('template');template.innerHTML=openedNavigation.shared;document.body.append(template.content);}
+  const { pages, bank, aliases={}, styles:sharedStyleBlocks=[], reserved=['api','asset','assets','auth','docs','market','native','offline','source'] } = openedNavigation.navigation;
   // The parsed catalog is retained below; do not retain a second multi-megabyte
   // serialized copy in the document throughout every public workspace.
   // Keep the empty router marker: receipt return uses it to retain this root.

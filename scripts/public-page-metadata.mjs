@@ -1,3 +1,4 @@
+import {publicAcquisitionPaths} from '../src/presentation/public-acquisition.mjs';
 import {emailGuidePage,emailGuideFaq} from '../src/content/email-guide.mjs';
 import {receivingInvitationPage} from '../src/content/receiving-invitation-page.mjs';
 import {institutionScorecardPage} from '../src/content/institution-scorecard-page.mjs';
@@ -89,12 +90,12 @@ export const publicPages = [
 const motifs={Banking:'bank',Assets:'cube',Markets:'globe',History:'ledger',Standards:'badge','For you':'receipt'};
 // Operating guides describe Bankeiz's actual controls. Other learning pages
 // explain the shared economy and standard rather than an application brand.
-const applicationGuides=new Set(['receiving','earn-from-originals','your-account','payments','get-paid','payment-requests','deposits','notes','messages','receiz-id','creating-an-asset','markets','receipts','source-of-funds','memory-crystals']);
+const applicationGuides=new Set(['receiving','earn-from-originals','your-account','payments','get-paid','payment-requests','deposits','notes','offline-banking','banking-outage','security','messages','receiz-id','creating-an-asset','markets','receipts','source-of-funds','memory-crystals']);
 for(const page of learningPages){
  const siteName=applicationGuides.has(page.slug)?'Bankeiz':standardSite;
  const record={path:learningPath(page),id:page.slug,siteName,title:`${page.title} | ${siteName}`,description:page.description,lines:[page.title.split(' ').slice(0,3).join(' '),page.title.split(' ').slice(3).join(' ')||page.intro.split('. ')[0]+'.'],caption:page.intro,motif:motifs[page.group]};
  // Human authored short headlines fit the established social-card layout.
- const headlines={'receiving':['Receive directly.','Keep the proof.'],'get-paid':['Get paid.','Keep the proof.'],'proof-native-economy':['Value.','Connected to source.'],'global-market-cap':['Global','Market Cap.'],'reserve-and-settlement':['One balance.','Complete continuity.'],'asset-rights-and-backing':['Defined rights.','Visible backing.'],'fractional-ownership':['A defined share.','An inspectable whole.'],'source-of-funds':['Every payment.','Connected to source.'],'time-and-ordering':['A familiar time.','An exact moment.'],'payment-requests':['A clear request.','A deliberate payment.'],'for-people':['Send your share.','Keep the receipt.'],'for-businesses':['Take a payment.','Keep the record.'],'for-independent-work':['Finish the work.','Get paid.'],'for-creators':['Your work.','Its original.'],'for-communities':['A shared plan.','Clear payments.'],'for-institutions':['Open the receipt.','Follow the source.'],'for-public-finance':['Show what was paid.','Keep the evidence.'],'for-platforms':['Build the experience.','Keep the result.']};
+ const headlines={'offline-banking':['No connection.','Keep the original.'],'banking-outage':['Prepare calmly.','Keep what matters.'],'notes':['Your money.','Ready to carry.'],'security':['Your account.','In your hands.'],'receiving':['Receive directly.','Keep the proof.'],'get-paid':['Get paid.','Keep the proof.'],'proof-native-economy':['Value.','Connected to source.'],'global-market-cap':['Global','Market Cap.'],'reserve-and-settlement':['One balance.','Complete continuity.'],'asset-rights-and-backing':['Defined rights.','Visible backing.'],'fractional-ownership':['A defined share.','An inspectable whole.'],'source-of-funds':['Every payment.','Connected to source.'],'time-and-ordering':['A familiar time.','An exact moment.'],'payment-requests':['A clear request.','A deliberate payment.'],'for-people':['Send your share.','Keep the receipt.'],'for-businesses':['Take a payment.','Keep the record.'],'for-independent-work':['Finish the work.','Get paid.'],'for-creators':['Your work.','Its original.'],'for-communities':['A shared plan.','Clear payments.'],'for-institutions':['Open the receipt.','Follow the source.'],'for-public-finance':['Show what was paid.','Keep the evidence.'],'for-platforms':['Build the experience.','Keep the result.']};
  const audienceMotifs={'for-people':'fingerprint','for-businesses':'bank','for-independent-work':'receipt','for-creators':'cube','for-communities':'globe','for-institutions':'ledger','for-public-finance':'badge','for-platforms':'code'};
  record.motif=audienceMotifs[page.slug]??record.motif;
  record.lines=headlines[page.slug]??[page.title+'.','The complete picture.'];
@@ -135,7 +136,8 @@ export function structuredMetadata(page,image) {
 }
 export function applyPublicMetadata(html,page,image) {
   if(!page||!image)throw Error('PUBLIC_PAGE_METADATA_REQUIRED');
-  const clean=html.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'');
+  const withPolicy=publicAcquisitionPaths.includes(page.path)?html.replace(/<meta\b[^>]*name="referrer"[^>]*>/gi,'').replace(/<head(?:\s[^>]*)?>/i,match=>match+'<meta name="referrer" content="no-referrer">'):html;
+  const clean=withPolicy.replace(/<title>[\s\S]*?<\/title>/gi,'').replace(/<meta\b[^>]*(?:name="(?:description|robots|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/gi,'').replace(/<link\b[^>]*rel="canonical"[^>]*>/gi,'');
   // Preserve the homepage Organization/WebSite/WebApplication graph. Other
   // pages receive one consistent graph without invented publication dates.
   const base=page.path==='/'?clean:clean.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g,'');

@@ -1,3 +1,4 @@
+import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import assert from 'node:assert/strict';
 import { readFile,readdir } from 'node:fs/promises';
@@ -46,7 +47,7 @@ for (const entry of manifest.resources) {
 }
 const index = await readFile('dist/index.html', 'utf8');
 for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="([^"]+)"/g)) assert.ok(shell.includes(match[1]), `Missing offline launch image ${match[1]}`);
-const navigation = JSON.parse(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+const navigation = decodeNavigationEnvelope(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]).navigation;
 for (const path of Object.keys(navigation.pages)) {
   if(path==='/conformance/') {assert.ok(!shell.includes(path),'The on-demand conformance console stays outside the bank install cache');continue;}
   assert.ok(manifest.pages[path]&&shell.includes(manifest.pages[path]), `Missing retained offline public route ${path}`);

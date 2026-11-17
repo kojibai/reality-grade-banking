@@ -61,9 +61,9 @@ it('uses existing retained navigation for guide transitions without a document o
  const retainedHeader=document.querySelector('header');try{new Function(readFileSync('public/learn/learn.js','utf8'))();document.querySelector<HTMLAnchorElement>('main a')!.click();expect(location.pathname).toBe('/guide/');expect(document.querySelector('h1')?.textContent).toContain('What would you like to do?');expect(document.querySelector('header')).toBe(retainedHeader);expect(document.querySelector('style[data-public-page-style="guide"]')).not.toBeNull();expect(fetch).not.toHaveBeenCalled();}finally{vi.unstubAllGlobals();vi.restoreAllMocks();document.body.innerHTML='';history.replaceState({},'','/');}
 });
 
-it('keeps the shared presentation runtime within its established budget',async()=>{
+it('keeps the complete shared runtime, lossless decoder and privacy filter within the release budget',async()=>{
  const {learnAssets}=await import('../scripts/learn-assets.mjs');const assets=await learnAssets();
- expect(gzipSync(assets.css).length+gzipSync(assets.js).length).toBeLessThan(15100);
+ expect(gzipSync(assets.css).length+gzipSync(assets.js).length).toBeLessThan(20100);
 });
 
 it('serves the same static guide in development and leaves the reserved username route alone',async()=>{

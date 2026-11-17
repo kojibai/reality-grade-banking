@@ -1,3 +1,4 @@
+import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import assert from 'node:assert/strict';
@@ -11,6 +12,7 @@ import {directMarketingEntryPaths,assertDirectMarketingEntry} from './direct-mar
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 const html = await readFile('dist/index.html', 'utf8'), image = await readFile('dist/receiz-bank-share.png');
 await checkClientWorkLibrary();
+for(const path of ['/', '/learn/offline-banking/','/learn/banking-outage/','/learn/notes/','/learn/security/']){const bytes=Buffer.byteLength(await readFile(`dist${path}index.html`,'utf8'));assert.ok(bytes<2_000_000,`${path} HTML is ${bytes} bytes; keep the complete document below 2 MB.`);console.log(`SEO document budget ${path}: ${bytes} bytes`);}
 assert.match(html, /<div id="root"><div class="account-opening account-opening-screen"[^>]*data-entry="resume"/);
 assert.match(html, /id="bankeiz-opening-critical"/);
 assert.ok(html.includes('<svg class="account-opening-geometry"'), 'The first document carries its entrance artwork.');
@@ -48,9 +50,10 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // App and guide navigation retains the same routes, including legal notices.
 // Independent marketing visits keep their selected page and use native links.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
-const carriedNavigation = JSON.parse(html.match(navigationPattern)[1]);
+const openedNavigation = decodeNavigationEnvelope(html.match(navigationPattern)[1]);
+const carriedNavigation = openedNavigation.navigation;
 const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template>/g;
-const sharedExampleBank=html.match(sharedExamplePattern);
+const sharedExampleBank=openedNavigation.shared?[openedNavigation.shared]:html.match(sharedExamplePattern);
 assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
 const navigation = structuredClone(carriedNavigation);
 for(const page of [...Object.values(navigation.pages),navigation.bank,navigation.bank.css??{}])for(const field of Object.keys(page).filter(key=>key!=='styles'))if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
@@ -110,7 +113,8 @@ const directMarketingPaths=new Set(directMarketingEntryPaths),directMarketingSiz
 const decodeExampleText=value=>value.replaceAll('&quot;','"').replaceAll('&gt;','>').replaceAll('&lt;','<').replaceAll('&amp;','&');
 const withoutExampleBanks=value=>value.replace(/<template data-(?:shared-)?example-views>[^<]*<\/template>/g,'');
 function logicalExampleBanks(content,sharedDocument){
- const shared=JSON.parse(decodeExampleText(sharedDocument.match(/<template data-shared-example-views>([^<]*)<\/template>/)?.[1]??'[]'));
+ const packet=sharedDocument.match(navigationPattern),sharedHtml=packet?decodeNavigationEnvelope(packet[1]).shared||sharedDocument:sharedDocument;
+ const shared=JSON.parse(decodeExampleText(sharedHtml.match(/<template data-shared-example-views>([^<]*)<\/template>/)?.[1]??'[]'));
  return [...content.matchAll(/<template data-example-views>([^<]*)<\/template>/g)].map(match=>Object.fromEntries(Object.entries(JSON.parse(decodeExampleText(match[1]))).map(([name,value])=>{
   const source=typeof value==='number'?shared[value]:value;
   const view=Array.isArray(source?.html)?{...source,html:source.html.map(part=>{const text=typeof part==='number'?shared[part]:part;assert.equal(typeof text,'string','Every example span retains its exact bytes.');return text;}).join('')}:source;
@@ -137,8 +141,9 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
     assert.equal(entry.content.match(/<header class="learn-header">[\s\S]*?<\/header>/)[0],sharedHeader,`Shared header links differ at ${path}`);
     continue;
   }
-  assert.deepEqual(routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
-  assert.deepEqual(JSON.parse(output.match(navigationPattern)[1]), carriedNavigation, `Public navigation differs at ${path}`);
+  const opened=decodeNavigationEnvelope(output.match(navigationPattern)[1]);
+  assert.deepEqual(opened.shared?[opened.shared]:routeHtml.match(sharedExamplePattern),sharedExampleBank,`Cold ${path} keeps the same shared walkthrough destinations`);
+  assert.deepEqual(opened.navigation, carriedNavigation, `Public navigation differs at ${path}`);
   if (path === '/schemas/') {
     assert.ok(entry.content.includes('class="schema-header"'),'Reference retains its own existing header');
     assert.ok(entry.head.includes('<style data-public-page-style="schemas">'),'Reference styles travel with the carried page');
@@ -179,9 +184,10 @@ for(const page of publicPages){
 assert.equal(uniqueTitles.size,publicPages.length);assert.equal(uniqueDescriptions.size,publicPages.length);assert.ok(!sitemap.includes('<lastmod>'),'A build date must not impersonate a content modification date');
 for (const url of html.matchAll(/(?:href|src)="(\/learn\/learn\.(?:css|js)\?v=[a-f0-9]{12})"/g)) assert.ok(sw.includes(JSON.stringify(url[1])), `Versioned Learn asset must be precached: ${url[1]}`);
 const css = await readFile('dist/learn/learn.css'), motion = await readFile('dist/learn/learn.js');
-// The route-scoped invitation-history privacy filter adds 59 gzip bytes to the
-// 14,996-byte baseline. The receiving runtime and styles remain page-only.
-assert.ok(gzipSync(css).length + gzipSync(motion).length < 15_100, 'Shared public presentation runtime budget, including guides and retained asset/profile routes');
+// The synchronous lossless envelope and bounded public measurement add under
+// 5 KB gzip to the existing 15.1 KB shared budget, without another request.
+// Keep this entire cost bounded alongside the complete HTML budget above.
+assert.ok(gzipSync(css).length + gzipSync(motion).length < 20_100, 'Shared public presentation runtime budget, including guides and retained asset/profile routes');
 assert.ok((await readFile('dist/learn/proof-glass.webp')).length < 180_000, 'Hero art budget');
 const share = await readFile('dist/receiz-bank-learn-share.jpg');
 assert.equal(share.readUInt16BE(0), 0xffd8); assert.ok(share.length < 500_000, 'Social image budget');
