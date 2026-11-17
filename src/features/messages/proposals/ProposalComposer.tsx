@@ -4,12 +4,13 @@ import {Sheet} from '../../../components/Sheet';
 import {formatMoney} from '../../../core/money';
 import {proposalTotal,readEditableProposalDraft,readProposalDraft,type ProposalDraft,type ProposalItem} from '../../../receiz/proposal-draft';
 import type {ChatProposalWorkspace} from '../../../receiz/chat-proposal-workspace';
+import type {ChatProposal} from '../../../receiz/chat-proposal';
 import type {ChatMessage} from '../../../receiz/native-messaging';
 import './proposal-composer.css';
 
 const Pdf=lazy(()=>import('../../media/ProofPdfReader'));
-interface Props {presentation?:'modal'|'embedded';example?:{onAddToConversation():void};workspace:ChatProposalWorkspace;onClose():void;onSent(message:ChatMessage):void;canDraftWithTwin?:boolean;twinDraftingDisabled?:boolean;onTwinRequired?:(request?:string)=>void}
-type Action='generate'|'preview'|'send'|'check';
+interface Props {onCreateInvoice?:(input:{proposal:ChatProposal;pdf:File})=>Promise<void>;backLabel?:string;presentation?:'modal'|'embedded';example?:{onAddToConversation():void};workspace:ChatProposalWorkspace;onClose():void;onSent(message:ChatMessage):void;canDraftWithTwin?:boolean;twinDraftingDisabled?:boolean;onTwinRequired?:(request?:string)=>void}
+type Action='generate'|'preview'|'send'|'check'|'create';
 type RawField={raw:string;stored:string};
 const notified=new WeakMap<ChatProposalWorkspace,Set<string>>();
 function dollars(cents:string){if(!/^(0|[1-9]\d{0,18})$/.test(cents))return'';const value=BigInt(cents);return`${value/100n}.${String(value%100n).padStart(2,'0')}`;}
@@ -28,7 +29,7 @@ export function ProposalComposer(props:Props){
  const current=useRef({workspace:props.workspace,generation:0});if(current.current.workspace!==props.workspace)current.current={workspace:props.workspace,generation:current.current.generation+1};
  return <Composer key={current.current.generation} {...props}/>;
 }
-function Composer({workspace,onClose,onSent,canDraftWithTwin=true,twinDraftingDisabled=false,onTwinRequired,presentation,example}:Props){
+function Composer({workspace,onClose,onSent,onCreateInvoice,backLabel='Back to chat',canDraftWithTwin=true,twinDraftingDisabled=false,onTwinRequired,presentation,example}:Props){
  const state=useSyncExternalStore(workspace.subscribe,workspace.snapshot,workspace.snapshot),[instruction,setInstruction]=useState(''),[editing,setEditing]=useState(false),[running,setRunning]=useState<Action|null>(null),[localError,setLocalError]=useState('');
  const [prices,setPrices]=useState<Record<number,RawField>>({}),[quantities,setQuantities]=useState<Record<number,RawField>>({}),[deliverables,setDeliverables]=useState<RawField|null>(null),inFlight=useRef(false),alive=useRef(false);
  const [download,setDownload]=useState<{file:File;href:string}|null>(null);
@@ -50,7 +51,7 @@ function Composer({workspace,onClose,onSent,canDraftWithTwin=true,twinDraftingDi
  async function run(action:Action,operation:()=>Promise<void>){
   if(inFlight.current||busy)return;inFlight.current=true;setRunning(action);setLocalError('');
   try{await operation();}
-  catch{if(alive.current)setLocalError(action==='send'?'The chat has not confirmed this send. Check the conversation before trying again.':action==='generate'?'Your Twin could not finish this draft. You can edit the details below.':action==='check'?'The chat could not be checked yet. Check again when you are connected.':'The PDF could not be prepared. Review the details and try again.');}
+  catch{if(alive.current)setLocalError(action==='create'?'Your invoice could not be created. Your draft is still here. Review the details and try again.':action==='send'?'The chat has not confirmed this send. Check the conversation before trying again.':action==='generate'?'Your Twin could not finish this draft. You can edit the details below.':action==='check'?'The chat could not be checked yet. Check again when you are connected.':'The PDF could not be prepared. Review the details and try again.');}
   finally{inFlight.current=false;if(alive.current)setRunning(null);}
  }
  function update(next:ProposalDraft){setLocalError('');workspace.updateDraft(next);}
@@ -62,7 +63,7 @@ function Composer({workspace,onClose,onSent,canDraftWithTwin=true,twinDraftingDi
  const error=localError||readableError(state.error);
  const preview=()=>void run('preview',async()=>{if(!valid.draft)return;workspace.updateDraft(valid.draft);await workspace.preview();if(alive.current)setEditing(false);});
  return <Sheet presentation={presentation} title={state.phase==='sent'?'Shared in chat':kind==='invoice'?'Create invoice':'Create proposal'} onClose={onClose} className="bank-proposal-sheet"><div className="bank-proposal-composer">
-  <button type="button" className="bank-proposal-back" onClick={onClose}><ArrowLeft size={14} aria-hidden="true"/>Back to chat</button>
+  <button type="button" className="bank-proposal-back" onClick={onClose}><ArrowLeft size={14} aria-hidden="true"/>{backLabel}</button>
   {example&&<p className="bank-proposal-note">Scripted example · Edit and download a plain draft. Nothing is sent, signed or charged.</p>}
   <p className="bank-proposal-client">For <strong>{state.clientName||'this conversation'}</strong></p>
   {state.phase==='unknown'?<section className="bank-proposal-outcome" role="status"><FileText size={25} aria-hidden="true"/><h3>Send not confirmed</h3><p>This {kind} may already be in the conversation. Check chat before creating another.</p><button type="button" className="secondary-button" disabled={busy} onClick={()=>void run('check',()=>workspace.check())}>{running==='check'?'Checking chat…':'Check chat'}</button></section>
@@ -77,10 +78,10 @@ function Composer({workspace,onClose,onSent,canDraftWithTwin=true,twinDraftingDi
     </article>
     {href&&<details className="bank-proposal-generated-pdf" open><summary>Branded PDF</summary><Suspense fallback={<p role="status">Opening PDF…</p>}><Pdf url={href} title={previewDraft.title}/></Suspense></details>}
     <div className="bank-proposal-review-tools"><button type="button" disabled={busy} onClick={()=>setEditing(true)}>Edit details</button>{href&&pdf&&<a href={href} download={pdf.name}><Download size={14} aria-hidden="true"/>Download draft PDF</a>}</div>
-    <p className="bank-proposal-note">{example?'This plain example file is not an agreement, payment request or verified Original. ':''}{(state.proposal?.source.hasEarlier??state.hasEarlier)?'Your Twin uses recent excerpts; the full history stays in this chat. ':''}Review the scope, prices and terms before sharing.</p><button type="button" className="primary-button" disabled={busy} onClick={()=>example?example.onAddToConversation():void run('send',()=>workspace.send())}>{example?'Add to example conversation':'Send '+kind}<ArrowUpRight size={16} aria-hidden="true"/></button>
+    <p className="bank-proposal-note">{example?'This plain example file is not an agreement, payment request or verified Original. ':''}{(state.proposal?.source.hasEarlier??state.hasEarlier)?'Your Twin uses recent excerpts; the full history stays in this chat. ':''}Review the scope, prices and terms before sharing.</p><button type="button" className="primary-button" disabled={busy} onClick={()=>example?example.onAddToConversation():onCreateInvoice&&state.proposal&&state.pdf?void run('create',()=>onCreateInvoice({proposal:state.proposal!,pdf:state.pdf!})):void run('send',()=>workspace.send())}>{example?'Add to example conversation':onCreateInvoice?'Create invoice':'Send '+kind}<ArrowUpRight size={16} aria-hidden="true"/></button>
    </>:<>
     {state.branding&&<details className="bank-proposal-instructions"><summary>From {state.branding.issuerName} · {state.branding.clientName?'To '+state.branding.clientName:'Add recipient'}</summary><p className="bank-proposal-note">{example?'Fictional example details. Edit them for this local draft.':'Prefilled from held profile and matching contact details. Review every detail; missing information stays blank.'}</p><div className="bank-proposal-parties"><label className="bank-proposal-field"><span>Your business</span><input aria-label="Your business name" maxLength={160} value={state.branding.issuerName} disabled={busy} onChange={event=>workspace.updateBranding({...state.branding!,issuerName:event.target.value})}/></label><label className="bank-proposal-field"><span>Addressed to</span><input aria-label="Recipient name" maxLength={160} value={state.branding.clientName} disabled={busy} onChange={event=>workspace.updateBranding({...state.branding!,clientName:event.target.value})}/></label><label className="bank-proposal-field"><span>Business details</span><textarea aria-label="Business details" maxLength={1200} rows={3} value={state.branding.issuerDetails} disabled={busy} onChange={event=>workspace.updateBranding({...state.branding!,issuerDetails:event.target.value})}/></label><label className="bank-proposal-field"><span>Recipient details</span><textarea aria-label="Recipient details" maxLength={1200} rows={3} value={state.branding.clientDetails} disabled={busy} onChange={event=>workspace.updateBranding({...state.branding!,clientDetails:event.target.value})}/></label></div></details>}
-    <div className="bank-proposal-draft-tools"><label className="bank-proposal-field"><span>Document type</span><select aria-label="Document type" value={draft.kind} disabled={busy} onChange={event=>update({...draft,kind:event.target.value as ProposalDraft['kind']})}><option value="proposal">Proposal</option><option value="invoice">Invoice</option></select></label>
+    <div className="bank-proposal-draft-tools"><label className="bank-proposal-field"><span>Document type</span><select aria-label="Document type" value={draft.kind} disabled={busy||!!onCreateInvoice} onChange={event=>update({...draft,kind:event.target.value as ProposalDraft['kind']})}><option value="proposal">Proposal</option><option value="invoice">Invoice</option></select></label>
      <button type="button" className="bank-proposal-twin" disabled={busy||!state.sourceCount||twinDraftingDisabled} onClick={()=>{if(twinDraftingDisabled)return;if(!canDraftWithTwin){onTwinRequired?.(instruction.trim()||'Draft a '+draft.kind+' for '+state.clientName);return;}setPrices({});setQuantities({});setDeliverables(null);void run('generate',()=>workspace.generate(draft.kind,instruction.trim()||undefined));}}><Sparkles size={16} aria-hidden="true"/>Draft with your Twin</button>
     </div>
     <p className="bank-proposal-note">{example?'The example uses the selected fictional brief and a scripted Twin response.':state.sourceCount?`${state.sourceCount} recent messages available for your Twin.`:'No messages are available to draft from. You can write the details below.'}{state.hasEarlier?' Your Twin uses recent excerpts; the full history stays in this chat.':''}</p>

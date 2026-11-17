@@ -8,7 +8,7 @@ import type {ProposalDraft} from './proposal-draft';
 export {proposalTotal,readEditableProposalDraft,readProposalDraft,readGeneratedProposalDraft} from './proposal-draft';
 export type {ProposalItem,ProposalDraft} from './proposal-draft';
 export type ProposalSource=Readonly<{messageIds:readonly string[];digest:string;hasEarlier:boolean}>;
-export type ProposalIssuer=Readonly<{userId:string;name:string;username:string;email?:string;website?:string}>;
+export type ProposalIssuer=Readonly<{userId:string;name:string;username:string;ownerReceizId?:string;email?:string;website?:string}>;
 export type ChatProposal=Readonly<{schema:'bankeiz.chat.proposal.v1';id:string;conversationId:string;createdAt:string;issuer:ProposalIssuer;recipients:readonly string[];draft:ProposalDraft;source:ProposalSource;fixedSale:FixedSale;branding?:DocumentBranding}>;
 export type ProposalEvent=Readonly<{schema:'bankeiz.chat.proposal-event.v1';proposalId:string;proposalDigest:string;conversationId:string;kind:'accepted'|'declined'|'withdrawn'|'delivery'|'received';note?:string}>;
 const PREFIX='Bankeiz proposal\n',EVENT='Bankeiz proposal update\n';
@@ -22,7 +22,7 @@ export function createChatProposal(input:Omit<ChatProposal,'schema'>|ChatProposa
  if(!object(input))return fail();exact(input,['schema','id','conversationId','createdAt','issuer','recipients','draft','source','fixedSale','branding']);
  if(Object.hasOwn(input,'branding'))readDocumentBranding(input.branding);
  if('schema'in input&&input.schema!==undefined&&input.schema!=='bankeiz.chat.proposal.v1'||!UUID.test(input.id)||!UUID.test(input.conversationId)||!instant(input.createdAt)||!object(input.issuer)||!UUID.test(String(input.issuer.userId))||!text(input.issuer.name,160)||!text(input.issuer.username,24)||!/^[a-z0-9_]{3,24}$/.test(input.issuer.username)||!Array.isArray(input.recipients)||!input.recipients.length||input.recipients.length>49||input.recipients.some(id=>!UUID.test(id)||id===input.issuer.userId)||new Set(input.recipients).size!==input.recipients.length)return fail();
- exact(input.issuer,['userId','name','username','email','website']);if(input.issuer.email!==undefined&&!text(input.issuer.email,254)||input.issuer.website!==undefined&&!text(input.issuer.website,2048))return fail();
+ exact(input.issuer,['userId','name','username','ownerReceizId','email','website']);if(input.issuer.ownerReceizId!==undefined&&!text(input.issuer.ownerReceizId,240)||input.issuer.email!==undefined&&!text(input.issuer.email,254)||input.issuer.website!==undefined&&!text(input.issuer.website,2048))return fail();
  const draft=readProposalDraft(input.draft),source=input.source;if(!object(source)||!Array.isArray(source.messageIds)||source.messageIds.length>300||source.messageIds.some(id=>!UUID.test(String(id)))||new Set(source.messageIds).size!==source.messageIds.length||!HEX.test(String(source.digest))||typeof source.hasEarlier!=='boolean')return fail();exact(source,['messageIds','digest','hasEarlier']);
  if(!object(input.fixedSale)||!HEX.test(String(input.fixedSale.digest)))return fail();const {digest,...fields}=input.fixedSale;readFixedSaleFields(fields);
  if(input.fixedSale.recipientUserId!==input.issuer.userId||input.fixedSale.username!==input.issuer.username||input.fixedSale.saleId!==input.id||input.fixedSale.amountUsdCents!==proposalTotal(draft.items))return fail();

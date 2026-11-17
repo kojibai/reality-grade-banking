@@ -1,0 +1,16 @@
+import {lazy,Suspense,useEffect,useRef,useState} from 'react';
+import {ArrowLeft,LockKeyhole} from 'lucide-react';
+import {BankMark} from '../components/BankMark';
+import {InvoiceView} from './InvoiceView';
+import {knownInvoiceLink,readInvoiceLink} from '../receiz/invoice-sharing';
+import type {InvoiceSource} from '../receiz/invoice-source';
+import type {CheckoutReceipt} from '../receiz/checkout-state';
+import './invoice.css';
+const Payment=lazy(()=>import('./InvoicePayment').then(module=>({default:module.InvoicePayment})));
+export function InvoicePage({href}:{href:string}){
+ const [source,setSource]=useState<InvoiceSource|null>(()=>knownInvoiceLink(href)),[error,setError]=useState(''),[payment,setPayment]=useState(false),[receipt,setReceipt]=useState<CheckoutReceipt|null>(null);
+ useEffect(()=>{let current=true;if(!source)void readInvoiceLink(href).then(value=>{if(current)setSource(value);}).catch(()=>{if(current)setError('This invoice could not be opened. Use the original invoice link or ask the sender to share it again.');});return()=>{current=false;};},[href]);
+ const paymentPanel=useRef<HTMLElement>(null);useEffect(()=>{if(payment){paymentPanel.current?.focus({preventScroll:true});paymentPanel.current?.scrollIntoView({block:'start',behavior:'instant'});}},[payment]);
+ const recipient=source?.proposal.recipients.length===1?source.proposal.recipients[0]:null,conversation=source&&recipient?`/?${new URLSearchParams({bankNotification:'1',conversation:source.proposal.conversationId,recipient})}#account/messages`:null;
+ return <div className="invoice-shell"><header className="invoice-header"><a className="invoice-logo" href="/" aria-label="Bankeiz home"><BankMark/><span>Bankeiz</span></a><span><LockKeyhole size={12}/>Invoice payment</span></header>{source?<>{source.offlineRetained===false&&<p className="invoice-notice" role="status">Your original invoice is open. This device could not save an offline copy; download the original PDF to keep it.</p>}<InvoiceView source={source} onPay={!payment&&!receipt?()=>setPayment(true):undefined}/>{payment&&<section ref={paymentPanel} tabIndex={-1} aria-label="Invoice payment options"><button type="button" className="invoice-payment-back" onClick={()=>setPayment(false)}><ArrowLeft size={14}/>Back to invoice</button><Suspense fallback={<p role="status" className="invoice-notice">Opening payment options…</p>}><Payment source={source} onPaid={setReceipt}/></Suspense></section>}{receipt&&!payment&&<p className="invoice-notice" role="status">Payment recorded. Open your payment options to view the saved receipt.</p>}{receipt&&!payment&&<button className="secondary-button" onClick={()=>setPayment(true)}>View payment receipt</button>}{conversation&&<a className="invoice-conversation" href={conversation}>Open client conversation<ArrowLeft size={10}/></a>}</>:<main className="invoice-opening"><span className="invoice-eyebrow">Your invoice</span><h1>{error?'Your invoice link needs checking.':'Review your invoice.'}</h1><p role="status">{error||'Opening the original invoice and its exact payment details.'}</p>{error&&<a href="/">Open Bankeiz</a>}</main>}<footer className="invoice-footer"><p>One invoice. A direct payment.</p><a href="/business/invoices/">Invoices with Bankeiz</a></footer></div>;
+}

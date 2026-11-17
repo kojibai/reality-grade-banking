@@ -58,6 +58,8 @@
     }
   ],
   "rewrites": [
+    {"source":"/invoice/view/","destination":"/invoice/view.html"},
+    {"source":"/invoice/view","destination":"/invoice/view.html"},
     {
       "source": "/assets/:file",
       "destination": "/api/runtime-asset?file=:file"

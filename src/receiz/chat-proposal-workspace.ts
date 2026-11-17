@@ -11,6 +11,12 @@ export type ChatProposalWorkspaceState=Readonly<{phase:'idle'|'drafting'|'review
 const blank=():ProposalDraft=>({kind:'proposal',title:'',summary:'',items:[{description:'',quantity:'1',unitPriceUsdCents:''}],deliverables:[],timeline:'',terms:''});
 const schema='bankeiz.proposal-composer.v1';
 function errorText(cause:unknown){const code=cause instanceof Error?cause.message:'';if(code==='PROPOSAL_CONTEXT_CHANGED')return 'Return to this chat to continue your draft.';if(code==='PROPOSAL_REVIEW_REQUIRED')return 'Preview the complete proposal before sending.';if(code==='PROPOSAL_MESSAGE_CAPACITY'||code==='CHAT_MESSAGE_SIZE')return 'This proposal is too long to send together. Shorten the terms and preview again.';if(code.startsWith('CHAT_PROPOSAL_DRAFT'))return 'Your draft could not be saved. Keep this chat open and shorten the draft before continuing.';if(code.startsWith('PROPOSAL_'))return 'Review the title, scope and prices, then preview again.';return code||'This draft needs attention. Your conversation is still here.';}
+export function invoiceRecipients(conversation:ChatConversation,ownerUid:string):string[]{
+ const peers=conversation.members.filter(p=>p.kind==='user'&&p.userId!==ownerUid).map(p=>p.userId),channel=conversation.emailChannel,correspondent=conversation.emailCorrespondent;
+ if(!channel)return [...new Set(peers)];
+ if(!['receiz.chat.email-channel.v1','receiz.chat.email-channel.v2'].includes(channel.schema)||channel.ownerUserId!==ownerUid||channel.correspondentUserId===ownerUid||correspondent&&(correspondent.kind!=='user'||correspondent.userId===ownerUid)||channel.correspondentUserId&&correspondent&&channel.correspondentUserId!==correspondent.userId)throw Error('PROPOSAL_RECIPIENT_REQUIRED');
+ const uid=channel.correspondentUserId??correspondent?.userId??(peers.length===1?peers[0]:null);if(!uid)throw Error('PROPOSAL_RECIPIENT_REQUIRED');return [uid];
+}
 export function createChatProposalWorkspace(input:{identity:OpenIdentity;api:NativeMessaging;conversation:ChatConversation;parties?:DocumentBranding;isCurrent():boolean}){
  const {identity,api,conversation}=input,listeners=new Set<()=>void>();let version=0,operation=false,proposalId:string=crypto.randomUUID();
  let state:ChatProposalWorkspaceState={phase:'idle',branding:input.parties?readDocumentBranding(input.parties):undefined,draft:blank(),proposal:null,pdf:null,sentMessage:null,error:'',clientName:conversation.title,sourceCount:0,hasEarlier:false};
@@ -40,21 +46,26 @@ export function createChatProposalWorkspace(input:{identity:OpenIdentity;api:Nat
   });},
   preview(){return run(async()=>{if(state.phase==='unknown')return;const revision=version,draft=readProposalDraft(state.draft);publish({phase:'preparing',error:''});
    const username=await identity.prepareReceivingUsername?.();assert();if(!username)throw Error('PROPOSAL_PROFILE_REQUIRED');const owner=identity.knownProfile?.();if(owner&&owner.userId!==api.accountUid)throw Error('PROPOSAL_CONTEXT_CHANGED');
-   const members=conversation.members.filter(p=>p.kind==='user'&&p.userId!==api.accountUid),recipients=members.map(p=>p.userId);if(!recipients.length)throw Error('PROPOSAL_RECIPIENT_REQUIRED');
+   const recipients=invoiceRecipients(conversation,api.accountUid);if(!recipients.length)throw Error('PROPOSAL_RECIPIENT_REQUIRED');
    const source=generatedSource??await snapshotSource();
    const fixedSale=await createFixedSale({schema:'bank.fixed-checkout.v1',saleId:proposalId,recipientUserId:api.accountUid,username,currency:'usd',amountUsdCents:proposalTotal(draft.items)});
-   const proposal=createChatProposal({id:proposalId,conversationId:conversation.id,createdAt:new Date().toISOString(),issuer:{userId:api.accountUid,name:state.branding?.issuerName??owner?.displayName??username,username},recipients,draft,source,fixedSale,...state.branding?{branding:state.branding}:{}});proposalMessageBody(proposal);
+   const proposal=createChatProposal({id:proposalId,conversationId:conversation.id,createdAt:new Date().toISOString(),issuer:{userId:api.accountUid,name:state.branding?.issuerName??owner?.displayName??username,username,...(draft.kind==='invoice'&&identity.binding?.artifactOwnerReceizId?{ownerReceizId:identity.binding.artifactOwnerReceizId}:{})},recipients,draft,source,fixedSale,...state.branding?{branding:state.branding}:{}});proposalMessageBody(proposal);
    const [{buildProposalPdf},{bindProposalDocument}]=await Promise.all([import('./proposal-pdf'),import('./proposal-document')]);
    const bytes=await buildProposalPdf({title:draft.title,kind:draft.kind,reference:proposal.id,issuer:{name:proposal.issuer.name,details:proposal.branding?.issuerDetails},client:{name:proposal.branding?.clientName??conversation.title,details:proposal.branding?.clientDetails},summary:draft.summary,items:draft.items,deliverables:draft.deliverables,timeline:draft.timeline,terms:draft.terms,totalUsdCents:fixedSale.amountUsdCents,createdAt:proposal.createdAt});
    const pdf=await bindProposalDocument(bytes,proposal);assert();if(revision!==version)return;publish({phase:'ready',proposal,pdf});persist();
   });},
-  send(){return run(async()=>{if(state.phase!=='ready'||!state.proposal||!state.pdf)throw Error('PROPOSAL_REVIEW_REQUIRED');const p=state.proposal,pdf=state.pdf;publish({phase:'sending',error:''});
+  send(original?:File){return run(async()=>{if(state.phase==='unknown')return;if(original){
+    const {openInvoiceOriginal}=await import('./invoice-source'),source=await openInvoiceOriginal(original);assert();const p=source.proposal;
+    if(p.conversationId!==conversation.id||p.issuer.userId!==api.accountUid||source.ownerReceizId!==identity.binding.artifactOwnerReceizId||identity.walletReceivingAddress?.()&&identity.walletReceivingAddress()!==api.accountUid||JSON.stringify([...p.recipients].sort())!==JSON.stringify(invoiceRecipients(conversation,api.accountUid).sort()))throw Error('PROPOSAL_CONTEXT_CHANGED');
+    proposalId=p.id;generatedSource=p.source;publish({phase:'ready',proposal:p,pdf:original,draft:p.draft,branding:p.branding});
+   }if(state.phase!=='ready'||!state.proposal||!state.pdf)throw Error('PROPOSAL_REVIEW_REQUIRED');const p=state.proposal,pdf=state.pdf;publish({phase:'sending',error:''});
    if(!identity.merchantCounter)throw Error('PROPOSAL_CHECKOUT_UNAVAILABLE');const counter=await identity.merchantCounter(),sale=await counter.request(p.id,p.fixedSale.amountUsdCents);assert();if(sale.request.digest!==p.fixedSale.digest)throw Error('PROPOSAL_CHECKOUT_CHANGED');
-   attemptStage='upload';publish({phase:'unknown'});await persistRequired();assert();const attachment=await api.uploadAttachment(conversation.id,pdf);assert();
+   attemptStage='upload';publish({phase:'unknown'});await persistRequired();assert();const attachment=await (original?api.uploadAttachment(conversation.id,pdf,undefined,{preserveOriginal:true}):api.uploadAttachment(conversation.id,pdf));assert();
+   if(original){const {openInvoiceOriginal}=await import('./invoice-source'),source=await openInvoiceOriginal(original);assert();if(attachment.sha256Hex!==source.artifactSha256||attachment.size!==original.size)throw Error('PROPOSAL_DOCUMENT_TERMS_CHANGED');}
    // Retain the exact attempted terms before POST. A lost response can only be
    // reconciled by reading this conversation, never by automatically sending.
    attemptStage='send';publish({phase:'unknown'});await persistRequired();assert();let sent:ChatMessage;try{const response=await api.send(conversation.id,proposalMessageBody(p),{attachment});if(!response)throw new MessagingError('CHAT_SEND_OUTCOME_UNKNOWN',true);sent=response;}catch(cause){if(!(cause instanceof MessagingError)||cause.ambiguous){publish({phase:'unknown',error:'The send result is not confirmed. Check this chat before doing anything again.'});return;}publish({phase:'error'});persist();throw cause;}
-   const admitted=readChatProposal(sent);if(!admitted||await proposalContentDigest(admitted)!==await proposalContentDigest(p)){publish({phase:'unknown',error:'Check this chat for the original send result.'});return;}
+   const admitted=readChatProposal(sent);if(!admitted||await proposalContentDigest(admitted)!==await proposalContentDigest(p)||original&&(sent.walletTransfer?.kind!=='chat_attachment'||sent.walletTransfer.sha256Hex!==attachment.sha256Hex)){publish({phase:'unknown',error:'Check this chat for the original send result.'});return;}
    // NativeMessaging already retains the admitted result in its originating
    // conversation, even if the view closed while the request was in flight.
    publish({phase:'sent',sentMessage:sent,error:''});clearComposer();

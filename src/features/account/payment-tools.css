@@ -16,3 +16,5 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.payment-tools-code textarea{font-size:16px}}
+
+.receive-top-actions:has(>.receive-invoice-action){display:flex;flex-wrap:wrap;justify-content:flex-start;gap:7px 19px}.receive-invoice-action{white-space:nowrap}

@@ -28,6 +28,7 @@ import {generatedRuntimeAssets} from './generated-runtime-assets.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fixedResources = [
   ...publicIllustrations.flatMap(image=>[image.src,...[384,640].map(width=>image.src.replace('.webp',`-${width}.webp`))]),
+  '/native/invoice-source.v129.mjs', '/native/invoice-source.v129.manifest.json',
   '/native/vault.v1.mjs', '/native/vault.v1.manifest.json',
   '/snarkjs.min.js',
   '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
@@ -67,6 +68,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   visit('index.html');
   if(manifest['vault/index.html']){visit('vault/index.html');urls.add('/vault/index.html');}
   if(manifest['pay/checkout.html']){visit('pay/checkout.html');urls.add('/pay/checkout.html');}
+  if(manifest['invoice/view.html']){visit('invoice/view.html');urls.add('/invoice/view.html');}
   if (manifest['verify/index.html']) { visit('verify/index.html'); urls.add('/verify/'); }
   if (manifest['receipt/index.html']) {visit('receipt/index.html');urls.add('/receipt/');}
   if (manifest['ledger/index.html']) {visit('ledger/index.html');urls.add('/ledger/index.html');}
@@ -93,6 +95,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
   if(manifest['vault/index.html'])pages['/vault/index.html']='/vault/index.html';
   if(manifest['pay/checkout.html'])pages['/pay/checkout.html']='/pay/checkout.html';
+  if(manifest['invoice/view.html'])for(const path of ['/invoice/view/','/invoice/view','/invoice/view.html'])pages[path]='/invoice/view.html';
   if (manifest['verify/index.html']) { pages['/verify/'] = '/verify/'; pages['/verify'] = '/verify/'; }
   if (manifest['receipt/index.html']) pages['/receipt/']='/receipt/';
   if (manifest['ledger/index.html']) {pages['/ledger/']='/ledger/index.html';pages['/ledger']='/ledger/index.html';}
