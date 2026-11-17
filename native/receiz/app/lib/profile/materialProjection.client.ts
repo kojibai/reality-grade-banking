@@ -768,7 +768,9 @@ export async function readHeldImportedProfileOriginalMaterial(
     const carried=knownSource??(preparing?(await preparing).source:undefined);
     const source=carried??await createImportedProofSourceCustody().readHeld(reference);if(!source)throw new TypeError("IMPORTED_SOURCE_LOCAL_PRESENTATION_UNAVAILABLE");
     requireOpenedImportedProofSource(source);
-    if(source.descriptor.artifactSha256!==reference.artifactSha256||source.descriptor.byteLength!==reference.byteLength||source.descriptor.filename!==reference.filename||source.descriptor.mimeType!==reference.mimeType)throw new TypeError("IMPORTED_SOURCE_RESOURCE_BINDING_INVALID");
+    // The canonical Source binds exact bytes. Transport labels do not change
+    // those bytes or outrank an already admitted Source used by another role.
+    if(source.descriptor.artifactSha256!==reference.artifactSha256||source.descriptor.byteLength!==reference.byteLength)throw new TypeError("IMPORTED_SOURCE_RESOURCE_BINDING_INVALID");
     let payload=source.payload,filename=source.projection.payloadFilename,mime=source.projection.payloadMimeType,sha256=source.projection.payloadSha256;
     if(selection.file!==undefined){
       const file=source.projection.bankAsset?.composer?.files.find(file=>file.id===selection.file),body=file?source.composerResources?.[file.id]:undefined;

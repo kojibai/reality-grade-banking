@@ -3,6 +3,7 @@ import {
   type ReceizConstitutionJson,
 } from "./constitution.js";
 import { digestReceizAuthority } from "./authorityEncoding.js";
+import { sourceJsonDigestBasis } from "./sourceJsonDigestBasis.js";
 import {
   verifyReceizArtifactAdmission,
   verifyReceizArtifactAdmissionRegistryEvidence,
@@ -228,7 +229,7 @@ function assertEvent(value: unknown): asserts value is ReceizProofHistoryEvent {
 }
 
 function nodeBasis(node: Omit<ReceizProofHistoryNode, "nodeDigest">): ReceizConstitutionJson {
-  return node as unknown as ReceizConstitutionJson;
+  return sourceJsonDigestBasis(node) as ReceizConstitutionJson;
 }
 
 function compareNodes(left: ReceizProofHistoryNode, right: ReceizProofHistoryNode): number {
@@ -763,7 +764,7 @@ export async function normalizeReceizProofHistory(input: {
   } as const;
   return deepFreeze({
     ...historyBasis,
-    historyDigest: await digestReceizAuthority("history", "receiz.proof-history.v111", historyBasis),
+    historyDigest: await digestReceizAuthority("history", "receiz.proof-history.v111", sourceJsonDigestBasis(historyBasis)),
   });
 }
 

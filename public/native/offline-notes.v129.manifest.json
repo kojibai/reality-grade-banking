@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.5.0",
-  "moduleSha256": "0e6951126ec89d1f4e61788f8a9967cac0a907e30fc1450584cbe061d38ee727",
-  "sourceTreeSha256": "39c5fef9b58b310c1d507349c16c3a53b448f210865615eb052fc9b792fef2e2",
-  "inputs": 314,
-  "bytes": 2472114,
+  "moduleSha256": "a6f5c5c305fdc2e34e83f19574d27360b8de0316b8b1f2923080de4b785fa7e5",
+  "sourceTreeSha256": "e335090cda0ab88d18d692c63b01278fbe4471365bb34910f63428aa04396bc4",
+  "inputs": 315,
+  "bytes": 2472242,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1869,6 +1869,118 @@
       "baseSha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
       "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
       "purpose": "Reuse the exact SDK-issued frozen history and its mechanically generated sealing closure; preserve all unissued input checks and immutable history."
+    },
+    {
+      "id": "bankeiz-held-source-resource-transport-labels",
+      "path": "receiz/app/lib/profile/materialProjection.client.ts",
+      "baseSha256": "6a3526ae46fed6da07d51f03644e4731935c2dbe2e851f2c0c6e01be847de842",
+      "sha256": "9bf257b71e1c3306f139a965fe555ffa0950002f266957874e9bfc0322b7016c",
+      "purpose": "Reuse exact canonically admitted Source bytes across filename/MIME transport labels. Enclosing Source digest, exact byte length, selected public resource role, owner/admission and unknown/private-resource refusals remain enforced."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/artifactAdmission.ts",
+      "baseSha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f",
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "vault/packages/receiz-sdk/src/artifactAdmission.ts",
+      "baseSha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f",
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/artifactRecovery.ts",
+      "baseSha256": "ab0143728eb9e308751ce5c06282108c4767d0766563e6e5a9ea5686598261b8",
+      "sha256": "fbc103d91550b82849c2adc769017787f93cc52a35e47b5ce85c796aeff24932",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/offlineSealImplementation.js",
+      "baseSha256": "51738c79ff02122735bb0666a231dcc8ee9baa8f3adf904f3f05a8b1e7164a2e",
+      "sha256": "7dd457611d9c618a83882b44bd85612d7df235775b6ba92706bc77c561005394",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "vault/packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/sourceCarriedReplay.ts",
+      "baseSha256": "8ab7e11ff5991c5868fbe2616a88c485894058f593916a33244132795b6c059a",
+      "sha256": "75b93bd62e908416e39673cef1648942650d37a717f86da2778e1619b161dfa0",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "baseSha256": null,
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "vault/packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "baseSha256": null,
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/v124ReplayProofObject.ts",
+      "baseSha256": "f8a739259648955f3b0a4ccfc3448c953d49fcddb1ff652aa1cca9c14c1f25e6",
+      "sha256": "a16649806ad983ce251d5e63251c5e39c2885779363f208ecca3f8a3e4abc947",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "receiz-129-5-held-source-established-projection-reuse",
+      "path": "receiz/packages/receiz-sdk/src/v125SubjectSourceFamily.ts",
+      "baseSha256": "a956ff72deaa6be1f89082ad48a978bcdfc6d4cd20af2db60fc8b229ea3ad662",
+      "sha256": "59c160bdd4cfe984019fcb7455a82c26c74659ce31fe7f6cdb5453189a5c89d2",
+      "purpose": "Reuse qualified held Source projections, admitted identity/history and exact JSON digest operands through existing private issuer guards; preserve all new-input proof, privacy, ownership and history checks."
+    },
+    {
+      "id": "bankeiz-held-source-resource-transport-labels",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "2f975473841ccbda2da3613835dab256edace7e2010efd4b037ee6da73b44367",
+      "sha256": "59d0f5dd275bb8fc82702eafd66637a935a63e99dfcd536a3061f77ee3da7ca8",
+      "purpose": "Reuse exact existing Source block-root custody before transport filename/MIME metadata; retain canonical enclosing Source, digest/length, public resource role and private/unknown-resource refusals."
+    },
+    {
+      "id": "receiz-129-5-held-source-descriptor-before-deduplication",
+      "path": "receiz/packages/receiz-sdk/src/sourceCarriedReplay.ts",
+      "baseSha256": "75b93bd62e908416e39673cef1648942650d37a717f86da2778e1619b161dfa0",
+      "sha256": "d46dbf062f735897af36f02ae611c516e6a2a556eb1a1f79db1e7641f477521f",
+      "purpose": "Run the existing complete replay Source descriptor parser before reusing known exact Source bytes, preserving malformed-input refusals and valid renamed-label continuity without proof replay."
+    },
+    {
+      "id": "receiz-129-5-issued-source-before-decoder-reuse",
+      "path": "receiz/packages/receiz-sdk/src/sourceCarriedReplay.ts",
+      "baseSha256": "d46dbf062f735897af36f02ae611c516e6a2a556eb1a1f79db1e7641f477521f",
+      "sha256": "459ec7d1812a6f6d52aa6ca6abe308127d870e43eadb327ab02a02a9af7a819d",
+      "purpose": "Reuse the exact immutable SDK-issued artifact through its existing private registry before optional transport decoding; keep ordinary descriptor parsing, mismatch and unknown-wrapper refusals unchanged."
+    },
+    {
+      "id": "receiz-129-5-issued-source-before-decoder-reuse",
+      "path": "receiz/packages/receiz-sdk/src/v124ReplayProofObject.ts",
+      "baseSha256": "a16649806ad983ce251d5e63251c5e39c2885779363f208ecca3f8a3e4abc947",
+      "sha256": "2f37b761cb5c9204e9217a18d1d8c1697a7ccb624ba1171e7716a6ec9707fa62",
+      "purpose": "Reuse the exact immutable SDK-issued artifact through its existing private registry before optional transport decoding; keep ordinary descriptor parsing, mismatch and unknown-wrapper refusals unchanged."
     }
   ]
 }

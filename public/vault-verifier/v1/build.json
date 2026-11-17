@@ -836,7 +836,7 @@
     },
     {
       "path": "native/receiz/packages/receiz-sdk/src/artifactAdmission.ts",
-      "sha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f"
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a"
     },
     {
       "path": "native/receiz/packages/receiz-sdk/src/artifactAdmissionTypes.ts",
@@ -940,7 +940,7 @@
     },
     {
       "path": "native/receiz/packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d"
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc"
     },
     {
       "path": "native/receiz/packages/receiz-sdk/src/registryArtifact.ts",
@@ -953,6 +953,10 @@
     {
       "path": "native/receiz/packages/receiz-sdk/src/releaseIdentity.ts",
       "sha256": "bb2bd2855e307bd030e257d9181a5a8ae0ca7992436f6640d49d1e6b0d8f0ade"
+    },
+    {
+      "path": "native/receiz/packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0"
     },
     {
       "path": "native/receiz/packages/receiz-sdk/src/v114Registry.generated.ts",
@@ -1088,27 +1092,27 @@
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
-      "sha256": "f19c4c508e9416602b6cda0a6ca670cb159486bfb17339378d89dbb5dbcfdd89"
+      "sha256": "d51987e83d000a56a2da9795acaf0fb268a05ba259ba44389ffc3732f19ff685"
     },
     {
       "path": "public/native/offline-notes.v129.mjs",
-      "sha256": "0e6951126ec89d1f4e61788f8a9967cac0a907e30fc1450584cbe061d38ee727"
+      "sha256": "a6f5c5c305fdc2e34e83f19574d27360b8de0316b8b1f2923080de4b785fa7e5"
     },
     {
       "path": "public/native/receiver-verifier.v129.manifest.json",
-      "sha256": "fa6c82b7260d7220fc80189044c62c962aa51c6daa4aad2214067193b5374da2"
+      "sha256": "245122d5e8914725bbfc6d6766b8cb278329f2ba90af1b334215ac0d5d580d04"
     },
     {
       "path": "public/native/receiver-verifier.v129.mjs",
-      "sha256": "70b797b8aaaa2316747c3d9cc2d43255cb83b1ae4a089bc1c2b82e1cd90ecd90"
+      "sha256": "e4b0d2fce1ca5ef63549e0e7ff5c4311fe0c465214831de31c45ad292389687c"
     },
     {
       "path": "public/native/vault.v1.manifest.json",
-      "sha256": "c8df60f4a852f5938ab3f1dc28ca55f10c9bd6afe2e6090cb1d9305a811383cc"
+      "sha256": "35fd7b797c0df019576f33bb825047f81bc257a92fda240a3364b86b4af0bdf2"
     },
     {
       "path": "public/native/vault.v1.mjs",
-      "sha256": "ee65f4171c0ebd9ab384d884464ef79159b1cacf7ab708343e11976023913eb4"
+      "sha256": "a6c5e05df105a81ddc10e6f25d511c351eeef3b56337f05219ec3e4e49c8b6ad"
     },
     {
       "path": "src/core/money.ts",
@@ -1385,20 +1389,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "1fcb41da008a0044aaef8e7a2e1accce8282c3ee79a4d532fd51c9fdcebbfd02",
-      "bytes": 10648358
+      "sha256": "debf28db277d458d12d7e8536bc40632c15c661d502720c9f2a034aafdf97467",
+      "bytes": 10658087
     },
     "inspector.js.map": {
-      "sha256": "a96d4cd3acc99249951a216aaca3daeb464b9f5865bac49150fa562751eaccb4",
-      "bytes": 27810767
+      "sha256": "76b8c0f44c91f5afd862c52ce25d69dc3baf38ecf425283f3e8faec2c07d5c36",
+      "bytes": 27825224
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "6b313ead404ee916775bb87b519536c2ae300564830c849e780838c5e2b1a9b0",
-      "bytes": 10653208
+      "sha256": "286073f260f4c9c60019e86492972ef03e1c70e232ac24414ecefa8c9905d2e8",
+      "bytes": 10662937
     },
     "README.txt": {
       "sha256": "69230c971b734b723cf1af67da1e32c3f97129f78860af2e951c6f059fb09ffc",

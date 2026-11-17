@@ -3,6 +3,7 @@ import {
   type ReceizConstitutionJson,
 } from "./constitution.js";
 import { digestReceizAuthority } from "./authorityEncoding.js";
+import { sourceJsonDigestBasis } from "./sourceJsonDigestBasis.js";
 import {
   authorityFailure,
   isReceizAuthorityFailure,
@@ -110,7 +111,7 @@ async function evidenceHistory(admission: ReceizVerifiedArtifactAdmission): Prom
 
 function recoveryPlanDigestBasis(plan: ReceizArtifactRecoveryPlan): unknown {
   const { planDigest: _planDigest, ...basis } = plan;
-  return basis;
+  return sourceJsonDigestBasis(basis);
 }
 
 function rejected(code: ReceizArtifactRecoveryCommitRejectionCode): ReceizAuthorityFailure {
@@ -296,7 +297,7 @@ export async function planReceizArtifactRecovery(
     verifierContextDigest: verifiedAdmission.admissionProof.verifierContextDigest,
     identityBindingDigest: verifiedAdmission.admissionProof.identityBindingDigest,
     historyVerificationDigest: history.verification.verificationDigest,
-    recoveredStateDigest: await digestReceizAuthority("state", "receiz.recovered-state.v111", recoveredState),
+    recoveredStateDigest: await digestReceizAuthority("state", "receiz.recovered-state.v111", sourceJsonDigestBasis(recoveredState)),
     assessmentsDigest: await digestReceizAuthority("admission", "receiz.admission-assessments.v112", verifiedAdmission.assessments),
     artifactId: verifiedAdmission.artifactId,
     requiredActorId: verifiedAdmission.profile === "identity"
@@ -319,7 +320,7 @@ export async function planReceizArtifactRecovery(
   };
   const plan = deepFreeze({
     ...basis,
-    planDigest: await digestReceizAuthority("plan", "receiz.artifact-recovery-plan.v111", basis),
+    planDigest: await digestReceizAuthority("plan", "receiz.artifact-recovery-plan.v111", sourceJsonDigestBasis(basis)),
   });
   sdkIssuedPlans.add(plan);
   return plan;

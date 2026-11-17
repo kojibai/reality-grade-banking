@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.5.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "70b797b8aaaa2316747c3d9cc2d43255cb83b1ae4a089bc1c2b82e1cd90ecd90",
-  "sourceMapSha256": "e36cae89a452d2a8fc5e19bb70aa1c6a65e1a6d4d7cf20a876908cb0ca56970c",
-  "sourceTreeSha256": "a4d2cd098a55ec636b4790d9dd783b5bb3e92b45825d6298d064d3d98a2962b3",
-  "bytes": 2099966,
+  "moduleSha256": "e4b0d2fce1ca5ef63549e0e7ff5c4311fe0c465214831de31c45ad292389687c",
+  "sourceMapSha256": "b62045ab4aa86869bf4e89fb4e33b237e647be1dde1d10d1211079a8328022a6",
+  "sourceTreeSha256": "4c1d98a99bef7403056d5bb9e509e3ade3f3ad9915e18420a1524bc6e15f9d56",
+  "bytes": 2100094,
   "inputs": [
     {
       "path": "receiz/packages/receiz-sdk/src/v124KaiBridge.generated.ts",
@@ -152,6 +152,10 @@
       "sha256": "8db4e2f6e0a51ef2757f2a91d0483fd8168668694a1d3f68884c3a48ad048f39"
     },
     {
+      "path": "receiz/packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0"
+    },
+    {
       "path": "receiz/packages/receiz-sdk/src/authorityResults.ts",
       "sha256": "5b2fc446e521aa1b47cf1eae8f9ad8034e4f62cf109ef8d43281005b12afecc1"
     },
@@ -229,7 +233,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d"
+      "sha256": "bd6069739812bee67f2fbdc86c0f80c1a2ac2db0c6cb9d657039c69d3b33a4bc"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/portableAsset.ts",
@@ -285,7 +289,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/artifactAdmission.ts",
-      "sha256": "32f346eac5d3d8cf51dfb0e343302438df435f6f69b869aaaa04e6a323bdd16f"
+      "sha256": "b45affc8773acae9fb77f34b26eb224f4da5e845ea8ef675640056c56fa0de1a"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/capabilityAuthority.ts",
@@ -417,7 +421,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v124ReplayProofObject.ts",
-      "sha256": "f8a739259648955f3b0a4ccfc3448c953d49fcddb1ff652aa1cca9c14c1f25e6"
+      "sha256": "2f37b761cb5c9204e9217a18d1d8c1697a7ccb624ba1171e7716a6ec9707fa62"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v123ProofAuthority.ts",
@@ -469,7 +473,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/artifactRecovery.ts",
-      "sha256": "ab0143728eb9e308751ce5c06282108c4767d0766563e6e5a9ea5686598261b8"
+      "sha256": "fbc103d91550b82849c2adc769017787f93cc52a35e47b5ce85c796aeff24932"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/admissionStore.ts",
@@ -589,7 +593,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v125SubjectSourceFamily.ts",
-      "sha256": "a956ff72deaa6be1f89082ad48a978bcdfc6d4cd20af2db60fc8b229ea3ad662"
+      "sha256": "59c160bdd4cfe984019fcb7455a82c26c74659ce31fe7f6cdb5453189a5c89d2"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v122Mandates.ts",
@@ -649,7 +653,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/sourceCarriedReplay.ts",
-      "sha256": "8ab7e11ff5991c5868fbe2616a88c485894058f593916a33244132795b6c059a"
+      "sha256": "459ec7d1812a6f6d52aa6ca6abe308127d870e43eadb327ab02a02a9af7a819d"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v1241Capabilities.ts",

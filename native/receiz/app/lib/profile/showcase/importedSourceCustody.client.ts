@@ -235,7 +235,12 @@ export function createImportedProofSourceCustody() {
       const known = admitted.get(key);
       if (known) return known;
       const record = await readRecord("sources", key) as CompleteSource | undefined;
-      if (!record) return null;
+      if (!record) {
+        // A transport label is not Source identity. Its carried exact root can
+        // reopen already held blocks through the existing canonical importer.
+        if (!await readRecord("segments", reference.bytes.sha256)) return null;
+        return this.reopen(reference, ref => this.resolveBlock(ref), options);
+      }
       const stored = parseImportedProofSourceReference(record.reference);
       if (record.key !== key || sourceKey(stored) !== key || !Array.isArray(record.segments)
         || record.segments.length === 0 || record.segments.length > reference.byteLength) throw new TypeError(`${PREFIX}_RECORD_INVALID`);
