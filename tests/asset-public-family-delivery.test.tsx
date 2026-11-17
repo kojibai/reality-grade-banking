@@ -23,13 +23,17 @@ it('retains delivered Source without carrying the obsolete saved-page readiness 
  expect(state).toMatchObject({status:'published',receipt:{status:'published',artifactDigest:pending.artifactDigest,operationCount:2,visibleChildCount:1}});
  expect(state).not.toHaveProperty('receipt.publicFamilyStatus');
 });
-it('retires duplicated local projections once both public surfaces carry the exact Source',()=>{
+it('retires duplicated display overlays while retaining the exact Source delivery and owner locator',()=>{
  adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,pending,hash);
  adoption.acceptDiscoveredPublicAssets(catalog());adoption.acceptDiscoveredProfileAssets(profile());
  expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published'});
  expect(adoption.admittedAssetPublicationDelivery(digest,'artist')).toMatchObject({status:'published'});
  adoption.mergeAdmittedPublicAssets(catalog());adoption.mergeAdmittedProfileAssets(profile());
- expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toBeNull();
+ expect(adoption.admittedAssetPublicationSignatureDelivery(digest,'artist')).toMatchObject({status:'published'});
+ expect(adoption.retainedAssetPublicationDigests(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
+ expect(adoption.admittedAssetPublicationItem(digest,'artist','owner')).toBeNull();
+ expect(adoption.mergeAdmittedPublicAssets(catalog()).items).toHaveLength(1);
+ expect(adoption.mergeAdmittedProfileAssets(profile()).items).toHaveLength(1);
 });
 it('does not let a page release replace the existing native Source acceptance',()=>{
  adoption.retainAssetPublicationAdmission(admission,owner);adoption.acknowledgeAssetPublication(digest,pending,hash);

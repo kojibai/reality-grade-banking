@@ -18,7 +18,7 @@ function requestContext(generation:string,context:PublicMaterialReadContext){if(
  * only an explicitly public-display descriptor; a checksum grants no rights. */
 export async function readPreparedPublicMaterial(generation:string,fetchImpl:typeof fetch=fetch,context:PublicMaterialReadContext={}):Promise<string>{
  const {key,parameters}=requestContext(generation,context);
- const local=scope.getStore(),root=context.root??generation,localKey=scopeKey(root,context),part=context.root&&generation!==context.root?local?.get(localKey)?.get(generation):undefined;
+ const local=scope.getStore(),root=context.root??generation,localKey=scopeKey(root,context),part=local?.get(localKey)?.get(generation);
  if(part!==undefined)return part;
  if(local)parameters.set('packed','1');
  const shared=fetchImpl===fetch,inflight=shared?pending.get(key):undefined;if(inflight)return inflight;
@@ -40,6 +40,7 @@ export async function readPreparedPublicMaterial(generation:string,fetchImpl:typ
    let selectedParts=local.get(localKey);if(!selectedParts){selectedParts=new Map();local.set(localKey,selectedParts);}for(const [id,value]of parts)selectedParts.set(id,value);
   }
   if(createHash('sha256').update(text).digest('hex')!==generation)throw Error('PUBLIC_MATERIAL_INTEGRITY');
+  if(local){let parts=local.get(localKey);if(!parts){parts=new Map();local.set(localKey,parts);}parts.set(generation,text);}
   if(shared){held.set(key,text);while(held.size>2)held.delete(held.keys().next().value!);}return text;
  })();
  if(shared){pending.set(key,job);void job.finally(()=>{if(pending.get(key)===job)pending.delete(key);}).catch(()=>{});}

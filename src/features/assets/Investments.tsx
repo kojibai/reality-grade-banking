@@ -22,7 +22,7 @@ const Certificates=lazy(()=>import('../certificates/CertificateManager').then(m=
 const money=(value:string|null)=>value===null?'—':formatMoney(value);
 const signed=(value:string)=>`${BigInt(value)>0n?'+':''}${formatMoney(value)}`;
 function InvestmentArtwork({item}:{item:PublicMarketItem}){
- return item.mediaKind==='pdf'?<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/>:<span className="investment-art">{item.artworkUrl?<img src={item.artworkUrl} alt="" decoding="async" referrerPolicy="no-referrer"/>:<AssetMark kind="proof"/>}</span>;
+ return item.mediaKind==='pdf'?<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/>:<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}>{url=><span className="investment-art">{item.artworkUrl?<img src={url??undefined} alt="" decoding="async" referrerPolicy="no-referrer"/>:<AssetMark kind="proof"/>}</span>}</PublicObjectArtwork>;
 }
 function Return({cents,percent}:{cents:string|null;percent:number|null}){if(cents===null)return <span className="muted">Cost basis unavailable</span>;const n=BigInt(cents);return <span className={'investment-return '+(n>0n?'positive':n<0n?'negative':'muted')}>{n>0n?<ArrowUpRight size={14}/>:n<0n?<ArrowDownRight size={14}/>:null}{signed(cents)}{percent!==null&&<span>({percent>0?'+':''}{percent.toLocaleString(undefined,{maximumFractionDigits:2})}%)</span>}</span>;}
 export function InvestmentChart({history,value}:{history:InvestmentHistory|null;value:string|null}){

@@ -790,7 +790,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
       "mode": 420
     },
     {
@@ -1257,6 +1257,13 @@
       "upstreamCommit": "7ab22963685a8ccec066e938e41ccfbab9ab2310",
       "qualifiedSdkArchiveSha256": "3c19a390fd9916643b8e5c00cdba1b77b0cbec6e2f29775fb41e7ba26e26b04a",
       "purpose": "Final reviewed PNG operational denial, unchanged major compatibility floor, exact public function inventory and existing build resource guard. No financial/Note writer/receiving/rollback implementation change."
+    },
+    {
+      "id": "receiz-129-5-held-proof-history-issued-reference",
+      "path": "packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "purpose": "Reuse the qualified SDK-issued frozen proof-history reference through its existing private issuer guard; preserve all Source admission and ownership checks."
     }
   ]
 }

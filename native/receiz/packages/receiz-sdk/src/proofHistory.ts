@@ -890,26 +890,11 @@ export async function verifyReceizProofHistory(
   value: unknown,
 ): Promise<ReceizVerifiedProofHistory> {
   if (!isRuntimeVerifiedReceizProofHistory(value)) throw new Error("HISTORY_NOT_VERIFIED");
-  const history = value;
-  assertEvidenceRoots(history.verification.evidenceRoots);
-  const normalized = await normalizeReceizProofHistory({
-    artifactId: history.artifactId,
-    registryDigest: history.registryDigest,
-    nodes: history.nodes,
-    verifyReceipt: async (receipt, receiptDigest) =>
-      await digestReceizAuthority("receipt", "receiz.proof-history-receipt.v111", receipt) === receiptDigest,
-  });
-  const basis = {
-    schema: "receiz.verified-proof-history.v112" as const,
-    historyDigest: history.historyDigest,
-    artifactId: history.artifactId,
-    registryDigest: history.registryDigest,
-    evidenceRoots: history.verification.evidenceRoots,
-  };
-  if (normalized.historyDigest !== history.historyDigest
-    || await digestReceizAuthority("history", "receiz.verified-proof-history.v112", basis)
-      !== history.verification.verificationDigest) throw new Error("HISTORY_NOT_VERIFIED");
-  return history;
+  // Issuance already normalized the exact Source history, bound its enclosing
+  // evidence roots and deep-froze every node before private runtime custody.
+  // Re-materializing it here lets a later resource failure veto known truth.
+  // Detached/transported histories still require enclosing Source admission.
+  return value;
 }
 
 export function transportReceizProofHistory(

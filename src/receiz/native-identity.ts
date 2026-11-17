@@ -1613,12 +1613,26 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),
       readSignature:async file=>restoredComposer&&(accountUid??knownWallet?.wallet.userId)&&publicAccountUsername(presentationUsername??keyFile.owner.username)?(await openComposedPublisher(undefined,true)).readSignedSource(file):null,
       readIntent:async file=>{
-        const exact=new Uint8Array(await file.arrayBuffer()),opened=await unsigned.artifacts.verifyAndOpen(file);
-        heldDeposit=projectHeldDeposit(opened,exact,file.name,binding.artifactOwnerReceizId);publicationDigest=opened.sealedArtifact.artifactSha256;adoption.retainAssetPublicationSource(publicationDigest,file);
-        const carried=JSON.parse(new TextDecoder().decode(opened.verifiedPayload.bytes));
-        if(carried?.schema==='receiz.bank.asset-content.v2'){restoredComposer=true;return{composer:(await import('./asset-composer')).readComposerAssetContent(carried,binding.artifactOwnerReceizId)};}
+        const exact=new Uint8Array(await file.arrayBuffer()),native=await awaitImportPublication();
+        const username=publicAccountUsername(presentationUsername??keyFile.owner.username),uid=accountUid??knownWallet?.wallet.userId;
+        let admission:import('./asset-publication-runtime').ConnectedAssetLocalAdmission|undefined;
+        // Reuse the canonical Source opener and its existing local resources.
+        // The same File remains memoized for delivery; no account/network read
+        // or second generic verifier precedes the held Original's projection.
+        const opened=await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username:username??keyFile.owner.username??'',profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:value=>{admission=value;}});
+        const carried=JSON.parse(await opened.source.sourcePayload.text());
+        publicationDigest=opened.reference.artifactSha256;adoption.retainAssetPublicationSource(publicationDigest,file);
+        const held=(title:string,definition?:AssetDefinition):HeldDeposit=>({digest:opened.reference.artifactSha256,filename:file.name,title,kind:'proof',status:'held-proof',pulse:opened.source.projection.pulse,bytes:exact,...(definition?{assetDefinition:definition}:{})});
+        if(carried?.schema==='receiz.bank.asset-content.v2'){
+          const composer=(await import('./asset-composer')).readComposerAssetContent(carried,binding.artifactOwnerReceizId);restoredComposer=true;
+          heldDeposit=held(composer.title,composer.definition?validateAssetDefinition(composer.definition):undefined);
+          if(admission&&username&&uid){retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid,artwork:admission.artwork});}
+          return{composer};
+        }
         if(carried?.schema!=='receiz.bank.asset-definition.v1')throw Error('BANK_ASSET_PUBLICATION_SOURCE_INVALID');
-        const definition=validateAssetDefinition(carried.definition);if(carried.moment)await(await import('./asset-moment')).readAssetMoment(carried.moment);
+        if(carried.createsSpendableValue!==false||carried.backingCommitted!==false||carried.issuerReceizId!==binding.artifactOwnerReceizId)throw Error('Unsupported asset definition.');
+        const definition=validateAssetDefinition(carried.definition);heldDeposit=held(definition.name,definition);
+        if(carried.moment)await(await import('./asset-moment')).readAssetMoment(carried.moment);
         return{definition,linkedSource:carried.linkedSource??null,...(carried.moment?{moment:carried.moment}:{})};
       },
       seal:async()=>{
@@ -1635,7 +1649,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         return new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType});
       },
       retain:async file=>{onProgress?.({stage:'saving'});const held=await holdProof(file);heldDeposit=held;publicationDigest=held.digest;adoption.retainAssetPublicationSource(held.digest,file);return held.digest;},
-      restore:async(digest,filename,mimeType)=>{const [source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});if(source&&await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');},
+      restore:async(digest,filename,mimeType)=>{const retained=adoption.retainedAssetPublicationSource(digest);if(retained&&await sdk.sha256ReceizBytes(new Uint8Array(await retained.arrayBuffer()))===digest)return retained;const [source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});if(source&&await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');},
       publish:async file=>{
         // Connect and admit the one retained source concurrently. Neither leg
         // delays local creation; global delivery begins without a timer.
@@ -1706,10 +1720,24 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   }
   let assetSignatureSync:Promise<void>|undefined;
   function startAssetSignatureSync(eventOrSource?:Event|string){
-    if(lifetime.signal.aborted||navigator.onLine===false||assetSignatureSync)return;
+    if(lifetime.signal.aborted||assetSignatureSync)return;
     const attempt=(async()=>{
       const adoption=await import('./asset-publication-adoption');noteOpen();
       const uid=accountUid??knownWallet?.wallet.userId,username=publicAccountUsername(presentationUsername??keyFile.owner.username);if(!uid||!username)return;
+      // A published editor checkpoint may already have retired. Reopen only
+      // this owner's bounded display coordinates from existing exact custody;
+      // local media/text never depend on delivery or connectivity.
+      const held=adoption.retainedAssetPublicationDigests(binding.artifactSha256,uid,username);
+      for(let at=0;at<held.length;at+=2)await Promise.all(held.slice(at,at+2).map(async digest=>{
+        try{
+          noteOpen();let file=adoption.retainedAssetPublicationSource(digest);
+          if(!file){const[source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});noteOpen();if(!source)return;file=new File([new Uint8Array(source.bytes)],source.filename);}
+          if(await sdk.sha256ReceizBytes(new Uint8Array(await file.arrayBuffer()))!==digest)return;
+          const native=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();noteOpen();
+          await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationSource(digest,file!);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:admission.artwork});}});
+        }catch{noteOpen();}
+      }));
+      if(navigator.onLine===false)return;
       // Delivery recovery uses only compact checkpoints for this open owner.
       // New local creation and page opening never await these retries. Two
       // exact sources may reopen together; the native append lock still owns

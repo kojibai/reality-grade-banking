@@ -828,7 +828,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe"
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d"
     },
     {
       "path": "packages/receiz-sdk/src/proofHistoryOwnershipConsentV129.ts",
@@ -1994,7 +1994,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe"
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d"
     },
     {
       "path": "packages/receiz-sdk/src/proofHistoryOwnershipConsentV129.ts",
@@ -6804,7 +6804,7 @@
     },
     {
       "path": "receiz/app/lib/profile/materialProjection.client.ts",
-      "sha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a",
+      "sha256": "6a3526ae46fed6da07d51f03644e4731935c2dbe2e851f2c0c6e01be847de842",
       "bytes": 42554,
       "mode": 420
     },
@@ -7054,7 +7054,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "36ea07609bbe7454731abe162f8e90251b08aa01f241d5dc43e03244a03b83ff",
+      "sha256": "f82b7c5c96839d0e51d7b83b8245b643701f216f1b74e073cc917fc15b45de72",
       "mode": 420
     },
     {
@@ -9040,7 +9040,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineSealImplementation.js",
-      "sha256": "d1e9f43e9c1893bc13b68b3c3f13ab6c39acc496d9be5088848eedeb47817ac3",
+      "sha256": "51738c79ff02122735bb0666a231dcc8ee9baa8f3adf904f3f05a8b1e7164a2e",
       "bytes": 1086251,
       "mode": 420
     },
@@ -9130,7 +9130,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
       "bytes": 43607,
       "mode": 420
     },
@@ -15336,7 +15336,7 @@
     },
     {
       "path": "vault/packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
       "mode": 420
     },
     {
@@ -15883,7 +15883,7 @@
     },
     {
       "path": "dist/offlineSealImplementation.js",
-      "sha256": "72634b2923b010eaedb409fbb9dc97a85c97dbf330e374db668ab7ae89f94b44"
+      "sha256": "067bc237a2e5b85caea520315cd61b675942ba781ecdf4c85852102dfdfb3a70"
     },
     {
       "path": "dist/offlineSealNode.js",
@@ -15943,7 +15943,7 @@
     },
     {
       "path": "dist/proofHistory.js",
-      "sha256": "75adff65b893e53fd02b9d108a50788c8b3a37e42792ca2d80ce1a05badeb9fe"
+      "sha256": "c4dd62b4376b600e60492275175c4b5c93eb0f78f4c78f48ce58a52c1b6e253e"
     },
     {
       "path": "dist/proofHistoryOwnershipConsentV129.js",
@@ -18243,6 +18243,41 @@
       "baseSha256": "9f3241b5c56e859f5851bf6fa7858874bf87613d48ae517855f92f54de15ecbe",
       "sha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
       "purpose": "Reuse existing exact SDK-committed Source, owner-bound retained parent and durable signed transport before remote accepted metadata. Preserve SDK identity/owner/causal admission, exact PBI matching, missing-input readers, historical-media bounds, pending successor ordering and frozen account entry."
+    },
+    {
+      "id": "bankeiz-held-source-uri-material-resource",
+      "path": "receiz/app/lib/profile/materialProjection.client.ts",
+      "baseSha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a",
+      "sha256": "6a3526ae46fed6da07d51f03644e4731935c2dbe2e851f2c0c6e01be847de842",
+      "purpose": "Reuse exact SDK Source custody and the existing public material/mounted resource plane for Source URL roles, retaining canonical Source through bounded media realization; preserve privacy, enclosing proof and frozen first paint."
+    },
+    {
+      "id": "bankeiz-held-source-uri-material-resource",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "36ea07609bbe7454731abe162f8e90251b08aa01f241d5dc43e03244a03b83ff",
+      "sha256": "f82b7c5c96839d0e51d7b83b8245b643701f216f1b74e073cc917fc15b45de72",
+      "purpose": "Reuse exact SDK Source custody and the existing public material/mounted resource plane for Source URL roles, retaining canonical Source through bounded media realization; preserve privacy, enclosing proof and frozen first paint."
+    },
+    {
+      "id": "receiz-129-5-held-proof-history-issued-reference",
+      "path": "receiz/packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "purpose": "Reuse the exact SDK-issued frozen history and its mechanically generated sealing closure; preserve all unissued input checks and immutable history."
+    },
+    {
+      "id": "receiz-129-5-held-proof-history-issued-reference",
+      "path": "receiz/packages/receiz-sdk/src/offlineSealImplementation.js",
+      "baseSha256": "d1e9f43e9c1893bc13b68b3c3f13ab6c39acc496d9be5088848eedeb47817ac3",
+      "sha256": "51738c79ff02122735bb0666a231dcc8ee9baa8f3adf904f3f05a8b1e7164a2e",
+      "purpose": "Reuse the exact SDK-issued frozen history and its mechanically generated sealing closure; preserve all unissued input checks and immutable history."
+    },
+    {
+      "id": "receiz-129-5-held-proof-history-issued-reference",
+      "path": "vault/packages/receiz-sdk/src/proofHistory.ts",
+      "baseSha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe",
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d",
+      "purpose": "Reuse the exact SDK-issued frozen history and its mechanically generated sealing closure; preserve all unissued input checks and immutable history."
     }
   ],
   "historicalValuation": {
@@ -18775,7 +18810,7 @@
     },
     {
       "path": "app/lib/profile/materialProjection.client.ts",
-      "sha256": "7ebb5aad814bc36a64527913c5ff61b0e2f91dfbf28eaa4c068a9ff70705a54a"
+      "sha256": "6a3526ae46fed6da07d51f03644e4731935c2dbe2e851f2c0c6e01be847de842"
     },
     {
       "path": "app/lib/profile/originalStorage.ts",
@@ -18931,7 +18966,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "36ea07609bbe7454731abe162f8e90251b08aa01f241d5dc43e03244a03b83ff"
+      "sha256": "f82b7c5c96839d0e51d7b83b8245b643701f216f1b74e073cc917fc15b45de72"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -19935,7 +19970,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/proofHistory.ts",
-      "sha256": "da32bb415b0df2f223b8a2b721db0c11907a6bf09139d093fa5daf21955517fe"
+      "sha256": "1649604c9dadb82abb984712cff80326fb802e266e97c15eb9d4a068d785373d"
     },
     {
       "path": "packages/receiz-sdk/src/proofHistoryOwnershipConsentV129.ts",

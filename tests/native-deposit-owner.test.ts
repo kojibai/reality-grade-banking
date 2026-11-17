@@ -55,17 +55,5 @@ it('the native intake pipeline seals and reopens the request-bound Receiz delive
     expect((await identity.listDeposits())[0].delivery).toEqual(deposit.delivery);
   } finally { identity.dispose(); }
 });
-it('seals moment originals and long-form text inside the account-owned asset proof',async()=>{
- vi.stubGlobal('fetch',async()=>new Response(new Uint8Array([1])));
- const identity=await openCanonicalIdentity(new Uint8Array([1]),'fixture','identity.receiz');
- try{
-  const original=new File(['Exact authored words.'],'essay.txt',{type:'text/plain'});
-  const held=await identity.createAsset({name:'A sealed moment',symbol:'MOMENT',units:'1000',description:'The moment claims authorship.',linkedProofDigest:null},{files:[original],title:'The story',text:'A longer account of this moment.'});
-  const payload=JSON.parse(new TextDecoder().decode(held.bytes));
-  expect(payload).toMatchObject({schema:'receiz.bank.asset-definition.v1',createsSpendableValue:false,backingCommitted:false,moment:{schema:'receiz.bank.moment-content.v1',title:'The story',text:'A longer account of this moment.',files:[{filename:'essay.txt',mimeType:'text/plain',size:21}]}});
-  expect(held.title).toBe('A sealed moment');expect((await identity.listDeposits())[0].bytes).toEqual(held.bytes);
-  expect(held.publication?.status).toBe('pending');expect(fixture.publication).toMatchObject({status:'pending',sourceDigest:held.digest});
-  expect((await identity.pendingAssetPublication!())?.bytes).toEqual(held.bytes);
-  expect((await identity.retryAssetPublication!()).digest).toBe(held.digest);expect(fixture.sources).toHaveLength(1);
- }finally{identity.dispose();}
-});
+// Legacy sealing/recovery now executes the genuine SDK Source contract in
+// native-legacy-asset-source.test.ts; these three fixtures cover owner selection.

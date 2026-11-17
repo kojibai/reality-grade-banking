@@ -138,9 +138,10 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:acceptedHead.admission.proofHistoryHead.nodeCount,visibleChildCount:acceptedHead.visibleChildren.length});
  };
  vi.stubGlobal('fetch',request);
+ let signedLocal:ConnectedAssetLocalAdmission|undefined;
  const runtime=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){currentChecks++;},fetchImpl:request,sealDocument,onLocalAdmission:async(admission:ConnectedAssetLocalAdmission,context?:Readonly<{signing:boolean}>)=>{
   const original=admission.original as {hasPbiSignature?:boolean;pbiReceiptHash?:string;originalCreator?:{userId?:string}};
-  if(original.hasPbiSignature){expectedPbi=original.pbiReceiptHash!;expect(original.originalCreator?.userId).toBe(uid);await host!.retain(admission,context);}
+  if(original.hasPbiSignature){signedLocal=admission;adoption.retainAssetPublicationAdmission(admission,{identityDigest:actor.artifactSha256,accountUid:uid,artwork:admission.artwork});expectedPbi=original.pbiReceiptHash!;expect(original.originalCreator?.userId).toBe(uid);await host!.retain(admission,context);}
  }});
  const prepared=await runtime.prepare({kind:'moment',title:'Durable Source before editor checkpoint',description:'The actual native proof is retained before host notification.',longForm:'An editor projection cannot veto this Source.',files:[]});
  const exact=new Uint8Array(await prepared.artifact.arrayBuffer()),digest=prepared.reference.artifactSha256;
@@ -163,6 +164,9 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
   },verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}})}});
  });
  expect(receipt.status).toBe('published');expect(finalizations).toBe(2);expect(writes).toBe(1);expect(currentChecks).toBeGreaterThan(0);expect(ceremonies).toBe(1);
+ expect(signedLocal).toBeDefined();const heldSigned=adoption.admittedAssetPublicationItem(digest,username,uid);expect(heldSigned).toMatchObject({hasPbiSignature:true,pbiReceiptHash:expectedPbi});
+ await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,profileIdentity:uid,username,assertCurrent(){},onLocalAdmission:(unsigned:ConnectedAssetLocalAdmission)=>adoption.retainAssetPublicationAdmission(unsigned,{identityDigest:actor.artifactSha256,accountUid:uid,artwork:unsigned.artwork})});
+ expect(adoption.admittedAssetPublicationItem(digest,username,uid)).toMatchObject({hasPbiSignature:true,pbiReceiptHash:expectedPbi,verifyUrl:heldSigned?.verifyUrl});
  let acknowledgmentWrites=0;
  const resume=savedSignaturePublication({host,runtime,source:prepared.artifact,digest,owner,read:()=>checkpoint,write:async(next,previous)=>{expect(previous).toEqual(checkpoint);acknowledgmentWrites++;if(checkpointStorage==='ack-quota')throw new DOMException('Host acknowledgment checkpoint is full','QuotaExceededError');checkpoint=structuredClone(next);}});
  host.flights.clear();

@@ -27,9 +27,9 @@ it.each((['projected-append','confirmed-metadata','new-uid'] as const).flatMap(k
  expect(profiles.publicProfileHasHeader(current!)).toBe(hasHeader);expect(profiles.publicProfilePageError(username)).toBe('');expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
-it('allows an explicit successful full retry to replace a previous refusal and clear its stale projection block',async()=>{
+it('keeps a refused full transport from admitting or withdrawing Source before a successful explicit retry',async()=>{
  const catalog=market(['accepted']),fetcher=vi.fn().mockResolvedValueOnce(new Response(null,{status:403})).mockImplementationOnce(async()=>Response.json(full()));vi.stubGlobal('fetch',fetcher);
- await expect(profiles.fetchPublicProfile(username)).rejects.toThrow('PROFILE_PRIVATE');expect(profiles.publicProfilePageError(username)).toBe('PROFILE_PRIVATE');expect(profiles.selectHeldPublicProfile(username,catalog)===null).toBe(true);
+ await expect(profiles.fetchPublicProfile(username)).rejects.toThrow('PROFILE_PRIVATE');expect(profiles.publicProfilePageError(username)).toBe('');expect(profiles.retainedPublicProfile(username)).toBeNull();expect(profiles.selectHeldPublicProfile(username,catalog)?.items).toHaveLength(1);
  const retried=await profiles.fetchPublicProfile(username);expect(profiles.retainedPublicProfile(username)===retried).toBe(true);expect(profiles.selectHeldPublicProfile(username,catalog)===retried).toBe(true);expect(profiles.publicProfileHasHeader(retried)).toBe(true);expect(profiles.publicProfilePageError(username)).toBe('');expect(fetcher.mock.calls.map(([url])=>String(url))).toEqual(['/api/bank/public-profile/alexmorgan','/api/bank/public-profile/alexmorgan']);
 });
 
