@@ -242,7 +242,11 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    if(typeof digest!=='string'||!/^[a-f0-9]{64}$/.test(digest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
    const store=createReceizBrowserArtifactTransitionStore({databaseName,namespace:`profile-showcase-local:${next.prior.admission.artifactSha256}`,commitDomain});
    const candidate=await store.resolveCandidate({algorithm:'sha-256',binds:'exact-artifact-bytes',value:digest});
-   if(!candidate){
+   // The candidate port is subordinate to this exact already-retained Source
+   // and its signed transport. A missing index cannot require rediscovery.
+   const preparedAction=!candidate?await readPreparedAction(undefined,undefined,digest):null;
+   const retainedSource=preparedAction?await input.vault.reopenRetainedHead(input.artifactId,digest):null;
+   if(!candidate&&!retainedSource){
     accepted=await input.readAccepted(true);input.assertCurrent();if(!validAccepted(accepted))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
     const delivered=await readHead();if(!delivered)return null;next=delivered;
    }
@@ -251,12 +255,15 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
     // that exact candidate, then admit its direct succession and carried child.
     // Neither the local pointer nor its projection is proof authority.
     const {prior}=next;
-    if(!candidate)throw TypeError('PROFILE_SHOWCASE_COMMITTED_CANDIDATE_UNAVAILABLE');
-    const admission=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,
-     candidateArtifact:{artifact:new File([candidate.exactBytes.slice().buffer as ArrayBuffer],candidate.filename,{type:candidate.mimeType})},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
+    if(!candidate&&!retainedSource)throw TypeError('PROFILE_SHOWCASE_COMMITTED_CANDIDATE_UNAVAILABLE');
+    const admission=retainedSource??await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,
+     candidateArtifact:{artifact:new File([candidate!.exactBytes.slice().buffer as ArrayBuffer],candidate!.filename,{type:candidate!.mimeType})},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
     if(admission.artifactSha256!==digest||admission.proofHistoryHead?.headDigest!==committed.headDigest)throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
     const carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),head=carrier['profile-showcase'];
-    const retainedAction=await readPreparedAction(undefined,undefined,digest);
+    if(retainedSource&&(preparedAction!.body.publicationPredecessorArtifactDigest!==prior.admission.artifactSha256
+     ||carrier.artifactId!==input.artifactId||carrier.ownerReceizIdentity!==input.owner||head.profileIdentity!==prior.carrier['profile-showcase'].profileIdentity
+     ||!await input.vault.isVerifiedPublicationAncestor(input.artifactId,prior.admission.artifactSha256,digest)))throw TypeError('PROFILE_SHOWCASE_PREPARED_COMMIT_MISMATCH');
+    const retainedAction=preparedAction??await readPreparedAction(undefined,undefined,digest);
     if(retainedAction){
      const child=childOf(retainedAction.context,retainedAction.body.publicationChildArtifactDigest);if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
      const exact=await reconstructExactByteBlocks(child.bytes,custody.resolveBlock,{component:'committed Original proof recovery',maxContentBytes:16*1024*1024,maxBlockReads:131072});

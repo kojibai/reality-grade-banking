@@ -1,9 +1,9 @@
 export type AssetCreationProgress={stage:'preparing'|'sealing'|'saving';ratio?:number};
 export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number}|{status:'pending'|'rejected';code:string};
-export type AssetPublicationSourceState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;creationDismissed?:true};
+export type AssetPublicationSourceState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;creationDismissed?:true;privateOriginalDeliveryPending?:true};
 export type AssetPublicationState=AssetPublicationSourceState&{pendingSources?:readonly AssetPublicationSourceState[]};
 export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string};
-type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;readSignature?(source:File):Promise<{pbiReceiptHash:string}|null>;publish(source:File):Promise<AssetPublicationReceipt>};
+type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;readSignature?(source:File):Promise<{pbiReceiptHash:string}|null>;privateOriginalDelivery?(source:File):Promise<(()=>Promise<void>)|null>;publish(source:File):Promise<AssetPublicationReceipt>};
 // In-process coordination only; the encrypted publication checkpoint owns recovery.
 type DeliveryFlight={promise:Promise<AssetPublicationReceipt>;state:AssetPublicationSourceState};
 const deliveries=new Map<string,DeliveryFlight>();
@@ -35,11 +35,12 @@ export function retainAssetPublicationDelivery(previous:AssetPublicationDelivery
 const projectReceipt=projectAssetPublicationReceipt;
 const currentSource=(state:AssetPublicationState):AssetPublicationSourceState=>{const{pendingSources:_pending,...current}=state;return current;};
 const selectedSource=(state:AssetPublicationState|null,digest:string)=>state?.sourceDigest===digest?currentSource(state):state?.pendingSources?.find(source=>source.sourceDigest===digest);
+const unfinished=(source:AssetPublicationSourceState)=>source.status!=='published'||source.privateOriginalDeliveryPending===true;
 /** Only unfinished delivery metadata is archived. Exact Original and native PBI
  * bytes remain in their existing custody after a confirmed entry is retired. */
 function replaceSource(state:AssetPublicationState,next:AssetPublicationSourceState):AssetPublicationState{
  if(state.sourceDigest===next.sourceDigest)return{...next,...(state.pendingSources?.length?{pendingSources:state.pendingSources}:{})};
- const pending=(state.pendingSources??[]).flatMap(source=>source.sourceDigest===next.sourceDigest?next.status==='published'?[]:[next]:[source]);
+ const pending=(state.pendingSources??[]).flatMap(source=>source.sourceDigest===next.sourceDigest?unfinished(next)?[next]:[]:[source]);
  return{...currentSource(state),...(pending.length?{pendingSources:pending}:{})};
 }
 function rememberFlight(state:AssetPublicationSourceState){const flight=deliveries.get(deliveryKey(state.ownerReceizId,state.sourceDigest));if(flight)flight.state=state;}
@@ -81,7 +82,7 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
  const state=value as AssetPublicationState;
  const validate=(source:AssetPublicationSourceState)=>{
   if(!source||source.schema!=='bank.asset-publication.v1'||typeof source.ownerReceizId!=='string'||source.ownerReceizId!==(ownerReceizId??state.ownerReceizId)||!hex(source.intentDigest)||!hex(source.sourceDigest)||typeof source.filename!=='string'||!source.filename||typeof source.mimeType!=='string'||!source.mimeType||!['pending','published','rejected'].includes(source.status))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
-  if(source.pbiReceiptHash!==undefined&&!hex(source.pbiReceiptHash)||source.creationDismissed!==undefined&&source.creationDismissed!==true)throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
+  if(source.pbiReceiptHash!==undefined&&!hex(source.pbiReceiptHash)||source.creationDismissed!==undefined&&source.creationDismissed!==true||source.privateOriginalDeliveryPending!==undefined&&source.privateOriginalDeliveryPending!==true)throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
   if(source.receipt)readReceipt(source.receipt);
   if(source.status==='published'&&source.receipt?.status!=='published'||source.status==='rejected'&&source.receipt?.status!=='rejected')throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  };
@@ -92,14 +93,14 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
  }
  return state;
 }
-export const hasPendingAssetPublication=(value:unknown)=>{const state=readAssetPublicationState(value);return state?.status==='pending'||!!state?.pendingSources?.some(source=>source.status==='pending');};
+export const hasPendingAssetPublication=(value:unknown)=>{const state=readAssetPublicationState(value);return state?.status==='pending'||state?.privateOriginalDeliveryPending===true||!!state?.pendingSources?.some(source=>source.status==='pending'||source.privateOriginalDeliveryPending===true);};
 /** Bounded unconfirmed delivery coordinates, including an earlier rejected
  * transport. The Source is re-opened by its existing verifier on each retry;
  * this index never supplies membership, account or proof authority. */
 export function readPendingAssetPublicationDigests(value:unknown,ownerReceizId?:string,limit=16,afterSourceDigest?:string):readonly string[]{
  if(!Number.isSafeInteger(limit)||limit<1||limit>64||afterSourceDigest!==undefined&&!hex(afterSourceDigest))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  const state=readAssetPublicationState(value,ownerReceizId),selected:string[]=[];
- const consider=(source:AssetPublicationSourceState)=>{if(source.status==='published'||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
+ const consider=(source:AssetPublicationSourceState)=>{if(!unfinished(source)||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
  if(state){consider(state);for(const source of state.pendingSources??[])consider(source);}
  return selected;
 }
@@ -117,12 +118,26 @@ export function createAssetPublication(dependencies:Dependencies){
  const digestIntent=async(intent:unknown)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical(intent))))].map(v=>v.toString(16).padStart(2,'0')).join('');
  const project=(state:AssetPublicationSourceState,file:File)=>({digest:state.sourceDigest,file,...(state.pbiReceiptHash?{pbiSigned:true}:{}),publication:state.receipt?projectReceipt(state.receipt):{status:state.status,code:'BANK_ASSET_PUBLICATION_DELIVERY_PENDING'}});
  const reopen=async(state:AssetPublicationSourceState)=>{const file=await dependencies.restore(state.sourceDigest,state.filename,state.mimeType);dependencies.assertOpen();if(await digestIntent(await dependencies.readIntent(file))!==state.intentDigest)throw Error('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');return file;};
+ async function completePrivateOriginalDelivery(digest:string){
+  dependencies.assertOpen();await dependencies.lock(async()=>{
+   dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId),selected=selectedSource(root,digest);
+   if(!root||!selected?.privateOriginalDeliveryPending)return;
+   const{privateOriginalDeliveryPending:_pending,...next}=selected;await dependencies.write(replaceSource(root,next),prior);rememberFlight(next);dependencies.assertOpen();
+  });
+ }
+ async function resumePrivateOriginalDelivery(digest:string){
+  if(!hex(digest))throw Error('BANK_ASSET_PUBLICATION_SOURCE_INVALID');dependencies.assertOpen();
+  const selected=selectedSource(readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId),digest);if(!selected?.privateOriginalDeliveryPending)return;
+  const file=await reopen(selected),deliver=await dependencies.privateOriginalDelivery?.(file);dependencies.assertOpen();
+  if(!deliver)throw Error('BANK_ASSET_PUBLICATION_PRIVATE_CUSTODY_REQUIRED');
+  await deliver();dependencies.assertOpen();await completePrivateOriginalDelivery(digest);
+ }
  async function create(intent?:unknown,localFirst=false,sourceDigest?:string):Promise<AssetPublicationResult>{
   dependencies.assertOpen();
   if(sourceDigest!==undefined&&!hex(sourceDigest))throw Error('BANK_ASSET_PUBLICATION_SOURCE_INVALID');
   const intentDigest=intent===undefined?null:await digestIntent(intent);
   const held=await dependencies.lock(async()=>{
-   dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId);let file:File|undefined;
+   dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId);let file:File|undefined,privateDelivery:(()=>Promise<void>)|null|undefined;
    let state=intentDigest===null?sourceDigest?selectedSource(root,sourceDigest):root?currentSource(root):undefined:
     root?[currentSource(root),...root.pendingSources??[]].find(source=>source.intentDigest===intentDigest):undefined;
    const flight=state?deliveries.get(deliveryKey(dependencies.ownerReceizId,state.sourceDigest)):undefined;
@@ -132,11 +147,12 @@ export function createAssetPublication(dependencies:Dependencies){
     file=await dependencies.seal(intent);dependencies.assertOpen();
     const sourceDigest=await dependencies.retain(file);if(!hex(sourceDigest))throw Error('BANK_ASSET_PUBLICATION_SOURCE_INVALID');dependencies.assertOpen();
     if(root&&selectedSource(root,sourceDigest))throw Error('BANK_ASSET_PUBLICATION_SOURCE_INTENT_MISMATCH');
-    state={schema:'bank.asset-publication.v1',ownerReceizId:dependencies.ownerReceizId,intentDigest,sourceDigest,filename:file.name,mimeType:file.type||'application/octet-stream',status:'pending'};
-    const pending=root?[...root.pendingSources??[],currentSource(root)].filter(source=>source.status!=='published'):[];
+    privateDelivery=await dependencies.privateOriginalDelivery?.(file);dependencies.assertOpen();
+    state={schema:'bank.asset-publication.v1',ownerReceizId:dependencies.ownerReceizId,intentDigest,sourceDigest,filename:file.name,mimeType:file.type||'application/octet-stream',status:'pending',...(privateDelivery?{privateOriginalDeliveryPending:true as const}:{})};
+    const pending=root?[...root.pendingSources??[],currentSource(root)].filter(unfinished):[];
     await dependencies.write({...state,...(pending.length?{pendingSources:pending}:{})},prior);
    }
-   return {state,file,flight};
+   return {state,file,flight,privateDelivery};
   });
   // Existing source verification is read-only. It cannot hold the checkpoint
   // lock while an independent intent seals and retains its own exact Original.
@@ -145,6 +161,20 @@ export function createAssetPublication(dependencies:Dependencies){
   if(latest)held.state=latest;
   else if(held.flight?.state.status==='published')held.state=held.flight.state;
   else throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
+  // Old unconfirmed Sources predate the private transport coordinate. Derive
+  // it from this canonical Source, never from a public receipt or UI policy.
+  let privateDelivery=held.privateDelivery;
+  if(privateDelivery===undefined&&(held.state.status!=='published'||held.state.privateOriginalDeliveryPending))privateDelivery=await dependencies.privateOriginalDelivery?.(file);
+  if(privateDelivery&&!held.state.privateOriginalDeliveryPending&&held.state.status!=='published')await dependencies.lock(async()=>{
+   dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId),selected=selectedSource(root,held.state.sourceDigest);
+   if(!root||!selected)throw Error('BANK_ASSET_PUBLICATION_STATE_CHANGED');
+   const next={...selected,privateOriginalDeliveryPending:true as const};await dependencies.write(replaceSource(root,next),prior);held.state=next;rememberFlight(next);
+  });
+  if(privateDelivery&&held.state.privateOriginalDeliveryPending){
+   // Its durable intent precedes the first private fetch. Public Source has
+   // its own receipt; this owner's separate transfer cannot delay that result.
+   const deliver=privateDelivery;void(async()=>{await deliver();dependencies.assertOpen();await completePrivateOriginalDelivery(held.state.sourceDigest);})().catch(()=>{/* Exact private work remains in the encrypted Source checkpoint. */});
+  }
   if(held.state.status==='published')return project(held.state,file);
   const key=deliveryKey(dependencies.ownerReceizId,held.state.sourceDigest);
   let flight=deliveries.get(key)??held.flight;
@@ -196,7 +226,7 @@ export function createAssetPublication(dependencies:Dependencies){
   const release=()=>{if(sourceResumptions.get(key)===pending)sourceResumptions.delete(key);};void pending.then(release,release);
   return pending;
  }
- return{create,createLocal:(intent:unknown)=>create(intent,true),resumeLocal:(digest?:string)=>create(undefined,true,digest),resume,
+ return{create,createLocal:(intent:unknown)=>create(intent,true),resumeLocal:(digest?:string)=>create(undefined,true,digest),resume,resumePrivateOriginalDelivery,
   pendingDeliveries:async(limit=16,afterSourceDigest?:string)=>{dependencies.assertOpen();return readPendingAssetPublicationDigests(await dependencies.read(),dependencies.ownerReceizId,limit,afterSourceDigest);},
   pending:async()=>{dependencies.assertOpen();const state=readAssetPublicationState(await dependencies.read(),dependencies.ownerReceizId);if(!state||state.status==='published'||state.pbiReceiptHash||state.creationDismissed)return null;const file=await reopen(state),signature=await dependencies.readSignature?.(file);if(signature){await retainAssetCreationSignature(dependencies,state.sourceDigest,signature.pbiReceiptHash);return null;}return project(state,file);}};
 }

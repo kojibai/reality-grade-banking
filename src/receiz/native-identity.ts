@@ -1573,6 +1573,14 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const entry={key,runtime:openAssetPublicationRuntime(undefined,signer,localFirst)};
     entry.runtime=entry.runtime.then(runtime=>{entry.key=scopeKey();return runtime;}).catch(error=>{if(composedPublisher===entry)composedPublisher=undefined;throw error;});composedPublisher=entry;return entry.runtime;
   };
+  // The existing private transfer bound belongs to execution, beneath public
+  // Source delivery. Waiting jobs keep only their already-admitted Source.
+  const privateOriginalDeliveries=new Set<Promise<void>>();
+  async function runPrivateOriginalDelivery(run:()=>Promise<void>){
+    while(privateOriginalDeliveries.size>=2){await Promise.race([...privateOriginalDeliveries].map(job=>job.catch(()=>{})));noteOpen();}
+    noteOpen();const job=run();privateOriginalDeliveries.add(job);
+    try{await job;}finally{privateOriginalDeliveries.delete(job);}
+  }
   async function createAsset(input: AssetDefinition | null, draft?: AssetMomentDraft, localOnly=false, composed?:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void,sourceDigest?:string): Promise<HeldDeposit> {
     lifetime.signal.throwIfAborted();
     const definition = input ? validateAssetDefinition(input) : null;
@@ -1593,6 +1601,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     let publicationModule:Promise<import('./asset-publication-runtime').AssetPublicationRuntimeModule>|undefined;
     const awaitImportPublication=()=>publicationModule??=import('./asset-publication-runtime').then(module=>module.loadAssetPublicationRuntime());
     let publicationRuntime:ReturnType<typeof openAssetPublicationRuntime>|undefined;
+    let privateOriginalDelivery:Promise<void>|undefined;
+    let admittedComposerSource:Awaited<ReturnType<import('./asset-publication-runtime').AssetPublicationRuntimeModule['admitConnectedComposerSource']>>|undefined;
     let artwork=composed?.files.find(file=>file.role==='cover')?.file??(composed?.kind==='image'?composed.files.find(file=>file.role==='primary')?.file:undefined);
     const openPublicationRuntime=()=>publicationRuntime??=(composed||restoredComposer?openComposedPublisher(composed?openDocumentSealer():undefined):openAssetPublicationRuntime(artwork));
     if(composed){
@@ -1620,6 +1630,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         // The same File remains memoized for delivery; no account/network read
         // or second generic verifier precedes the held Original's projection.
         const opened=await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username:username??keyFile.owner.username??'',profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:value=>{admission=value;}});
+        admittedComposerSource=opened;
         const carried=JSON.parse(await opened.source.sourcePayload.text());
         publicationDigest=opened.reference.artifactSha256;adoption.retainAssetPublicationSource(publicationDigest,file);
         const held=(title:string,definition?:AssetDefinition):HeldDeposit=>({digest:opened.reference.artifactSha256,filename:file.name,title,kind:'proof',status:'held-proof',pulse:opened.source.projection.pulse,bytes:exact,...(definition?{assetDefinition:definition}:{})});
@@ -1650,6 +1661,15 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       },
       retain:async file=>{onProgress?.({stage:'saving'});const held=await holdProof(file);heldDeposit=held;publicationDigest=held.digest;adoption.retainAssetPublicationSource(held.digest,file);return held.digest;},
       restore:async(digest,filename,mimeType)=>{const retained=adoption.retainedAssetPublicationSource(digest);if(retained&&await sdk.sha256ReceizBytes(new Uint8Array(await retained.arrayBuffer()))===digest)return retained;const [source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});if(source&&await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');},
+      privateOriginalDelivery:async file=>{
+        if(!composed&&!restoredComposer)return null;
+        const native=await awaitImportPublication(),username=publicAccountUsername(presentationUsername??keyFile.owner.username)??keyFile.owner.username??'',uid=accountUid??knownWallet?.wallet.userId;
+        const opened=admittedComposerSource??=await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,profileIdentity:uid,assertCurrent:noteOpen});noteOpen();
+        if(!opened.source.projection.bankAsset?.composer?.protectedOriginal)return null;
+        // Preparing this one Source's transport starts no external read. The
+        // encrypted checkpoint records its unfinished effect before execution.
+        return()=>privateOriginalDelivery??=runPrivateOriginalDelivery(async()=>{await(await openPublicationRuntime()).deliverPrivateOriginal(file);noteOpen();});
+      },
       publish:async file=>{
         // Connect and admit the one retained source concurrently. Neither leg
         // delays local creation; global delivery begins without a timer.

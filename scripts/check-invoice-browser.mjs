@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {createServer as createHttpServer} from 'node:http';
 import {createServer as createViteServer} from 'vite';
-import {readFile,mkdir,mkdtemp,rm,access} from 'node:fs/promises';
-import {resolve,join,extname} from 'node:path';
+import {readFile,mkdir,mkdtemp,rm,access,realpath} from 'node:fs/promises';
+import {resolve,join,extname,relative,sep} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {invoiceBrowserSdk} from '../tests/helpers/invoice-browser-sdk.mjs';
 const work=await mkdtemp(join(tmpdir(),'bankeiz-invoice-browser-')),screens=process.env.BANKEIZ_INVOICE_SCREENSHOTS??join(tmpdir(),'bankeiz-invoice-preview');await mkdir(screens,{recursive:true});
@@ -68,7 +69,10 @@ try{
  // Exercise the production-compiled recipient bundle too. Only its SDK module
  // uses the same explicit synthetic-root policy as the development fixture;
  // canonical verification, source codecs and native custody remain real.
- const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8')),sdkPath='/'+manifest['node_modules/@receiz/sdk/dist/index.js'].file,compiledContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:850}}),compiledPage=await compiledContext.newPage();let compiledReads=0,compiledOffline=false,compiledPosts=0;const compiledErrors=[];compiledPage.on('pageerror',e=>{compiledErrors.push(e.message);console.error('Compiled invoice error:',e.message);});compiledPage.on('console',m=>{if(m.type()==='error')console.error('Compiled console:',m.text());});compiledPage.on('request',r=>{if(r.method()==='POST')compiledPosts++;});
+ const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8'));
+ const sdkKey=relative(await realpath(process.cwd()),await realpath(fileURLToPath(import.meta.resolve('@receiz/sdk')))).split(sep).join('/'),sdkEntry=manifest[sdkKey];
+ assert.ok(sdkEntry?.isDynamicEntry&&sdkEntry.src===sdkKey&&typeof sdkEntry.file==='string','Compiled canonical SDK entry is missing: '+sdkKey);
+ const sdkPath='/'+sdkEntry.file,compiledContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:850}}),compiledPage=await compiledContext.newPage();let compiledReads=0,compiledOffline=false,compiledPosts=0;const compiledErrors=[];compiledPage.on('pageerror',e=>{compiledErrors.push(e.message);console.error('Compiled invoice error:',e.message);});compiledPage.on('console',m=>{if(m.type()==='error')console.error('Compiled console:',m.text());});compiledPage.on('request',r=>{if(r.method()==='POST')compiledPosts++;});
  await compiledContext.route('**/*',async route=>{const url=new URL(route.request().url());if(url.origin===compiledOrigin&&url.pathname===sdkPath)return route.fulfill({contentType:'text/javascript',body:Buffer.from(sdk)});if(url.origin==='https://receiz.com'&&url.pathname.startsWith('/api/proof-material/packages/')){compiledReads++;if(compiledOffline)return route.abort();const entry=packages.get(url.pathname.split('/')[4]);assert.ok(entry);return route.fulfill({headers:{'access-control-allow-origin':'*'},contentType:url.pathname.endsWith('/manifest')?'application/json':'application/octet-stream',body:url.pathname.endsWith('/manifest')?JSON.stringify(entry.manifest):entry.segments[Number(url.pathname.split('/').at(-1))]});}if(url.origin!==compiledOrigin||url.pathname.startsWith('/api/'))throw Error('Unexpected compiled invoice request '+url.href);return route.continue();});
  await compiledPage.goto(compiledOrigin+target.pathname+target.hash);try{await compiledPage.getByRole('button',{name:'Pay $1,500.00',exact:true}).waitFor();}catch(error){console.error('Compiled invoice state:',{compiledReads,compiledPosts,compiledErrors,body:await compiledPage.locator('body').innerText()});throw error;}assert.ok(compiledReads>0);assert.equal(compiledPosts,0);assert.ok(await compiledPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await compiledPage.screenshot({path:join(screens,'invoice-compiled-mobile.png'),fullPage:true});const compiledBefore=compiledReads;compiledOffline=true;await compiledPage.reload();await compiledPage.getByRole('button',{name:'Pay $1,500.00',exact:true}).waitFor();assert.equal(compiledReads,compiledBefore);assert.equal(compiledPosts,0);assert.deepEqual(compiledErrors,[]);await compiledContext.close();
  await context.unrouteAll({behavior:'ignoreErrors'});await context.close();console.log('Invoice browser passed: real SDK fixture sealing → explicit copy/publication → exact preserved chat send → issuer cold reopen → recipient itemization → cold native custody with APIs unavailable → exact existing payment handoff. Production compiled valid source/cold native retention (explicit synthetic SDK roots), static/invalid entries: zero POST. No real enrollment, email or charge. Screenshots: '+screens);

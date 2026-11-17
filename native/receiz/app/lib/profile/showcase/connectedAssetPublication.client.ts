@@ -137,11 +137,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    retainImportedProfileOriginalMaterial(original,username,opened.source);
    const authoredFile=authorshipProof?retainedComposerAuthoredFile(opened.source,opened.reference,authorshipProof,input.assertCurrent,input.resolveProtectedBlock):undefined;if(authoredFile)void authoredFile.catch(()=>{});input.assertCurrent();
    await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,opened.source,username,input.account.uid,identityAdmission.ownerReceizId!),sourceReference:opened.reference,firstPaint:null,artwork:sourceArtwork(opened.source),...(authoredFile?{authoredFile}:{})}),{signing:!!authorizeMarket||requireSavedSignature});input.assertCurrent();
-   // The already-open Source supplies private custody independently of the
-   // accepted predecessor lookup. Both must finish before any public append.
-   const selected=opened.source.projection.bankAsset?.composer?.protectedOriginal
-    ? (await Promise.all([publication(),retainPrivateOriginal(opened.source)]))[0]
-    : await publication();input.assertCurrent();
+   const selected=await publication();input.assertCurrent();
    return selected.publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
  return {
@@ -150,6 +146,10 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
   sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
   prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:identityAdmission.ownerReceizId!,creatorUsername:username,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
   publish,
+  async deliverPrivateOriginal(file:File){
+   const opened=await admitConnectedComposerSource({file,ownerReceizId:identityAdmission.ownerReceizId!,profileIdentity:input.account.uid,username,assertCurrent:input.assertCurrent});
+   if(opened.source.projection.bankAsset?.composer?.protectedOriginal)await retainPrivateOriginal(opened.source);input.assertCurrent();
+  },
   // Reuse the exact durable PBI proof. A background resume can never open a
   // ceremony or publish an unsigned placement in place of the saved signature.
   async readSignedSource(file:File){
@@ -215,7 +215,7 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
  };
  return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await Promise.all([stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)}),...(source.projection.bankAsset?.composer?.protectedOriginal?[retainPrivateOriginal(source)]:[])]);return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false){
   input.assertCurrent();const {source,reference}=opened,original=opened.original;
-  if(source.projection.bankAsset?.composer?.protectedOriginal)await retainPrivateOriginal(source);input.assertCurrent();
+  input.assertCurrent();
   const sourceResultKey=`original:${reference.artifactSha256}:${authorshipProof?.pbiReceiptHash??''}`,known=deliveries.get(sourceResultKey);if(known)return known;
   const remember=(result:ProfileShowcasePublicProjectionPublicationResult)=>{if(result.status==='published')deliveries.set(sourceResultKey,Promise.resolve(result));return result;};
   // Explicit signing only advances a current head. Ordinary first delivery may

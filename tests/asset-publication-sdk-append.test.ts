@@ -130,11 +130,36 @@ it('publishes through the installed SDK for fresh and nonempty accounts, retaini
  }
  auditReceiverReads=false;expect(receiverAudits).toBeGreaterThanOrEqual(4);
  expect(acceptedHead.visibleChildren).toHaveLength(priorChildren.length+3);
- const other=await open();
+ const overlapPredecessor=acceptedHead.admission.artifactSha256,other=await open();
  const fromOther=await other.prepare({kind:'image',title:'Another tab',description:'',longForm:'Same admitted account',files:[{id:'photo',role:'primary',file:image}]});
  expect((await other.publish(fromOther.artifact)).status).toBe('published');
+ // This exact SDK-committed Source is held independently of the candidate
+ // port. Losing only that subordinate record cannot turn a metadata request
+ // into an append prerequisite for the first publisher's already-held family.
+ const overlapDigest=acceptedHead.admission.artifactSha256,overlapVault=r.showcaseVault.createProfileShowcaseBoundedEdgeVault();
+ const overlapSource=await overlapVault.reopenRetainedHead(artifactId,overlapDigest);
+ expect(overlapSource?.artifactSha256).toBe(overlapDigest);
+ const overlapEntry:any=Object.values(r.publicationOutbox.readLocalSignedActionOutbox().entries).find((entry:any)=>JSON.parse(entry.envelope.request.bodyReplayText??'{}').scope?.artifactDigest===overlapDigest),overlapAction=JSON.parse(overlapEntry.envelope.request.bodyReplayText);
+ expect(overlapAction.publicationPredecessorArtifactDigest).toBe(overlapPredecessor);
+ const overlapChild=acceptedHead.visibleChildren.find((child:any)=>child.reference.childArtifactDigest===overlapAction.publicationChildArtifactDigest);expect((await overlapVault.reopenRetainedChild(overlapChild.reference))?.admittedArtifact.artifactSha256).toBe(overlapChild.reference.childArtifactDigest);
+ expect((await overlapVault.createTransitionPersistentStateIO(artifactId,overlapDigest,overlapSource)).resolveNode).toBeTypeOf('function');
+ const overlapCustody=r.createImportedProofSourceCustody(),overlapTransport=await r.showcaseTransport.readProfileShowcaseCarrierTransport(overlapAction.transport,overlapCustody.resolveBlock);
+ const candidateDb=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('receiz-profile-showcase-local-transition-v1-candidates');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ const overlapCandidate=await new Promise<any>((resolve,reject)=>{const request=candidateDb.transaction('immutable-candidates','readonly').objectStore('immutable-candidates').get(overlapDigest);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ expect(overlapCandidate.exactBytes).toEqual(overlapTransport.exactSealedArtifactBytes);
+ await new Promise<void>((resolve,reject)=>{const tx=candidateDb.transaction('immutable-candidates','readwrite');tx.objectStore('immutable-candidates').delete(overlapDigest);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});candidateDb.close();
+ expect((await overlapVault.reopenRetainedHead(artifactId,overlapDigest))?.artifactSha256).toBe(overlapDigest);
+ const beforeOverlapMetadata=metadataReads;
  const afterOther=await runtime.prepare({kind:'image',title:'Continue from warm tab',description:'',longForm:'Preserve the intervening append',files:[{id:'photo',role:'primary',file:image}]});
- expect((await runtime.publish(afterOther.artifact)).status).toBe('published');expect(acceptedHead.visibleChildren).toHaveLength(priorChildren.length+5);
+ const beforeOverlapSeals=seals;metadataMode='stalled';
+ const overlapMetadataRead=new Promise<never>((_,reject)=>{rejectStalledMetadataRead=reject;});
+ try{expect((await Promise.race([runtime.publish(afterOther.artifact),overlapMetadataRead])).status).toBe('published');}
+ finally{rejectStalledMetadataRead=undefined;metadataMode='available';}
+ expect(metadataReads).toBe(beforeOverlapMetadata);expect(seals).toBe(beforeOverlapSeals+3);
+ const heldOverlap=r.publicationOutbox.readLocalSignedActionOutbox().entries[overlapEntry.actionId];expect(heldOverlap.envelope).toEqual(overlapEntry.envelope);expect(heldOverlap.signatureB64Url).toBe(overlapEntry.signatureB64Url);
+ expect((await r.showcaseTransport.readProfileShowcaseCarrierTransport(overlapAction.transport,overlapCustody.resolveBlock)).exactSealedArtifactBytes).toEqual(overlapTransport.exactSealedArtifactBytes);
+ expect(acceptedHead.visibleChildren).toHaveLength(priorChildren.length+5);
+ expect(acceptedHead.visibleChildren.some((child:any)=>child.reference.childArtifactDigest===overlapAction.publicationChildArtifactDigest)).toBe(true);
  const switched=await runtime.prepare({kind:'image',title:'Account switch during upload',description:'',longForm:'Never publish from a closed account',files:[{id:'photo',role:'primary',file:image}]});
  const beforeSwitch=finalizations;switchOnUpload=true;
  await expect(runtime.publish(switched.artifact)).rejects.toThrow('ACCOUNT_CLOSED');expect(finalizations).toBe(beforeSwitch);

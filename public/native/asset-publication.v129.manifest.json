@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "2073fc55c57ef2956078544a2150a2dbe0287b651f178a64b9867bb0279bc26d",
-  "sourceTreeSha256": "7dc1f7d241b11e6f84c6241ea7cd9cd0c4865b48d8fb8bff5028aafa6e08f0bd",
+  "moduleSha256": "f6c1f0897e9bc5bf3bf8e1d5ba379af4270b165f914afcd504a5885f2080d472",
+  "sourceTreeSha256": "c322d6367a28ef64a3e958f99dde57141c3119b5a00543bc7ea356f9ff7d971a",
   "inputs": 529,
-  "bytes": 3088367,
+  "bytes": 3088945,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1982,6 +1982,20 @@
       "baseSha256": "a16649806ad983ce251d5e63251c5e39c2885779363f208ecca3f8a3e4abc947",
       "sha256": "2f37b761cb5c9204e9217a18d1d8c1697a7ccb624ba1171e7716a6ec9707fa62",
       "purpose": "Reuse the exact immutable SDK-issued artifact through its existing private registry before optional transport decoding; keep ordinary descriptor parsing, mismatch and unknown-wrapper refusals unchanged."
+    },
+    {
+      "id": "bankeiz-committed-source-candidate-recovery",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "7015b43c3fa707f60735130fe19d7ecb1eba3498295aaa05fa575929321ffbe0",
+      "sha256": "b68f9cbb767ee48d2f7421d9f9ac4525cffae9e83633a186db83053f275af63f",
+      "purpose": "Reuse the exact SDK-committed Source and existing signed prepared action when its candidate locator is missing, before weaker accepted metadata. Preserve actor, owner, profile, PBI, ancestry, exact bytes and missing-input discovery."
+    },
+    {
+      "id": "bankeiz-independent-private-original-delivery",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "f82b7c5c96839d0e51d7b83b8245b643701f216f1b74e073cc917fc15b45de72",
+      "sha256": "1269c102dcc899974559a21c2541b758afd2d92b4ca91ef776c0c4e96b92c26a",
+      "purpose": "Keep ordinary public Source publication independent of the separate owner-private transfer acknowledgment. Reuse canonical File admission and the existing protected transfer method; retain the explicit backed-funding stage prerequisite and all Source, owner, UID, private tuple and byte guards."
     }
   ],
   "browserDefines": {
