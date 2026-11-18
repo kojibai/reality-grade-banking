@@ -25,12 +25,12 @@ export interface PublicRecord {
 export interface PublicNetworkPage { source: PublicSource; records: PublicRecord[]; nextCursor: string | null; total: string | null; complete: boolean; observedAt?:string|null; }
 /** Same public source projection used by the Ledger and standalone asset. */
 export function publicMarketRecord(item:import('./public-market').PublicMarketItem):PublicRecord{
- return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName}}),authority:'public-source-projection'};
+ return {id:`proofs:${item.id}`,sourceId:item.id,source:'proofs',kind:'proof recorded',title:item.title,detail:item.summary||'Public showcase proof',time:item.sealedAt,actor:null,sender:null,recipient:null,amountUsdCents:null,kaiUpulse:null,pulse:item.pulse,sourceUrl:item.sourceUrl??item.verifyUrl,evidence:digestEvidence(item.originalDigest),valueOperands:{assetId:item.assetId,marketItemId:item.id,proofValueUsdCents:ledgerUsdCents(item.priceUsd),...(item.livePulseSeed?{proofValuation:{assetId:item.assetId,marketItemId:item.id,seed:item.livePulseSeed}}:{})},details:readLedgerDetails({assetId:item.assetId,marketItemId:item.id,originalUrl:item.originalUrl,readingUrl:item.readingUrl,hasLongForm:item.hasLongForm,publicAsset:item.category==='proof'?item:undefined,owner:{username:item.ownerUsername,displayName:item.ownerDisplayName},creator:item.originalCreator}),authority:'public-source-projection'};
 }
 function object(input: unknown): Record<string, unknown> { return input !== null && typeof input === 'object' && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
 function text(input: unknown, max = 2048): string | null { return typeof input === 'string' && input.length > 0 && input.length <= max ? input : null; }
 function digits(input: unknown, max = 25): string | null { const value = typeof input === 'number' && Number.isSafeInteger(input) && input >= 0 ? String(input) : text(input, max); return value && /^(0|[1-9]\d*)$/.test(value) && value.length <= max ? value : null; }
-function alias(input: unknown): string | null { const value = text(input, 36); return value && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(value) ? value : null; }
+export function publicLedgerAlias(input: unknown): string | null { const value = text(input, 36); return value && /^[1-9A-HJ-NP-Za-km-z]{26,36}$/.test(value) ? value : null; }
 function date(input: unknown): string | null { const value = text(input, 64); return value && Number.isFinite(Date.parse(value)) ? value : null; }
 function digestEvidence(digest: string | null): Record<string, string> { const evidence: Record<string, string> = {}; if (digest) evidence.artifactDigest = digest; return evidence; }
 function row(source: PublicSource, raw: unknown): PublicRecord {
@@ -46,7 +46,7 @@ function row(source: PublicSource, raw: unknown): PublicRecord {
   const pulse = digits(value.eventKaiPulse ?? value.pulse, 24), kaiUpulse = digits(value.kaiUpulse ?? value.kaiUPulse, 30);
   return { id: `${source}:${id}`, sourceId: id, source, kind,
     title: text(value.summary ?? value.label, 4096) ?? kind.replace(/[._]/g, ' '), detail: text(value.detail ?? value.objectLabel, 8192) ?? '',
-    time: date(value.occurredAt ?? value.createdAt), actor: alias(value.actorUserId) ?? alias(actor.userId ?? actor.phiKey),
+    time: date(value.occurredAt ?? value.createdAt), actor: publicLedgerAlias(value.actorUserId) ?? publicLedgerAlias(actor.userId ?? actor.phiKey),
     amountUsdCents: typeof value.amountUsdCents === 'string' ? digits(value.amountUsdCents) : null,
     sender:text(object(value.sender).displayName??object(value.sender).username??object(value.sender).userId,128),recipient:text(object(value.recipient).displayName??object(value.recipient).username??object(value.recipient).userId,128),
     kaiUpulse, pulse, sourceUrl: safeLedgerSourceUrl(value.transactionHref) ?? safeLedgerSourceUrl(value.verifyHref) ?? safeLedgerSourceUrl(value.canonicalHref) ?? safeLedgerSourceUrl(proof.verifierUrl),

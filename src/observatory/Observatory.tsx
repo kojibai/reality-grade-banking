@@ -1,0 +1,210 @@
+import {useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
+import {ArrowDown, ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play} from 'lucide-react';
+import {BankMark} from '../components/BankMark';
+import {formatMoney} from '../core/money';
+import {PUBLIC_SOURCES, type PublicSource} from '../receiz/public-network';
+import {documentSourceStates,type usePublicNetwork} from '../receiz/usePublicNetwork';
+import {ledgerRecordTitle} from '../receiz/ledger-payment-records';
+import {shippedMarketHistory, useMarketCapitalization} from '../receiz/market-projection/useMarketCapitalization';
+import {usePublicMarket} from '../receiz/usePublicMarket';
+import {activityWindow, indexActivity, ledgerLink, periods, sourceNames, type Period} from './activity';
+import type {ChartPeriod} from '../core/chart-history';
+import {HeadlineHistory, type Headline, type HistoryPoint} from './HeadlineHistory';
+import circulationObservations from './circulation-observations.json';
+import {useAudienceSeries} from './AudienceHistory';
+import {CapitalHistory} from './CapitalHistory';
+import {NetworkAtlas} from './NetworkAtlas';
+import {documentCatalog,observeCatalog} from './catalog';
+import {shippedObservatoryDirectory} from './directory';
+import {retainPublicProfileHeaders} from '../receiz/public-market';
+import type {PublicNetworkCache} from '../receiz/public-network-cache';
+import type {ObservatoryDirectory} from '../receiz/public-ledger-document-seed';
+import {publicProfilesRevision,subscribePublicProfiles} from '../receiz/public-profile';
+import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
+import {restorePublicProfileDirectoryHeaders} from '../receiz/public-profile-directory-retention';
+import {observePublicProfileDirectory,publicProfileDirectoryIsLive,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
+import './observatory.css';
+
+const num = new Intl.NumberFormat('en-US');
+const compact = new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 3});
+const day = new Intl.DateTimeFormat('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
+const fullDate = new Intl.DateTimeFormat('en-US', {month:'short', day:'numeric', year:'numeric', timeZone:'UTC'});
+const clock = new Intl.DateTimeFormat('en-GB', {hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
+type Network = ReturnType<typeof usePublicNetwork>;
+
+const noSubscription=()=>()=>{};
+function MarketReadings({source,status,onOpen}: {onOpen:(metric:Headline)=>void;source:ReturnType<typeof useMarketCapitalization>['source'];status:string}) {
+  const cap = source?.shareCapitalization;
+  const priced = cap && (cap.covered > 0 || cap.complete && cap.listed === 0);
+  return <>
+    <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('cap')}><span>Global market cap <ArrowUpRight/></span>
+      <strong title={priced ? formatMoney(cap.usdCents) : undefined}>{priced ? '$' + compact.format(BigInt(cap.usdCents) / 100n) : '—'}</strong>
+      <small>{cap ? num.format(cap.covered) + ' of ' + num.format(cap.listed) + ' assets included' : 'Pricing unavailable'}{status !== 'live' && ' · retained pricing'}</small></button>
+    <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('assets')}><span>Assets in circulation <ArrowUpRight/></span>
+      <strong>{source ? num.format(source.marketAssetsPriced + source.cardsInCirculation) : '—'}</strong>
+      <small>{source && num.format(source.marketAssetsPriced)+' priced assets · '+num.format(source.cardsInCirculation)+' collectible copies'}</small></button>
+  </>;
+}
+
+function ActivityPlot({plot, selection, onSelect, period}: {plot:ReturnType<typeof activityWindow>; selection:number; onSelect:(i:number)=>void; period:Period}) {
+  const max = Math.max(1, ...plot.buckets.map(bucket=>bucket.length));
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  const top = ([1,2,4,5,8,10].find(candidate=>candidate*magnitude>=max) ?? 10)*magnitude;
+  const ticks = [...new Set([0,1,2,3,4].map(n=>Math.round(top * n / 4)))];
+  const densityMax = Math.max(1,...plot.density);
+  const interval = plot.width < 3_600_000 ? num.format(plot.width / 60_000) + ' min' : plot.width < 86_400_000 ? num.format(plot.width / 3_600_000) + ' hours' : num.format(plot.width / 86_400_000) + ' days';
+  const describe = (i:number) => day.format(Math.min(plot.end,plot.start+i*plot.width))+' '+clock.format(Math.min(plot.end,plot.start+i*plot.width))+' UTC · '+num.format(plot.buckets[i].length)+(plot.buckets[i].length===1?' record':' records');
+  return <div className="obs-plot">
+    <div className="obs-axis-caption"><span>Records per {interval}</span><output>{describe(selection)}</output></div>
+    <div className="obs-plot-grid"><div className="obs-axis">{ticks.map(t=><span key={t} style={{bottom:(t/top*100)+'%'}}>{num.format(t)}</span>)}</div>
+      <div className="obs-field" role="slider" aria-label="Activity interval" tabIndex={0} aria-valuemin={1} aria-valuemax={plot.buckets.length} aria-valuenow={selection+1} aria-valuetext={describe(selection)}
+        onKeyDown={event=>{const moves:Record<string,number>={ArrowLeft:selection-1,ArrowRight:selection+1,End:plot.buckets.length-1,Home:0};if(event.key in moves){event.preventDefault();onSelect(Math.max(0,Math.min(plot.buckets.length-1,moves[event.key])));}}}
+        onPointerDown={event=>{const bounds=event.currentTarget.getBoundingClientRect();event.currentTarget.focus();onSelect(Math.max(0,Math.min(plot.buckets.length-1,Math.floor((event.clientX-bounds.left)/bounds.width*plot.buckets.length))));}}>
+        {ticks.map(t=><i className="obs-rule" key={t} style={{bottom:(t/top*100)+'%'}}/>)}
+        <div className="obs-bars" aria-hidden="true">{plot.buckets.map((bucket,i)=><span key={plot.start+i*plot.width} className={i===selection?'selected':''} data-occupied={bucket.length?true:undefined}><i style={{height:(bucket.length/top*100)+'%'}}/></span>)}</div>
+      </div>
+    </div>
+    <div className="obs-ticks">{Array.from({length:5},(_,i)=>{
+      const at=plot.start+i*(plot.end-plot.start)/4;
+      return <span key={i}>{(period==='24H'||period==='1H'?clock:day).format(at)}</span>;
+    })}</div>
+    <div className="obs-density"><span>Activity density</span><div aria-hidden="true">{plot.density.map((v,i)=><i key={i} style={{opacity:v ? 0.2+0.8*Math.sqrt(v/densityMax) : 0}}/>)}</div></div>
+  </div>;
+}
+
+export function Observatory({network:heldNetwork,active,initialDirectory,initialSnapshot}: {network:Network;active:boolean;initialDirectory?:ObservatoryDirectory;initialSnapshot?:PublicNetworkCache}) {
+  // Hydrate the exact HTML observation, then display any newer held head immediately.
+  const hydrating=useSyncExternalStore(noSubscription,()=>false,()=>true);
+  const documentSources=useMemo(()=>documentSourceStates(initialSnapshot),[initialSnapshot]);
+  const network=hydrating&&initialSnapshot?{...heldNetwork,records:initialSnapshot.records,sources:documentSources,capturedAt:initialSnapshot.capturedAt,bootstrap:false}:heldNetwork;
+  const market=usePublicMarket(active,active);
+  const directory=shippedObservatoryDirectory();
+  const carried=useMemo(()=>{
+    const prepared=documentCatalog(initialSnapshot,initialDirectory??directory);
+    return prepared?retainPublicProfileHeaders(prepared,directory):directory;
+  },[initialSnapshot,initialDirectory,directory]);
+  const liveCatalog=market.historyCatalog;
+  const catalog=useMemo(()=>active&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[active,liveCatalog,carried]);
+  const [capPeriod,setCapPeriod]=useState<ChartPeriod>('ALL');
+  const pricingActive=active&&!!liveCatalog?.complete&&liveCatalog.sportsCoverage==='complete';
+  const valuation=useMarketCapitalization(capPeriod,pricingActive,liveCatalog,pricingActive);
+  const pricing=useSyncExternalStore(noSubscription,()=>valuation.source,()=>shippedMarketHistory().summary);
+  const points=useSyncExternalStore(noSubscription,()=>valuation.points,()=>shippedMarketHistory().series[capPeriod]);
+  const directoryRestored=useRef(false);
+  const selectedCatalog=useRef(liveCatalog);selectedCatalog.current=liveCatalog;
+  useEffect(()=>{
+    if(!active||!liveCatalog?.complete)return;
+    if(!directoryRestored.current && initialDirectory?.publicProfileHeadsRevision){
+      directoryRestored.current=true;
+      const current=retainedDiscoveredPublicCatalog()??selectedCatalog.current;
+      if(current?.complete){
+        const held=new Set(current.publicProfileHeads?.map(head=>head.profile.userId));
+        const cards=carried.publicProfileHeads?.filter(head=>!held.has(head.profile.userId));
+        const next=restorePublicProfileDirectoryHeaders({transport:{publicProfileHeads:cards}},initialDirectory.publicProfileHeadsRevision,current);
+        if(next!==current)publishDiscoveredPublicCatalog(next,undefined,current);
+      }
+    }
+    const stop=subscribePublicProfileDirectory(()=>selectedCatalog.current);
+    const refresh=()=>{if(document.visibilityState==='visible')void observePublicProfileDirectory().catch(()=>{});};
+    const timer=setInterval(()=>{if(!publicProfileDirectoryIsLive())refresh();},60_000);
+    window.addEventListener('online',refresh);
+    return()=>{stop();clearInterval(timer);window.removeEventListener('online',refresh);};
+  },[active,liveCatalog?.complete,initialDirectory,carried]);
+  const profileRevision=useSyncExternalStore(subscribePublicProfiles,publicProfilesRevision,()=>0);
+  const audience=initialDirectory?.audience??directory.audience;
+  const overview=useMemo(()=>observeCatalog(catalog,audience),[catalog,profileRevision,audience]);
+  const audienceSeries=useAudienceSeries(overview,overview?.observedAt??null);
+  const [headline,setHeadline]=useState<Headline|null>(null);
+  const index=useMemo(()=>indexActivity(network.records),[network.records]);
+  const [source,setSource]=useState<PublicSource>('actions'), [period,setPeriod]=useState<Period>('7D');
+  const [paused,setPaused]=useState<number|null>(null), [picked,setPicked]=useState<number|null>(null), [limit,setLimit]=useState(8);
+  const [online,setOnline]=useState(true), [historyOpen,setHistoryOpen]=useState(false);
+  useEffect(()=>{const change=()=>setOnline(navigator.onLine);change();window.addEventListener('offline',change);window.addEventListener('online',change);return()=>{window.removeEventListener('offline',change);window.removeEventListener('online',change);};},[]);
+  const [filter,setFilter]=useState('');
+  const state=network.sources[source], sourceStream=index.streams[source];
+  const kinds=useMemo(()=>{
+    const counts=new Map<string,number>();
+    for(const event of sourceStream)counts.set(event.record.kind,(counts.get(event.record.kind)??0)+1);
+    return [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  },[sourceStream]);
+  const stream=useMemo(()=>filter?sourceStream.filter(event=>event.record.kind===filter):sourceStream,[sourceStream,filter]);
+  const capture=Date.parse(network.capturedAt??'');
+  const headlinePoints=useMemo(():HistoryPoint[]=>{
+    if(headline==='cap')return valuation.allTimePoints.map(p=>({at:Date.parse(p.at),value:Number(p.usdCents)/100}));
+    if(headline==='hours')return audienceSeries.flatMap(p=>p.seconds.value===null?[]:[{at:Date.parse(p.at),value:p.seconds.value/3600}]);
+    if(headline==='assets'){
+      const rows=new Map(circulationObservations.map(p=>[Date.parse(p.at),p.value]));
+      if(pricing)rows.set(Date.parse(pricing.generatedAt),pricing.marketAssetsPriced+pricing.cardsInCirculation);
+      return [...rows].sort(([a],[b])=>a-b).map(([at,value])=>({at,value}));
+    }
+    if(headline==='ledger'){
+      const counts=new Map<number,number>();
+      for(const source of PUBLIC_SOURCES){
+        const cutoff=network.sources[source].observedAt??capture;
+        for(const {time} of index.streams[source])if(time<=cutoff)counts.set(time,(counts.get(time)??0)+1);
+      }
+      let value=0;
+      return [...counts].sort(([a],[b])=>a-b).map(([at,count])=>{
+        value+=count;
+        return {at,value};
+      });
+    }
+    return [];
+  },[headline,valuation.allTimePoints,audienceSeries,pricing,index,network.sources,capture]);
+  const asOf=state.observedAt??(Number.isFinite(capture)?capture:null);
+  const future=useMemo(()=>asOf===null?[]:stream.filter(point=>point.time>asOf),[asOf,stream]);
+  const anchor=paused??asOf;
+  const plot=useMemo(()=>activityWindow(stream,period,anchor??0),[stream,period,anchor]);
+  const newest=plot.buckets.reduce((latest,bucket,i)=>bucket.length ? i : latest,-1);
+  const focus=picked===null ? (newest<0?plot.buckets.length-1:newest) : Math.min(plot.buckets.length-1,Math.max(0,Math.floor((picked-plot.start)/plot.width)));
+  const selected=plot.buckets[focus], start=Math.min(plot.end,plot.start+focus*plot.width);
+  const total=PUBLIC_SOURCES.reduce((n,s)=>n+index.counts[s],0);
+  const covered=PUBLIC_SOURCES.filter(s=>index.counts[s]>0 || network.sources[s].complete).length;
+  const pick=(i:number)=>{setPaused(anchor);setPicked(plot.start+i*plot.width);setLimit(8);};
+  const moveWindow=(direction:number)=>{
+    if(!asOf || anchor===null || period==='All')return;
+    const next=anchor+direction*(plot.end-plot.start+1);
+    setPaused(next>=asOf?null:next);setPicked(null);setLimit(8);
+  };
+  const following=paused===null, live=state.status==='live' && online;
+  const status=!online?'Offline · saved records':live?'Public source connected':state.error?'Source unavailable · saved records':network.bootstrap?'Opening public history':'Saved public snapshot';
+  const history=index.lineage;
+  return <div className="observatory"><header className="obs-header"><a href="/" className="obs-brand" aria-label="Bankeiz home"><BankMark/></a><nav aria-label="Main navigation"><a href="/observatory/" aria-current="page">Observatory</a><a href="/explore/">Explore</a><a href="/market-cap/">Market</a><a href="/ledger/">Ledger</a></nav></header>
+    <main><section className="obs-engine"><div className="obs-inner">
+      <div className="obs-title"><h1>Observatory</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{!online?'Offline · saved':live?'Public source connected':state.error?'Source unavailable':network.bootstrap?'Opening history':'Saved public snapshot'}</span></span></div>
+      <div className="obs-readings"><MarketReadings source={pricing} status={valuation.status} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong><small>Viewing and streaming time</small></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public ledger records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong><small>{covered} of {PUBLIC_SOURCES.length} sources represented</small></button></div>
+      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headlinePoints} onClose={()=>setHeadline(null)}/>}
+      <div className="obs-chart-head" id="obs-pulse"><div><h2>Network pulse</h2><p>{anchor ? <><b>{num.format(plot.total)}</b> {source==='actions'?(plot.total===1?'public action':'public actions'):(plot.total===1?'public record':'public records')} · {day.format(plot.start)} – {fullDate.format(anchor)} · UTC</> : 'Awaiting dated public records'}</p></div>
+        <div className="obs-controls"><div className="obs-period" aria-label="Chart range">{periods.map(p=><button key={p} aria-pressed={period===p} onClick={()=>{setPeriod(p);setPaused(null);setPicked(null);setLimit(8);}}>{p}</button>)}</div>
+        <button className="obs-follow" aria-pressed={following} onClick={()=>{setPaused(following?anchor:null);setPicked(null);setLimit(8);}} disabled={!anchor}>{following?<Pause/>:<Play/>}{following?'Following latest':'Follow latest'}</button></div></div>
+      <div className="obs-streams" role="group" aria-label="Chart source">{PUBLIC_SOURCES.map(s=><button key={s} aria-pressed={s===source} onClick={()=>{setSource(s);setFilter('');setPaused(null);setPicked(null);setLimit(8);}}>{sourceNames[s]}</button>)}</div>
+      {anchor ? <ActivityPlot plot={plot} period={period} selection={focus} onSelect={pick}/> : <p className="obs-empty">This source has no dated observations to chart.</p>}
+      <div className="obs-timeline-nav"><button aria-label="Previous time window" disabled={period==='All'||!stream.length||plot.start<=stream[0].time} onClick={()=>moveWindow(-1)}><ChevronLeft/> Earlier</button><select aria-label="Filter by record type" value={filter} onChange={e=>{setFilter(e.target.value);setPicked(null);setLimit(8);}}><option value="">All record types</option>{kinds.map(([kind,count])=><option key={kind} value={kind}>{kind} ({num.format(count)})</option>)}</select><button aria-label="Next time window" disabled={period==='All'||following||anchor===asOf} onClick={()=>moveWindow(1)}>Later <ChevronRight/></button></div>
+      <div className="obs-coverage"><span>{state.complete?'Source history loaded':'Partial source coverage'}{index.counts[source]>sourceStream.length?' · '+num.format(index.counts[source]-sourceStream.length)+' undated records excluded':''}</span><span>{state.observedAt ? 'Source observed '+fullDate.format(state.observedAt)+' · '+clock.format(state.observedAt)+' UTC' : 'Source observation time unavailable'}</span></div>
+    </div></section>
+    <section className="obs-details obs-inner"><div><p className="obs-label">Selected interval</p><h3>{anchor?day.format(start)+' · '+clock.format(start)+'–'+(day.format(start)!==day.format(Math.min(plot.end,start+plot.width))?day.format(Math.min(plot.end,start+plot.width))+' · ':'')+clock.format(Math.min(plot.end,start+plot.width))+' UTC':'No interval selected'}</h3><p>{num.format(selected.length)} {source==='actions'?'public actions':source==='proofs'?'proof objects':sourceNames[source].toLowerCase()+' records'} in this interval</p>
+      <a href="#observatory-records">Inspect records <ArrowDown/></a></div>
+      <div><p className="obs-label">Continuity</p><h3>{history?'Inside an ownership transfer':'Public Ledger'}</h3><p>{history?history.history.steps.length+' carried steps':'Inspect the history carried by each public record.'}</p>{history?<button type="button" className="obs-detail-action" aria-expanded={historyOpen} aria-controls="obs-history" onClick={()=>setHistoryOpen(open=>!open)}>{historyOpen?'Close history':'Open history'} <ArrowDown/></button>:<a href="/ledger/">Open Ledger <ArrowUpRight/></a>}</div></section>
+    {historyOpen&&history&&<section className="obs-history obs-inner" id="obs-history" aria-label="Carried ownership history"><div className="obs-section-head"><div><p className="obs-label">Carried history</p><h2>{ledgerRecordTitle(history.record)}</h2></div><a href={ledgerLink(history.record)}>Inspect in Ledger <ArrowUpRight/></a></div>
+      <ol>{history.history.steps.map(step=><li key={step.id}><strong>{step.label}</strong>{step.occurredAt&&<time dateTime={step.occurredAt}>{fullDate.format(Date.parse(step.occurredAt))} · {clock.format(Date.parse(step.occurredAt))} UTC</time>}{step.detail&&<p>{step.detail}</p>}</li>)}</ol>
+      {!!history.history.missingParentHashes?.length&&<p>{history.history.missingParentHashes.length} referenced predecessors are outside this carried history.</p>}</section>}
+    <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} actions={index.streams.actions}
+      actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={(kind,range)=>{
+        setSource('actions');setFilter(kind);setPeriod(range);setPaused(null);setPicked(null);setLimit(8);
+        document.getElementById('obs-pulse')?.scrollIntoView();
+      }}/>
+    <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>
+    <section className="obs-composition obs-inner" aria-label="Public source coverage"><div className="obs-section-head"><div><p className="obs-label">Public Ledger</p><h2>Network health</h2></div><a href="/ledger/">Explore Ledger <ArrowUpRight/></a></div>
+      <div className="obs-source-strip" aria-hidden="true">{PUBLIC_SOURCES.map(s=><i key={s} data-source={s} style={{flexGrow:index.counts[s]}}/>)}</div>
+      <div className="obs-breakdown">{PUBLIC_SOURCES.map(s=><button key={s} aria-pressed={source===s} onClick={()=>{setSource(s);setFilter('');setPaused(null);setPicked(null);setLimit(8);document.getElementById('obs-pulse')?.scrollIntoView();}}><i data-source={s}/><span>{sourceNames[s]}</span><strong>{network.sources[s].complete||index.counts[s]?num.format(index.counts[s]):'—'}</strong></button>)}</div>
+      <div className="obs-table-scroll" tabIndex={0} aria-label="Public source health"><table><thead><tr>{['Source','History coverage','Connection','Latest dated activity (UTC)','Observed (UTC)'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>{PUBLIC_SOURCES.map(s=>{
+        const reading=network.sources[s],cutoff=reading.observedAt;
+        const dated=index.streams[s];let i=dated.length-1;while(i>=0&&(cutoff===undefined||dated[i].time>cutoff))i--;const recent=dated[i];
+        const stamp=(at:number|undefined)=>at===undefined?'—':fullDate.format(at)+' · '+clock.format(at);
+        return <tr key={s}><th scope="row">{sourceNames[s]}</th><td>{reading.complete?'Complete':'Partial'}</td><td>{!online?'Offline':reading.error?'Source unavailable':reading.status==='live'?'Connected':reading.status==='loading'?'Opening':'Saved observation'}</td><td>{stamp(recent?.time)}</td><td>{stamp(cutoff)}</td></tr>;
+      })}</tbody></table></div></section>
+    <section id="observatory-records" className="obs-records obs-inner"><h2>Interval records</h2>{selected.slice(0,limit).map(record=><a className="obs-row" key={record.id} href={ledgerLink(record)}><time>{clock.format(Date.parse(record.time!))} UTC</time><strong>{ledgerRecordTitle(record)}</strong><span>{record.pulse?'☤KAI '+record.pulse:sourceNames[source]}</span><ChevronRight/></a>)}
+      {!selected.length&&<p>No dated records in the held interval.</p>}{selected.length>limit&&<button className="obs-more" onClick={()=>setLimit(n=>n+24)}>Show more records</button>}{!state.complete&&state.cursor&&!state.error&&<button className="obs-more" disabled={state.busy} onClick={()=>void network.loadMore()}>Read earlier public history</button>}</section>
+    {future.length>0&&<details className="obs-future obs-inner"><summary>{num.format(future.length)} {future.length===1?'record dated':'records dated'} after the source observation</summary>{future.map(({record,time})=><a className="obs-row" key={record.id} href={ledgerLink(record)}><time>{fullDate.format(time)}</time><strong>{ledgerRecordTitle(record)}</strong><ChevronRight/></a>)}</details>}
+    </main></div>;
+}

@@ -16,6 +16,13 @@ import type {PublicMarketCatalog} from './public-market';
 export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
+export function documentSourceStates(snapshot?:PublicNetworkCache):Sources{
+  const sources=initialSources();
+  for(const reading of snapshot?.coverage??[]){
+    sources[reading.source]={status:'stale',cursor:null,complete:reading.complete,busy:false,error:null,observedAt:reading.observedAt};
+  }
+  return sources;
+}
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;subscribePublicMarketCatalog?:(listener:()=>void)=>()=>void};
 function heldProofCatalog(){
   const selected=retainedDiscoveredPublicCatalog();if(selected?.complete)return selected;
@@ -44,7 +51,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     return catalog?{catalog,records:catalog.items.filter(item=>item.category==='proof').map(publicMarketRecord)}:null;
   });
   const [records, setRecords] = useState<PublicRecord[]>(()=>initialProofs?mergePublicRecords(initialSnapshot?.records.filter(row=>row.source!=='proofs')??[],initialProofs.records):initialSnapshot?.records??[]), rows = useRef(records);
-  const [sources, setSources] = useState<Sources>(()=>{const initial=initialSources();for(const covered of initialSnapshot?.coverage??[])initial[covered.source]={status:'stale',cursor:null,complete:covered.complete,busy:false,error:null,observedAt:covered.observedAt};if(initialProofs)initial.proofs={status:'live',cursor:null,complete:true,busy:false,error:null,observedAt:Date.now()};return initial;}), sourceState = useRef(sources);
+  const [sources, setSources] = useState<Sources>(()=>{const initial=documentSourceStates(initialSnapshot);if(initialProofs)initial.proofs={status:'live',cursor:null,complete:true,busy:false,error:null,observedAt:Date.now()};return initial;}), sourceState = useRef(sources);
   const [bootstrap, setBootstrap] = useState(!initialSnapshot), [capturedAt, setCapturedAt] = useState<string | null>(initialSnapshot?.capturedAt??null);
   const capture = (value:string|null) => { if(value)setCapturedAt(previous=>!previous||Date.parse(value)>Date.parse(previous)?value:previous); };
   const lifetime = useRef<AbortController | null>(null);

@@ -132,7 +132,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
     const knownGuide=['/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,emailGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
-    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!relationshipGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
+    if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/observatory/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!relationshipGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.
     // New routes reuse an existing shell instead of installing dozens of
     // identical copies of that catalog and all its embedded workspace CSS.

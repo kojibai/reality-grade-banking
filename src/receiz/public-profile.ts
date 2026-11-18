@@ -10,7 +10,7 @@ import {profileAvatarUrl,rememberObservedProfilePortrait,forgetObservedProfilePo
 import {retainRecipientPortrait,forgetRecipientPortrait} from './recipient-portrait.js';
 
 const names=/^[a-z0-9_]{3,24}$/;
-export const publicProfileReservedNames=['build','accept','receive','receiving','invitation','merchant','discover','feed','moments','meet','book','email','banking','guide','action','crypto','nft','nfts','economy','farmers','fuel','repairs','grocers','housing','workers','trust','money','deposit','fees','help','about','customers','switch','start','privacy','terms','docs','standard','standards','agent','agents','fraud','recover','proof','together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','registry','explore','explorer','learn','legal','ledger','market','market-cap','native','offline','receipt','source','verify','u'] as const;
+export const publicProfileReservedNames=['build','accept','receive','receiving','invitation','merchant','discover','feed','moments','meet','book','email','banking','guide','action','crypto','nft','nfts','economy','farmers','fuel','repairs','grocers','housing','workers','trust','money','deposit','fees','help','about','customers','switch','start','privacy','terms','docs','standard','standards','agent','agents','fraud','recover','proof','together','cooperate','protect','vaults','fit','coops','cooperatives','business','pay','api','asset','assets','auth','conformance','registry','explore','explorer','learn','legal','ledger','observatory','market','market-cap','native','offline','receipt','source','verify','u'] as const;
 const reserved=new Set<string>(publicProfileReservedNames);
 export const profileUsername=(value:unknown):string|null=>typeof value==='string'&&(names.test(value)||/^receiz_[a-z0-9]{18}$/.test(value))?value:null;
 export function profilePagePath(username:string){if(!profileUsername(username))throw Error('PROFILE_USERNAME_INVALID');return reserved.has(username)?`/u/${username}/`:`/${username}/`;}
@@ -170,6 +170,11 @@ export function publicProfilePageError(username:string,catalog?:PublicMarketCata
   return '';
  }
  if(typeof document==='undefined')return '';try{const value=JSON.parse(document.getElementById('public-profile-error')?.textContent??'null');return value?.username===username&&Date.now()-value.at<15_000&&['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_UNAVAILABLE'].includes(value.code)?value.code:'';}catch{return '';}
+}
+/** A directory card can lack profile details and Originals. It still carries
+ * an anonymous public identity subject to the same owner and handle refusals. */
+export function publicDirectoryCardVisible(username:string,userId:string,catalog:PublicMarketCatalog){
+ return !privateProfileAccounts.has(userId)&&!['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_CHANGED'].includes(publicProfilePageError(username,catalog));
 }
 export function retainedPublicProfile(username:string,documentCatalog?:PublicMarketCatalog):PublicProfile|null{
  username=heldPublicProfileUsername(username);

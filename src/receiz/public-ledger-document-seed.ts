@@ -1,9 +1,12 @@
 import {parsePublicNetworkCache,type PublicNetworkCache} from './public-network-cache';
 import {publicNetworkCacheWire} from './public-network-cache-wire';
 import {decodePublicDocumentGzip} from './public-document-gzip';
+import {readPublicProfileHeads,readPublicProfileHeadRefusals} from './public-profile-header';
+import type {PublicMarketCatalog} from './public-market';
 import {mergePublicRecords} from './public-network';
 
-export type PublicLedgerDocumentSeed=Readonly<{schema:'bank.public-ledger.document.v1';generation:string;path:'ledger'|'ledger/proofs';locale:string;timeZone:string;snapshot:PublicNetworkCache}>;
+export type ObservatoryDirectory=Pick<PublicMarketCatalog,'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'|'revision'|'observedAt'>&{audience?:{observedAt:string;heads:ReturnType<typeof readPublicProfileHeads>}};
+export type PublicLedgerDocumentSeed=Readonly<{schema:'bank.public-ledger.document.v1';generation:string;path:'ledger'|'ledger/proofs'|'observatory';locale:string;timeZone:string;directory?:ObservatoryDirectory;snapshot:PublicNetworkCache}>;
 export type PublicLedgerCompressedSnapshot=Readonly<{gzipB64u:string;bytes:number}>;
 // The existing public Ledger archive delivery capacities. This is a display
 // cache inside HTML, never a verified Ledger original or an admission input.
@@ -17,7 +20,7 @@ async function gzipSnapshot(value:Record<string,unknown>):Promise<PublicNetworkC
 export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof document==='undefined'?undefined:document):Promise<PublicLedgerDocumentSeed|null>{
  const element=doc?.getElementById('public-ledger-document-seed');if(!element)return Promise.resolve(null);
  const text=element.textContent??'',held=parsed.get(element);if(held?.text===text)return held.seed;
- const seed=(async()=>{try{const value=JSON.parse(text);if(value.schema!=='bank.public-ledger.document.v1'||!digest(value.generation)||!['ledger','ledger/proofs'].includes(value.path)||typeof value.locale!=='string'||value.locale.length>80||typeof value.timeZone!=='string'||value.timeZone.length>80)return null;
+ const seed=(async()=>{try{const value=JSON.parse(text);if(value.schema!=='bank.public-ledger.document.v1'||!digest(value.generation)||!['ledger','ledger/proofs','observatory'].includes(value.path)||typeof value.locale!=='string'||value.locale.length>80||typeof value.timeZone!=='string'||value.timeZone.length>80)return null;
   new Intl.DateTimeFormat(value.locale,{timeZone:value.timeZone});
   let snapshot:PublicNetworkCache;
   if(value.snapshotGzip){
@@ -25,7 +28,10 @@ export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof docum
    const caches=await Promise.all(packets.map((packet:Record<string,unknown>)=>gzipSnapshot(packet)));if(caches.reduce((total,cache)=>total+cache.records.length,0)>100000)return null;
    const coverage=new Map(caches.flatMap(cache=>cache.coverage).map(item=>[item.source,item]));snapshot={records:caches.reduce((rows,cache)=>mergePublicRecords(rows,cache.records),[] as PublicNetworkCache['records']),capturedAt:caches.map(cache=>cache.capturedAt).filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,inspectionVersion:caches[0].inspectionVersion,coverage:[...coverage.values()]};
   }else snapshot=parsePublicNetworkCache(value.snapshot);
-  return {schema:value.schema,generation:value.generation,path:value.path,locale:value.locale,timeZone:value.timeZone,snapshot} as PublicLedgerDocumentSeed;
+  const raw=value.path==='observatory'?value.directory:null;
+  const audience=typeof raw?.audience?.observedAt==='string'&&Number.isFinite(Date.parse(raw.audience.observedAt))?{observedAt:raw.audience.observedAt,heads:readPublicProfileHeads(raw.audience.heads)}:undefined;
+  const directory=raw&&typeof raw.revision==='string' ? {audience,revision:raw.revision,observedAt:typeof raw.observedAt==='string'?raw.observedAt:null,publicProfileHeads:readPublicProfileHeads(raw.publicProfileHeads),publicProfileHeadRefusals:readPublicProfileHeadRefusals(raw.publicProfileHeadRefusals),publicProfileHeadsRevision:typeof raw.publicProfileHeadsRevision==='string'?raw.publicProfileHeadsRevision:undefined} : undefined;
+  return {schema:value.schema,...(directory?{directory}:{}),generation:value.generation,path:value.path,locale:value.locale,timeZone:value.timeZone,snapshot} as PublicLedgerDocumentSeed;
  }catch{return null;}})();parsed.set(element,{text,seed});return seed;
 }
 export function publicLedgerDocumentSeedScript(seed:PublicLedgerDocumentSeed,snapshotGzip?:PublicLedgerCompressedSnapshot|readonly PublicLedgerCompressedSnapshot[]):string{

@@ -1,3 +1,4 @@
+import {observatoryPage} from './observatory-page.mjs';
 import {emailGuidePage,emailGuideContent,renderEmailExamples} from './email-guide.mjs';
 import {build as buildReceivingRuntime} from 'esbuild';
 import {receivingContent,invitationContent} from './receiving-page.mjs';
@@ -155,7 +156,7 @@ try {
   // No Source read, new cache or historical reverification belongs in a build.
   const {snapshot:ledgerQuotes,...ledgerMembership}=market,material=JSON.stringify({membership:ledgerMembership,snapshot:ledgerQuotes,ledgerCacheGzipB64u:ledgerBytes.toString('base64url')}),ledgerGeneration=createHash('sha256').update(material).digest('hex');
   readingLedger=(await ledger.preparePublicLedgerDocumentState(material,ledgerGeneration)).snapshot;
-  for(const path of ['ledger','ledger/proofs']){
+  for(const path of ['ledger','ledger/proofs','observatory']){
    const template='<html><head></head><body><div id="public-ledger-root"></div><script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{['/'+path+'/']:{}},bank:{}})+'</script></body></html>';
    const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
    if(!content||!seed)throw Error('PUBLIC_LEDGER_STATIC_STATE_REQUIRED');
@@ -215,6 +216,13 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
  const base=runtimeDocuments.get('/ledger/'),all=ledgerStates.get('/ledger/'),proofs=ledgerStates.get('/ledger/proofs/');
  const html=base.replace(/<head>([\s\S]*?)<\/head>/,(_all,head)=>'<head>'+head.replaceAll('https://bankeiz.com/ledger/','https://bankeiz.com/ledger/proofs/')+'</head>').replace(all.content,()=>proofs.content).replace(all.seedScript,()=>proofs.seedScript);
  runtimeDocuments.set('/ledger/proofs/',html);
+}
+// Observatory is another view of the existing Ledger reader, including its
+// document seed, live subscriptions, retained history and drill-down links.
+{
+ const {page,document}=observatoryPage(publicPages['/ledger/'],ledgerStates.get('/observatory/'));
+ publicPages['/observatory/']=page;
+ runtimeDocuments.set('/observatory/',document);
 }
 // A direct certificate paints its own settled header/footer, never the
 // unrelated catalog. Keep the same Explorer runtime and Bank purchase host.
@@ -286,7 +294,7 @@ const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWork
 console.log(`Built ${libraryResult.pages} complete static client-work resources and ${libraryResult.downloads} usable text downloads, without app startup payloads.`);
 await mkdir('dist/ledger/proofs',{recursive:true});
 await writeFile('dist/ledger/proofs/index.html',runtimeDocumentHtml(runtimeDocuments.get('/ledger/proofs/'),'ledger'));
-const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),...assetPaths];
+const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),'/observatory/',...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every
 // guide. Canonical publication dates can be added when they are source-backed.

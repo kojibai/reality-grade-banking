@@ -14,12 +14,12 @@ import {marketCalculationMatches,type GlobalMarketCalculation} from './calculati
 export type { CapitalizationPoint } from './history';
 const KEY = 'receiz-bank-pbi-market-share-graph-history-v1';
 let shipped:MarketHistorySnapshot|undefined;
-const shippedHistory=()=>shipped??=parseMarketHistory(seedHistory);
+export const shippedMarketHistory=()=>shipped??=parseMarketHistory(seedHistory);
 const now=()=>{try{return receizKaiNow().pulse;}catch{return 0;}};
 function restore(): MarketHistorySnapshot {
   const prepared=readPublicMarketDocumentSeed(),carried=prepared&&publicMarketDocumentHistory(prepared);
   if(carried?.historyPolicy===SHARE_MARKET_HISTORY_POLICY)return carried;
-  const fallback=shippedHistory();
+  const fallback=shippedMarketHistory();
   try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy===SHARE_MARKET_HISTORY_POLICY&&cached.summary.serverPulse >= fallback.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
   return fallback;
 }
@@ -134,5 +134,5 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     restartWorker.current?.();dispatch();
   }, [fullSource, active,catalog,pulse,dispatch,display?.seed]);
   // Period selection is always a synchronous lookup, with no network or job.
-  return { source:visibleHistory?.summary??null, points: visibleHistory?.series[period]??[], pendingPrepared, status:packet?(preparedState.phase==='ready'&&packet.receipt.state==='current'?'live' as const:'cached' as const):status,calculation:visibleHistory&&marketCalculationMatches(calculation,visibleHistory.summary,visibleHistory.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };
+  return { source:visibleHistory?.summary??null, points: visibleHistory?.series[period]??[], allTimePoints:visibleHistory?.series.ALL??[], pendingPrepared, status:packet?(preparedState.phase==='ready'&&packet.receipt.state==='current'?'live' as const:'cached' as const):status,calculation:visibleHistory&&marketCalculationMatches(calculation,visibleHistory.summary,visibleHistory.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };
 }

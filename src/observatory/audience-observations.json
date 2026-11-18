@@ -1,0 +1,1292 @@
+[
+  {
+    "at": "2026-05-19T03:07:20.561Z",
+    "source": "Receiz public Showcase",
+    "publication": "09760661ddb751d4fa2e812ddd0e41e37df7f973",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 61950,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3718,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 402931,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 61950,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3718,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 402931,
+      "covered": 1
+    },
+    "intervals": []
+  },
+  {
+    "at": "2026-05-20T08:26:43.297Z",
+    "source": "Receiz public Showcase",
+    "publication": "691e36318bd8ba84f6d4249b44c0b2c12002b386",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 61950,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3718,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 403288,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 61950,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3718,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 403288,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-19T03:07:20.561Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 357,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-05-23T14:21:13.756Z",
+    "source": "Receiz public Showcase",
+    "publication": "ec798da653f9ba2032cf1eb4af3bc7600cf6e487",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 63838,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3777,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 596839,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 63838,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3777,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 596839,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-20T08:26:43.297Z",
+        "views": {
+          "value": 1888,
+          "covered": 1
+        },
+        "plays": {
+          "value": 59,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 193551,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-05-23T14:48:18.882Z",
+    "source": "Receiz public Showcase",
+    "publication": "3648fdcedf5b47c86f808db3d83dcc9ea4e2b206",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 63838,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3777,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 596839,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 63838,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3777,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 596839,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-23T14:21:13.756Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-05-23T19:57:51.293Z",
+    "source": "Receiz public Showcase",
+    "publication": "6b45761c9613c5f3cda5ac583700bffb2edbe1d5",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 64420,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3785,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 596842,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 64420,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3785,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 596842,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-23T14:48:18.882Z",
+        "views": {
+          "value": 582,
+          "covered": 1
+        },
+        "plays": {
+          "value": 8,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 3,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-05-28T16:38:36.252Z",
+    "source": "Receiz public Showcase",
+    "publication": "98ece965c11cd8e88b4ca3ae4ffaa4a3ffbef169",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 65034,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3796,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 601291,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 65034,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3796,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 601291,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-23T19:57:51.293Z",
+        "views": {
+          "value": 614,
+          "covered": 1
+        },
+        "plays": {
+          "value": 11,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 4449,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-06-17T23:19:26.655Z",
+    "source": "Receiz public Showcase",
+    "publication": "4df071cffd1d93531e8ccfc67bb9e9c7ff7f5035",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 65034,
+        "covered": 1
+      },
+      "plays": {
+        "value": 3796,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 601291,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 65034,
+      "covered": 1
+    },
+    "plays": {
+      "value": 3796,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 601291,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-05-28T16:38:36.252Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-07-10T23:09:09.878Z",
+    "source": "Receiz public Showcase",
+    "publication": "f3d134418cf8087926d4147afcbc694f3871d3d8",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 72682,
+        "covered": 1
+      },
+      "plays": {
+        "value": 4570,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 771260,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 72682,
+      "covered": 1
+    },
+    "plays": {
+      "value": 4570,
+      "covered": 1
+    },
+    "seconds": {
+      "value": 771260,
+      "covered": 1
+    },
+    "intervals": [
+      {
+        "from": "2026-06-17T23:19:26.655Z",
+        "views": {
+          "value": 7648,
+          "covered": 1
+        },
+        "plays": {
+          "value": 774,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 169969,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-07-30T21:19:41.924Z",
+    "source": "Receiz public Showcase",
+    "publication": "d2acf21579e9084d360f10101f64db07a2642430",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 80886,
+        "covered": 160
+      },
+      "plays": {
+        "value": 5071,
+        "covered": 160
+      },
+      "seconds": {
+        "value": 851118,
+        "covered": 160
+      }
+    },
+    "views": {
+      "value": 80886,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5071,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 851118,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-07-10T23:09:09.878Z",
+        "views": {
+          "value": 3898,
+          "covered": 1
+        },
+        "plays": {
+          "value": 328,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 67969,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-15T07:15:54.884Z",
+    "source": "Receiz public Showcase",
+    "publication": "510bae1ee028bb935a9458a6ec37b159e62dcd48",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 82186,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5254,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 900223,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 86492,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5427,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 912112,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-07-30T21:19:41.924Z",
+        "views": {
+          "value": 5606,
+          "covered": 1
+        },
+        "plays": {
+          "value": 356,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 60994,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-15T07:35:59.439Z",
+    "source": "Receiz public Showcase",
+    "publication": "510bae1ee028bb935a9458a6ec37b159e62dcd48",
+    "documents": [
+      "app/lib/firstPaint/profiles/released-index.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 4306,
+        "covered": 159
+      },
+      "plays": {
+        "value": 173,
+        "covered": 159
+      },
+      "seconds": {
+        "value": 11889,
+        "covered": 159
+      }
+    },
+    "views": {
+      "value": 86492,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5427,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 912112,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-07-30T21:19:41.924Z",
+        "views": {
+          "value": 0,
+          "covered": 159
+        },
+        "plays": {
+          "value": 0,
+          "covered": 159
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 159
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-15T17:32:45.703Z",
+    "source": "Receiz public Showcase",
+    "publication": "ae42b2c679a256bdeb81cd64612d59b8ac630075",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 82186,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5254,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 900223,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 86492,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5427,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 912112,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-15T07:15:54.884Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-16T17:26:17.329Z",
+    "source": "Receiz public Showcase",
+    "publication": "0f66fd8864a578ee10a3121c5ed50c5a444f9a2a",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 82898,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5365,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 910257,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 87204,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5538,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 922146,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-15T17:32:45.703Z",
+        "views": {
+          "value": 712,
+          "covered": 1
+        },
+        "plays": {
+          "value": 111,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 10034,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-17T00:25:01.330Z",
+    "source": "Receiz public Showcase",
+    "publication": "39c923418f612600d29cacb7866ef335e7ca758e",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 82961,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5365,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 910257,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 87267,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5538,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 922146,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-16T17:26:17.329Z",
+        "views": {
+          "value": 63,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-19T01:16:38.939Z",
+    "source": "Receiz public Showcase",
+    "publication": "25ae78b674bfa7fa6e28d53473b4a5c640e7f515",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 83696,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5366,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 910306,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 88002,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5539,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 922195,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-17T00:25:01.330Z",
+        "views": {
+          "value": 735,
+          "covered": 1
+        },
+        "plays": {
+          "value": 1,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 49,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-23T22:25:42.347Z",
+    "source": "Receiz public Showcase",
+    "publication": "724248efb229a7d736d6bc4acab2a583885c9425",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 85899,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5552,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 919730,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 90205,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5725,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 931619,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-19T01:16:38.939Z",
+        "views": {
+          "value": 2203,
+          "covered": 1
+        },
+        "plays": {
+          "value": 186,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 9424,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-27T22:04:03.224Z",
+    "source": "Receiz public Showcase",
+    "publication": "77be4c15c75a7b4460248590e04b701c1bd755df",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 87674,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5558,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 920252,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 91980,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5731,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 932141,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-23T22:25:42.347Z",
+        "views": {
+          "value": 1775,
+          "covered": 1
+        },
+        "plays": {
+          "value": 6,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 522,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-08-30T03:17:08.070Z",
+    "source": "Receiz public Showcase",
+    "publication": "98ca983ec2fe2e630017f00fbea87716c0d6caab",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 88778,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5602,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 935197,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 93084,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5775,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 947086,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-27T22:04:03.224Z",
+        "views": {
+          "value": 1104,
+          "covered": 1
+        },
+        "plays": {
+          "value": 44,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 14945,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-09-03T03:51:56.979Z",
+    "source": "Receiz public Showcase",
+    "publication": "c349f3c6102b8ef52102a180e049811d7a27d0d1",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 89285,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5613,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 937875,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 93591,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5786,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 949764,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-30T03:17:08.070Z",
+        "views": {
+          "value": 507,
+          "covered": 1
+        },
+        "plays": {
+          "value": 11,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 2678,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-09-04T04:33:27.233Z",
+    "source": "Receiz public Showcase",
+    "publication": "b01f5215054f720165d72915a4c7e46565f32cb7",
+    "documents": [
+      "app/lib/firstPaint/receizFirstPaintProof.v1.json",
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 94009,
+        "covered": 160
+      },
+      "plays": {
+        "value": 5801,
+        "covered": 160
+      },
+      "seconds": {
+        "value": 952517,
+        "covered": 160
+      }
+    },
+    "views": {
+      "value": 94009,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 952517,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-08-15T07:35:59.439Z",
+        "views": {
+          "value": 0,
+          "covered": 159
+        },
+        "plays": {
+          "value": 0,
+          "covered": 159
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 159
+        }
+      },
+      {
+        "from": "2026-09-03T03:51:56.979Z",
+        "views": {
+          "value": 418,
+          "covered": 1
+        },
+        "plays": {
+          "value": 15,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 2753,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-09-26T16:07:58.460Z",
+    "source": "Receiz public Showcase",
+    "publication": "a1040038d345a0e1f532fe0aa8b1773b62e402d8",
+    "documents": [
+      "app/lib/firstPaint/profiles/bjklock.v1.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 89703,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5628,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 940628,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 94009,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 952517,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-09-04T04:33:27.233Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-11-06T18:22:17.050Z",
+    "source": "Bankeiz public Showcase",
+    "publication": "3756797e7b7f58939254537e9eef04352df8fa74",
+    "documents": [
+      "public/receiz-public-market.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 89703,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5628,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 940628,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 94009,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 952517,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-09-26T16:07:58.460Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-11-07T23:40:12.404Z",
+    "source": "Bankeiz public Showcase",
+    "publication": "d97b9b8125e9ab8cb0bc44c6df10e9752645173b",
+    "documents": [
+      "public/receiz-public-market.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 89703,
+        "covered": 1
+      },
+      "plays": {
+        "value": 5628,
+        "covered": 1
+      },
+      "seconds": {
+        "value": 940628,
+        "covered": 1
+      }
+    },
+    "views": {
+      "value": 94009,
+      "covered": 160
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 160
+    },
+    "seconds": {
+      "value": 952517,
+      "covered": 160
+    },
+    "intervals": [
+      {
+        "from": "2026-11-06T18:22:17.050Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-11-12T06:41:34.581Z",
+    "source": "Bankeiz public Showcase",
+    "publication": "07bacbe33914bb641c6a4c497dd2ea6dadab566e",
+    "documents": [
+      "public/receiz-public-market.json"
+    ],
+    "reported": {
+      "views": {
+        "value": 89987,
+        "covered": 406
+      },
+      "plays": {
+        "value": 5687,
+        "covered": 406
+      },
+      "seconds": {
+        "value": 941323,
+        "covered": 406
+      }
+    },
+    "views": {
+      "value": 94060,
+      "covered": 564
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 564
+    },
+    "seconds": {
+      "value": 952527,
+      "covered": 564
+    },
+    "intervals": [
+      {
+        "from": "2026-09-04T04:33:27.233Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      },
+      {
+        "from": "2026-11-07T23:40:12.404Z",
+        "views": {
+          "value": 0,
+          "covered": 1
+        },
+        "plays": {
+          "value": 0,
+          "covered": 1
+        },
+        "seconds": {
+          "value": 0,
+          "covered": 1
+        }
+      }
+    ]
+  },
+  {
+    "at": "2026-11-18T06:41:59.316Z",
+    "source": "Receiz public Showcase",
+    "publication": null,
+    "documents": [
+      "/api/market/public-membership"
+    ],
+    "reported": {
+      "views": {
+        "value": 89990,
+        "covered": 425
+      },
+      "plays": {
+        "value": 5687,
+        "covered": 425
+      },
+      "seconds": {
+        "value": 946271,
+        "covered": 425
+      }
+    },
+    "views": {
+      "value": 94063,
+      "covered": 583
+    },
+    "plays": {
+      "value": 5801,
+      "covered": 583
+    },
+    "seconds": {
+      "value": 957475,
+      "covered": 583
+    },
+    "intervals": [
+      {
+        "from": "2026-11-12T06:41:34.581Z",
+        "views": {
+          "value": 3,
+          "covered": 406
+        },
+        "plays": {
+          "value": 0,
+          "covered": 406
+        },
+        "seconds": {
+          "value": 4948,
+          "covered": 406
+        }
+      }
+    ]
+  }
+]

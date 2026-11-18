@@ -151,6 +151,14 @@
       "destination": "/__bank_static_entry/explore/index.html"
     },
     {
+      "source": "/observatory",
+      "destination": "/observatory/index.html"
+    },
+    {
+      "source": "/observatory/",
+      "destination": "/observatory/index.html"
+    },
+    {
       "source": "/ledger",
       "destination": "/__bank_static_entry/ledger/index.html"
     },

@@ -230,6 +230,24 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
+/** Curated proof presentation carried by Ledger records and receipts. Reuse the
+ * public URL/model/quantity readers; never transport full works or authority. */
+const publicProofPresentations=new WeakSet<object>();
+export function readPublicProofPresentation(input:unknown):PublicMarketItem|null{
+ if(input&&typeof input==='object'&&publicProofPresentations.has(input))return input as PublicMarketItem;
+ const value=record(input);if(value.category!=='proof'||value.authority!=='projection-only'||value.canTrade!==false||!text(value.id,256)||!text(value.assetId,256)||!text(value.title,4096))return null;
+ const manifest=record(value.proofManifestSource),manifestMedia=record(manifest.media),owner=record(value.ownerIdentity),book=record(value.book);
+ const profile={...manifest,assetTitle:value.title,mediaKind:value.mediaKind,artworkUrl:value.artworkUrl,hasLongForm:value.hasLongForm,hasPbiSignature:value.hasPbiSignature,pbiReceiptHash:value.pbiReceiptHash,nativeAsset:value.nativeAsset,originalCreator:publicOriginalCreator(value.originalCreator),sourceProvenance:publicOriginalProvenance(value.sourceProvenance),playback:value.playback,documentUrl:value.documentUrl,media:{...manifestMedia,kind:value.mediaKind,sha256Hex:manifestMedia.sha256Hex??(book.assetId===value.assetId?book.payloadDigest:undefined),originalDownloadSrc:value.originalUrl,originalDownloadSha256Hex:value.originalDigest}};
+ const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:value.id,receizId:value.assetId,title:value.title,summary:value.summary,canonicalHref:value.sourceUrl,verifyHref:value.verifyUrl,pulse:value.pulse,createdAt:value.sealedAt,valueUsd:value.priceUsd,livePulseSeed:value.livePulseSeed,ownerUsername:value.ownerUsername,ownerDisplayName:value.ownerDisplayName,...(value.ownerAvatarUrl!==undefined?{ownerAvatarUrl:value.ownerAvatarUrl}:{}),ownerUserId:owner.userId,ownerCreatedAt:owner.createdAt,profileOriginal:profile}]}}).items[0];
+ if(!item||item.originalDigest!==value.originalDigest||item.pulse!==value.pulse)return null;
+ const reading=safeReceizPublicUrl(value.readingUrl,'proof');if(reading&&item.verifyUrl&&new URL(reading).pathname===new URL(item.verifyUrl).pathname)item.readingUrl=reading;
+ const inventory=readPublicShareInventory(value.shareInventory,item);if(inventory)item.shareInventory=inventory;
+ if(Array.isArray(value.chart)&&value.chart.length<=256&&value.chart.every(point=>typeof point==='number'&&Number.isFinite(point)&&point>=0))item.chart=[...value.chart];
+ if(typeof value.changePct==='number'&&Number.isFinite(value.changePct)&&Math.abs(value.changePct)<=1e6)item.changePct=value.changePct;
+ // Reuse this exact curated display result through inspection/receipt passes.
+ // Only this module's immutable result qualifies; a claimed digest does not.
+ const freeze=(value:object)=>{for(const child of Object.values(value))if(child&&typeof child==='object'&&!Object.isFrozen(child))freeze(child);Object.freeze(value);};freeze(item);publicProofPresentations.add(item);return item;
+}
 /** Reuse separately selected Sports rows without reopening their operands. */
 export function retainPublicMarketSports(catalog:PublicMarketCatalog,held?:PublicMarketCatalog|null):PublicMarketCatalog{
   // A Showcase membership response carries Originals only. Collectibles are
