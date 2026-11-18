@@ -1,3 +1,4 @@
+import {documentCatalog} from '../observatory/catalog';
 import type {ObservatoryDirectory} from '../receiz/public-ledger-document-seed';
 import {Observatory} from '../observatory/Observatory';
 import {flushSync} from 'react-dom';
@@ -59,7 +60,7 @@ export function PublicLedgerApp(props:LedgerProps){
   const visitedLedger=useRef(!observing),visitedObservatory=useRef(observing);
   const [captured,setCaptured]=useState<PublicLedgerFileReview|null>(null);
   const active=props.active??true;
-  const network=usePublicNetwork(active&&(observing||!captured?.archive),props.initialSnapshot,true);
+  const network=usePublicNetwork(active&&(observing||!captured?.archive),props.initialSnapshot,true,documentCatalog(props.initialSnapshot,props.initialDirectory));
   useEffect(()=>{
     const change=()=>{const next=observatoryPath(location.pathname);if(next)visitedObservatory.current=true;else if(/^\/ledger(?:\/|$)/.test(location.pathname))visitedLedger.current=true;flushSync(()=>setObserving(next));};
     if(observatoryPath(location.pathname)!==observing)change();

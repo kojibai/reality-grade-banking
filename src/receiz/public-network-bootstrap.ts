@@ -6,6 +6,10 @@ import {readLedgerValueOperands} from './ledger-value';
 
 /** Upgrade retained display context without reviving withdrawn public objects. */
 export function restorePublicNetworkRows(cache:PublicNetworkCache|null,seed:PublicNetworkCache|null){
+ // Both operands have already crossed the cache reader. A single operand
+ // carries its canonical rows directly, including certificate references.
+ if(!seed)return cache?.records??[];
+ if(!cache)return seed.records;
  const held=new Map(cache?.records.map(row=>[row.id,row])??[]),seedRows=seed?.records??[],seedById=new Map(seedRows.map(row=>[row.id,row]));
  const allowedSeed=seedRows.filter(row=>!held.has(row.id)&&(!['graph','proofs'].includes(row.source)||!cache?.coverage.some(source=>source.source===row.source&&source.complete)));
  const enriched=(cache?.records??[]).map(row=>{

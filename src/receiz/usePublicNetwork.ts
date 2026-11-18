@@ -30,7 +30,7 @@ export function heldProofCatalog(){
   if(typeof document==='undefined')return null;
   try{const catalog=(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketCatalog?.();return catalog?.complete?catalog:null;}catch{return null;}
 }
-export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache, followDocumentHeads=false) {
+export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache, followDocumentHeads=false, documentProofCatalog:PublicMarketCatalog|null=null) {
   // Ledger paints its held rows first. The shared delivery reader obtains only
   // a genuinely missing catalog and publishes later Showcase changes once.
   useEffect(()=>{
@@ -63,7 +63,9 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
   const sourceReads=useRef(new Map<PublicSource,{controller:AbortController;promise:Promise<void>}>());
   const proofRevision=useRef(initialProofs?1:0),publicationRefresh=useRef<Promise<void>|null>(null);
   const proofObservedAt=useRef<number|null>(initialProofs?(Number.isFinite(Date.parse(initialProofs.catalog.observedAt??''))?Date.parse(initialProofs.catalog.observedAt!):null):initialSnapshot?.coverage.find(row=>row.source==='proofs')?.observedAt??null);
-  const selectedProofCatalog=useRef(initialProofs?.catalog??null);
+  // The document's exact catalog was projected from these very rows. A distinct
+  // selected catalog still goes through the ordinary admission and replacement path.
+  const selectedProofCatalog=useRef(initialProofs?.catalog??documentProofCatalog);
   const activeTradeRepair=useRef<{targets:Set<string>;seen:Set<string>}|null>(null);
   const originalProjection=useRef<{digest:string;records:PublicRecord[]}|null>(null);
   const saved=useRef<{records:PublicRecord[];capturedAt:string|null;coverage:string;inspectionVersion:number}|null>(null);

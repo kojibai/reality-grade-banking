@@ -57,7 +57,10 @@ function mergeCaches(previous:PublicNetworkCache|null,cache:PublicNetworkCache):
     const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
     return prior && (prior.observedAt ?? 0) > (incoming?.observedAt ?? 0) ? prior : incoming ?? prior ?? { source, complete: false };
   });
-  const records = previous?.records===cache.records?cache.records:PUBLIC_SOURCES.flatMap(source => {
+  // On cold entry there is no prior cohort to reconcile by source. Apply
+  // the ordinary canonical merge once, including cross-source certificates.
+  if(!previous)return {...cache,coverage,records:mergePublicRecords([],cache.records)};
+  const records = previous.records===cache.records?cache.records:PUBLIC_SOURCES.flatMap(source => {
     const incoming = cache.coverage.find(item => item.source === source), prior = previous?.coverage.find(item => item.source === source);
     const oldRows = previous?.records.filter(row => row.source === source) ?? [], newRows = cache.records.filter(row => row.source === source);
     if (['graph', 'proofs'].includes(source)) {

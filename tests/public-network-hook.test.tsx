@@ -118,6 +118,23 @@ it('reuses the selected Market update when its publication acknowledgment reache
   expect(read().sources.proofs).toBe(proofs);expect(network.read).toHaveBeenCalledTimes(3);
  });
 });
+it('keeps the carried proof rows on hydration and applies a distinct Market successor with the same timestamp',async()=>{
+ const at='2026-11-06T18:00:00Z';
+ const input=proofInput(at,['held']),catalog=parsePublicMarket(input),market=heldMarket(catalog);
+ const {records}=parsePublicNetworkPage('proofs',input);
+ const snapshot={records,capturedAt:at,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,coverage:[{source:'proofs' as const,complete:true,observedAt:Date.parse(at)}]};
+ let state!:ReturnType<typeof usePublicNetwork>;
+ function Probe(){state=usePublicNetwork(false,snapshot,false,catalog);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+  await act(async()=>root.render(<Probe/>));
+  expect(state.records).toBe(records);
+  expect(state.sources.proofs.observedAt).toBe(Date.parse(at));
+  await act(async()=>market.select(parsePublicMarket(proofInput(at,['successor']))));
+  expect(state.records.map(row=>row.sourceId)).toEqual(['successor']);
+  expect(network.read).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());}
+});
 it('preserves newer prepared Source membership when an older complete Market marker is still mounted',async()=>{
  heldMarket(parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['withdrawn'])));
  const fresh=parsePublicNetworkPage('proofs',proofInput('2026-11-06T18:00:02Z',['prepared-current']));

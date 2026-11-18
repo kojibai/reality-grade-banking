@@ -26,7 +26,10 @@ export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof docum
   if(value.snapshotGzip){
    const packets=Array.isArray(value.snapshotGzip)?value.snapshotGzip:[value.snapshotGzip];if(!packets.length||packets.length>4||packets.some((packet:PublicLedgerCompressedSnapshot)=>!packet||typeof packet!=='object'||!Number.isSafeInteger(packet.bytes)||packet.bytes<1||packet.bytes>MAX_RAW||typeof packet.gzipB64u!=='string')||packets.reduce((total:number,packet:PublicLedgerCompressedSnapshot)=>total+packet.bytes,0)>MAX_RAW||packets.reduce((total:number,packet:PublicLedgerCompressedSnapshot)=>total+packet.gzipB64u.length,0)>Math.ceil(MAX_GZIP*4/3))return null;
    const caches=await Promise.all(packets.map((packet:Record<string,unknown>)=>gzipSnapshot(packet)));if(caches.reduce((total,cache)=>total+cache.records.length,0)>100000)return null;
-   const coverage=new Map(caches.flatMap(cache=>cache.coverage).map(item=>[item.source,item]));snapshot={records:caches.reduce((rows,cache)=>mergePublicRecords(rows,cache.records),[] as PublicNetworkCache['records']),capturedAt:caches.map(cache=>cache.capturedAt).filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,inspectionVersion:caches[0].inspectionVersion,coverage:[...coverage.values()]};
+   // Each decoded packet is already validated, ordered and deduplicated by the cache reader.
+   const [base,...additions]=caches;
+   const records=additions.reduce((rows,packet)=>mergePublicRecords(rows,packet.records),base.records);
+   const coverage=new Map(caches.flatMap(cache=>cache.coverage).map(item=>[item.source,item]));snapshot={records,capturedAt:caches.map(cache=>cache.capturedAt).filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,inspectionVersion:caches[0].inspectionVersion,coverage:[...coverage.values()]};
   }else snapshot=parsePublicNetworkCache(value.snapshot);
   const raw=value.path==='observatory'?value.directory:null;
   const audience=typeof raw?.audience?.observedAt==='string'&&Number.isFinite(Date.parse(raw.audience.observedAt))?{observedAt:raw.audience.observedAt,heads:readPublicProfileHeads(raw.audience.heads)}:undefined;
