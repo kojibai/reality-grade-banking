@@ -17,3 +17,6 @@ export type AccountExecutionMarketQuote=Readonly<{modelVersion:string;referenceM
 export declare function compileBankOfflineMarketPricing(input:unknown,openingKaiUPulse:string):Readonly<{at(positionQuantityDelta:string,localFlow:readonly AccountExecutionMarketFlow[],atKaiUPulse:string):AccountExecutionMarketQuote}>;
 export declare function marketWalletDebitFromAmounts(input:Readonly<{balance:bigint;available:bigint;settled:bigint;amount:bigint;phi:bigint;rate:bigint;nativeValueEnabled:boolean}>):{balance:bigint;available:bigint;settledSpent:bigint};
 export declare function marketPositionCostForQuantity(quantity:bigint,held:bigint,costUsd:bigint,costPhi:bigint):{usd:bigint;phi:bigint};
+
+/** Existing mint frequency rule beneath an already verified sealed Kai moment. */
+export declare function sigilFrequencyFromMoment(moment:Readonly<{chakraDay?:string|null;stepIndex:number}>|null):number|undefined;

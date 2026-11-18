@@ -23,13 +23,13 @@ npm run build
 npm run source:verify -- --rebuild
 ```
 
-The final command validates the archive against the exact release sources, extracts it into an empty temporary directory and builds the full application and rebuilds both native modules and all 211 published SDK JavaScript files using only publicly locked npm dependencies. It does not read the original Receiz checkout or access private services. Standalone recipients can extract the archive, run `npm ci` there, and use the same commands.
+The final command validates the archive against the exact release sources, extracts it into an empty temporary directory and builds the full application, native modules and complete SDK JavaScript inventory recorded by the included manifest using only publicly locked npm dependencies. It does not read the original Receiz checkout or access private services. Standalone recipients can extract the archive, run `npm ci` there, and use the same commands. The [v6 qualification record](docs/releases/6.0.0-qualification.md) records the final inventory and artifact hashes after the candidate is frozen; historical counts do not substitute for that manifest.
 
 | Artifact | Matching source and verified reproduction |
 | --- | --- |
-| `public/native/offline-notes.v129.mjs` | Original browser dependency closure, seven exact runtime package snapshots, pinned esbuild recipe; all 288 original input hashes and 295 composed note inputs and exact module bytes |
-| `public/native/receiver-verifier.v129.mjs` and `.map` | Original browser closure and institution entry point; exact module bytes, ordered 225 carried sources and normalized source-map bytes |
-| Published v129 SDK JavaScript | Full matching SDK preferred source, canonical generators/registry projections, TypeScript 5.9.3 and package compaction script; all 211 JavaScript output hashes |
+| `public/native/offline-notes.v129.mjs` | Original browser dependency closure, exact retained runtime package snapshots, pinned esbuild recipe and every declared original/composed input hash and module byte |
+| `public/native/receiver-verifier.v129.mjs` and `.map` | Original browser closure and institution entry point; exact declared source inventory, module bytes and normalized source-map bytes |
+| v129 SDK JavaScript | Full matching SDK preferred source, canonical generators/registry projections, TypeScript 5.9.3 and package compaction script; every output hash in the exact included inventory |
 | SDK sealing core and Kai worker | Canonical unbundled source and exact generated output comparison |
 | Public proof WASM and setup keys | Included circuit/Poseidon source, public Powers of Tau parameters and existing public resources; hash checks plus optional independent circuit verification |
 

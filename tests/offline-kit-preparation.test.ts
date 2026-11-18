@@ -63,3 +63,15 @@ it('preserves verifier-first failure when metadata also rejects, with no unhandl
  const result=api.downloadLedgerEvidence(record).then(value=>({value}),error=>({error}));
  await entered;fail(Error('VERIFIER_IMPORT_REFUSED'));expect(await result).toMatchObject({error:Error('VERIFIER_IMPORT_REFUSED')});expect(fetcher).toHaveBeenCalledOnce();
 });
+
+it('bounds the exact emitted source map without extending other resources or accepting altered map coordinates or bytes',async()=>{
+ const {api,record,open,build,fetcher}=await setup();open();
+ const sourceMap=build.files['verifier.js.map'];expect(sourceMap.bytes).toBeGreaterThan(8*1024*1024);
+ for(const files of [
+  {...build.files,'verifier.js.map':{...sourceMap,sha256:'a'.repeat(64)}},
+  {...build.files,'verifier.js.map':{...sourceMap,bytes:sourceMap.bytes+1}},
+  {...build.files,'README.txt':{...sourceMap}},
+ ]){fetcher.mockResolvedValueOnce(Response.json({...build,files}));await expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_BUILD_INVALID');}
+ fetcher.mockImplementation(async url=>{const name=String(url).split('/').at(-1)!,bytes=readFileSync('public/proof-verifier/v129/'+name);if(name==='verifier.js.map.bin'){const changed=Uint8Array.from(bytes);changed[changed.length-1]^=1;return new Response(changed);}return new Response(bytes);});
+ await expect(api.downloadLedgerEvidence(record)).rejects.toThrow('OFFLINE_VERIFIER_INTEGRITY');
+});

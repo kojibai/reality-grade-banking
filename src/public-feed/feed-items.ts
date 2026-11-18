@@ -28,7 +28,11 @@ export function orderFeedItems(items:readonly PublicMarketItem[]):PublicMarketIt
  while(added){added=false;for(const kind of kinds){const rows=buckets.get(kind),at=cursors.get(kind)??0;if(!rows||at>=rows.length)continue;let pick=at;for(let i=at;i<Math.min(rows.length,at+4);i++)if(rows[i].ownerUsername!==out.at(-1)?.ownerUsername){pick=i;break;}[rows[at],rows[pick]]=[rows[pick],rows[at]];out.push(rows[at]);cursors.set(kind,at+1);added=true;}}
  return out;
 }
-export function appendFeedItems(held:readonly PublicMarketItem[],discovered:readonly PublicMarketItem[]){const ids=new Set(held.map(item=>item.id));return [...held,...orderFeedItems(discovered).filter(item=>{if(ids.has(item.id))return false;ids.add(item.id);return true;})];}
+export function appendFeedItems(held:readonly PublicMarketItem[],discovered:readonly PublicMarketItem[]){
+ const ids=new Set(held.map(item=>item.id));
+ if(discovered.every(item=>ids.has(item.id)))return [...held];
+ return [...held,...orderFeedItems(discovered).filter(item=>{if(ids.has(item.id))return false;ids.add(item.id);return true;})];
+}
 /** Replace display fields only beneath the same exact source coordinates. */
 export const sameFeedSource=(held:PublicMarketItem,next:PublicMarketItem)=>held.id===next.id&&held.assetId===next.assetId&&held.category===next.category&&held.originalDigest===next.originalDigest&&held.pulse===next.pulse&&held.cardClaimHash===next.cardClaimHash&&(held.originalDigest!==null||held.verifyUrl===next.verifyUrl);
 /** An accepted public successor refreshes details without reordering held rows. */

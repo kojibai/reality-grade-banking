@@ -5,7 +5,7 @@ import { base64UrlDecode, base64UrlEncode } from "./verifier/crypto.js";
 import { receizCurrentPinnedSignatureV4Roots } from "./verifier/roots.js";
 import { canonicalizeReceizV122, digestReceizCanonicalV122 } from "./v122Canonical.js";
 import { SIGIL_VALUATION_ALGORITHM, SIGIL_VALUATION_POLICY_CHECKSUM } from "./sigilValuationCore.js";
-import { readReceizProofValueBasisV129, sampleReceizProofValueV129, snapshotReceizProofValueInputV129, type ReceizProofValueOptionsV129,
+import { readReceizProofValueBasisV129, sampleReceizProofValueV129, sampleReceizProofValueForReplayV129, snapshotReceizProofValueInputV129, type ReceizProofValueOptionsV129,
   type ReceizProofValueResultV129, type ReceizProofValueSourceV129 } from "./proofValueV129.js";
 import { exportReceizProofValueSaleRecoveryV129, verifyReceizProofValueSaleRecoveryV129, type ReceizProofValueSaleEvidenceV129 } from "./proofValueTransactionsV129.js";
 
@@ -14,7 +14,7 @@ type SaleRecovery = Awaited<ReturnType<typeof exportReceizProofValueSaleRecovery
 type ReplayOptions = Omit<ReceizProofValueOptionsV129, "source" | "sales" | "policy" | "expectedProofDigest" | "expectedHistoryHead">;
 export type ReceizProofValueReplayV129 = Readonly<{
   schema: "receiz.proof-value-replay.v129";
-  sdkVersion: "129.0.0";
+  sdkVersion: "129.0.0" | "129.5.1";
   roots: Readonly<{ kind: "sdk-pinned-signature-v4"; digest: string; keyIds: readonly string[] }>;
   source: Readonly<{ exactBytesB64u: string; filename: string; mimeType: string; artifactDigest: string; payloadDigest: string;
     admissionProfile: "portable-state" | null; historyHead: string | null }>;
@@ -64,7 +64,7 @@ export async function exportReceizProofValueReplayV129(input: ReceizProofValueOp
   }
   const saleRecoveries: SaleRecovery[] = [];
   for (const sale of input.sales ?? []) saleRecoveries.push(await exportReceizProofValueSaleRecoveryV129(sale));
-  const body = boundedSnapshot({ schema: "receiz.proof-value-replay.v129" as const, sdkVersion: "129.0.0" as const, roots,
+  const body = boundedSnapshot({ schema: "receiz.proof-value-replay.v129" as const, sdkVersion: "129.5.1" as const, roots,
     source: { exactBytesB64u: base64UrlEncode(exact.bytes), filename: exact.filename, mimeType: exact.mimeType,
       artifactDigest: basis.proofDigest, payloadDigest: basis.verification.payloadDigest.value,
       admissionProfile: basis.admission ? "portable-state" as const : null, historyHead: basis.historyHead },
@@ -79,7 +79,7 @@ export async function verifyReceizProofValueReplayV129(input: unknown): Promise<
   try {
     const replay = boundedSnapshot(input) as ReceizProofValueReplayV129;
     closed(replay, ["schema", "sdkVersion", "roots", "source", "policy", "options", "saleRecoveries", "valuationKaiUPulses", "expectedProjectionDigests", "replayDigest"]);
-    if (replay.schema !== "receiz.proof-value-replay.v129" || replay.sdkVersion !== "129.0.0") fail("VERSION_UNSUPPORTED");
+    if (replay.schema !== "receiz.proof-value-replay.v129" || (replay.sdkVersion !== "129.0.0" && replay.sdkVersion !== "129.5.1")) fail("VERSION_UNSUPPORTED");
     closed(replay.source, ["exactBytesB64u", "filename", "mimeType", "artifactDigest", "payloadDigest", "admissionProfile", "historyHead"]);
     closed(replay.roots, ["kind", "digest", "keyIds"]);
     closed(replay.policy, ["algorithm", "checksum"]);
@@ -106,11 +106,11 @@ export async function verifyReceizProofValueReplayV129(input: unknown): Promise<
     } else if (replay.source.admissionProfile !== null) fail("ADMISSION_PROFILE_INVALID");
     const sales: ReceizProofValueSaleEvidenceV129[] = [];
     for (const sale of replay.saleRecoveries) sales.push(await verifyReceizProofValueSaleRecoveryV129(sale));
-    const sampled = await sampleReceizProofValueV129({ source, policy: replay.policy,
+    const sampled = await sampleReceizProofValueForReplayV129({ source, policy: replay.policy,
       expectedProofDigest: replay.source.artifactDigest,
       ...(replay.source.historyHead === null ? {} : { expectedHistoryHead: replay.source.historyHead }),
-      ...replay.options, ...(sales.length ? { sales } : {}), valuationKaiUPulses: replay.valuationKaiUPulses });
-    const basis = await readReceizProofValueBasisV129({ source });
+      ...replay.options, ...(sales.length ? { sales } : {}), valuationKaiUPulses: replay.valuationKaiUPulses }, replay.sdkVersion);
+    const basis = await readReceizProofValueBasisV129({ source }, replay.sdkVersion);
     if ("status" in basis || basis.historyHead !== replay.source.historyHead) fail("HISTORY_BINDING_MISMATCH");
     if (sampled.samples.some((sample, index) => sample.status !== "available" || sample.projectionDigest !== replay.expectedProjectionDigests[index])) fail("PROJECTION_MISMATCH");
     return cloneAndFreezeExactValue({ status: "verified-replay", replayDigest, samples: sampled.samples, writesPerformed: 0,

@@ -40,6 +40,7 @@ if (process.argv.includes('--rebuild')) {
     await symlink(resolve('node_modules'), resolve(directory, 'node_modules'), 'dir');
     for (const args of [['scripts/check-native-source.mjs'], ['scripts/rebuild-native.mjs', '--sdk'], ['scripts/check-native-resources.mjs']]) execFileSync(process.execPath, args, { cwd: directory, stdio: 'inherit' });
     execFileSync('npm', ['run', 'build'], { cwd: directory, stdio: 'inherit' });
-    console.log('A clean archive extraction builds the full application and reproduces both native modules and all 211 SDK JavaScript outputs without the private checkout.');
+    const nativeManifest = JSON.parse(await readFile(resolve(directory, 'native/manifest.json'), 'utf8'));
+    console.log(`A clean archive extraction builds the full application and reproduces its native modules and all ${nativeManifest.sdkOutputs.length} SDK JavaScript outputs without the private checkout.`);
   } finally { await rm(directory, { recursive: true, force: true }); }
 }

@@ -1,14 +1,15 @@
 # Current Bankeiz capabilities and operating boundaries
 
-Updated for the v3.0.0 release preparation on October 22, 2026. This is the
-current capability map. Older dated verification records retain their original
+Updated for the v6.0.0 release preparation on November 17, 2026. This is the
+implemented capability map; final v6 qualification remains separately recorded.
+Older dated verification records retain their original
 observations; they do not override a newer implemented connection or qualify
 a later deployed build.
 
 Bankeiz is the live product built on Receiz. Its open implementation also
 includes receiving requirements, independent inspection, matching native
 source and integration materials. Product release publication follows the
-[versioned qualification record](releases/3.0.0-qualification.md).
+[versioned qualification record](releases/6.0.0-qualification.md).
 
 Proof-native cash is the money held and used through the supported account and
 Note contracts. Its source records preserve the funding, ownership and history.
@@ -25,6 +26,8 @@ retain their actual meaning.
 | Send and Receive | Existing Receiz Wallet recipient/quote/transfer, profile/contact search, receiving links, exact nonce recovery and automatic Reserve-first funding | Existing working path, reported successful by the user. A new deployment is assessed with its original receipts and exact account bindings. |
 | Public profiles | Same Receiz identity, synced editing, named links, identity evidence, inline public collection and Public Activity at `/username/` | Anonymous output is public-only. Private balances, transactions, messages and owner Insights do not become public profile activity. See [profile contract](PUBLIC_PROFILES.md). |
 | Hosted checkout | Dedicated `/pay/username/` page, automatic device identity, optional Identity Record save, Card/Balance/all three Note types, one exact review, confirmed-credit continuation and original recovery; shared links/buttons/in-person QR | URL amount is an editable prefill. Trusted order fulfillment/refunds and native card-present terminals need their supported separate contracts. No fresh identity replaces an unreadable saved record. |
+| Standalone invoices | Receive creates a canonically sealed, itemized PDF for the selected client; send/copy link, retained issuer/recipient reopening and explicit existing fixed-sale checkout | Authored business details are not a verification badge. Reading or sending does not prove payment; links disclose their billing details. Existing owner, exact total, customer approval and payment guards remain. |
+| Portable order integration | Source-distributed `@bankeiz/payments` package uses merchant-owned exact orders, existing checkout, authorized receipt confirmation and an atomic store | No platform approval or new writer. Operators supply their own application/consent/credentials/fulfillment; the package cannot sign, charge or claim for a customer. |
 | Public conformance | 16 receiving requirements, 14 Note laws, 12 browser verification groups, 33-case language-neutral adapter suite, original inspection and reproducible engineering evidence | Results bind their exact scope/build; production receiving and protected custody use their required original operating evidence. |
 | Conformance credentials and workspace | Canonical proof-bearing PNG with transcript and holder; independently verified public original; matching private identity admission for workspace access | Public certificate copies grant no login or financial authority; historical originals retain their exact assessed build. |
 | Card deposits | Existing Receiz embedded checkout, exact session retention, return and credit confirmation | Provider payment and accepted Reserve credit are distinct; the final production path needs its actual credited source. |
@@ -42,6 +45,8 @@ retain their actual meaning.
 | Asset media and proof back | Same mounted original through object flip/full view, carried live-player manifest material, native audio controls and individual sharing art | Playback is retained within the mounted asset. App-wide persistent music/video is follow-up work. Display artwork never substitutes for the original proof. |
 | PWA notifications | Opt-in message and call alerts through the existing Receiz sender and Bankeiz service worker | No new notification service or polling. Actual installed-device delivery follows permission, browser/OS support and the deployment described in [notifications](pwa-notifications.md). |
 | Messages, groups and assistant | Existing Receiz conversations, network profile search, contacts, encrypted local inbox retention, real typing/streaming and entitlement-bound assistant/upgrade flow | Reuses Receiz communication and access. No separate Bank identity or messaging service; selected context and financial approvals retain their own boundaries. |
+| Relationship Workspace | Private Twin, Work and Context; manual/branded proposals, invoices, PDF/DOCX/XLSX/PPTX documents and complete agreement/consent Originals | Actual owner, conversation, document, terms and party bindings remain exact. Explicit Send and consent are separate from drafting, sharing and paid status. Unknown sends recover the same attempt. |
+| Email and booking continuity | Supported Receiz email replies, matching invitation/account/attendee entry, clear appointment times and existing owner notice preferences | Native account/email ownership and existing communication/calendar authorization remain; no new email or booking authority. |
 | Calls | One existing native controller/media lifetime across Messages closure, selected-thread changes and retained public navigation; draggable compact controls and actual SPA restore | Browser/OS/network suspension and process termination are outside the documented in-app lifetime. Synthetic browser checks do not establish a real two-device network call. |
 | Public Ledger and Memory Crystal | Existing source inspection and local export/reopen of the already-held Ledger/display context | Local save requires no extra Ledger fetch or Crystal service. Consent-bound publication/disclosure has its separate native contract. |
 | Account proof and verification | Existing original-source reader, deliberately shared proof, exact snapshot/live selector and native v4 closure support | Complete private owner archives, actual source availability, disclosure authority and physical custody remain specific to the admitted closure; unsupported components are not invented. |
@@ -111,10 +116,13 @@ See [native assets/account proofs](native-assets-and-account-proofs-v129.md),
 ## Follow-up product work
 
 Preferred display currencies and crypto equivalents, email-address payments,
-trusted order-bound merchant fulfillment and refunds, native card-present POS,
+additional platform-specific merchant automation and refunds, native card-present POS,
 Note QR claim/status and app-wide persistent asset playback remain queued.
 The hosted checkout already serves links, website buttons and in-person QR.
 These links do not establish an immutable order or card-present terminal.
+The portable order integration already supplies exact order/receiver binding,
+authorized receipt confirmation and atomic recovery for an operator's own
+application; that operator owns its actual fulfillment and deployment assessment.
 [The implementation queue](implementation/remaining-work.md) records their
 intended scope.
 

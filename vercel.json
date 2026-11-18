@@ -23,7 +23,7 @@
     },
     "api/profile.ts": {
       "maxDuration": 30,
-      "includeFiles": "{dist/explore/index.html,server/profile-runtime/**}"
+      "includeFiles": "{dist/explore/index.html,server/profile-runtime/**,scripts/social/fonts/*,public/conformance/renderer.wasm,public/conformance/fonts/NotoSerif-Regular.ttf,public/conformance/fonts/Inter-Regular.ttf}"
     },
     "api/cooperatives.ts": {
       "maxDuration": 120
@@ -58,8 +58,14 @@
     }
   ],
   "rewrites": [
-    {"source":"/invoice/view/","destination":"/invoice/view.html"},
-    {"source":"/invoice/view","destination":"/invoice/view.html"},
+    {
+      "source": "/invoice/view/",
+      "destination": "/invoice/view.html"
+    },
+    {
+      "source": "/invoice/view",
+      "destination": "/invoice/view.html"
+    },
     {
       "source": "/assets/:file",
       "destination": "/api/runtime-asset?file=:file"
@@ -1219,6 +1225,18 @@
     {
       "source": "/pay/:username",
       "destination": "/pay/checkout.html"
+    },
+    {
+      "source": "/u/:username([a-z0-9_]{3,24})/og.png",
+      "destination": "/api/profile?username=:username&image=1"
+    },
+    {
+      "source": "/:username([a-z0-9_]{3,24})/og.png",
+      "destination": "/api/profile?username=:username&image=1"
+    },
+    {
+      "source": "/:username(receiz_[a-z0-9]{18})/og.png",
+      "destination": "/api/profile?username=:username&image=1"
     },
     {
       "source": "/u/:username(receiz_[a-z0-9]{18})/",

@@ -30,6 +30,7 @@ it('prepares a complete owner profile from the same selected family, without car
  vi.stubGlobal('fetch',vi.fn(()=>{throw Error('PUBLICATION_PROFILE_LOOKUP_FORBIDDEN');}));
  const html=await renderPreparedProfileDocument({material:family,generation:hash,path:'profile/artist',template:template.replace('<script id="receiz-navigation"','<script id="public-market-seed" type="application/json">{"catalog":{"items":[{"id":"old-612"}]}}</script><script id="receiz-navigation"')});
  const body=new DOMParser().parseFromString(html.replace(/<link\b[^>]*>/g,''),'text/html'),seed=readPublicMarketDocumentSeed(body)!,profile=selectHeldPublicProfile('artist',seed.catalog)!;
+ expect(body.querySelector('meta[property="og:image"]')?.getAttribute('content')).toBe('https://bankeiz.com/artist/og.png');expect(body.querySelector('meta[property="og:image:width"]')?.getAttribute('content')).toBe('1730');expect(html.indexOf('property="og:image"')).toBeLessThan(4096);
  expect(profile.stats.originals).toBe(52);expect(profile.items).toHaveLength(52);expect(profile.items[0].title).toBe('New accepted public Original');expect(profile.nextCursor).toBeNull();
  expect(body.querySelectorAll('#public-market-seed')).toHaveLength(1);expect(body.getElementById('public-profile-seed')).toBeNull();expect(body.getElementById('public-explore-root')?.getAttribute('data-public-profile-rendered')).toBe('true');expect(html).not.toContain('old-612');expect(fetch).not.toHaveBeenCalled();
 });

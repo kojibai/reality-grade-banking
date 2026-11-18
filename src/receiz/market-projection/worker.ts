@@ -2,18 +2,18 @@ import {buildInvestmentHistory,type InvestmentHistoryRow,type InvestmentHistory}
 import { parseMarketCapSource,type MarketCapSource } from './source';
 import { parseMarketHistory, type MarketHistorySnapshot } from './history';
 import { buildMarketHistory } from './build-history';
-import type{PublicMarketCatalog}from'../public-market';
+import type{PublicMarketPricingCatalog}from'./pricing-inputs';
 import {buildProfileGrowth,type ProfileGrowthHistory,type ProfileGrowthRow} from './profile-growth';
 import type {GlobalMarketCalculation} from './calculation';
 let investmentRows:InvestmentHistoryRow[]|null=null,investmentHistory:InvestmentHistory|null=null;
 let profileRows:ProfileGrowthRow[]|null=null,profileHistory:ProfileGrowthHistory|null=null;
 let latest = 0, retained: MarketHistorySnapshot | null = null;
-let marketSource:MarketCapSource|null=null,marketCatalog:PublicMarketCatalog|null=null,shareCapitalization=false;
+let marketSource:MarketCapSource|null=null,marketCatalog:PublicMarketPricingCatalog|null=null,shareCapitalization=false;
 let marketCalculation:GlobalMarketCalculation|null=null,inspectMarket=false;
-let completedMarketInput:{source:MarketCapSource;catalog:PublicMarketCatalog}|undefined;
+let completedMarketInput:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}|undefined;
 // Publish only complete curves. Ordinary same-basis refreshes retain every
 // prior sample and calculate just the moving opening bounds and newest point.
-self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketCatalog|null;pulse?:number;marketTick?:boolean;marketInspect?:boolean;readCalculation?:boolean;shareCapitalization?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;profileTick?:boolean;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
+self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; history?: unknown; cancel?: boolean;catalog?:PublicMarketPricingCatalog|null;pulse?:number;marketTick?:boolean;marketInspect?:boolean;readCalculation?:boolean;shareCapitalization?:boolean;profileRows?:ProfileGrowthRow[];profileHistory?:ProfileGrowthHistory|null;profileTick?:boolean;investmentRows?:InvestmentHistoryRow[];investmentTick?:boolean }>) => {
   // Inspection reads the completed calculation already held by this worker.
   // It must not cancel an in-flight publication or start another valuation.
   if(event.data.marketInspect!==undefined){inspectMarket=event.data.marketInspect;if(inspectMarket&&event.data.readCalculation!==false)self.postMessage({inspectionOnly:true,marketCalculation});return;}

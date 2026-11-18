@@ -1,0 +1,376 @@
+{
+  "schema": "bankeiz.v6.reader-and-profile-sharing-evidence.v1",
+  "state": "Local scoped qualification. Combined full suite/build, CI, publication, deployment and live acceptance PENDING.",
+  "bankBaseline": "73c75a99f0440da28ddefc98eb945bfb0e6e5dab",
+  "upstreamReader": {
+    "commit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+    "tree": "5ee59843fcd5c6ec4b1835ab58e039b1f9931cf7",
+    "localQualificationCommit": "5af01635b2ef7c30ff78121b4c3467ee76874e5d",
+    "localAndRemoteTreeEqual": true,
+    "rootReaderFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+    "packageVersion": "129.5.0",
+    "newNpmRelease": false
+  },
+  "valuation": {
+    "input": {
+      "artifactSha256": "d3c498ced373d72ecf1ccb7c7c505c5e7dd50811ffeb71a7019ea17b609d6765",
+      "bytes": 3227543,
+      "historyHead": "b4fa6a5d4182618582b7009e25ce38c6",
+      "originPulse": "15135639",
+      "frequencyHz": 295.344,
+      "beat": 11,
+      "stepIndex": 31,
+      "stepsPerBeat": 44,
+      "chakraDay": "Sacral",
+      "creatorVerified": true,
+      "PbiAuthority": "verified canonical enclosing-Source authorship; not an unbound flag or reputation observation"
+    },
+    "emittedVerifier": {
+      "sha256": "7d02feabd4f7f633b6430985cee27c58d197f3aef6a9be4d1a183ee9483b886a",
+      "bytes": 2246202,
+      "singleCanonicalArtifactVerificationInput": true,
+      "standaloneReadArtifactPreserved": true
+    },
+    "owning": {
+      "files": 5,
+      "passed": 33,
+      "failed": 0
+    },
+    "browser": {
+      "engine": "Chromium",
+      "observedAt": "2026-11-17T22:36:46.572Z",
+      "scope": "Local emitted current component/template and actual Code/File interaction; complete combined site styling is not claimed.",
+      "elapsedMs": 1829,
+      "dataRequests": 0,
+      "javascriptErrors": 0,
+      "visibleStatus": "Original verified. Value calculated on this device.",
+      "valuationKaiUPulse": "15208256252247",
+      "displayIsSettlementAuthority": false
+    },
+    "emittedControls": {
+      "utc": "2026-11-17T22:35:51.868Z",
+      "externalReads": 0,
+      "writesPerformed": 0,
+      "results": [
+        {
+          "case": "actual-pinned-IMG9052",
+          "status": "available",
+          "digest": "d3c498ced373d72ecf1ccb7c7c505c5e7dd50811ffeb71a7019ea17b609d6765",
+          "metadata": {
+            "pulse": 15135639,
+            "kaiPulse": 15135639,
+            "beat": 11,
+            "stepIndex": 31,
+            "stepsPerBeat": 44,
+            "chakraDay": "Sacral",
+            "frequencyHz": 295.344,
+            "creatorVerified": true,
+            "cumulativeTransfers": 0
+          },
+          "projectionDigest": "87896557927f16aca488cf079848f3b995ceadebe9b0e8f60c6f0ad99a8a2dc0"
+        },
+        {
+          "case": "cloned-custody",
+          "status": "refused"
+        },
+        {
+          "case": "foreign-digest",
+          "status": "refused"
+        },
+        {
+          "case": "installed-module-custody",
+          "status": "refused"
+        },
+        {
+          "case": "changed-file",
+          "status": "invalid"
+        },
+        {
+          "case": "exact-old129.0.0-replay",
+          "status": "verified-replay",
+          "digests": [
+            "ee00bff8ab94fae1d822cfa177086655a158e0ebec8e6be766d52fde895aafdd",
+            "e2cdb1b51542d2b7356c77ce18680cd8f24db9274f2755c32733a16e4b03585f"
+          ]
+        },
+        {
+          "case": "new129.5.1-replay",
+          "status": "verified-replay"
+        },
+        {
+          "case": "tampered-replay",
+          "status": "invalid-replay",
+          "code": "V129_REPLAY_DIGEST_MISMATCH"
+        }
+      ]
+    },
+    "historicalReplay": {
+      "sdkVersion": "129.0.0",
+      "bytes": 4304543,
+      "sha256": "deca36affd7427f9c2cf2b5561a4028219ebb45afde188c48cbe971d7f31d5af",
+      "expectedProjectionDigests": [
+        "ee00bff8ab94fae1d822cfa177086655a158e0ebec8e6be766d52fde895aafdd",
+        "e2cdb1b51542d2b7356c77ce18680cd8f24db9274f2755c32733a16e4b03585f"
+      ],
+      "status": "verified-replay",
+      "originalBytesUnchanged": true
+    },
+    "newReplayInterpretation": "129.5.1; a reader revision, not an npm package release",
+    "privateSchemaNegativeScope": "Genuine synthetic-root SDK Source cases qualified separately; no production Native root override introduced.",
+    "consumerAndKit": {
+      "passed": 38,
+      "failed": 0
+    },
+    "unchangedFinancial": {
+      "passed": 104,
+      "failed": 0
+    },
+    "offlineKitBrowser": {
+      "passed": true,
+      "widths": [
+        390,
+        1100
+      ],
+      "networkDisabled": true,
+      "transport": "file:// extracted unchanged offline kit"
+    }
+  },
+  "profileSharing": {
+    "owning": {
+      "files": 8,
+      "passed": 122,
+      "failed": 0
+    },
+    "typesExit": 0,
+    "profileGeneratorExit": 0,
+    "publicPreview": {
+      "username": "bjklock",
+      "source": "Existing captured public Source/profile family; no membership mutation",
+      "sha256": "0ae31a77988df50bae545af18ba6d0e05b64586b949a20e53647f1820573d5e4"
+    },
+    "supportedGlyphs": {
+      "baselineInterWidths": {
+        "東京": 79.375,
+        "漢字": 79.375,
+        "한국어": 131.875,
+        "Élodie Κοσμάς Мир": 726.9140625
+      },
+      "profileFallbackWidths": {
+        "東京": 151.67999267578125,
+        "漢字": 151.36000061035156,
+        "한국어": 206.55999755859375,
+        "Élodie Κοσμάς Мир": 726.9140625
+      },
+      "largeCjkNameAndBioRenderMs": 4523.30475,
+      "peakResidentBytes": 183484416,
+      "sourceMutation": false,
+      "externalRequests": 0,
+      "scope": "Supported Latin/Greek/Cyrillic + tested CJK glyphs; no universal Unicode or emoji claim"
+    },
+    "safeSvg": {
+      "cases": [
+        {
+          "name": "local-file-uri",
+          "sourceUnchanged": true,
+          "outputMatchesOmittedImage": true,
+          "outputSha256": "5048e146e94305b2acba07a2ad859cab95d177bc706cc9e390107905e6dc59d3"
+        },
+        {
+          "name": "http-external",
+          "sourceUnchanged": true,
+          "outputMatchesOmittedImage": true,
+          "outputSha256": "5048e146e94305b2acba07a2ad859cab95d177bc706cc9e390107905e6dc59d3"
+        },
+        {
+          "name": "fifo-file-uri",
+          "sourceUnchanged": true,
+          "outputMatchesOmittedImage": true,
+          "outputSha256": "5048e146e94305b2acba07a2ad859cab95d177bc706cc9e390107905e6dc59d3"
+        },
+        {
+          "name": "fifo-absolute-path",
+          "sourceUnchanged": true,
+          "outputMatchesOmittedImage": true,
+          "outputSha256": "5048e146e94305b2acba07a2ad859cab95d177bc706cc9e390107905e6dc59d3"
+        }
+      ],
+      "fetchCalls": 0,
+      "nativeHttpRequests": 0,
+      "nativeFileFifoReads": 0,
+      "oversizedRenderAttempts": []
+    },
+    "defaultConformanceAndHeldVector": {
+      "unchangedConformanceDefaultBytes": true,
+      "conformancePngSha256": "bced8830bc05c15adc4e38b29f368acdb9c44a3b8dc8c4a1d174f03c36a8c8c2",
+      "actualHeldPublicProfile": "wildz_78a290732db42845",
+      "actualDefaultArtworkKinds": [
+        "data:image/svg+xml;charset=utf",
+        "data:image/svg+xml;charset=utf"
+      ],
+      "actualProfilePngSha256": "c13fcba51cf94ed35ff27ff0e9d98c61e0be31c6af84bf4c4e5f98f438b25df1",
+      "requests": 0
+    },
+    "servedBodyPreservation": {
+      "source": "exact captured actual public saved bjklock HTML,27MB complete catalog carried unchanged",
+      "baselineCommit": "73c75a99",
+      "cases": [
+        {
+          "name": "prepared-held-profile",
+          "bodyBytes": 12302483,
+          "beforeBodySha256": "9884e72f3d8bfa0d7b0d9a72973aa3947a92f0a3dc0d603462f3b04395de2202",
+          "afterBodySha256": "9884e72f3d8bfa0d7b0d9a72973aa3947a92f0a3dc0d603462f3b04395de2202",
+          "seedSha256": "c99457b0af8ae79df6bd885293580f5c6a545b2267eb266d55cd429cf4fabdc8",
+          "sameBody": true,
+          "sameSeed": true,
+          "ogByteOffset": 572
+        },
+        {
+          "name": "compiled-held-profile",
+          "bodyBytes": 12302483,
+          "beforeBodySha256": "9884e72f3d8bfa0d7b0d9a72973aa3947a92f0a3dc0d603462f3b04395de2202",
+          "afterBodySha256": "9884e72f3d8bfa0d7b0d9a72973aa3947a92f0a3dc0d603462f3b04395de2202",
+          "seedSha256": "c99457b0af8ae79df6bd885293580f5c6a545b2267eb266d55cd429cf4fabdc8",
+          "sameBody": true,
+          "sameSeed": true,
+          "ogByteOffset": 588
+        }
+      ],
+      "financialReads": 0,
+      "sourceReads": 0,
+      "networkRequests": 0,
+      "authority": "post-admission presentation only; no Source admission substituted"
+    },
+    "universalUnicodeOrEmojiClaim": false,
+    "thirdPartyCrawlerRefreshVerified": false
+  },
+  "nativeReproduction": {
+    "sdkJavaScriptOutputs": 227,
+    "sourceFilesChecked": 2397,
+    "originalInputsChecked": 300,
+    "preferredUpstreamTrees": 19,
+    "networkOrPrivateReceizCheckoutRequired": false
+  },
+  "retainedArtifacts": [
+    {
+      "path": "actual-proof-upload.png",
+      "bytes": 949473,
+      "sha256": "98e351f568e0344be6afc49c97fbe6514221f4072a6140ee5203105672a443a7"
+    },
+    {
+      "path": "public-profile-preview.png",
+      "bytes": 1270031,
+      "sha256": "0ae31a77988df50bae545af18ba6d0e05b64586b949a20e53647f1820573d5e4"
+    },
+    {
+      "path": "supported-cjk-preview.png",
+      "bytes": 80470,
+      "sha256": "7af225ee5f6b4177438aae7a2c4af570d9259cd3ef1863edee514eb658320f2b"
+    }
+  ],
+  "sourceExecutionReceipts": [
+    {
+      "name": "affected-owning-final-qualified.log",
+      "bytes": 826,
+      "sha256": "53ea676f5bec3446126a0b3e0c77c86923b3596ccc461991fd84c9dbbcecfe20"
+    },
+    {
+      "name": "emitted-controls-final.log",
+      "bytes": 443,
+      "sha256": "8e0019fd13acefb79bf326cfa3074c1ab77a4db7de26cbfb2550bcc3cfa94359"
+    },
+    {
+      "name": "consumer-final-declaration-typecheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "native-final-rebuild-qualified.log",
+      "bytes": 239,
+      "sha256": "e49a8668a060566cf48bf410d1ee985b4447ae7203004157a54360afeeb43ad0"
+    },
+    {
+      "name": "native-final-source-check-qualified.log",
+      "bytes": 96,
+      "sha256": "13914f1fcaebaa0e4285b1f56600186f62ca74d132659e1a0362f1471757bb65"
+    },
+    {
+      "name": "owning-svg-amendment.log",
+      "bytes": 3262,
+      "sha256": "86219a20504e478adc2dc77c05e5ba2a3ade128f67bcd0ef150cc7f13936fa80"
+    },
+    {
+      "name": "typecheck-svg-amendment.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "profile-runtime-svg-amendment.log",
+      "bytes": 70,
+      "sha256": "b76d46c90edbae723f54bfbbb517f835cde96eb6f004e690fd39d9459b73757c"
+    },
+    {
+      "name": "exact-served-body-svg-amendment.log",
+      "bytes": 714,
+      "sha256": "ed9580abae1df8737caad61774fc3bec4ac38230038d7d242c7fb0adbfe801f6"
+    },
+    {
+      "name": "final-consumer-kit-owning.log",
+      "bytes": 628,
+      "sha256": "441c04a82e5b4a859565a17019ebdc0e41d6acebc136a4e18620abe632a329f4"
+    },
+    {
+      "name": "unchanged-financial-owning-complete-inputs.log",
+      "bytes": 602,
+      "sha256": "b3330ac6e6b895335c18bcc1fa8ca3e9198166fb1b13fcf338ace80bc32bdc1c"
+    },
+    {
+      "name": "unchanged-offline-kit-browser-qualified.log",
+      "bytes": 565,
+      "sha256": "2a4042cb6c6fdf68f4b37d56e896bc286bd50a1e9b52247975c10c6bdf8cb981"
+    },
+    {
+      "name": "final-complete-typecheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "final-complete-native-source-check.log",
+      "bytes": 96,
+      "sha256": "13914f1fcaebaa0e4285b1f56600186f62ca74d132659e1a0362f1471757bb65"
+    }
+  ],
+  "authority": {
+    "evidenceIsProofOrFinancialAuthority": false,
+    "SourceUnchanged": true,
+    "noResealOrNewActor": true,
+    "moneyApprovalUnchanged": true
+  },
+  "consumerFreezeSha256": "097a0d068ff2b05a7bf4343eb449bcb1598d0208c7c9fa6c604d9d31f2827835",
+  "nativeArtifacts": [
+    {
+      "path": "public/native/asset-publication.v129.mjs",
+      "bytes": 3094288,
+      "sha256": "a9c2ae0b119e57552610bdfe659569dde052c3731396ef8752c75f1c6a7cf379"
+    },
+    {
+      "path": "public/native/offline-notes.v129.mjs",
+      "bytes": 2472247,
+      "sha256": "de7872944192b1f6ac9adc4b3a34bf30604ba0acbce02ea572751f5c74caff38"
+    },
+    {
+      "path": "public/native/receiver-verifier.v129.mjs",
+      "bytes": 2105176,
+      "sha256": "9b2052f4492bcbdf0a0250f79d52a2d501b03a97c4db9b43407b782b5a1c05db"
+    },
+    {
+      "path": "public/proof-verifier/v129/verifier.js",
+      "bytes": 2246202,
+      "sha256": "7d02feabd4f7f633b6430985cee27c58d197f3aef6a9be4d1a183ee9483b886a"
+    },
+    {
+      "path": "public/proof-verifier/v129/verifier.js.map",
+      "bytes": 8742697,
+      "sha256": "76b890ad13ea8550c6259d7a89bc5ef071061abd25e0fbbba6c9273dd821ffeb"
+    }
+  ]
+}

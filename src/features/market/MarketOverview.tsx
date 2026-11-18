@@ -1,5 +1,5 @@
 import type {MarketHistorySnapshot} from '../../receiz/market-projection/history';
-import { useContext,useState } from 'react';
+import { useContext,useMemo,useState } from 'react';
 import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import { ArrowRight, Info } from 'lucide-react';
 import { ValueChart, Periods, type ChartPeriod } from '../../components/ValueChart';
@@ -10,6 +10,7 @@ import './share-inventory.css';
 import { useMarketCapitalization } from '../../receiz/market-projection/useMarketCapitalization';
 import {MarketCalculationDetails} from './MarketCalculationDetails';
 type OverviewProps={initialHistory?:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;historyCatalog?:PublicMarketCatalog|null;active?:boolean;sourceActive?:boolean;onExplore():void};
+const EMPTY_POINTS:MarketHistorySnapshot['series'][ChartPeriod]=[];
 export function MarketOverview({initialHistory,catalog,historyCatalog,active=true,sourceActive=active,onExplore}:OverviewProps){
  const [period,setPeriod]=useState<ChartPeriod>('ALL');
  const projection=useMarketCapitalization(period,active,historyCatalog??catalog,sourceActive,initialHistory);
@@ -20,10 +21,12 @@ export function MarketOverviewView({catalog,projection,period,onPeriodChange,onE
  const format=useContext(PublicDocumentFormatContext);
  const [info,setInfo]=useState(false),[protocol,setProtocol]=useState(false);
  const {source,status}=projection;
- const points=source?.shareCapitalization?projection.points:[];
+ const points=source?.shareCapitalization?projection.points:EMPTY_POINTS;
  const shareCap=source?.shareCapitalization;
   const change = points.length > 1 ? chartChange(points[0].usdCents, points.at(-1)!.usdCents) : null;
-  const timeRange=chartPeriodBounds(points,period);
+  const times=useMemo(()=>points.map(point=>Date.parse(point.at)),[points]);
+  const values=useMemo(()=>points.map(point=>Number(point.usdCents)/100),[points]);
+  const timeRange=useMemo(()=>chartPeriodBounds(points,period),[points,period]);
   const unpricedCount=source?.unpricedSealedBirthCount??source?.unpricedSealedBirths?.length??0;
   return <div className="market-overview"><div className="market-overview-heading"><span>Global Market Cap</span><button className="icon-button" aria-label="About market capitalization" aria-expanded={info} onClick={() => {setInfo(!info);setProtocol(false);}}><Info size={17} /></button></div><strong className="market-cap-amount">{shareCap&&(shareCap.covered>0||shareCap.complete&&shareCap.listed===0)?formatMoney(shareCap.usdCents):'—'}</strong>{shareCap&&<p className="market-cap-subtitle">{shareCap.covered.toLocaleString()} of {shareCap.listed.toLocaleString()} assets included · counted once</p>}<p className="market-cap-subtitle">{catalog ? <>{source ? (source.marketAssetsPriced + source.cardsInCirculation).toLocaleString() : '—'} assets in circulation · {(shareCap?.listed??catalog.items.length).toLocaleString()} assets listed</> : 'Receiz global proof economy'}{source && status !== 'live' ? ' · retained pricing source' : ''}</p>
     {source?.undatedHistory&&<p className="market-cap-history-coverage">{(source.undatedHistory.undatedRows??source.undatedHistory.rows)>0?'Partial seal-date history':'Sealed birth history'} · later aggregate pricing retained</p>}
@@ -42,7 +45,7 @@ export function MarketOverviewView({catalog,projection,period,onPeriodChange,onE
       </details>
     </section>}
     {change && <div className={`chart-period-change ${change.trend === 'down' ? 'negative' : change.trend === 'up' ? 'positive' : 'muted'}`}><strong>{change.trend === 'up' ? '↗' : change.trend === 'down' ? '↘' : '→'} {BigInt(change.deltaCents) > 0n ? '+' : ''}{formatMoney(change.deltaCents)} {change.percent !== null && `(${change.percent > 0 ? '+' : ''}${change.percent.toFixed(2)}%)`}</strong><span>{period === 'ALL' ? 'Since first issuance' : period} · market cap</span></div>}
-    <ValueChart interpolation="step" key={period} times={points.map(point => Date.parse(point.at))} timeRange={timeRange} color={change?.trend === 'down' ? 'red' : change?.trend === 'up' ? 'green' : 'blue'} values={points.map(point => Number(point.usdCents) / 100)} label={`Global share market cap · ${period === 'ALL'?'All history':period}`} tooltip={index => ({ value: formatMoney(points[index].usdCents), label: `${new Date(points[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · ☤KAI ${points[index].pulse.toLocaleString()}` })} />
+    <ValueChart interpolation="step" key={period} times={times} timeRange={timeRange} color={change?.trend === 'down' ? 'red' : change?.trend === 'up' ? 'green' : 'blue'} values={values} label={`Global share market cap · ${period === 'ALL'?'All history':period}`} tooltip={index => ({ value: formatMoney(points[index].usdCents), label: `${new Date(points[index].at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })} · ☤KAI ${points[index].pulse.toLocaleString()}` })} />
     <Periods value={period} onChange={onPeriodChange} />
     {timeRange && <div className="chart-date-range"><span>{chartDateLabel(timeRange.start,period,timeRange,format)}</span><span>{chartDateLabel(timeRange.end,period,timeRange,format)}</span></div>}
     <button className="market-view-assets" onClick={onExplore}>View assets<ArrowRight size={16} /></button>

@@ -22,7 +22,7 @@ export async function qualifyTransferExportKit(roots:unknown[],record:PublicReco
  files['verification-material.json']=text.encode(JSON.stringify(verifier.materials));
  files['verify.html']=text.encode((await readFile('institution/proof-verifier/verify.html','utf8')).replace('<!--BANK_MARK-->','').replace('<script src="verifier.js"></script>',()=>'<script>'+code.replaceAll('</script','<\\/script')+'</script>'));
  files['build.json']=text.encode(JSON.stringify({...production,files:Object.fromEntries(Object.entries(files).map(([name,b])=>[name,{bytes:b.length,sha256:sha(b)}]))}));
- vi.resetModules();vi.doMock('../../src/receiz/offline-proof-build',()=>({offlineProofVerifierDigest:sha(files['verifier.js']),offlineProofVerifierSdkVersion:production.sdk}));
+ vi.resetModules();vi.doMock('../../src/receiz/offline-proof-build',()=>({offlineProofVerifierDigest:sha(files['verifier.js']),offlineProofVerifierSourceMapDigest:sha(files['verifier.js.map']),offlineProofVerifierSourceMapBytes:files['verifier.js.map'].length,offlineProofVerifierSdkVersion:production.sdk}));
  vi.stubGlobal('location',{origin:'https://bankeiz.com'});
  vi.stubGlobal('URL',class extends NativeURL{constructor(input:string|URL,base?:string|URL){super(input,base);if(this.pathname==='/proof-verifier/v129/verifier.js')return new NativeURL(url);}});
  vi.spyOn(globalThis,'fetch').mockImplementation(async input=>{const name=String(input).split('/').at(-1)!.replace(/\.map\.bin$/,'.map');if(!files[name])throw Error('EXTERNAL_READ_FORBIDDEN');return new Response(new Uint8Array(files[name]));});

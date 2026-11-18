@@ -68,8 +68,9 @@ export function parsePublicProfile(input:unknown,expectedUsername:string):Public
 
 /** Inline deterministic artwork is already in the document; social crawlers
  * require a public HTTP image rather than a repeated data: payload. */
-export function publicProfileSocialImage(profile:Pick<PublicProfile,'bannerUrl'|'avatarUrl'>):string|null {
- return publicProfileLink(profile.bannerUrl)??publicProfileLink(profile.avatarUrl);
+export function publicProfileSocialImage(profile:Pick<PublicProfile,'username'|'receivingUsername'>):string|null {
+ const username=publicProfileUsername(profile.username,profile.receivingUsername);
+ return profileUsername(username)?'https://bankeiz.com'+profilePagePath(username)+'og.png':null;
 }
 
 /** Full public collections stay in this tab. Only compact anonymous header

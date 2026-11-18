@@ -1,15 +1,22 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import {useEmittedNativeProofRuntime} from './helpers/native-proof-runtime';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error Public-page templates are plain ESM.
 import { valueExplainerContent } from '../scripts/value-explainer-template.mjs';
 import { mountValueExplainer, traceMarkup } from '../src/value-explainer/main';
 import {calculateIllustration,DEMO_SCENARIO,formatUsdCents} from '../src/value-explainer/model';
 import {calculatePhiUsd} from '../src/value-explainer/phi-usd';
+import {momentFromPulse} from '../native/receiz/app/utils/kai_pulse';
+import {sigilFrequencyFromMoment} from '../native/receiz/app/lib/market/sigilFrequency';
+import {computeIntrinsicUnsigned} from '@receiz/sdk/valuation';
+import {quoteReceizDisplayUsdV122} from '@receiz/sdk';
+import {DEFAULT_ISSUANCE_POLICY,quotePhiForUsd} from '../src/receiz/canonical-market-issuance';
 const clock=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
 vi.mock('@receiz/sdk',async importOriginal=>({...await importOriginal<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({...clock})}));
 
-afterEach(() => { document.body.replaceChildren(); document.querySelector('head > script[src="/snarkjs.min.js"]')?.remove(); vi.restoreAllMocks();vi.useRealTimers();clock.pulse=14710100;clock.uPulse=14710100000123n; });
+beforeEach(useEmittedNativeProofRuntime);
+afterEach(() => { document.body.replaceChildren(); document.querySelector('head > script[src="/snarkjs.min.js"]')?.remove(); vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();clock.pulse=14710100;clock.uPulse=14710100000123n; });
 
 function mount() {
   document.body.innerHTML = valueExplainerContent();
@@ -30,7 +37,21 @@ it('projects the carried proof source origin and head after local upload verific
  const output=root.querySelector('[data-value-proof-result]')!;
  expect(output.textContent).toContain('14611069000000');expect(output.textContent).toContain('Carried whole-pulse origin expressed in µPulses');
  expect(output.textContent).toContain('Sealed proof head');expect(output.textContent).toContain('51ceab4b3909e7e67570ee5822c41af5');
- expect(output.textContent).not.toContain('Admitted history head');expect(root.querySelector('[data-value-proof-usd]')?.textContent).toBe('$4,749.29');expect(fetcher).not.toHaveBeenCalled();
+ expect(output.textContent).not.toContain('Admitted history head');
+ // This reference follows the existing Wallet origin/frequency and unchanged
+ // intrinsic/issuance/integer-USD calculators, independently of the reader.
+ const moment=momentFromPulse(14611069),frequencyHz=sigilFrequencyFromMoment(moment);
+ expect({beat:moment.beat,stepIndex:moment.stepIndex,chakraDay:moment.chakraDay,frequencyHz}).toEqual({beat:12,stepIndex:2,chakraDay:'Sacral',frequencyHz:215.073});
+ const expectedMetadata={pulse:14611069,kaiPulse:14611069,beat:moment.beat,stepIndex:moment.stepIndex,stepsPerBeat:44,chakraDay:moment.chakraDay,frequencyHz,cumulativeTransfers:0};
+ const carried=JSON.parse(output.querySelector('details:last-child pre')!.textContent!);
+ expect(carried.inputs.metadata).toEqual(expectedMetadata);
+ expect(carried.inputs.metadata).not.toHaveProperty('creatorVerified');
+ const computed=computeIntrinsicUnsigned(expectedMetadata,14710100);
+ const quote=quotePhiForUsd({usd:100,currentStreakDays:0,lifetimeUsdSoFar:0,plannedHoldBeats:0,meta:expectedMetadata,nowPulse:14710100},DEFAULT_ISSUANCE_POLICY,computed);
+ const phiMicro=String(Math.round(computed.unsigned.valuePhi*1e6)),rate=BigInt(quote.usdPerPhi.toFixed(8).replace('.','')).toString();
+ expect(phiMicro).toBe('19996703');expect(rate).toBe('25893735218');
+ const cents=quoteReceizDisplayUsdV122(phiMicro,rate);expect(cents).toBe('517789');
+ expect(root.querySelector('[data-value-proof-usd]')?.textContent).toBe(formatUsdCents(cents));expect(fetcher).not.toHaveBeenCalled();
 },30000);
 
 it('automatically converts the calculated Phi and allows independent entry then relinking',()=>{

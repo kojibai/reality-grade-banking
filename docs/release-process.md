@@ -1,6 +1,13 @@
 # Release process
 
-The current repository release is **5.0.0**,
+The current release preparation is **Bankeiz 6.0.0**:
+[Your work. Your money. Your economy.](releases/6.0.0.md).
+Its [qualification record](releases/6.0.0-qualification.md) separates the exact
+committed recap, final reviewed source, local qualification, CI, publication,
+deployment and live acceptance. Product 6.0.0 metadata does not change the
+coordinated Receiz SDK/MCP/AI Skills 129.5.0 pins or publish v130.
+
+The last publication recorded here is **5.0.0**,
 [published November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)
 from `10b5fd1694d2c287361e3e29c28251359b73cee5`. Its
 [full release record](releases/5.0.0.md) describes the product and open

@@ -26,11 +26,15 @@ export function PublicFeed({seed,initialFilter='All',selectedItemId,musicContinu
   setPanel(held=>{if(!held||held.kind==='browse')return held;const item=catalog.items.find(item=>item.id===held.item.id);return item&&sameFeedSource(held.item,item)?{...held,item}:null;});
  });},[completeCatalog]);
  useEffect(()=>{
-  if(!discoveries)return;const current=new Map(discoveries.map(item=>[item.id,item])),refresh=(item:PublicMarketItem)=>{const next=current.get(item.id);return next&&sameFeedSource(item,next)?next:item;};
+  if(!discoveries)return;
   // The parent already holds the accepted Market projection. Refresh exact
   // source fields in place; its unchanged item count is not an update boundary.
   setItems(held=>refreshFeedItems(held,discoveries));
-  setPanel(held=>held&&held.kind!=='browse'?{...held,item:refresh(held.item)}:held);
+  setPanel(held=>{
+   if(!held||held.kind==='browse')return held;
+   const current=new Map(discoveries.map(item=>[item.id,item])),next=current.get(held.item.id);
+   return {...held,item:next&&sameFeedSource(held.item,next)?next:held.item};
+  });
  },[discoveries]);
  const requestedMore=useRef<string|null>(null);
  const scroller=useRef<HTMLDivElement>(null),frame=useRef(0),current=useRef(0),noticeTimer=useRef<ReturnType<typeof setTimeout>>(undefined);

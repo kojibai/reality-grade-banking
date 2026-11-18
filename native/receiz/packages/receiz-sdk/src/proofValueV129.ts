@@ -12,7 +12,8 @@ import { readReceizProofHistoryExactKksCoordinate } from "./proofHistory.js";
 import { base64UrlDecode } from "./verifier/crypto.js";
 import { isVersionIdentifier } from "./verifier/canonicalSyntax.js";
 import { canonicalizeReceizV122, digestReceizCanonicalV122 } from "./v122Canonical.js";
-import { receizKaiMomentFromSealedUpulse } from "./v124Kai.js";
+import { receizKaiMomentFromSealedPulse, receizKaiMomentFromSealedUpulse } from "./v124Kai.js";
+import { sigilFrequencyFromMoment } from "./accountFinancialMath.generated.js";
 import { quoteReceizDisplayUsdV122 } from "./v122Value.js";
 import {
   computeIntrinsicUnsigned, SIGIL_VALUATION_ALGORITHM, SIGIL_VALUATION_POLICY,
@@ -81,6 +82,8 @@ export type ReceizProofValueUnavailableV129 = Readonly<{
   writesPerformed: 0;
 }>;
 export type ReceizProofValueResultV129 = ReceizProofValueProjectionV129 | ReceizProofValueUnavailableV129;
+/** Package-internal interpretation selected only by strict carried replay revision. */
+export type ReceizProofValueInterpretationV129 = "129.0.0" | "129.5.1";
 type Basis = Readonly<{
   verification: Extract<ReceizArtifactVerificationResult, { status: "verified-artifact" }>;
   admission: ReceizVerifiedArtifactAdmission | null;
@@ -152,7 +155,7 @@ function checkOptions(input: ReceizProofValueOptionsV129, coordinateKey: string)
 
 /** Package-internal source composition; every payload is read only after the
  * enclosing canonical verification that issued its retained runtime. */
-export async function readReceizProofValueBasisV129(input: ReceizProofValueOptionsV129): Promise<Basis | ReceizProofValueUnavailableV129> {
+export async function readReceizProofValueBasisV129(input: ReceizProofValueOptionsV129, interpretation: ReceizProofValueInterpretationV129 = "129.5.1"): Promise<Basis | ReceizProofValueUnavailableV129> {
   let verification: ReceizArtifactVerificationResult;
   let admission: ReceizVerifiedArtifactAdmission | null = null;
   if (record(input.source) && "status" in input.source && input.source.status === "verified-artifact") {
@@ -176,6 +179,7 @@ export async function readReceizProofValueBasisV129(input: ReceizProofValueOptio
   let originVerification = verification;
   let opened = await readRuntimeCustodiedReceizArtifactCanonicalRead(originVerification);
   if (!opened) return unavailable("VALUATION_PAYLOAD_NOT_RETAINED", proofDigest, historyHead);
+  let metadataPayloadBytes = opened.payloadBytes, metadataPayloadMimeType = opened.payloadMimeType;
   let decoded = decodeJson(opened.payloadBytes);
   if (privatePayload(decoded)) return unavailable("VALUATION_PRIVATE_SOURCE_UNSUPPORTED", proofDigest, historyHead);
   let payload = record(decoded) ? decoded : null;
@@ -231,6 +235,7 @@ export async function readReceizProofValueBasisV129(input: ReceizProofValueOptio
       if (!coordinate) return unavailable("VALUATION_ORIGIN_NOT_CARRIED", proofDigest, historyHead);
       genesisOrigin = { kaiPulse: coordinate.kaiPulse, kaiUpulse: coordinate.kaiUpulse,
         nodeDigest: root.nodeDigest, proofHead: coordinate.kaiSigil.proofHead };
+      metadataPayloadBytes = carriedBytes; metadataPayloadMimeType = portable.payload.mimeType;
       decoded = content;
       if (privatePayload(decoded)) return unavailable("VALUATION_PRIVATE_SOURCE_UNSUPPORTED", proofDigest, historyHead);
       payload = record(decoded) ? decoded : null;
@@ -240,6 +245,7 @@ export async function readReceizProofValueBasisV129(input: ReceizProofValueOptio
     originVerification = carried;
     opened = await readRuntimeCustodiedReceizArtifactCanonicalRead(carried);
     if (!opened) return unavailable("VALUATION_PAYLOAD_NOT_RETAINED", proofDigest, historyHead);
+    metadataPayloadBytes = opened.payloadBytes; metadataPayloadMimeType = opened.payloadMimeType;
     decoded = decodeJson(opened.payloadBytes);
     if (privatePayload(decoded)) return unavailable("VALUATION_PRIVATE_SOURCE_UNSUPPORTED", proofDigest, historyHead);
     payload = record(decoded) ? decoded : null;
@@ -263,8 +269,61 @@ export async function readReceizProofValueBasisV129(input: ReceizProofValueOptio
   const originKaiUPulse = genesisOrigin?.kaiUpulse ?? null;
   if (originKaiUPulse !== null && receizKaiMomentFromSealedUpulse(BigInt(originKaiUPulse)).pulse !== originKaiPulse) fail("KAI_ORIGIN_BRIDGE_INVALID");
   const metadata: SigilMetadataLite = { pulse: originKaiPulse, kaiPulse: originKaiPulse };
-  if (record(payload?.sigilMetadata)) {
-    const declared = snapshot(payload.sigilMetadata);
+  if (interpretation === "129.5.1") {
+    const originMoment = receizKaiMomentFromSealedPulse(originKaiPulse);
+    const frequencyHz = sigilFrequencyFromMoment(originMoment);
+    Object.assign(metadata, { beat: originMoment.beat, stepIndex: originMoment.stepIndex,
+      stepsPerBeat: 44, chakraDay: originMoment.chakraDay,
+      ...(frequencyHz === undefined ? {} : { frequencyHz }) });
+  }
+  const originAuthorship = originVerification.verification.carriedAuthorship;
+  if (interpretation === "129.5.1" && originAuthorship?.state === "verified" && originAuthorship.scope === "enclosing-source") metadata.creatorVerified = true;
+  let declaredMetadata: Record<string, unknown> | null = record(payload?.sigilMetadata) ? payload.sigilMetadata : null;
+  if (!declaredMetadata && metadataPayloadMimeType === "image/svg+xml") {
+    const { extractEmbeddedMetaFromSvg, extractValuationSourceRaw, normalizeValuationSource, asFiniteNumber } = await import("./sigilMetadata.generated.js");
+    const embedded = extractEmbeddedMetaFromSvg(new TextDecoder("utf-8", { fatal: true }).decode(metadataPayloadBytes));
+    if (privatePayload(embedded.raw)) return unavailable("VALUATION_PRIVATE_SOURCE_UNSUPPORTED", proofDigest, historyHead);
+    const raw = record(embedded.raw) ? embedded.raw : null;
+    if (interpretation === "129.5.1") {
+      const declarations = extractValuationSourceRaw(raw) ?? raw ?? {};
+      // Source origin agreement precedes Wallet normalization: its integer
+      // parser must never truncate a conflicting carried coordinate into place.
+      for (const key of ["pulse", "kaiPulse"] as const) {
+        if (declarations[key] !== undefined && asFiniteNumber(declarations[key]) !== originKaiPulse) fail("VALUATION_METADATA_ORIGIN_MISMATCH");
+      }
+      // Keep the existing canonical declaration refusals even when a different
+      // alias could otherwise conceal the malformed canonical field.
+      for (const key of ["beat", "stepIndex", "stepsPerBeat", "seriesSize", "frequencyHz"] as const) {
+        if (declarations[key] !== undefined && asFiniteNumber(declarations[key]) === null) fail("VALUATION_METADATA_INVALID");
+      }
+      for (const key of ["chakraDay", "chakraGate", "valuationPolicyId"] as const) {
+        if (declarations[key] !== undefined && (typeof declarations[key] !== "string" || declarations[key].length > 256)) fail("VALUATION_METADATA_INVALID");
+      }
+      const normalized = normalizeValuationSource({ valuationSourceRaw: declarations, embedded, raw,
+        kaiSignature: "", derivedPhiKey: "" });
+      declaredMetadata = { ...declarations };
+      for (const key of ["beat", "stepIndex", "stepsPerBeat", "seriesSize", "quality", "frequencyHz", "chakraDay", "chakraGate", "ip", "valuationPolicyId"] as const) {
+        if (normalized[key] !== undefined) declaredMetadata[key] = normalized[key];
+      }
+      if (declarations.pulse !== undefined || declarations.kaiPulse !== undefined || embedded.pulse !== undefined) {
+        declaredMetadata.pulse = normalized.pulse; declaredMetadata.kaiPulse = normalized.kaiPulse;
+      }
+      // Wallet's bounded normalizer may discard malformed or excess rows. Keep
+      // every canonical row for the existing strict validator unless all rows
+      // were normalized, so no declared cashflow silently becomes a default.
+      if (record(declarations.ip)) {
+        const ip = { ...declarations.ip };
+        for (const key of ["expectedCashflowPhi", "expectedCashflowKS"] as const) {
+          const original = declarations.ip[key], rows = normalized.ip?.[key];
+          if (Array.isArray(original) && rows?.length === original.length
+            && rows.every((row, index) => record(original[index]) && asFiniteNumber(original[index].atPulse) === row.atPulse)) ip[key] = rows;
+        }
+        declaredMetadata.ip = ip;
+      }
+    }
+  }
+  if (declaredMetadata) {
+    const declared = snapshot(declaredMetadata);
     // Geometry and craft parameters are sealed declarations; creator status,
     // reputation and transfers need their implemented verification boundary.
     for (const key of ["beat", "stepIndex", "stepsPerBeat", "seriesSize", "quality", "frequencyHz", "chakraDay", "chakraGate", "ip", "valuationPolicyId"] as const) {
@@ -368,7 +427,7 @@ async function projectBasis(basis: Basis, input: ReceizProofValueOptionsV129, co
     proofValuePhiMicro, marketReferenceValuePhiMicro, askingPricePhiMicro: input.askingPricePhiMicro ?? null,
     lastExecutedPricePhiMicro: lastSale?.amountPhiMicro ?? null, displayUsdCents, priceBasisDigest,
     inputs: { metadata, metadataAuthority: "sealed-declarations-and-verified-history", diagnostics: computation.unsigned.inputs,
-      appliedDefaults: computation.appliedDefaults, unknownInputs: ["creatorVerified", "creatorRep"], policy: SIGIL_VALUATION_POLICY,
+      appliedDefaults: computation.appliedDefaults, unknownInputs: ["creatorVerified", "creatorRep"].filter(key => metadata[key as "creatorVerified" | "creatorRep"] === undefined), policy: SIGIL_VALUATION_POLICY,
       rounding: SIGIL_VALUATION_ROUNDING, marketReferencePolicy, usdBasis, sourceReferences: basis.sourceReferences },
     calculation, transactions: basis.transactions, writesPerformed: 0 as const,
     authority: { valuationIsSettlementAuthority: false as const, strongerTruth: "sealed-receiz-proof-object" as const },
@@ -384,7 +443,17 @@ export async function projectReceizProofValueV129(input: ReceizProofValueOptions
   return "status" in basis ? basis : projectBasis(basis, input, input.valuationKaiUPulse);
 }
 
-export async function sampleReceizProofValueV129(input: ReceizProofValueOptionsV129 & Readonly<{ valuationKaiUPulses: readonly string[] }>): Promise<Readonly<{
+export function sampleReceizProofValueV129(input: ReceizProofValueOptionsV129 & Readonly<{ valuationKaiUPulses: readonly string[] }>): Promise<Readonly<{
+  kind: "recomputed-model-samples";
+  samples: readonly ReceizProofValueResultV129[];
+  transactions: ReceizProofValueTransactionsV129 | null;
+  writesPerformed: 0;
+}>> {
+  return sampleReceizProofValueForReplayV129(input, "129.5.1");
+}
+
+/** Package-internal; public valuation entrypoints never accept a legacy mode. */
+export async function sampleReceizProofValueForReplayV129(input: ReceizProofValueOptionsV129 & Readonly<{ valuationKaiUPulses: readonly string[] }>, interpretation: ReceizProofValueInterpretationV129): Promise<Readonly<{
   kind: "recomputed-model-samples";
   samples: readonly ReceizProofValueResultV129[];
   transactions: ReceizProofValueTransactionsV129 | null;
@@ -395,7 +464,7 @@ export async function sampleReceizProofValueV129(input: ReceizProofValueOptionsV
   if (!Array.isArray(input.valuationKaiUPulses) || input.valuationKaiUPulses.length < 1 || input.valuationKaiUPulses.length > RECEIZ_PROOF_VALUE_LIMITS_V129.samples) fail("SAMPLE_LIMIT");
   const coordinates = [...input.valuationKaiUPulses];
   for (const coordinate of coordinates) { if (!decimal(coordinate)) fail("KAI_VALUATION_INVALID"); receizKaiMomentFromSealedUpulse(BigInt(coordinate)); }
-  const basis = await readReceizProofValueBasisV129(input);
+  const basis = await readReceizProofValueBasisV129(input, interpretation);
   const samples: ReceizProofValueResultV129[] = [];
   for (const coordinate of coordinates) samples.push("status" in basis ? basis : await projectBasis(basis, input, coordinate));
   return cloneAndFreezeExactValue({ kind: "recomputed-model-samples", samples, transactions: "status" in basis ? null : basis.transactions, writesPerformed: 0 });

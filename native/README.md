@@ -13,7 +13,7 @@ npm run native:rebuild
 npm run native:rebuild -- --sdk
 ```
 
-`native:rebuild` assembles an isolated temporary source tree and compares the resulting bytes to the checked-in artifacts. It checks the exact Offline Note module, read-only receiver, normalized receiver source map, generated SDK sealing core, Kai worker and canonical parser/valuation seams. `--sdk` also compiles and compares the complete set of 225 JavaScript files from the qualified SDK package; omitted or extra outputs refuse. It performs no funding, signing, account access or network calls. `npm ci` obtains public build/runtime dependencies; no Receiz host checkout or private credentials are needed. Optional `--output /path/to/directory` writes verified modules there. `npm run receiver:build` writes the verified modules back to `public/native/` without changing their hashes or manifests.
+`native:rebuild` assembles an isolated temporary source tree and compares the resulting bytes to the checked-in artifacts. It checks the exact Offline Note module, read-only receiver, normalized receiver source map, generated SDK sealing core, Kai worker and canonical parser/valuation seams. `--sdk` also compiles and compares the complete set of 227 JavaScript files from the included qualified preferred SDK source; omitted or extra outputs refuse. It performs no funding, signing, account access or network calls. `npm ci` obtains public build/runtime dependencies; no Receiz host checkout or private credentials are needed. Optional `--output /path/to/directory` writes verified modules there. `npm run receiver:build` writes the verified modules back to `public/native/` without changing their hashes or manifests.
 
 | Material | Purpose |
 | --- | --- |
@@ -107,9 +107,22 @@ surface. Runtime capacity refuses as unavailable without declaring retained
 Originals invalid. Existing signed fixtures and content-addressed source
 archives remain unchanged.
 
-An unpublished local package can qualify exact consumer bytes. It does not
-change the published129.0 registry identity: coordinated SDK/MCP/AI installation,
-the normal release check and source-archive qualification remain distribution
-gates for adopting129.5.
+SDK, MCP and AI Skills are coordinated at 129.5.0. Preferred-source adaptations
+retain their own exact provenance and do not publish or overwrite an npm
+package. Coordinated installation, the normal release check and source-archive
+qualification remain separate distribution gates.
 
 The optional recipient account UID is covered by the existing issuer and funding signatures and checked by the native handover, claim and receiver verifier. Omitted recipient terms preserve the existing bearer Note signing bytes. This browser-source patch changes no published SDK package or verification root. Its exact source and review hashes are recorded in the composition manifest.
+
+## V6 canonical valuation-reader adaptation
+
+The eight-path preferred-source amendment follows upstream Receiz commit
+`37fd89794af93a615ffcdd8a2a189ebb3cd97755`. The existing offline verifier
+reuses canonical Source custody for its read-only valuation, sampling and replay
+operations, preserving its standalone artifact reader. Known Kai/frequency,
+Source-bound PBI and supported SVG declarations use the existing projectors and
+Wallet normalization, with privacy, exact coordinates and malformed-input
+refusals retained. SDK/MCP/AI Skills remain at 129.5.0; the new `129.5.1` replay
+interpretation does not publish or overwrite an npm package. See the
+[scoped evidence](../docs/verification/2026-11-17-v6-reader-sharing.md) and
+[final release ledger](../docs/releases/6.0.0-qualification.md).

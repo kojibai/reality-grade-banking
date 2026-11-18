@@ -4,6 +4,63 @@ Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 6.0.0 — Your work. Your money. Your economy.
+
+Release preparation. The exact v5 tag `10b5fd1` through committed baseline
+`73c75a99` contains 130 commits and 1,161 net changed files. Final valuation,
+profile-sharing, version and release changes are recorded separately until
+committed. Final CI, tag/publication, deployment and live acceptance are pending.
+SDK, MCP and AI Skills remain coordinated at 129.5.0; no new npm or v130 release.
+[Full release notes](docs/releases/6.0.0.md) ·
+[Qualification](docs/releases/6.0.0-qualification.md) ·
+[Complete committed inventory](docs/releases/6.0.0-commit-inventory.json).
+
+- Relationship Workspace with private Twin, Work and Context; manual branded
+  proposals, invoices, agreements and real PDF, DOCX, XLSX and PPTX files.
+  Exact encrypted recovery, complete terms and explicit consent remain bound
+  to their actual conversation, document and parties.
+- Standalone invoice creation from Receive, retained canonical PDF, client
+  delivery/copy link and explicit existing Card, Balance or Note payment review.
+- Portable order-payment package and guide for an existing store/application,
+  with exact merchant order/recipient/amount, authorized confirmation and an
+  atomic store port; existing payer approval and settlement contracts remain.
+- Ordinary sealed Original delivery independent of private-copy acknowledgment,
+  durable separate retry work, retained PBI/file bytes and cold Source recovery
+  without resealing or losing later creations.
+- Complete selected public membership, owner-bound headers, full names, custom
+  artwork, More pagination and retained Feed/Discover/Market/profile navigation;
+  failed HTTP or thinner display data cannot erase held Source.
+- Shared local media/custody recovery, including older Originals beyond bounded
+  display locators, exact resource bindings and format-preserving proof downloads.
+- Recoverable Vault containers, account/public statements, private proof backups,
+  complete receipt verification kits and exact pending-payment nonce recovery.
+- Receiz email and booking continuity, readable replies, matching invitations,
+  owner notice preferences, retained Twin text/tool results and Identity Record
+  PNG backups with frozen account entry preserved.
+- Interactive client-work guides, independent direct-entry pages, same-DOM
+  offline navigation and real document examples under unchanged public budgets.
+- Final Source-bound valuation input correction through the existing Native
+  verifier: actual Kai/frequency/PBI, supported SVG declarations, strict privacy
+  and malformed-input refusals, and immutable historical replay interpretation.
+- Final public profile sharing image, supported Unicode font coverage and exact
+  response/source qualification outside the profile-opening path.
+- Matching preferred Native sources, generators, schema/inspection tools,
+  complete corresponding source, licenses and separately recorded release gates.
+- Bounded Market repeated-work removal: retain unchanged chart geometry, send
+  only the existing required pricing/inspector operands to the worker, and skip
+  Feed ordering only with zero new IDs. Artwork reuses exact URL/reference
+  syntax; owner admission and material/proof checks remain unchanged.
+  Ordinary focus reuses the existing worker; a real foreground event wave
+  consumes its suspension state once while preserving queued/current work.
+  The measured 4,268-row worker message is
+  78.43% smaller; full Source, prices, history, selection and media remain intact.
+  [Exact local scope and remaining qualification](docs/verification/2026-11-17-market-held-work.md).
+
+Future optional-funding Source-first Core/UI work, the remaining broad audit,
+v130, unsupported rails/platform approval and unperformed live-money or protected
+device assessment remain separate. A valuation does not become asking price,
+executed payment, backing or spendable funds.
+
 ## 5.0.0 — Keep your work, value and proof connected
 
 Published [November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)

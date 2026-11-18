@@ -7,6 +7,7 @@ MCP and AI Skills versions it uses.
 
 | Version | State | Receiz | Release record |
 | --- | --- | --- | --- |
+| 6.0.0 | Release preparation; tag, final CI, deployment and live acceptance pending | 129.5.0 | [Full release notes](6.0.0.md) · [qualification record](6.0.0-qualification.md) · [committed recap inventory](6.0.0-commit-inventory.json) |
 | 5.0.0 | [Published November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0) · `10b5fd1` | 129.0.0 | [Full recap](5.0.0.md) · [qualification record](5.0.0-qualification.md) |
 | 4.0.0 | [Versioned source and qualification](4.0.0-qualification.md) | 129.0.0 | [Full release notes](4.0.0.md) · [qualification record](4.0.0-qualification.md) |
 | 3.0.0 | [Published October 22, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v3.0.0) · `dcfb7ed` | 129.0.0 | [Full release notes](3.0.0.md) · [qualification record](3.0.0-qualification.md) |
@@ -16,6 +17,14 @@ MCP and AI Skills versions it uses.
 The live application remains available at [Bankeiz.com](https://bankeiz.com/).
 Publication records identify the actual tag and source. Capability-specific
 assessment remains documented separately.
+
+**Bankeiz 6.0 — Your work. Your money. Your economy.** The v6 preparation
+recaps 130 committed changes from the exact v5 tag through `73c75a99`, plus
+the separately recorded final valuation, public profile-sharing and release
+cohort. It connects client Workspaces, real documents, standalone invoices,
+portable order payments, retained Originals, public presence and offline proof
+inspection. Its preparation state does not claim a published tag or new SDK
+release. The final qualification record retains those separate outcomes.
 
 The v5 documents recap the tagged changes since v4 and record local qualification
 separately from deployed acceptance. The tag identifies `10b5fd1`; its package

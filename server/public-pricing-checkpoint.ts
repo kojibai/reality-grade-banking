@@ -3,9 +3,10 @@ import {isDeepStrictEqual} from 'node:util';
 import {publicMarketPulseSeed} from '../src/receiz/market-projection/source.js';
 import {readPublicShareInventory} from '../src/receiz/market-share-inventory.js';
 import {publicNativeAssetBinding} from '../src/receiz/native-asset-public-binding.js';
-import type {PublicMarketPricingItem} from '../src/receiz/market-projection/pricing-inputs.js';
-export const PUBLIC_PRICING_METADATA_FIELDS=['complete','revision','observedAt','sourceCount','sportsCoverage','sportsObservedAt','sportsSealedBirthsObservedAt','sportsHistorySnapshot'] as const;
-const fields=['id','assetId','category','originalDigest','pulse','priceUsd','changePct','shareInventory','livePulseSeed','valuationBinding','nativeAsset','circulationCount','capitalizationUsdCents'] as const;
+import {pickPublicPricingCheckpointItem,PUBLIC_PRICING_CHECKPOINT_FIELDS,PUBLIC_PRICING_METADATA_FIELDS,type PublicMarketPricingItem} from '../src/receiz/market-projection/pricing-inputs.js';
+export {PUBLIC_PRICING_METADATA_FIELDS} from '../src/receiz/market-projection/pricing-inputs.js';
+
+const fields=PUBLIC_PRICING_CHECKPOINT_FIELDS;
 export type PublicPricingCheckpoint=Readonly<{schema:'bank.public-market.pricing-checkpoint.v1';item:PublicMarketPricingItem}>;
 function invalid():never{throw Error('PUBLIC_PRICING_CHECKPOINT_INVALID');}
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
@@ -14,7 +15,7 @@ const same=isDeepStrictEqual;
  * This is neither an Original nor financial admission/ownership evidence. */
 export function createPublicPricingCheckpoint(item:PublicMarketPricingItem):PublicPricingCheckpoint{
  if(item.category!=='proof')invalid();
- const picked=Object.fromEntries(fields.flatMap(key=>item[key]===undefined?[]:[[key,item[key]]]));
+ const picked=pickPublicPricingCheckpointItem(item);
  const checkpoint={schema:'bank.public-market.pricing-checkpoint.v1',item:picked};
  return{schema:'bank.public-market.pricing-checkpoint.v1',item:readPublicPricingCheckpoint(checkpoint)};
 }

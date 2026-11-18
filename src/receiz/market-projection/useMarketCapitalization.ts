@@ -4,6 +4,7 @@ import{receizKaiNow}from'@receiz/sdk';
 import {readPublicMarketDocumentSeed,publicMarketDocumentHistory} from '../public-market-document-seed';
 import type { ChartPeriod } from '../../core/chart-history';
 import type{PublicMarketCatalog}from'../public-market';
+import{pickPublicMarketPricingCatalog,type PublicMarketPricingCatalog}from'./pricing-inputs';
 import {packMarketHistory} from './history-wire';
 import seedHistory from '../../../public/receiz-public-share-chart-history.json';
 import { type MarketCapSource } from './source';
@@ -22,7 +23,7 @@ function restore(): MarketHistorySnapshot {
   try { const cached = parseMarketHistory(JSON.parse(localStorage.getItem(KEY) ?? 'null')); if (cached.historyPolicy===SHARE_MARKET_HISTORY_POLICY&&cached.summary.serverPulse >= fallback.summary.serverPulse) return cached; } catch { /* Only bounded public display data is retained. */ }
   return fallback;
 }
-type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketCatalog|null;pulse:number};
+type WorkerInput={source:{ok:true;marketCapProjection:MarketCapSource};history:MarketHistorySnapshot;catalog:PublicMarketPricingCatalog|null;pulse:number};
 export function useMarketCapitalization(period: ChartPeriod, active: boolean,catalog:PublicMarketCatalog|null=null,sourceActive=active,initialHistory?:MarketHistorySnapshot) {
   const preparedState=useSyncExternalStore(subscribePreparedBankCatalog,preparedBankCatalogState,preparedBankCatalogState),candidate=preparedState.value??preparedState.carried,cachedConflict=!!candidate?.fromCache&&!!catalog?.complete&&candidate.seed.catalog!==catalog,bank=!cachedConflict&&preparedBankCatalogEnabled()&&(sourceActive||preparedState.phase!=='idle'),packet=bank?preparedState.value:null,carried=bank?preparedState.carried:null,display=packet??carried,family=display??(sourceActive&&!cachedConflict?candidate:null),awaitingPrepared=bank&&preparedState.phase!=='fallback'&&!display;
   const preparedHistory=initialHistory??display?.history??(()=>{const seed=readPublicMarketDocumentSeed(),carried=seed&&publicMarketDocumentHistory(seed);return carried?.historyPolicy===SHARE_MARKET_HISTORY_POLICY?carried:undefined;})();
@@ -33,7 +34,8 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
   const appliedPrepared=useRef(display?.seed??null),newPrepared=!!family&&appliedPrepared.current!==family.seed,visibleHistory=newPrepared?family!.history:history,fullSource=display?.capitalization??(newPrepared?family!.capitalization:retainedMarketDisplaySource()??fallbackSource);
   const heldHistory=useRef(visibleHistory),worker=useRef<Worker|null>(null),request=useRef(0),acceptedSource=useRef<MarketCapSource|null>(null),busy=useRef(false),queued=useRef<WorkerInput|null>(null),latestInput=useRef<WorkerInput|null>(null),restartWorker=useRef<(()=>void)|null>(null);
   const visible=useRef(active);visible.current=active;
-  const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketCatalog|null}|null>(null);
+  const workerInputs=useRef<{source:MarketCapSource;catalog:PublicMarketPricingCatalog|null}|null>(null);
+  const pricingInput=useRef<{catalog:PublicMarketPricingCatalog;value:PublicMarketPricingCatalog}|null>(null);
   const [calculation,setCalculation]=useState<GlobalMarketCalculation|null>(null),heldCalculation=useRef<GlobalMarketCalculation|null>(null),inspecting=useRef(false);
   heldHistory.current=visibleHistory;
   const acceptCalculation=useCallback((value:GlobalMarketCalculation|null|undefined)=>{if(!heldHistory.current||!marketCalculationMatches(value,heldHistory.current.summary,heldHistory.current.basisSha256))return;heldCalculation.current=value!;if(inspecting.current)setCalculation(value!);},[]);
@@ -45,7 +47,13 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     // Structured cloning the whole retained collection blocks the UI thread.
     // This worker already owns its inputs and its last complete history.
     if(held?.source===source&&held.catalog===input.catalog)worker.current.postMessage({id,marketTick:true,pulse:input.pulse});
-    else{worker.current.postMessage({...input,history:heldHistory.current,id,shareCapitalization:true});workerInputs.current={source,catalog:input.catalog};}
+    else{
+      // Prepare transport only at dispatch; hidden views and same-input pulses
+      // reuse known operands without walking or cloning the Source catalog.
+      if(input.catalog&&pricingInput.current?.catalog!==input.catalog)pricingInput.current={catalog:input.catalog,value:pickPublicMarketPricingCatalog(input.catalog)};
+      const catalog=input.catalog?pricingInput.current!.value:null;
+      worker.current.postMessage({...input,catalog,history:heldHistory.current,id,shareCapitalization:true});workerInputs.current={source,catalog:input.catalog};
+    }
   },[]);
   useLayoutEffect(()=>{
     if(family&&appliedPrepared.current!==family.seed){
@@ -107,15 +115,15 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     if(inspecting.current)instance.postMessage({marketInspect:true,readCalculation:false});
     if(latestInput.current){queued.current={...latestInput.current,pulse:Math.max(latestInput.current.pulse,now())};dispatch();}
     };
-    restartWorker.current=start;start();
     let hidden=document.visibilityState!=='visible';
     // Installed PWAs may resume without a reply from their suspended worker.
-    // Recreate that execution context, retaining the last complete publication.
-    const visibility=()=>{if(document.visibilityState!=='visible'){hidden=true;return;}if(hidden){hidden=false;start();}};
-    const pageshow=()=>{if(document.visibilityState==='visible')start();};
-    const focus=()=>{if(document.visibilityState==='visible'&&(busy.current||!worker.current))start();};
-    document.addEventListener('visibilitychange',visibility);window.addEventListener('pageshow',pageshow);window.addEventListener('focus',focus);
-    return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;workerInputs.current=null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',pageshow);window.removeEventListener('focus',focus); };
+    // Consume each real suspension once; an ordinary focus cannot abandon work.
+    const resume=()=>{if(!visible.current||document.visibilityState!=='visible')return;if(hidden||!worker.current){hidden=false;start();}};
+    const suspend=()=>{hidden=true;};
+    const visibility=()=>{if(document.visibilityState!=='visible')suspend();else resume();};
+    restartWorker.current=resume;start();
+    document.addEventListener('visibilitychange',visibility);window.addEventListener('pageshow',resume);window.addEventListener('focus',resume);window.addEventListener('pagehide',suspend);
+    return () => { restartWorker.current=null;worker.current?.terminate(); worker.current = null;workerInputs.current=null;busy.current=false;queued.current=null;++request.current;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pageshow',resume);window.removeEventListener('focus',resume);window.removeEventListener('pagehide',suspend); };
   }, [dispatch,acceptCalculation]);
   useEffect(() => {
     if (!fullSource || !active || !heldHistory.current) {latestInput.current=null;queued.current=null;busy.current=false;worker.current?.postMessage({id:++request.current,cancel:true});return;}
@@ -123,7 +131,7 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     // A pulse tick cannot starve a larger new-inventory rebuild by cancelling it.
     latestInput.current={source:{ok:true,marketCapProjection:fullSource},history:heldHistory.current,catalog,pulse:Math.max(pulse,fullSource.serverPulse,display?heldHistory.current.summary.serverPulse:0)};queued.current=latestInput.current;
     // Retry only when a new pulse or source input arrives, never in an error loop.
-    if(!worker.current)restartWorker.current?.();else dispatch();
+    restartWorker.current?.();dispatch();
   }, [fullSource, active,catalog,pulse,dispatch,display?.seed]);
   // Period selection is always a synchronous lookup, with no network or job.
   return { source:visibleHistory?.summary??null, points: visibleHistory?.series[period]??[], pendingPrepared, status:packet?(preparedState.phase==='ready'&&packet.receipt.state==='current'?'live' as const:'cached' as const):status,calculation:visibleHistory&&marketCalculationMatches(calculation,visibleHistory.summary,visibleHistory.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };

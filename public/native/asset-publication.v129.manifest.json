@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "f6c1f0897e9bc5bf3bf8e1d5ba379af4270b165f914afcd504a5885f2080d472",
-  "sourceTreeSha256": "c322d6367a28ef64a3e958f99dde57141c3119b5a00543bc7ea356f9ff7d971a",
-  "inputs": 529,
-  "bytes": 3088945,
+  "moduleSha256": "a9c2ae0b119e57552610bdfe659569dde052c3731396ef8752c75f1c6a7cf379",
+  "sourceTreeSha256": "488d60f902c39686cbff48f08bf3620ccd3011037706eae9024287a12bf23bc2",
+  "inputs": 531,
+  "bytes": 3094288,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -1996,6 +1996,78 @@
       "baseSha256": "f82b7c5c96839d0e51d7b83b8245b643701f216f1b74e073cc917fc15b45de72",
       "sha256": "1269c102dcc899974559a21c2541b758afd2d92b4ca91ef776c0c4e96b92c26a",
       "purpose": "Keep ordinary public Source publication independent of the separate owner-private transfer acknowledgment. Reuse canonical File admission and the existing protected transfer method; retain the explicit backed-funding stage prerequisite and all Source, owner, UID, private tuple and byte guards."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/app/utils/sigilMetadata.ts",
+      "baseSha256": null,
+      "sha256": "b147e9b38cffb95b2b0ad68622b99abc433bb9d8afc1eb7136388e2fd30ad817",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/scripts/sync_account_financial_math.mjs",
+      "baseSha256": "fa1280f1650640b33bf569ef94e3ed9a61abab5faff2971d35c17c68effab54c",
+      "sha256": "f96ec996cd604d3e23593f49331c29faa22566420028a756aa4ee6cf95572fb0",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.js",
+      "baseSha256": "aca6ed3f37e047d1a9be39a3a2e79e045464f50834b1105722fe470fdbe101c1",
+      "sha256": "fafbbbddbc53213999d89c5bff8332025d7637db8236403be5bb9e4a53147e20",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialMath.generated.d.ts",
+      "baseSha256": "e55e6a63415ccd61c66805349b6b1cb09f5608b3d46a6ff2d63fee314d458d0d",
+      "sha256": "85d3da2727fc0d47940a2aa8c92605e604459d5d880b349c70fef1256bf229b0",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/sigilMetadata.generated.js",
+      "baseSha256": null,
+      "sha256": "79350270f7b7717e3b6536a7aa38dc80bf608858e8a08fcf32c073ca29bf8f62",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/sigilMetadata.generated.d.ts",
+      "baseSha256": null,
+      "sha256": "c33d3b75a0b295285351d8982c335a33b31b3904f1074cba47eabebd303db6ac",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/proofValueV129.ts",
+      "baseSha256": "c70f6c7a38a8edb9bb5cac717e5bff9e689f37f70c28c059f918bb06386059d0",
+      "sha256": "3cd1ddd7839aafb1313cbbb52a1cdd1495d7c3031db93854abd80dab3ad9071b",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-canonical-proof-valuation-reader",
+      "path": "receiz/packages/receiz-sdk/src/proofValueReplayV129.ts",
+      "baseSha256": "c4c21a67c967f1870818911050ef3945410d081616ccd6b46f0446c885f3fca5",
+      "sha256": "c52647f5fb9b217012953967eeaed6e3231f77d2ee48f367947d08a86a40d47d",
+      "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
+      "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
+      "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
     }
   ],
   "browserDefines": {

@@ -45,8 +45,10 @@ async function load(){
  const engine=await import('@resvg/resvg-wasm');await initialize(engine,new Uint8Array(values[0]));
  return{engine,fonts:values.slice(1)};
 }
+/** Reuse the same pinned renderer initialization without changing certificate fonts. */
+export function prepareConformanceEvidenceRenderer(){return prepared??=load().catch(error=>{prepared=undefined;throw error;});}
 export async function renderConformanceEvidencePng(svg:string):Promise<Uint8Array>{
- const {engine,fonts}=await(prepared??=load().catch(error=>{prepared=undefined;throw error;}));
+ const {engine,fonts}=await prepareConformanceEvidenceRenderer();
  const renderer=new engine.Resvg(svg,{font:{fontBuffers:fonts,defaultFontFamily:'Inter',serifFamily:'Noto Serif',sansSerifFamily:'Inter',monospaceFamily:'Inter'}});
  try{const image=renderer.render();try{return new Uint8Array(image.asPng());}finally{image.free();}}finally{renderer.free();}
 }

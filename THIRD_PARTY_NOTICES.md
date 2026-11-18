@@ -45,3 +45,5 @@ Open Font License. Their original license texts are retained beside the font
 files in `public/conformance/fonts/`. Noto Serif source:
 https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSerif.
 The renderer verifies the exact shipped renderer/font hashes before use.
+
+Profile social images additionally use unmodified Noto Sans CJK SC Regular from [official noto-cjk commit f8d1575](https://github.com/notofonts/noto-cjk/tree/f8d157532fbfaeda587e826d4cd5b21a49186f7c), under the retained [SIL Open Font License](scripts/social/fonts/NotoSansCJK-OFL.txt). Its [source and byte hashes](scripts/social/fonts/NotoSansCJK-source.json) are pinned. It is a profile-only server-rendering fallback for supported CJK glyphs; Inter remains primary and other social renderers are unchanged. This does not claim universal Unicode coverage.

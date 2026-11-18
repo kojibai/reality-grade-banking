@@ -1,15 +1,13 @@
-import { createReceizArtifactAdmissionEngine, digestReceizCanonicalV122, quoteReceizDisplayUsdV122, verifyReceizArtifact, type ReceizArtifactVerificationResult } from '@receiz/sdk';
-import {
-  exportReceizProofValueReplayV129,
-  projectReceizProofValueV129,
-  sampleReceizProofValueV129,
-  verifyReceizProofValueReplayV129,
-  type ReceizProofValueSourceV129,
-  type ReceizProofValueUsdBasisV129,
-} from '@receiz/sdk/valuation';
+import { digestReceizCanonicalV122, quoteReceizDisplayUsdV122 } from '@receiz/sdk';
+import type {
+  ReceizProofValueSourceV129,
+  ReceizProofValueUsdBasisV129,
+} from '../../native/receiz/packages/receiz-sdk/declarations/proofValueV129';
+import type {ReceizArtifactVerificationResult} from '../../native/receiz/packages/receiz-sdk/declarations/artifactVerification';
 import { canonicalInteger, MAX_INPUT_BYTES, parseEvaluationCoordinates, VALUE_POLICY } from './model';
 import {computeIntrinsicUnsigned,type ReceizProofValueProjectionV129,type SigilMetadataLite}from'@receiz/sdk/valuation';
 import {DEFAULT_ISSUANCE_POLICY,quotePhiForUsd}from'../receiz/canonical-market-issuance';
+import {loadOfflineProofVerifier} from '../receiz/ledger-offline-proof';
 
 /** A local deterministic display quote bound to this exact admitted projection.
  * It is neither a completed sale nor authority to redeem or spend the object. */
@@ -68,6 +66,8 @@ export function projectProofDisplayFacts(projection: ReceizProofValueProjectionV
 export async function inspectHeldProof(input: Readonly<{ file: File; evaluationKaiUPulse: string; additionalCoordinates: string; portableHistory: boolean; usdPerPhiMicrocents?: string; deterministicUsd?:boolean }>) {
   if (input.file.size > MAX_INPUT_BYTES) throw new Error('Public proof exceeds the 64 MiB reader limit.');
   const coordinates = parseEvaluationCoordinates(input.evaluationKaiUPulse, input.additionalCoordinates);
+  const {verifyReceizArtifact,createReceizArtifactAdmissionEngine,projectReceizProofValueV129,
+    sampleReceizProofValueV129,exportReceizProofValueReplayV129,verifyReceizProofValueReplayV129}=(await loadOfflineProofVerifier()).valuation;
   const verification = await verifyReceizArtifact(input.file);
   if (verification.status !== 'verified-artifact') {
     const detail = verification.status === 'denied' ? verification.code : verification.status === 'unsupported' ? verification.reason : verification.errors.map(error => error.code).join(', ');
@@ -99,5 +99,6 @@ export async function inspectHeldProof(input: Readonly<{ file: File; evaluationK
 export async function inspectReplayFile(file: File) {
   if (file.size > MAX_INPUT_BYTES) throw new Error('Replay exceeds the 64 MiB reader limit.');
   const replay: unknown = JSON.parse(await file.text());
+  const {verifyReceizProofValueReplayV129}=(await loadOfflineProofVerifier()).valuation;
   return verifyReceizProofValueReplayV129(replay);
 }

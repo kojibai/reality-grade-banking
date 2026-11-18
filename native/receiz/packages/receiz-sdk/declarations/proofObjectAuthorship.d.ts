@@ -1,0 +1,40 @@
+import type { PortableJson } from "./portableAsset.js";
+export type ReceizPbiProofObjectAuthorshipAppendV1 = Readonly<{
+    schema: "receiz.pbi.proof-object-authorship.v1";
+    position: number;
+    predecessorArtifactSha256: string;
+    predecessorProofHead: string;
+    previousAppendHeadSha256: string | null;
+    claimHashHex: string;
+    slug: string;
+    code: string;
+    pulse: string;
+    receizId: string;
+    credentialId: string;
+    credentialPublicKeyPem: string;
+    pbiReceipt: PortableJson;
+    pbiReceiptHash: string;
+    signedAt: string;
+    kaiUpulse: string;
+    actionHashSha256: string;
+    appendHeadSha256: string;
+}>;
+export type ReceizPbiProofObjectAuthorshipAppendV1Input = Readonly<{
+    history: readonly ReceizPbiProofObjectAuthorshipAppendV1[];
+    predecessorArtifactSha256: string;
+    predecessorProofHead: string;
+    claimHashHex: string;
+    slug: string;
+    code: string;
+    pulse: string;
+    receizId: string;
+    credentialId: string;
+    credentialPublicKeyPem: string;
+    pbiReceipt: PortableJson;
+    pbiReceiptHash: string;
+    signedAt: string;
+    kaiUpulse: string;
+}>;
+export declare function verifyReceizPbiProofObjectAuthorshipChainV1(history: readonly unknown[]): Promise<boolean>;
+export declare function appendReceizPbiProofObjectAuthorshipV1(input: ReceizPbiProofObjectAuthorshipAppendV1Input): Promise<ReceizPbiProofObjectAuthorshipAppendV1>;
+//# sourceMappingURL=proofObjectAuthorship.d.ts.map

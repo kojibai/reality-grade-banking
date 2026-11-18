@@ -1,4 +1,4 @@
-import {useLayoutEffect,useRef,useState,useSyncExternalStore} from 'react';
+import {useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {safeReceizArtworkUrl,type PublicMarketItem} from '../../receiz/public-market';
 import {retainedAssetPublicationArtwork} from '../../receiz/asset-publication-adoption';
 import {safeImportedSourceUrl} from '../../receiz/imported-source-url';
@@ -6,12 +6,16 @@ const subscribeHydration=()=>()=>{},clientPaint=()=>false,serverPaint=()=>true;
 /** Bank's React lifetime binds the existing native material plane. Exact held
  * Source roles resolve before their remote URL; no collection/history opens. */
 export function usePublicObjectArtwork(artworkUrl:PublicMarketItem['artworkUrl'],item?:Pick<PublicMarketItem,'originalDigest'>&Partial<Pick<PublicMarketItem,'ownerUsername'>>):string|null|undefined{
- const local=item?.originalDigest?retainedAssetPublicationArtwork(item.originalDigest,item.ownerUsername??undefined):null,remote=safeReceizArtworkUrl(artworkUrl),coordinate=remote?safeImportedSourceUrl(remote,'media'):null;
+ const local=item?.originalDigest?retainedAssetPublicationArtwork(item.originalDigest,item.ownerUsername??undefined):null;
+ const {remote,coordinate,reference}=useMemo(()=>{
+  const remote=safeReceizArtworkUrl(artworkUrl),coordinate=remote?safeImportedSourceUrl(remote,'media'):null;
+  return {remote,coordinate,reference:coordinate?JSON.parse(new URL(coordinate).searchParams.get('reference')!):null};
+ },[artworkUrl]);
  // React supplies the same server snapshot during initial hydration. Keep
  // that exact carried image while its local Source projection warms hidden.
  const serverFrame=useSyncExternalStore(subscribeHydration,clientPaint,serverPaint),servedCoordinate=useRef(serverFrame?coordinate:null),served=coordinate&&servedCoordinate.current===coordinate?remote:undefined;
  const [held,setHeld]=useState<{key:string;url:string|null}|null>(null);
- const reference=coordinate?JSON.parse(new URL(coordinate).searchParams.get('reference')!):null,matched=!reference||!item?.originalDigest||reference.artifactSha256===item.originalDigest,localCustody=typeof indexedDB!=='undefined';
+ const matched=!reference||!item?.originalDigest||reference.artifactSha256===item.originalDigest,localCustody=typeof indexedDB!=='undefined';
  useLayoutEffect(()=>{
   if(local||!coordinate||!matched||!localCustody)return;
   let active=true,release:(()=>void)|undefined;

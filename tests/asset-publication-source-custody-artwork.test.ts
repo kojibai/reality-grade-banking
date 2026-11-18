@@ -12,14 +12,14 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 import * as adoption from '../src/receiz/asset-publication-adoption';
 import {saveDeviceIdentity,saveDepositSource,loadDepositSources} from '../src/receiz/identity-vault';
-const ports=vi.hoisted(()=>({native:null as any,work:null as Promise<any>|null,calls:0}));
+const ports=vi.hoisted(()=>({native:null as any,work:null as Promise<any>|null,calls:0,mounts:0,releases:0}));
 // Only the browser runtime loader is supplied. This is the actual canonical
 // imported Source verifier with the fixture's ephemeral trusted test root.
 vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:async()=>({readArtifact:async(bytes:Uint8Array,filename:string)=>{
  const source=await ports.native.openImportedProofSource(new File([new Uint8Array(bytes)],filename));
  return{report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:source.descriptor.artifactSha256,payloadSha256:source.projection.payloadSha256,verification:source.verification},payload:{bytes:new Uint8Array(await source.sourcePayload.arrayBuffer()),filename:source.projection.payloadFilename,mimeType:source.sourcePayload.type,sha256:source.projection.payloadSha256}};
 }})}));
-vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>({...ports.native.connectedComposer,createImportedProofSourceCustody:ports.native.createImportedProofSourceCustody,readHeldImportedProfileOriginalMaterial:(...args:any[])=>{ports.calls++;return ports.work=ports.native.connectedComposer.readHeldImportedProfileOriginalMaterial(...args);}})}));
+vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>({...ports.native.connectedComposer,createImportedProofSourceCustody:ports.native.createImportedProofSourceCustody,retainMountedMaterial:(...args:any[])=>{ports.mounts++;const release=ports.native.connectedComposer.retainMountedMaterial(...args);return()=>{ports.releases++;release();};},readHeldImportedProfileOriginalMaterial:(...args:any[])=>{ports.calls++;return ports.work=ports.native.connectedComposer.readHeldImportedProfileOriginalMaterial(...args);}})}));
 afterEach(()=>{adoption.forgetAssetPublicationAdmissions();vi.unstubAllGlobals();});
 it('renders the oldest exact Source artwork after 33 creations with no remote prerequisite',async()=>{
  const storage=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
@@ -43,6 +43,9 @@ it('renders the oldest exact Source artwork after 33 creations with no remote pr
   if(i===0){oldest=parsePublicMarket({ok:true,transport:{publicOriginals:[JSON.parse(storage.get('bankeiz-admitted-public-assets-v1')!)[0].row]}}).items[0];oldestReference=prepared.reference;oldestBytes=bytes;}
  }
  expect(JSON.parse(storage.get('bankeiz-admitted-public-assets-v1')!)).toHaveLength(32);
+ const latest=parsePublicMarket({ok:true,transport:{publicOriginals:[originalRows.at(-1)]}}).items[0];
+ expect(adoption.retainedAssetPublicationArtwork(latest.originalDigest!,username)).toMatch(/^blob:/);
+ expect(adoption.retainedAssetPublicationArtwork(latest.originalDigest!,'foreign_creator')).toBeNull();
  if(process.env.BANK_SOURCE_CUSTODY_BROWSER_EVIDENCE){
   const directory=process.env.BANK_SOURCE_CUSTODY_BROWSER_EVIDENCE;mkdirSync(directory,{recursive:true});
   const database=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('receiz-imported-source-custody-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
@@ -68,7 +71,15 @@ it('renders the oldest exact Source artwork after 33 creations with no remote pr
   expect(host.querySelector('img')?.getAttribute('src')??'','A held exact Source must resolve locally before a thumbnail may request its remote URL').not.toMatch(/^https:/);
   expect(ports.calls).toBe(1);expect(ports.work).toBeDefined();await act(async()=>{await ports.work;});
   expect(host.querySelector('img')?.getAttribute('src')).toMatch(/^blob:/);expect(forbidden).not.toHaveBeenCalled();
+  const image=host.querySelector('img'),url=image?.getAttribute('src'),parse=JSON.parse;let repeatedParses=0;
+  const parser=vi.spyOn(JSON,'parse').mockImplementation((text,...args)=>{if(typeof text==='string'&&text.includes('receiz.imported-proof-source.v1'))repeatedParses++;return parse(text,...args);});
+  try{
+   for(let tick=1;tick<=40;tick++)await act(()=>root.render(React.createElement(PublicObjectArtwork,{item:{...oldest,localValuationPulse:tick},artworkUrl:oldest.artworkUrl})));
+   expect(repeatedParses).toBe(0);expect(ports.calls).toBe(1);expect(ports.mounts).toBe(1);expect(ports.releases).toBe(0);
+   expect(host.querySelector('img')).toBe(image);expect(image?.getAttribute('src')).toBe(url);expect(forbidden).not.toHaveBeenCalled();
+  }finally{parser.mockRestore();}
  }finally{await act(async()=>root.unmount());host.remove();}
+ expect(ports.releases).toBe(1);
  // No local custody provider exists in this environment. It cannot suppress
  // the already-carried public coordinate or load a Native reader pointlessly.
  vi.stubGlobal('indexedDB',undefined);ports.calls=0;ports.work=null;

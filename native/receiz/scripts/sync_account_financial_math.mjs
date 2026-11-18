@@ -11,7 +11,8 @@ const entry=`export {compileBankOfflineMarketPricing} from './app/lib/wallet/ban
 export {compileBankOfflineWalletValuation,inspectBankOfflineWalletLedger} from './app/lib/wallet/bankNotes/offlineWalletValuation';
 export {deriveMarketShareAccounting,marketWalletDebitFromAmounts,marketPositionCostForQuantity} from './app/lib/market/shareTradeAccounting';
 export {marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid} from './app/lib/market/shareFees';
-export {marketNotionalPhiMicroFromUsdCents} from './app/lib/market/shareMath';`;
+export {marketNotionalPhiMicroFromUsdCents} from './app/lib/market/shareMath';
+export {sigilFrequencyFromMoment} from './app/lib/market/sigilFrequency';`;
 const built=await build({absWorkingDir:root,stdin:{contents:entry,sourcefile:'account-financial-math-entry.ts',resolveDir:root,loader:'ts'},bundle:true,metafile:true,write:false,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'none',external:['@noble/hashes/*'],plugins:[{name:'reuse-canonical-sdk-valuation',setup(build){build.onResolve({filter:/valuation(?:\.[jt]s)?$/},args=>{
  if(args.path==='@/app/utils/valuation'||resolve(args.resolveDir,args.path).replace(/\.[jt]s$/u,'')===resolve(root,'app/utils/valuation'))return {path:'./sigilValuationCore.js',external:true};
 });}}]});
@@ -26,4 +27,15 @@ if(process.argv.includes('--dist-types')){
  copyFileSync(resolve(root,'packages/receiz-sdk/src/accountFinancialMath.generated.d.ts'),resolve(root,'packages/receiz-sdk/dist/accountFinancialMath.generated.d.ts'));
  rmSync(resolve(root,'packages/receiz-sdk/dist/accountFinancialMath.generated.d.ts.map'),{force:true});
 }
-console.log('Canonical Wallet/Market arithmetic extraction aligned.');
+// The existing SVG metadata reader stays lazy beneath a verified SVG Source.
+// Do not include its XML parser in the synchronous Wallet/Market math closure.
+const svg=await build({absWorkingDir:root,stdin:{contents:"export {extractEmbeddedMetaFromSvg,extractValuationSourceRaw,normalizeValuationSource,asFiniteNumber} from './app/utils/sigilMetadata';",sourcefile:'sigil-metadata-entry.ts',resolveDir:root,loader:'ts'},bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'none'});
+const svgOutput='// Generated from the existing SVG metadata reader by scripts/sync_account_financial_math.mjs.\n'+svg.outputFiles[0].text;
+const svgTarget=resolve(root,'packages/receiz-sdk/src/sigilMetadata.generated.js');
+if(process.argv.includes('--check')){if(!readFileSync(svgTarget,'utf8')||readFileSync(svgTarget,'utf8')!==svgOutput)throw Error('SIGIL_METADATA_READER_DRIFT');}
+else writeFileSync(svgTarget,svgOutput);
+if(process.argv.includes('--dist-types')){
+ copyFileSync(resolve(root,'packages/receiz-sdk/src/sigilMetadata.generated.d.ts'),resolve(root,'packages/receiz-sdk/dist/sigilMetadata.generated.d.ts'));
+ rmSync(resolve(root,'packages/receiz-sdk/dist/sigilMetadata.generated.d.ts.map'),{force:true});
+}
+console.log('Canonical Wallet/Market arithmetic and lazy SVG reader extraction aligned.');

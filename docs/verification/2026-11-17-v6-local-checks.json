@@ -1,0 +1,169 @@
+{
+  "schema": "bankeiz.v6.local-candidate-qualification.v1",
+  "recordedAt": "2026-11-18T00:21:49.596603+00:00",
+  "baseCommit": "73c75a99f0440da28ddefc98eb945bfb0e6e5dab",
+  "productVersion": "6.0.0",
+  "receizPackages": "129.5.0",
+  "fullSuite": {
+    "filesPassed": 1153,
+    "testsPassed": 7494,
+    "testsSkipped": 11,
+    "testsFailed": 0
+  },
+  "lockedInstallation": {
+    "method": "all current lockfile installed nonoptional package metadata; optional absent platform packages excluded",
+    "packagesChecked": 405,
+    "missing": 0,
+    "versionMismatches": 0,
+    "rootProductVersion": "6.0.0",
+    "sdk": "129.5.0",
+    "mcp": "129.5.0",
+    "aiSkills": "129.5.0",
+    "nodeModules": "/private/tmp/bankeiz-ci-feed-20261116/node_modules",
+    "freshNpmCi": false
+  },
+  "checks": [
+    {
+      "name": "full-unit-five-market",
+      "utc": "2026-11-18T00:11:56.331138+00:00",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 499.04,
+      "logSHA256": "211e00ce48fdb3e8b110d6d5076ab091fe0ee02abdf24b2e7eaa3eae47eb6d8b"
+    },
+    {
+      "name": "market-five-integrated",
+      "utc": "2026-11-18T00:08:10.169161+00:00",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "tests/market-worker-resume.test.tsx",
+        "tests/market-capitalization-hook.test.tsx",
+        "tests/market-worker-pricing-transport.test.tsx",
+        "tests/market-worker-retained-inputs.test.ts",
+        "tests/public-object-artwork-syntax-reuse.test.tsx",
+        "tests/market-feed-known-update.test.tsx",
+        "tests/market-overview-held-chart.test.tsx",
+        "tests/market-reader-navigation-regression.test.tsx"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 5.504,
+      "logSHA256": "3402bc2ea4967ec9795f3a27f10c67550423452c55c30555dcba8596af95baf4"
+    },
+    {
+      "name": "market-artwork-root",
+      "utc": "2026-11-17T23:59:59.374012+00:00",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "tests/public-object-artwork-syntax-reuse.test.tsx",
+        "tests/asset-publication-source-custody-artwork.test.ts"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 12.989,
+      "logSHA256": "bcce3412ddc9d15d7906825b6d066aa35c7bb68459e9bce45c8d0d61e576fa07"
+    },
+    {
+      "name": "market-five-typecheck",
+      "utc": "2026-11-18T00:09:00.037284+00:00",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 25.287,
+      "logSHA256": "9da6b0f16459932c59d9007241d72e8b6481fd13414ae6879ba5757a69422314"
+    },
+    {
+      "name": "account-entry-v6",
+      "utc": "2026-11-18T00:01:56.716847+00:00",
+      "command": [
+        "npm",
+        "run",
+        "test:account-entry-freeze"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 3.664,
+      "logSHA256": "a016e68942fba1d6c9fbb15ebf7f24422234a25c7f591fc103836774bd270320"
+    },
+    {
+      "name": "release-pins-v6",
+      "utc": "2026-11-18T00:05:45.391198+00:00",
+      "command": [
+        "npm",
+        "run",
+        "release:check"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.145,
+      "logSHA256": "dddcc4f904de6a00813dd4f65a75fa0351b5dff71f38d8756a79c3db9856f512"
+    },
+    {
+      "name": "receiver-check",
+      "utc": "2026-11-17T23:09:28.958812+00:00",
+      "command": [
+        "npm",
+        "run",
+        "receiver:check"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 3.555,
+      "logSHA256": "097334b99f3ea524453b2906c1ac5b4b259f7da269643b5aa8f7feb2b5d48bfe"
+    },
+    {
+      "name": "native-rebuild-final",
+      "utc": "2026-11-17T23:09:29.360717+00:00",
+      "command": [
+        "npm",
+        "run",
+        "native:rebuild",
+        "--",
+        "--sdk"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 60.038,
+      "logSHA256": "d568b3144db1f75e8a03d93de1582b158e5989adbcef9fb42b02c91a5c0485ee"
+    },
+    {
+      "name": "native-check-final",
+      "utc": "2026-11-17T23:12:23.350689+00:00",
+      "command": [
+        "npm",
+        "run",
+        "native:check"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 1.123,
+      "logSHA256": "c1034895aad545a96fff63def79f0752c40f1be5ef493fb91d1e19b736e5b540"
+    },
+    {
+      "name": "release-metadata-v6",
+      "utc": "2026-11-18T00:11:28.775175+00:00",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "tests/public-page-metadata.test.ts"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 3.731,
+      "logSHA256": "e5172450a5ff4901b2011379123967d13212f0268df458300e3b463460c354d6"
+    }
+  ],
+  "remaining": [
+    "final production build",
+    "compiled browser and SEO checks",
+    "clean source archive rebuild",
+    "new Bank commit and CI",
+    "production deployment and live acceptance",
+    "v6.0.0 tag/GitHub release",
+    "remaining full two-repository audit/v130"
+  ],
+  "scope": "Local actual candidate results only. Prior failed runs remain recorded separately. No live money execution or physical-phone heap assessment."
+}

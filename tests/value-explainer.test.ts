@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {useEmittedNativeProofRuntime} from './helpers/native-proof-runtime';
 import { computeIntrinsicUnsigned, SIGIL_VALUATION_POLICY_CHECKSUM, type SigilMetadataLite } from '@receiz/sdk/valuation';
 import { calculateIllustration, canonicalInteger, DEMO_SCENARIO, formatPhiMicro, formatUsdCents, illustrationRecord, parseEvaluationCoordinates, sampleIllustration } from '../src/value-explainer/model';
 import { createDisplayBasis, inspectHeldProof, inspectReplayFile, quoteDisplayUsd } from '../src/value-explainer/proof';
 
 afterEach(() => vi.unstubAllGlobals());
+beforeEach(useEmittedNativeProofRuntime);
 
 describe('v129 value explainer arithmetic and source boundary', () => {
   it('discounts the entered per-object payments through the installed SDK and retains them in the exported trace',()=>{

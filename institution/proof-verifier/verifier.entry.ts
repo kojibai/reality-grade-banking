@@ -9,6 +9,16 @@ import kaiKey from '../../native/receiz/packages/receiz-sdk/src/kaiSigilVerifica
 import {recognizeReceizGroth16Structure} from '../../native/receiz/packages/receiz-sdk/src/verifier/groth16';
 import {jcsCanonicalize,sha256Hex} from '../../native/receiz/packages/receiz-sdk/src/verifier/crypto';
 import sdkPackage from '../../native/receiz/packages/receiz-sdk/package.json';
+import {verifyReceizArtifact} from '../../native/receiz/packages/receiz-sdk/src/artifactVerification';
+import {createReceizArtifactAdmissionEngine} from '../../native/receiz/packages/receiz-sdk/src/artifactAdmission';
+import {projectReceizProofValueV129,sampleReceizProofValueV129} from '../../native/receiz/packages/receiz-sdk/src/proofValueV129';
+import {exportReceizProofValueReplayV129,verifyReceizProofValueReplayV129} from '../../native/receiz/packages/receiz-sdk/src/proofValueReplayV129';
+
+/** The accepted Source stays in this same SDK instance throughout valuation.
+ * Reports and serialized projections never supply its private custody. */
+export const valuation=Object.freeze({verifyReceizArtifact,createReceizArtifactAdmissionEngine,
+ projectReceizProofValueV129,sampleReceizProofValueV129,exportReceizProofValueReplayV129,
+ verifyReceizProofValueReplayV129});
 
 export const materials={sdk:sdkPackage.version,documentSealVerificationKey:documentKey,kaiSigilVerificationKey:kaiKey,signatureV4Roots:[...receizCurrentPinnedSignatureV4Roots().values()]};
 export const pngOriginalMaxBytes=ORIGINAL_PNG_MAX_BYTES;

@@ -1,13 +1,15 @@
 // @vitest-environment happy-dom
 import {readFileSync}from'node:fs';
-import {afterEach,expect,it,vi}from'vitest';
+import {afterEach,beforeEach,expect,it,vi}from'vitest';
+import {useEmittedNativeProofRuntime} from './helpers/native-proof-runtime';
 // @ts-expect-error Public-page template is plain ESM.
 import{valueExplainerContent}from'../scripts/value-explainer-template.mjs';
 import{mountValueExplainer}from'../src/value-explainer/main';
 const held=vi.hoisted(()=>({pulse:14710100,uPulse:14710100000123n}));
 vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:held.pulse,uPulse:held.uPulse})}));
 const bytes=readFileSync('tests/fixtures/public-essay-record.png');
-afterEach(()=>{document.body.replaceChildren();vi.restoreAllMocks();held.pulse=14710100;held.uPulse=14710100000123n;});
+beforeEach(useEmittedNativeProofRuntime);
+afterEach(()=>{document.body.replaceChildren();vi.restoreAllMocks();vi.unstubAllGlobals();held.pulse=14710100;held.uPulse=14710100000123n;});
 function mount(){document.body.innerHTML=valueExplainerContent();const root=document.querySelector<HTMLElement>('[data-value-explainer]')!;mountValueExplainer(root);return root;}
 function select(root:HTMLElement,file:File){const input=root.querySelector<HTMLInputElement>('#value-proof-file')!;Object.defineProperty(input,'files',{configurable:true,value:[file]});input.dispatchEvent(new Event('change',{bubbles:true}));}
 function delayedFile(){const file=new File([bytes],'original.png',{type:'image/png'}),read=file.arrayBuffer.bind(file);let release!:()=>void;const gate=new Promise<void>(done=>{release=done;});const reading=vi.spyOn(file,'arrayBuffer').mockImplementation(async()=>{await gate;return read();});return{file,release,reading};}

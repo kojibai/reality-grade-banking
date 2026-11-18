@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import {it,expect,afterEach,vi} from 'vitest';
+import {it,expect,beforeEach,afterEach,vi} from 'vitest';
+import {useEmittedNativeProofRuntime} from './helpers/native-proof-runtime';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error Public-page template is ESM.
 import {originalsQualificationContent} from '../scripts/originals-qualification-template.mjs';
-afterEach(()=>{document.body.replaceChildren();document.querySelector('head > script[src="/snarkjs.min.js"]')?.remove();});
+beforeEach(useEmittedNativeProofRuntime);
+afterEach(()=>{document.body.replaceChildren();document.querySelector('head > script[src="/snarkjs.min.js"]')?.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('teaches seal-based accrual and each Original’s own signature as access to its value',()=>{
  document.body.innerHTML=originalsQualificationContent();const page=document.querySelector('main')!;
  expect(page.textContent).toContain('Your Original is already earning.');

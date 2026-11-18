@@ -1,0 +1,2 @@
+export { RECEIZ_GENERATED_V127_REGISTRY_DIGEST as RECEIZ_GENERATED_CURRENT_REGISTRY_DIGEST, RECEIZ_V127_CONSTITUTION_REGISTRY as RECEIZ_CURRENT_CONSTITUTION_REGISTRY, loadReceizV127Registry as loadReceizCurrentRegistry } from "./v127Registry.generated.js";
+//# sourceMappingURL=currentRegistry.generated.d.ts.map

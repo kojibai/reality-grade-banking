@@ -1,0 +1,541 @@
+{
+  "schema": "bankeiz.market-held-work-evidence.v1",
+  "scope": "Five terminal locally qualified bounded repeated-work boundaries. No full-redundancy/actual-phone or whole-release claim.",
+  "baseCommit": "73c75a99f0440da28ddefc98eb945bfb0e6e5dab",
+  "fixture": {
+    "kind": "existing shipping73 public display packet; not new Source admission",
+    "sha256": "e30a9a17fd8e146ac94a8a222920e7f5af55a6d7b0b97a36231ba9d19396a353",
+    "rows": 4268,
+    "proofOriginals": 1691,
+    "sportsRows": 2577,
+    "notEquivalentToPhoneObservation": {
+      "listed": 3657,
+      "circulation": 8538
+    }
+  },
+  "chart": {
+    "measurement": {
+      "baseline": {
+        "renders": 41,
+        "heldPoints": 3997,
+        "svgSha256": "58bd022df828d2bfa98b92ec7099b1c9c1efcb99432cee1087b93d5d36bbb003",
+        "tooltipLast": {
+          "value": "$6,739,986,740.93",
+          "label": "Nov 12, 2026, 1:41 AM · ☤KAI 15,114,807"
+        },
+        "valuesArrays": 41,
+        "timesArrays": 41,
+        "boundsObjects": 41,
+        "geometryComputations": 41,
+        "geometryTotalMs": 32.55704300000025
+      },
+      "candidate": {
+        "renders": 41,
+        "heldPoints": 3997,
+        "svgSha256": "58bd022df828d2bfa98b92ec7099b1c9c1efcb99432cee1087b93d5d36bbb003",
+        "tooltipLast": {
+          "value": "$6,739,986,740.93",
+          "label": "Nov 12, 2026, 1:41 AM · ☤KAI 15,114,807"
+        },
+        "valuesArrays": 1,
+        "timesArrays": 1,
+        "boundsObjects": 1,
+        "geometryComputations": 1,
+        "geometryTotalMs": 1.722249999999974
+      },
+      "unchangedSVG": true,
+      "unchangedTooltip": true,
+      "authority": "same held display points; no Source or financial mutation",
+      "measurement": "real existing ValueChart memo callback CPU; private Vite transform only adds timer+counter, final product has no instrumentation"
+    },
+    "qualifiedOwningCases": 3,
+    "types": "0diagnostics read-only targeted overlay, not full application typecheck",
+    "screens": {
+      "scope": "actual React MarketOverviewView over shipping73 held history, chart-only static DOM; not signed-in browser identity or live snapshot",
+      "result": [
+        {
+          "viewport": {
+            "name": "mobile",
+            "width": 390,
+            "height": 844
+          },
+          "pixelExact": true,
+          "externalRequests": 0,
+          "rows": [
+            {
+              "phase": "before",
+              "path": "chart-mobile.png",
+              "sha256": "55d4aadd3edd846837cab9a7150e1f6aa02eb066257cc83a68f54ac599c2bf3a",
+              "chart": "Global share market cap · All history, from 55741.82 to 6739986740.93"
+            },
+            {
+              "phase": "after",
+              "path": "chart-mobile.png",
+              "sha256": "55d4aadd3edd846837cab9a7150e1f6aa02eb066257cc83a68f54ac599c2bf3a",
+              "chart": "Global share market cap · All history, from 55741.82 to 6739986740.93"
+            }
+          ]
+        },
+        {
+          "viewport": {
+            "name": "desktop",
+            "width": 1365,
+            "height": 900
+          },
+          "pixelExact": true,
+          "externalRequests": 0,
+          "rows": [
+            {
+              "phase": "before",
+              "path": "chart-desktop.png",
+              "sha256": "e3dab790ee97f513f66b1526ea0956d3cdf599b6926c088964ad0b7fee765d7f",
+              "chart": "Global share market cap · All history, from 55741.82 to 6739986740.93"
+            },
+            {
+              "phase": "after",
+              "path": "chart-desktop.png",
+              "sha256": "e3dab790ee97f513f66b1526ea0956d3cdf599b6926c088964ad0b7fee765d7f",
+              "chart": "Global share market cap · All history, from 55741.82 to 6739986740.93"
+            }
+          ]
+        }
+      ]
+    },
+    "freezeSha256": "cc038b245e76b2b17a6b6a8250f4f6b6047fbf6fd2f0b3e2519df3384e39f8bc"
+  },
+  "worker": {
+    "performance": {
+      "schema": "private.existing-worker-pricing-transport.v1",
+      "sourceSHA256": "e30a9a17fd8e146ac94a8a222920e7f5af55a6d7b0b97a36231ba9d19396a353",
+      "items": 4268,
+      "proofs": 1691,
+      "sports": 2577,
+      "full": {
+        "jsonBytes": 25918254,
+        "v8SerializedBytes": 32519917,
+        "structuredCloneMs": [
+          40.63366600000006,
+          40.21991700000001,
+          42.85041699999999
+        ]
+      },
+      "transport": {
+        "jsonBytes": 8078487,
+        "v8SerializedBytes": 7013672,
+        "structuredCloneMs": [
+          21.201083999999923,
+          21.27212499999996,
+          21.129333000000088
+        ]
+      },
+      "projectionMs": [
+        4.484417000000008,
+        4.657165999999961,
+        12.28666700000008
+      ],
+      "allPricesEqual": true,
+      "fullCurrentCoverageEqual": true,
+      "fullInspectorCalculationAndNamesEqual": true,
+      "nestedSportsInventoryAndCopyHistoryReferencesExact": true,
+      "fullSourceJSONUnchanged": true,
+      "networkReads": 0
+    },
+    "messageReductionPercent": 78.43268788170647,
+    "owningAdjacent": {
+      "passed": 63,
+      "existingConditionalSkipped": 2
+    },
+    "existingFullCohort": {
+      "passed": 1,
+      "otherCasesNotSelected": 3,
+      "unchangedBudgetMs": 120000,
+      "elapsedSeconds": 27,
+      "allSixHistoriesAndFullInspectorEqual": true,
+      "genuineOriginalAdditionCoverageIncrement": 1
+    },
+    "typecheckExit": 0,
+    "freezeSha256": "633e2892bbc81b719e5218a844fd2e9c6004f96a5dc9585ba04ca95936c1b92d",
+    "sourcePreserved": [
+      "Complete main-held catalog and every unknown Source/header/art field remain exact",
+      "Nested sportsValuation, sealedBirths and shareInventory/history objects remain the same references",
+      "Exact current prices, capitalization, all interval histories, Original addition/withdrawal behavior and inspector names",
+      "Hidden mount does no projection; existing worker tick and held tab return avoid full input resend",
+      "Existing strict server proof-only checkpoint field whitelist/category/full validators remain intact"
+    ],
+    "newBrowserVisualCapture": false,
+    "failedPrivateProbe": {
+      "status": "failed",
+      "budgetMs": 30000,
+      "terminalLogSha256": "0ad91d2607c175b0af3f2619cd22890f009d1bb7dc7306f3863a786c9cd27250",
+      "notIntegrated": true,
+      "noGuardIncreased": true
+    }
+  },
+  "feed": {
+    "measurement": {
+      "baseline": {
+        "scope": "actual shipping73 public catalog +existing refreshFeedItems, no Source/admission/HTTP operation",
+        "publicCatalogItems": 4268,
+        "initialFeedSequenceItems": 1691,
+        "retainedAfterFirstDiscovery": 4268,
+        "knownMembershipAdditions": 0,
+        "resultItems": 4268,
+        "refreshMs": 8.219375000000014,
+        "counts": {
+          "maps": 3,
+          "sets": 2,
+          "orderFeedItemsMapConstructors": 2
+        },
+        "outerPublicFeedEffectAdditionalMap": 1,
+        "hiddenEffectGuard": false,
+        "explanation": "PublicFeed discoveries effect does not check active; it builds its own full Map then calls refreshFeedItems, whose append helper orders every discovered row despite zero new IDs."
+      },
+      "candidate": {
+        "scope": "actual shipping73 public catalog +existing refreshFeedItems, no Source/admission/HTTP operation",
+        "publicCatalogItems": 4268,
+        "initialFeedSequenceItems": 1691,
+        "retainedAfterFirstDiscovery": 4268,
+        "knownMembershipAdditions": 0,
+        "resultItems": 4268,
+        "refreshMs": 2.6585000000000036,
+        "counts": {
+          "maps": 1,
+          "sets": 1,
+          "orderFeedItemsMapConstructors": 0
+        },
+        "outerPublicFeedEffectAdditionalMap": 0,
+        "hiddenEffectGuard": false,
+        "explanation": "Same4268rows through qualified private helper; no ordering when all IDs held. Component owning separately confirms closed-panel no outer index."
+      },
+      "real4268OrderingMediaKindReads": {
+        "baseline": 6820,
+        "candidate": 0
+      },
+      "closedFeedIDMapPasses": {
+        "baseline": 2,
+        "candidate": 1
+      },
+      "necessarySourceFieldRefresh": "same-source references update while Feed inactive; current source/order/media-stage DOM retained",
+      "operations": "No Source/canonical/financial actions or network; all source qualification primitives unchanged"
+    },
+    "owningAdjacent": {
+      "passed": 24,
+      "files": 6,
+      "failed": 0
+    },
+    "targetedTypecheckDiagnostics": 0,
+    "freezeSha256": "17347aae3fc56b7fcd2a5daeb32ad42c852b96f7c515b813a96cf457f9d5fd11",
+    "newIdOrderingBranchUnchanged": true,
+    "hiddenSameSourceFieldRefreshPreserved": true,
+    "selectionMusicActionsAndMediaWindowPreserved": true
+  },
+  "existingNecessaryWorkPreserved": [
+    "oneBankApp public catalog reader",
+    "coalesced membership/quote requests",
+    "distinct UI price and worker capitalization/history consumers",
+    "small unchanged worker ticks",
+    "retained mounted roots/selection/scroll",
+    "existing Market and Feed presentation windows"
+  ],
+  "executionReceipts": [
+    {
+      "name": "final-green.log",
+      "bytes": 716,
+      "sha256": "88d7421013b8992c516f69f811ac5a49d8208c92a851a9b3d834d5ba29d69a81"
+    },
+    {
+      "name": "browser-first-failure.log",
+      "bytes": 420,
+      "sha256": "ace7b7b99dbcad14b131691cf0593b1eab05a65962180b241580617e0a602a2d"
+    },
+    {
+      "name": "browser-final.log",
+      "bytes": 1282,
+      "sha256": "72edfd00d29b78c283740d9fa0654146981e9af63f33a561aa12d4aad76efafd"
+    },
+    {
+      "name": "worker-input-RED.log",
+      "bytes": 927,
+      "sha256": "b7aed23e872be17bd54740ccc2028e5bfb498d051250a8e1b5778e08c42e9136"
+    },
+    {
+      "name": "full-history-parity.log",
+      "bytes": 900,
+      "sha256": "0ad91d2607c175b0af3f2619cd22890f009d1bb7dc7306f3863a786c9cd27250"
+    },
+    {
+      "name": "existing-full-cohort-120s.log",
+      "bytes": 194,
+      "sha256": "6d1be40413621be1667e0c5be9822b6444f5bed3e52a550da585b3d52c6d0675"
+    },
+    {
+      "name": "final-owning-adjacent.log",
+      "bytes": 427,
+      "sha256": "0050e86f02a436fb088b8fa214c242924f353d733aa377b846be019ee02dc994"
+    },
+    {
+      "name": "final-typecheck.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "feed-owning-red.log",
+      "bytes": 2021,
+      "sha256": "e456b53a4cf0246e6ac873ecacb1f20cc41b786ceee21a222e558ae093740c54"
+    },
+    {
+      "name": "feed-final-owning.log",
+      "bytes": 414,
+      "sha256": "8404e94f6b0c74e2b4e69645cf128a91a45f6c2ecda1d529c8b80786ce51cc65"
+    },
+    {
+      "name": "feed-typecheck.log",
+      "bytes": 289,
+      "sha256": "ce2114377b1799479e4b78b494f601c78b5c076e639dc0f933c33eb2daee06df"
+    },
+    {
+      "name": "artwork-owning-red.log",
+      "bytes": 2222,
+      "sha256": "46c69f12b6e1a00d817c81b7b95792991b7564dc9a60f600d3aba7e1b9f420a1"
+    },
+    {
+      "name": "artwork-owning-green.log",
+      "bytes": 212,
+      "sha256": "62690516e9ff1723c0d488283113732473c79b58e978b8b8031cfa83027e041e"
+    },
+    {
+      "name": "artwork-genuine-source.log",
+      "bytes": 195,
+      "sha256": "42ed4a1fd7bceed42a3ed552fe6ccac0f95b51128c1c6ac863800b31d1aa7f68"
+    },
+    {
+      "name": "artwork-typecheck.log",
+      "bytes": 445,
+      "sha256": "9bcb265ae4e8b0f01d428361ef311553375755b21e75c2d8ff1e9efc87d6184e"
+    },
+    {
+      "name": "worker-resume-red.log",
+      "bytes": 3802,
+      "sha256": "b552c805b0845de86ddfe714b81284be2fa5340502c533912dd84845809bf008"
+    },
+    {
+      "name": "worker-resume-hook-final.log",
+      "bytes": 226,
+      "sha256": "2c7b845fd6d45af8d1b541a063947a9f72e53ff1d3338311abb2ab2f4a50515e"
+    },
+    {
+      "name": "worker-resume-counter-green.log",
+      "bytes": 895,
+      "sha256": "d3f906dd7e25efaa7786fe6db30e030dc14f57d5e2f92b0d79c0d027b83a1861"
+    },
+    {
+      "name": "worker-resume-typecheck.log",
+      "bytes": 585,
+      "sha256": "be36befbf2cd85012fbced09c54faf70e2dfaf2b320d1b1df0ff9ccf0f9cbbd4"
+    },
+    {
+      "name": "worker-resume-latest-pulse-driver.log",
+      "bytes": 818,
+      "sha256": "3a4cea7ebec2466d04edb01a5a19453baccb25aed2df1c099f0347733a80195c"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "chart-mobile.png",
+      "bytes": 36485,
+      "sha256": "55d4aadd3edd846837cab9a7150e1f6aa02eb066257cc83a68f54ac599c2bf3a"
+    },
+    {
+      "path": "chart-desktop.png",
+      "bytes": 55127,
+      "sha256": "e3dab790ee97f513f66b1526ea0956d3cdf599b6926c088964ad0b7fee765d7f"
+    }
+  ],
+  "authority": {
+    "newProofOrFinancialAuthority": false,
+    "newSource": false,
+    "fullSourceDeletedOrReduced": false,
+    "pricingFormulaOrPolicyChanged": false,
+    "additionalNetworkOrIdentityOperation": false,
+    "financialActionsPerformed": 0
+  },
+  "confirmedQualifiedBoundaries": 5,
+  "pendingBoundaries": 0,
+  "artwork": {
+    "measurement": {
+      "baseline": {
+        "source": "actual shipping73 public Original artworkURL; transport-syntax probe only, not new canonical admission",
+        "renders": 41,
+        "referenceJSONParses": 123,
+        "importedURLConstructions": 168,
+        "externalFetches": 0,
+        "sameImageNode": true,
+        "sameSourceURL": true,
+        "localCustody": "not enabled; this isolates synchronous syntax work; no native media loader/read"
+      },
+      "candidate": {
+        "source": "actual shipping73 public Original artworkURL; transport-syntax probe only, not new canonical admission",
+        "renders": 41,
+        "referenceJSONParses": 3,
+        "importedURLConstructions": 8,
+        "externalFetches": 0,
+        "sameImageNode": true,
+        "sameSourceURL": true,
+        "localCustody": "not enabled; this isolates synchronous syntax work; no native media loader/read"
+      },
+      "genuineSource": "actual existing 33-Original conformance fixture; exact oldest encrypted custody cold reopen, real Native verifier, one material read/mount,40subsequentrenders0newSourceopens/0referenceparses/0fetch, release once; same imageNode+blobURL; existing SSR/hydration empty/failedcustody controls unchanged",
+      "parseAuthority": "syntax only; no proof/financial/owner authority inferred"
+    },
+    "freezeSha256": "45aab8478979ace7a89a21bccf8ff774683f76c231306990d645cb961c56e05c",
+    "syntaxOwningCases": 3,
+    "genuine33SourceOwningCases": 1,
+    "integratedOwning": {
+      "files": 2,
+      "passed": 4,
+      "failed": 0,
+      "commandElapsedSeconds": 12.989
+    },
+    "referenceParseIsProofVerification": false,
+    "scope": "Only exact artwork URL/reference syntax memo; ownerlocalpreview/digest/servedframe/material read/mount/release retained. No global cache or authority."
+  },
+  "workerResume": {
+    "state": "terminal-qualified",
+    "comparison": {
+      "baseline": {
+        "scope": "actual unchanged React hook and event handlers; instrumented Worker execution port holds legitimate work pending; calculator/SDK verification not executed",
+        "visibleFocus": {
+          "samePulse": 15114808,
+          "focusEvents": 5,
+          "createdWorkers": 6,
+          "terminatedWorkers": 5,
+          "fullInputHandoffs": 6,
+          "visiblePointsSame": true
+        },
+        "wave": {
+          "events": [
+            "hidden visibility",
+            "foreground visibility",
+            "pageshow",
+            "focus"
+          ],
+          "samePulse": 15114808,
+          "newWorkers": 3,
+          "visiblePointsSame": true
+        },
+        "latestSurvivingCompletionAccepted": true,
+        "networkReads": 0
+      },
+      "candidate": {
+        "scope": "actual unchanged React hook and event handlers; instrumented Worker execution port holds legitimate work pending; calculator/SDK verification not executed",
+        "visibleFocus": {
+          "samePulse": 15114808,
+          "focusEvents": 5,
+          "createdWorkers": 1,
+          "terminatedWorkers": 0,
+          "fullInputHandoffs": 1,
+          "visiblePointsSame": true
+        },
+        "wave": {
+          "events": [
+            "hidden visibility",
+            "foreground visibility",
+            "pageshow",
+            "focus"
+          ],
+          "samePulse": 15114808,
+          "newWorkers": 1,
+          "visiblePointsSame": true
+        },
+        "latestSurvivingCompletionAccepted": true,
+        "networkReads": 0
+      },
+      "scope": "Actual React event/controller code with instrumented Worker execution port; no calculator or proof-admission execution claim. Current Root Worker8 exact preimage owning5/5RED confirms same restart counts; counters baseline predates transport-only Worker8 change.",
+      "preservedWorker8ThroughStartAckHandlers": {
+        "prefixSHA256": "72ff6c4e04e58dd668c0b32efab6bf784076baa4e651a1098a80a2109a691405",
+        "bytes": 11120,
+        "identical": true
+      },
+      "sourceAndFinancialFormulaChanges": 0,
+      "addedTimersOrReadiness": 0
+    },
+    "freezeSha256": "23097968af85049ff251cc339ca29831c267b919f073b183aa3c2f1bfbd2223f",
+    "newOwning": {
+      "baselineFailed": 5,
+      "candidatePassed": 5
+    },
+    "newAndExistingHook": {
+      "passed": 17,
+      "files": 2
+    },
+    "counterProbe": {
+      "passed": 1,
+      "calculatorOrSdkVerificationExecuted": false
+    },
+    "targetedTypecheckDiagnostics": 0,
+    "scope": "Reuse existing hidden suspensionflag once across visibility/pageshow/focus and inactivepanelreturn; pagehide marks actual suspension; failednull recovery retained. Busy live work is preserved. Existing start/queue/history and complete Worker8lazypricingInput remain unchanged.",
+    "earlierFreezesUnchanged": true,
+    "fullApplicationBuildCiDeployLive": "PENDING"
+  },
+  "rootIntegratedChecks": [
+    {
+      "name": "market-chart-owning",
+      "scope": "first3/chart",
+      "exitCode": 0,
+      "elapsedSeconds": 3.445,
+      "passed": 8,
+      "existingConditionalSkipped": 0,
+      "receiptSha256": "0b28c2ebb4bcb9e459ebc8d56389356e4a6dd890a0a3d3341f525af6755dcc35",
+      "logSha256": "9bfcecd6d2f76c51eef6cd3b7cff48e5d306f9c3252960b39be34bb27a0fd1de"
+    },
+    {
+      "name": "market-feed-owning",
+      "scope": "first3/Feed",
+      "exitCode": 0,
+      "elapsedSeconds": 4.72,
+      "passed": 24,
+      "existingConditionalSkipped": 0,
+      "receiptSha256": "41df5bd71999709d85ef3ce795da9cb1af6f3d5dd01c54a7efa1dfa87e49d5ff",
+      "logSha256": "b868815637e497e9a490fe3413639799e167ec1e407ab1b89f78c9452314a895"
+    },
+    {
+      "name": "market-combined-owning",
+      "scope": "first3/combined",
+      "exitCode": 0,
+      "elapsedSeconds": 6.572,
+      "passed": 28,
+      "existingConditionalSkipped": 2,
+      "receiptSha256": "e9435f3d3de1b965f070d5fdef96057f68a3684fb2eefe744df0f46652acc3fe",
+      "logSha256": "422bf1fa05d438e7db47318b815dc3ba308a1742e38782965653f749f129078a"
+    },
+    {
+      "name": "market-typecheck",
+      "scope": "first3/fulltypes",
+      "exitCode": 0,
+      "elapsedSeconds": 26.591,
+      "passed": null,
+      "existingConditionalSkipped": null,
+      "receiptSha256": "ce745960e7d619828e9db44027b7545856748f9ceaf231c993bfcdff36495f91",
+      "logSha256": "9da6b0f16459932c59d9007241d72e8b6481fd13414ae6879ba5757a69422314"
+    },
+    {
+      "name": "market-artwork-root",
+      "scope": "artworkonly",
+      "exitCode": 0,
+      "elapsedSeconds": 12.989,
+      "passed": 4,
+      "existingConditionalSkipped": 0,
+      "receiptSha256": "a70ea6147be69c1e4493d04f0aca122e5948d3a67334c9d06b64630fee4ec9a8",
+      "logSha256": "bcce3412ddc9d15d7906825b6d066aa35c7bb68459e9bce45c8d0d61e576fa07"
+    },
+    {
+      "name": "market-five-integrated",
+      "scope": "five-boundary scoped owning only",
+      "exitCode": 0,
+      "elapsedSeconds": 5.504,
+      "passed": 37,
+      "files": 8,
+      "receiptSha256": "d1c0ed7bfef83dbc400dfa73dee8813590890ea02c4c038e0862b5e15a6f9967",
+      "logSha256": "3402bc2ea4967ec9795f3a27f10c67550423452c55c30555dcba8596af95baf4"
+    }
+  ]
+}

@@ -6,17 +6,18 @@ import type {BookingShareOwner} from './booking-preview';
 const font={fontFiles:['Inter-SemiBold.ttf','Inter-Regular.ttf'].map(name=>resolve('scripts/social/fonts',name)),loadSystemFonts:false,defaultFontFamily:'Inter'};
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const clean=(value:string)=>value.replace(/[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim();
-function width(value:string,size:number){return new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="10000" height="250"><text y="180" font-family="Inter" font-size="${size}" font-weight="600" letter-spacing="${-.035*size}">${esc(value)}</text></svg>`,{font}).getBBox()?.width??0;}
-function fit(value:string,size:number){if(width(value,size)<=860)return value;const chars=Array.from(value);let low=0,high=chars.length;while(low<high){const mid=Math.ceil((low+high)/2);if(width(chars.slice(0,mid).join('')+'…',size)<=860)low=mid;else high=mid-1;}return chars.slice(0,low).join('').trimEnd()+'…';}
-export function bookingShareName(value:string){
+function width(value:string,size:number,selectedFont=font){return new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="10000" height="250"><text y="180" font-family="Inter" font-size="${size}" font-weight="600" letter-spacing="${-.035*size}">${esc(value)}</text></svg>`,{font:selectedFont}).getBBox()?.width??0;}
+export function bookingShareTextFit(value:string,size:number,maxWidth=860,selectedFont=font){if(width(value,size,selectedFont)<=maxWidth)return value;const chars=Array.from(value);let low=0,high=chars.length;while(low<high){const mid=Math.ceil((low+high)/2);if(width(chars.slice(0,mid).join('')+'…',size,selectedFont)<=maxWidth)low=mid;else high=mid-1;}return chars.slice(0,low).join('').trimEnd()+'…';}
+const fit=(value:string,size:number,selectedFont=font)=>bookingShareTextFit(value,size,860,selectedFont);
+export function bookingShareName(value:string,selectedFont=font){
  const name=clean(value).slice(0,200)||'Your host';
- if(width(name,88)<=860)return{size:88,lines:[name]};
+ if(width(name,88,selectedFont)<=860)return{size:88,lines:[name]};
  for(const size of [88,80,72,64,56]){
   const words=name.split(' ');let first='',index=0;
-  while(index<words.length&&width((first+' '+words[index]).trim(),size)<=860)first=(first+' '+words[index++]).trim();
-  if(first&&width(words.slice(index).join(' '),size)<=860)return{size,lines:[first,words.slice(index).join(' ')]};
+  while(index<words.length&&width((first+' '+words[index]).trim(),size,selectedFont)<=860)first=(first+' '+words[index++]).trim();
+  if(first&&width(words.slice(index).join(' '),size,selectedFont)<=860)return{size,lines:[first,words.slice(index).join(' ')]};
  }
- const words=name.split(' '),split=Math.max(1,Math.ceil(words.length/2));return{size:56,lines:[fit(words.slice(0,split).join(' '),56),fit(words.slice(split).join(' '),56)].filter(Boolean)};
+ const words=name.split(' '),split=Math.max(1,Math.ceil(words.length/2));return{size:56,lines:[fit(words.slice(0,split).join(' '),56,selectedFont),fit(words.slice(split).join(' '),56,selectedFont)].filter(Boolean)};
 }
 /** A social presentation derivative of the public booking owner. It contains
  * no identity seal, calendar availability, guest data or account authority. */

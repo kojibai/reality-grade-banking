@@ -4,8 +4,8 @@
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Version 5.0.0](https://img.shields.io/badge/Release-5.0.0-2349d8.svg)](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0)
-[![Receiz v129](https://img.shields.io/badge/Receiz-129.0.0-2349d8.svg)](package.json)
+[![Version 6.0.0 preparation](https://img.shields.io/badge/Release-6.0.0_preparation-2349d8.svg)](docs/releases/6.0.0.md)
+[![Receiz v129](https://img.shields.io/badge/Receiz-129.5.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
 and assets that preserve their proof, ownership and history as they move.
@@ -69,6 +69,13 @@ on a screenshot or another application's interpretation.
   same page, without a signup step. Keep Send links for addressed account payments.
   The [payment integration reference](institution/accept-payments.md) covers setup,
   exact recovery and trusted custom-order confirmation.
+- **From conversation to client work.** Keep private Twin discussion, Work and
+  Context in the relationship Workspace. Create branded proposals, complete
+  agreements and real PDF, Word, spreadsheet and presentation files. Review
+  before sending; exact document and consent Sources keep their own bindings.
+- **An invoice your client can open.** Create from Receive, retain the sealed
+  PDF, send to the selected client or copy a link. The client chooses the
+  existing exact payment review. Reading the invoice never charges them.
 - **Funded Notes.** Create from the available account, save the original and
   hand it to its addressed recipient. Funding is selected automatically.
 - **Your public identity.** A complete profile at your username, with your
@@ -185,7 +192,7 @@ flowchart LR
     O --> V["Independent receiving and verification"]
 ```
 
-The SDK, MCP server and AI Skills are pinned together at **129.0.0**. The active
+The SDK, MCP server and AI Skills are pinned together at **129.5.0**. The active
 registry bindings and digests are recorded in
 [receiver-profile.json](institution/receiver-profile.json).
 
@@ -283,6 +290,15 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 [qualification requirements](institution/qualification.md).
 
 ## Release evidence
+
+**[Bankeiz 6.0 — Your work. Your money. Your economy.](docs/releases/6.0.0.md)**
+Release preparation connects client Workspaces, standalone invoices, portable
+order payments, retained Originals, public presence and offline proof inspection.
+The exact v5-to-`73c75a99` recap covers 130 commits and 1,161 net changed files;
+the final valuation/profile-sharing and release cohort is recorded separately.
+The [qualification record](docs/releases/6.0.0-qualification.md) keeps final local,
+CI, publication, deployed and live outcomes explicit. This is not an SDK npm or
+v130 release, and it does not relabel historical qualification.
 
 **[Version 5.0.0](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0) — Keep your work, value and proof connected.**
 Published November 6, 2026 from `10b5fd1`. The release brings immersive Feed,

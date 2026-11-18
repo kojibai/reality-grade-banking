@@ -9,12 +9,16 @@ import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {ORIGINAL_PNG_MAX_BYTES} from './original-capacity';
 import {zipSync} from 'fflate';
 import {admittedProofInspection,retainPrivateProofInspection,retainOpenedProofInspection,retainProofInspection,reuseProofInspection,trackProofInspection,type ProofInspection} from './proof-inspection';
-import {offlineProofVerifierDigest,offlineProofVerifierSdkVersion} from './offline-proof-build';
+import {offlineProofVerifierDigest,offlineProofVerifierSdkVersion,offlineProofVerifierSourceMapDigest,offlineProofVerifierSourceMapBytes} from './offline-proof-build';
 import type {ReceizVerifiedPayload} from '@receiz/sdk';
 import {assertTransferOriginalRecord,ledgerOriginalTransferId} from './held-transfer-original';
 
 export type OfflineProofReport=ProofInspection;
-export type OfflineProofVerifier={materials:Record<string,unknown>;pngOriginalMaxBytes:number;originalReadCapacity(prefix:Uint8Array):number;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
+export type NativeProofValuationRuntime=Pick<typeof import('../../native/receiz/packages/receiz-sdk/declarations/artifactVerification'),'verifyReceizArtifact'>
+ &Pick<typeof import('../../native/receiz/packages/receiz-sdk/declarations/artifactAdmission'),'createReceizArtifactAdmissionEngine'>
+ &Pick<typeof import('../../native/receiz/packages/receiz-sdk/declarations/proofValueV129'),'projectReceizProofValueV129'|'sampleReceizProofValueV129'>
+ &Pick<typeof import('../../native/receiz/packages/receiz-sdk/declarations/proofValueReplayV129'),'exportReceizProofValueReplayV129'|'verifyReceizProofValueReplayV129'>;
+export type OfflineProofVerifier={materials:Record<string,unknown>;valuation:NativeProofValuationRuntime;pngOriginalMaxBytes:number;originalReadCapacity(prefix:Uint8Array):number;readArtifact(bytes:Uint8Array,filename?:string):Promise<{report:OfflineProofReport;payload:ReceizVerifiedPayload}>;inspectArtifact(bytes:Uint8Array,filename?:string):Promise<OfflineProofReport>;inspectWalletCapsule(bundle:unknown):Promise<Record<string,unknown>>;sha256Hex(bytes:Uint8Array|string):Promise<string>};
 declare global{var ReceizOfflineVerifier:OfflineProofVerifier;}
 const BASE='/proof-verifier/v129/',MAX=24*1024*1024;
 let runtime:Promise<OfflineProofVerifier>|undefined;
@@ -156,7 +160,7 @@ export async function downloadLedgerEvidence(record:PublicRecord,report?:Offline
  const result=await buildReady;if('error' in result)throw result.error;const buildResponse=result.response;if(!buildResponse.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const build=await buildResponse.json() as {sdk:string;files:Record<string,{sha256:string;bytes:number}>};
  const required=['verifier.js','verifier.js.map','verify.mjs','verify.html','README.txt','verification-material.json','LICENSE.txt','NOTICE.txt','THIRD_PARTY_NOTICES.md'];
  if(build.sdk!==offlineProofVerifierSdkVersion||!build.files||Object.keys(build.files).length>30||required.some(name=>!Object.hasOwn(build.files,name))||build.files['verifier.js'].sha256!==offlineProofVerifierDigest)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');
- await Promise.all(Object.entries(build.files).map(async([name,entry])=>{if(!/^[a-zA-Z0-9_.-]+$/.test(name)||entry.bytes>8*1024*1024)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');const path=name==='verifier.js.map'?name+'.bin':name;const r=await fetch(BASE+path,{credentials:'omit'});if(!r.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const bytes=await readPublicLedgerBytes(r,8*1024*1024);if(bytes.length!==entry.bytes||await verifier.sha256Hex(bytes)!==entry.sha256)throw Error('OFFLINE_VERIFIER_INTEGRITY');files[name]=bytes;}));
+ await Promise.all(Object.entries(build.files).map(async([name,entry])=>{const limit=name==='verifier.js.map'&&entry.bytes===offlineProofVerifierSourceMapBytes&&entry.sha256===offlineProofVerifierSourceMapDigest?offlineProofVerifierSourceMapBytes:8*1024*1024;if(!/^[a-zA-Z0-9_.-]+$/.test(name)||entry.bytes>limit)throw Error('OFFLINE_VERIFIER_BUILD_INVALID');const path=name==='verifier.js.map'?name+'.bin':name;const r=await fetch(BASE+path,{credentials:'omit'});if(!r.ok)throw Error('OFFLINE_VERIFIER_UNAVAILABLE');const bytes=await readPublicLedgerBytes(r,limit);if(bytes.length!==entry.bytes||await verifier.sha256Hex(bytes)!==entry.sha256)throw Error('OFFLINE_VERIFIER_INTEGRITY');files[name]=bytes;}));
  files['build.json']=encode(build);files['record.json']=encode(ledgerInspectionDocument(record,ledgerValueForRecord(record)));
  files['original.receiz']=new Uint8Array(await original.arrayBuffer());files['proof-inspection.json']=encode({...selected,verificationMaterial:verifier.materials});
  files['availability.json']=encode({sealedOriginal:true,originalFilename:original.name,artifactSha256:selected.artifactSha256,groth16:selected.groth16?'carried in original':'not carried by this verified original',missing:[],privateWitnesses:'Not needed for verification; signing keys and private witnesses are not exported.'});
