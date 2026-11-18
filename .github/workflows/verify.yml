@@ -14,9 +14,13 @@ concurrency:
 
 jobs:
   tests:
-    name: Unit and contract tests
+    name: Unit and contract tests (${{ matrix.shard }}/4)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -26,8 +30,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npm test
+      # Distribute every test file once; keep assertions and default timeouts.
+      # One worker per runner avoids competing heavy history preparations.
+      - run: npm test -- --shard=${{ matrix.shard }}/4 --maxWorkers=1
       - name: Public SEO HTTP diagnostics
+        if: matrix.shard == 1
         run: node --test tests/public-seo-audit.node-test.mjs
 
   build_verify:

@@ -12,15 +12,17 @@ export async function handlePublicRuntimeAsset(request:Request,read:typeof fetch
   const target=new URL('/api/market/public-runtime-asset','https://receiz.com');target.searchParams.set('file',file);
   const response=await read(target,{method:request.method,credentials:'omit',redirect:'error',cache:'force-cache',signal:AbortSignal.any([request.signal,AbortSignal.timeout(15000)])});
   if(!response.ok){await response.body?.cancel();return failure(response.status===404?404:503);}
-  const mime=file.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8',digest=response.headers.get('x-receiz-public-runtime-sha256')??'',size=Number(response.headers.get('content-length'));
-  if(response.headers.get('content-type')!==mime||!HEX.test(digest)||!Number.isSafeInteger(size)||size<1||size>MAX){await response.body?.cancel();return failure(503);}
+  const mime=file.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8',digest=response.headers.get('x-receiz-public-runtime-sha256')??'',length=response.headers.get('content-length'),size=length===null?null:Number(length);
+  if(response.headers.get('content-type')!==mime||!HEX.test(digest)||(size!==null&&(!Number.isSafeInteger(size)||size<1||size>MAX))){await response.body?.cancel();return failure(503);}
   let body:Uint8Array|undefined;
   if(!head){
    const reader=response.body?.getReader();if(!reader)return failure(503);const chunks:Uint8Array[]=[];let count=0;
-   try{for(;;){const next=await reader.read();if(next.done)break;count+=next.value.length;if(count>size)throw Error('PUBLIC_RUNTIME_ASSET_CAPACITY');chunks.push(next.value);}}
+   try{for(;;){const next=await reader.read();if(next.done)break;count+=next.value.length;if(count>(size??MAX))throw Error('PUBLIC_RUNTIME_ASSET_CAPACITY');chunks.push(next.value);}}
    finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
-   body=Buffer.concat(chunks);if(count!==size||createHash('sha256').update(body).digest('hex')!==digest)return failure(503);
+   body=Buffer.concat(chunks);if(count<1||(size!==null&&count!==size)||createHash('sha256').update(body).digest('hex')!==digest)return failure(503);
   }
-  return new Response(head?null:new Uint8Array(body!).buffer,{headers:{'content-type':mime,'content-length':String(size),'cache-control':'public, max-age=31536000, immutable','x-content-type-options':'nosniff',etag:'"'+digest+'"','x-receiz-public-runtime-sha256':digest}});
+  // Deployment streaming may omit Content-Length. The retained digest and
+  // bounded bytes qualify GET; HEAD preserves an unknown size without a GET.
+  return new Response(head?null:new Uint8Array(body!).buffer,{headers:{'content-type':mime,...(size!==null||!head?{'content-length':String(size??body!.byteLength)}:{}),'cache-control':'public, max-age=31536000, immutable','x-content-type-options':'nosniff',etag:'"'+digest+'"','x-receiz-public-runtime-sha256':digest}});
  }catch{return failure(503);}
 }

@@ -32,6 +32,22 @@ it('retains MJS/CSS MIME and bounded HEAD delivery',async()=>{
   const response=await handlePublicRuntimeAsset(new Request('https://bankeiz.com/api/runtime-asset?file='+file,{method:'HEAD'}),remote);expect(response.status).toBe(200);expect(response.headers.get('content-type')).toBe(mime);expect(await response.text()).toBe('');expect(remote.mock.calls[0]?.[1]?.method).toBe('HEAD');
  }
 });
+it('streams the exact retained executable when the deployment transport omits Content-Length',async()=>{
+ const remote=vi.fn<typeof fetch>(async()=>new Response('export const held=true;',{headers:{'content-type':'text/javascript; charset=utf-8','x-receiz-public-runtime-sha256':digest}}));
+ const response=await handlePublicRuntimeAsset(new Request('https://bankeiz.com/api/runtime-asset?file=ledger-Abcdef12.js'),remote);
+ expect(response.status).toBe(200);expect(await response.text()).toBe('export const held=true;');expect(response.headers.get('content-length')).toBe('23');expect(remote).toHaveBeenCalledTimes(1);
+});
+it('preserves a lengthless HEAD without inventing a byte count or opening the executable',async()=>{
+ const remote=vi.fn<typeof fetch>(async()=>new Response(null,{headers:{'content-type':'text/javascript; charset=utf-8','x-receiz-public-runtime-sha256':digest}}));
+ const response=await handlePublicRuntimeAsset(new Request('https://bankeiz.com/api/runtime-asset?file=ledger-Abcdef12.js',{method:'HEAD'}),remote);
+ expect(response.status).toBe(200);expect(await response.text()).toBe('');expect(response.headers.get('content-length')).toBeNull();expect(remote).toHaveBeenCalledTimes(1);expect(remote.mock.calls[0]?.[1]?.method).toBe('HEAD');
+});
+it('still refuses changed, empty or over-capacity bytes without a supplied length',async()=>{
+ for(const body of ['changed bytes','', 'x'.repeat(8*1024*1024+1)]){
+  const response=await handlePublicRuntimeAsset(new Request('https://bankeiz.com/api/runtime-asset?file=ledger-Abcdef12.js'),async()=>new Response(body,{headers:{'content-type':'text/javascript; charset=utf-8','x-receiz-public-runtime-sha256':createHash('sha256').update(body==='changed bytes'?'expected':body).digest('hex')}}));
+  expect(response.status).toBe(503);expect(await response.text()).toBe('');
+ }
+});
 it('refuses changed or truncated bytes even when public delivery headers claim the retained digest',async()=>{
  for(const body of ['x','x'.repeat(23)]){
   const response=await handlePublicRuntimeAsset(new Request('https://bankeiz.com/api/runtime-asset?file=explore-Abcdef12.js'),async()=>new Response(body,{headers:{'content-type':'text/javascript; charset=utf-8','content-length':'23','x-receiz-public-runtime-sha256':digest}}));
