@@ -45,7 +45,7 @@ export function VotingBoard({profile,initialDigest}:Props){
   const [personal,setPersonal]=useState(false),[exampleOpen,setExampleOpen]=useState(false);
   const [preparedName,setPreparedName]=useState<{owner:OpenIdentity;name:string}|null>(null);
   const profileName=identity&&profile?.ownerIdentity===identity?profile.publicName:null;
-  const knownName=profileName||identity?.confirmedAccountUsername?.()||(preparedName?.owner===identity?preparedName?.name:null);
+  const knownName=profileName||identity?.knownProfile?.()?.username||identity?.confirmedAccountUsername?.()||(preparedName?.owner===identity?preparedName?.name:null);
   const closed=useRef(false),resumeAction=useRef<{kind:'charter'|'proposal';charterId?:string}|null>(null);
   useEffect(()=>{
     if(!identity||knownName||!identity.prepareReceivingUsername)return;
@@ -217,6 +217,7 @@ export function VotingBoard({profile,initialDigest}:Props){
       <div className="gov-account-bar">
       {!profile&&!actor&&entry}
       {actor&&<div className="gov-scope"><button aria-pressed={!personal} onClick={()=>setPersonal(false)}>Network</button><button aria-pressed={personal} onClick={()=>setPersonal(true)}>My activity</button></div>}
+      {!profile&&actor&&publicId&&<span className="gov-session-name">@{publicId}</span>}
       {!profile&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
       <GovernanceRegister key={String(personal)+String(publicProfile)} personal={personal||publicProfile} onExample={profile?()=>setExampleOpen(true):undefined} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
@@ -225,7 +226,7 @@ export function VotingBoard({profile,initialDigest}:Props){
       {actor&&identity&&<details><summary>My Receiz ID</summary>{publicId&&<p>@{publicId}</p>}<div className="gov-proof-owner"><small>Proof owner ID</small><code>{actor}</code></div><button onClick={()=>saveIdentityRecord(identity)}><Download size={15}/>Save Identity Record</button></details>}
       {outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}
     </>}
-    {!profile&&screen!=='list'&&<GovernanceHeading title="Public voting"/>}
+    {!profile&&screen!=='list'&&<GovernanceHeading title="Public voting" eyebrow={publicId?'@'+publicId:undefined}/>}
     {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId} charters={eligibleCharters} onCharter={select} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
     {screen==='detail'&&(chosen?<><GovernanceDetail identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!publicProfile&&!entryBusy&&!busy} compose={id=>start('proposal',id)} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
     {screen==='review'&&terms&&<section className="gov-stack"><h2>Review {terms.kind}</h2><p>Your Receiz owner ID and these terms will be visible in the Original. You can save it on this device and choose when to publish it.</p><GovernanceFacts terms={terms}/><div className="gov-actions"><button disabled={busy} className="gov-primary" onClick={()=>void run(confirm)}><FileCheck2 size={16}/>{busy?'Sealing…':'Seal Original'}</button><button disabled={busy} onClick={()=>setScreen(terms.kind==='charter'?'charter':terms.kind==='proposal'?'proposal':'detail')}>{terms.kind==='charter'||terms.kind==='proposal'?'Edit details':'Back'}</button></div></section>}

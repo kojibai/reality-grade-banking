@@ -34,10 +34,11 @@ it('closes only the voting session, keeps public browsing across reload and resu
   const create=()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Create charter');
   try{
     await act(async()=>root.render(<VotingBoard/>));
+    expect(host.querySelector('.gov-account-bar .gov-session-name')?.textContent).toBe('@bjklock');
     expect(host.querySelector('details p')?.textContent).toBe('@bjklock');
     expect(button('Use Identity Record')).toBeNull();
     await click(button('Log out of voting'));
-    expect(session.close).toHaveBeenCalledOnce();expect(host.textContent).not.toContain(proofOwner);
+    expect(session.close).toHaveBeenCalledOnce();expect(host.textContent).not.toContain(proofOwner);expect(host.textContent).not.toContain('@bjklock');
     expect(button('Use Identity Record')).toBeTruthy();expect(button('Use PBI')).toBeTruthy();
     await act(async()=>root.unmount());root=createRoot(host);
     await act(async()=>root.render(<VotingBoard/>));

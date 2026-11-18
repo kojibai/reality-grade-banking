@@ -120,6 +120,7 @@
 .gov-account-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 12px; }
 .gov-account-bar:empty { display: none; }
 .gov-account-bar .gov-logout { margin-left: auto; width: 44px; height: 44px; color: var(--gov-muted); }
+.gov-session-name { flex: 1; min-width: 0; text-align: right; color: var(--gov-ink); font-weight: 600; font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
 .gov-account-bar .gov-logout:hover { color: var(--gov-ink); background: #f1f4f9; }
 .gov-account-bar .meeting-identity-actions > button { min-width: 44px; min-height: 44px; }
 .gov-account-bar .meeting-identity-unlock { flex-basis: 100%; }
