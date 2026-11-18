@@ -41,3 +41,26 @@ it('lets a user reveal all loaded search matches without automatically fetching 
   const more=[...host.querySelectorAll('button')].find(button=>button.textContent==='Show more activity');expect(more).toBeDefined();await act(async()=>more!.click());expect(host.querySelectorAll('.ledger-event')).toHaveLength(65);expect(state.loadMore).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();}
 });
+it('continues the standalone public Ledger through held batches without reading another source page',async()=>{
+ let reachEnd:(()=>void)|undefined;
+ vi.stubGlobal('IntersectionObserver',class{
+  constructor(readonly callback:IntersectionObserverCallback){}
+  observe(target:Element){
+   if(target.classList.contains('public-ledger-more'))reachEnd=()=>this.callback([{target,isIntersecting:true} as IntersectionObserverEntry],this as unknown as IntersectionObserver);
+  }
+  disconnect(){}
+ });
+ state.records=parsePublicNetworkPage('actions',{ok:true,actions:Array.from({length:125},(_,i)=>({id:'held-'+i,actionKind:'contacts.import',summary:'Held contact '+i}))}).records;
+ state.loadMore.mockClear();
+ const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
+ try{
+  await act(async()=>root.render(<PublicLedgerApp initialHref="https://bankeiz.com/ledger/"/>));
+  const rows=()=>host.querySelectorAll('.public-ledger-row');
+  const first=rows()[0];expect(rows()).toHaveLength(60);expect(reachEnd).toBeDefined();
+  await act(async()=>{reachEnd!();reachEnd!();});expect(rows()).toHaveLength(120);
+  await act(async()=>reachEnd!());expect(rows()).toHaveLength(125);
+  expect(rows()[0]).toBe(first);
+  expect(host.querySelector('.public-ledger-more')).toBeNull();
+  expect(state.loadMore).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());host.remove();vi.unstubAllGlobals();}
+});

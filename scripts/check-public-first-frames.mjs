@@ -34,6 +34,7 @@ const cases=[
  {name:'asset',path:'/asset/'+encodeURIComponent(id)+'/',selector:'.asset-detail-heading',text:asset.item.title},
  {name:'receipt',path:firstFrameReceiptPath,selector:'.transaction-receipt',text:'$125.00'},
  {name:'verify',path:'/verify/',selector:'.verify-header',text:'See the proof.'},
+ {name:'observatory',path:'/observatory/',selector:'#obs-collectibles',text:'Collectible transfer volume'},
  {name:'booking',path:'/book/bjklock/',selector:'.booking-card',text:'Good things start'},
 ];
 let browser,passed=false;
@@ -45,16 +46,28 @@ try{
    await page.route('**/api/**',()=>new Promise(()=>{}));await page.route('**/*.css',route=>route.abort());
    const response=await page.goto(origin+item.path,{waitUntil:'commit'});assert.equal(response.status(),200,item.name+' first HTML');await page.locator(item.selector).waitFor();assert.ok((await page.locator('body').textContent()).includes(item.text));assert.equal(await page.locator('.public-entry-placeholder,[data-profile-opening]').count(),0);
    assert.ok(await page.locator('style[data-public-page-style]').count()>0,item.name+' styles must already be inline');
+   if(item.name==='observatory'){
+    const volume=page.locator('#obs-collectibles .obs-audience-grid>div').filter({has:page.getByRole('heading',{name:'Collectible transfer volume'})}).locator('strong');
+    for(const width of [320,768,390]){
+     await page.setViewportSize({width,height:844});
+     assert.ok(await volume.evaluate(el=>{
+      const amount=document.createRange();amount.selectNodeContents(el);
+      const text=amount.getBoundingClientRect(),card=el.parentElement.getBoundingClientRect();
+      return amount.getClientRects().length===1&&text.left>=card.left-1&&text.right<=Math.min(card.right,innerWidth)+1;
+     }),`Collectible transfer volume must fit its card at ${width}px`);
+    }
+    assert.match(await page.locator('.obs-source-note').filter({hasText:'Updated'}).first().textContent(),/Updated .+ · \d{2}:\d{2} UTC/);
+   }
    await page.screenshot({path:resolve(output,'first-frame-'+item.name+'.png')});
   }finally{await cold.close();}
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),interactive=await context.newPage(),pending=[],errors=[];let entryReady;const entryRequested=new Promise(resolve=>{entryReady=resolve;});
   try{
    interactive.on('pageerror',error=>errors.push(error.message));interactive.on('console',message=>{if(message.type()==='error'&&/hydrat|didn't match|server rendered|react.dev\/errors\/(?:418|423|425)/i.test(message.text()))errors.push(message.text());});
-   await interactive.route('**/api/**',()=>new Promise(()=>{}));await interactive.route(/\/assets\/(?:explore|receipt|verify|booking)-[^/]+\.js(?:\?|$)/,route=>new Promise(resolve=>{pending.push({route,resolve});entryReady();}));
+   await interactive.route('**/api/**',()=>new Promise(()=>{}));await interactive.route(/\/assets\/(?:explore|receipt|verify|booking|ledger)-[^/]+\.js(?:\?|$)/,route=>new Promise(resolve=>{pending.push({route,resolve});entryReady();}));
    await interactive.goto(origin+item.path,{waitUntil:'commit'});await interactive.locator(item.selector).waitFor();
    await interactive.evaluate(selector=>{window.firstFrameNode=document.querySelector(selector);},item.selector);
    let timer;try{await Promise.race([entryRequested,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(item.name+' entry was not intercepted')),15000);})]);}finally{clearTimeout(timer);}
-   await interactive.unroute(/\/assets\/(?:explore|receipt|verify|booking)-[^/]+\.js(?:\?|$)/);for(const held of pending){await held.route.continue();held.resolve();}
+   await interactive.unroute(/\/assets\/(?:explore|receipt|verify|booking|ledger)-[^/]+\.js(?:\?|$)/);for(const held of pending){await held.route.continue();held.resolve();}
    await interactive.waitForFunction(selector=>{const node=document.querySelector(selector);return !!node&&Object.keys(node).some(key=>key.startsWith('__reactFiber$'));},item.selector,{timeout:15000});
    assert.equal(await interactive.evaluate(selector=>window.firstFrameNode===document.querySelector(selector),item.selector),true,item.name+' must hydrate its existing DOM');assert.deepEqual(errors,[],item.name+' hydration errors');
    results.push({page:item.name,actualHTMLBeforeJavaScript:true,inlineStyles:true,APIsStalled:true,retainedDOM:true,errors});

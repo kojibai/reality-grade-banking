@@ -3,7 +3,7 @@ import {useNetworkTraffic,type AppContribution,type TrafficObservation} from './
 
 const number=new Intl.NumberFormat('en-US');
 const date=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
-const stamp=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'UTC'});
+const utcTime=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
 const dayMs=86_400_000;
 const ranges={'7D':7,'30D':30,'90D':90,'1Y':365,All:Infinity};
 const actionLabels=['Authorizations issued','Authorizations exchanged','Consents','Refresh tokens issued','Proof grants','Agent tokens issued','Published objects'];
@@ -50,7 +50,7 @@ function TrafficChart({days,observedAt}:{days:TrafficObservation['days'];observe
     <div className="obs-traffic-inspect"><label htmlFor="traffic-day">Inspect day</label><input id="traffic-day" type="range" min={0} max={points.length-1} value={selected} aria-valuetext={formatDay(points[selected].day)} onChange={e=>inspect(Number(e.target.value))}/>
       <output>{formatDay(points[selected].day)} · {number.format(points[selected].value)} renders</output></div>
     <details className="obs-traffic-detail"><summary>Page groups by traffic</summary><div className="obs-table-scroll"><table><thead><tr><th>Page group</th><th>Renders in range</th></tr></thead><tbody>{series.routes.map(([name,value])=><tr key={name}><th scope="row"><button className="obs-link-button" onClick={()=>{setRoute(name);setPicked(null);}}>{name}</button></th><td>{number.format(value)}</td></tr>)}</tbody></table></div></details>
-    <p className="obs-source-note">One recorded browser render on entry or navigation. External app visits have no shared pageview count. Updated {stamp.format(Date.parse(observedAt))} UTC.</p>
+    <p className="obs-source-note">One recorded browser render on entry or navigation. External app visits have no shared pageview count. Updated {formatDay(observedAt)} · {utcTime.format(Date.parse(observedAt))} UTC.</p>
   </div>;
 }
 

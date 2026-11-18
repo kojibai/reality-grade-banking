@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {memo,useMemo,useState} from 'react';
 import {ArrowUpRight, ChevronLeft, ChevronRight} from 'lucide-react';
 import {formatMoney} from '../core/money';
 import {marketContentLabel} from '../receiz/market-categories';
@@ -62,7 +62,7 @@ function comparison(a:RankedProfile,b:RankedProfile,key:Rank){
   return x>y?-1:1;
 }
 
-export function NetworkAtlas({catalog,data,audienceSeries,records,actions,actionsAsOf,onInspectAction}:{audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;data:Overview|null;records:readonly PublicRecord[]}){
+export const NetworkAtlas=memo(function NetworkAtlas({catalog,data,audienceSeries,records,actions,actionsAsOf,onInspectAction}:{audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;data:Overview|null;records:readonly PublicRecord[]}){
   const [rank,setRank]=useState<Rank>('seconds'),[person,setPerson]=useState(''),[profilePage,setProfilePage]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[assetPage,setAssetPage]=useState(0),[order,setOrder]=useState('recent');
   const profiles=useMemo(()=>data?.profiles.filter(p=>(p.name+' '+p.username).toLowerCase().includes(person.trim().replace(/^@/,'').toLowerCase())).sort((a,b)=>comparison(a,b,rank))??[],[data,person,rank]);
@@ -73,10 +73,11 @@ export function NetworkAtlas({catalog,data,audienceSeries,records,actions,action
     return rows.sort((a,b)=>order==='value'?(b.priceUsd??-1)-(a.priceUsd??-1)||a.id.localeCompare(b.id):(Date.parse(b.sealedAt??'')||0)-(Date.parse(a.sealedAt??'')||0)||a.id.localeCompare(b.id));
   },[catalog,filter,query,order]);
   const [inspected,setInspected]=useState<string|null>(null),[eventLimit,setEventLimit]=useState(8);
-  const references=useMemo(()=>indexLedgerRelations(records.filter(r=>r.authority==='public-source-projection'&&!r.origin)),[records]);
   const inspectedAsset=inspected?catalog?.items.find(item=>item.id===inspected):null;
+  const inspecting=!!inspectedAsset;
+  const references=useMemo(()=>inspecting?indexLedgerRelations(records.filter(r=>r.authority==='public-source-projection'&&!r.origin)):null,[records,inspecting]);
   const linked=useMemo(()=>{
-    if(!inspectedAsset)return [];
+    if(!inspectedAsset||!references)return [];
     const events=new Map<string,PublicRecord>();
     for(const id of [inspectedAsset.id,inspectedAsset.assetId])for(const record of references.get('object:'+id)??[])events.set(record.id,record);
     return [...events.values()].sort((a,b)=>(Date.parse(b.time??'')||0)-(Date.parse(a.time??'')||0));
@@ -112,4 +113,4 @@ export function NetworkAtlas({catalog,data,audienceSeries,records,actions,action
       <Pager count={assets.length} page={ap} onPage={setAssetPage}/>
       {inspectedAsset&&<div className="obs-object-history"><div className="obs-section-head"><div><p className="obs-label">Object history</p><h3>{inspectedAsset.title}</h3></div><a href={assetPagePath(inspectedAsset.id)} onClick={()=>retainPublicAsset(inspectedAsset)}>Open asset <ArrowUpRight/></a></div><p>{number.format(linked.length)} public records reference this object.</p>{linked.slice(0,eventLimit).map(row=><a className="obs-row" key={row.id} href={ledgerLink(row)}><time>{row.time?date.format(Date.parse(row.time)):'Undated'}</time><strong>{ledgerRecordTitle(row)}</strong><span>{row.source}</span><ChevronRight/></a>)}{linked.length>eventLimit&&<button className="obs-more" onClick={()=>setEventLimit(n=>n+24)}>More object history</button>}</div>}</section>
   </div>;
-}
+});

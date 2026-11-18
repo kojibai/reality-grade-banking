@@ -284,7 +284,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     return () => { alive=false;clearTimeout(timer); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); running.current?.abort(); running.current = null;quoteRead.current?.controller.abort();quoteRead.current=null;sportsRunning.current?.abort();sportsRunning.current=null; };
   }, [active, refresh,refreshSports]);
   useEffect(()=>{if(!displayActive)return;const update=()=>{if(document.visibilityState==='visible')setPulse(previous=>Math.max(previous,receizKaiNow().pulse));};update();const timer=setInterval(update,1000);document.addEventListener('visibilitychange',update);window.addEventListener('pageshow',update);window.addEventListener('focus',update);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',update);window.removeEventListener('pageshow',update);window.removeEventListener('focus',update);};},[displayActive]);
-  const pricedCatalog=useMemo(()=>active?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,selectedItemId]);
+  const pricedCatalog=useMemo(()=>active&&displayActive?publicCatalogAtPulse(catalog,pricingSource,pulse,selectedItemId):catalog,[catalog,pricingSource,pulse,active,displayActive,selectedItemId]);
   const prepared=preparedBankCatalogEnabled()||preparedSnapshot.value||preparedSnapshot.carried?preparedSnapshot:null,family=prepared?.value??prepared?.carried;
  // A separate membership successor does not inherit this packet's currentness.
  const selectedFamily=!!family&&catalog===family.seed.catalog,accepted=prepared?.phase==='ready'&&selectedFamily?prepared.value:null;

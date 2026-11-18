@@ -1,4 +1,7 @@
 import {describe,it,expect} from 'vitest';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {CollectibleActivity} from '../src/observatory/CollectibleActivity';
 import {observeCatalog,growthSeries} from '../src/observatory/catalog';
 import {collectibleActivity} from '../src/observatory/collectible-transfers';
 import type {PublicRecord} from '../src/receiz/public-network';
@@ -49,6 +52,20 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     expect(collectibleActivity(rows)).toMatchObject({total:2,volume:2500n,priced:1,paid:0n,paymentCoverage:1});
     expect(collectibleActivity(rows).timeline.at(-1)?.count).toBe(2);
     expect(walletActivity(rows).transfers).toHaveLength(0);
+  });
+  it('shows the recorded payment metric only when the held transfers carry a nonzero total',()=>{
+    const transfer=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'a',actionKind:'receiz.sports_arena.card_transfer',createdAt:'2026-05-31T12:00:00Z'}]}).records[0];
+    const render=(considerationUsdCents?:string)=>renderToStaticMarkup(createElement(CollectibleActivity,{records:[
+      {...transfer,pulse:'12000000',valueOperands:{cardValueUsdCents:'17302983033',considerationUsdCents}},
+    ]}));
+    for(const payment of [undefined,'0']){
+      const markup=render(payment);
+      expect(markup).not.toContain('Recorded payments');
+      expect(markup).toContain('$173,029,830.33');
+    }
+    const paid=render('1');
+    expect(paid).toContain('<h3>Recorded payments</h3><strong>$0.01</strong>');
+    expect(paid).toContain('aria-label="Recorded payments from');
   });
   it('counts both rails once and retains mixed, single-rail and unclassified gross amounts',()=>{
     const rows=[

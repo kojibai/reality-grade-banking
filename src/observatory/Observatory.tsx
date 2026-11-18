@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {ArrowDown, ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play} from 'lucide-react';
 import {BankMark} from '../components/BankMark';
 import {formatMoney} from '../core/money';
@@ -77,7 +77,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   const hydrating=useSyncExternalStore(noSubscription,()=>false,()=>true);
   const documentSources=useMemo(()=>documentSourceStates(initialSnapshot),[initialSnapshot]);
   const network=hydrating&&initialSnapshot?{...heldNetwork,records:initialSnapshot.records,sources:documentSources,capturedAt:initialSnapshot.capturedAt,bootstrap:false}:heldNetwork;
-  const market=usePublicMarket(active,active);
+  // The atlas reads held history. Its live capitalization already has its own clock.
+  const market=usePublicMarket(active,false);
   const directory=shippedObservatoryDirectory();
   const carried=useMemo(()=>{
     const prepared=documentCatalog(initialSnapshot,initialDirectory??directory);
@@ -121,6 +122,10 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   const [online,setOnline]=useState(true), [historyOpen,setHistoryOpen]=useState(false);
   useEffect(()=>{const change=()=>setOnline(navigator.onLine);change();window.addEventListener('offline',change);window.addEventListener('online',change);return()=>{window.removeEventListener('offline',change);window.removeEventListener('online',change);};},[]);
   const [filter,setFilter]=useState('');
+  const inspectAction=useCallback((kind:string,range:Period)=>{
+    setSource('actions');setFilter(kind);setPeriod(range);setPaused(null);setPicked(null);setLimit(8);
+    document.getElementById('obs-pulse')?.scrollIntoView();
+  },[]);
   const state=network.sources[source], sourceStream=index.streams[source];
   const kinds=useMemo(()=>{
     const counts=new Map<string,number>();
@@ -190,10 +195,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
       <ol>{history.history.steps.map(step=><li key={step.id}><strong>{step.label}</strong>{step.occurredAt&&<time dateTime={step.occurredAt}>{fullDate.format(Date.parse(step.occurredAt))} · {clock.format(Date.parse(step.occurredAt))} UTC</time>}{step.detail&&<p>{step.detail}</p>}</li>)}</ol>
       {!!history.history.missingParentHashes?.length&&<p>{history.history.missingParentHashes.length} referenced predecessors are outside this carried history.</p>}</section>}
     <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} actions={index.streams.actions}
-      actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={(kind,range)=>{
-        setSource('actions');setFilter(kind);setPeriod(range);setPaused(null);setPicked(null);setLimit(8);
-        document.getElementById('obs-pulse')?.scrollIntoView();
-      }}/>
+      actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={inspectAction}/>
     <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>
     <section className="obs-composition obs-inner" aria-label="Public source coverage"><div className="obs-section-head"><div><p className="obs-label">Public Ledger</p><h2>Network health</h2></div><a href="/ledger/">Explore Ledger <ArrowUpRight/></a></div>
       <div className="obs-source-strip" aria-hidden="true">{PUBLIC_SOURCES.map(s=><i key={s} data-source={s} style={{flexGrow:index.counts[s]}}/>)}</div>
