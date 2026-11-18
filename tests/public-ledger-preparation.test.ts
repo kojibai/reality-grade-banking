@@ -38,3 +38,62 @@ it('uses fresh fixed public SDK transports for background preparation and keeps 
   await expect(preparePublicLedgerDisplay({retainedGzipB64u:encoded(),currentHeads:{...heads,wallet:{count:'3',lastKaiUpulse:'300000000'}}})).rejects.toThrow('PUBLIC_LEDGER_HEAD_PENDING');
  }finally{vi.unstubAllGlobals();}
 });
+
+it('anchors later Wallet appends against a complete public prefix even when the global rollup counts other entries',async()=>{
+ const normal=reader(),first=await preparePublicLedgerDisplay({retainedGzipB64u:encoded(),read:async(source,cursor)=>{
+  if(source!=='wallet')return normal(source,cursor);
+  return {ok:true,events:cursor?[{id:'historic',summary:'Exact historical payment',amountUsdCents:'995'}]:[{id:'wallet-old'}],nextCursor:cursor?null:'older',rollup:{totalLedgerEntries:'90',lastEntryKaiUpulse:'900'}};
+ }});
+ const nextHeads={actions:first.heads.actions,wallet:{count:'92',lastKaiUpulse:'999'}};
+ const incremental=vi.fn(async(source:string,cursor?:string)=>{
+  if(source==='graph')return normal(source);
+  if(source!=='wallet'||cursor)throw Error('Unexpected source read');
+  return {ok:true,events:[{id:'latest'},{id:'historic'}],nextCursor:'older',rollup:{totalLedgerEntries:'92',lastEntryKaiUpulse:'999'}};
+ });
+ const result=await preparePublicLedgerDisplay({previous:first,currentHeads:nextHeads,read:incremental});
+ expect(incremental.mock.calls).toEqual([['wallet',undefined],['graph']]);
+ const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(Buffer.from(result.ledgerCacheGzipB64u,'base64url')).toString()));
+ expect(cache.records.find(row=>row.id==='wallet:historic')).toMatchObject({title:'Exact historical payment',amountUsdCents:'995'});
+ expect(result.diagnostics.pages).toEqual({actions:0,wallet:1,graph:1});
+ const unavailable=vi.fn(async()=>{throw Error('Offline');});
+ expect(await preparePublicLedgerDisplay({previous:result,currentHeads:{wallet:nextHeads.wallet,actions:nextHeads.actions},read:unavailable})).toBe(result);
+ expect(unavailable).not.toHaveBeenCalled();
+});
+
+it('accepts the SDK empty Action sequence only with zero rows, count and a completed cursor',async()=>{
+ const other=reader();
+ const prepare=(actions:unknown[],count:number,nextCursor:string|null)=>preparePublicLedgerDisplay({retainedGzipB64u:encoded(),read:async(source,cursor)=>source==='actions'?{ok:true,actions,nextCursor,rollup:{count,lastSeq:null}}:other(source,cursor)});
+ expect((await prepare([],0,null)).heads.actions).toEqual({count:'0',lastSeq:'0'});
+ for(const args of [[[],1,null],[[{id:'nonempty'}],0,null],[[],0,'more']] as const)await expect(prepare([...args[0]],args[1],args[2])).rejects.toThrow('PUBLIC_LEDGER_HEAD_REQUIRED');
+});
+
+const hash=(n:number)=>n.toString(16).padStart(64,'0');
+const action=(seq:number)=>({id:'act-'+seq,seq,kind:'recorded',pulse:String(seq),entryHash:hash(seq),prevHash:hash(seq-1)});
+const preparedAction=(n:number)=>({...record('actions','act-'+n),pulse:String(n),details:{seq:n},evidence:{entryHash:hash(n),prevHash:hash(n-1)}});
+it('uses only the shipped Action segment linking a fresh SDK page to the selected prefix; competing branches use the cursor',async()=>{
+ const selected={...retained,records:[preparedAction(1),record('wallet','wallet-old')]};
+ const archive={...retained,records:[preparedAction(1),preparedAction(2),preparedAction(90),record('wallet','foreign'),record('graph','foreign')]};
+ const normal=reader(),captured={actions:{count:'3',lastSeq:'3',entryHash:hash(3)},wallet:heads.wallet};
+ for(const available of [true,false]){
+  const readActionArchive=vi.fn(async()=>gzipSync(JSON.stringify(available?archive:{...archive,records:[preparedAction(55)]})).toString('base64url'));
+  const read=vi.fn(async(source:string,cursor?:string)=>source==='actions'?{ok:true,actions:cursor?[action(2),action(1)]:[action(3)],nextCursor:cursor?null:'earlier',rollup:{count:3,lastSeq:cursor?2:3}}:normal(source,cursor));
+  const result=await preparePublicLedgerDisplay({retainedGzipB64u:gzipSync(JSON.stringify(selected)).toString('base64url'),currentHeads:captured,readActionArchive,read});
+  expect(readActionArchive).toHaveBeenCalledOnce();expect(result.diagnostics.pages.actions).toBe(available?1:2);
+  const cache=parsePublicNetworkCache(JSON.parse(gunzipSync(Buffer.from(result.ledgerCacheGzipB64u,'base64url')).toString()));
+  expect(cache.records.filter(row=>row.source==='actions').map(row=>row.id).sort()).toEqual(['actions:act-1','actions:act-2','actions:act-3']);
+  expect(cache.records.some(row=>row.sourceId==='foreign')).toBe(false);
+ }
+});
+
+it('qualifies captured and previous hashed Actions through a concurrent append and rejects a fork',async()=>{
+ const normal=reader(),selected={...retained,records:[preparedAction(1),record('wallet','wallet-old')]};
+ const retainedGzipB64u=gzipSync(JSON.stringify(selected)).toString('base64url');
+ const feed=(hashAtTwo:string)=>async(source:string,cursor?:string)=>source==='actions'
+  ?{ok:true,actions:cursor?[{...action(2),entryHash:hashAtTwo},action(1)]:[action(3)],nextCursor:cursor?null:'anchor',rollup:{count:3,lastSeq:cursor?2:3}}
+  :normal(source,cursor);
+ const currentHeads={actions:{count:'2',lastSeq:'2',entryHash:hash(2)},wallet:heads.wallet};
+ const correct=await preparePublicLedgerDisplay({retainedGzipB64u,currentHeads,read:feed(hash(2))});
+ expect(correct.heads.actions).toEqual({count:'3',lastSeq:'3',entryHash:hash(3)});
+ await expect(preparePublicLedgerDisplay({retainedGzipB64u,currentHeads,read:feed(hash(9))})).rejects.toThrow('PUBLIC_LEDGER_HEAD_PENDING');
+ await expect(preparePublicLedgerDisplay({previous:correct,currentHeads:{...correct.heads,actions:{...correct.heads.actions,entryHash:hash(8)}},read:normal})).rejects.toThrow('PUBLIC_LEDGER_HEAD_PENDING');
+});

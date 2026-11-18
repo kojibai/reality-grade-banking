@@ -9,6 +9,7 @@ import type {PublicSportsParts} from './public-sports-parts.js';
 import type {PublicOriginalPartInput,PublicOriginalParts} from './public-original-parts.js';
 import type {PublicHistoryTransitionInput,PublicHistoryTransitionResult} from './public-history-transition.js';
 import type {PublicMarketOperandRequest,PublicMarketOperandResult} from './public-market-operands.js';
+import {isPublicLedgerHeads} from './public-ledger-heads.js';
 import type {PublicMarketOperand} from './public-market-preparation.js';
 
 const MAX=32*1024*1024,POST_MAX=4*1024*1024,DIGEST=/^[a-f0-9]{64}$/;
@@ -79,7 +80,10 @@ async function deliverPreparedPublicMarket(request:Request,provided?:Dependencie
     return new Response(streamedText(body),{headers:jsonHeaders});
    }
    if(input?.projectOperand!==undefined){
-    if(!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','projectOperand','operands'].includes(key))||!['membership','quotes','sports','capitalization','preparedLedger','history','pricing'].includes(input.projectOperand))return new Response(null,{status:400,headers:jsonHeaders});
+    if(typeof input.selectionKey!=='string'||!DIGEST.test(input.selectionKey)||Object.keys(input).some(key=>!['selectionKey','projectOperand','operands','previousLedgerRoot','currentLedgerHeads'].includes(key))||!['membership','quotes','sports','capitalization','preparedLedger','history','pricing'].includes(input.projectOperand))return new Response(null,{status:400,headers:jsonHeaders});
+    if(input.previousLedgerRoot!==undefined||input.currentLedgerHeads!==undefined){
+     if(input.projectOperand!=='preparedLedger'||typeof input.previousLedgerRoot!=='string'||!DIGEST.test(input.previousLedgerRoot)||!isPublicLedgerHeads(input.currentLedgerHeads)||input.operands!==undefined)return new Response(null,{status:400,headers:jsonHeaders});
+    }
     let selected:Record<PublicMarketOperand,unknown>|undefined,selectedText:Map<string,string>|undefined;
     if(input.operands!==undefined){const operands=input.operands;if(!['history','pricing'].includes(input.projectOperand)||!operands||typeof operands!=='object'||Array.isArray(operands)||Object.keys(operands).sort().join(',')!=='capitalization,membership,quotes,sports'||Object.values(operands).some(id=>typeof id!=='string'||!DIGEST.test(id)))return new Response(null,{status:400,headers:jsonHeaders});const read=provided?.readMaterial??readMaterial;selectedText=new Map();selected={} as Record<PublicMarketOperand,unknown>;for(const kind of ['membership','quotes','sports','capitalization'] as const){const body=await read(operands[kind]);selectedText.set(operands[kind],body);selected[kind]=JSON.parse(body);}}
     const prepare=provided?.prepareOperand??prepareOperand,result=await prepare(input,selected);
