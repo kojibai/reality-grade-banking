@@ -103,8 +103,10 @@ jobs:
       - run: npm run test:browser
       - name: Check native Feed music handoffs
         run: |
-          npx playwright install --with-deps webkit
-          node scripts/check-feed-music-browser.mjs
+          # The pinned Playwright 1.62.1 image carries both matching engines and media codecs.
+          docker run --rm --init --shm-size=1g -v "$GITHUB_WORKSPACE:/work:ro" -w /work \
+            mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e \
+            node scripts/check-feed-music-browser.mjs
       - name: Messages appointment and relationship continuity
         run: MESSAGES_VISUAL_EVIDENCE=test-results/messages-workspace node scripts/check-messages-workspace-browser.mjs
       - name: Compressed Feed first interaction and music continuity

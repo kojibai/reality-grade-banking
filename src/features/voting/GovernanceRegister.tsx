@@ -18,7 +18,7 @@ function matches(row:GovernanceRow,tab:Tab){
   return ({charter:'Charters',ballot:'Ballots',mandate:'Mandates',candidacy:'Candidates',challenge:'Challenges',ratification:'Ratifications',closure:'Closures'} as const)[t.kind]===tab;
 }
 export const governanceExamplePath='/vote/?example=harbor-tool-library';
-export function GovernanceRegister({rows,network,go,path,member,children,example=false,personal=false}:{rows:readonly GovernanceRow[];network:readonly GovernanceRow[];go:(digest:string)=>void;path:(row:GovernanceRow)=>string|null;member?:(id:string)=>string;children?:ReactNode;example?:boolean;personal?:boolean}){
+export function GovernanceRegister({rows,network,go,path,member,children,example=false,personal=false,onExample}:{rows:readonly GovernanceRow[];network:readonly GovernanceRow[];go:(digest:string)=>void;path:(row:GovernanceRow)=>string|null;member?:(id:string)=>string;children?:ReactNode;example?:boolean;personal?:boolean;onExample?:()=>void}){
   const [activityView,setActivityView]=useState(personal),[tab,setTab]=useState<Tab|'All records'>('All records'),[query,setQuery]=useState(''),[limit,setLimit]=useState(24);
   const {byId,ballots,activity}=useMemo(()=>{
     const byId=new Map(network.map(r=>[r.digest,r])),ballots=new Map<string,number>(),activity=new Map<string,{proposals:number;polls:number}>();
@@ -48,7 +48,7 @@ export function GovernanceRegister({rows,network,go,path,member,children,example
         {t.kind==='charter'&&<span className="gov-purpose">{t.rules.purpose}</span>}
         <small>{t.kind==='charter'?qty(count?.proposals??0,'proposal')+' · '+qty(count?.polls??0,'poll'):t.kind==='proposal'?qty(ballots.get(r.digest)??0,'ballot Original'):name}{!url?' · Held locally':''}</small>
       </button></div>;})}
-    {!filtered.length&&<div className="gov-empty"><p>{needle?'No matching records.':(activityView?'No matching activity in the records held here.':'No charters in the records held here.')}</p>{!example&&!rows.length&&<a href={governanceExamplePath}>Explore a populated charter</a>}</div>}
+    {!filtered.length&&<div className="gov-empty"><p>{needle?'No matching records.':(activityView?'No matching activity in the records held here.':'No charters in the records held here.')}</p>{!example&&!rows.length&&(onExample?<button className="gov-link" onClick={onExample}>Explore a populated charter</button>:<a href={governanceExamplePath}>Explore a populated charter</a>)}</div>}
     {filtered.length>limit&&<button onClick={()=>setLimit(n=>n+24)}>Show more records</button>}
   </>;
 }

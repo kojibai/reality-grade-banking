@@ -10,10 +10,10 @@ import treasury from './qualification/treasury.json?raw';
 const rawSources={election,treasury};
 const label={election:'Steward election',treasury:'Repair installment'};
 type Inspection=Awaited<ReturnType<typeof verifyGovernanceQualification>>;
-export function GovernanceQualification({name}:{name:QualificationName}){
+export function GovernanceQualification({name,onBack,onSelect}:{name:QualificationName;onBack?:()=>void;onSelect?:(name:QualificationName)=>void}){
  const [check,setCheck]=useState<Inspection|null>(null),[error,setError]=useState(''),[checking,setChecking]=useState(false);
  const raw=rawSources[name],p:Qualification=JSON.parse(raw),decision=p.decision,other=name==='election'?'treasury':'election';
- useEffect(()=>{document.title=label[name]+' qualification · Bankeiz';},[name]);
+ useEffect(()=>{if(!onBack)document.title=label[name]+' qualification · Bankeiz';},[name,onBack]);
  async function verify(){
   setChecking(true);setError('');
   try{const {verifyGovernanceQualification,verifyQualificationSettlement}=await import('./qualification/verify'),encode=new TextEncoder();
@@ -24,9 +24,9 @@ export function GovernanceQualification({name}:{name:QualificationName}){
   finally{setChecking(false);}
  }
  return <div className="voting-board">
-  <GovernanceHeading eyebrow="Isolated execution qualification" title={label[name]}/>
-  <nav className="gov-actions" aria-label="Qualification navigation"><a className="gov-link" href={governanceExamplePath}><ArrowLeft size={15}/>Harbor Tool Library</a>
-   <a className="gov-link" href={'/vote/?qualification='+other}>{label[other]} qualification</a></nav>
+  <GovernanceHeading mark={!onBack} eyebrow="Isolated execution qualification" title={label[name]}/>
+  <nav className="gov-actions" aria-label="Qualification navigation">{onBack?<button className="gov-link" onClick={onBack}><ArrowLeft size={15}/>Harbor Tool Library</button>:<a className="gov-link" href={governanceExamplePath}><ArrowLeft size={15}/>Harbor Tool Library</a>}
+   {onSelect?<button className="gov-link" onClick={()=>onSelect(other)}>{label[other]} qualification</button>:<a className="gov-link" href={'/vote/?qualification='+other}>{label[other]} qualification</a>}</nav>
   <article className="gov-stack"><section className="gov-box">
    <h2>{name==='election'?'Workshop steward seated':'Repair installment authorized'}</h2>
    <p>{name==='election'?'Two electors seated '+decision.seated.join(', ')+' as workshop steward.':

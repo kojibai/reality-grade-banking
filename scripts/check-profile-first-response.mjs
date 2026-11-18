@@ -46,6 +46,8 @@ try{
  for(const name of ['alexmorgan',fullName,'bjklock']){
   const context=await browser.newContext({viewport:{width:390,height:844},locale:'de-DE',timezoneId:'Pacific/Honolulu',serviceWorkers:'block'}),page=await context.newPage(),errors=[],pending=[];let entryReady;const entryRequested=new Promise(done=>{entryReady=done;});
   try{
+   const votingRequests=[];
+   page.on('request',req=>{if(/\/assets\/(?:VotingBoard|Governance|governance-)|\/api\/[^?]*governance/i.test(new URL(req.url()).pathname))votingRequests.push(req.url());});
    page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='error'&&/hydrat|didn't match|server rendered|react.dev\/errors\/(?:418|423|425)/i.test(message.text()))errors.push(message.text());});
    await page.route('**/api/**',route=>{
     if(new URL(route.request().url()).origin===origin)return route.continue();
@@ -64,10 +66,17 @@ try{
    assert.equal(await page.evaluate(()=>window.firstProfileNode===document.querySelector('.profile-hero')),true,'Hydrate the existing real profile DOM');
    assert.equal(await page.locator('.profile-unavailable,[data-profile-opening],.public-entry-placeholder').count(),0);assert.deepEqual(errors,[],name+' hydration');
    if(name==='bjklock'){
+    assert.deepEqual(votingRequests,[],'The profile opens without any voting JS, CSS or API requests');
     const before=await page.locator('.profile-asset').count();
     await page.getByRole('button',{name:'More assets',exact:true}).click();
     await page.waitForFunction(count=>document.querySelectorAll('.profile-asset').length>count,before);
     assert.deepEqual(errors,[],name+' interactive expansion');
+    await page.getByRole('button',{name:'View public voting record'}).click();
+    const dialog=page.getByRole('dialog',{name:'Public voting record'});
+    await dialog.getByRole('navigation',{name:'Public voting data'}).waitFor();
+    assert.ok(votingRequests.some(url=>url.includes('/VotingBoard-')),'Only tapping voting loads its dashboard');
+    await dialog.getByRole('button',{name:'Go back'}).click();await dialog.waitFor({state:'hidden'});
+    assert.equal(page.url(),origin+'/'+name+'/');
    }
    results.push({name,realFirstHTML:true,APIResponsesStalled:true,sameDOM:true,sourceReads:reads.filter(value=>value===name).length});
   }catch(error){await writeFile(resolve(output,name+'-failed.html'),await page.content());console.error(JSON.stringify({name,heroes:await page.locator('.profile-hero').count(),url:page.url(),body:(await page.locator('body').innerText()).slice(0,1000)}));throw error;}finally{await context.close();}
