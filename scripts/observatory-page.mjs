@@ -1,3 +1,9 @@
+export function observatoryNavigationContent(html) {
+  const detailStart = html.indexOf('<section class="obs-details obs-inner">');
+  const mainEnd = html.lastIndexOf('</main>');
+  if (detailStart < 0 || mainEnd <= detailStart) throw Error('OBSERVATORY_FIRST_FRAME_REQUIRED');
+  return html.slice(0, detailStart) + html.slice(mainEnd);
+}
 // The Observatory shares the mounted Ledger runtime and its one public seed.
 export function observatoryPage(ledger, state) {
   const title = 'Observatory | Bankeiz';
@@ -10,10 +16,7 @@ export function observatoryPage(ledger, state) {
     + '<meta property="og:type" content="website"><meta property="og:title" content="'+title+'"><meta property="og:description" content="'+description+'"><meta property="og:url" content="'+url+'">'+style;
   // Other pages carry the ready first viewport. The direct Observatory document
   // carries every table and chart; both attach the same retained Ledger reader.
-  const detailStart = state.content.indexOf('<section class="obs-details obs-inner">');
-  const mainEnd = state.content.lastIndexOf('</main>');
-  if (detailStart < 0 || mainEnd <= detailStart) throw Error('OBSERVATORY_FIRST_FRAME_REQUIRED');
-  const content = state.content.slice(0, detailStart) + state.content.slice(mainEnd);
+  const content = observatoryNavigationContent(state.content);
   const page = {...ledger, title, head, content};
   const document = '<!doctype html><html lang="en"><head>'+head+'<script type="module" src="'+ledger.entry+'"></script></head><body><div id="public-ledger-root" data-public-runtime="ledger">'+state.content+'</div>'+state.seedScript+'</body></html>';
   return {page, document};

@@ -16,3 +16,22 @@ it('refuses forged route amounts, duplicate source fields and a substituted head
 it('keeps an admitted remote invoice visible when optional cold retention fails',async()=>{const m=await import('../src/receiz/invoice-sharing'),s=await source(),fetcher=transport(),url=await m.publishInvoiceLink(s,{fetcher,isCurrent:()=>true});vi.resetModules();ports.sdk={...await import('@receiz/sdk'),...fixture.runtime};ports.remote=true;ports.failHold=true;try{const cold=await import('../src/receiz/invoice-sharing'),opened=await cold.readInvoiceLink(url,{fetcher});expect(opened.artifactSha256).toBe(s.artifactSha256);expect(opened.offlineRetained).toBe(false);expect(cold.knownInvoiceLink(url)?.original).toBe(opened.original);}finally{ports.remote=false;ports.failHold=false;}});
 
 it('retains a genuinely remote source on a new device and cold-reopens without transport',async()=>{const m=await import('../src/receiz/invoice-sharing'),s=await source(),fetcher=transport(),url=await m.publishInvoiceLink(s,{fetcher,isCurrent:()=>true});await new Promise<void>((resolve,reject)=>{const req=indexedDB.deleteDatabase('receiz-material-source-custody-v1');req.onsuccess=()=>resolve();req.onerror=()=>reject(req.error);});vi.resetModules();ports.sdk={...await import('@receiz/sdk'),...fixture.runtime};const remote=await import('../src/receiz/invoice-sharing'),received=await remote.readInvoiceLink(url,{fetcher});expect(received.offlineRetained).not.toBe(false);vi.resetModules();ports.sdk={...await import('@receiz/sdk'),...fixture.runtime};const cold=await import('../src/receiz/invoice-sharing'),unavailable=vi.fn(async()=>{throw Error('OFFLINE');}),held=await cold.readInvoiceLink(url,{fetcher:unavailable});expect(held.artifactSha256).toBe(s.artifactSha256);expect(unavailable).not.toHaveBeenCalled();});
+
+it('seals supporting documents into governance references and cold-opens their exact payload with transport offline',async()=>{
+  const {sealGovernanceOriginal,openGovernanceOriginal,readGovernanceTerms}=await import('../src/receiz/governance-documents');
+  const {publishProofMaterial}=await import('../src/receiz/proof-material-sharing');
+  const identity={binding:fixture.binding,sealRecordExport:async(input:Parameters<typeof fixture.sealer.seal>[0])=>{
+    const sealed=await fixture.sealer.seal(input);return new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType});
+  }} as unknown as import('../src/receiz/native-identity').OpenIdentity;
+  const file=new File(['approved scope\n'],'mandate.txt',{type:'text/plain'});
+  const original=await sealGovernanceOriginal(identity,{kind:'mandate',charter:'a'.repeat(64),delegate:null,previous:null,untilKaiPulse:'1234',scope:'Operations'},[file]);
+  const terms=(await openGovernanceOriginal(original.file)).document.terms,attachment=terms.attachments![0];
+  expect(attachment.name).toBe(file.name);
+  expect(()=>readGovernanceTerms({...terms,attachments:[{...attachment,source:'https://unrelated.example/file'}]})).toThrow();
+  const fetcher=transport();await publishProofMaterial(attachment.source,()=>{},undefined,fetcher);
+  vi.resetModules();ports.sdk={...await import('@receiz/sdk'),...fixture.runtime};
+  const unavailable=vi.fn(async()=>{throw Error('OFFLINE');});
+  const {opened}=await (await import('../src/receiz/proof-material-sharing')).readProofMaterial(attachment.source,unavailable);
+  expect(new TextDecoder().decode(opened.verifiedPayload.bytes)).toBe(await file.text());
+  expect(unavailable).not.toHaveBeenCalled();
+});

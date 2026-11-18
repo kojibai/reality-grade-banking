@@ -14,6 +14,8 @@ import type {GovernanceRow} from '../../receiz/governance-directory';
 import type {GovernanceTerms} from '../../receiz/governance-documents';
 import {ballotRegister,charterRatification,governanceTitle,ofKind,observedSeats} from '../../receiz/governance-view';
 
+import {GovernanceFileList} from './GovernanceFiles';
+
 export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:GovernanceTerms;practice?:boolean;member?:(id:string)=>string}){
   let facts:[string,string][]=[];
   switch(terms.kind){
@@ -30,7 +32,7 @@ export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:Go
     case 'challenge':facts=[['Objection and requested remedy',terms.text],['Proposal Original',terms.proposal],['Charter Original',terms.charter]];break;
   }
   const payment=terms.kind==='charter'?terms.rules.execution?.treasury:terms.kind==='proposal'?terms.payment:null;
-  return <><dl className="gov-facts">{facts.map(([label,text],i)=><div key={i}><dt>{practice&&label==='Charter Original'?'Governing charter':practice&&label==='Candidate Originals'?'Candidate statements':label}</dt><dd>{text}</dd></div>)}</dl>{payment&&<PaymentFacts payment={payment}/>}</>;
+  return <>{terms.kind==='charter'&&terms.logo&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}{terms.attachments?.length?<GovernanceFileList files={terms.attachments}/>:null}<dl className="gov-facts">{facts.map(([label,text],i)=><div key={i}><dt>{practice&&label==='Charter Original'?'Governing charter':practice&&label==='Candidate Originals'?'Candidate statements':label}</dt><dd>{text}</dd></div>)}</dl>{payment&&<PaymentFacts payment={payment}/>}</>;
 }
 type ExampleRecord={member:(owner:string)=>string;path:(row:GovernanceRow)=>string;file:(digest:string)=>string|null};
 type Props={memberName?:(owner:string)=>string;practicePanel?:(panel:'People'|'Charter rules'|'Decisions'|'Proposal')=>ReactNode;allowEntry?:boolean;identity?:OpenIdentity|null;example?:ExampleRecord;published:boolean;read?:(digest:string)=>Promise<GovernanceOriginal>;row:GovernanceRow;rows:readonly GovernanceRow[];actor:string|null;go:(digest:string)=>void;back:()=>void;review:(terms:GovernanceTerms)=>void;compose:(charter:string)=>void;download:(row:GovernanceRow)=>void};
@@ -63,7 +65,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
   return <section className="gov-stack">
     <button className="gov-link" onClick={back}><ArrowLeft size={16}/>Back</button>
     <div><small className="gov-kicker">{terms.kind}</small><div className="gov-detail-title"><h2>{terms.kind==='ballot'?member(terms.choice):governanceTitle(row)}</h2>{(published||example)&&<GovernanceLink row={row} path={example?.path(row)}/>}</div><small className="gov-meta">By {member(row.document.author)}</small></div>
-    {terms.kind==='charter'&&<><p>{terms.rules.purpose}</p><nav className="gov-tabs" aria-label="Charter sections">{(['Decisions','People','Charter rules'] as const).map(name=><button key={name} aria-current={charterTab===name?'page':undefined} onClick={()=>setCharterTab(name)}>{name}</button>)}</nav></>}
+    {terms.kind==='charter'&&<>{terms.logo&&charterTab!=='Charter rules'&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}<p>{terms.rules.purpose}</p><nav className="gov-tabs" aria-label="Charter sections">{(['Decisions','People','Charter rules'] as const).map(name=><button key={name} aria-current={charterTab===name?'page':undefined} onClick={()=>setCharterTab(name)}>{name}</button>)}</nav></>}
     {terms.kind==='charter'&&practicePanel?.(charterTab)}
     {terms.kind==='charter'&&charterTab==='Decisions'&&<section className="gov-charter-decisions">
       {ratified?.complete&&(authorized||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}

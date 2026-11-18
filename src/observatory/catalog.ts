@@ -11,15 +11,18 @@ import heldAudience from './audience-held-totals.json';
 
 const earlierAudience=new Map(heldAudience.map(row=>[row.userId,row]));
 
+const documentCatalogs=new WeakMap<PublicNetworkCache,{directory:ObservatoryDirectory;catalog:PublicMarketCatalog}>();
 export function documentCatalog(snapshot?:PublicNetworkCache, directory?:ObservatoryDirectory):PublicMarketCatalog|null {
   if (!snapshot || !directory) return null;
+  const held=documentCatalogs.get(snapshot);if(held?.directory===directory)return held.catalog;
   const items:PublicMarketItem[]=[];
   for(const row of snapshot.records){
     if(row.source!=='proofs'||row.origin||row.authority!=='public-source-projection') continue;
     const item=readPublicProofPresentation(row.details?.publicAsset);
     if(item && item.id===row.sourceId && item.assetId===row.valueOperands?.assetId && item.originalDigest===(row.evidence.artifactDigest??null) && item.pulse===row.pulse)items.push(item);
   }
-  return {...directory,items,sourceCount:items.length,complete:snapshot.coverage.some(c=>c.source==='proofs'&&c.complete)};
+  const catalog={...directory,items,sourceCount:items.length,complete:snapshot.coverage.some(c=>c.source==='proofs'&&c.complete)};
+  documentCatalogs.set(snapshot,{directory,catalog});return catalog;
 }
 
 export interface RankedProfile {

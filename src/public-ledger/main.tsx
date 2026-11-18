@@ -1,3 +1,4 @@
+import {documentCatalog} from '../observatory/catalog';
 import {heldProofCatalog} from '../receiz/usePublicNetwork';
 import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
 import {readPublicLedgerDocumentSeed,type PublicLedgerDocumentSeed} from '../receiz/public-ledger-document-seed';
@@ -37,6 +38,10 @@ export function mountPublicDocument(root=publicRuntimeRoot('ledger')):Root|Promi
  const job=(async()=>{
   const prepared=await readPublicLedgerDocumentSeed();if(roots.has(root))return roots.get(root);
   if(!prepared&&document.getElementById('public-ledger-document-seed'))return;
+  if(prepared?.path==='observatory'&&!heldProofCatalog()){
+   const catalog=documentCatalog(prepared.snapshot,prepared.directory);
+   if(catalog?.complete)publishDiscoveredPublicCatalog(catalog);
+  }
   const view=<StrictMode><PublicLedgerRoot prepared={prepared}/></StrictMode>,renderer=prepared?hydrateRoot(root,view,{identifierPrefix:'public-ledger-'}):createRoot(root,{identifierPrefix:'public-ledger-'});roots.set(root,renderer);if(!prepared)flushSync(()=>renderer.render(view));return renderer;
  })();preparing.set(root,job);void job.finally(()=>{if(preparing.get(root)===job)preparing.delete(root);}).catch(()=>{});return job;
 }

@@ -1,3 +1,4 @@
+import {observatoryNavigationContent} from '../scripts/observatory-page.mjs';
 import {prepareSelectedPublicReferenceCatalog} from './public-reference-state';
 import {compressedCatalog} from './public-market-document';
 import {createHash} from 'node:crypto';
@@ -96,6 +97,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
  const clean=template.replace(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/g,'');
  const html=clean.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
  if(!replaced)throw Error('PUBLIC_LEDGER_PREPARED_TEMPLATE_INVALID');
- const aligned=alignPreparedPublicNavigation(html,path,content,generation,renderBuild);
+ const navigationContent=path==='observatory'?observatoryNavigationContent(content):content;
+ const aligned=alignPreparedPublicNavigation(html,path,navigationContent,generation,renderBuild);
  return aligned.replace('<script id="receiz-navigation"',()=>script+'<script id="receiz-navigation"');
 }

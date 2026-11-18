@@ -504,7 +504,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const directory=await import('./governance-directory'),record=await directory.publicationRecord(original);
     const client=await connectClient([...BANK_READ_SCOPES,'receiz:record'],'Publish the exact public governance Original I reviewed, with my public author identity and its exact contents.');
     noteOpen();
-    const response=await client.appState.publishRecord(record);
+    const documents=original.document.terms.attachments;
+    if(documents?.length)await (await import('./governance-material')).publishGovernanceFiles(documents,noteOpen);
+    noteOpen();const response=await client.appState.publishRecord(record);
     noteOpen();const row=response.records?.[0];
     if(!response.ok||response.accepted!==1||response.rejected!==0||!row||(row.appProjectionData as {digest?:unknown}|null)?.digest!==original.digest)throw Error('Publication is unconfirmed. Keep the Original and retry delivery.');
     await directory.admitPublicGovernanceRow(row);

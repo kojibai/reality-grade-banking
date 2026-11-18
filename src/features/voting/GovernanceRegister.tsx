@@ -44,7 +44,7 @@ export function GovernanceRegister({rows,network,go,path,member,children,example
       const count=activity.get(r.digest),qty=(n:number,label:string)=>n+' '+label+(n===1?'':'s');
       return <div className="gov-list-item" key={r.digest}><button className="gov-row" onClick={()=>go(r.digest)}>
         {(activityView||t.kind!=='charter')&&<span className="gov-meta">{t.kind==='proposal'?t.decision:t.kind} {parentTitle(r)&&<>· {parentTitle(r)}</>}</span>}
-        <strong>{t.kind==='ballot'?(member?.(t.choice)??t.choice):governanceTitle(r)}</strong>
+        {t.kind==='charter'&&t.logo&&<img className="gov-logo" alt="" src={t.logo}/>}<strong>{t.kind==='ballot'?(member?.(t.choice)??t.choice):governanceTitle(r)}</strong>
         {t.kind==='charter'&&<span className="gov-purpose">{t.rules.purpose}</span>}
         <small>{t.kind==='charter'?qty(count?.proposals??0,'proposal')+' · '+qty(count?.polls??0,'poll'):t.kind==='proposal'?qty(ballots.get(r.digest)??0,'ballot Original'):name}{!url?' · Held locally':''}</small>
       </button></div>;})}

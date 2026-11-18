@@ -14,6 +14,7 @@ import {charterElectorate,openGovernanceOriginal,sealGovernanceOriginal,type Gov
 import {governanceOutbox,rememberGovernanceDelivery,reopenPendingGovernance,type PendingOriginal} from '../../receiz/governance-outbox';
 import {eligibleProposal,voteEnds,charterRatification,governanceTitle,ofKind,type Row} from '../../receiz/governance-view';
 import {GovernanceFacts,GovernanceDetail} from './GovernanceDetail';
+import {GovernanceFilePicker} from './GovernanceFiles';
 import {GovernanceComposer} from './GovernanceComposer';
 import {profileUsernameLabel} from '../../receiz/account-name';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
@@ -36,6 +37,7 @@ export function VotingBoard({profile,initialDigest}:Props){
   const [identity,setIdentity]=useState<OpenIdentity|null>(profile?.ownerIdentity??null),[screen,setScreen]=useState<Screen>(initialDigest?'detail':'list');
   const [selected,select]=useState(initialDigest??''),[mode,setMode]=useState<'charter'|'proposal'>('charter'),[terms,setTerms]=useState<GovernanceTerms|null>(null);
   const [saved,setSaved]=useState<GovernanceOriginal|null>(null),[error,setError]=useState(''),[delivery,setDelivery]=useState(''),[syncing,setSyncing]=useState(false),[busy,setBusy]=useState(false),[entryBusy,setEntryBusy]=useState(false);
+  const [files,setFiles]=useState<File[]>([]);
   const trail=useRef<string[]>([]);
   const session=useRef<ReturnType<typeof checkoutIdentitySession>|null>(null),fileInput=useRef<HTMLInputElement>(null),active=useRef(true),acting=useRef(false),currentIdentity=useRef(identity);
   const access=()=>session.current??=checkoutIdentitySession();
@@ -61,7 +63,7 @@ export function VotingBoard({profile,initialDigest}:Props){
   const viewRows=publicProfile||personal?rows.filter(r=>publicProfile?r.profileUid===profile?.uid:r.document.author===actor):publicRows;
   const exact=(digest:string)=>{const local=privateSources.find(o=>o.digest===digest);return local?Promise.resolve(local):heldGovernanceOriginal(digest);};
   const check=(who:OpenIdentity|null)=>{if(!active.current||currentIdentity.current!==who)throw Error('The open identity changed.');};
-  const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
+  const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setFiles([]);setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
   const sync=useCallback(()=>refreshGovernanceDirectory(),[]);
   async function refreshByRequest(){
     if(syncing)return;
@@ -116,6 +118,7 @@ export function VotingBoard({profile,initialDigest}:Props){
   }
   function start(kind:'charter'|'proposal',charterId?:string,entryCompleted=false){
     if((entryBusy&&!entryCompleted)||acting.current||publicProfile)return;
+    setFiles([]);
     void run(async()=>{
       if(!currentIdentity.current&&closed.current){
         resumeAction.current={kind,charterId};
@@ -155,7 +158,7 @@ export function VotingBoard({profile,initialDigest}:Props){
   }
   const composing=screen==='charter'||screen==='proposal'||screen==='review'&&(terms?.kind==='charter'||terms?.kind==='proposal');
   const entry=<MeetingIdentity service={{importIdentity:async(f,p)=>(await access()).import(f,p),recoverPbi:async()=>(await access()).recoverPbi()}} disabled={busy} onBusy={setEntryBusy} onError={setError} onReady={ready}/>;
-  function review(t:GovernanceTerms){setTerms(t);setScreen('review');setError('');}
+  function review(t:GovernanceTerms){if(t.kind!=='charter'&&t.kind!=='proposal')setFiles([]);setTerms(t);setScreen('review');setError('');}
   async function run(work:()=>Promise<void>){
     if(acting.current)return;acting.current=true;setBusy(true);setError('');
     try{await work();}catch(e){if(active.current)setError(e instanceof Error?e.message:'The operation could not finish.');}
@@ -202,8 +205,8 @@ export function VotingBoard({profile,initialDigest}:Props){
       if((terms.kind==='ballot'||terms.kind==='mandate')&&terms.previous){const prior=await exact(terms.previous);check(who);const t=prior.document.terms;
         if(prior.document.author!==who.binding.artifactOwnerReceizId||t.kind!==terms.kind||t.charter!==terms.charter||t.kind==='ballot'&&terms.kind==='ballot'&&t.proposal!==terms.proposal||t.kind==='mandate'&&terms.kind==='mandate'&&t.scope!==terms.scope)throw Error('The prior statement does not belong to this action.');}
     }
-    check(who);const original=await sealGovernanceOriginal(who,terms);check(who);
-    setSaved(original);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==original.digest),original]);setScreen('saved');
+    check(who);const original=await sealGovernanceOriginal(who,terms,files);check(who);
+    setFiles([]);setSaved(original);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==original.digest),original]);setScreen('saved');
     await rememberGovernanceDelivery(who,original);check(who);const pending=await governanceOutbox(who);check(who);setOutbox(pending);
   }
   async function publish(original:GovernanceOriginal){
@@ -230,9 +233,9 @@ export function VotingBoard({profile,initialDigest}:Props){
       {outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}
     </>}
     {!profile&&screen!=='list'&&<GovernanceHeading title="Public voting" eyebrow={publicId?'@'+publicId:undefined}/>}
-    {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer member={member} identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId} charters={eligibleCharters} onCharter={select} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
+    {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer member={member} identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId} charters={eligibleCharters} onCharter={id=>{select(id);setFiles([]);}} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
     {screen==='detail'&&(chosen?<><GovernanceDetail memberName={member} identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!publicProfile&&!entryBusy&&!busy} compose={id=>start('proposal',id)} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
-    {screen==='review'&&terms&&<section className="gov-stack"><h2>Review {terms.kind}</h2><p>Your Receiz owner ID and these terms will be visible in the Original. You can save it on this device and choose when to publish it.</p><GovernanceFacts member={member} terms={terms}/><div className="gov-actions"><button disabled={busy} className="gov-primary" onClick={()=>void run(confirm)}><FileCheck2 size={16}/>{busy?'Sealing…':'Seal Original'}</button><button disabled={busy} onClick={()=>setScreen(terms.kind==='charter'?'charter':terms.kind==='proposal'?'proposal':'detail')}>{terms.kind==='charter'||terms.kind==='proposal'?'Edit details':'Back'}</button></div></section>}
+    {screen==='review'&&terms&&<section className="gov-stack"><h2>Review {terms.kind}</h2><p>Your Receiz owner ID and these terms will be visible in the Original. You can save it on this device and choose when to publish it.</p><GovernanceFacts member={member} terms={terms}/>{['charter','proposal','mandate','challenge','candidacy'].includes(terms.kind)&&<GovernanceFilePicker files={files} disabled={busy} change={setFiles}/>}<div className="gov-actions"><button disabled={busy} className="gov-primary" onClick={()=>void run(confirm)}><FileCheck2 size={16}/>{busy?'Sealing…':'Seal Original'}</button><button disabled={busy} onClick={()=>setScreen(terms.kind==='charter'?'charter':terms.kind==='proposal'?'proposal':'detail')}>{terms.kind==='charter'||terms.kind==='proposal'?'Edit details':'Back'}</button></div></section>}
     {screen==='saved'&&saved&&<section className="gov-stack"><h2>Your {saved.document.terms.kind} Original</h2><p>Sealed by {member(saved.document.author)}</p><code>{saved.digest}</code><GovernanceFacts member={member} terms={saved.document.terms}/><div className="gov-actions"><button disabled={busy} className="gov-primary" onClick={()=>void run(()=>publish(saved))}>{busy?'Publishing…':'Publish publicly'}</button><button onClick={()=>save(saved.file)}><Download size={16}/>Save Original</button><button onClick={()=>setScreen('list')}>Done</button></div></section>}
     <input ref={fileInput} hidden type="file" aria-label="Open governance Original" onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void run(async()=>{const o=await openGovernanceOriginal(file);if(!active.current)return;setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);go(o.digest);});}}/>
     {(entryBusy||busy&&screen==='list')&&<small role="status">Opening identity…</small>}{error&&<p className="gov-error" role="alert">{error}</p>}{delivery&&screen==='list'&&<p className="gov-delivery" role="status">{delivery}</p>}

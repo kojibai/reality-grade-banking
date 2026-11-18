@@ -39,7 +39,7 @@
     "api/explore.ts": {
       "maxDuration": 120,
       "excludeFiles": "server/profile-runtime/profile-pages/**",
-      "includeFiles": "{dist/index.html,dist/{explore,ledger}/**,dist/{market-cap,feed,discover}/index.html,server/profile-runtime/{*,share-history/**},public/receiz-public-{market.json,capitalization.json,ledger.json.gz.bin,share-chart-history.json,sports.json}}"
+      "includeFiles": "{dist/index.html,dist/{explore,ledger}/**,dist/{market-cap,feed,discover,observatory}/index.html,server/profile-runtime/{*,share-history/**},public/receiz-public-{market.json,capitalization.json,ledger.json.gz.bin,share-chart-history.json,sports.json}}"
     },
     "api/registry.ts": {
       "maxDuration": 60,
@@ -159,12 +159,16 @@
       "destination": "/__bank_static_entry/explore/index.html"
     },
     {
+      "source": "/observatory/index.html",
+      "destination": "/__bank_static_entry/observatory/index.html"
+    },
+    {
       "source": "/observatory",
-      "destination": "/observatory/index.html"
+      "destination": "/__bank_static_entry/observatory/index.html"
     },
     {
       "source": "/observatory/",
-      "destination": "/observatory/index.html"
+      "destination": "/__bank_static_entry/observatory/index.html"
     },
     {
       "source": "/ledger",

@@ -5,12 +5,14 @@ import {readGovernanceTerms} from '../../receiz/governance-documents';
 import {CharterExecutionFields,PaymentFacts} from './CharterExecutionFields';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import {charterTemplates, proposalDraft, proposalTemplates, ruleLabels, scopedRepresentation} from './governance-templates';
+import {CharterLogoPicker} from './GovernanceFiles';
 import {CharterOffices} from './CharterOffices';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import {eligibleCandidates,type Row} from '../../receiz/governance-view';
 
 type Props={member?:(id:string)=>string;identity?:OpenIdentity;mode:'charter'|'proposal';owner:string;rows:readonly GovernanceRow[];charter?:Row<'charter'>;charters:readonly Row<'charter'>[];onCharter:(id:string)=>void;onFound:()=>void;onReview:(terms:GovernanceTerms)=>void;onCancel:()=>void};
 export function GovernanceComposer({member,identity,mode,owner,charter,charters,onCharter,onFound,rows,onReview,onCancel}:Props){
+  const [logo,setLogo]=useState(''),[logoBusy,setLogoBusy]=useState(false);
   const [step,setStep]=useState(1),[organization,setOrganization]=useState(''),[founders,setFounders]=useState('');
   const [template,setTemplate]=useState('Member association');
   type CharterDraft = (typeof charterTemplates)[string];
@@ -62,7 +64,7 @@ export function GovernanceComposer({member,identity,mode,owner,charter,charters,
       const text=guidedBudget?[body.trim(),...budgetFields.map(k=>k+' · '+(budget[k]??'').trim())].join('\n\n'):body.trim();
       if(guidedBudget&&budgetFields.some(k=>!budget[k]?.trim()))throw Error('Complete the budget, cost, recipient and conditions before review.');
       if(text.length>4000)throw Error('Shorten the proposal and budget details to fit 4,000 characters.');
-      const terms=mode==='charter'?{kind:'charter',rules:{...rules,...policyText,offices,articles,...(execution?{execution}:{}),...(separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
+      const terms=mode==='charter'?{kind:'charter',...(logo?{logo}:{}),rules:{...rules,...policyText,offices,articles,...(execution?{execution}:{}),...(separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
         {kind:'proposal',charter:charter?.digest,title:title.trim(),text,decision,...(election?{office,nominations:selected,choices:selected.map(d=>candidates.find(c=>c.digest===d)?.document.author)}:{...(decision==='Treasury'&&payment?{payment}:{}),choices:bindingBinary?['Approve','Reject']:options.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)})};
       const reviewed=readGovernanceTerms(terms);
       if(reviewed.kind==='charter'&&!reviewed.rules.founders.includes(owner))throw Error('Include your own Receiz owner ID among the founders.');
@@ -82,7 +84,7 @@ export function GovernanceComposer({member,identity,mode,owner,charter,charters,
         </div>}
       <label>{mode==='charter'?'Organization name':'Proposal title'}<input required maxLength={mode==='charter'?120:160} value={mode==='charter'?organization:title} onChange={e=>mode==='charter'?setOrganization(e.target.value):editProposal({title:e.target.value})}/></label>
       <label>{mode==='charter'?'Purpose and scope':'What should members decide?'}<textarea required rows={4} maxLength={4000} value={mode==='charter'?rules.purpose:body} onChange={e=>mode==='charter'?editRules({purpose:e.target.value}):editProposal({text:e.target.value})}/></label>
-      {mode==='charter'?<><p>Founding member <strong>{member?.(owner)??owner}</strong></p><label>Additional founders <small>One Receiz owner ID per line. Each founder ratifies the charter.</small><textarea value={founders} onChange={e=>setFounders(e.target.value)}/></label>
+      {mode==='charter'?<><CharterLogoPicker logo={logo} change={setLogo} busy={setLogoBusy}/><p>Founding member <strong>{member?.(owner)??owner}</strong></p><label>Additional founders <small>One Receiz owner ID per line. Each founder ratifies the charter.</small><textarea value={founders} onChange={e=>setFounders(e.target.value)}/></label>
         <label className="gov-check"><input type="checkbox" checked={separate} onChange={e=>setSeparate(e.target.checked)}/>Choose a separate voting membership</label>
         {separate&&<label>Voting members <small>One Receiz owner ID per line. Only these members may propose and vote.</small><textarea required value={electorate} onChange={e=>setElectorate(e.target.value)}/></label>}</>:<>
         {election?<><label>Office<select required value={office} onChange={e=>{setOffice(e.target.value);setSelected([]);}}><option value="">Choose an elected office</option>{electiveOffices.map(o=><option key={o.name}>{o.name}</option>)}</select></label>
@@ -101,6 +103,6 @@ export function GovernanceComposer({member,identity,mode,owner,charter,charters,
       <div className="gov-fields">{([['Approval threshold (%)','approvalPercent',50,100],['Minimum affirmative electorate (%)','minimumSupportPercent',0,100],['Voting period (days)','voteDays',1,365],['Challenge period (days)','appealDays',1,90]] as const).map(([label,key,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} required value={rules[key]} onChange={e=>editRules({[key]:Number(e.target.value)})}/></label>)}</div>
     </>}
     {error&&<p role="alert">{error}</p>}
-    <button className="gov-primary" type="submit" disabled={mode==='proposal'&&(!charter||election&&(!office||!selected.length))}>{mode==='charter'&&step===1?<><ArrowRight size={16}/>Continue</>:<><Check size={16}/>{identity?'Review Original':'Review draft'}</>}</button>
+    <button className="gov-primary" type="submit" disabled={logoBusy||mode==='proposal'&&(!charter||election&&(!office||!selected.length))}>{mode==='charter'&&step===1?<><ArrowRight size={16}/>Continue</>:<><Check size={16}/>{identity?'Review Original':'Review draft'}</>}</button>
   </form>;
 }
