@@ -1,14 +1,25 @@
 import {PUBLIC_SOURCES, type PublicRecord, type PublicSource} from '../receiz/public-network';
+import {marketPulseTime} from '../receiz/market-projection/coordinates';
 import {readLedgerCausalLineage, type LedgerCausalLineage} from '../receiz/ledger-causal-source';
 
 export const sourceNames: Record<PublicSource, string> = {
-  actions: 'Actions', wallet: 'Wallet', graph: 'Proof graph', proofs: 'Proof objects',
+  actions: 'Actions', wallet: 'Wallet records', graph: 'Proof graph', proofs: 'Public Showcase Originals',
 };
 export const periods = ['1H', '24H', '7D', '30D', '90D', '1Y', 'All'] as const;
 export type Period = typeof periods[number];
 const hour = 3_600_000;
 const windows: Record<Exclude<Period,'All'>, [number, number]> = {'1H':[60,60_000], '24H': [48, hour / 2], '7D': [56, 3 * hour], '30D': [60, 12 * hour], '90D': [90, 24 * hour], '1Y': [73, 5 * 24 * hour]};
 export type TimedRecord = {time: number; record: PublicRecord};
+
+export function activityTime(record:PublicRecord){
+  const calendar=Date.parse(record.time??'');
+  if(Number.isFinite(calendar))return calendar;
+  // Only the carried event coordinate dates the asset claim or the transfer.
+  if(record.source==='graph'&&(record.kind==='market-asset'||record.kind==='card-transfer')&&record.pulse&&/^\d{1,10}$/.test(record.pulse)){
+    return marketPulseTime(Number(record.pulse));
+  }
+  return NaN;
+}
 
 export function indexActivity(records: readonly PublicRecord[]) {
   const streams = Object.fromEntries(PUBLIC_SOURCES.map(source => [source, []])) as unknown as Record<PublicSource, TimedRecord[]>;
@@ -17,7 +28,7 @@ export function indexActivity(records: readonly PublicRecord[]) {
   for (const record of records) {
     if (record.authority !== 'public-source-projection' || record.origin) continue;
     counts[record.source]++;
-    const time = Date.parse(record.time ?? '');
+    const time = activityTime(record);
     if (Number.isFinite(time)) streams[record.source].push({time, record});
     if (!lineage && record.details?.causalLineage && /transfer/i.test(record.kind)) {
       const history = readLedgerCausalLineage(record.details.causalLineage);

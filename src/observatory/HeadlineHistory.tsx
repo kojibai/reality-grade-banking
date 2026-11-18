@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {X} from 'lucide-react';
+import {ArrowUpRight, X} from 'lucide-react';
 import {sampleChartIndices} from '../core/chart-history';
 import {periodBounds, periods, type Period} from './activity';
 
@@ -8,6 +8,12 @@ export const headlineNames = {
   assets: 'Assets in circulation',
   hours: 'Witnessed hours',
   ledger: 'Public ledger records',
+} as const;
+const destinations = {
+  cap: {label:'Open Global Market Cap', href:'/market-cap/'},
+  assets: {label:'Explore assets', href:'/explore/'},
+  hours: {label:'Open Audience', href:'#obs-audience'},
+  ledger: {label:'Open Public Ledger', href:'/ledger/'},
 } as const;
 export type Headline = keyof typeof headlineNames;
 export type HistoryPoint = {at: number; value: number};
@@ -73,5 +79,8 @@ export function HeadlineHistory({metric, points, onClose}: {
       <div className="obs-headline-dates"><time>{label(start)}</time><time>{label(end)}</time></div>
       <input type="range" aria-label="Inspect historical reading" aria-valuetext={dates.format(point.at)+' '+times.format(point.at)+' UTC, '+format(point.value)} min={0} max={rows.length-1} disabled={rows.length<2} value={i} onChange={e=>setPicked(Number(e.target.value))}/>
       <p>{notes[metric]}</p></>:<p>No dated readings are available yet.</p>}
+    <footer className="obs-headline-footer"><a href={destinations[metric].href} onClick={()=>dialog.current?.close()}>
+      {destinations[metric].label}<ArrowUpRight size={16} aria-hidden="true"/>
+    </a></footer>
   </dialog>;
 }

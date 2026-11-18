@@ -1,5 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {observeCatalog,growthSeries} from '../src/observatory/catalog';
+import {collectibleActivity} from '../src/observatory/collectible-transfers';
+import type {PublicRecord} from '../src/receiz/public-network';
 import {walletActivity} from '../src/observatory/wallet';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
@@ -37,6 +39,16 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     const {records}=parsePublicNetworkPage('wallet',{ok:true,rows:[{id:'transfer',kind:'chat_transfer',createdAt:'2026-11-01',amountUsdCents:'120',sender:{userId:uid},recipient:{userId:other}},{id:'mint',kind:'note_mint',actor:{userId:uid},amountUsdCents:'350'}]});
     expect(walletActivity(records).timeline.at(-1)).toMatchObject({addresses:2,transfers:1,volume:120n});
     expect(walletActivity(records)).toMatchObject({addresses:2,mints:1,claims:0,volume:'120',pricedTransfers:1});
+  });
+  it('joins graph and action evidence per transfer and copy, and separates value from payment',()=>{
+    const base=parsePublicNetworkPage('actions',{ok:true,actions:[{id:'a',actionKind:'receiz.sports_arena.card_transfer',createdAt:'2026-05-31T12:00:00Z'}]}).records[0];
+    const transfer:PublicRecord={...base,pulse:'12000000',evidence:{transferId:'move',claimHash:'a'.repeat(64)},valueOperands:{cardValueUsdCents:'2500',considerationUsdCents:'0'}};
+    const graph:PublicRecord={...transfer,id:'graph:b',source:'graph',kind:'card-transfer',valueOperands:{considerationUsdCents:'0'}};
+    const second:PublicRecord={...transfer,id:'actions:c',evidence:{...transfer.evidence,claimHash:'b'.repeat(64)},valueOperands:{}};
+    const rows=[transfer,graph,second,{...transfer,id:'other',kind:'signal_run.card.transfer_download'}];
+    expect(collectibleActivity(rows)).toMatchObject({total:2,volume:2500n,priced:1,paid:0n,paymentCoverage:1});
+    expect(collectibleActivity(rows).timeline.at(-1)?.count).toBe(2);
+    expect(walletActivity(rows).transfers).toHaveLength(0);
   });
   it('counts both rails once and retains mixed, single-rail and unclassified gross amounts',()=>{
     const rows=[

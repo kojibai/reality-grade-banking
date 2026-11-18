@@ -100,6 +100,16 @@ try{
   // Static markup already has usable facts. Wait for a real React interaction.
   await ranges.click();
   await page.waitForFunction(()=>document.querySelector('.obs-period button[aria-pressed="true"]')?.textContent==='24H');
+  assert.ok(await page.getByRole('button',{name:'Public Showcase Originals',exact:true}).first().isVisible());
+  assert.ok(await page.getByRole('heading',{name:'Collectible activity',exact:true}).isVisible());
+  const collectible=page.locator('#obs-collectibles');
+  const facts=await collectible.locator('.obs-audience-grid strong').allTextContents();
+  assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
+  await page.locator('.obs-streams').getByRole('button',{name:'Proof graph',exact:true}).click();
+  await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
+  assert.ok((await page.locator('.obs-chart-head p').innerText()).includes('1,050'));
+  await page.locator('.obs-streams').getByRole('button',{name:'Actions',exact:true}).click();
+  await ranges.click();
   const entryUrl=page.url();
   await page.setViewportSize({width:320,height:568});
   for(const [i,name] of ['Global market cap','Assets in circulation','Witnessed hours','Public ledger records'].entries()){
@@ -107,6 +117,7 @@ try{
     await trigger.click();
     const dialog=page.getByRole('dialog',{name,exact:true});
     await dialog.getByRole('img',{name:new RegExp(name+' history')}).waitFor();
+    assert.equal(await dialog.getByRole('link').getAttribute('href'),['/market-cap/','/explore/','#obs-audience','/ledger/'][i]);
     assert.ok((await dialog.locator('.obs-headline-line').getAttribute('d')).length>4);
     const bounds=await dialog.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=321);
     await dialog.getByRole('button',{name:'7D',exact:true}).click();

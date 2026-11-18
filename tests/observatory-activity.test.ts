@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import type {PublicRecord} from '../src/receiz/public-network';
+import {marketPulseTime} from '../src/receiz/market-projection/coordinates';
 import {activityWindow,indexActivity,ledgerLink} from '../src/observatory/activity';
 const anchor=Date.parse('2026-11-18T16:10:00Z');
 function row(id:string, at:number|null):PublicRecord {
@@ -11,6 +12,13 @@ describe('Observatory public activity',()=>{
     expect(indexed.counts.actions).toBe(2);
     expect(indexed.streams.actions.map(item=>item.record.sourceId)).toEqual(['public']);
     expect(indexed.counts.wallet).toBe(0);
+  });
+  it('dates a graph claim by its carried event pulse and leaves sort-only records undated',()=>{
+    const claim={...row('claim',null),source:'graph' as const,kind:'market-asset',pulse:'10786103'};
+    const score={...row('score',null),source:'graph' as const,kind:'sports-event',details:{sortKaiPulse:'10786103'}};
+    const data=indexActivity([claim,score]);
+    expect(data.counts.graph).toBe(2);
+    expect(data.streams.graph.map(p=>p.time)).toEqual([marketPulseTime(10786103)]);
   });
   it('preserves exact UTC interval boundaries, density counts and the paused cutoff as observations arrive',()=>{
     const halfHour=1_800_000,start=anchor-48*halfHour;
