@@ -80,7 +80,7 @@ assert.ok(examplePage.includes('property="og:title" content="Harbor Tool Library
 assert.ok(examplePage.includes('name="twitter:card" content="summary_large_image"'));
 const poster=await governance.fetch(new Request('https://bankeiz.com/vote/example-images/'+exampleId+'.png'));
 assert.equal(poster.headers.get('content-type'),'image/png');
-const png=Buffer.from(await poster.arrayBuffer());assert.equal(png.readUInt32BE(16),1200);assert.equal(png.readUInt32BE(20),630);
+const governancePng=Buffer.from(await poster.arrayBuffer());assert.equal(governancePng.readUInt32BE(16),1200);assert.equal(governancePng.readUInt32BE(20),630);
 const heldPage=await governance.fetch(new Request('https://bankeiz.com/vote/charters/'+exampleId+'/'));
 assert.equal(heldPage.status,200);assert.equal(calls,0);
 const {default:explore}=await import('./api/explore.js');
