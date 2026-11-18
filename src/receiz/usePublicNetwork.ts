@@ -15,6 +15,7 @@ import type {PublicMarketCatalog} from './public-market';
 
 export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
+const refreshInterval=60_000;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
 export function documentSourceStates(snapshot?:PublicNetworkCache):Sources{
   const sources=initialSources();
@@ -29,7 +30,7 @@ export function heldProofCatalog(){
   if(typeof document==='undefined')return null;
   try{const catalog=(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketCatalog?.();return catalog?.complete?catalog:null;}catch{return null;}
 }
-export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache) {
+export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCache, followDocumentHeads=false) {
   // Ledger paints its held rows first. The shared delivery reader obtains only
   // a genuinely missing catalog and publishes later Showcase changes once.
   useEffect(()=>{
@@ -99,20 +100,24 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     update('proofs',{status:'live',complete:true,observedAt:Date.now(),cursor:null,busy:false,error:null});
     completeAnchors.current.proofs=new Set(proofs.map(row=>row.id));return true;
   },[acceptsProofCapture]);
-  const performSourceRead = useCallback(async (source: PublicSource, phase: 'head' | 'older') => {
+  const performSourceRead = useCallback(async (source: PublicSource, phase: 'head' | 'older', inspectHistory=true) => {
     if(source==='proofs'&&phase==='head'&&reuseHeldProofs())return;
     const controller = lifetime.current, before = sourceState.current[source];
     if (!controller || controller.signal.aborted || before.busy || phase === 'older' && (before.complete || !before.cursor || before.error)) return;
-    const existing = phase === 'head' && completeAnchors.current[source] ? completeAnchors.current[source]! : new Set(rows.current.filter(row => row.source === source).map(row => row.id));
+    const prefix=completeAnchors.current[source];
+    const existing = phase === 'head' && prefix ? prefix : new Set(rows.current.filter(row => row.source === source).map(row => row.id));
     // One display migration reaches old cached trades beyond a held head. It
     // never clears first paint, and subsequent reads keep normal head polling.
-    const upgradeTrades=source==='actions'&&phase==='head'&&inspectionVersion.current<5;
+    const upgradeTrades=inspectHistory&&source==='actions'&&phase==='head'&&inspectionVersion.current<5;
     const repairTargets=new Set(upgradeTrades?rows.current.filter(row=>row.source==='actions'&&ledgerAssetTradeSide(row)&&!ledgerAssetTrade(row)?.tradeId).map(row=>row.id):[]);
-    const repairCycle=source==='actions'&&phase==='head'?{targets:repairTargets,seen:new Set<string>()}:null;
+    const repairCycle=inspectHistory&&source==='actions'&&phase==='head'?{targets:repairTargets,seen:new Set<string>()}:null;
     if(repairCycle)activeTradeRepair.current=repairCycle;
     const visited = phase === 'head' ? new Set<string>() : historyCursors.current[source];
     update(source, { busy: true, error: null });
     let cursor = phase === 'older' ? before.cursor! : undefined;
+    let headObservedAt=before.observedAt;
+    const backfill:PublicRecord[]=[];
+    const publishBackfill=()=>{if(backfill.length){append(source,backfill);backfill.length=0;}};
     const revision=proofRevision.current;
     try {
       for (;;) {
@@ -127,25 +132,39 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
         if (page.nextCursor && (page.nextCursor === cursor || visited.has(page.nextCursor))) throw new Error('Public source repeated a cursor.');
         const reachedHeld = page.records.some(row => existing.has(row.id));
         for(const row of page.records){repairTargets.delete(row.id);repairCycle?.seen.add(row.id);}
-        append(source, page.records, phase === 'head' && page.complete && ['graph', 'proofs'].includes(source));
-        capture(new Date().toISOString());
-        if (phase === 'head' && (existing.size && !reachedHeld || repairTargets.size>0) && !page.complete && page.nextCursor && ['actions', 'wallet'].includes(source)) { cursor = page.nextCursor; continue; }
-        if(source==='actions'&&phase==='head'&&inspectionVersion.current<5&&(repairTargets.size===0||page.complete))inspectionVersion.current=PUBLIC_NETWORK_INSPECTION_VERSION;
-        const complete = page.complete || phase === 'head' && reachedHeld && before.complete;
+        const extending=phase==='head'&&(existing.size>0&&!reachedHeld||repairTargets.size>0)&&!page.complete&&!!page.nextCursor&&['actions','wallet'].includes(source);
+        if(phase==='head'&&cursor){
+          for(const record of page.records)backfill.push(record);
+        }else{
+          append(source,page.records,phase==='head'&&page.complete&&['graph','proofs'].includes(source));
+          if(phase==='head'){
+            const observed=Date.parse(page.observedAt??'');
+            headObservedAt=Number.isFinite(observed)?observed:Date.now();
+            capture(new Date(headObservedAt).toISOString());
+            if(extending)update(source,{observedAt:headObservedAt,complete:false,status:'live'});
+          }
+        }
+        if(extending){cursor=page.nextCursor!;continue;}
+        publishBackfill();
+        if(inspectHistory&&source==='actions'&&phase==='head'&&inspectionVersion.current<5&&(repairTargets.size===0||page.complete))inspectionVersion.current=PUBLIC_NETWORK_INSPECTION_VERSION;
+        const complete = page.complete || phase === 'head' && reachedHeld && (!!prefix||before.complete);
         update(source, { status: page.complete || source !== 'proofs' ? 'live' : 'stale', complete,
-          observedAt: complete ? Date.now() : before.observedAt, cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
+          observedAt: headObservedAt, cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
           error: source === 'proofs' && !page.complete ? 'Public showcase collection is incomplete.' : null });
         if (complete) completeAnchors.current[source] = new Set(rows.current.filter(row => row.source === source).map(row => row.id));
         break;
       }
     } catch (cause) {
-      if (!controller.signal.aborted&&(source!=='proofs'||revision===proofRevision.current)) update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
+      if (!controller.signal.aborted&&(source!=='proofs'||revision===proofRevision.current)){
+        publishBackfill();
+        update(source, { busy: false, status: rows.current.some(row => row.source === source) ? 'stale' : 'error', error: cause instanceof Error ? cause.message : 'Public source unavailable.' });
+      }
     } finally { if(repairCycle&&activeTradeRepair.current===repairCycle)activeTradeRepair.current=null; if (!controller.signal.aborted && sourceState.current[source].busy) update(source, { busy: false }); }
   }, [acceptsProofCapture,reuseHeldProofs]);
-  const readSource=useCallback((source:PublicSource,phase:'head'|'older')=>{
+  const readSource=useCallback((source:PublicSource,phase:'head'|'older',inspectHistory=true)=>{
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return Promise.resolve();
     const held=sourceReads.current.get(source);if(held?.controller===controller&&sourceState.current[source].busy)return held.promise;
-    const promise=performSourceRead(source,phase),entry={controller,promise};sourceReads.current.set(source,entry);
+    const promise=performSourceRead(source,phase,inspectHistory),entry={controller,promise};sourceReads.current.set(source,entry);
     void promise.finally(()=>{if(sourceReads.current.get(source)===entry)sourceReads.current.delete(source);}).catch(()=>{});
     return promise;
   },[performSourceRead]);
@@ -164,10 +183,10 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
       break;
     }
   },[]);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (inspectHistory=true) => {
     const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
     lastRefresh.current=Date.now();
-    await Promise.allSettled([...PUBLIC_SOURCES.map(source => readSource(source, 'head')),synchronizePublicLedger().then(review=>adoptOriginal(review,controller))]);
+    await Promise.allSettled([...PUBLIC_SOURCES.map(source => readSource(source, 'head',inspectHistory)),synchronizePublicLedger().then(review=>adoptOriginal(review,controller))]);
   }, [readSource,adoptOriginal]);
   const loadMore = useCallback(async () => { await Promise.allSettled(PUBLIC_SOURCES.map(source => readSource(source, 'older'))); }, [readSource]);
   useEffect(() => {
@@ -193,13 +212,17 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
         setRecords(rows.current);capture(held?.capturedAt??null);capture(seed?.capturedAt??null);
         for (const source of PUBLIC_SOURCES) {
           if(retainedMembership.has(source))continue;
-          const cachedComplete = held?.coverage.some(item => item.source === source && item.complete);
+          const cached=held?.coverage.find(item=>item.source===source);
+          const cachedComplete = cached?.complete;
           const seededComplete = seed?.coverage.some(item => item.source === source && item.complete);
           const anchor = cachedComplete ? held : seededComplete ? seed : null;
           const anchorCoverage = anchor?.coverage.find(item => item.source === source);
           if (anchor) completeAnchors.current[source] = new Set([...(completeAnchors.current[source]??[]),...(anchorCoverage?.anchorIds ?? anchor.records.filter(row => row.source === source).map(row => row.id))]);
-          const observedAt=Math.max(sourceState.current[source].observedAt??0,anchorCoverage?.observedAt??0);
-          update(source, { status: sourceState.current[source].status==='live'?'live':'stale', complete: sourceState.current[source].complete||Boolean(anchor), observedAt:observedAt||undefined });
+          if(cached&&!cached.complete&&cached.anchorIds?.length)completeAnchors.current[source]=new Set([...(completeAnchors.current[source]??[]),...cached.anchorIds]);
+          const current=sourceState.current[source],observedAt=Math.max(current.observedAt??0,cached?.observedAt??0,anchorCoverage?.observedAt??0);
+          const newerCache=cached?.observedAt!==undefined&&cached.observedAt>(current.observedAt??0);
+          const coverage=newerCache?cached.complete:current.complete||(!current.observedAt&&!current.busy&&Boolean(anchor));
+          update(source, { status: current.status==='live'?'live':'stale', complete:coverage, observedAt:observedAt||undefined });
         }
     };
     const restored=(async()=>{
@@ -214,7 +237,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
       const needsSeed=initialSnapshot?false:await restored;
       if(controller.signal.aborted||!enabled.current)return;
       if(opened){
-        if(lastRefresh.current===null||Date.now()-lastRefresh.current>=60_000||PUBLIC_SOURCES.some(source=>sourceState.current[source].error)){deferredRepairs.current.clear();void refresh();}
+        if(lastRefresh.current===null||Date.now()-lastRefresh.current>=refreshInterval||PUBLIC_SOURCES.some(source=>sourceState.current[source].error)){deferredRepairs.current.clear();void refresh();}
         else for(const source of deferredRepairs.current){deferredRepairs.current.delete(source);void readSource(source,'head');}
         return;
       }
@@ -222,7 +245,16 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
       // The cold document was already selected beneath current public state.
       // Keep it visible and retain newer local rows without repeating four
       // complete feed reads or reopening a Ledger original on first paint.
-      if(initialSnapshot){lastRefresh.current=Date.now();return;}
+      if(initialSnapshot){
+        lastRefresh.current=Date.now();
+        if(followDocumentHeads){
+          for(const source of ['actions','wallet','graph'] as const){
+            const held=sourceState.current[source];
+            if(!held.complete||!held.observedAt||lastRefresh.current-held.observedAt>=refreshInterval)void readSource(source,'head',false);
+          }
+        }
+        return;
+      }
       void refresh();
       void readHeldPublicLedger().then(review=>adoptOriginal(review,controller)).catch(()=>{});
       // Seed enrichment must not delay the newest durable head or source polling.
@@ -245,7 +277,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
       })().catch(()=>{});
     };
     return()=>{controller.abort();if(lifetime.current===controller){lifetime.current=null;activate.current=null;}for(const source of PUBLIC_SOURCES)sourceState.current[source]={...sourceState.current[source],busy:false};};
-  }, [refresh,adoptOriginal,readSource,initialSnapshot]);
+  }, [refresh,adoptOriginal,readSource,initialSnapshot,followDocumentHeads]);
   useEffect(()=>{
     const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
     const stop=marker?.subscribePublicMarketCatalog?.(reuseHeldProofs);reuseHeldProofs();return stop;
@@ -279,11 +311,12 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
   useEffect(()=>{
     if(!active)return;
     void activate.current?.();
-    const interval=setInterval(()=>{if(document.visibilityState==='visible')void refresh();},60_000);
-    const wake=()=>{if(document.visibilityState==='visible')void refresh();};
-    document.addEventListener('visibilitychange',wake);window.addEventListener('online',wake);const stopSync=subscribePublicLedgerSync(wake);
-    return()=>{clearInterval(interval);stopSync();document.removeEventListener('visibilitychange',wake);window.removeEventListener('online',wake);};
-  },[active,refresh]);
+    const wake=()=>{if(document.visibilityState==='visible')void refresh(!followDocumentHeads);};
+    const whenDue=()=>{if(lastRefresh.current===null||Date.now()-lastRefresh.current>=refreshInterval)wake();};
+    const interval=setInterval(whenDue,refreshInterval);
+    document.addEventListener('visibilitychange',whenDue);window.addEventListener('online',wake);const stopSync=subscribePublicLedgerSync(wake);
+    return()=>{clearInterval(interval);stopSync();document.removeEventListener('visibilitychange',whenDue);window.removeEventListener('online',wake);};
+  },[active,refresh,followDocumentHeads]);
   useEffect(() => {
     if (bootstrap || !records.length) return;
     const coverageKey=PUBLIC_SOURCES.map(source=>`${source}:${sourceState.current[source].complete}:${sourceState.current[source].observedAt??''}`).join('|');

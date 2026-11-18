@@ -148,5 +148,10 @@ export async function readPublicNetworkPage(source: PublicSource, cursor?: strin
   const afterPublication=source==='proofs'?assetPublicationFreshnessHint():undefined;if(afterPublication)query.set('afterPublication',afterPublication);
   const response = await fetch(`/api/bank/public-network?${query}`, { credentials: 'omit', signal });
   if (!response.ok) throw new Error('This public source is temporarily unavailable.');
-  return parsePublicNetworkPage(source, await response.json());
+  const page=parsePublicNetworkPage(source,await response.json());
+  if(!cursor&&source!=='proofs'){
+    const observedAt=date(response.headers.get('X-Bankeiz-Source-Observed-At'));
+    if(observedAt)page.observedAt=observedAt;
+  }
+  return page;
 }

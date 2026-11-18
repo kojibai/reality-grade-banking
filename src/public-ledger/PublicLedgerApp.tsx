@@ -59,7 +59,7 @@ export function PublicLedgerApp(props:LedgerProps){
   const visitedLedger=useRef(!observing),visitedObservatory=useRef(observing);
   const [captured,setCaptured]=useState<PublicLedgerFileReview|null>(null);
   const active=props.active??true;
-  const network=usePublicNetwork(active&&(observing||!captured?.archive),props.initialSnapshot);
+  const network=usePublicNetwork(active&&(observing||!captured?.archive),props.initialSnapshot,true);
   useEffect(()=>{
     const change=()=>{const next=observatoryPath(location.pathname);if(next)visitedObservatory.current=true;else if(/^\/ledger(?:\/|$)/.test(location.pathname))visitedLedger.current=true;flushSync(()=>setObserving(next));};
     if(observatoryPath(location.pathname)!==observing)change();

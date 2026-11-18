@@ -59,7 +59,12 @@ export async function publicNetworkMiddleware(req: IncomingMessage, res: ServerR
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'GET') { res.writeHead(405, { Allow: 'GET' }); res.end(); return; }
   const parsed = parsePublicNetworkRequest(req.url); if (!parsed) { res.writeHead(400); res.end(); return; }
-  try { const result = await readSharedPublicSource(parsed.source, parsed.cursor,parsed.afterPublication); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result)); }
+  try {
+    const financialHead=parsed.source!=='proofs'&&!parsed.cursor;
+    const result=await readSharedPublicSource(parsed.source,parsed.cursor,parsed.afterPublication,financialHead?{fresh:true}:undefined);
+    res.writeHead(200,{ 'Content-Type':'application/json', ...(financialHead?{'X-Bankeiz-Source-Observed-At':new Date().toISOString()}:{}) });
+    res.end(JSON.stringify(result));
+  }
   catch { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'Public source temporarily unavailable.' })); }
 }
 export function publicNetworkPlugin(): Plugin { return { name: 'receiz-shared-public-network', configureServer(server) { server.middlewares.use((req, res, next) => { void publicNetworkMiddleware(req, res, next); }); }, configurePreviewServer(server) { server.middlewares.use((req, res, next) => { void publicNetworkMiddleware(req, res, next); }); } }; }

@@ -22,6 +22,7 @@ const trafficText=n=>new Intl.NumberFormat('en-US').format(n);
 const revisedTraffic=structuredClone(traffic);
 revisedTraffic.observedAt=new Date(Date.parse(traffic.observedAt)+60000).toISOString();
 revisedTraffic.days.at(-1).routes['/']=(revisedTraffic.days.at(-1).routes['/']??0)+1;
+const ledgerSeed=JSON.parse(gunzipSync(await readFile(new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url))));
 const observedEventAt=new Date().toISOString();
 const futureEventAt=new Date(Date.now()+14*86400000).toISOString();
 const futureId='observatory-local-calendar-check';
@@ -78,7 +79,13 @@ try{
   assert.equal(await audienceCards.nth(1).innerText(),new Intl.NumberFormat('en-US').format(latestAudience.views.value));
   assert.equal(await audienceCards.nth(2).innerText(),new Intl.NumberFormat('en-US').format(latestAudience.plays.value));
   assert.equal(await audienceCards.nth(3).innerText(),new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(latestAudience.seconds.value/3600));
-  assert.ok((await page.locator('#obs-wallets').innerText()).includes('$419,954.42'));
+  const movements=ledgerSeed.records.filter(row=>row.source==='wallet'&&['chat_transfer','transfer'].includes(row.kind));
+  const volume=movements.reduce((sum,row)=>{
+    if(row.amountUsdCents!=null)return sum+BigInt(row.amountUsdCents);
+    const {settledUsdCents,phiUsdCents}=row.valueOperands??{};
+    return settledUsdCents!=null&&phiUsdCents!=null?sum+BigInt(settledUsdCents)+BigInt(phiUsdCents):sum;
+  },0n);
+  assert.equal(await page.locator('#obs-wallets .obs-wallet-grid > div').filter({has:page.getByRole('heading',{name:'Wallet transfer volume',exact:true})}).locator('strong').innerText(),new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(volume)/100));
   assert.equal(await page.locator('#obs-wallets').getByText('Reserve',{exact:true}).count(),0);
   assert.equal(await page.locator('#obs-wallets').getByText('Settlement',{exact:true}).count(),0);
   await context.close();
@@ -108,7 +115,6 @@ try{
   assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
   await page.locator('.obs-streams').getByRole('button',{name:'Proof graph',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  const ledgerSeed=JSON.parse(gunzipSync(await readFile(new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url))));
   const graphCutoff=ledgerSeed.coverage.find(c=>c.source==='graph').observedAt;
   const datedGraph=ledgerSeed.records.filter(row=>row.source==='graph'&&!row.origin&&row.authority==='public-source-projection'&&
     (row.time?Date.parse(row.time)<=graphCutoff:row.kind==='market-asset'&&row.pulse!=null)).length;
