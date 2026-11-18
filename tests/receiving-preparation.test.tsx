@@ -4,6 +4,7 @@ import {createRoot,type Root} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {existsSync} from 'node:fs';
 import {ReceivingPreparation} from '../src/conformance/ReceivingPreparation';
+import {ImplementationAssessment} from '../src/conformance/ImplementationAssessment';
 let host:HTMLDivElement,root:Root;
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>{if(root)act(()=>root.unmount());host?.remove();vi.restoreAllMocks();});
@@ -21,13 +22,13 @@ it('prepares a receiver before credentials using held requirements and actual im
  }
  expect(host.textContent).toContain('Public integration contract');expect(host.textContent).toContain('Operational receiving evidence');
 });
-it('carries the chosen capability and rail into the existing assessment only on explicit continuation',()=>{
- const onScope=render();act(()=>button('Notes').click());
- const rail=host.querySelector<HTMLSelectElement>('[aria-label="Receiving rail"]')!;
- act(()=>{rail.value='settlement';rail.dispatchEvent(new Event('change',{bubbles:true}));});
+it('starts with one Receive standard and carries only the chosen capability on explicit continuation',()=>{
+ const fetch=vi.spyOn(globalThis,'fetch'),persist=vi.spyOn(Storage.prototype,'setItem'),read=vi.spyOn(Storage.prototype,'getItem');
+ const onScope=render();expect(host.querySelector('select')).toBeNull();act(()=>button('Notes').click());
  expect(onScope).not.toHaveBeenCalled();act(()=>button('Use this assessment scope').click());
- expect(onScope).toHaveBeenCalledOnce();expect(onScope.mock.calls[0][0]).toMatchObject({capabilities:expect.arrayContaining(['notes','recovery','history']),rails:['settlement']});
+ expect(onScope).toHaveBeenCalledOnce();expect(onScope.mock.calls[0][0]).toEqual({capabilities:['notes','value','ownership','recovery','history']});
  expect(host.querySelector('[data-preparation-requirements]')?.textContent).toContain('Receiver-specific live assessment');
+ expect(fetch).not.toHaveBeenCalled();expect(persist).not.toHaveBeenCalled();expect(read).not.toHaveBeenCalled();
 });
 it('cannot replace the selected scope while an assessment or source read is active',()=>{
  const onScope=render();
@@ -37,11 +38,20 @@ it('cannot replace the selected scope while an assessment or source read is acti
  act(()=>root.render(<ReceivingPreparation onScope={onScope}/>));
  act(()=>apply.click());expect(onScope).toHaveBeenCalledOnce();
 });
-it('offers the signed composite Note profile only for Note and holding preparation',()=>{
- render();const rails=()=>[...host.querySelectorAll<HTMLSelectElement>('[aria-label="Receiving rail"] option')].map(option=>option.value);
- expect(rails()).toEqual(['reserve','settlement']);act(()=>button('Notes').click());expect(rails()).toEqual(['reserve','settlement','composite']);
- const rail=host.querySelector<HTMLSelectElement>('[aria-label="Receiving rail"]')!;act(()=>{rail.value='composite';rail.dispatchEvent(new Event('change',{bubbles:true}));});
- act(()=>button('Merchant checkout').click());expect(rails()).toEqual(['reserve','settlement']);expect(rail.value).toBe('reserve');
+it('preserves the explicit technical rail scope underneath when preparation changes capability',()=>{
+ const fetch=vi.spyOn(globalThis,'fetch'),persist=vi.spyOn(Storage.prototype,'setItem'),read=vi.spyOn(Storage.prototype,'getItem');
+ render();act(()=>root.render(<ImplementationAssessment onEvidence={vi.fn()}/>));
+ const railScope=[...host.querySelectorAll('fieldset')].find(field=>field.querySelector('legend')?.textContent==='Rails to assess')!;
+ const rails=[...railScope.querySelectorAll<HTMLInputElement>('input')];expect(rails).toHaveLength(3);
+ expect(rails.map(input=>input.checked)).toEqual([true,false,false]);
+ for(const input of rails)act(()=>input.click());
+ expect(rails.map(input=>input.checked)).toEqual([false,true,true]);
+ act(()=>button('Notes').click());act(()=>button('Use this assessment scope').click());
+ expect(rails.map(input=>input.checked)).toEqual([false,true,true]);
+ expect(host.querySelector('.receiving-preparation select')).toBeNull();
+ expect(host.querySelectorAll('.assessment-scope input:checked')).toHaveLength(7);
+ expect(host.textContent).toContain('Missing proof fails the assessment');
+ expect(fetch).not.toHaveBeenCalled();expect(persist).not.toHaveBeenCalled();expect(read).not.toHaveBeenCalled();
 });
 it('saves the selected environment and real local commands as preparation notes, without claiming a result',async()=>{
  let captured:Blob|undefined;vi.spyOn(URL,'createObjectURL').mockImplementation(blob=>{captured=blob as Blob;return'blob:preparation';});vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
@@ -50,5 +60,6 @@ it('saves the selected environment and real local commands as preparation notes,
  act(()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(environment,'Merchant site · isolated acceptance environment');environment.dispatchEvent(new Event('input',{bubbles:true}));});
  act(()=>button('Save preparation notes').click());const text=await captured!.text();
  expect(text).toContain('Merchant checkout');expect(text).toContain('Merchant site · isolated acceptance environment');expect(text).toContain('npm run receiver:check');expect(text).toContain('--adapter /absolute/path/to/your-adapter');expect(text).toContain('conformance-independent-assessment.template.json');
+ expect(text).not.toMatch(/^Rail:/m);
  expect(text).not.toMatch(/assessmentPassed.*true|conforming-for-assessed-capability|institutionConformance.*conforming/);
 });

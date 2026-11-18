@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { KaiKlok } from '../src/components/KaiKlok';
+import { useKaiOrb } from '../src/components/useKaiOrb';
 import { animateKaiPulseOrb, kaiPulseMotionFromMicro, KAI_PULSE_MOTION_MS } from '../src/components/kai-klok-motion';
 import { epochMsFromPulse } from '../native/receiz/app/utils/kai_pulse';
 import { GENESIS_TS } from '../native/receiz/app/utils/kai_pulse';
@@ -49,7 +50,36 @@ it('holds the top if a native boundary passed before the effect committed', () =
   expect(animation.currentTime).toBe(KAI_PULSE_MOTION_MS);
 });
 
-it('resynchronizes in the same pulse on foreground focus and cancels for hidden or reduced-motion state', () => {
+it('samples the native source once per required controller anchor', () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const animations: { cancel: ReturnType<typeof vi.fn> }[] = [];
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: vi.fn(() => { const animation = { cancel: vi.fn() }; animations.push(animation); return animation; }) });
+  let sampledPulse = 42;
+  const readMotion = vi.fn(() => ({ ...kaiPulseMotionFromMicro(BigInt(sampledPulse) * 1_000_000n + 500_000n), sampledAt: 1000 }));
+  function Orb({ pulse, visible = true, revision }: { pulse: number; visible?: boolean; revision: number }) {
+    const face = useRef<HTMLDivElement>(null);
+    useKaiOrb(face, pulse, visible, revision, readMotion);
+    return <div ref={face}><span className="orb-spin" /><span className="kai-cadence-breath" /></div>;
+  }
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  act(() => root!.render(<Orb pulse={42} revision={0} />));
+  expect(readMotion).toHaveBeenCalledTimes(1); expect(animations).toHaveLength(2);
+  act(() => root!.render(<Orb pulse={42} revision={0} />));
+  expect(readMotion).toHaveBeenCalledTimes(1);
+  act(() => root!.render(<Orb pulse={42} revision={1} />));
+  expect(readMotion).toHaveBeenCalledTimes(2); expect(animations).toHaveLength(2);
+  sampledPulse = 43;
+  act(() => root!.render(<Orb pulse={43} revision={2} />));
+  expect(readMotion).toHaveBeenCalledTimes(3); expect(animations).toHaveLength(4);
+  act(() => root!.render(<Orb pulse={43} revision={2} visible={false} />));
+  expect(readMotion).toHaveBeenCalledTimes(3);
+  act(() => root!.render(<Orb pulse={43} revision={3} />));
+  expect(readMotion).toHaveBeenCalledTimes(4); expect(animations).toHaveLength(6);
+  act(() => root!.unmount()); root = undefined;
+  expect(animations.every(animation => animation.cancel.mock.calls.length === 1)).toBe(true);
+});
+
+it('keeps a running sweep through duplicate focus and resynchronizes once after hidden or reduced-motion state', () => {
   vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
   vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 2);
   vi.stubGlobal('navigator', {});
@@ -64,15 +94,114 @@ it('resynchronizes in the same pulse on foreground focus and cancels for hidden 
   expect(animations).toHaveLength(2);
   const initial = animations[0];
   act(() => vi.advanceTimersByTime(2600));
-  act(() => window.dispatchEvent(new Event('focus')));
-  expect(initial.cancel).toHaveBeenCalledOnce(); expect(animations).toHaveLength(4);
-  expect(animations[2].currentTime).toBeGreaterThan(2500); expect(animations[2].currentTime).toBeLessThan(2700);
+  for (let i = 0; i < 5; i++) act(() => window.dispatchEvent(new Event('focus')));
+  expect(initial.cancel).not.toHaveBeenCalled(); expect(animations).toHaveLength(2);
   act(() => { visibility = 'hidden'; document.dispatchEvent(new Event('visibilitychange')); });
-  expect(animations[2].cancel).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+  expect(initial.cancel).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
   act(() => { visibility = 'visible'; document.dispatchEvent(new Event('visibilitychange')); });
-  expect(animations).toHaveLength(6); expect(vi.getTimerCount()).toBe(1);
+  act(() => window.dispatchEvent(new Event('pageshow')));
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(animations).toHaveLength(4); expect(vi.getTimerCount()).toBe(1);
+  expect(animations[2].currentTime).toBeGreaterThan(2500); expect(animations[2].currentTime).toBeLessThan(2700);
   act(() => { media.matches = true; mediaListener(); });
-  expect(animations[4].cancel).toHaveBeenCalledOnce(); expect(animations[5].cancel).toHaveBeenCalledOnce();
+  expect(animations[2].cancel).toHaveBeenCalledOnce(); expect(animations[3].cancel).toHaveBeenCalledOnce();
+});
+
+it('reanchors once after pagehide and BFCache return when the performance timer did not advance', () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 2);
+  const animations: { currentTime: number; cancel: ReturnType<typeof vi.fn> }[] = [];
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: vi.fn(() => { const animation = { currentTime: 0, cancel: vi.fn() }; animations.push(animation); return animation; }) });
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  act(() => root!.render(<KaiKlok />)); act(() => host.querySelector('button')!.click());
+  const orb = host.querySelector('.orb-spin');
+  act(() => window.dispatchEvent(new Event('pagehide')));
+  expect(vi.getTimerCount()).toBe(0); expect(animations.every(animation => animation.cancel.mock.calls.length === 1)).toBe(true);
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_711n)) + 1000);
+  const shown = new Event('pageshow'); Object.defineProperty(shown, 'persisted', { value: true });
+  act(() => window.dispatchEvent(shown));
+  act(() => document.dispatchEvent(new Event('visibilitychange')));
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(animations).toHaveLength(4); expect(vi.getTimerCount()).toBe(1);
+  expect(host.querySelector('.orb-spin')).toBe(orb);
+  expect(host.querySelector('.kai-header-button')?.textContent).toContain('14,717,711');
+  expect(animations[2].currentTime).toBeGreaterThan(990); expect(animations[2].currentTime).toBeLessThan(1010);
+  act(() => root!.unmount()); root = undefined;
+  expect(vi.getTimerCount()).toBe(0); expect(animations.every(animation => animation.cancel.mock.calls.length === 1)).toBe(true);
+});
+
+it('reanchors the same animation on focus-only sleep recovery when performance did not advance', () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 2);
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const animations: { currentTime: number; startTime: number; cancel: ReturnType<typeof vi.fn> }[] = [];
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: vi.fn(() => { const animation = { currentTime: 0, startTime: 0, cancel: vi.fn() }; animations.push(animation); return animation; }) });
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  act(() => root!.render(<KaiKlok />)); act(() => host.querySelector('button')!.click());
+  const orb = host.querySelector('.orb-spin'), performanceBefore = performance.now();
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 1000);
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(performance.now()).toBe(performanceBefore);
+  expect(animations).toHaveLength(2); expect(animations[0].cancel).not.toHaveBeenCalled();
+  expect(animations[0].currentTime).toBeGreaterThan(990); expect(animations[0].currentTime).toBeLessThan(1010);
+  expect(animations[1].currentTime).toBe(animations[0].currentTime);
+  expect(animations[0].startTime).toBe(performanceBefore - animations[0].currentTime);
+  expect(animations[1].startTime).toBe(animations[0].startTime);
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_711n)) + 1000);
+  act(() => window.dispatchEvent(new Event('focus')));
+  expect(performance.now()).toBe(performanceBefore); expect(vi.getTimerCount()).toBe(1);
+  expect(animations).toHaveLength(4); expect(animations[0].cancel).toHaveBeenCalledOnce();
+  expect(host.querySelector('.orb-spin')).toBe(orb);
+  expect(host.querySelector('.kai-header-button')?.textContent).toContain('14,717,711');
+  expect(animations[2].currentTime).toBeGreaterThan(990); expect(animations[2].currentTime).toBeLessThan(1010);
+  expect(animations[3].currentTime).toBe(animations[2].currentTime);
+});
+
+it('keeps one native boundary timer and reanchors the existing orb at the next pulse', () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 2);
+  vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  const animations: { currentTime: number; cancel: ReturnType<typeof vi.fn> }[] = [];
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: vi.fn(() => { const animation = { currentTime: 0, cancel: vi.fn() }; animations.push(animation); return animation; }) });
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  act(() => root!.render(<KaiKlok />)); act(() => host.querySelector('button')!.click());
+  const orb = host.querySelector('.orb-spin');
+  expect(vi.getTimerCount()).toBe(1); expect(animations).toHaveLength(2);
+  act(() => vi.advanceTimersByTime(5200));
+  expect(animations).toHaveLength(2);
+  act(() => vi.advanceTimersByTime(40));
+  expect(animations).toHaveLength(4); expect(vi.getTimerCount()).toBe(1);
+  expect(animations[0].cancel).toHaveBeenCalledOnce(); expect(animations[1].cancel).toHaveBeenCalledOnce();
+  expect(host.querySelector('.orb-spin')).toBe(orb);
+  expect(host.querySelector('.kai-header-button')?.textContent).toContain('14,717,708');
+  expect(animations[2].currentTime).toBeGreaterThanOrEqual(0); expect(animations[2].currentTime).toBeLessThan(20);
+});
+
+it('balances motion subscriptions and animation disposal across five explicit open and close visits', () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  vi.setSystemTime(Number(epochMsFromPulse(14_717_707n)) + 1000);
+  const add = vi.spyOn(window, 'addEventListener'), remove = vi.spyOn(window, 'removeEventListener');
+  const media = { matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  vi.stubGlobal('matchMedia', () => media);
+  const animations: { cancel: ReturnType<typeof vi.fn> }[] = [];
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: vi.fn(() => { const animation = { cancel: vi.fn() }; animations.push(animation); return animation; }) });
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  act(() => root!.render(<KaiKlok />));
+  for (let i = 0; i < 5; i++) {
+    act(() => host.querySelector<HTMLButtonElement>('.kai-header-button')!.click());
+    expect(host.querySelectorAll('.orb-spin')).toHaveLength(1);
+    act(() => host.querySelector<HTMLButtonElement>('.kai-close')!.click());
+    expect(host.querySelector('.orb-spin')).toBeNull(); expect(vi.getTimerCount()).toBe(1);
+  }
+  expect(animations).toHaveLength(10); expect(animations.every(animation => animation.cancel.mock.calls.length === 1)).toBe(true);
+  expect(media.addEventListener).toHaveBeenCalledTimes(5); expect(media.removeEventListener).toHaveBeenCalledTimes(5);
+  act(() => root!.unmount()); root = undefined;
+  expect(vi.getTimerCount()).toBe(0);
+  for (const event of ['focus', 'pageshow', 'pagehide']) {
+    expect(add.mock.calls.filter(([name]) => name === event)).toHaveLength(1);
+    expect(remove.mock.calls.filter(([name]) => name === event)).toHaveLength(1);
+  }
 });
 
 it('reseeds on activation after an inactive device sleep whose performance timer did not advance', () => {

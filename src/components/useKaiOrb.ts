@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { animateKaiPulseOrb, type KaiPulseMotion } from './kai-klok-motion';
 
 export function useKaiOrb(face: RefObject<HTMLDivElement | null>, pulse: number, visible: boolean, revision: number, readMotion: () => KaiPulseMotion) {
@@ -10,10 +10,19 @@ export function useKaiOrb(face: RefObject<HTMLDivElement | null>, pulse: number,
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+  const cycle = useRef<{ animation: ReturnType<typeof animateKaiPulseOrb>; revision: number } | null>(null);
   useLayoutEffect(() => {
     const orb = face.current?.querySelector('.orb-spin');
     if (!orb || !visible || reduced || typeof orb.animate !== 'function') return;
     const animation = animateKaiPulseOrb(orb, readMotion, pulse, face.current?.querySelector('.kai-cadence-breath') ?? undefined);
-    return () => animation.cancel();
-  }, [face, pulse, visible, revision, readMotion, reduced]);
+    cycle.current = { animation, revision };
+    return () => { cycle.current = null; animation.cancel(); };
+  }, [face, pulse, visible, readMotion, reduced]);
+  // Resume reseeds the canonical source; retain the bounded compositor objects
+  // when only its phase changed within the same native pulse.
+  useLayoutEffect(() => {
+    const current = cycle.current;
+    if (!current || current.revision === revision) return;
+    current.animation.reanchor(); current.revision = revision;
+  }, [revision]);
 }
