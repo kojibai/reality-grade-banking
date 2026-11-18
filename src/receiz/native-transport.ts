@@ -1,3 +1,4 @@
+import {governanceCursorKey} from './governance-cursor.js';
 import {isPeopleSearchQuery} from './people-search.js';
 import {permittedOrganizerPath} from './organizer-paths.js';
 import {permittedTwinConversationRead} from './twin-conversations.js';
@@ -33,6 +34,9 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(/^\/api\/public-proof\/bankeiz-voting-[a-f0-9]{64}$/.test(url.pathname))return method.toUpperCase()==='GET'&&!url.search;
+  if(url.pathname==='/api/public-proof/registry/feed')return method.toUpperCase()==='POST'&&!url.search;
+  if(url.pathname==='/api/public-proof/namespace/bankeiz-voting')return method.toUpperCase()==='GET'&&url.searchParams.getAll('limit').length===1&&url.searchParams.get('limit')==='12'&&[...url.searchParams.keys()].every(k=>k==='limit'||k==='after')&&url.searchParams.getAll('after').length<=1&&(!url.searchParams.has('after')||Boolean(governanceCursorKey(url.searchParams.get('after'))));
   if(url.pathname==='/api/connect/merchant-counter'){const keys=[...url.searchParams.keys()];return method.toUpperCase()==='POST'?!url.search:method.toUpperCase()==='GET'&&(keys.length===0||keys.length===1&&(url.searchParams.getAll('after').length===1&&/^(0|[1-9]\d{0,14})$/.test(url.searchParams.get('after')??'')||url.searchParams.getAll('resume').length===1&&/^(0|[1-9]\d{0,14})$/.test(url.searchParams.get('resume')??'')||url.searchParams.getAll('saleDigest').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('saleDigest')??'')||url.searchParams.getAll('image').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('image')??'')||url.searchParams.getAll('request').length===1&&/^[a-f0-9]{64}$/.test(url.searchParams.get('request')??'')));}
   if(permittedOrganizerPath(url,method))return true;
   if(url.pathname==='/api/connect/profile/analytics')return method.toUpperCase()==='GET'&&!url.search;

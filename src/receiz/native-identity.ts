@@ -78,6 +78,8 @@ import {heldCalendarRecords,projectCalendarFinancialRecords,projectCalendarOrigi
 export interface OpenIdentity {
   matchesAccountEmail?:(email:string,accountUid?:string)=>Promise<boolean>;
   readHeldLedgerOriginal?:import('./held-ledger-original').HeldLedgerOriginalReader;
+  governanceExecution?:()=>Promise<import('./governance-execution').GovernanceExecution>;
+  publishGovernanceOriginal?:(original:import('./governance-documents').GovernanceOriginal)=>Promise<void>;
   sealRecordExport?:(input:import('./record-proof-export').RecordProofExportInput)=>Promise<File>;
   readRecordExport?:(descriptor:import('./record-proof-export').RecordProofExportDescriptor)=>Promise<File|null>;
   signDocumentConsent?:(input:import('./document-consent').DocumentConsentRequest)=>Promise<File>;
@@ -293,6 +295,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   const clientCallCleanup=new WeakMap<ReceizClient,(path:string)=>Promise<Response>>();
   const callMembershipPath=/^\/api\/chat\/conversations\/[a-f0-9-]{36}\/calls\/[a-f0-9-]{36}\/participants$/i;
   const clientFetches = new WeakMap<ReceizClient,(path:string,init?:RequestInit)=>Promise<Response>>();
+  const governanceGrants = new WeakMap<ReceizClient, Pick<import('@receiz/sdk').ReceizProofAuthorityV123,'authorityDigest'|'applicationId'|'keyId'|'artifactDigest'|'revocationHead'>>();
   const clientAccounts = new WeakMap<ReceizClient, { applicationId: string; accountUid: string }>();
   type WalletReadRequest = { prefetched?: { client: ReceizClient; applicationId: string; accountUid: string; response: Promise<unknown> } };
   let presentationUsername = keyFile.owner.username;
@@ -364,6 +367,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
       if(session.twinAccess!==null)confirmedTwinAccess=session.twinAccess;
+      const {authorityDigest,applicationId:grantApp,keyId,artifactDigest,revocationHead}=grant;
+      governanceGrants.set(protectedClient,{authorityDigest,applicationId:grantApp,keyId,artifactDigest,revocationHead});
       clientAccounts.set(protectedClient, { applicationId, accountUid: session.uid });
       clientCallCleanup.set(protectedClient,path=>{
         if(!callMembershipPath.test(path)||Date.now()>callCleanupUntil)throw Error('MESSAGING_CLEANUP_CLOSED');
@@ -493,6 +498,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     return held?.sourceDigest===sourceDigest?held:null;
   }
   let recordProofExports:Promise<ReturnType<typeof import('./record-proof-export').createRecordProofExports>>|undefined;
+  async function publishGovernanceOriginal(original:import('./governance-documents').GovernanceOriginal){
+    noteOpen();
+    if(original.document.author!==binding.artifactOwnerReceizId)throw Error('Open the identity that issued this governance Original.');
+    const directory=await import('./governance-directory'),record=await directory.publicationRecord(original);
+    const client=await connectClient([...BANK_READ_SCOPES,'receiz:record'],'Publish the exact public governance Original I reviewed, with my public author identity and its exact contents.');
+    noteOpen();
+    const response=await client.appState.publishRecord(record);
+    noteOpen();const row=response.records?.[0];
+    if(!response.ok||response.accepted!==1||response.rejected!==0||!row||(row.appProjectionData as {digest?:unknown}|null)?.digest!==original.digest)throw Error('Publication is unconfirmed. Keep the Original and retry delivery.');
+    await directory.admitPublicGovernanceRow(row);
+    if(!directory.governanceRows().some(item=>item.digest===original.digest))throw Error('The exact governance Original was not acknowledged.');
+    noteOpen();
+  }
   function recordExports(){
     noteOpen();recordProofExports??=Promise.all([import('./record-proof-export'),import('./identity-vault')]).then(([{createRecordProofExports},storage])=>createRecordProofExports({
       assertOpen:noteOpen,read:key=>storage.loadRecordProofExport(binding,key),write:(key,value,expected)=>storage.saveRecordProofExport(binding,key,value,expected),retain:bytes=>storage.saveOfflineNoteBlob(binding,bytes),restore:digest=>storage.loadOfflineNoteBlob(binding,digest),
@@ -2119,6 +2137,40 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const { source, session } = await connectNativeContext(approved);
     return { subjectId: source.subjectId, sourceDigest: source.artifactDigest, sessionExpiresKaiUPulse: session.expiresAtKaiUPulse, readyToTransact: false as const };
   }
+  let governanceController:Promise<import('./governance-execution').GovernanceExecution>|undefined;
+  const governanceExecution=()=>governanceController??=Promise.all([import('./governance-execution'),import('./identity-vault'),import('./bank-kai')]).then(([module,vault,kai])=>{
+    const coordinate=async(previous?:import('@receiz/sdk').ReceizKksV1ProofCoordinate)=>kai.nextBankKaiCoordinate(await kai.browserBankKaiFactory(),previous);
+    const seal=async(payload:Uint8Array,filename:string)=>{
+      noteOpen();const result=await(await ownedSealer()).seal({bytes:payload,filename,mimeType:'application/json'});
+      const source=(await sdk.createReceizClient().artifacts.verifyAndOpen(new File([new Uint8Array(result.artifactBytes)],result.filename,{type:result.mimeType}))).sealedArtifact;
+      if(source.kind!=='receiz.native-record-seal')throw Error('GOVERNANCE_REGISTER_SEAL_REQUIRED');return source;
+    };
+    return module.createGovernanceExecution({owner:binding.artifactOwnerReceizId,assertOpen:noteOpen,
+      quote:()=>{
+        noteOpen();const wallet=knownWallet?.wallet,source=wallet?.currentBalanceSource;
+        const digest=source?.sourceSha256??wallet?.balanceSourceSha256;
+        if(!source||source.historicalContextOnly||!digest||!/^[a-f0-9]{64}$/.test(digest))throw Error('Open this wallet’s current source-backed display quote before preparing the installment.');
+        return {usdPerPhiMicrocents:source.usdPerPhiMicrocents,priceBasis:{sourceSha256:digest,computedPulse:source.computedPulse,usdPerPhiMicrocents:source.usdPerPhiMicrocents}};
+      },
+      read:key=>vault.loadGovernanceExecution(binding,key),write:(key,value,expected)=>vault.saveGovernanceExecution(binding,key,value,expected),
+      hold:async source=>vault.saveOfflineNoteBlob(binding,new Uint8Array(await source.arrayBuffer())),file:digest=>vault.loadOfflineNoteBlob(binding,digest),
+      seal,coordinate,signer:async observation=>{
+        await prepareTransport();noteOpen();
+        return {keyFile:transportKeyFile,passphrase:transportPhrase,identityArtifact:observation??new File([new Uint8Array(transportBytes)],'protected-identity.png',{type:'image/png'}),seal,coordinate};
+      },
+      recovery:()=>connectClient(BANK_RECOVERY_SCOPES,BANK_RECOVERY_CONSENT),
+      context:rails=>connectNativeContext(true,rails),
+      plan:async body=>{
+        const current=await connectClient([...BANK_READ_SCOPES,'receiz:domains.write'],'Review the exact signed governance evidence and register head for this proposal.');
+        return current.request('/api/sdk/v1/governance/plan?applicationId='+encodeURIComponent(BANK_APPLICATION_ID),{method:'POST',body});
+      },
+      settlement:async body=>{
+        const current=await connectClient([...BANK_READ_SCOPES,'receiz:domains.write','receiz:settlement.write'],'Execute the approved single Settlement installment for this certified governance decision.');
+        const authority=governanceGrants.get(current);if(!authority)throw Error('GOVERNANCE_SETTLEMENT_AUTHORITY_REQUIRED');
+        return current.request('/api/sdk/v1/governance/settlement?applicationId='+encodeURIComponent(BANK_APPLICATION_ID),{method:'POST',body:{...body,authority}});
+      },
+    });
+  }).catch(error=>{governanceController=undefined;throw error;});
   let operationsPromise: Promise<import('./bank-operations').BankOperations> | undefined;
   const restoreCommittedBankSources = createBankCommittedSourceRestoration({
     store: deviceBankExecutionStore(binding), ownerReceizId: binding.artifactOwnerReceizId,
@@ -2332,7 +2384,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       });
     }return transferOriginalReader(record);
   };
-  const openedIdentity:OpenIdentity = { matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const openedIdentity:OpenIdentity = { governanceExecution, publishGovernanceOriginal, matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
   return openedIdentity;
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {

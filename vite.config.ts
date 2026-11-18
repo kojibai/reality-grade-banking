@@ -1,3 +1,5 @@
+import {governancePreviewPlugin} from './server/governance-preview-plugin';
+import {bankMarkSvg} from './branding/bank-mark.mjs';
 import {emailGuideDevPlugin} from './scripts/email-guide-dev.mjs';
 import {registryPlugin} from './server/registry';
 import {matterPageDevPlugin} from './scripts/matter-page-dev.mjs';
@@ -39,8 +41,10 @@ import {publicRuntimeExportsPlugin} from './scripts/public-runtime-exports.mjs';
 export default defineConfig({
   // Real SDK proof and seal suites use the same bounded worker budget in CI and locally.
   test: { maxWorkers:2, globalSetup:['./tests/setup/server-asset-runtime.mjs'], include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [{name:'bankeiz-observatory-dev-entry',configureServer(server){
+  plugins: [governancePreviewPlugin(),{name:'bankeiz-voting-mark',transformIndexHtml(html){return html.replace('<!-- voting-home-mark -->',bankMarkSvg);}},{name:'bankeiz-observatory-dev-entry',configureServer(server){
     server.middlewares.use((request,_response,next)=>{
+      if(/^\/vote\/(?:charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)\/[a-f0-9]{64}\/?(?:\?|$)/.test(request.url??''))request.url='/vote/record.html';
+      if(/^\/vote\/?(?:\?|$)/.test(request.url??''))request.url='/vote/index.html';
       if(/^\/observatory\/?(?:\?|$)/.test(request.url??''))request.url='/ledger/index.html';
       if(/^\/market-cap\/?(?:\?|$)/.test(request.url??''))request.url='/explore/index.html';
       next();
@@ -70,5 +74,5 @@ export default defineConfig({
     },
   }],
   server: { port: 5173, strictPort: true },
-  build: { manifest: true, rollupOptions: { input: { invoice:resolve('invoice/view.html'), discover:resolve('discover/index.html'), feed:resolve('feed/index.html'), meeting:resolve('meet/room.html'),booking:resolve('booking/index.html'), vault:resolve('vault/index.html'), checkout: resolve('pay/checkout.html'), bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html'), ledger:resolve('ledger/index.html'),explore:resolve('explore/index.html') }, output: { onlyExplicitManualChunks: true, manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; if (/\/src\/features\/assets\/(?:AssetCreationSheet\.tsx|(?:asset-creation-studio|asset-composer|asset-studio|moment-composer)\.css)$/.test(id)) return 'AssetCreationSheet'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
+  build: { manifest: true, rollupOptions: { input: { invoice:resolve('invoice/view.html'), discover:resolve('discover/index.html'), feed:resolve('feed/index.html'), vote:resolve('vote/index.html'),voteRecord:resolve('vote/record.html'), meeting:resolve('meet/room.html'),booking:resolve('booking/index.html'), vault:resolve('vault/index.html'), checkout: resolve('pay/checkout.html'), bank: resolve('index.html'), conformance: resolve('conformance/index.html'), verify: resolve('verify/index.html'), receipt:resolve('receipt/index.html'), ledger:resolve('ledger/index.html'),explore:resolve('explore/index.html') }, output: { onlyExplicitManualChunks: true, manualChunks(id) { if (id.includes('/vendor/jsqr/')) return 'qr-decoder'; if (/\/src\/features\/assets\/(?:AssetCreationSheet\.tsx|(?:asset-creation-studio|asset-composer|asset-studio|moment-composer)\.css)$/.test(id)) return 'AssetCreationSheet'; } } }, target: 'es2022', chunkSizeWarningLimit: 1600 },
 });

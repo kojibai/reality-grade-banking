@@ -1006,6 +1006,15 @@ export const loadMeetingCapture=(binding:{artifactSha256:string},id:string)=>loa
 export const saveMeetingCapture=(binding:{artifactSha256:string},id:string,value:unknown,expected:unknown)=>saveNoteState(binding,meetingFamily(id),value,expected);
 
 // Local export references only; immutable bytes use existing encrypted blob custody.
+const governanceExecutionFamily=(key:string)=>{
+ if(key!=='selected'&&!/^(?:register|decision|accepted|signed|settlement):[a-f0-9]{64}$/.test(key))throw Error('GOVERNANCE_EXECUTION_SLOT_INVALID');
+ return 'governance-execution:'+key;
+};
+export const loadGovernanceExecution=(binding:{artifactSha256:string},key:string)=>loadNoteState(binding,governanceExecutionFamily(key));
+export const saveGovernanceExecution=(binding:{artifactSha256:string},key:string,next:unknown,prior:unknown)=>saveNoteState(binding,governanceExecutionFamily(key),next,prior);
+export const loadGovernanceOutbox=(binding:{artifactSha256:string})=>loadNoteState(binding,'governance-outbox');
+export const saveGovernanceOutbox=(binding:{artifactSha256:string},next:unknown,prior:unknown)=>saveNoteState(binding,'governance-outbox',next,prior);
+
 const recordExportFamily=(key:string)=>{if(!/^[a-f0-9]{64}$/.test(key))throw Error('RECORD_PROOF_REFERENCE_INVALID');return 'record-proof-export:'+key;};
 export const loadRecordProofExport=(binding:{artifactSha256:string},key:string)=>loadNoteState(binding,recordExportFamily(key));
 export const saveRecordProofExport=(binding:{artifactSha256:string},key:string,value:import('./record-proof-export').RecordProofExportCheckpoint,expected:unknown)=>saveNoteState(binding,recordExportFamily(key),value,expected);

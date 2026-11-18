@@ -294,7 +294,7 @@ const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWork
 console.log(`Built ${libraryResult.pages} complete static client-work resources and ${libraryResult.downloads} usable text downloads, without app startup payloads.`);
 await mkdir('dist/ledger/proofs',{recursive:true});
 await writeFile('dist/ledger/proofs/index.html',runtimeDocumentHtml(runtimeDocuments.get('/ledger/proofs/'),'ledger'));
-const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),'/observatory/',...assetPaths];
+const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),'/observatory/','/vote/',...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every
 // guide. Canonical publication dates can be added when they are source-backed.

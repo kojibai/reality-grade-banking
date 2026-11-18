@@ -19,7 +19,7 @@ async function emit(source){
 }
 try{
  await writeFile(join(stage,'package.json'),'{"type":"module"}');await symlink(resolve(root,'node_modules'),join(stage,'node_modules'),'dir');
- for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore'])await emit(resolve(root,'api/'+name+'.ts'));
+ for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore','governance'])await emit(resolve(root,'api/'+name+'.ts'));
  await emit(resolve(root,'tests/fixtures/public-profile.ts'));
  await emit(resolve(root,'tests/browser/first-frame-receipt.mjs'));
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
@@ -33,6 +33,10 @@ try{
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
  await mkdir(resolve(stage,'dist/ledger'),{recursive:true});await copyFile(resolve(root,'dist/ledger/index.html'),resolve(stage,'dist/ledger/index.html'));
  await mkdir(resolve(stage,'dist/receipt'),{recursive:true});await copyFile(resolve(root,'dist/receipt/index.html'),resolve(stage,'dist/receipt/index.html'));
+ for(const path of ['dist/vote/index.html','dist/vote/record.html','public/conformance/fonts/NotoSerif-Regular.ttf','scripts/social/fonts/Inter-Regular.ttf','scripts/social/fonts/Inter-SemiBold.ttf']){
+   await mkdir(dirname(resolve(stage,path)),{recursive:true});
+   await copyFile(resolve(root,path),resolve(stage,path));
+ }
  const included=config.functions?.['api/index.ts']?.includeFiles??'';
  for(const name of ['market','sports'])if(!included.includes(`public/receiz-public-${name}.json`))throw Error('CERTIFICATE_DEPLOYED_PUBLIC_SOURCE_MISSING:'+name);
  await mkdir(resolve(stage,'public'),{recursive:true});for(const name of ['market','sports','share-chart-history'])await copyFile(resolve(root,`public/receiz-public-${name}.json`),resolve(stage,`public/receiz-public-${name}.json`));
@@ -62,11 +66,23 @@ globalThis.fetch=async(url,init)=>{
  assert.equal(String(url),'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2');
  assert.equal(init.credentials,'omit');calls++;return profileStatus===200?Response.json(profileFixture()):Response.json({error:'upstream private diagnostic'},{status:profileStatus});
 };
-for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore']){
+for(const name of ['index','profile','asset','receipt','invitation','book','cooperatives','read','explore','governance']){
  const {default:api}=await import('./api/'+name+'.js');
  assert.equal(typeof api.fetch,'function',name+' must boot in plain Node');console.log('BOOT',name);
 }
 assert.equal(calls,0,'Function imports must not request upstream data.');
+const {default:governance}=await import('./api/governance.js');
+const exampleId='4369e31e3779af0b5b2620490a6006de371fdc01cbfd157e412f002022bb1ca8';
+const direct=await governance.fetch(new Request('https://bankeiz.com/api/governance?example=harbor-tool-library&digest='+exampleId));
+assert.equal(direct.status,200);
+const examplePage=await direct.text();
+assert.ok(examplePage.includes('property="og:title" content="Harbor Tool Library"'));
+assert.ok(examplePage.includes('name="twitter:card" content="summary_large_image"'));
+const poster=await governance.fetch(new Request('https://bankeiz.com/vote/example-images/'+exampleId+'.png'));
+assert.equal(poster.headers.get('content-type'),'image/png');
+const png=Buffer.from(await poster.arrayBuffer());assert.equal(png.readUInt32BE(16),1200);assert.equal(png.readUInt32BE(20),630);
+const heldPage=await governance.fetch(new Request('https://bankeiz.com/vote/charters/'+exampleId+'/'));
+assert.equal(heldPage.status,200);assert.equal(calls,0);
 const {default:explore}=await import('./api/explore.js');
 assert.equal((await explore.fetch(new Request('https://bankeiz.com/api/explore?prepare=1',{method:'HEAD'}))).status,204);
 const preparedResponse=await explore.fetch(new Request('https://bankeiz.com/api/explore?prepare=input',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({selectionKey:'a'.repeat(64),previousGeneration:materialGeneration,currentLedgerHeads:ledgerHeads})}));

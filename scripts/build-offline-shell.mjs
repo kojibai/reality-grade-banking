@@ -67,6 +67,8 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     for (const dependency of [...entry.imports ?? [], ...entry.dynamicImports ?? []]) visit(dependency);
   }
   visit('index.html');
+  if(manifest['vote/index.html']){visit('vote/index.html');urls.add('/vote/index.html');}
+  if(manifest['vote/record.html']){visit('vote/record.html');urls.add('/vote/record.html');}
   if(manifest['vault/index.html']){visit('vault/index.html');urls.add('/vault/index.html');}
   if(manifest['pay/checkout.html']){visit('pay/checkout.html');urls.add('/pay/checkout.html');}
   if(manifest['invoice/view.html']){visit('invoice/view.html');urls.add('/invoice/view.html');}
@@ -94,6 +96,8 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (!navigation?.pages) throw Error('OFFLINE_FINAL_NAVIGATION_REQUIRED');
   urls.add('/learn/contact.js');
   const pages = { '/': '/index.html', '/index.html': '/index.html', '/receipt/':'/index.html' };
+  if(manifest['vote/index.html'])for(const path of ['/vote','/vote/','/vote/index.html'])pages[path]='/vote/index.html';
+  if(manifest['vote/record.html'])pages['/vote/record.html']='/vote/record.html';
   if(manifest['vault/index.html'])pages['/vault/index.html']='/vault/index.html';
   if(manifest['pay/checkout.html'])pages['/pay/checkout.html']='/pay/checkout.html';
   if(manifest['invoice/view.html'])for(const path of ['/invoice/view/','/invoice/view','/invoice/view.html'])pages[path]='/invoice/view.html';

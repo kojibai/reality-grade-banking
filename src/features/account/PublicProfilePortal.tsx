@@ -4,6 +4,7 @@ import type {OpenIdentity} from '../../receiz/native-identity';
 import {publishProfileOwner,readProfileEdit,subscribeProfileActions,closeProfileEdit,registerProfilePbiSigner} from '../../receiz/profile-actions';
 import {ProfileEditor} from './ProfileEditor';
 import {CreateAsset} from '../assets/CreateAsset';
+import {registerProfileGovernanceIdentity} from '../../receiz/profile-governance-access';
 import {registerProfileInsightsSource} from '../../receiz/profile-insights-access';
 import {readVerifiedOwnerProfileHeader} from '../../receiz/profile-owner-header';
 import type {PublicMarketItem} from '../../receiz/public-market';
@@ -12,6 +13,7 @@ import type {PublicMarketItem} from '../../receiz/public-market';
 export function PublicProfilePortal({identity,userId,onRefresh=()=>{},marketItems=[]}:{identity:OpenIdentity|null;userId:string|null;onRefresh?:()=>void;marketItems?:readonly PublicMarketItem[]}){
  const edit=useSyncExternalStore(subscribeProfileActions,readProfileEdit,()=>null);
  const header=useMemo(()=>identity?readVerifiedOwnerProfileHeader(identity,userId):null,[identity,userId]);
+ useLayoutEffect(()=>{if(identity&&userId)return registerProfileGovernanceIdentity(userId,identity);},[identity,userId]);
  useLayoutEffect(()=>{publishProfileOwner(identity?userId:null,header);return()=>publishProfileOwner(null);},[identity,userId,header]);
  useEffect(()=>{if(identity?.profileInsights&&userId)return registerProfileInsightsSource(userId,identity.profileInsights);},[identity,userId]);
  useEffect(()=>{if(!identity||!userId)return;let current=true;const assertCurrent=()=>{if(!current)throw Error('PBI_ACCOUNT_CLOSED');};const remove=registerProfilePbiSigner(userId,async()=>{const {connectPbiToAccount}=await import('../../receiz/pbi-account-connect');assertCurrent();await connectPbiToAccount(identity,assertCurrent);});return()=>{current=false;remove();};},[identity,userId]);

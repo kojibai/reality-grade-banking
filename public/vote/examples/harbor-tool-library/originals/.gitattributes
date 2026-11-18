@@ -1,0 +1,2 @@
+# Native JSON seals carry signature data in their exact trailing whitespace.
+*.original binary

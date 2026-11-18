@@ -6,12 +6,12 @@ import type {EvidenceIdentitySource,EvidenceSealPorts,EvidenceFile} from '../../
 const encode=(bytes:Uint8Array)=>Buffer.from(bytes).toString('base64url');
 /** Entirely synthetic in-memory certificate/identity. Full preferred SDK sealing
  * and verification execute under an explicit ephemeral fixture root policy. */
-export async function conformanceOfflineFixture(options:{financial?:boolean;composer?:boolean;previousComposer?:boolean;account?:boolean;vault?:boolean}={}){
+export async function conformanceOfflineFixture(options:{financial?:boolean;composer?:boolean;previousComposer?:boolean;account?:boolean;vault?:boolean;certificateDays?:number}={}){
  const root=fileURLToPath(new URL('../../',import.meta.url)),native=`${root}native/receiz`,sdk=`${native}/packages/receiz-sdk/src`;
  const issuer=await crypto.subtle.generateKey('Ed25519',false,['sign','verify']),device=await crypto.subtle.generateKey('Ed25519',false,['sign','verify']);
  const issuerKey=encode(new Uint8Array(await crypto.subtle.exportKey('raw',issuer.publicKey))),deviceKey=encode(new Uint8Array(await crypto.subtle.exportKey('raw',device.publicKey)));
  const roots=[{kid:'receiz.v4.test.conformance',alg:'Ed25519',status:'active',publicKeyRawB64u:issuerKey}];
- const basis={version:1,certType:'receiz.device.v1',issuerKid:roots[0].kid,alg:'Ed25519',subjectPublicKeyRawB64u:deviceKey,issuedAtMs:Date.now()-1000,expiresAtMs:Date.now()+86400000};
+ const basis={version:1,certType:'receiz.device.v1',issuerKid:roots[0].kid,alg:'Ed25519',subjectPublicKeyRawB64u:deviceKey,issuedAtMs:Date.now()-1000,expiresAtMs:Date.now()+(options.certificateDays??1)*86400000};
  const certId=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonicalJson(basis))))].map(value=>value.toString(16).padStart(2,'0')).join('').slice(0,32);
  const payload={...basis,certId};
  const cert={...payload,sig:encode(new Uint8Array(await crypto.subtle.sign('Ed25519',issuer.privateKey,new TextEncoder().encode(canonicalJson(payload)))))};

@@ -2,7 +2,7 @@ import type { ReceizClient, ReceizOperationPlanV124, ReceizPortableExecutionTran
 import { BANK_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { loadReceiz } from './client';
 type ZeroWriteReason = ReceizZeroWriteFailureV124['reasonCode'];
-export interface BankExecutionCheckpoint { schema: 'bank.execution-checkpoint.v1'; operationId: string; plan: ReceizOperationPlanV124; transitionSet: ReceizPortableExecutionTransitionSetV124; state: 'prepared' | 'unknown' | 'committed' | 'zero-write'; recovery?: ReceizPortableExecutionTransitionRecoveryV124; zeroWriteReason?: ZeroWriteReason; accountSubjectId?: string; sourcesRestored?: true; }
+export interface BankExecutionCheckpoint { executionId?:string; schema: 'bank.execution-checkpoint.v1'; operationId: string; plan: ReceizOperationPlanV124; transitionSet: ReceizPortableExecutionTransitionSetV124; state: 'prepared' | 'unknown' | 'committed' | 'zero-write'; recovery?: ReceizPortableExecutionTransitionRecoveryV124; zeroWriteReason?: ZeroWriteReason; accountSubjectId?: string; sourcesRestored?: true; }
 export interface BankExecutionStore { load(): Promise<BankExecutionCheckpoint | null>; saveNew(value: BankExecutionCheckpoint): Promise<void>; replace(value: BankExecutionCheckpoint): Promise<void>; }
 export interface BankExecutionReview { confirmationDigest: string; participantCount: number; writesPerformed: 0; }
 export type BankExecutionResult = { status: 'committed'; recovery: ReceizPortableExecutionTransitionRecoveryV124 } | { status: 'zero-write'; reasonCode: string } | { status: 'unknown'; operationId: string };
@@ -41,7 +41,7 @@ export function createBankExecution(client: { execution: Pick<ReceizClient['exec
       // This SDK call refuses a structurally reconstructed successful result.
       const recovery = client.execution.exportCommittedRecovery(outcome);
       await reopenRecovery(checkpoint, recovery);
-      await store!.replace({ ...checkpoint, state: 'committed', recovery });
+      await store!.replace({ ...checkpoint, state: 'committed', executionId:outcome.executionId, recovery });
       return { status: 'committed', recovery };
     }
     if (outcome.status === 'zero-write' || outcome.status === 'cancelled') {

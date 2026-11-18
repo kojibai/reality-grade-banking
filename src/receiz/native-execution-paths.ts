@@ -4,6 +4,8 @@ import { isBankNativeApplicationId } from './config.js';
 // POSTs. This is routing permission only; the upstream SDK still admits the
 // request, exact plan, participant sources and authority session separately.
 export const NATIVE_EXECUTION_POST_PATHS: readonly string[] = Object.freeze([
+  '/api/sdk/v1/governance/plan',
+  '/api/sdk/v1/governance/settlement',
   '/api/sdk/v1/execution/stage',
   '/api/sdk/v1/execution/execute',
   '/api/sdk/v1/execution/cancel',

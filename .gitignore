@@ -39,6 +39,7 @@ test-results/
 
 # Legacy local Registry snapshots; publication now uses the existing Receiz SDK rails.
 /.registry-data/
+/server/governance-runtime/*.mjs
 /server/registry-runtime/*.mjs
 /server/registry-runtime/document-head.html
 /public/registry/
