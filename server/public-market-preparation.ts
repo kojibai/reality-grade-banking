@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import {mergePublicQuotes,parsePublicMarket,retainPublicArtwork,retainPublicProfileHeaders,validatePublicQuotes} from '../src/receiz/public-market.js';
+import {mergePublicQuotes,parsePublicMarket,retainPublicArtwork,retainPublicProfileHeaders,validatePublicQuotes,type PublicMarketCatalog} from '../src/receiz/public-market.js';
 import {retainPublicMomentManifest} from '../src/receiz/public-asset-manifest.js';
 import {compatibleShareInventory} from '../src/receiz/market-share-inventory.js';
 import {mergePublicSports,retainPublicSportsInput} from '../src/receiz/public-sports.js';
@@ -31,9 +31,9 @@ export function publicMarketSeedQuotes(snapshot:unknown,wanted:ReadonlySet<strin
 }
 /** Write-side preparation only. The existing fixed public Source transports
  * and selectors supply these display bytes; no Original or identity is opened. */
-export type PublicMarketMaterialPreparation={read?:(kind:PublicMarketOperand)=>Promise<unknown>;selectionKey?:string;history?:unknown;ledgerCacheGzipB64u?:string;previousMaterial?:string;refreshMarket?:true;membership?:Record<string,unknown>;changedQuotes?:Array<Record<string,unknown>>;prepareLedger?:(previous:unknown)=>Promise<unknown>;prepareMarket?:(input:Record<string,unknown>)=>Promise<{history:unknown;asOfPulse:number}>};
-async function materialResult(value:Record<string,unknown>,prepare?:PublicMarketMaterialPreparation['prepareMarket']){
- if(prepare){const state=await prepare(value);value={...value,history:state.history,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:state.asOfPulse}};}
+export type PublicMarketMaterialPreparation={read?:(kind:PublicMarketOperand)=>Promise<unknown>;selectionKey?:string;history?:unknown;ledgerCacheGzipB64u?:string;previousMaterial?:string;refreshMarket?:true;membership?:Record<string,unknown>;changedQuotes?:Array<Record<string,unknown>>;prepareLedger?:(previous:unknown)=>Promise<unknown>;prepareMarket?:(input:Record<string,unknown>,selected?:{membership:unknown;catalog:PublicMarketCatalog})=>Promise<{history:unknown;asOfPulse:number}>};
+async function materialResult(value:Record<string,unknown>,prepare?:PublicMarketMaterialPreparation['prepareMarket'],catalog?:PublicMarketCatalog){
+ if(prepare){const state=await prepare(value,catalog?{membership:value.membership,catalog}:undefined);value={...value,history:state.history,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:state.asOfPulse}};}
  const material=JSON.stringify({...value,publicDisplayPolicy:PUBLIC_DISPLAY_POLICY});if(Buffer.byteLength(material)>MAX)throw Error('PUBLIC_MARKET_RENDER_CAPACITY');return {material,generation:createHash('sha256').update(material).digest('hex')};
 }
 export async function preparePublicMarketRenderMaterial(input:PublicMarketMaterialPreparation={}):Promise<{material:string;generation:string}>{
@@ -75,10 +75,12 @@ export async function preparePublicMarketRenderMaterial(input:PublicMarketMateri
  const read=input.read??(kind=>readReceizPublicMarketSource(kind,undefined,{fresh:true,selectionKey:input.selectionKey}));
  const [membership,snapshot,incomingSports,capitalization,preparedLedger]=await Promise.all([read('membership'),read('quotes'),read('sports'),read('capitalization'),input.prepareLedger?.(previous?.preparedLedger)]);
  const sports=await completeSports(incomingSports,previous?.sports);
- const catalog=parsePublicMarket(membership,snapshot);if(!catalog.complete)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
+ // Quote selection needs member IDs only. Reuse this exact unpriced membership
+ // when the history preparer applies the reduced snapshot below.
+ const catalog=parsePublicMarket(membership);if(!catalog.complete)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
  const quotes=publicMarketSeedQuotes(snapshot,new Set(catalog.items.map(item=>item.id)));
  const history=input.history??previous?.history;
- return materialResult({membership,snapshot:quotes,sports,capitalization,...(history?{history}:{}),...(preparedLedger?ledgerPacketFields(preparedLedger):input.ledgerCacheGzipB64u?{ledgerCacheGzipB64u:input.ledgerCacheGzipB64u}:{})},input.prepareMarket);
+ return materialResult({membership,snapshot:quotes,sports,capitalization,...(history?{history}:{}),...(preparedLedger?ledgerPacketFields(preparedLedger):input.ledgerCacheGzipB64u?{ledgerCacheGzipB64u:input.ledgerCacheGzipB64u}:{})},input.prepareMarket,catalog);
 }
 
 /** Membership/quote display refresh over the held seed. Existing projection

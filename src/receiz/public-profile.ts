@@ -173,7 +173,7 @@ export function publicProfilePageError(username:string,catalog?:PublicMarketCata
 }
 /** A directory card can lack profile details and Originals. It still carries
  * an anonymous public identity subject to the same owner and handle refusals. */
-export function publicDirectoryCardVisible(username:string,userId:string,catalog:PublicMarketCatalog){
+export function publicDirectoryCardVisible(username:string,userId:string,catalog:PublicMarketCatalog|null){
  return !privateProfileAccounts.has(userId)&&!['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_CHANGED'].includes(publicProfilePageError(username,catalog));
 }
 export function retainedPublicProfile(username:string,documentCatalog?:PublicMarketCatalog):PublicProfile|null{

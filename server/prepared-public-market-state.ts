@@ -1,6 +1,6 @@
 import {receizKaiNow} from '@receiz/sdk';
 import {readFile} from 'node:fs/promises';
-import {parsePublicMarket,type PublicMarketCatalog} from '../src/receiz/public-market.js';
+import {mergePublicQuotes,parsePublicMarket,type PublicMarketCatalog} from '../src/receiz/public-market.js';
 import {mergePublicSports} from '../src/receiz/public-sports.js';
 import {buildMarketHistory} from '../src/receiz/market-projection/build-history.js';
 import {parseMarketHistory} from '../src/receiz/market-projection/history.js';
@@ -18,8 +18,9 @@ function priorCatalogSelection(input:unknown,catalog:PublicMarketCatalog):Public
 /** One write-side chart preparation per accepted material. Existing model,
  * quantity-prefix and exact previous-basis guards remain authoritative for
  * display continuity; no Source, Original or financial grant is admitted. */
-export async function preparePublicMarketState(input:Record<string,unknown>){
- const base=parsePublicMarket(input.membership,input.snapshot),catalog=input.sports?mergePublicSports(base,input.sports):base;
+export async function preparePublicMarketState(input:Record<string,unknown>,selected?:{membership:unknown;catalog:PublicMarketCatalog}){
+ const base=selected&&selected.membership===input.membership?mergePublicQuotes(selected.catalog,input.snapshot):parsePublicMarket(input.membership,input.snapshot);
+ const catalog=input.sports?mergePublicSports(base,input.sports):base;
  if(!base.complete||catalog.items.length>10000)throw Error('PUBLIC_MARKET_RENDER_COMPLETE_REQUIRED');
  const previous=input.history==null?await retainedInitialHistory():parseMarketHistory(input.history),capitalization=input.capitalization?parseMarketCapSource(input.capitalization):null,prior=priorCatalogSelection(input.priorCatalogSelection,catalog),pulse=receizKaiNow().pulse;
  const history=capitalization?await buildMarketHistory(capitalization,previous,()=>true,async()=>{},{catalog,pulse:Math.max(pulse,capitalization.serverPulse),capitalization:true,...(prior?{priorInput:{source:capitalization,catalog:prior}}:{})}):previous;

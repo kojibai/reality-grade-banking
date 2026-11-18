@@ -9,9 +9,9 @@ import {CharterOffices} from './CharterOffices';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import {eligibleCandidates,type Row} from '../../receiz/governance-view';
 
-type Props={identity?:OpenIdentity;mode:'charter'|'proposal';owner:string;rows:readonly GovernanceRow[];charter?:Row<'charter'>;charters:readonly Row<'charter'>[];onCharter:(id:string)=>void;onFound:()=>void;onReview:(terms:GovernanceTerms)=>void;onCancel:()=>void};
-export function GovernanceComposer({identity,mode,owner,charter,charters,onCharter,onFound,rows,onReview,onCancel}:Props){
-  const [step,setStep]=useState(1),[organization,setOrganization]=useState(''),[founders,setFounders]=useState(owner);
+type Props={member?:(id:string)=>string;identity?:OpenIdentity;mode:'charter'|'proposal';owner:string;rows:readonly GovernanceRow[];charter?:Row<'charter'>;charters:readonly Row<'charter'>[];onCharter:(id:string)=>void;onFound:()=>void;onReview:(terms:GovernanceTerms)=>void;onCancel:()=>void};
+export function GovernanceComposer({member,identity,mode,owner,charter,charters,onCharter,onFound,rows,onReview,onCancel}:Props){
+  const [step,setStep]=useState(1),[organization,setOrganization]=useState(''),[founders,setFounders]=useState('');
   const [template,setTemplate]=useState('Member association');
   type CharterDraft = (typeof charterTemplates)[string];
   const [charterEdits,setCharterEdits]=useState<Record<string, Partial<CharterDraft>>>({});
@@ -62,7 +62,7 @@ export function GovernanceComposer({identity,mode,owner,charter,charters,onChart
       const text=guidedBudget?[body.trim(),...budgetFields.map(k=>k+' · '+(budget[k]??'').trim())].join('\n\n'):body.trim();
       if(guidedBudget&&budgetFields.some(k=>!budget[k]?.trim()))throw Error('Complete the budget, cost, recipient and conditions before review.');
       if(text.length>4000)throw Error('Shorten the proposal and budget details to fit 4,000 characters.');
-      const terms=mode==='charter'?{kind:'charter',rules:{...rules,...policyText,offices,articles,...(execution?{execution}:{}),...(separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)}}:
+      const terms=mode==='charter'?{kind:'charter',rules:{...rules,...policyText,offices,articles,...(execution?{execution}:{}),...(separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
         {kind:'proposal',charter:charter?.digest,title:title.trim(),text,decision,...(election?{office,nominations:selected,choices:selected.map(d=>candidates.find(c=>c.digest===d)?.document.author)}:{...(decision==='Treasury'&&payment?{payment}:{}),choices:bindingBinary?['Approve','Reject']:options.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)})};
       const reviewed=readGovernanceTerms(terms);
       if(reviewed.kind==='charter'&&!reviewed.rules.founders.includes(owner))throw Error('Include your own Receiz owner ID among the founders.');
@@ -82,12 +82,12 @@ export function GovernanceComposer({identity,mode,owner,charter,charters,onChart
         </div>}
       <label>{mode==='charter'?'Organization name':'Proposal title'}<input required maxLength={mode==='charter'?120:160} value={mode==='charter'?organization:title} onChange={e=>mode==='charter'?setOrganization(e.target.value):editProposal({title:e.target.value})}/></label>
       <label>{mode==='charter'?'Purpose and scope':'What should members decide?'}<textarea required rows={4} maxLength={4000} value={mode==='charter'?rules.purpose:body} onChange={e=>mode==='charter'?editRules({purpose:e.target.value}):editProposal({text:e.target.value})}/></label>
-      {mode==='charter'?<><label>Founding Receiz owner IDs <small>One per line. Each named founder must ratify this exact charter.</small><textarea required value={founders} onChange={e=>setFounders(e.target.value)}/></label>
+      {mode==='charter'?<><p>Founding member <strong>{member?.(owner)??owner}</strong></p><label>Additional founders <small>One Receiz owner ID per line. Each founder ratifies the charter.</small><textarea value={founders} onChange={e=>setFounders(e.target.value)}/></label>
         <label className="gov-check"><input type="checkbox" checked={separate} onChange={e=>setSeparate(e.target.checked)}/>Choose a separate voting membership</label>
         {separate&&<label>Voting members <small>One Receiz owner ID per line. Only these members may propose and vote.</small><textarea required value={electorate} onChange={e=>setElectorate(e.target.value)}/></label>}</>:<>
         {election?<><label>Office<select required value={office} onChange={e=>{setOffice(e.target.value);setSelected([]);}}><option value="">Choose an elected office</option>{electiveOffices.map(o=><option key={o.name}>{o.name}</option>)}</select></label>
           {!electiveOffices.length&&<p>This charter lists no elected offices. Its amendment procedure describes how members can propose one.</p>}
-          <fieldset className="gov-box"><legend>Candidate statements</legend>{candidates.map(c=><label className="gov-check" key={c.digest}><input type="checkbox" checked={selected.includes(c.digest)} onChange={e=>setSelected(v=>e.target.checked?[...v.filter(d=>candidates.find(x=>x.digest===d)?.document.author!==c.document.author),c.digest]:v.filter(d=>d!==c.digest))}/>{c.document.author} · {c.document.terms.statement}</label>)}{!candidates.length&&<p>Candidates can submit their own statements from the charter.</p>}</fieldset></>:bindingBinary?<p>Ballot choices · Approve / Reject</p>:<label>Ballot choices <small>One choice per line.</small><textarea required value={options} onChange={e=>editProposal({options:e.target.value})}/></label>}
+          <fieldset className="gov-box"><legend>Candidate statements</legend>{candidates.map(c=><label className="gov-check" key={c.digest}><input type="checkbox" checked={selected.includes(c.digest)} onChange={e=>setSelected(v=>e.target.checked?[...v.filter(d=>candidates.find(x=>x.digest===d)?.document.author!==c.document.author),c.digest]:v.filter(d=>d!==c.digest))}/>{member?.(c.document.author)??c.document.author} · {c.document.terms.statement}</label>)}{!candidates.length&&<p>Candidates can submit their own statements from the charter.</p>}</fieldset></>:bindingBinary?<p>Ballot choices · Approve / Reject</p>:<label>Ballot choices <small>One choice per line.</small><textarea required value={options} onChange={e=>editProposal({options:e.target.value})}/></label>}
         {decision==='Treasury'&&payment&&<PaymentFacts payment={payment}/>}
         {guidedBudget&&<fieldset className="gov-box gov-form"><legend>Budget request</legend>{budgetFields.map(k=><label key={k}>{k}<input required maxLength={360} value={budget[k]??''} onChange={e=>updateBudget(k,e.target.value)}/></label>)}</fieldset>}
         {decision==='Treasury'&&!payment&&<small>This charter can record a funding decision. A payment requires an authorized Settlement installment.</small>}

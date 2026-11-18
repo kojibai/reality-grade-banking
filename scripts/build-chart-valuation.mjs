@@ -8,7 +8,10 @@ if(start<0||!source.endsWith('}\n')||!source.includes('    const unsignedRaw = {
 // Only observation work is omitted: the complete arithmetic and unsigned output
 // above this marker are copied byte-for-byte from the installed SDK. The public
 // inspector continues to use the SDK function with its full calculation trace.
-const arithmetic=(source.slice(0,start)+'    return unsignedRaw;\n}\n').replace(/(?<!function )\brecordCalculation\(/g,'/* @__PURE__ */recordCalculation(');
+// esbuild preserves arguments of a removed call unless their purity is explicit.
+// Serializing plain chart metadata only supplies the discarded reproducibility trace.
+const arithmetic=(source.slice(0,start)+'    return unsignedRaw;\n}\n').replace(/(?<!function )\brecordCalculation\(/g,'/* @__PURE__ */recordCalculation(')
+ .replace('stableStringify(meta), "reproducibility"', '/* @__PURE__ */stableStringify(meta), "reproducibility"');
 const result=await transform(arithmetic,{loader:'js',format:'esm',target:'es2022',minifySyntax:true,treeShaking:true,pure:['recordCalculation']});
 if(/(?<!function )recordCalculation\(/.test(result.code))throw Error('Chart tracing was not removed.');
 const hash=createHash('sha256').update(source).digest('hex');
