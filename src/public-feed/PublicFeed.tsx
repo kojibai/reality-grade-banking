@@ -43,7 +43,22 @@ export function PublicFeed({seed,initialFilter='All',selectedItemId,musicContinu
  useEffect(()=>{if(!active||!hasMore||moreBusy||!more.current||!(index>0||filter!=='All'||rows.length<=1)||rows.length-index>3)return;const boundary=continuationKey??String(items.length);if(requestedMore.current===boundary)return;requestedMore.current=boundary;more.current();},[active,hasMore,moreBusy,index,filter,rows.length,items.length,continuationKey]);
  useLayoutEffect(()=>{cancelAnimationFrame(frame.current);frame.current=0;current.current=0;if(scroller.current)scroller.current.scrollTop=0;setIndex(0);},[filter]);
  useLayoutEffect(()=>{if(initialFilter==='audio'&&selectedItemId)selectFeedMusic(rows,rows.findIndex(item=>item.id===selectedItemId));},[]);
- useLayoutEffect(()=>{if(!active||filter!=='audio'||!musicItemId)return;const next=rows.findIndex(item=>item.id===musicItemId);if(next<0||next===current.current)return;current.current=next;setIndex(next);if(scroller.current)scroller.current.scrollTop=next*scroller.current.clientHeight;setPanel(held=>held?.kind==='lyrics'?{kind:'lyrics',item:rows[next]}:held);},[musicItemId,filter,active]);
+ useLayoutEffect(()=>{
+  if(!active||filter!=='audio'||!musicItemId)return;
+  const next=rows.findIndex(item=>item.id===musicItemId);
+  if(next<0||next===current.current)return;
+  current.current=next;
+  setIndex(next);
+  setPanel(held=>held?.kind==='lyrics'?{kind:'lyrics',item:rows[next]}:held);
+ },[musicItemId,filter,active,rows]);
+ useLayoutEffect(()=>{
+  const element=scroller.current;
+  if(!element||index!==current.current)return;
+  const height=element.clientHeight;
+  // WebKit can re-snap as a preceding stage is replaced by the virtual
+  // spacer. Align against the committed window before handling its scroll.
+  if(height&&Math.round(element.scrollTop/height)!==index)element.scrollTop=index*height;
+ },[index]);
  useEffect(()=>{if(!active||!discover)return;let frame=0;const abort=new AbortController();frame=requestAnimationFrame(()=>{void prepareFeedItems(abort.signal).then(found=>{if(!abort.signal.aborted)setItems(held=>completeCatalog?completeFeedItems(held,found):appendFeedItems(held,found));}).catch(()=>{});});return()=>{cancelAnimationFrame(frame);abort.abort();};},[active,discover,completeCatalog]);
  useEffect(()=>{const read=()=>setVisible(document.visibilityState!=='hidden');read();document.addEventListener('visibilitychange',read);return()=>document.removeEventListener('visibilitychange',read);},[]);
  useEffect(()=>()=>{cancelAnimationFrame(frame.current);clearTimeout(noticeTimer.current);},[]);

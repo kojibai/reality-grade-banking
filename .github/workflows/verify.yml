@@ -101,6 +101,10 @@ jobs:
           echo "BANK_BROWSER_EXECUTABLE=$browser_path" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run test:browser
+      - name: Check native Feed music handoffs
+        run: |
+          npx playwright install --with-deps webkit
+          node scripts/check-feed-music-browser.mjs
       - name: Messages appointment and relationship continuity
         run: MESSAGES_VISUAL_EVIDENCE=test-results/messages-workspace node scripts/check-messages-workspace-browser.mjs
       - name: Compressed Feed first interaction and music continuity
