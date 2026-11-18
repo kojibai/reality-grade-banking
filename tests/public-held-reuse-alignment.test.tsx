@@ -34,6 +34,19 @@ it('expands restored Discover from the complete selected catalog without fetchin
  expect((await source.prepareFeedCollectibles()).map(item=>item.id)).toEqual(['held card']);
  expect(fetcher).not.toHaveBeenCalled();
 });
+it('mounts Ledger from the held public Originals without a second document and keeps its input on return',async()=>{
+ const held=catalog([row('Known Original')]),marker=document.getElementById('receiz-navigation')!;
+ Object.assign(marker,{publicMarketCatalog:()=>held,publicMarketDocument:()=>({generation:'a'.repeat(64),catalog:held})});
+ const fetcher=vi.fn(async(_url:RequestInfo|URL)=>new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);
+ const ledger=await import('../src/public-ledger/main'),host=document.createElement('div');host.dataset.publicRuntime='ledger';host.hidden=true;document.body.append(host);
+ let mounted:Root|undefined;
+ await act(()=>{mounted=ledger.mountHeldPublicDocument(host,{generation:'a'.repeat(64),catalog:held});if(mounted)roots.push(mounted);});
+ expect(host.textContent).toContain('Known Original');expect(host.querySelector('h1')?.textContent).toContain('History.');
+ const input=host.querySelector<HTMLInputElement>('input[aria-label="Search public activity"]')!;input.value='retained search';
+ await act(()=>{expect(ledger.mountHeldPublicDocument(host,{generation:'a'.repeat(64),catalog:held})).toBe(mounted);expect(ledger.mountPublicDocument(host)).toBe(mounted);});
+ expect(host.querySelector('input[aria-label="Search public activity"]')).toBe(input);expect(input.value).toBe('retained search');
+ expect(fetcher.mock.calls.some(([url])=>String(url)==='/ledger/'||String(url).includes('/public-market/membership'))).toBe(false);
+});
 it('keeps accepted membership B selected for Feed without borrowing prepared A provenance, then follows genuine C and withdrawals',async()=>{
  const a=await seed(['withdrawn']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket'),reader=await import('../src/receiz/prepared-bank-catalog');adoptPublicMarketDocument(a);
  const p=await probe();await act(()=>p.root.render(<p.Probe active/>));

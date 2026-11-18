@@ -7,13 +7,13 @@ import {build} from 'vite';
 import {expect,it,vi} from 'vitest';
 import {publicRuntimeExportsPlugin} from '../scripts/public-runtime-exports.mjs';
 
-it('keeps both mount APIs on the actual Feed/Explorer HTML-script entries, with CSS and one cached startup, without changing restored Discover or Bank exports',async()=>{
- const root=await realpath(await mkdtemp(join(tmpdir(),'bank-public-runtime-exports-'))),names=['discover','feed','explore'],input:Record<string,string>={};
+it('keeps both mount APIs on the actual Feed/Explorer/Ledger HTML-script entries, with CSS and one cached startup, without changing restored Discover or Bank exports',async()=>{
+ const root=await realpath(await mkdtemp(join(tmpdir(),'bank-public-runtime-exports-'))),names=['discover','feed','explore','ledger'],input:Record<string,string>={};
  try{
   await writeFile(join(root,'package.json'),'{"type":"module"}');await writeFile(join(root,'shared.js'),'export const exact=value=>value;');await writeFile(join(root,'shared.css'),'.held-runtime{color:navy}');
   for(const name of [...names,'bank']){
    const directory=name==='bank'?root:join(root,name);await mkdir(directory,{recursive:true});input[name]=join(directory,'index.html');
-   const actualSources:Record<string,string>={discover:'/src/public-discover/main.tsx',feed:'/src/public-feed/main.tsx',explore:'/src/public-explorer/main.tsx'};
+   const actualSources:Record<string,string>={discover:'/src/public-discover/main.tsx',feed:'/src/public-feed/main.tsx',explore:'/src/public-explorer/main.tsx',ledger:'/src/public-ledger/main.tsx'};
    const repositoryHtml=name==='bank'?null:await readFile(new URL('../'+name+'/index.html',import.meta.url),'utf8');
    const source=repositoryHtml?repositoryHtml.match(/<script\b[^>]*type="module"[^>]*src="([^"]+)"/)![1]:'/bank.js';
    if(name!=='bank'){expect(source).toBe(actualSources[name]);await access(new URL('..'+source,import.meta.url));}

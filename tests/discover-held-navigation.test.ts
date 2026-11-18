@@ -34,11 +34,15 @@ it('preserves the accepted Bank family when a different feedy capture has a late
  expect(f.mount).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLElement),f.a,'/feed/');expect(f.fetcher).not.toHaveBeenCalled();
 });
 
-it.each([['feed','/feed/'],['explore','/explore/'],['explore','/explore/images/']])('reuses held %s data for first navigation to %s without opening another document',async(runtime,path)=>{
+it.each([['feed','/feed/'],['explore','/explore/'],['explore','/explore/images/'],['ledger','/ledger/'],['ledger','/ledger/proofs/']])('reuses held %s data for first navigation to %s without opening another document',async(runtime,path)=>{
  const f=fixture();Object.assign(f.a,{capitalization:{},history:{},format:{locale:'en-US',timeZone:'UTC'}});Object.assign(f.page,{runtime,entry:`/assets/${runtime}-held.js`});(f.pages as Record<string,unknown>)[path]=f.page;await f.open(new URL('https://bankeiz.com'+path));expect(f.fetcher).not.toHaveBeenCalled();expect(f.mount).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLElement),f.a,path);expect(f.navigate).toHaveBeenCalledExactlyOnceWith(path);
 });
 it('does not treat an Originals-only Feed catalog as an already-held complete Market family',async()=>{
  const f=fixture();Object.assign(f.page,{runtime:'explore',entry:'/assets/explore-held.js'});(f.pages as Record<string,unknown>)['/explore/']=f.page;await f.open(new URL('https://bankeiz.com/explore/'));expect(f.fetcher).toHaveBeenCalledOnce();expect(f.mount).not.toHaveBeenCalled();
+});
+it('opens Ledger from the cold Explorer discovery family without downloading its document',async()=>{
+ const f=fixture();Object.assign(f.page,{runtime:'ledger',entry:'/assets/ledger-held.js'});Object.assign(f.pages,{'/ledger/':f.page});Object.assign(f.marker,{publicMarketDocument:()=>null,publicDiscoveryDocument:()=>f.a});
+ await f.open(new URL('https://bankeiz.com/ledger/'));expect(f.fetcher).not.toHaveBeenCalled();expect(f.mount).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLElement),f.a,'/ledger/');expect(f.navigate).toHaveBeenCalledExactlyOnceWith('/ledger/');
 });
 it('uses the canonical retained Explorer root for a first category destination',async()=>{
  const f=fixture();Object.assign(f.a,{capitalization:{},history:{},format:{locale:'en-US',timeZone:'UTC'}});Object.assign(f.page,{runtime:'explore',entry:'/assets/explore-held.js'});const category={...f.page,head:'<title>Images</title>'};Object.assign(f.pages,{'/explore/':f.page,'/explore/images/':category});f.ensure.mockImplementation(page=>{expect(page).toBe(f.page);const root=document.createElement('div');root.dataset.publicRuntime='explore';document.body.append(root);return root;});await f.open(new URL('https://bankeiz.com/explore/images/'));expect(f.fetcher).not.toHaveBeenCalled();expect(f.ensure).toHaveBeenCalledExactlyOnceWith(f.page);expect(f.mount).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLElement),f.a,'/explore/images/');

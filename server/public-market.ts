@@ -164,6 +164,7 @@ export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes'
   // Only write-side preparation asks for its selected material root. Ordinary
   // discovery and Ledger reuse native complete Showcase membership directly.
   if(kind==='membership'&&(options?.fresh||options?.selectionKey))target.searchParams.set('representation','selected');
+  if(kind==='membership'&&options?.selectionKey)target.searchParams.set('generation',options.selectionKey);
   const response=await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined));if(kind==='membership'&&response.profileHeads)options?.onPublicProfileHeads?.(response.profileHeads);return JSON.parse(new TextDecoder().decode(response.bytes));
 }
 /** Only public fields used by the canonical display projector cross this boundary. */

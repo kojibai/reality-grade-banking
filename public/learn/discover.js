@@ -58,7 +58,7 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
   const usable=value=>HEX.test(value?.generation??'')&&value.catalog?.complete===true&&Array.isArray(value.catalog.items);
   return usable(bank)?bank:usable(discovery)?discovery:null;
  };
- const reusable=(page,held)=>['feed','explore'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
+ const reusable=(page,held)=>['feed','explore','ledger'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
  const reuse=(path,page,build)=>{
   const marker=document.getElementById('receiz-navigation');
   if(typeof marker?.ensurePublicRuntime!=='function'||!reusable(page,heldPublicFamily()))return null;

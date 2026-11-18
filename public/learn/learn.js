@@ -284,7 +284,7 @@
     history.pushState({ ...(assetReturnPath?{assetReturnPath}:{}),publicNavigation: { url: historyUrl(target), scroll: returning ? positions.get(target) ?? 0 : 0 } }, '', target); void render(returning);
   };
   // Lazy public destinations reuse this retained router and catalog by reference.
-  Object.assign(element,{pages,navigate,ensurePublicRuntime:page=>page&&(page===pages['/explore/']||page===pages['/feed/']||page===pages['/discover/'])?ensurePublicRuntime(page):undefined});
+  Object.assign(element,{pages,navigate,ensurePublicRuntime:page=>page&&(page===pages['/explore/']||page===pages['/feed/']||page===pages['/discover/']||page===pages['/ledger/'])?ensurePublicRuntime(page):undefined});
   addEventListener('bankeiz:navigate-public',event=>{const path=event.detail?.path;if(typeof path==='string'&&path.length<100&&profileName(path)){navigate(path);}});
   // Retained call controls can return from a public workspace without a
   // synthetic link, a second router, or a document navigation.
