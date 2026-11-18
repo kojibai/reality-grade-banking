@@ -70,3 +70,11 @@ No page-opening code, catalog/state carrier, identity/storage flow or SDK guard 
 3. Verify the deployed reading sitemap's preferred URL and retained discovery pagination.
 4. In Google Search Console and Bing Webmaster Tools, check property ownership, sitemap processing, actual URL indexing and selected canonical for each route family. Request indexing through supported tools where useful; wait for their decision.
 5. Check real mobile performance and field data separately. Do not describe metadata readiness as a zero-latency or fully indexed site.
+
+## November 17 live recheck
+
+At 7:35 p.m. and 7:47 p.m. Eastern, anonymous GETs to all 18 previously failing URLs returned HTTP 200. The four client-work pages passed the metadata audit. Each canonical directory URL and its explicit `index.html` also returned the same ETag on HEAD. The other 14 responses still carried `X-Robots-Tag: none`. The invitation, booking template, legal and receipt pages retained their intentional HTML exclusions. An unknown profile returned 404. [All 18 GET results](2026-11-17-public-seo-recheck.json)
+
+Vercel lists `f7bf84db` as the last ready Bankeiz production deployment built before the November 15 audit. Its public-page build lacked the four landing pages. Commit `00b82793` registered the proposal and agreement pages and included them in the static build. The first November 17 recheck reached production commit `73c75a99`. The second reached Bankeiz 6.0 at `b72fdcce` and reproduced the same 14 exclusions. [Landing-page build change](https://github.com/kojibai/reality-grade-banking/commit/00b82793aa6e3f7181b56167f5733b78f7cc042e)
+
+Vercel's project rules route the 14 canonical URLs directly to saved public documents before the Bankeiz deployment rewrites run. The Explore Music URL and its saved object returned the same ETag, length and robots exclusion. The explicit deployment `index.html` had a different ETag and no robots header. The repair belongs in Receiz's public-document publisher. Its production release and live header correction remain pending. [Receiz publisher repair](https://github.com/kojibai/receiz/pull/241)

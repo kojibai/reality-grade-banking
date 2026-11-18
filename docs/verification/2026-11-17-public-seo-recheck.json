@@ -1,0 +1,298 @@
+{
+  "checkedAt": "2026-11-18T00:47:39.204Z",
+  "origin": "https://bankeiz.com",
+  "scope": "Registered intended-indexable public pages and explicitly supplied public paths; response heads only. Not a search indexing or performance audit.",
+  "summary": {
+    "checked": 18,
+    "passed": 4,
+    "failed": 14
+  },
+  "intentionalExclusions": [
+    "/invitation/",
+    "/booking/",
+    "/legal/",
+    "/receipt/"
+  ],
+  "results": [
+    {
+      "path": "/ai-documents/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/ai-documents/",
+      "title": "AI document generator: PDF, Word &amp; more with your AI counterpart | Bankeiz",
+      "description": "Create PDF, Word, Excel and PowerPoint files with your AI counterpart. Keep your history and context connected, review the actual document, then choose to share.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 196608,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/sign-agreements/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/sign-agreements/",
+      "title": "Sign agreements online with your Receiz ID and AI counterpart | Bankeiz",
+      "description": "Prepare full agreements with your AI counterpart. Each person reviews the original PDF and complete terms, then explicitly consents and signs with their own Receiz ID.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 196608,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/proposals/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/proposals/",
+      "title": "AI proposal generator with your AI counterpart | Bankeiz",
+      "description": "Draft proposals and invoices with your AI counterpart, then keep the relationship connected through agreed work, appointments, payment review, delivery and the next conversation.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 180224,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/client-communication/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/client-communication/",
+      "title": "Client communication with your AI counterpart | Bankeiz",
+      "description": "Keep client communication connected with your AI counterpart: messages, agreed work, appointments, proposals, payments, delivery and the continuing relationship in Bankeiz.",
+      "httpRobots": null,
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 180224,
+      "issues": [],
+      "ok": true
+    },
+    {
+      "path": "/ledger/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/ledger/",
+      "title": "Public Ledger: transactions &amp; proof history | Bankeiz",
+      "description": "Explore public transactions, transfers and source-carried proof history. Inspect original evidence and save the loaded Ledger as a local Memory Crystal.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 81920,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/discover/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/discover/",
+      "title": "Discover people and their work | Bankeiz",
+      "description": "Discover music, videos, books, images and moments. Search public Originals and connect with their creators.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 32768,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/feed/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/feed/",
+      "title": "For you: watch, listen and read | Bankeiz",
+      "description": "Discover public Originals in your Bankeiz feed. Watch films, listen to music, read books and connect directly with their creators.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 49152,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/",
+      "title": "Asset explorer: public proof objects &amp; live value | Bankeiz",
+      "description": "Explore public proof objects and assets without an account. Inspect live valuations, sealed moments, ownership and the original evidence behind each listing.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/market-cap/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/market-cap/",
+      "title": "Global Market Cap | Reality-Grade Banking",
+      "description": "Examine the public valuation universe, historical entry dates, current aggregate and exact boundaries of Global Market Cap.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/music/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/music/",
+      "title": "Music: explore public assets | Bankeiz",
+      "description": "Audio works, recordings and music sources. Inspect the authored original, its ownership and the rights actually carried.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/images/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/images/",
+      "title": "Images: explore public assets | Bankeiz",
+      "description": "Photography, visual art and image-based originals. Follow each image to its claim, author and supported ownership history.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/videos/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/videos/",
+      "title": "Videos: explore public assets | Bankeiz",
+      "description": "Moving-image originals and their carried sources. Review the work, its context and the rights defined by the object.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/books/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/books/",
+      "title": "Books: explore public assets | Bankeiz",
+      "description": "Book-length works with their original publication evidence. Access, ownership and distribution rights remain defined by each source.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/essays/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/essays/",
+      "title": "Essays: explore public assets | Bankeiz",
+      "description": "Long-form writing and authored arguments. Read the source and inspect the moment, attribution and history it records.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/moments/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/moments/",
+      "title": "Moments: explore public assets | Bankeiz",
+      "description": "Sealed moments with an explicit claim and context. Examine what was recorded and the evidence the source actually establishes.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/collectibles/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/collectibles/",
+      "title": "Collectibles: explore public assets | Bankeiz",
+      "description": "Sports cards, signal cards and other collectible originals. Inspect supported live value, opening coordinates and ownership history.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/explore/documents/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/explore/documents/",
+      "title": "Documents: explore public assets | Bankeiz",
+      "description": "Document sources and their inspectable records. Check authorship, integrity, rights and the evidence carried by the original.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    },
+    {
+      "path": "/bjklock/",
+      "status": 200,
+      "canonical": "https://bankeiz.com/bjklock/",
+      "title": "BJ Klock | Bankeiz",
+      "description": "Copies fail, Originals Verify.",
+      "httpRobots": "none",
+      "htmlRobots": [
+        "index,follow,max-image-preview:large"
+      ],
+      "headBytes": 245760,
+      "issues": [
+        "http_noindex"
+      ],
+      "ok": false
+    }
+  ]
+}
