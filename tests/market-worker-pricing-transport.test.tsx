@@ -6,7 +6,7 @@ import{createPublicPricingCheckpoint,PUBLIC_PRICING_METADATA_FIELDS}from'../serv
 import{parseMarketCapSource}from'../src/receiz/market-projection/source';import{publishMarketDisplaySource}from'../src/receiz/market-projection/display-source';
 import{useMarketCapitalization}from'../src/receiz/market-projection/useMarketCapitalization';
 const base='.';
-const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
+const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('../node_modules/@receiz/sdk/dist/v124Kai.js',async original=>({...await original<typeof import('../node_modules/@receiz/sdk/dist/v124Kai.js')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();localStorage.clear();});
 it('sends existing pricing operands only once per held catalog identity, preserving the full Source and exact sports pricing/history objects',async()=>{

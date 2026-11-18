@@ -4,7 +4,7 @@ import {readPublicMarketDocumentSeed,type PublicMarketDocumentSeed} from './publ
 import {compatibleShareInventory,mergeShareInventory} from './market-share-inventory';
 import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
-import {receizKaiNow} from '@receiz/sdk';
+import {receizKaiNow} from '../../node_modules/@receiz/sdk/dist/v124Kai.js';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
 import { fetchPublicMarket,observePublicMarketMembership, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';

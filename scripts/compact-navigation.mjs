@@ -39,7 +39,7 @@ export function compactNavigation(input) {
   const page = value => ({ ...value, head: head(value.head),...(typeof value.content==='string'?{content:content(value.content)}:{}) });
   const pages=Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank=page(input.bank);
   if(input.bank.css)bank.css=Object.fromEntries(cssEntries.map(([url,css])=>[url,[intern(css)]]));
-  return shareDeclarationSpans(shareStyleParts({ ...input, pages, bank, styles }));
+  return inlineSingleUseParts(shareDeclarationSpans(shareStyleParts({ ...input, pages, bank, styles })));
 }
 
 // Chunk factoring can place the same rules inside different emitted styles.
@@ -82,9 +82,9 @@ function shareStyleParts(input){
 function shareDeclarationSpans(input){
  const uses=new Map();
  for(const page of [...Object.values(input.pages),input.bank,input.bank.css??{}])for(const value of Object.values(page))if(Array.isArray(value))for(const part of value)if(typeof part==='number')uses.set(part,(uses.get(part)??0)+1);
- const pieces=input.styles.map((value,index)=>value.length>=1024&&uses.get(index)>0&&uses.get(index)<=2&&!/<script\b/i.test(value)?value.split(/(?<=[{};])/g):[value]);
+ const pieces=input.styles.map((value,index)=>value.length>=1024&&uses.get(index)>0&&uses.get(index)<=2&&!/<script\b/i.test(value)?value.split(/(?<=[{};])|(?=\.)/g):[value]);
  const counts=new Map();
- for(const parts of pieces)for(const part of parts)if(part.length>=16)counts.set(part,(counts.get(part)??0)+1);
+ for(const parts of pieces)for(const part of parts)if(part.length>=8)counts.set(part,(counts.get(part)??0)+1);
  const styles=[],indices=new Map(),intern=value=>{if(!indices.has(value)){indices.set(value,styles.length);styles.push(value);}return indices.get(value);};
  const mappings=pieces.map(parts=>{
   const result=[];let pending='';
@@ -99,4 +99,41 @@ function shareDeclarationSpans(input){
  const output={...input,styles,pages:Object.fromEntries(Object.entries(input.pages).map(([path,value])=>[path,page(value)])),bank:{...page(input.bank),...(input.bank.css?{css:Object.fromEntries(Object.entries(input.bank.css).map(([path,value])=>[path,expand(value)]))}:{})}};
  const size=value=>JSON.stringify(value).replaceAll('<','\\u003c').length;
  return size(output)<size(input)?output:input;
+}
+
+
+// The flat reader already accepts both literal strings and table indexes.
+// Inline fragments used just once, then give the most reused fragments the
+// shortest indexes. Every destination still expands to its original bytes.
+function inlineSingleUseParts(navigation) {
+  const rows = [...Object.values(navigation.pages), navigation.bank]
+    .flatMap(page => [page.head, page.content])
+    .concat(Object.values(navigation.bank.css ?? {}))
+    .filter(Array.isArray);
+  const uses = navigation.styles.map(() => 0);
+  for (const row of rows) {
+    for (const part of row) if (typeof part === 'number') uses[part]++;
+  }
+  const shared = navigation.styles.map((_, index) => index)
+    .filter(index => uses[index] > 1)
+    .sort((a, b) => uses[b] - uses[a]);
+  const indexes = new Map(shared.map((previous, index) => [previous, index]));
+
+  for (const row of rows) {
+    const packed = [];
+    for (const part of row) {
+      const value = typeof part === 'number'
+        ? (indexes.get(part) ?? navigation.styles[part])
+        : part;
+      if (typeof value === 'string' && typeof packed.at(-1) === 'string') {
+        packed[packed.length - 1] += value;
+      } else {
+        packed.push(value);
+      }
+    }
+    row.length = 0;
+    for (const part of packed) row.push(part);
+  }
+  navigation.styles = shared.map(index => navigation.styles[index]);
+  return navigation;
 }

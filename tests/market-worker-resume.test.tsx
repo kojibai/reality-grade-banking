@@ -9,7 +9,7 @@ import {adoptMarketDisplaySource} from '../src/receiz/market-projection/display-
 import {parseMarketHistory} from '../src/receiz/market-projection/history';
 import {useMarketCapitalization} from '../src/receiz/market-projection/useMarketCapitalization';
 const clock=vi.hoisted(()=>({pulse:15114808}));
-vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
+vi.mock('../node_modules/@receiz/sdk/dist/v124Kai.js',async original=>({...await original<typeof import('../node_modules/@receiz/sdk/dist/v124Kai.js')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();vi.useRealTimers();localStorage.clear();Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});});
 async function fixture(){

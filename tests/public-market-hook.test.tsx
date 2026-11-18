@@ -9,7 +9,7 @@ import {publicSportsValueRow} from '../src/receiz/market-projection/source';
 import {fetchPublicSports} from '../src/receiz/public-sports';
 import {publicAssetManifest} from '../src/receiz/public-asset-manifest';
 const clock=vi.hoisted(()=>({pulse:14710100}));
-vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
+vi.mock('../node_modules/@receiz/sdk/dist/v124Kai.js',async original=>({...await original<typeof import('../node_modules/@receiz/sdk/dist/v124Kai.js')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 const network = vi.hoisted(() => ({ membership: vi.fn(), quotes: vi.fn() }));
 vi.mock('../src/receiz/public-market', async original => ({ ...await original<typeof import('../src/receiz/public-market')>(), fetchPublicMarket: network.membership, fetchPublicQuotes: network.quotes }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

@@ -13,7 +13,7 @@ import{pickPublicMarketPricingCatalog}from'../src/receiz/market-projection/prici
 import{parseMarketCapSource}from'../src/receiz/market-projection/source';
 import{adoptMarketDisplaySource,publishMarketDisplaySource,retainedMarketDisplaySource}from'../src/receiz/market-projection/display-source';
 import{buildMarketHistory}from'../src/receiz/market-projection/build-history';
-const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('@receiz/sdk',async original=>({...await original<typeof import('@receiz/sdk')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
+const clock=vi.hoisted(()=>({pulse:14720000}));vi.mock('../node_modules/@receiz/sdk/dist/v124Kai.js',async original=>({...await original<typeof import('../node_modules/@receiz/sdk/dist/v124Kai.js')>(),receizKaiNow:()=>({pulse:clock.pulse})}));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear();vi.useRealTimers(); });
 it('opens held calculation details without refetching or requesting another valuation and reuses them on reopen',async()=>{

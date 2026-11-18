@@ -1,6 +1,6 @@
 import {preparedBankCatalogEnabled,preparedBankCatalogState,subscribePreparedBankCatalog} from '../prepared-bank-catalog';
 import { useCallback,useEffect,useLayoutEffect,useSyncExternalStore, useRef, useState } from 'react';
-import{receizKaiNow}from'@receiz/sdk';
+import{receizKaiNow}from'../../../node_modules/@receiz/sdk/dist/v124Kai.js';
 import {readPublicMarketDocumentSeed,publicMarketDocumentHistory} from '../public-market-document-seed';
 import type { ChartPeriod } from '../../core/chart-history';
 import type{PublicMarketCatalog}from'../public-market';
