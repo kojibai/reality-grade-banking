@@ -34,8 +34,9 @@ async function check(engine){
     try{await access(file);}catch{return route.fulfill({status:404,body:''});}
     return route.fulfill({path:file});
    }
-   const range=request.headers().range;
-   if(url.origin==='https://receiz.com'&&(request.resourceType()==='media'||range)){
+   const headers=request.headers(),range=headers.range;
+   // Linux WebKit classifies native audio as "other" and can request the whole file.
+   if(url.origin==='https://receiz.com'&&(request.resourceType()==='media'||headers['sec-fetch-dest']==='audio'||range)){
     if(failNewStreams&&!streams.has(url.href))return route.abort('failed');
     streams.add(url.href);
     const match=/^bytes=(\d+)-(\d*)$/.exec(range??'');
