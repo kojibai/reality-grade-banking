@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
+import {gunzipSync} from 'node:zlib';
 import {join} from 'node:path';
 import {chromium} from 'playwright';
 
@@ -107,7 +108,11 @@ try{
   assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
   await page.locator('.obs-streams').getByRole('button',{name:'Proof graph',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  assert.ok((await page.locator('.obs-chart-head p').innerText()).includes('1,050'));
+  const ledgerSeed=JSON.parse(gunzipSync(await readFile(new URL('../public/receiz-public-ledger.json.gz.bin',import.meta.url))));
+  const graphCutoff=ledgerSeed.coverage.find(c=>c.source==='graph').observedAt;
+  const datedGraph=ledgerSeed.records.filter(row=>row.source==='graph'&&!row.origin&&row.authority==='public-source-projection'&&
+    (row.time?Date.parse(row.time)<=graphCutoff:row.kind==='market-asset'&&row.pulse!=null)).length;
+  assert.equal(await page.locator('.obs-chart-head b').innerText(),trafficText(datedGraph));
   await page.locator('.obs-streams').getByRole('button',{name:'Actions',exact:true}).click();
   await ranges.click();
   const entryUrl=page.url();
@@ -247,7 +252,11 @@ try{
   await coldFind.fill(username);
   await page.locator('#obs-profiles tbody a').filter({hasText:'@'+username}).waitFor({timeout:55_000});
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({firstFrameRecords:initialTotal,firstFrameProfiles:initialProfiles,totalsFromLedger:true,walletCharts:4,audienceCharts:4,singleLineNavigation:true,singleLineStatus:true,lastDirectoryPageSearch:true,cardOnlyProfileRetained:true,datedFutureRecordSeparated:true,actionsBefore:expectedActions,actionsAfter:await countActions(),keyboard:true,mobile:true,inspectedLedgerRecord:true,retainedAfterColdReopen:true}));
+  await page.locator('.obs-readings').getByRole('button',{name:/Global market cap/}).click();
+  await page.getByRole('dialog',{name:'Global market cap'}).getByRole('link',{name:'Open Global Market Cap'}).click();
+  await page.waitForURL(u=>u.pathname==='/market-cap/',{waitUntil:'commit'});
+  await page.getByRole('heading',{name:'Global Market Cap',exact:true,level:1}).waitFor();
+  console.log(JSON.stringify({openedMarketCap:true,headlinePopovers:4,firstFrameRecords:initialTotal,firstFrameProfiles:initialProfiles,totalsFromLedger:true,walletCharts:4,audienceCharts:4,singleLineNavigation:true,singleLineStatus:true,lastDirectoryPageSearch:true,cardOnlyProfileRetained:true,datedFutureRecordSeparated:true,actionsBefore:expectedActions,actionsAfter:await countActions(),keyboard:true,mobile:true,inspectedLedgerRecord:true,retainedAfterColdReopen:true}));
 }finally{
   await context?.close().catch(()=>{});
   await rm(profile,{recursive:true,force:true});
