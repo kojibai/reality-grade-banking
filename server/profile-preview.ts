@@ -48,7 +48,7 @@ export async function handleProfilePreview(request:Request,deps?:Dependencies){
    if(fullReceivingProfileName(username)){const alias=await(deps?.alias??readPublicProfileAlias)(username);if(!alias)throw new PublicProfileError('PROFILE_NOT_FOUND',404);selected=alias;}
    const profile=await(deps?.header??readPublicProfileHeader)(selected);
    if(profile.username!==selected||publicProfileUsername(profile.username,profile.receivingUsername)!==publicProfileUsername(username,profile.receivingUsername))throw new PublicProfileError('PROFILE_IDENTITY_MISMATCH',503);
-   const png=await(deps?.image??(async profile=>(await import('./profile-share-art.js')).renderProfileImage(profile)))(profile);
+   const png=await(deps?.image??(async profile=>{const path=pathToFileURL(resolve('server/profile-runtime/profile-share-art.mjs')).href;return(await import(/* @vite-ignore */ path)).renderProfileImage(profile);}))(profile);
    return new Response(png as Uint8Array<ArrayBuffer>,{headers:{...headers,'Cache-Control':'public, max-age=60, s-maxage=300'}});
   }catch(error){const status=error instanceof PublicProfileError?error.status:503;return new Response(null,{status,headers:{...headers,'Cache-Control':'no-store'}});}
  }

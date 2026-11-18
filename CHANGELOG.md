@@ -6,10 +6,12 @@ Full release records and qualification evidence live in [docs/releases](docs/rel
 
 ## 6.0.0 — Your work. Your money. Your economy.
 
-Release preparation. The exact v5 tag `10b5fd1` through committed baseline
-`73c75a99` contains 130 commits and 1,161 net changed files. Final valuation,
-profile-sharing, version and release changes are recorded separately until
-committed. Final CI, tag/publication, deployment and live acceptance are pending.
+Published [November 17, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v6.0.0)
+from `b72fdcce`. The exact v5 tag `10b5fd1` through recap baseline
+`73c75a99` contains 130 commits and 1,161 net changed files; the published tag
+also includes the final valuation, profile-sharing, Market and release cohort.
+Dated local, CI, deployment and live results are recorded separately in the
+qualification ledger.
 SDK, MCP and AI Skills remain coordinated at 129.5.0; no new npm or v130 release.
 [Full release notes](docs/releases/6.0.0.md) ·
 [Qualification](docs/releases/6.0.0-qualification.md) ·

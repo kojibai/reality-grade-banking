@@ -25,6 +25,11 @@ try{
  await cp(resolve(root,'server/profile-runtime'),resolve(stage,'server/profile-runtime'),{recursive:true});
  await cp(resolve(root,'server/asset-runtime/pages'),resolve(stage,'server/asset-runtime/pages'),{recursive:true});
  await cp(resolve(root,'server/receipt-runtime'),resolve(stage,'server/receipt-runtime'),{recursive:true});
+ const profileFiles=config.functions?.['api/profile.ts']?.includeFiles??'';
+ for(const path of ['scripts/social/fonts','public/conformance/renderer.wasm','public/conformance/fonts/NotoSerif-Regular.ttf','public/conformance/fonts/Inter-Regular.ttf']){
+  if(!profileFiles.includes(path))throw Error('PROFILE_IMAGE_DEPLOYED_RESOURCE_MISSING:'+path);
+  await mkdir(dirname(resolve(stage,path)),{recursive:true});await cp(resolve(root,path),resolve(stage,path),{recursive:true});
+ }
  await mkdir(resolve(stage,'dist/explore'),{recursive:true});await copyFile(resolve(root,'dist/explore/index.html'),resolve(stage,'dist/explore/index.html'));
  await mkdir(resolve(stage,'dist/ledger'),{recursive:true});await copyFile(resolve(root,'dist/ledger/index.html'),resolve(stage,'dist/ledger/index.html'));
  await mkdir(resolve(stage,'dist/receipt'),{recursive:true});await copyFile(resolve(root,'dist/receipt/index.html'),resolve(stage,'dist/receipt/index.html'));
@@ -42,10 +47,16 @@ const catalogScripts=html=>[...html.matchAll(/<script id="public-market-seed" ty
 const exploreTemplate=await readFile('dist/explore/index.html','utf8');
 assert.ok(hasExploreRows(exploreTemplate),'Preview smoke must use actual compiled Explore rows.');
 const exploreSeeds=catalogScripts(exploreTemplate);assert.equal(exploreSeeds.length,1,'Preview smoke must use exactly one actual compiled catalog seed.');
-let calls=0,certificateCalls=0,materialCalls=0,profileStatus=200;
+let calls=0,certificateCalls=0,materialCalls=0,profileStatus=200,manifestCalls=0,coverCalls=0,manifestStatus=200,foreignManifest=false;
 const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:0,revision:'plain-node-display'},publicOriginals:[]}};
 const ledgerHeads={actions:{count:'0',lastSeq:'0'},wallet:{count:'0',lastKaiUpulse:null}},heldMaterial=JSON.stringify({publicDisplayPolicy:'bank.public-market.curated-display.v3',membership,preparedLedger:{schema:'bank.public-ledger.preparation.v1',financialOnly:true,ledgerCacheGzipB64u:'unchanged-display-packet-not-decoded',heads:ledgerHeads}}),materialGeneration=createHash('sha256').update(heldMaterial).digest('hex');
 globalThis.fetch=async(url,init)=>{
+ if(String(url)==='https://receiz.com/api/profile/alexmorgan/manifest'){
+  manifestCalls++;assert.equal(init.credentials,'omit');const head=profileFixture().profile;if(foreignManifest)head.profile.username='foreign';
+  return manifestStatus===200?Response.json({ok:true,head}):Response.json({error:'private upstream diagnostic'},{status:manifestStatus});
+ }
+ if(String(url).startsWith('https://receiz.com/api/media/image?')){coverCalls++;return new Response(null,{status:404});}
+
  if(String(url)==='https://receiz.com/api/market/prepared-material?generation='+materialGeneration+'&packed=1'){materialCalls++;return new Response(gzipSync(Buffer.from(heldMaterial)),{headers:{'content-type':'application/gzip'}});}
  if(String(url)==='https://receiz.com/api/market/share-certificates/share_deployed_certificate_test'){certificateCalls++;return Response.json({ok:true,state:{note:{noteToken:'share_deployed_certificate_test',remainingShareQuantityMicro:'2500000'},item:{id:'profile:bjklock:d1d5a3f4-5db9-444e-88f5-95443fb70598',assetId:'d1d5a3f4-5db9-444e-88f5-95443fb70598',livePulseSeed:null}}});}
  assert.equal(String(url),'https://receiz.com/api/profile/alexmorgan?surface=public-route&representation=collection-v2');
@@ -66,6 +77,15 @@ assert.equal(heldResponse.status,200,'Default held-family preparation must run f
 const {default:profile}=await import('./api/profile.js');
 assert.equal((await profile.fetch(new Request('https://bankeiz.com/api/profile?username=alexmorgan',{method:'HEAD'}))).status,200);
 assert.equal(calls,0,'HEAD must not request a profile.');
+assert.equal((await profile.fetch(new Request('https://bankeiz.com/alexmorgan/og.png',{method:'HEAD'}))).status,200);
+assert.equal(manifestCalls,0,'Image HEAD must not read its public header.');assert.equal(coverCalls,0,'Image HEAD must not prepare artwork.');
+const image=await profile.fetch(new Request('https://bankeiz.com/alexmorgan/og.png'));
+assert.equal(image.status,200,'Default unbundled profile image must reach its packaged renderer.');
+const png=Buffer.from(await image.arrayBuffer());assert.equal(image.headers.get('content-type'),'image/png');assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a');assert.equal(png.readUInt32BE(16),1730);assert.equal(png.readUInt32BE(20),909);assert.equal(manifestCalls,1);
+for(const status of [403,404]){manifestStatus=status;const before=coverCalls,refusal=await profile.fetch(new Request('https://bankeiz.com/alexmorgan/og.png'));assert.equal(refusal.status,status);assert.equal((await refusal.arrayBuffer()).byteLength,0);assert.equal(coverCalls,before,'Refused owners never enter image preparation.');}
+manifestStatus=200;foreignManifest=true;const beforeForeign=coverCalls;assert.equal((await profile.fetch(new Request('https://bankeiz.com/alexmorgan/og.png'))).status,503);assert.equal(coverCalls,beforeForeign);foreignManifest=false;
+console.log('PASS default unbundled profile PNG1730x909, zero-read HEAD, packaged font/render closure and public owner/privacy refusals.');
+
 const {default:reading}=await import('./api/read.js');
 assert.equal((await reading.fetch(new Request('https://bankeiz.com/read/profiles/alexmorgan/',{method:'HEAD'}))).status,200);
 assert.equal(calls,0,'Reading HEAD must not request any source.');
