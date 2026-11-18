@@ -78,7 +78,7 @@ it('uses the current public username for the Receive ID, QR and copied address i
  const host=document.createElement('div'),root=createRoot(host),copy=vi.fn().mockResolvedValue(undefined);vi.stubGlobal('navigator',{clipboard:{writeText:copy}});
  try{act(()=>root.render(<LiveReceive identity={{accountUsername:()=> 'Klok',username:'old_name',walletReceivingAddress:()=> '10000000-0000-4000-8000-000000000002'}as OpenIdentity}/>));
  expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('klok');expect(host.textContent).not.toContain('.receiz.id');expect(host.querySelector<HTMLAnchorElement>('.payment-link')?.href).toBe('https://bankeiz.com/?to=klok');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
- await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('klok');
+ await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy address')!.click());expect(copy).toHaveBeenCalledWith('klok');
  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Copy payment link"]')!.click());expect(copy).toHaveBeenLastCalledWith('https://bankeiz.com/?to=klok');
  }finally{act(()=>root.unmount());}
 });
@@ -92,7 +92,7 @@ it('waits for a new account’s confirmed public username and uses the assigned 
   await act(async()=>finish('assigned_collision_2'));
   expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('assigned_collision_2');expect(host.querySelector<HTMLAnchorElement>('.payment-link')?.href).toBe('https://bankeiz.com/?to=assigned_collision_2');
   expect(host.querySelector('.payment-qr path')?.getAttribute('d')).toBe(paymentQrPath(paymentQr('https://bankeiz.com/?to=assigned_collision_2')));
-  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!.click());expect(copy).toHaveBeenCalledWith('assigned_collision_2');
+  await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy address')!.click());expect(copy).toHaveBeenCalledWith('assigned_collision_2');
   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Share payment link')!.click());expect(share).toHaveBeenCalledWith({title:'Payment link',url:'https://bankeiz.com/?to=assigned_collision_2'});
   await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Set up NFC tag')!.click());expect(write.mock.calls[0][0]).toEqual({records:[{recordType:'url',data:'https://bankeiz.com/?to=assigned_collision_2'}]});
   expect(host.textContent).not.toContain('receiz_123456789012345678');expect(host.textContent).not.toContain('10000000-0000-4000-8000-000000000002');
@@ -133,13 +133,13 @@ it('confirms receiving-ID copies inside the button, resets after repeat copies, 
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<LiveReceive identity={{username:'klok'}as OpenIdentity}/>));
-  const button=[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy Receiz ID')!;
+  const button=[...host.querySelectorAll('button')].find(b=>b.textContent==='Copy address')!;
   expect(copy).not.toHaveBeenCalled();
   await act(async()=>button.click());expect(copy).toHaveBeenLastCalledWith('klok');
   expect(button.querySelector('[data-copied="true"]')).not.toBeNull();expect(host.querySelector('[role="status"]')?.textContent??'').toBe('');
   await act(async()=>vi.advanceTimersByTime(1200));await act(async()=>button.click());
   await act(async()=>vi.advanceTimersByTime(1000));expect(button.querySelector('[data-copied="true"]')).not.toBeNull();
-  await act(async()=>vi.advanceTimersByTime(600));expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(button.textContent).toBe('Copy Receiz ID');
+  await act(async()=>vi.advanceTimersByTime(600));expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(button.textContent).toBe('Copy address');
   copy.mockRejectedValueOnce(Error('denied'));await act(async()=>button.click());
   expect(button.querySelector('[data-copied="true"]')).toBeNull();expect(host.textContent).toContain('Select and copy your receiving ID');
  }finally{act(()=>root.unmount());vi.useRealTimers();}
@@ -172,7 +172,7 @@ it('Receive displays and copies the complete held name while the old public loca
   await act(async()=>root.render(<LiveReceive identity={identity}/>));
   expect(host.querySelector('.receiving-coordinate')?.textContent).toBe(full);
   expect(host.querySelector<HTMLAnchorElement>('.payment-link')!.href).toBe('https://bankeiz.com/?to='+full);
-  await act(async()=>host.querySelector<HTMLButtonElement>('button[aria-label="Copy Receiz ID"]')!.click());
+  await act(async()=>host.querySelector<HTMLButtonElement>('button[aria-label="Copy address"]')!.click());
   expect(copy).toHaveBeenLastCalledWith(full);expect(prepareReceivingUsername).toHaveBeenCalledOnce();
   expect(identity.username).toBe('receiz_'+full);expect(identity.accountUsername?.()).toBe(legacy);
  }finally{act(()=>root.unmount());}
