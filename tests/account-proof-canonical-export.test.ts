@@ -4,7 +4,7 @@ import {BANK_APPLICATION_ID} from '../src/receiz/config';
 import * as account from '../src/receiz/account-proof';
 import {readAccountProofFile} from '../src/receiz/account-proof-png';
 import {extractAccountProofPng} from '../src/receiz/account-proof-png';
-import {accountProofArtwork,createAccountProofImage} from '../src/receiz/account-proof-image';
+import {createAccountProofImage} from '../src/receiz/account-proof-image';
 import {confirmPublicAccountProof} from '../src/receiz/account-proof-public';
 import {createRecordProofExports} from '../src/receiz/record-proof-export';
 import {Resvg} from '@resvg/resvg-js';
@@ -84,18 +84,12 @@ it('keeps Account artwork and exact backup bytes inside a canonically sealed ima
  const states=new Map(),blobs=new Map<string,Uint8Array>();let seals=0,renders=0;
  const exports=createRecordProofExports({assertOpen(){},read:async key=>states.get(key),write:async(key,next)=>{states.set(key,next);},retain:async bytes=>{const digest=await fixture.runtime.sha256ReceizBytes(bytes);blobs.set(digest,bytes.slice());return digest;},restore:async digest=>blobs.get(digest)!.slice(),seal:async input=>{seals++;return ownerSealer.seal(input);}});
  const render=async(svg:string)=>{renders++;return new Resvg(svg).render().asPng();};
- const pixels=new Resvg(accountProofArtwork(proof)).render().asPng();
- // Only browser rasterization is simulated; real canonical crypto below is
- // unchanged. This lets the old implementation reach its missing outer seal.
- vi.stubGlobal('Image',class{src='';async decode(){}});
- vi.stubGlobal('document',{createElement:()=>({width:0,height:0,getContext:()=>({drawImage(){}}),toBlob:(done:(value:Blob)=>void)=>done(new Blob([new Uint8Array(pixels)],{type:'image/png'}))})});
- let first:Awaited<ReturnType<typeof createAccountProofImage>>;
- try{first=await createAccountProofImage(proof,input=>exports.export(input),render);}finally{vi.unstubAllGlobals();}
+ const first=await createAccountProofImage(proof,input=>exports.export(input),render);
  expect((await fixture.runtime.verifyReceizArtifact(first.bytes)).status).toBe('verified-artifact');
  const opened=await fixture.runtime.openPayload({fileBytes:first.bytes,filename:first.filename,mime:'image/png',signatureV4RootPublicKeys:ports.roots});
- expect(opened.ok).toBe(true);expect(extractAccountProofPng(opened.payloadBytes)).toEqual(new Uint8Array(await wire.arrayBuffer()));
+ expect(opened.ok).toBe(true);expect(Buffer.from(extractAccountProofPng(opened.payloadBytes)).equals(Buffer.from(await wire.arrayBuffer()))).toBe(true);
  const again=await createAccountProofImage(proof,input=>exports.export(input),render);
- expect(again.bytes).toEqual(first.bytes);expect(seals).toBe(1);expect(renders).toBe(1);
+ expect(Buffer.from(again.bytes).equals(first.bytes)).toBe(true);expect(seals).toBe(1);expect(renders).toBe(1);
  const tampered=first.bytes.slice();tampered[50]^=1;expect((await fixture.runtime.verifyReceizArtifact(tampered)).status).not.toBe('verified-artifact');
  const roundtrip=await account.verifyAccountProof(await readAccountProofFile(new File([new Uint8Array(first.bytes)],first.filename,{type:'image/png'})),owner);
  expect(roundtrip.sourceDigest).toBe(proof.sourceDigest);

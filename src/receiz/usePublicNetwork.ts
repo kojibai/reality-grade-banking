@@ -24,7 +24,7 @@ export function documentSourceStates(snapshot?:PublicNetworkCache):Sources{
   return sources;
 }
 type PublicCatalogMarker=HTMLElement&{publicMarketCatalog?:()=>PublicMarketCatalog|null;subscribePublicMarketCatalog?:(listener:()=>void)=>()=>void};
-function heldProofCatalog(){
+export function heldProofCatalog(){
   const selected=retainedDiscoveredPublicCatalog();if(selected?.complete)return selected;
   if(typeof document==='undefined')return null;
   try{const catalog=(document.getElementById('receiz-navigation') as PublicCatalogMarker|null)?.publicMarketCatalog?.();return catalog?.complete?catalog:null;}catch{return null;}

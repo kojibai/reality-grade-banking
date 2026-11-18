@@ -47,6 +47,19 @@ it('mounts Ledger from the held public Originals without a second document and k
  expect(host.querySelector('input[aria-label="Search public activity"]')).toBe(input);expect(input.value).toBe('retained search');
  expect(fetcher.mock.calls.some(([url])=>String(url)==='/ledger/'||String(url).includes('/public-market/membership'))).toBe(false);
 });
+it('keeps a complete empty Ledger selection when navigation supplies an older catalog',async()=>{
+ const ledger=await import('../src/public-ledger/main');
+ const {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption');
+ const old=catalog([row('Withdrawn Original')]),empty=catalog([]);
+ publishDiscoveredPublicCatalog(empty);
+ const selected=retainedDiscoveredPublicCatalog();
+ const host=document.createElement('div');host.hidden=true;host.dataset.publicRuntime='ledger';document.body.append(host);
+ const fetcher=vi.fn(async()=>new Response(null,{status:503}));vi.stubGlobal('fetch',fetcher);
+ await act(()=>{roots.push(ledger.mountHeldPublicDocument(host,{generation:'b'.repeat(64),catalog:old}));});
+ expect(host.querySelector('h1')?.textContent).toContain('History.');
+ expect(host.textContent).not.toContain('Withdrawn Original');
+ expect(retainedDiscoveredPublicCatalog()).toBe(selected);
+});
 it('keeps accepted membership B selected for Feed without borrowing prepared A provenance, then follows genuine C and withdrawals',async()=>{
  const a=await seed(['withdrawn']),{adoptPublicMarketDocument}=await import('../src/receiz/usePublicMarket'),reader=await import('../src/receiz/prepared-bank-catalog');adoptPublicMarketDocument(a);
  const p=await probe();await act(()=>p.root.render(<p.Probe active/>));

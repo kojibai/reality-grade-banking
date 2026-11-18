@@ -1,3 +1,5 @@
+import {heldProofCatalog} from '../receiz/usePublicNetwork';
+import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
 import {readPublicLedgerDocumentSeed,type PublicLedgerDocumentSeed} from '../receiz/public-ledger-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import { StrictMode,useEffect,useState } from 'react';
@@ -20,8 +22,13 @@ function PublicLedgerRoot({prepared,path}:{prepared?:PublicLedgerDocumentSeed|nu
 const roots=new WeakMap<HTMLElement,Root>(),preparing=new WeakMap<HTMLElement,Promise<Root|undefined>>();
 /** The existing Ledger reader projects the selected public catalog directly.
  * Reuse that reader and its retained history without a second page request. */
-export function mountHeldPublicDocument(root:HTMLElement,_held:Pick<PublicMarketDocumentSeed,'catalog'|'generation'>,path='/ledger/'){
- if(!roots.has(root))flushSync(()=>{const renderer=createRoot(root,{identifierPrefix:'public-ledger-'});roots.set(root,renderer);renderer.render(<StrictMode><PublicLedgerRoot path={path}/></StrictMode>);});
+export function mountHeldPublicDocument(root:HTMLElement,held:Pick<PublicMarketDocumentSeed,'catalog'|'generation'>,path='/ledger/'){
+ if(!roots.has(root)){
+  // A cold Ledger can receive the selected catalog before a shared reader
+  // exposes it. Preserve an already available successor, including an empty one.
+  if(held.catalog.complete&&!heldProofCatalog())publishDiscoveredPublicCatalog(held.catalog);
+  flushSync(()=>{const renderer=createRoot(root,{identifierPrefix:'public-ledger-'});roots.set(root,renderer);renderer.render(<StrictMode><PublicLedgerRoot path={path}/></StrictMode>);});
+ }
  return roots.get(root)!;
 }
 export function mountPublicDocument(root=publicRuntimeRoot('ledger')):Root|Promise<Root|undefined>{
