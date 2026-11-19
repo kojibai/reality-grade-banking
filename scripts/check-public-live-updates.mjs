@@ -22,8 +22,8 @@ const renderBuild=JSON.parse(await readFile('server/profile-runtime/public-marke
 await mkdir(output,{recursive:true});
 // Test-only server adapter, following the first-response browser qualification.
 // The browser receives only the existing production HTML and compiled modules.
-await build({stdin:{contents:"export{profilePreviewHtml}from'./server/profile-preview';export{selectHeldPublicProfile}from'./src/receiz/public-profile';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',packages:'external',outfile:resolve(output,'entrance.mjs'),logLevel:'warning'});
-const {profilePreviewHtml,selectHeldPublicProfile}=await import(pathToFileURL(resolve(output,'entrance.mjs')).href);
+await build({stdin:{contents:"export{parseMarketHistory}from'./src/receiz/market-projection/history';export{profilePreviewHtml}from'./server/profile-preview';export{selectHeldPublicProfile}from'./src/receiz/public-profile';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',packages:'external',outfile:resolve(output,'entrance.mjs'),logLevel:'warning'});
+const {profilePreviewHtml,parseMarketHistory,selectHeldPublicProfile}=await import(pathToFileURL(resolve(output,'entrance.mjs')).href);
 const source=JSON.parse(await readFile(resolve(directory,'receiz-public-market.json'),'utf8'));
 const baseline=structuredClone(source),additions=captured.originals;
 const additionIds=new Set(additions.map(row=>row.id));
@@ -37,7 +37,8 @@ const fullHead=version=>({...structuredClone(captured.head),profile:{...captured
 const exactSourceBytes=process.env.BANK_LIVE_UPDATES_SOURCE?await readFile(process.env.BANK_LIVE_UPDATES_SOURCE):null;
 const exactSource=exactSourceBytes?JSON.parse(exactSourceBytes.toString()):null;
 const addedIds=new Set(captured.added.map(row=>row.id)),withdrawnIds=new Set(captured.withdrawn);
-const finalSource=exactSource??{ok:true,transport:{...baseline.transport,generatedAt:captured.generatedAt,publicProfileHeads:[],publicOriginals:[...captured.added,...baseline.transport.publicOriginals.filter(row=>!withdrawnIds.has(row.id)&&!addedIds.has(row.id))],publicMembership:captured.membership}};
+const finalRows=[...captured.added,...baseline.transport.publicOriginals.filter(row=>!withdrawnIds.has(row.id)&&!addedIds.has(row.id))];
+const finalSource=exactSource??{ok:true,transport:{...baseline.transport,generatedAt:captured.generatedAt,publicProfileHeads:[],publicOriginals:finalRows,publicMembership:{...captured.membership,itemCount:finalRows.length,revision:revision(finalRows)}}};
 const intermediate=structuredClone(finalSource);intermediate.transport.publicOriginals=intermediate.transport.publicOriginals.filter(row=>row.id!==additions[1].id);intermediate.transport.generatedAt=generatedAt;intermediate.transport.publicMembership={...intermediate.transport.publicMembership,itemCount:intermediate.transport.publicOriginals.length,revision:revision(intermediate.transport.publicOriginals)};
 const responses=[baseline,intermediate,finalSource];
 const sourceFixtureSha256=createHash('sha256').update(exactSourceBytes??JSON.stringify(finalSource)).digest('hex');
@@ -59,9 +60,27 @@ const initialProfile=selectHeldPublicProfile(owner,initialCatalog);assert.ok(ini
 assert.ok(initialProfile.items.every(row=>!additionIds.has(row.id)),'The retained predecessor has not received the two captured Originals');
 const initialOwnerCount=initialProfile.items.length;
 const compiledProfileHTML=await readFile('server/profile-runtime/profile-pages/'+owner+'.html','utf8');assert.ok(compiledProfileHTML.startsWith('<!-- bank.profile.document.v1 '+packet.generation+' '+owner),'The profile and shared family must come from the same production build');
-const initialProfileHTML=compiledProfileHTML.replace(/^<!-- bank\.profile\.document\.v1 [^>]+ -->/,'');
+// A current compiled fragment can contain the later Originals. Render the
+// historical entrance with the same production renderer and exact seed as its client.
+const {renderSelectedPublicMarketContent}=await import(pathToFileURL(resolve('server/profile-runtime/public-market-document.mjs')).href);
+const initialProfileHTML=beforeItems.length===catalog.items.length
+ ?compiledProfileHTML.replace(/^<!-- bank\.profile\.document\.v1 [^>]+ -->/,'')
+ :renderSelectedPublicMarketContent({catalog:initialCatalog,history:parseMarketHistory(packet.history),asOfPulse:packet.asOfPulse,generation:packet.generation,profileUsername:owner});
 const carryDirectProfile=process.env.BANK_LIVE_UPDATES_PROFILE_SOURCE!=='catalog';
 const initialHTML=profilePreviewHtml(template,owner,carryDirectProfile?initialProfile:null,undefined,initialProfileHTML,true,undefined,carryDirectProfile);
+// Cold Feed and Ledger must also open the predecessor when the shipped
+// release already includes the additions under test.
+const historicalPages=new Map();
+async function publicDocument(path,file){
+ if(beforeItems.length===catalog.items.length||!['/feed/','/ledger/','/ledger/proofs/'].includes(path))return readFile(file);
+ if(!historicalPages.has(path))historicalPages.set(path,(async()=>{
+  const {renderPreparedDependentDocument}=await import(pathToFileURL(resolve('server/profile-runtime/prepared-dependent-documents.mjs')).href);
+  const {snapshot,...membership}=baseline;
+  const material=JSON.stringify({membership,snapshot,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:packet.asOfPulse},...(path==='/feed/'?{}:{ledgerCacheGzipB64u:(await readFile(resolve(directory,'receiz-public-ledger.json.gz.bin'))).toString('base64url')})});
+  return Buffer.from(await renderPreparedDependentDocument({path:path.slice(1,-1),material,generation:createHash('sha256').update(material).digest('hex'),template:await readFile(file,'utf8'),renderBuild}));
+ })());
+ return historicalPages.get(path);
+}
 const streams=new Set(),pending=new Set(),requests=[],results=[];
 let state=0,delivery=false,offline=false;
 const mime={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.wasm':'application/wasm','.ttf':'font/ttf'};
@@ -92,7 +111,7 @@ const server=createServer(async(req,res)=>{
   if(url.pathname==='/cadence/'||url.pathname==='/cadence'){res.writeHead(200,{'content-type':'text/html'}).end(initialHTML);return;}
   const file=resolve(directory,'.'+decodeURIComponent(url.pathname)+(url.pathname.endsWith('/')?'index.html':''));
   if(!file.startsWith(directory+'/')){res.writeHead(403).end();return;}
-  const bytes=await readFile(file),headers={'content-type':mime[extname(file)]??'application/octet-stream','content-length':String(bytes.length)};
+  const bytes=await publicDocument(url.pathname,file),headers={'content-type':mime[extname(file)]??'application/octet-stream','content-length':String(bytes.length)};
   if(/^\/ledger(?:\/proofs)?\/$/.test(url.pathname)){
    // The actual lazy Ledger reader binds its saved representation to these
    // existing delivery coordinates. They identify display fixture bytes;
