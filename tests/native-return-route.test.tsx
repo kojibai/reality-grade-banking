@@ -73,6 +73,8 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
  const pages=Object.fromEntries(Object.entries(paths).map(([path,runtime])=>[path,{runtime,entry:'/'+runtime+'.js',head:`<title>${runtime}</title>`,content:'<main>Held public view</main>'}]));
  data.textContent=JSON.stringify({pages,bank:{head:'<title>Bank</title>',styles:[],entry:'/private-bank.js'}});
  const pending=vi.fn((_entry:string)=>new Promise(()=>{})),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ let y=0;const scrollY=vi.spyOn(window,'scrollY','get').mockImplementation(()=>y),frame=vi.spyOn(window,'requestAnimationFrame').mockImplementation(callback=>{callback(0);return 0;});
+ const at=(position:number)=>act(()=>{y=position;dispatchEvent(new Event('scroll'));});
  try{
   await act(async()=>root.render(<App/>));
   const bar=document.querySelector('#retained-bank-navigation .bottom-nav');expect(bar).not.toBeNull();
@@ -80,10 +82,16 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
   new Function('window','document','location','history','scrollTo','Event','URL','load','// All public guides'+router)(window,document,location,history,scroll,Event,URL,pending);
   const navigate=(data as unknown as {navigate:(path:string)=>void}).navigate;
   for(const path of Object.keys(paths)){
-   act(()=>navigate(path));
+   act(()=>{y=0;navigate(path);});
    expect(location.pathname).toBe(path);expect(host.hidden).toBe(true);
    expect(document.querySelectorAll('.bottom-nav')).toHaveLength(1);expect(document.querySelector('.bottom-nav')).toBe(bar);
    expect(bar?.closest('[hidden],[inert]')).toBeNull();
+   const dock=bar!.parentElement!;expect(dock.hasAttribute('data-tucked')).toBe(false);
+   if(path!=='/feed/'){
+    at(220);expect(dock.hasAttribute('data-tucked')).toBe(true);
+    at(202);expect(dock.hasAttribute('data-tucked')).toBe(false);
+    at(220);expect(dock.hasAttribute('data-tucked')).toBe(true);
+   }
   }
   const assets=[...bar!.querySelectorAll('button')].find(button=>button.textContent==='Assets')!;
   act(()=>assets.click());
@@ -93,7 +101,7 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
   act(()=>assets.click());
   expect(location.pathname).toBe('/');expect(location.hash).toBe('#assets');expect(document.querySelector('.bottom-nav')).toBe(bar);
   expect(pending.mock.calls.some(([entry])=>entry==='/private-bank.js')).toBe(false);
- }finally{act(()=>root.unmount());host.remove();data.remove();document.querySelectorAll('[data-public-runtime]').forEach(node=>node.remove());scroll.mockRestore();history.replaceState(null,'','/');}
+ }finally{act(()=>root.unmount());host.remove();data.remove();document.querySelectorAll('[data-public-runtime]').forEach(node=>node.remove());scroll.mockRestore();scrollY.mockRestore();frame.mockRestore();history.replaceState(null,'','/');}
 });
 
 it('releases the native modal before focusing and scrolling the public guide destination', async () => {

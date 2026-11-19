@@ -22,6 +22,7 @@ import { LiveAccount } from './features/account/LiveAccount';
 import { LiveActions } from './features/account/LiveActions';
 import { parseRoute, routeHash, sheetCloseBehavior } from './core/routes';
 import {requestBankNavigation} from './core/bank-navigation';
+import {useScrollReveal} from './core/useScrollReveal';
 import type { UIAction } from './core/useBank';
 import { useNativeAccount } from './receiz/useNativeAccount';
 import { projectPersonalHistory } from './receiz/personal-history';
@@ -59,6 +60,14 @@ function MainApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
  useEffect(()=>{const changed=()=>{setReceipt(location.pathname==='/receipt/'&&!document.getElementById('root')?.hidden?location.href:null);setVault(vaultLocation(location.href));if(location.pathname==='/')bankMounted.current=true;};addEventListener('popstate',changed);addEventListener('bankeiz:receipt',changed);addEventListener('receiz-bank:surface',changed);return()=>{removeEventListener('popstate',changed);removeEventListener('bankeiz:receipt',changed);removeEventListener('receiz-bank:surface',changed);};},[]);
  const session=readCardReturn(location.search);
  return <>{(bankMounted.current||!receipt&&!vault)&&<div hidden={!!receipt||!!vault} inert={!!receipt||!!vault}>{session?<CardDepositReturn sessionId={session}/>:<BankApp verifiedEmailMessage={verifiedEmailMessage}/>}</div>}{vault&&<Suspense fallback={<main className="vault-loading" role="status"><InlineOpening label="Preparing the record"/></main>}><VaultPage route={vault}/></Suspense>}{receipt&&document.body.dataset.bankSurface!=='receipt'&&<ReceiptView key={receipt} onBack={()=>{if(history.state?.bankReceipt)history.back();else{history.replaceState(null,'','/#ledger');dispatchEvent(new Event('bankeiz:receipt'));dispatchEvent(new Event('receiz-bank:surface'));}}}/>}</>;
+}
+function RetainedBankNavigation({onBank,panel,navigate,deposit}:{onBank:boolean;panel:Panel;navigate:(panel:Panel)=>void;deposit:()=>void}) {
+ const {away,reveal}=useScrollReveal(!onBank,'#retained-bank-navigation button:focus-visible',undefined,true);
+ return createPortal(<div id="retained-bank-navigation" data-public={!onBank||undefined} data-tucked={!onBank&&away||undefined} onFocus={reveal}>
+  <BottomNav panel={onBank?panel:null}
+    onNavigate={next=>{if(onBank)navigate(next);else requestBankNavigation(routeHash(next));}}
+    onDeposit={()=>{if(onBank)deposit();else requestBankNavigation(routeHash('account',{kind:'deposit'}));}}/>
+ </div>,document.body);
 }
 const EMPTY_MARKET_ITEMS:import('./receiz/public-market').PublicMarketItem[]=[];
 function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObservation|null}) {
@@ -125,11 +134,7 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   if (!account.identity) {
     return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} onPbi={account.pbi}/>}/></>;
   }
-  const dock=createPortal(<div id="retained-bank-navigation" data-public={!onBank||undefined}>
-    <BottomNav panel={onBank?panel:null}
-      onNavigate={next=>{if(onBank)navigate(next);else requestBankNavigation(routeHash(next));}}
-      onDeposit={()=>{if(onBank)open({kind:'deposit'});else requestBankNavigation(routeHash('account',{kind:'deposit'}));}}/>
-  </div>,document.body);
+  const dock=<RetainedBankNavigation onBank={onBank} panel={panel} navigate={navigate} deposit={()=>open({kind:'deposit'})}/>;
   return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} onRefresh={refreshAccountSources}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})} navigation={dock}>
     <div hidden={panel !== 'account'}><LiveAccount portfolio={investments.data} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} receivedNotes={account.receivedNotes} walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAvailability={() => open({kind:'balance',focus:'settlement'})} onAssets={() => navigate('assets')} onInvestments={() => { positions.current.assets=0; navigate('assets'); }} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>

@@ -1,10 +1,10 @@
 /* One work fills the viewport. All rules are scoped to the Feed or its dialogs. */
 body[data-bank-surface="feed"]{margin:0;background:#071724;overflow:hidden}
-.public-feed{--feed-paper:#fcfbf8;--feed-ink:#172b45;--feed-blue:#244dcb;--feed-viewport:calc(100dvh - var(--retained-bank-dock-space,0px));position:relative;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Inter,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.public-feed{--feed-paper:#fcfbf8;--feed-ink:#172b45;--feed-blue:#244dcb;position:relative;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Inter,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 .public-feed *{box-sizing:border-box}.public-feed [hidden]{display:none!important}
-.feed-scroll{height:var(--feed-viewport);width:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overflow-anchor:none;scrollbar-width:none;overscroll-behavior-y:contain;outline:none;touch-action:pan-y}
+.feed-scroll{height:100dvh;width:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overflow-anchor:none;scrollbar-width:none;overscroll-behavior-y:contain;outline:none;touch-action:pan-y}
 .feed-scroll::-webkit-scrollbar{display:none}.feed-scroll:focus-visible{outline:2px solid #7192fa;outline-offset:-3px}
-.feed-stage{position:relative;height:var(--feed-viewport);width:100%;isolation:isolate;overflow:clip;scroll-snap-align:start;scroll-snap-stop:always;background:#071724;color:#fff;contain:layout style}
+.feed-stage{position:relative;height:100dvh;width:100%;isolation:isolate;overflow:clip;scroll-snap-align:start;scroll-snap-stop:always;background:#071724;color:#fff;contain:layout style}
 .feed-stage.is-paper{background:var(--feed-paper);color:var(--feed-ink)}
 .feed-atmosphere{position:absolute;inset:0;background-position:center;background-size:cover;opacity:.25;filter:blur(32px);transform:scale(1.08);pointer-events:none;z-index:-1}
 .feed-work{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:72px 0 210px;overflow:hidden}
@@ -12,7 +12,7 @@ body[data-bank-surface="feed"]{margin:0;background:#071724;overflow:hidden}
 .feed-artwork.is-book{max-width:650px;padding:0 18px;object-fit:contain}.feed-artwork.is-video-poster{position:absolute;inset:0;padding:0;max-width:none;height:100%;width:100%;object-fit:contain}
 .feed-video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;background:transparent}
 .feed-moment{width:min(760px,100%);padding:0 78px 0 24px}.feed-moment-label{display:block;font:400 11px/1.4 -apple-system,BlinkMacSystemFont,Inter,sans-serif;letter-spacing:.21em;margin:0 0 46px;color:#526780}
-.feed-moment blockquote{margin:0;font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;line-height:1.07;letter-spacing:-.045em;white-space:pre-wrap;overflow-wrap:anywhere;max-height:calc(var(--feed-viewport) - 330px);overflow:hidden;text-wrap:pretty}
+.feed-moment blockquote{margin:0;font-family:"Iowan Old Style","Palatino Linotype",Georgia,serif;line-height:1.07;letter-spacing:-.045em;white-space:pre-wrap;overflow-wrap:anywhere;max-height:calc(100dvh - 330px);overflow:hidden;text-wrap:pretty}
 .feed-moment.is-short blockquote{font-size:clamp(48px,12.8vw,104px)}.feed-moment.is-medium blockquote{font-size:clamp(32px,7.8vw,68px);line-height:1.15}.feed-moment.is-long blockquote{font-size:clamp(22px,5.1vw,43px);line-height:1.25;letter-spacing:-.025em}.feed-moment.is-long .feed-moment-label{margin-bottom:25px}
 .feed-moment em{color:var(--feed-blue);font-weight:400}.feed-moment p{font-size:18px;line-height:1.5;max-height:180px;overflow:hidden;white-space:pre-wrap}
 .feed-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#07172445 0,transparent 23%,transparent 58%,#061421b3 83%,#061421e8 100%)}
@@ -39,7 +39,7 @@ body[data-bank-surface="feed"]{margin:0;background:#071724;overflow:hidden}
 .feed-audio-progress{display:flex;gap:8px;align-items:center;width:100%;font-size:10px;font-variant-numeric:tabular-nums;opacity:.8}.feed-audio-progress time{width:3.5em;flex:none;text-align:center}.feed-audio-progress input{flex:1;min-width:0;accent-color:#fff;height:16px}
 .feed-keyboard-navigation{position:fixed;right:25px;top:50%;display:none;flex-direction:column;gap:12px;z-index:3}.feed-keyboard-navigation button{display:grid;place-items:center;width:42px;height:42px;border:1px solid #ffffff25;border-radius:50%;color:#b6c3d1;background:#ffffff08;cursor:pointer}.feed-keyboard-navigation button:disabled{opacity:.25}.feed-keyboard-navigation svg{width:19px;height:19px}
 .feed-notice{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:6;background:#fff;color:#172b45;border:1px solid #e6eaf0;border-radius:24px;padding:10px 16px;font-size:12px;display:flex;align-items:center;gap:5px;box-shadow:0 8px 30px #06142114}
-.feed-empty{min-height:var(--feed-viewport);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;background:var(--feed-paper);color:var(--feed-ink);padding:30px;text-align:center}.feed-empty h1{font-size:30px;letter-spacing:-1px;max-width:360px}.feed-empty button,.feed-empty a{color:inherit;background:none;border:0;font:inherit}
+.feed-empty{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;background:var(--feed-paper);color:var(--feed-ink);padding:30px;text-align:center}.feed-empty h1{font-size:30px;letter-spacing:-1px;max-width:360px}.feed-empty button,.feed-empty a{color:inherit;background:none;border:0;font:inherit}
 /* Existing Sheet and financial primitives keep their own flow and authority. */
 body:where([data-bank-surface="feed"],[data-bank-surface="discover"]) .sheet{box-sizing:border-box;border:1px solid #e9eaf0;border-radius:23px;width:min(600px,calc(100% - 22px));max-height:calc(100dvh - 28px);padding:0;margin:auto;color:#172b45;background:#fcfbf8;box-shadow:0 24px 100px #07172433;font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;overscroll-behavior:contain}
 body:where([data-bank-surface="feed"],[data-bank-surface="discover"]) .sheet::backdrop{background:#07172470;backdrop-filter:blur(5px)}

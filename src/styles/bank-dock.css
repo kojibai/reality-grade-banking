@@ -1,3 +1,7 @@
 body:has(#retained-bank-navigation[data-public]) { --retained-bank-dock-space: calc(75px + env(safe-area-inset-bottom)); }
-body:has(#retained-bank-navigation[data-public]) > :is(#root, #public-learn-root, [data-public-runtime]:not([data-public-runtime="feed"])) { padding-bottom: var(--retained-bank-dock-space); }
+body:not([data-bank-surface="feed"]):has(#retained-bank-navigation[data-public]) > :is(#root, #public-learn-root, [data-public-runtime]) { padding-bottom: var(--retained-bank-dock-space); }
 @media (min-width:720px) { body:has(#retained-bank-navigation[data-public]) { --retained-bank-dock-space: 82px; } }
+body[data-bank-surface="feed"] > #retained-bank-navigation { display: none; }
+#retained-bank-navigation[data-public] .bottom-nav { transition: transform 160ms ease-out; }
+#retained-bank-navigation[data-public][data-tucked] .bottom-nav { transform: translate(-50%, 100%); }
+@media (prefers-reduced-motion:reduce) { #retained-bank-navigation[data-public] .bottom-nav { transition: none; } }

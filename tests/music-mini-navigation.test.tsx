@@ -12,3 +12,18 @@ it('keeps Pause and Stop available when For you displays a different song from t
  const host=document.createElement('div'),stage=document.createElement('article'),root=createRoot(host);stage.className='feed-stage';stage.dataset.feedKind='audio';stage.dataset.feedItem='different-song';stage.setAttribute('aria-hidden','false');stage.getClientRects=()=>[{}]as unknown as DOMRectList;document.body.append(stage,host);
  try{act(()=>root.render(<MusicMiniPlayer/>));expect(document.querySelector('[aria-label="Pause music"]')).not.toBeNull();expect(document.querySelector('[aria-label="Stop music and close player"]')).not.toBeNull();}finally{act(()=>root.unmount());host.remove();stage.remove();}
 });
+
+it('keeps the mini-player behind other dialogs and brings it into the Feed popover only',async()=>{
+ const host=document.createElement('div'),feed=document.createElement('dialog'),sheet=document.createElement('dialog'),root=createRoot(host);
+ feed.className='market-feed-popover';document.body.append(host,feed,sheet);
+ const mini=()=>document.querySelector('.music-mini-player');
+ const after=(change:()=>void)=>act(async()=>{change();await new Promise(resolve=>setTimeout(resolve,0));});
+ try{
+  act(()=>root.render(<MusicMiniPlayer/>));expect(mini()?.parentElement).toBe(document.body);
+  await after(()=>feed.showModal());expect(mini()?.parentElement).toBe(feed);
+  await after(()=>sheet.showModal());expect(mini()?.parentElement).toBe(document.body);expect(sheet.contains(mini())).toBe(false);
+  await after(()=>sheet.close());expect(mini()?.parentElement).toBe(feed);
+  await after(()=>feed.close());expect(mini()?.parentElement).toBe(document.body);
+  expect(held.state).toMatchObject({itemId:'song',paused:false,time:17});
+ }finally{act(()=>root.unmount());host.remove();feed.remove();sheet.remove();}
+});
