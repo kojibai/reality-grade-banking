@@ -62,7 +62,6 @@ function MainApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
 const EMPTY_MARKET_ITEMS:import('./receiz/public-market').PublicMarketItem[]=[];
 function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObservation|null}) {
   const [onBank, setOnBank] = useState(location.pathname === '/');
-  useEffect(() => { const change = () => flushSync(() => setOnBank(location.pathname === '/')); addEventListener('receiz-bank:surface', change); addEventListener('popstate',change); return () => { removeEventListener('receiz-bank:surface', change);removeEventListener('popstate',change); }; }, []);
   const account = useNativeAccount();
   const businessEntry=useBusinessEntry(account,onBank);
   const meetingEntry=useMeetingEntry(account,onBank);
@@ -103,7 +102,17 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   const restoreMessages=()=>{if(location.pathname==='/')open({kind:'messages'});else requestBankNavigation(routeHash(panel,{kind:'messages'}));};
   const close = () => { if (sheetCloseBehavior(history.state) === 'back') history.back(); else { history.replaceState({ panel, sheet: null }, '', routeHash(panel)); setSheet(null); } };
   const navigate = (next: Panel) => { positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
-  useEffect(() => { const back = () => { if (location.pathname !== '/') return; const route = parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); }; addEventListener('popstate', back); addEventListener('receiz-bank:surface', back); return () => { removeEventListener('popstate', back); removeEventListener('receiz-bank:surface', back); }; }, []);
+  useEffect(()=>{
+    const selectRoute=()=>{
+      const active=location.pathname==='/';
+      flushSync(()=>{
+        setOnBank(active);
+        if(active){const route=parseRoute(location.hash);setPanel(route.panel);setSheet(route.sheet);}
+      });
+    };
+    addEventListener('popstate',selectRoute);addEventListener('receiz-bank:surface',selectRoute);
+    return ()=>{removeEventListener('popstate',selectRoute);removeEventListener('receiz-bank:surface',selectRoute);};
+  },[]);
   useEffect(() => { if (account.identity && onBank) { if(notification)clearNotificationUrl();const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
   useEffect(()=>{
     if(!onBank||!account.identity||!profileAction)return;

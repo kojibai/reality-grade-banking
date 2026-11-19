@@ -1,8 +1,8 @@
-.bottom-nav { position: fixed; z-index: 20; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1160px; height: calc(75px + env(safe-area-inset-bottom)); padding: 0 7px env(safe-area-inset-bottom); background: rgba(255,255,255,.97); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); backdrop-filter: blur(16px); }
-.nav-item { color: #7c8798; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; gap: 5px; min-width: 0; padding: 8px 2px; }
+.bottom-nav { position: fixed; z-index: 20; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1160px; height: calc(75px + env(safe-area-inset-bottom)); padding: 0 7px env(safe-area-inset-bottom); background: rgba(255,255,255,.97); border-top: 1px solid var(--line, #e9eaf0); display: grid; grid-template-columns: repeat(5, 1fr); backdrop-filter: blur(16px); font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-variant-numeric: normal; }
+.bottom-nav .nav-item { border: 0; background: none; font-family: inherit; cursor: pointer; color: #7c8798; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; gap: 5px; min-width: 0; padding: 8px 2px; }
 .nav-icon { height: 27px; display: grid; place-items: center; }
-.nav-item.selected { color: var(--blue); }
-.nav-deposit { color: #627084; }
-.nav-deposit .nav-icon { height: 39px; width: 39px; border-radius: 50%; background: var(--blue); color: white; box-shadow: 0 3px 10px #244dcb25; margin-top: -9px; }
+.bottom-nav .nav-item.selected { color: var(--blue, #244dcb); }
+.bottom-nav .nav-deposit { color: #627084; }
+.nav-deposit .nav-icon { height: 39px; width: 39px; border-radius: 50%; background: var(--blue, #244dcb); color: white; box-shadow: 0 3px 10px #244dcb25; margin-top: -9px; }
 .nav-deposit svg { width: 26px; height: 26px; }
-@media (min-width:720px) { .bottom-nav { height: 82px; padding: 0 max(40px, 10%); } .nav-item { font-size: 12px; } .nav-deposit .nav-icon { width: 45px; height: 45px; } }
+@media (min-width:720px) { .bottom-nav { height: 82px; padding: 0 max(40px, 10%); } .bottom-nav .nav-item { font-size: 12px; } .nav-deposit .nav-icon { width: 45px; height: 45px; } }

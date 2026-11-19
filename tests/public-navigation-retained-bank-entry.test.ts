@@ -82,3 +82,16 @@ it('keeps a later selected destination when an earlier profile module finishes',
  ready({mountPublicDocument:mount});await vi.waitFor(()=>expect(mount).toHaveBeenCalledOnce());await Promise.resolve();
  expect(f.window.location.href).toBe('https://bankeiz.com/#assets');expect(f.root?.hidden).toBe(false);expect(f.document.querySelector<HTMLDivElement>('#public-explore-root')?.hidden).toBe(true);expect(f.fetcher).not.toHaveBeenCalled();
 });
+
+it('selects a retained bank tab in the toolbar click itself',()=>{
+ const f=setup();
+ f.api.navigate('/discover/');
+ let returnedTo='';
+ f.window.addEventListener('receiz-bank:surface',()=>{returnedTo=f.window.location.hash;});
+ f.window.dispatchEvent(new f.window.CustomEvent('bankeiz:navigate-bank',{detail:{hash:'#assets'}}));
+ expect(returnedTo).toBe('#assets');
+ expect(f.root?.hidden).toBe(false);
+ expect(f.root?.querySelector('.bottom-nav')).toBe(f.bottom);
+ expect(f.load.mock.calls.some(([entry])=>entry==='/private-bank.js')).toBe(false);
+ expect(f.fetcher).not.toHaveBeenCalled();
+});

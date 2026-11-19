@@ -257,9 +257,9 @@
       restoreHead(page.head); styles(false);
     } else {
       hide(publicRoot);
-      const opening = ensureBankRuntime();
+      const opening = bankLoaded ? null : ensureBankRuntime();
       show(bankRoot); destination = bankRoot; restoreHead(bank.head); styles(true);
-      try { await opening; } catch { bankRoot.textContent = 'The bank could not open. Please check your connection and try again.'; }
+      try { if (opening) await opening; } catch { bankRoot.textContent = 'The bank could not open. Please check your connection and try again.'; }
     }
     // Pause hidden feeds, live clocks and dialogs before destination focus and
     // scroll. Public workspaces retain their exact React state and file input.
