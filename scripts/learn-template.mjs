@@ -1,3 +1,4 @@
+import {governanceGuideContent} from './governance-guide.mjs';
 import {emailGuidePage} from '../src/content/email-guide.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
 import {institutionScorecardPage} from '../src/content/institution-scorecard-page.mjs';
@@ -111,7 +112,8 @@ export function learnHome() {
     ['04','Why an Original has value','See how a sealed origin carries intrinsic value, how its own PBI signature unlocks access, and how to reproduce the calculation.','how-value-works'],
     ['05','Your Vaults','Hold your money and originals separately. Share the proof without sharing access.','/vaults/'],
     ['06','Protect your value','See the protection behind separate Vault authority and optional passkey encryption.','/protect/'],
-    ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/coops/']
+    ['07','The cooperative economy','Put what your members already produce to work through defined rights and connected proof.','/coops/'],
+    ['08','Governance','Follow a real proposal from the founding charter to the public ballot.','governance']
   ].map(([number,title,copy,slug])=>`<a class="guide-row reveal" href="${slug.startsWith('/')?slug:'/learn/'+slug+'/'}"><span class="guide-number">${number}</span><div><h3>${title}</h3><p>${copy}</p></div>${arrow}</a>`).join('')}</div><a class="underlined-action" href="/learn/guides/">Browse all guides ${arrow}</a></section>
   <section class="learn-shell learn-business-offer"><div><h2>Less time managing money.<br>More time running your business.</h2><p>Know what came in, what went out and what needs attention. Prepare payment requests, follow-ups and the next money decision with the client, the work and the record together.</p></div><div><strong>Less chasing. Less financial admin.</strong><p>Ask your agent to work through the money question, prepare the next step and keep the useful context for later. Set up answers and payment routes so repeat client questions take less of your day.</p><small>Your account, originals and supported value stay available without Business. This optional addition supplies extra financial intelligence, automation and business tools.</small><a class="learn-button button-cobalt" href="/business/">See what Business takes off your plate ${arrow}</a></div></section>
   <section class="learn-finale motion-region"><div class="learn-shell"><div class="reveal"><h2>A familiar place.<br>A new kind of possibility.</h2><a class="learn-button button-paper" href="/">Enter bank ${arrow}</a></div></div></section></main>${siteFooterHtml('/learn/')}`;
@@ -120,6 +122,7 @@ export function learnHome() {
 export const sectionId = heading => heading.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export function learnArticle(page, pages, escape) {
+  if(page.slug==='governance')return governanceGuideContent(page,learnHeader(),siteFooterHtml('/learn/governance/'),arrow,escape);
   const notice = page.kind === 'account-notice';
   const contents = `<nav aria-label="On this page"><span>On this page</span>${page.sections.map(([heading])=>`<a href="#${sectionId(heading)}">${escape(heading)}</a>`).join('')}</nav>`;
   const related = page.related?.map(path=>({path,title:pages.find(item=>learningPath(item)===path)?.title??({'/explore/':'Explore assets','/conformance/#note-continuity':'The Note continuity standard','/conformance/':'Conformance','/schemas/':'Schemas and reference','/verify/':'Verify a proof','/ledger/':'Public Ledger'}[path]??path)}))??pages.filter(item => item.slug && item.slug !== page.slug && (!notice || item.kind === 'account-notice')).slice(0,3);

@@ -12,7 +12,6 @@ import {usePublicMarket} from '../receiz/usePublicMarket';
 import {activityTime, activityWindow, indexActivity, ledgerLink, periods, sourceNames, type Period} from './activity';
 import type {ChartPeriod} from '../core/chart-history';
 import {HeadlineHistory, type Headline, type HistoryPoint} from './HeadlineHistory';
-import circulationObservations from './circulation-observations.json';
 import {useAudienceSeries} from './AudienceHistory';
 import {CapitalHistory} from './CapitalHistory';
 import {NetworkAtlas} from './NetworkAtlas';
@@ -42,7 +41,7 @@ function MarketReadings({source,status,onOpen}: {onOpen:(metric:Headline)=>void;
     <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('cap')}><span>Global market cap <ArrowUpRight/></span>
       <strong title={priced ? formatMoney(cap.usdCents) : undefined}>{priced ? '$' + compact.format(BigInt(cap.usdCents) / 100n) : '—'}</strong>
       <small>{cap ? num.format(cap.covered) + ' of ' + num.format(cap.listed) + ' assets included' : 'Pricing unavailable'}{status !== 'live' && ' · retained pricing'}</small></button>
-    <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('assets')}><span>Assets in circulation <ArrowUpRight/></span>
+    <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('assets')}><span>Assets <ArrowUpRight/></span>
       <strong>{source ? num.format(source.marketAssetsPriced + source.cardsInCirculation) : '—'}</strong>
       <small>{source && num.format(source.marketAssetsPriced)+' priced assets · '+num.format(source.cardsInCirculation)+' circulating collectibles'}</small></button>
   </>;
@@ -136,18 +135,17 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   },[sourceStream]);
   const stream=useMemo(()=>filter?sourceStream.filter(event=>event.record.kind===filter):sourceStream,[sourceStream,filter]);
   const capture=Date.parse(network.capturedAt??'');
-  const inventoryAt=pricing?.generatedAt;
   const inventoryTotal=pricing?pricing.marketAssetsPriced+pricing.cardsInCirculation:undefined;
-  const circulation=useMemo(()=>{
-    if(headline!=='assets')return [];
-    const readings=new Map(circulationObservations.map(p=>[Date.parse(p.at),p.value]));
-    if(inventoryAt&&inventoryTotal!==undefined)readings.set(Date.parse(inventoryAt),inventoryTotal);
-    return [...readings].sort(([a],[b])=>a-b).map(([at,value])=>({at,value}));
-  },[headline,inventoryAt,inventoryTotal]);
+  const inventoryTime=Date.parse(pricing?.generatedAt??catalog.observedAt??'');
+  const inventoryThrough=Number.isFinite(inventoryTime)?inventoryTime:undefined;
   const headlinePoints=useMemo(():HistoryPoint[]=>{
     if(headline==='cap')return valuation.allTimePoints.map(p=>({at:Date.parse(p.at),value:Number(p.usdCents)/100}));
     if(headline==='hours')return audienceSeries.seconds;
-    if(headline==='assets')return circulation;
+    if(headline==='assets'&&inventoryThrough!==undefined){
+      const seals=catalog.sportsCoverage==='complete'&&catalog.sportsSealedBirthsObservedAt
+        ?networkCollectibleSealTimes(catalog):initialDirectory?.collectibleSealTimes??networkCollectibleSealTimes(catalog);
+      return datedIssuances(catalog,seals,inventoryThrough);
+    }
     if(headline==='ledger'){
       const counts=new Map<number,number>();
       for(const source of PUBLIC_SOURCES){
@@ -161,14 +159,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
       });
     }
     return [];
-  },[headline,valuation.allTimePoints,audienceSeries,circulation,index,network.sources,capture]);
-  const circulationEnd=headline==='assets'?headlinePoints.at(-1)?.at:undefined;
-  const issuances=useMemo(()=>{
-    if(circulationEnd===undefined)return undefined;
-    const seals=catalog.sportsCoverage==='complete'&&catalog.sportsSealedBirthsObservedAt
-      ?networkCollectibleSealTimes(catalog):initialDirectory?.collectibleSealTimes??networkCollectibleSealTimes(catalog);
-    return datedIssuances(catalog,seals,circulationEnd);
-  },[circulationEnd,catalog,initialDirectory]);
+  },[headline,valuation.allTimePoints,audienceSeries,catalog,initialDirectory,inventoryThrough,index,network.sources,capture]);
   const asOf=state.observedAt??(Number.isFinite(capture)?capture:null);
   const future=useMemo(()=>asOf===null?[]:stream.filter(point=>point.time>asOf),[asOf,stream]);
   const anchor=paused??asOf;
@@ -190,12 +181,12 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   return <div className="observatory"><ObservatoryHeader active={active}/>
     <main><section className="obs-engine"><div className="obs-inner">
       <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{!online?'Offline · saved':live?'Public source connected':state.error?'Source unavailable':network.bootstrap?'Opening history':'Saved public snapshot'}</span></span></div>
-      <div className="obs-readings"><MarketReadings source={pricing} status={valuation.status} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong><small>Viewing and streaming time</small></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public ledger records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong><small>{covered} of {PUBLIC_SOURCES.length} sources represented</small></button></div>
-      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headline==='assets'?issuances??[]:headlinePoints} observations={headline==='assets'?circulation:undefined} onClose={()=>setHeadline(null)}/>}
+      <div className="obs-readings"><MarketReadings source={pricing} status={valuation.status} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong><small>Viewing and streaming time</small></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong><small>{covered} of {PUBLIC_SOURCES.length} sources represented</small></button></div>
+      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headlinePoints} through={headline==='assets'?inventoryThrough:undefined} inventoryTotal={inventoryTotal} onClose={()=>setHeadline(null)}/>}
       <div className="obs-chart-head" id="obs-pulse"><div><h2>Network pulse</h2><p>{anchor ? <><b>{num.format(plot.total)}</b> {source==='actions'?(plot.total===1?'public action':'public actions'):(plot.total===1?'public record':'public records')} · {day.format(plot.start)} – {fullDate.format(anchor)} · UTC</> : 'Awaiting dated public records'}</p></div>
         <div className="obs-controls"><div className="obs-period" aria-label="Chart range">{periods.map(p=><button key={p} aria-pressed={period===p} onClick={()=>{setPeriod(p);setPaused(null);setPicked(null);setLimit(8);}}>{p}</button>)}</div>
         <button className="obs-follow" aria-pressed={following} onClick={()=>{setPaused(following?anchor:null);setPicked(null);setLimit(8);}} disabled={!anchor}>{following?<Pause/>:<Play/>}{following?'Following latest':'Follow latest'}</button></div></div>
-      <div className="obs-streams" role="group" aria-label="Chart source">{(['actions','wallet','proofs'] as const).map(s=><button key={s} aria-pressed={s===source} onClick={()=>{setSource(s);setFilter('');setPaused(null);setPicked(null);setLimit(8);}}>{sourceNames[s]}</button>)}</div>
+      <div className="obs-streams" role="group" aria-label="Chart source">{PUBLIC_SOURCES.map(s=><button key={s} aria-pressed={s===source} onClick={()=>{setSource(s);setFilter('');setPaused(null);setPicked(null);setLimit(8);}}>{sourceNames[s]}</button>)}</div>
       {anchor ? <ActivityPlot plot={plot} period={period} selection={focus} onSelect={pick}/> : <p className="obs-empty">This source has no dated observations to chart.</p>}
       <div className="obs-timeline-nav"><button aria-label="Previous time window" disabled={period==='All'||!stream.length||plot.start<=stream[0].time} onClick={()=>moveWindow(-1)}><ChevronLeft/> Earlier</button><select aria-label="Filter by record type" value={filter} onChange={e=>{setFilter(e.target.value);setPicked(null);setLimit(8);}}><option value="">All record types</option>{kinds.map(([kind,count])=><option key={kind} value={kind}>{kind} ({num.format(count)})</option>)}</select><button aria-label="Next time window" disabled={period==='All'||following||anchor===asOf} onClick={()=>moveWindow(1)}>Later <ChevronRight/></button></div>
       <div className="obs-coverage"><span>{state.complete?'Source history loaded':'Partial source coverage'}{index.counts[source]>sourceStream.length?' · '+num.format(index.counts[source]-sourceStream.length)+' undated records excluded':''}</span><span>{state.observedAt ? 'Source observed '+fullDate.format(state.observedAt)+' · '+clock.format(state.observedAt)+' UTC' : 'Source observation time unavailable'}</span></div>

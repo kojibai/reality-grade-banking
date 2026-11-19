@@ -1,4 +1,4 @@
-import {build} from 'esbuild';
+import {build,transform} from 'esbuild';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
@@ -10,7 +10,8 @@ export async function writeOriginalsQualificationAssets(directory='dist'){
  const modules=result.outputFiles.map(file=>({name:file.path.slice(outdir.length+1),bytes:file.contents}));
  const entry=modules.find(file=>file.name.startsWith('originals-qualification-main-'));if(!entry)throw Error('ORIGINALS_EXPLAINER_ENTRY_MISSING');
  const js=`(()=>{let loaded;const boot=()=>{if(document.querySelector('[data-originals-example]'))loaded??=import('/learn/${entry.name}').catch(()=>{loaded=undefined;});};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();window.addEventListener('receiz-learn:page',boot);})();`;
- const css=await readFile('src/qualification/learn.css','utf8');
+ const stylesheet=await readFile('src/qualification/learn.css','utf8');
+ const {code:css}=await transform(stylesheet,{loader:'css',minify:true,target:['safari16','chrome100']});
  const hash=text=>createHash('sha256').update(text).digest('hex').slice(0,12);
  const jsUrl=`/learn/originals-qualification.js?v=${hash(js)}`,cssUrl=`/learn/originals-qualification.css?v=${hash(css)}`;
  await mkdir(resolve(directory,'learn'),{recursive:true});await writeFile(resolve(directory,'learn/originals-qualification.js'),js);await writeFile(resolve(directory,'learn/originals-qualification.css'),css);

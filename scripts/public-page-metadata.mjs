@@ -90,7 +90,7 @@ export const publicPages = [
 const motifs={Banking:'bank',Assets:'cube',Markets:'globe',History:'ledger',Standards:'badge','For you':'receipt'};
 // Operating guides describe Bankeiz's actual controls. Other learning pages
 // explain the shared economy and standard rather than an application brand.
-const applicationGuides=new Set(['receiving','earn-from-originals','your-account','payments','get-paid','payment-requests','deposits','notes','offline-banking','banking-outage','security','messages','receiz-id','creating-an-asset','markets','receipts','source-of-funds','memory-crystals']);
+const applicationGuides=new Set(['governance','receiving','earn-from-originals','your-account','payments','get-paid','payment-requests','deposits','notes','offline-banking','banking-outage','security','messages','receiz-id','creating-an-asset','markets','receipts','source-of-funds','memory-crystals']);
 for(const page of learningPages){
  const siteName=applicationGuides.has(page.slug)?'Bankeiz':standardSite;
  const record={path:learningPath(page),id:page.slug,siteName,title:`${page.title} | ${siteName}`,description:page.description,lines:[page.title.split(' ').slice(0,3).join(' '),page.title.split(' ').slice(3).join(' ')||page.intro.split('. ')[0]+'.'],caption:page.intro,motif:motifs[page.group]};

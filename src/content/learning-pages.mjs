@@ -1,3 +1,4 @@
+import {governanceGuide} from './governance-guide.mjs';
 import {noteContinuityGuideSections} from './note-continuity.mjs';
 import {offlineLearningPages} from './offline-guides.mjs';
 import {audiencePages} from './audience-pages.mjs';
@@ -6,6 +7,7 @@ import {audiencePages} from './audience-pages.mjs';
 // contain no account reads, mutable prices or invented qualification results.
 const page=(slug,group,title,description,intro,visual,sections,related,extra={})=>({slug,group,title,description,intro,visual,sections,related,...extra});
 export const learningPages=[
+governanceGuide,
 ...offlineLearningPages,
 page('receiving','Banking','Receive directly','Share your receiving details, receive a reviewed payment and keep its proof. Explore the existing receiving flow and optional institutional integration.','Your receiving details. Their next payment.','journey',[
  ['Start with your receiving details','Open Receive to copy your receiving ID, share a payment link or show its QR code. Use the public details already shown by your existing Identity Record. The sender can use that destination in the supported payment flow.'],

@@ -7,7 +7,7 @@ import {VotingBoard} from './VotingBoard';
 
 const url=new URL(location.href),digest=governanceLocation(url),qualification=url.searchParams.get('qualification');
 const root=createRoot(document.getElementById('vote-root')!);
-const show=(board:ReactNode)=>root.render(<><main>{board}</main><ProfileFooter navigationLabel="Voting footer" resource="conformance"/></>);
+const show=(board:ReactNode)=>root.render(<><main>{board}</main><ProfileFooter navigationLabel="Voting footer" resource="conformance" showVotingLink={false}/></>);
 if((qualification==='election'||qualification==='treasury')&&/^\/vote\/?$/.test(url.pathname)){
   void import('./GovernanceQualification').then(({GovernanceQualification})=>show(<GovernanceQualification name={qualification}/>));
 }else if(url.searchParams.get('example')==='harbor-tool-library'&&/^\/vote\/?$/.test(location.pathname)){

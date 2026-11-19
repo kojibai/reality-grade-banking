@@ -121,7 +121,12 @@ try{
   const facts=await collectible.locator('.obs-audience-grid strong').allTextContents();
   assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
   const streams=page.getByRole('group',{name:'Chart source'});
-  assert.deepEqual(await streams.getByRole('button').allTextContents(),['Actions','Wallet records','Showcase']);
+  assert.deepEqual(await streams.getByRole('button').allTextContents(),['Actions','Wallet records','Proof graph','Showcase']);
+  const graphTab=streams.getByRole('button',{name:'Proof graph',exact:true});
+  await graphTab.click();
+  await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
+  assert.equal(await graphTab.getAttribute('aria-pressed'),'true');
+  assert.ok(await page.locator('.obs-bars [data-occupied]').count()>1,'Graph history spans multiple dated intervals');
   await streams.getByRole('button',{name:'Showcase',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await streams.getByRole('button',{name:'Showcase'}).getAttribute('aria-pressed'),'true');
@@ -130,16 +135,20 @@ try{
   const entryUrl=page.url();
   await page.setViewportSize({width:320,height:568});
   for(const [i,name] of ['Global market cap','Assets in circulation','Witnessed hours','Public ledger records'].entries()){
-    const trigger=page.locator('.obs-readings').getByRole('button',{name:new RegExp(name)});
+    const trigger=page.locator('.obs-reading').nth(i);
+    assert.equal((await trigger.locator('span').first().innerText()).trim(),['Global market cap','Assets','Witnessed hours','Public records'][i]);
+    assert.ok(await trigger.locator('small').isVisible());
     await trigger.click();
     const dialog=page.getByRole('dialog',{name,exact:true});
     await dialog.getByRole('img',{name:new RegExp(name+' history')}).waitFor();
     assert.equal(await dialog.getByRole('link').getAttribute('href'),['/market-cap/','/explore/','#obs-audience','/ledger/'][i]);
     assert.ok((await dialog.locator('.obs-headline-line').getAttribute('d')).length>4);
+    assert.ok(await dialog.locator('h2').evaluate(h=>h.offsetHeight<2*parseFloat(getComputedStyle(h).lineHeight)),'Full metric title fits on one line');
     const bounds=await dialog.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=321);
     if(name==='Assets in circulation'){
       assert.equal(await dialog.getByRole('img').count(),1);
-      assert.ok(await dialog.getByRole('button',{name:/^Inventory on/}).count()>0);
+      assert.equal(await dialog.getByRole('button',{name:/^Inventory on/}).count(),0);
+      assert.equal(await dialog.locator('.obs-headline-reading small').innerText(),'Dated issuance');
       for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
         await dialog.getByRole('button',{name:range,exact:true}).click();
         const extent=await dialog.locator('.obs-headline-line').evaluate(path=>{const box=path.getBBox();return [box.x,box.x+box.width];});
@@ -222,10 +231,22 @@ try{
       const word=el.querySelector('.obs-status-small');
       return word.getClientRects().length===1&&word.getBoundingClientRect().height<18&&el.getBoundingClientRect().right<=innerWidth;
     }),'Connection status fits one line');
+    assert.ok(await page.locator('.obs-reading>span').evaluateAll(labels=>labels.every((label,i)=>{
+      const text=document.createRange();text.selectNodeContents(label.firstChild);
+      const bounds=text.getBoundingClientRect(),edge=labels[i+1]?.parentElement.getBoundingClientRect().left??innerWidth;
+      return text.getClientRects().length===1 && bounds.right<=edge;
+    })),'Each headline label fits its own column on one line');
     assert.ok(await page.locator('.obs-sections').evaluate(nav=>{
-      const links=Array.from(nav.querySelectorAll('a'),a=>a.getBoundingClientRect());
-      return links.every(link=>Math.abs(link.top-links[0].top)<1)&&links.at(-1).right<=nav.getBoundingClientRect().right+1;
-    }),'Every section link fits in a single row');
+      const anchors=Array.from(nav.querySelectorAll('a'));
+      const boxes=anchors.map(a=>a.getBoundingClientRect());
+      const row=boxes.every((box,i)=>box.height>=44 && Math.abs(box.top-boxes[0].top)<1 && (!i || box.left-boxes[i-1].right>=19));
+      const readable=anchors.every(a=>parseFloat(getComputedStyle(a).fontSize)>=14);
+      nav.scrollLeft=nav.scrollWidth;
+      const end=anchors.at(-1).getBoundingClientRect();
+      const reachable=end.right<=nav.getBoundingClientRect().right+1 && end.left>=nav.getBoundingClientRect().left;
+      nav.scrollLeft=0;
+      return row && readable && reachable;
+    }),'All section links stay readable, spaced and reachable on one horizontal row');
     assert.ok(await page.locator('.obs-field').evaluate(el=>{const chart=el.getBoundingClientRect();return chart.bottom+scrollY<=innerHeight&&chart.height>=130;}),'Entire plot fits the initial mobile viewport');
   }
   if(process.env.OBSERVATORY_MOBILE_SCREENSHOT){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:process.env.OBSERVATORY_MOBILE_SCREENSHOT});}

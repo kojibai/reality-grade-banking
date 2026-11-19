@@ -1,4 +1,4 @@
-import { build } from 'esbuild';
+import { build, transform } from 'esbuild';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -19,7 +19,8 @@ export async function buildValueExplainerAssets() {
   // Shared Learn navigation retains this tiny detector; SDK modules load only
   // when the value page exists. A cached module registers its own page listener.
   const js = `(()=>{let loaded;const boot=()=>{if(document.querySelector('[data-value-explainer]'))loaded??=import('/learn/${entry.filename}').catch(()=>{loaded=undefined;});};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();window.addEventListener('receiz-learn:page',boot);})();`;
-  const css = await readFile(new URL('../src/value-explainer/value-explainer.css', import.meta.url), 'utf8');
+  const stylesheet = await readFile(new URL('../src/value-explainer/value-explainer.css', import.meta.url), 'utf8');
+  const {code:css} = await transform(stylesheet,{loader:'css',minify:true,target:['safari16','chrome100']});
   return { js, css, modules, jsUrl: `/learn/value-explainer.js?v=${version(js)}`, cssUrl: `/learn/value-explainer.css?v=${version(css)}` };
 }
 

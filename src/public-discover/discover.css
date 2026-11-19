@@ -14,3 +14,4 @@ body[data-bank-surface="discover"]{background:#fcfbf8}.discovery-page{min-height
 .discover-workspaces a{display:inline-flex;align-items:center;min-height:44px;padding:0 2px;color:#42566e;text-decoration:none;font-size:clamp(12px,1.6vw,14px);font-weight:550}
 .discover-workspaces a:hover,.discover-workspaces a:focus-visible{color:#254bd8}
 .discover-workspaces a:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:3px}
+@media(max-width:380px){.discover-workspaces{gap:4px;margin-inline:4px auto}.discover-workspaces a{padding-inline:1px}.discover-header>div{gap:6px}}
