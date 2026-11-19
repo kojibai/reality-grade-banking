@@ -1,7 +1,17 @@
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
-import {constitutionEdition,foundingRules} from '../src/features/voting/founding/charters';
+import {constitutionEdition,foundingRules,isFoundingSigner} from '../src/features/voting/founding/charters';
+
+it('recognizes the admitted conformance signer independently of wallet discovery',()=>{
+ const record=readFileSync('docs/verification/2026-11-06-registry-native-publication.md','utf8');
+ const keyId=/Public key ID: `([0-9a-f]{64})`/.exec(record)![1];
+ const signer={artifactOwnerReceizId:'bjklock.receiz.id',keyId};
+ expect(isFoundingSigner(signer)).toBe(true);
+ expect(isFoundingSigner({...signer,keyId:'0'.repeat(64)})).toBe(false);
+ expect(isFoundingSigner({...signer,artifactOwnerReceizId:'other.receiz.id'})).toBe(false);
+ expect(isFoundingSigner(undefined)).toBe(false);
+});
 
 it('binds both founding drafts to the same complete Constitution edition and opens reviewer qualification to participants',()=>{
  const file=(name:string)=>readFileSync('public/vote/constitution-zero/'+name);

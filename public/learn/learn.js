@@ -69,7 +69,7 @@
 // account DOM and device session when entering/returning from the guides.
 (() => {
   const element = document.getElementById('receiz-navigation');
-  if (!element?.textContent) return;
+  if (!element?.firstChild) return;
   const openedNavigation=typeof __bankNavigationEnvelope!=='undefined'?__bankNavigationEnvelope.decodeNavigationEnvelope(element.textContent):{navigation:JSON.parse(element.textContent),shared:''};
   if(openedNavigation.shared&&!document.querySelector('template[data-shared-example-views]')){const template=document.createElement('template');template.innerHTML=openedNavigation.shared;document.body.append(template.content);}
   const { pages, bank, aliases={}, styles:sharedStyleBlocks=[], reserved=['api','asset','assets','auth','docs','market','native','offline','source'] } = openedNavigation.navigation;
@@ -132,7 +132,7 @@
   if(exploreFrame?.content&&pages['/explore/'])pages['/explore/'].heldFrame=exploreFrame;
   const ensurePublicRuntime = page => {
     let root=runtimeRoots.get(page.runtime);
-    if(!root){root=document.createElement('div');root.id='public-'+page.runtime+'-root';root.dataset.publicRuntime=page.runtime;if(page.heldFrame){root.append(page.heldFrame.content);root.dataset.ledgerExploreFrame=page.heldFrame.dataset.generation;if(page.heldFrame.dataset.packet)root.dataset.explorePacket=page.heldFrame.dataset.packet;}else root.innerHTML=page.content;if(page.analyticsSeed&&page.content)root.analyticsSeed=page.analyticsSeed;hide(root);runtimeRoots.set(page.runtime,root);document.body.append(root);}
+    if(!root){root=document.createElement('div');root.id='public-'+page.runtime+'-root';root.dataset.publicRuntime=page.runtime;if(page.heldFrame)root.append(page.heldFrame.content);else root.innerHTML=page.content;const frame=page.heldFrame?.dataset??page.exploreFrame;if(frame){root.dataset.ledgerExploreFrame=frame.generation;if(frame.packet)root.dataset.explorePacket=frame.packet;}if(page.analyticsSeed&&page.content)root.analyticsSeed=page.analyticsSeed;hide(root);runtimeRoots.set(page.runtime,root);document.body.append(root);}
     return root;
   };
   const loadRuntime = (page, root) => {

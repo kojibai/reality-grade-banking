@@ -14,7 +14,7 @@ import {charterAdmitsMember,openGovernanceOriginal,sealGovernanceOriginal,type G
 import {governanceOutbox,rememberGovernanceDelivery,reopenPendingGovernance,type PendingOriginal} from '../../receiz/governance-outbox';
 import {eligibleProposal,voteEnds,charterRatification,governanceTitle,ofKind,type Row} from '../../receiz/governance-view';
 import {GovernanceFacts,GovernanceDetail} from './GovernanceDetail';
-import {foundingAccountUid,type FoundingOrganization} from './founding/charters';
+import {isFoundingSigner,type FoundingOrganization} from './founding/charters';
 import type {FoundingDraft} from './founding/prepare';
 import {GovernanceFileList,GovernanceFilePicker} from './GovernanceFiles';
 import {GovernanceComposer} from './GovernanceComposer';
@@ -128,7 +128,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
     void run(async()=>{
       const who=currentIdentity.current;
       if(!who){pendingFounding.current=name;setDelivery('Open @bjklock’s Receiz identity to review this founding draft.');return;}
-      if(who.walletReceivingAddress?.()!==foundingAccountUid)throw Error('This founding draft belongs to @bjklock. Open that Receiz identity to continue.');
+      if(!isFoundingSigner(who.binding))throw Error('This founding draft belongs to @bjklock. Open that Receiz identity to continue.');
       const {prepareFoundingDraft}=await import('./founding/prepare');
       const draft=await prepareFoundingDraft(name);check(who);
       setAttachments([]);setFiles([]);setEditionSource('');setWriting(false);setFounding(draft);setMode('charter');setScreen('charter');setDelivery('');
@@ -255,7 +255,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
       {!profile&&actor&&publicId&&<span className="gov-session-name">@{publicId}</span>}
       {!profile&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
-      {!publicProfile&&(initialDraft||identity?.walletReceivingAddress?.()===foundingAccountUid)&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
+      {!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
       <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} onExample={profile?()=>setExampleOpen(true):undefined} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
       <div className="gov-actions gov-tools"><button className="gov-link" onClick={()=>fileInput.current?.click()}><Upload size={16}/>Open governance Original</button><button className="gov-link" disabled={syncing} aria-busy={syncing} onClick={()=>void refreshByRequest()}><RefreshCw size={14}/>Refresh records</button>
       {!profile&&viewRows.length>0&&<a className="gov-link" href={governanceExamplePath}>Explore example</a>}</div>

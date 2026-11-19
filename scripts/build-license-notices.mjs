@@ -109,6 +109,12 @@ for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...O
 }
 // Feed/Discover keep lightweight known destinations, including final Legal.
 for(const file of ['dist/feed/index.html','dist/discover/index.html']){
- const html=await readFile(file,'utf8');await writeFile(file,html.replace(navigationPattern,match=>{const value=JSON.parse(match.replace(/^<script[^>]*>/,'').replace(/<\/script>$/,''));value.pages['/legal/']={...navigation.pages['/legal/'],content:'',contentSha256:hash(navigation.pages['/legal/'].content)};return '<script id="receiz-navigation" type="application/json">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>';}));
+ const html=await readFile(file,'utf8');
+ await writeFile(file,html.replace(navigationPattern,match=>{
+  const packet=JSON.parse(match.slice(match.indexOf('>')+1,-'</script>'.length));
+  const opened=decodeNavigationEnvelope(packet),value=opened.navigation;
+  value.pages['/legal/']={...navigation.pages['/legal/'],content:'',contentSha256:hash(navigation.pages['/legal/'].content)};
+  return packet.format==='bank.presentation-envelope.v1'?writeNavigationScript(value,opened.shared):'<script id="receiz-navigation" type="application/json">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>';
+ }));
 }
 console.log(`Published GPLv3, ownership, policies and supplied notices for ${packages.length} production dependencies at /legal/.`);

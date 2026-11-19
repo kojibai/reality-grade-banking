@@ -300,14 +300,14 @@ function carriedTextSize(document,id,count){
 }
 function carriedNavigationTextSize(document){
  const raw=document.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)?.[1];assert.ok(raw);
- const navigation=JSON.parse(raw),expand=value=>Array.isArray(value)?value.map(part=>typeof part==='number'?navigation.styles[part]:part).join(''):value;
+ const navigation=decodeNavigationEnvelope(raw).navigation,expand=value=>Array.isArray(value)?value.map(part=>typeof part==='number'?navigation.styles[part]:part).join(''):value;
  const content=expand(navigation.pages['/feed/'].content),match=content.match(/<script id="public-feed-seed" type="application\/json">([\s\S]*?)<\/script>/);assert.ok(match);
  const items=JSON.parse(match[1]);assert.equal(items.length,1,'Discover keeps the existing single-row Feed navigation carrier.');
  return items.reduce((size,item)=>{
   assert.deepEqual(item.carriedText,staticItems.get(item.id)?.carriedText,'Navigation retains the exact complete Original text.');if(!item.carriedText)return size;
   const text=JSON.stringify(item.carriedText).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026'),encoded=JSON.stringify(text).slice(1,-1);
-  assert.equal(raw.split(encoded).length-1,1,'The complete navigation text is serialized once, not duplicated.');
-  return size+encoded.length;
+  assert.equal(JSON.stringify(navigation).split(encoded).length-1,1,'The complete navigation text is serialized once, not duplicated.');
+  return size+(JSON.parse(raw).format?0:encoded.length);
  },0);
 }
 const feedInterfaceSize=feedDocument.length-carriedTextSize(feedDocument,'public-feed-seed',8);

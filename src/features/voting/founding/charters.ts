@@ -2,7 +2,10 @@ import type {CharterOffice} from '../../../receiz/governance-documents';
 import {scopedRepresentation} from '../governance-templates';
 
 export type FoundingOrganization='Receiz'|'Bankeiz';
-export const foundingAccountUid='eecb99a0-9c6a-4e89-813b-f76331ea9c41';
+// Public signer of the native Bankeiz conformance publication (2026-11-06).
+export function isFoundingSigner(binding:Pick<import('@receiz/sdk').ReceizIdentityPublicBinding,'keyId'|'artifactOwnerReceizId'>|undefined){
+ return binding?.keyId==='fa88b59e8aff5213f06712e81583578adfd10c807db8544bd2f44a558e802060'&&binding.artifactOwnerReceizId==='bjklock.receiz.id';
+}
 export const constitutionEdition={
  title:'Truth of Breath — Constitution Zero, Adversarial Revision II',
  url:'https://receiz.com/bjklock/verified/6646cb7a-b786-41bc-a609-94246f87a377',

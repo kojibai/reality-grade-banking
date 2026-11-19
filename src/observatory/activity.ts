@@ -4,7 +4,7 @@ import {marketPulseTime} from '../receiz/market-projection/coordinates';
 import {readLedgerCausalLineage, type LedgerCausalLineage} from '../receiz/ledger-causal-source';
 
 export const sourceNames: Record<PublicSource, string> = {
-  actions: 'Actions', wallet: 'Wallet records', graph: 'Proof graph', proofs: 'Public Showcase Originals',
+  actions: 'Actions', wallet: 'Wallet records', graph: 'Proof graph', proofs: 'Showcase',
 };
 export const periods = ['1H', '24H', '7D', '30D', '90D', '1Y', 'All'] as const;
 export type Period = typeof periods[number];

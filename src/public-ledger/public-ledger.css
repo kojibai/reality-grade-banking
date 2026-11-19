@@ -29,3 +29,6 @@
 .public-ledger-page .public-ledger-summary>div>span{color:#53697c}
 .public-ledger-footer{max-width:1400px;width:calc(100% - 88px);margin:0 auto;padding-bottom:14px}
 @media(max-width:800px){.public-ledger-page main,.public-ledger-footer{width:calc(100% - 36px)}.public-ledger-header nav{gap:14px}.public-ledger-hero{padding:16px 0 13px}.public-ledger-summary strong{margin-top:4px}}
+
+.public-ledger-header .ledger-discover-link{justify-content:center;width:42px;height:42px;flex:none;border-radius:50%;color:#244b9e}
+.public-ledger-header .ledger-discover-link:hover,.public-ledger-header .ledger-discover-link:focus-visible{background:#eaf0fb}

@@ -74,7 +74,7 @@ try{
    results.push({page:item.name,actualHTMLBeforeJavaScript:true,inlineStyles:true,APIsStalled:true,retainedDOM:true,errors});
   }finally{await context.close();}
  }
- for (const from of ['/', '/explore/']) {
+ for (const from of ['/', '/explore/', '/discover/']) {
   const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await ctx.newPage(),errors=[],documents=[];
   let releaseEntry;
   const gate=new Promise(resolve=>{releaseEntry=resolve;});
@@ -94,7 +94,8 @@ try{
    const header=scope.locator('.obs-header');
    assert.equal(await header.getByRole('link',{name:'Discover people and their work'}).count(),1);
    assert.equal(await header.locator('a[href="/analytics/"]').count(),0);
-   assert.equal(await scope.locator('.profile-footer').count(),1);
+   assert.deepEqual(await header.locator('nav a').evaluateAll(links=>links.map(link=>link.pathname)),['/explore/','/market-cap/','/ledger/','/learn/','/discover/']);
+   assert.deepEqual(await scope.locator('.profile-footer nav a').evaluateAll(links=>links.map(link=>link.pathname)),['/conformance/','/standards/','/legal/']);
    assert.equal(await scope.locator('#obs-profiles tbody tr').count(),8);
    assert.equal(await scope.getByLabel('Profiles per page').inputValue(),'8');
    const trades=scope.locator('#obs-trading');assert.equal(await trades.locator('.obs-trading-plot svg').count(),2);
@@ -114,7 +115,17 @@ try{
    await trades.getByRole('slider',{name:'Inspect execution price'}).press('Home');
    assert.equal(await trades.locator('.obs-trading-cursor').count(),2);
    await trades.getByRole('button',{name:'Show full period'}).click();
-   await trades.locator('summary').click();assert.ok(await trades.locator('a[href^="/ledger/#record="]').count()>0);
+   await trades.getByLabel('Trading asset').selectOption('');
+   const tape=trades.locator('.obs-trade-tape');await tape.locator('summary').first().click();
+   const tradeRows=tape.locator('tbody>tr'),inspectTrade=tape.getByRole('button',{name:/^Inspect/}).first();
+   assert.equal(await tradeRows.count(),6);const latest=await tradeRows.first().innerText();
+   await tape.getByRole('button',{name:'Next page'}).click();assert.equal(await tradeRows.count(),6);assert.notEqual(await tradeRows.first().innerText(),latest);
+   await inspectTrade.click();assert.equal(await inspectTrade.getAttribute('aria-expanded'),'true');
+   const drawer=tape.getByRole('region',{name:'Trade details'});await drawer.getByRole('link',{name:'Open in Ledger'}).waitFor();
+   await drawer.locator('summary').click();const exact=JSON.parse(await drawer.locator('pre').innerText());
+   assert.equal(await drawer.getByRole('link',{name:'Open in Ledger'}).getAttribute('href'),'/ledger/#record='+encodeURIComponent(exact.source+':'+exact.id));
+   assert.ok(await tape.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await inspectTrade.click();assert.equal(await drawer.count(),0);
+   await tape.getByRole('button',{name:'Previous page'}).click();assert.equal(await tradeRows.first().innerText(),latest);
    assert.ok(await scope.locator('#obs-profiles table').evaluate(table=>getComputedStyle(table.tHead.rows[0].cells[1]).textAlign===getComputedStyle(table.tBodies[0].rows[0].cells[1]).textAlign));
    await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo({top:0,behavior:'instant'});return new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())));});
    await page.waitForFunction(()=>scrollY===0&&!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
@@ -125,7 +136,7 @@ try{
    assert.deepEqual(errors,[]);results.push({page:from+' to Analytics',completeBeforeRuntime:true,retainedDOM:true,documentReads:documents.length-1,inlineAssetProof:true});
   }finally{releaseEntry();await ctx.close();}
  }
- for(const [landing,viaAnalytics] of [['/ledger/',false],['/ledger/',true],['/analytics/',false]]){
+ for(const [landing,viaAnalytics] of [['/ledger/',false],['/ledger/',true],['/analytics/',false],['/discover/',false]]){
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),docs=[],errors=[],packets=[];
   const exploreEntry='/'+JSON.parse(await readFile(resolve(directory,'.vite/manifest.json'),'utf8'))['explore/index.html'].file;
   let release;const gate=new Promise(resolve=>{release=resolve;});
@@ -150,7 +161,7 @@ try{
    }
    assert.deepEqual(packets,[],'Landing does not acquire the unopened Explore collection');
    if(viaAnalytics)await ledgerHeader.getByRole('link',{name:'Analytics'}).click();
-   const header=viaAnalytics||landing==='/analytics/'?page.locator('.obs-header'):ledgerHeader;
+   const header=viaAnalytics||landing==='/analytics/'?page.locator('.obs-header'):landing==='/discover/'?page.locator('.discover-header'):ledgerHeader;
    await header.getByRole('link',{name:'Explore',exact:true}).click();
    const rows=page.locator('.market-rows .asset-row');
    await rows.first().waitFor();

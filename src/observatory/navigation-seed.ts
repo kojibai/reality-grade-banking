@@ -3,11 +3,11 @@ import {loadPublicNetworkSeed} from '../receiz/public-network-cache';
 import {prepareShippedCatalog} from '../receiz/usePublicMarket';
 import {preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 import {heldProofCatalog} from '../receiz/usePublicNetwork';
-import {collectibleSealTimes} from './circulation-history';
+import {networkCollectibleSealTimes} from './circulation-history';
 import type {PublicLedgerDocumentSeed} from '../receiz/public-ledger-document-seed';
 
 export type AnalyticsNavigationSeed = Pick<PublicLedgerDocumentSeed,'generation'|'locale'|'timeZone'> & {
-  revision:string;publicProfileHeadsRevision:string;observedAt:string|null;
+  path?:'ledger'|'observatory';revision:string;publicProfileHeadsRevision:string;observedAt:string|null;
 };
 
 /** The complete HTML is already visible. Only attach its reader to the exact
@@ -26,7 +26,7 @@ export async function openAnalyticsNavigationSeed(frame:AnalyticsNavigationSeed)
   const financial = {...ledger,records:ledger.records.filter(row=>row.source!=='proofs'),coverage:ledger.coverage.filter(row=>row.source!=='proofs')};
   const directory = {revision:frame.revision,observedAt:frame.observedAt,publicProfileHeadsRevision:frame.publicProfileHeadsRevision,
     publicProfileHeads:items.publicProfileHeads,publicProfileHeadRefusals:items.publicProfileHeadRefusals,
-    ...(items.sportsCoverage==='complete'?{collectibleSealTimes:collectibleSealTimes(items)}:{})};
-  return {schema:'bank.public-ledger.document.v1',path:'observatory',generation:frame.generation,locale:frame.locale,timeZone:frame.timeZone,
+    ...(items.sportsCoverage==='complete'?{collectibleSealTimes:networkCollectibleSealTimes(items)}:{})};
+  return {schema:'bank.public-ledger.document.v1',path:frame.path??'observatory',generation:frame.generation,locale:frame.locale,timeZone:frame.timeZone,
     directory,snapshot:combineLedgerSnapshot(financial,publicLedgerProofSnapshot(items,financial))};
 }

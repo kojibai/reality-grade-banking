@@ -1,7 +1,8 @@
 import {useMemo,useState} from 'react';
 import {ArrowUpRight} from 'lucide-react';
-import {formatMoney,formatUnits} from '../core/money';
-import {ledgerLink,periods,type MarketExecution,type Period} from './activity';
+import {formatMoney} from '../core/money';
+import {periods,type MarketExecution,type Period} from './activity';
+import {TradeTape} from './TradeTape';
 import {tradingWindow} from './market-trades';
 
 const sides=['buy','sell'] as const;
@@ -9,7 +10,7 @@ const names={buy:'Buy',sell:'Sell'};
 const dollars=(v:bigint)=>formatMoney(v.toString());
 const date=new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
 const clock=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
-const cents=(v:string|undefined)=>v===undefined?'—':formatMoney(v);
+
 type Window=ReturnType<typeof tradingWindow>;
 type Metric='volume'|'count'|'price';
 
@@ -64,7 +65,7 @@ function TradingPlot({view,metric,selected,onSelect}:{view:Window;metric:Metric;
 }
 
 export function TradingActivity({executions,asOf}:{executions:readonly MarketExecution[];asOf:number|null}){
-  const [asset,setAsset]=useState(''),[period,setPeriod]=useState<Period>('All'),[picked,setPicked]=useState<number|null>(null),[expanded,setExpanded]=useState(false);
+  const [asset,setAsset]=useState(''),[period,setPeriod]=useState<Period>('All'),[picked,setPicked]=useState<number|null>(null);
   const markets=useMemo(()=>{
     const names=new Map<string,string>();
     for(const {trade,time} of executions)if(asOf!==null&&time<=asOf&&trade?.marketItemId)names.set(trade.marketItemId,trade.title||trade.marketItemId);
@@ -72,10 +73,9 @@ export function TradingActivity({executions,asOf}:{executions:readonly MarketExe
   },[executions,asOf]);
   const view=useMemo(()=>tradingWindow(executions,asset,period,asOf??0),[executions,asset,period,asOf]);
   if(asOf===null)return null;
-  const reset=()=>{setPicked(null);setExpanded(false);};
-  const select=(index:number|null)=>{setPicked(index);setExpanded(false);};
+  const reset=()=>setPicked(null);
+  const select=setPicked;
   const current=picked===null?view.executions:view.buckets[picked].executions;
-  const tape=(expanded?current:current.slice(-6)).slice().reverse();
   const volume=view.totals.buy.volume+view.totals.sell.volume;
   const priced=view.totals.buy.priced+view.totals.sell.priced;
   const inspectedAt=picked===null?null:Math.min(view.end,view.start+picked*view.width);
@@ -89,8 +89,6 @@ export function TradingActivity({executions,asOf}:{executions:readonly MarketExe
       <TradingPlot metric="volume" view={view} selected={picked} onSelect={select}/>
       <div className="obs-trading-asof"><span>{inspectedAt===null?'Through':'Interval starting'} {date.format(inspectedAt??asOf)} · {clock.format(inspectedAt??asOf)} UTC</span>{picked!==null&&<button onClick={()=>select(null)}>Show full period</button>}</div>
     </div>
-    <details className="obs-trade-tape"><summary>Trade tape <span>{current.length.toLocaleString('en-US')} executions</span></summary>
-      {tape.length>0?<div className="obs-table-scroll" tabIndex={0} aria-label="Trade executions"><table><thead><tr>{['Recorded (UTC)','Side','Asset','Shares','Execution price','Volume','Fees','Settlement','Realized cost basis','Ledger'].map(h=><th scope="col" key={h}>{h}</th>)}</tr></thead><tbody>{tape.map(({record,time,side,trade})=><tr key={record.id}><th scope="row">{date.format(time)} · {clock.format(time)}</th><td>{names[side]}</td><td>{trade?.title||trade?.marketItemId||'—'}</td><td>{trade?.shareQuantityMicro!==undefined?formatUnits(trade.shareQuantityMicro):'—'}</td><td>{cents(trade?.priceUsdCents)}</td><td>{cents(trade?.notionalUsdCents)}</td><td>{cents(trade?.feeUsdCents)}</td><td>{cents(trade?.settlementUsdCents)}</td><td>{side==='sell'?cents(trade?.realizedCostBasisUsdCents):'—'}</td><td><a href={ledgerLink(record)}>Inspect</a></td></tr>)}</tbody></table></div>:<p>No executions in this interval.</p>}
-      {current.length>6&&<button className="obs-more" onClick={()=>setExpanded(!expanded)}>{expanded?'Latest six':'Show all '+current.length+' executions'}</button>}</details>
+    <TradeTape key={asset+'|'+period+'|'+(picked??'all')} executions={current}/>
   </section>;
 }

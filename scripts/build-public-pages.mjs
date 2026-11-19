@@ -281,12 +281,18 @@ const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).repla
 await writeFile('dist/discover/navigation.json',JSON.stringify(publicPages['/discover/']));
 const sharedExampleSha256=createHash('sha256').update(exampleBanks.shared).digest('hex');
 const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/discover/'?page:{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(path==='/analytics/'||!['explore','ledger','feed','discover'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
+const discoveryWorkspacePages={
+ '/analytics/':publicPages['/analytics/'],
+ '/ledger/':{...publicPages['/ledger/'],content:ledgerStates.get('/ledger/').content,analyticsSeed:{...publicPages['/analytics/'].analyticsSeed,path:'ledger'}},
+ '/explore/':{...publicPages['/explore/'],content:exploreDestination.content,exploreFrame:{generation:exploreDestination.seed.generation,packet:explorePacketDigest}},
+};
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  const feedBundle=['feed','discover'].includes(page.runtime)?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
-  const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${feedBundle}</body>`):null;
+  const feedBundle=page.runtime==='feed'?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
+  const discoverBundle=page.runtime==='discover'?navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':publicPages['/feed/'],'/discover/':{...publicPages['/discover/'],content:''},...discoveryWorkspacePages},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})):null;
+  const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${discoverBundle??feedBundle}</body>`):null;
   const directMarketing=directMarketingEntries.get(path);
   const document=withReadingLink(directMarketing??feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path);
   if(directMarketing)assertDirectMarketingEntry(path,document);

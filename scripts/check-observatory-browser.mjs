@@ -115,17 +115,16 @@ try{
   // Static markup already has usable facts. Wait for a real React interaction.
   await ranges.click();
   await page.waitForFunction(()=>document.querySelector('.obs-period button[aria-pressed="true"]')?.textContent==='24H');
-  assert.ok(await page.getByRole('button',{name:'Public Showcase Originals',exact:true}).first().isVisible());
+  assert.ok(await page.getByRole('button',{name:'Showcase',exact:true}).first().isVisible());
   assert.ok(await page.getByRole('heading',{name:'Collectible activity',exact:true}).isVisible());
   const collectible=page.locator('#obs-collectibles');
   const facts=await collectible.locator('.obs-audience-grid strong').allTextContents();
   assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
-  await page.locator('.obs-streams').getByRole('button',{name:'Proof graph',exact:true}).click();
+  const streams=page.getByRole('group',{name:'Chart source'});
+  assert.deepEqual(await streams.getByRole('button').allTextContents(),['Actions','Wallet records','Showcase']);
+  await streams.getByRole('button',{name:'Showcase',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  const graphCutoff=ledgerSeed.coverage.find(c=>c.source==='graph').observedAt;
-  const datedGraph=ledgerSeed.records.filter(row=>row.source==='graph'&&!row.origin&&row.authority==='public-source-projection'&&
-    (row.time?Date.parse(row.time)<=graphCutoff:row.kind==='market-asset'&&row.pulse!=null)).length;
-  assert.equal(await page.locator('.obs-chart-head b').innerText(),trafficText(datedGraph));
+  assert.equal(await streams.getByRole('button',{name:'Showcase'}).getAttribute('aria-pressed'),'true');
   await page.locator('.obs-streams').getByRole('button',{name:'Actions',exact:true}).click();
   await ranges.click();
   const entryUrl=page.url();

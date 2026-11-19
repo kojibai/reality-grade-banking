@@ -20,11 +20,13 @@ const sha=async text=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',ne
 async function load(path,previous,build){
  const bankIdentity=document.getElementById('receiz-navigation')?.publicMarketIdentity?.()??null;
  const runtime=previous?.runtime??path.slice(1,-1),qualified=prepared.has(runtime),signal=AbortSignal.timeout(15000),request={credentials:'omit',redirect:'error',cache:'no-store',signal,headers:{accept:'text/html'}};
+ // CDN delivery carries the HTML. The native reader supplies its selected coordinates and byte digest.
+ const source=qualified&&(build||path!=='/analytics/')?'/api/explore?path='+encodeURIComponent(path==='/analytics/'?'observatory':path.slice(1,-1)):path;
  if(previous?.preparedRevision&&previous.content){
-  const response=await aborted(fetch(path,{...request,method:'HEAD'}),signal),values=coordinate(response,build);void response.body?.cancel().catch(()=>{});
+  const response=await aborted(fetch(source,{...request,method:'HEAD'}),signal),values=coordinate(response,build);void response.body?.cancel().catch(()=>{});
   if(values[0]===previous.preparedRevision&&values[1]===previous.preparedBuild&&(!previous.preparedHtmlSha256||values[2]===previous.preparedHtmlSha256)){const state=response.headers.get('x-receiz-public-html-state');return previous.preparedState===state&&previous.preparedBankIdentity===bankIdentity?previous:{...previous,preparedState:state,preparedBankIdentity:bankIdentity};}
  }
- const response=await aborted(fetch(path,request),signal),values=qualified&&(path!=='/analytics/'||fields.some(key=>response.headers.has(key)))?coordinate(response,build):null;
+ const response=await aborted(fetch(source,request),signal),values=qualified&&(source!==path||fields.some(key=>response.headers.has(key)))?coordinate(response,build):null;
  if(!response.ok||!/^text\/html(?:;|$)/i.test(response.headers.get('content-type')??'')||Number(response.headers.get('content-length'))>MAX)throw Error('DISCOVERY_DOCUMENT_UNAVAILABLE');
  const reader=response.body?.getReader();if(!reader)throw Error('DISCOVERY_DOCUMENT_UNAVAILABLE');const decoder=new TextDecoder('utf-8',{fatal:true});let text='',size=0;
  const cancel=()=>{void reader.cancel().catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});

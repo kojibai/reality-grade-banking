@@ -10,9 +10,9 @@ it('reuses a saved generation after a current HEAD, refreshes changed material o
  const fetcher=vi.fn(async(path:string,init?:RequestInit)=>{calls.push({path,method:init?.method??'GET'});return available?new Response(init?.method==='HEAD'?null:html('feed',revision),{headers:headers(revision)}):new Response(null,{status:503});});
  const install=new Function('document','location','fetch','URL','DOMParser','dispatchEvent','CustomEvent',script+';return init;')(document,location,fetcher,URL,DOMParser,dispatchEvent,CustomEvent),open=install(pages,navigate),target=new URL('https://bankeiz.com/feed/');
  pages['/feed/']={runtime:'feed',preparedRevision:revision,preparedBuild:'c'.repeat(64),content:'The initial current document'};
- await open(target);expect(calls).toEqual([{path:'/feed/',method:'HEAD'}]);delete pages['/feed/'];calls.length=0;navigate.mockClear();
- await open(target);const held=pages['/feed/'];expect(calls).toEqual([{path:'/feed/',method:'GET'}]);expect(navigate).toHaveBeenCalledWith('/feed/');
- await open(target);expect(pages['/feed/']).toBe(held);expect(calls.at(-1)).toEqual({path:'/feed/',method:'HEAD'});expect(calls.filter(call=>call.method==='GET')).toHaveLength(1);
- revision='b'.repeat(64);await open(target);expect(pages['/feed/']).not.toBe(held);expect(pages['/feed/'].preparedRevision).toBe(revision);expect(calls.slice(-2)).toEqual([{path:'/feed/',method:'HEAD'},{path:'/feed/',method:'GET'}]);
+ await open(target);expect(calls).toEqual([{path:'/api/explore?path=feed',method:'HEAD'}]);delete pages['/feed/'];calls.length=0;navigate.mockClear();
+ await open(target);const held=pages['/feed/'];expect(calls).toEqual([{path:'/api/explore?path=feed',method:'GET'}]);expect(navigate).toHaveBeenCalledWith('/feed/');
+ await open(target);expect(pages['/feed/']).toBe(held);expect(calls.at(-1)).toEqual({path:'/api/explore?path=feed',method:'HEAD'});expect(calls.filter(call=>call.method==='GET')).toHaveLength(1);
+ revision='b'.repeat(64);await open(target);expect(pages['/feed/']).not.toBe(held);expect(pages['/feed/'].preparedRevision).toBe(revision);expect(calls.slice(-2)).toEqual([{path:'/api/explore?path=feed',method:'HEAD'},{path:'/api/explore?path=feed',method:'GET'}]);
  available=false;await open(target);expect(navigate).toHaveBeenCalledTimes(3);expect(assign).not.toHaveBeenCalled();expect(document.getElementById('public-navigation-status')?.textContent).toContain('Try again');expect(calls.filter(call=>call.method==='GET')).toHaveLength(2);
 });

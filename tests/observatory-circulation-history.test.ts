@@ -18,6 +18,15 @@ it('counts each dated issuance once across holders and preserves distinct issuan
  expect(datedIssuances(catalog,seals,marketPulseTime(20)).at(-1)).toEqual({at:marketPulseTime(20),value:5});
 });
 
+it('places archived claim dates and carried Original seals at their issue time across claim revisions',()=>{
+ const t=marketPulseTime(51),later=marketPulseTime(52);
+ const catalog={items:[{category:'sports',sealedBirths:[{collectibleId:'rsc_one',claimHash:'new',sealedAt:new Date(t).toISOString()}]},
+  {category:'proof',assetId:'legacy',pulse:'52'}, {category:'proof',assetId:'dated',sealedAt:new Date(t).toISOString()}]} as PublicMarketCatalog;
+ const seals=collectibleSealTimes(catalog,[['rsc_one:old',t],['rsc_two:other',later]]);
+ expect(seals).toEqual([t,later]);
+ expect(datedIssuances(catalog,seals,later)).toEqual([{at:t,value:2},{at:later,value:4}]);
+});
+
 it('keeps the known opening value and observation time on both ends of a sparse window',()=>{
  const history=[{at:2,value:8},{at:7,value:6},{at:11,value:9}];
  expect(visibleHistory(history,8,10)).toEqual([{at:8,value:6,observedAt:7},{at:10,value:6,observedAt:7}]);

@@ -88,7 +88,6 @@
 .obs-headline-area{fill:#65e4dc15}.obs-headline-line{fill:none;stroke:#71e8dd;stroke-width:2.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .obs-headline-cursor,.obs-headline-dot{position:absolute;pointer-events:none}.obs-headline-cursor{inset-block:0;border-left:1px dashed #91c4cb80}.obs-headline-dot{width:8px;height:8px;border:2px solid #102c40;background:#81f4e8;border-radius:50%;transform:translate(-50%,-50%)}
 .obs-headline-dialog input[type=range]{display:block;width:100%;margin:14px 0 0;accent-color:#72e5dc}.obs-headline-dialog p{line-height:1.45;margin:12px 0 0}
-.obs-graph-description{color:#bdcfdb;font-size:.81rem;line-height:1.4;margin:.65rem 0}
 .obs-asset-links{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.obs-streams{column-gap:clamp(6px,2.4vw,18px)}
 .obs-headline-footer{margin-top:16px;border-top:1px solid #466073;padding-top:8px;display:flex;justify-content:flex-end}.observatory .obs-headline-footer a{display:inline-flex;align-items:center;gap:6px;min-height:36px;color:#91f3e8;font-size:.86rem;font-weight:600;text-decoration:none}.obs-headline-footer a:hover{text-decoration:underline}
 
@@ -154,7 +153,18 @@
 .obs-trading-axis{font-size:11px}.obs-trading-axis>span:nth-child(2){text-align:center}
 .obs-trading-plot output{display:block;margin-top:4px;font-size:12px;color:#e4f3f5}
 .obs-trading-asof{border-top:1px solid #3c5768;margin-top:8px;padding-top:10px;min-height:35px}
-.obs-trade-tape{margin:12px 0 0}.obs-trade-tape summary{cursor:pointer;font-weight:620}.obs-trade-tape summary span{font-weight:400;font-size:12px;color:#52687a;margin-left:8px}
+.obs-trade-tape{margin:12px 0 0;min-width:0}
+.obs-trade-tape .obs-table-scroll{container-type:inline-size}
+.obs-trade-tape table{table-layout:fixed}
+.obs-tape-asset{width:34%}.obs-tape-time{width:23%}.obs-tape-price{width:16%}.obs-tape-volume{width:auto}.obs-tape-inspect{width:74px}
+.obs-trade-tape th[scope=row]{min-width:0}.obs-tape-title,.obs-tape-amount{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.obs-trade-tape td{font-variant-numeric:tabular-nums}.obs-trade-tape .obs-link-button{min-height:40px}
+#obs-trade-details>td{background:#f1f5f7;padding:0;text-align:left;white-space:normal}
+.obs-execution-inspection .ledger-trade-details{margin-block:14px;padding:14px}.obs-execution-inspection .ledger-trade-details h4{margin:0}
+.obs-trade-tape>.obs-pager{flex-wrap:wrap}.obs-trade-tape>summary{min-height:44px;align-content:center}
+@media(max-width:760px){.obs-trade-tape .obs-tape-time{display:none}.obs-tape-asset{width:42%}}
+@media(max-width:520px){.obs-trade-tape .obs-tape-price{display:none}.obs-tape-asset{width:43%}.obs-tape-inspect{width:60px}.obs-trade-tape td,.obs-trade-tape th{padding-inline:5px}}
+.obs-trade-tape summary{cursor:pointer;font-weight:620}.obs-trade-tape summary span{font-weight:400;font-size:12px;color:#52687a;margin-left:8px}
 @media(max-width:520px){.obs-trading-controls select{width:100%}.obs-trading-totals{gap:10px}.obs-trading-desk{padding:12px}.obs-trading-controls button{padding:6px 8px}.obs-trading-axis,.obs-trading-asof{font-size:10px}}
 .obs-trading-summary{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:22px}
 .obs-trading-summary h3{font-size:13px;font-weight:550;margin:0}.obs-trading-summary strong,.obs-trading-summary b,.obs-trading-summary small{display:block}

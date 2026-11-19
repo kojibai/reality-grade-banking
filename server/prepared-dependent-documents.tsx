@@ -1,4 +1,4 @@
-import {collectibleSealTimes} from '../src/observatory/circulation-history';
+import {networkCollectibleSealTimes} from '../src/observatory/circulation-history';
 import {mergePublicSports} from '../src/receiz/public-sports';
 import {prepareSelectedPublicReferenceCatalog} from './public-reference-state';
 import {compressedCatalog,preparedExploreFrame} from './public-market-document';
@@ -101,7 +101,7 @@ export async function renderPreparedDependentDocument({material,generation,path,
  if(path==='observatory'||market){
   const sports=collectibleCatalog||market?null:await readSports();
   const inventory=collectibleCatalog??market?.seed.catalog??(sports?mergePublicSports({...catalog,items:[],sourceCount:0},sports):null);
-  if(inventory)directory.collectibleSealTimes=collectibleSealTimes(inventory);
+  if(inventory)directory.collectibleSealTimes=networkCollectibleSealTimes(inventory);
  }
  const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot,...(directory?{directory}:{})};
  const content=renderToString(<div><PublicLedgerApp active={false} initialDirectory={seed.directory} initialSnapshot={snapshot} initialHref={'https://bankeiz.com/'+path+'/'} initialFilter={path==='ledger/proofs'?'proofs':'all'} initialFormat={format}/></div>,{identifierPrefix:'public-ledger-'}),script=publicLedgerDocumentSeedScript(seed,packets);

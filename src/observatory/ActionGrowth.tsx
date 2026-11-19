@@ -12,36 +12,40 @@ const number=new Intl.NumberFormat('en-US');
 const date=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'});
 const time=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
 
+function countService(groups:Map<string,Map<string,number>>,event:TimedRecord){
+  const {kind,details}=event.record,scope=details?.actionScope;
+  const name=typeof scope==='string'&&scope?scope:'Unspecified service';
+  let counts=groups.get(name);
+  if(!counts){counts=new Map();groups.set(name,counts);}
+  counts.set(kind,(counts.get(kind)??0)+1);
+}
+
 export function ActionGrowth({actions,asOf,onInspect}:{actions:readonly TimedRecord[];asOf:number|null;onInspect:(kind:string,period:Period)=>void}){
   const [period,setPeriod]=useState<Period>('All');
   const [kind,setKind]=useState('');
-  const byKind=useMemo(()=>{
-    const groups=new Map<string,number[]>();
-    if(asOf===null)return groups;
+  const {byKind,allServices}=useMemo(()=>{
+    const byKind=new Map<string,number[]>(),allServices=new Map<string,Map<string,number>>();
     for(const event of actions){
-      if(event.time>asOf)break;
-      const times=groups.get(event.record.kind);
-      if(times)times.push(event.time);
-      else groups.set(event.record.kind,[event.time]);
+      if(asOf===null||event.time>asOf)break;
+      const times=byKind.get(event.record.kind);
+      if(times)times.push(event.time);else byKind.set(event.record.kind,[event.time]);
+      countService(allServices,event);
     }
-    return groups;
+    return {byKind,allServices};
   },[actions,asOf]);
   const kinds=useMemo(()=>Array.from(byKind.keys()).sort(),[byKind]);
   const services=useMemo(()=>{
-    const groups=new Map<string,Map<string,number>>();
     if(asOf===null)return [];
-    const {start}=periodBounds(actions[0]?.time,period,asOf);
-    for(const event of actions){
-      if(event.time<start)continue;
-      if(event.time>asOf)break;
-      const scope=event.record.details?.actionScope;
-      const label=typeof scope==='string'&&scope?scope:'Unspecified service';
-      let counts=groups.get(label);
-      if(!counts){counts=new Map();groups.set(label,counts);}
-      counts.set(event.record.kind,(counts.get(event.record.kind)??0)+1);
+    const groups=period==='All'?allServices:new Map<string,Map<string,number>>();
+    if(period!=='All'){
+      const {start}=periodBounds(actions[0]?.time,period,asOf);
+      for(let i=actions.length-1;i>=0;i--){
+        const event=actions[i];if(event.time<start)break;
+        if(event.time<=asOf)countService(groups,event);
+      }
     }
-    return [...groups].map(([name,counts])=>({name,counts:[...counts].sort((a,b)=>b[1]-a[1]),total:[...counts.values()].reduce((a,b)=>a+b,0)})).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name));
-  },[actions,asOf,period]);
+    return Array.from(groups,([name,counts])=>({name,counts:[...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])),total:[...counts.values()].reduce((a,b)=>a+b,0)})).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name));
+  },[actions,asOf,period,allServices]);
   if(asOf===null||!kinds.length)return null;
   const {start,end}=periodBounds(actions[0]?.time,period,asOf);
   const visible:readonly (readonly [string,string])[]=kind?[[kind,kind]]:featured.filter(([key])=>byKind.has(key));

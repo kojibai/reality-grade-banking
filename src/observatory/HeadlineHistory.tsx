@@ -26,7 +26,7 @@ const dollars = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'
 const emptyHistory:readonly HistoryPoint[]=[];
 const notes: Record<Headline,string> = {
   cap: 'Public share capitalization at each recorded valuation.',
-  assets: 'Dated issuance counts each asset and collectible once, on its recorded issue date.',
+  assets: '',
   hours: 'Combined viewing and streaming hours reported by public profiles.',
   ledger: 'Cumulative dated records across all public ledger sources, through each source’s observation time.',
 };
@@ -95,7 +95,7 @@ export function HeadlineHistory({metric, points, observations=emptyHistory, onCl
       </div>
       <div className="obs-headline-dates"><time>{label(start)}</time><time>{label(end)}</time></div>
       <input type="range" aria-label="Inspect historical reading" aria-valuetext={format(point.value)+', recorded '+dates.format(observedAt)+' '+times.format(observedAt)+' UTC'} min={0} max={Math.max(0,rows.length-1)} disabled={rows.length<2} value={Math.max(0,i)} onChange={e=>{setSelectedObservation(null);setPicked(Number(e.target.value));}}/>
-      <p>{notes[metric]}</p></>:<p>No dated readings are available yet.</p>}
+      {notes[metric]&&<p>{notes[metric]}</p>}</>:<p>No dated readings are available yet.</p>}
     <footer className="obs-headline-footer"><a href={destinations[metric].href} onClick={()=>dialog.current?.close()}>
       {destinations[metric].label}<ArrowUpRight size={16} aria-hidden="true"/>
     </a></footer>

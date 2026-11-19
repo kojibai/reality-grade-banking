@@ -1,5 +1,6 @@
 import {Fragment,memo,useMemo,useState} from 'react';
-import {ArrowUpRight, ChevronLeft, ChevronRight} from 'lucide-react';
+import {ArrowUpRight} from 'lucide-react';
+import {Pager} from './Pager';
 import {formatMoney} from '../core/money';
 import {marketContentLabel} from '../receiz/market-categories';
 import {assetPagePath,retainPublicAsset} from '../receiz/public-asset-page';
@@ -27,11 +28,6 @@ const usd=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
 type Overview=ReturnType<typeof observeCatalog>;
 const rankLabels={followers:'Followers',following:'Following',signedOriginals:'Signed Originals',views:'Original views',plays:'Stream plays',seconds:'Witnessed hours',originals:'Public Originals',completion:'Completion rate',capitalization:'Collection capitalization'};
 type Rank=keyof typeof rankLabels;
-
-function Pager({count,page,onPage,size=pageSize}:{count:number;page:number;onPage:(page:number)=>void;size?:number}){
-  const pages=Math.max(1,Math.ceil(count/size));
-  return <div className="obs-pager"><span>{count?number.format(page*size+1)+'–'+number.format(Math.min(count,(page+1)*size))+' of '+number.format(count):'No matches'}</span><button disabled={!page} aria-label="Previous page" onClick={()=>onPage(page-1)}><ChevronLeft/></button><label>Page <select aria-label="Jump to page" value={page} onChange={e=>onPage(Number(e.target.value))}>{Array.from({length:pages},(_,i)=><option key={i} value={i}>{i+1}</option>)}</select> / {pages}</label><button disabled={page+1>=pages} aria-label="Next page" onClick={()=>onPage(page+1)}><ChevronRight/></button></div>;
-}
 
 function Growth({series,label,unit}:{series:ReturnType<typeof growthSeries>;label:string;unit:string}){
   if(!series)return <div className="obs-growth"><h3>{label}</h3><p>No dated observations available</p></div>;
