@@ -1,5 +1,5 @@
 import {PublicDocumentCapabilitiesContext} from '../../core/public-document-format';
-import {useContext,useEffect,useId,useRef,useState,type PointerEvent,type ReactNode,type TouchEvent} from 'react';
+import {useContext,useEffect,useId,useRef,useState,type PointerEvent,type ReactNode,type RefObject,type TouchEvent} from 'react';
 import {RotateCcw,RotateCw} from 'lucide-react';
 import './asset-object.css';
 
@@ -9,6 +9,7 @@ export interface AssetObjectProps {
   label?:string;
   className?:string;
   onSideChange?:(side:'front'|'back')=>void;
+  rootRef?:RefObject<HTMLElement|null>;
 }
 const controls='a,button,input,textarea,select,option,audio,video,iframe,dialog,summary,[role="dialog"],[role="button"],[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-asset-no-swipe]';
 function protectsControl(target:EventTarget|null,stage:Element):boolean {
@@ -17,16 +18,16 @@ function protectsControl(target:EventTarget|null,stage:Element):boolean {
 }
 
 /** A display surface only. Proof content is mounted on demand by its owner. */
-export function AssetObject({front,renderBack,label='Proof object',className='',onSideChange}:AssetObjectProps){
+export function AssetObject({front,renderBack,label='Proof object',className='',onSideChange,rootRef}:AssetObjectProps){
   const capabilities=useContext(PublicDocumentCapabilitiesContext);
  const [back,setBack]=useState(false),[inView,setInView]=useState(()=>(capabilities?.intersectionObserver??typeof IntersectionObserver!=='undefined')===false),[pageVisible,setPageVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
-  const root=useRef<HTMLElement>(null),gesture=useRef<{id:number;x:number;y:number;at:number}|null>(null),suppressClickUntil=useRef(0),backId=useId();
+  const localRoot=useRef<HTMLElement>(null),root=rootRef??localRoot,gesture=useRef<{id:number;x:number;y:number;at:number}|null>(null),suppressClickUntil=useRef(0),backId=useId();
   useEffect(()=>{
     const visible=()=>setPageVisible(!document.hidden);document.addEventListener('visibilitychange',visible);visible();
     const element=root.current,observer=typeof IntersectionObserver==='undefined'?null:new IntersectionObserver(entries=>setInView(entries.some(entry=>entry.isIntersecting)),{threshold:0});
     if(element)observer?.observe(element);
     return()=>{document.removeEventListener('visibilitychange',visible);observer?.disconnect();};
-  },[]);
+  },[root]);
   function show(next:boolean){setBack(next);onSideChange?.(next?'back':'front');}
   function start(event:TouchEvent<HTMLDivElement>){
     gesture.current=null;

@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import type {PublicRecord} from '../src/receiz/public-network';
 import {marketPulseTime} from '../src/receiz/market-projection/coordinates';
-import {activityWindow,indexActivity,ledgerLink} from '../src/observatory/activity';
+import {activityWindow,carriedActivityHistories,indexActivity,ledgerLink} from '../src/observatory/activity';
 const anchor=Date.parse('2026-11-18T16:10:00Z');
 function row(id:string, at:number|null):PublicRecord {
   return {id:'actions:'+id,source:'actions',sourceId:id,authority:'public-source-projection',kind:'record',title:id,detail:'',actor:null,time:at===null?null:new Date(at).toISOString(),amountUsdCents:null,kaiUpulse:null,pulse:null,sourceUrl:null,evidence:{}};
@@ -43,6 +43,21 @@ describe('Observatory public activity',()=>{
       expect(frame.total).toBe(period==='All'?2:1);
       if(period==='All'){expect(frame.start).toBe(first);expect(frame.buckets[0][0].sourceId).toBe('first');}
     }
+  });
+  it('selects history within the visible range and interval, preserving earlier carried steps',()=>{
+    const hour=3_600_000,hash='a'.repeat(64);
+    const candidate=(id:string,time:number,source:PublicRecord['source']='graph'):PublicRecord=>({
+      ...row(id,time),source,kind:'card-transfer',details:{causalLineage:{
+        sourceSchema:'receiz.sports_arena.card_causal_ownership_proof.v1',collectibleId:'card',claimHash:hash,proofHash:hash,
+        steps:[{id:'origin',kind:'free_claim',label:'Claimed',occurredAt:new Date(anchor-2*hour).toISOString()},{id:'transfer',kind:'transfer',label:'Transferred'}],
+      }},
+    });
+    const index=indexActivity([candidate('older',anchor-hour),candidate('visible',anchor-30_000),candidate('later',anchor+1),candidate('other-source',anchor,'actions')]);
+    const graph=activityWindow(index.streams.graph,'1H',anchor);
+    expect(carriedActivityHistories(graph.histories,null).map(history=>history.record.sourceId)).toEqual(['visible','older']);
+    expect(carriedActivityHistories(graph.histories,0).map(history=>history.record.sourceId)).toEqual(['older']);
+    expect(carriedActivityHistories(graph.histories,graph.buckets.length-1)[0].steps.map(step=>step.id)).toEqual(['origin','transfer']);
+    expect(carriedActivityHistories(activityWindow(index.streams.actions,'1H',anchor).histories,null).map(history=>history.record.sourceId)).toEqual(['other-source']);
   });
   it('opens the exact public Ledger identity through its supported fragment',()=>{
     expect(ledgerLink(row('a/b:c',anchor))).toBe('/ledger/#record=actions%3Aa%2Fb%3Ac');

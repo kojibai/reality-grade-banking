@@ -54,6 +54,7 @@ try{
   assert.ok(await page.getByRole('heading',{name:'Network pulse'}).isVisible());
   const initialTotal=Number((await page.locator('.obs-reading').last().locator('strong').innerText()).replaceAll(',',''));
   assert.ok(initialTotal>0);
+  assert.equal(await page.locator('.obs-status-full').innerText(),'Showing public records');
   assert.ok(await page.locator('.obs-bars i').count()>0);
   assert.ok(await page.getByRole('heading',{name:'Audience',exact:true}).isVisible());
   assert.ok(Number((await page.locator('#obs-audience .obs-audience-grid strong').last().innerText()).replaceAll(',',''))>0);
@@ -126,16 +127,37 @@ try{
   await graphTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await graphTab.getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('.obs-status-full').innerText(),'Showing public records','The held graph stays in view when the source cannot refresh');
+  const historyPanel=page.getByRole('region',{name:'Carried history',exact:true});
+  await page.getByRole('button',{name:'Open history',exact:true}).click();
+  const historyPicker=historyPanel.getByRole('combobox',{name:'Record with carried history'});
+  assert.ok(await historyPicker.getByRole('option').count()>1);
+  const historyLink=historyPanel.getByRole('link',{name:'Inspect in Ledger'});
+  assert.match(await historyLink.getAttribute('href'),/graph%3A/);
+  const firstHistoryLink=await historyLink.getAttribute('href');
+  await historyPicker.selectOption({index:1});
+  assert.notEqual(await historyLink.getAttribute('href'),firstHistoryLink);
+  assert.ok(await historyPanel.locator('li').count()>1);
+  const ledgerRecordUrl=await historyLink.getAttribute('href');
+
   assert.ok(await page.locator('.obs-bars [data-occupied]').count()>1,'Graph history spans multiple dated intervals');
   const selectedOriginals=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')).transport.publicOriginals;
   const graphPulses=new Map(ledgerSeed.records.filter(row=>row.source==='graph'&&row.kind==='market-asset').map(row=>[row.sourceId,row.pulse]));
   assert.equal(graphPulses.size,selectedOriginals.length);
   for(const original of selectedOriginals)assert.equal(graphPulses.get('market-asset-'+original.id),String(original.livePulseSeed.claimPulse));
   await page.getByLabel('Filter by record type').selectOption('market-asset');
+  assert.equal(await historyPanel.count(),0,'Filtering the graph removes unrelated carried history');
+
   assert.equal(await page.locator('.obs-chart-head p b').innerText(),trafficText(selectedOriginals.length),'The offline graph plots every selected Original on its issuance date');
   await streams.getByRole('button',{name:'Showcase',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await streams.getByRole('button',{name:'Showcase'}).getAttribute('aria-pressed'),'true');
+  assert.equal(await historyPanel.count(),0,'Switching sources cannot show a Proof graph transfer');
+  await graphTab.click();
+  await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
+  await slider.focus();await slider.press('Home');
+  assert.equal(await historyPanel.count(),0,'Selecting an earlier chart interval removes unrelated histories');
+
   await page.locator('.obs-streams').getByRole('button',{name:'Actions',exact:true}).click();
   await ranges.click();
   const entryUrl=page.url();
@@ -222,12 +244,19 @@ try{
   await page.locator('#obs-audience').getByRole('button',{name:'By profile'}).click();
   await slider.focus();await slider.press('Home');
   assert.equal(await slider.getAttribute('aria-valuenow'),'1');
-  await page.getByRole('button',{name:'Open history',exact:true}).click();
-  assert.ok(await page.locator('.obs-history li').count()>1);
-  await page.getByRole('link',{name:'Inspect in Ledger'}).click();
+  assert.equal(await historyPanel.count(),0);
+  await graphTab.click();
+  await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
+  const exactHref=await historyLink.getAttribute('href');
+  assert.match(ledgerRecordUrl,/graph%3A/);
+  assert.equal(exactHref,firstHistoryLink);
+  await historyLink.click();
   await page.waitForSelector('.public-ledger-row.is-open');
   assert.ok(page.url().includes('/ledger/#record='));
   await page.goBack();
+  await streams.getByRole('button',{name:'Actions',exact:true}).click();
+  await ranges.click();
+  await slider.focus();await slider.press('Home');
   await page.getByRole('button',{name:'Follow latest',exact:true}).click();
   await page.setViewportSize({width:390,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -289,7 +318,7 @@ try{
   assert.equal(await accepted.count(),1);
   const connectedLabel=page.locator('.obs-status-small');
   await page.setViewportSize({width:320,height:568});
-  await page.waitForFunction(()=>document.querySelector('.obs-status-small')?.textContent==='Public source connected');
+  await page.waitForFunction(()=>document.querySelector('.obs-status.connected .obs-status-small')?.textContent==='Showing public records');
   assert.equal(await connectedLabel.evaluate(label=>label.getClientRects().length),1);
   await page.setViewportSize(launch.viewport);
   const countActions=async()=>Number((await page.locator('.obs-breakdown button').first().locator('strong').innerText()).replaceAll(',',''));
@@ -309,7 +338,8 @@ try{
   await context.close();replay=false;
   page=await open();
   await page.locator('.obs-row[href*="'+id+'"]').waitFor({timeout:45_000});
-  assert.equal(await page.locator('.obs-traffic-block').first().locator('.obs-section-head strong').innerText(),trafficText(trafficTotal+1));
+  // The independently retained traffic observation can reopen after the Ledger row.
+  await page.waitForFunction(value=>document.querySelector('.obs-traffic-block .obs-section-head strong')?.textContent===value,trafficText(trafficTotal+1));
   assert.equal(await countActions(),expectedActions+2);
   const coldFind=page.getByRole('searchbox',{name:'Search public profiles'});
   await coldFind.fill(username);

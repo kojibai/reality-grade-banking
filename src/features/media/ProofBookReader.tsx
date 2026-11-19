@@ -1,7 +1,9 @@
-import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
+import {useContext,useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {ChevronLeft,ChevronRight,List,Maximize2,Moon,Sun,X} from 'lucide-react';
 import type {MediaFile} from '../../receiz/proof-media';
 import {paginateBook} from '../../receiz/book-pages';
+import {OriginalEngagementContext} from '../../receiz/usePublicEngagement';
+import {observePublicEngagement} from '../../receiz/public-engagement';
 import {useReaderPageSwipe} from './useReaderPageSwipe';
 import './proof-book-reader.css';
 type Place={page:number;font:number;dark:boolean};
@@ -9,6 +11,9 @@ const places=new Map<string,Place>();
 export default function ProofBookReader({file,title,expanded,onExpand}:{file:MediaFile;title?:string;expanded:boolean;onExpand:()=>void}){
  const pages=useMemo(()=>paginateBook(file.chapters??[]),[file]),[place,setPlace]=useState<Place>(()=>places.get(file.payloadDigest)??{page:0,font:18,dark:false}),[contents,setContents]=useState(false),paper=useRef<HTMLElement>(null),contentButton=useRef<HTMLButtonElement>(null);
  const pageIndex=Math.min(place.page,Math.max(0,pages.length-1)),page=pages[pageIndex],chapter=file.chapters?.[page?.chapter??0],images=useMemo(()=>new Map(file.book?.images.map(image=>[image.path,image])??[]),[file]);
+ const engagement=useContext(OriginalEngagementContext),subject=engagement?.subject,source=engagement?.source;
+ const username=subject?.username,receizId=subject?.receizId,mediaKind=subject?.mediaKind;
+ useEffect(()=>username&&receizId&&source&&page?observePublicEngagement({username,receizId,mediaKind},source,pageIndex+1):undefined,[username,receizId,mediaKind,source,pageIndex,page]);
  const [imageUrls,setImageUrls]=useState<Map<string,string>>(()=>new Map());
  const swipe=useReaderPageSwipe(pageIndex,turn);
  useEffect(()=>{const urls=new Map<string,string>();for(const block of page?.blocks??[]){const image=block.path&&images.get(block.path);if(image&&!urls.has(image.path))urls.set(image.path,URL.createObjectURL(new Blob([new Uint8Array(image.bytes)],{type:image.mimeType})));}setImageUrls(urls);return()=>{for(const url of urls.values())URL.revokeObjectURL(url);};},[page,images]);

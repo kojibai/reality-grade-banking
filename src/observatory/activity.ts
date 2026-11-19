@@ -1,7 +1,8 @@
 import {ledgerAssetTrade,ledgerAssetTradeSide,type LedgerAssetTrade} from '../receiz/ledger-asset-trade';
 import {PUBLIC_SOURCES, type PublicRecord, type PublicSource} from '../receiz/public-network';
 import {marketPulseTime} from '../receiz/market-projection/coordinates';
-import {readLedgerCausalLineage, type LedgerCausalLineage} from '../receiz/ledger-causal-source';
+import {readLedgerCausalLineage, type LedgerCausalStep} from '../receiz/ledger-causal-source';
+import {ledgerProofHistorySteps} from '../receiz/ledger-proof-history';
 
 export const sourceNames: Record<PublicSource, string> = {
   actions: 'Actions', wallet: 'Wallet records', graph: 'Proof graph', proofs: 'Showcase',
@@ -35,7 +36,6 @@ export function indexActivity(records: readonly PublicRecord[]) {
   const streams = Object.fromEntries(PUBLIC_SOURCES.map(source => [source, []])) as unknown as Record<PublicSource, TimedRecord[]>;
   const executions:MarketExecution[]=[];
   const counts = {actions: 0, wallet: 0, graph: 0, proofs: 0};
-  let lineage: {record: PublicRecord; history: LedgerCausalLineage} | null = null;
   for (const record of records) {
     if (record.authority !== 'public-source-projection' || record.origin) continue;
     counts[record.source]++;
@@ -45,13 +45,9 @@ export function indexActivity(records: readonly PublicRecord[]) {
       const execution=marketExecution(record,time);
       if(execution)executions.push(execution);
     }
-    if (!lineage && record.details?.causalLineage && /transfer/i.test(record.kind)) {
-      const history = readLedgerCausalLineage(record.details.causalLineage);
-      if (history) lineage = {record, history};
-    }
   }
   for (const source of PUBLIC_SOURCES) streams[source].sort((a, b) => a.time - b.time);
-  return {streams, counts, lineage,executions:executions.sort(compareExecutions)};
+  return {streams, counts, executions:executions.sort(compareExecutions)};
 }
 
 export function periodBounds(first: number | undefined, period: Period, anchor: number) {
@@ -66,17 +62,32 @@ export function activityWindow(records: readonly TimedRecord[], period: Period, 
   const width = Math.max((end - start) / count, 1);
   const buckets = Array.from({length: count}, () => [] as PublicRecord[]);
   const density = Array<number>(count * 4).fill(0);
+  const histories: {record: PublicRecord; bucket: number}[] = [];
   let total = 0;
   for (let i = records.length - 1; i >= 0; i--) {
     const {time, record} = records[i];
     if (time < start) break;
     if (time > anchor) continue;
     const offset = (time - start) / width;
-    buckets[Math.min(count - 1, Math.floor(offset))].push(record);
+    const bucket = Math.min(count - 1, Math.floor(offset));
+    buckets[bucket].push(record);
+    if (record.details?.causalLineage || record.details?.proofHistory) histories.push({record,bucket});
     density[Math.min(density.length - 1, Math.floor(offset * 4))]++;
     total++;
   }
-  return {buckets, density, start, end, width, total};
+  return {buckets, density, start, end, width, total, histories};
+}
+
+export function carriedActivityHistories(histories: ReturnType<typeof activityWindow>['histories'], bucket: number | null) {
+  const result: {record: PublicRecord; steps: readonly LedgerCausalStep[]; missingParentHashes?: readonly string[]}[] = [];
+  for (const entry of histories) {
+    if (bucket !== null && entry.bucket !== bucket) continue;
+    const {record}=entry;
+    const lineage=record.details?.causalLineage && readLedgerCausalLineage(record.details.causalLineage);
+    const steps=lineage ? lineage.steps : ledgerProofHistorySteps(record);
+    if (steps?.length) result.push({record,steps,missingParentHashes:lineage ? lineage.missingParentHashes : undefined});
+  }
+  return result;
 }
 
 /** Sample the cumulative count at fixed UTC instants, including both endpoints. */

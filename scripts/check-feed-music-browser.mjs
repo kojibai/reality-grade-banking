@@ -22,7 +22,7 @@ async function check(engine){
  const browser=await engine.launch(options);
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},serviceWorkers:'block'});
-  const streams=new Set(),errors=[];
+  const streams=new Set(),errors=[],engagement=[];
   let failNewStreams=false;
   page.on('pageerror',error=>errors.push(error.message));
   await page.route('**/*',async route=>{
@@ -33,6 +33,13 @@ async function check(engine){
     assert.ok(file.startsWith(dist+sep));
     try{await access(file);}catch{return route.fulfill({status:404,body:''});}
     return route.fulfill({path:file});
+   }
+   if(url.origin==='https://receiz.com'&&url.pathname==='/api/profile/analytics/track'){
+    assert.equal(request.method(),'POST');
+    assert.match(request.headers()['content-type'],/^text\/plain/);
+    assert.equal(request.headers().cookie,undefined);
+    engagement.push(JSON.parse(request.postData()));
+    return; // Leave telemetry stalled through native playback and handoffs.
    }
    const headers=request.headers(),range=headers.range;
    // Linux WebKit classifies native audio as "other" and can request the whole file.
@@ -71,7 +78,9 @@ async function check(engine){
   // Listen through a third transition and allow the fourth track to progress.
   await page.waitForFunction(()=>window.musicEvents.filter(e=>e.name==='play').length>=4
    &&[...document.querySelectorAll('audio')].some(a=>!a.paused&&a.currentTime>=0.4));
+  const pauseEvent=page.waitForRequest(request=>request.url().endsWith('/api/profile/analytics/track')&&request.postData()?.includes('original_stream_pause'));
   await stage.getByRole('button',{name:'Pause music'}).click();
+  await pauseEvent;
   const result=await page.evaluate(()=>{
    const events=window.musicEvents,scroll=document.querySelector('.feed-scroll');
    return {events:events.map(e=>e.name),tracks:events.filter(e=>e.name==='play').map(e=>e.source),
@@ -86,6 +95,15 @@ async function check(engine){
   assert.ok(result.handoffs.every(h=>h.ready&&h.promoted&&h.cover),'reuse the buffered next song and preserve decoded artwork');
   assert.equal(result.viewportPage,3);assert.equal(result.mounted,3);assert.equal(result.players,2);
   assert.ok(streams.size<=5,'only the current neighborhood may request audio');
+  const plays=engagement.filter(event=>event.event==='original_stream_play');
+  assert.equal(plays.length,4,'each actually playing Original is counted once');
+  assert.equal(new Set(plays.map(event=>event.receizId)).size,4);
+  for(const event of engagement.filter(event=>event.event==='original_stream_complete'||event.event==='original_stream_pause')){
+   assert.ok(event.durationSeconds>0);
+   assert.ok(plays.some(play=>play.receizId===event.receizId&&play.meta.playbackSessionId===event.meta.playbackSessionId));
+  }
+  assert.equal(engagement.filter(event=>event.event==='original_stream_complete').length,3);
+  assert.ok(engagement.some(event=>event.event==='original_impression'));
 
   const next=await stage.locator('xpath=following-sibling::article[1]').getAttribute('data-feed-item');
   await page.locator('.feed-scroll').press('ArrowDown');

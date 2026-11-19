@@ -1,7 +1,7 @@
 import {PublicDocumentFormatContext,PublicDocumentPulseContext} from '../../core/public-document-format';
 import {profileUsernameLabel} from '../../receiz/account-name';
 import {retainPublicAsset} from '../../receiz/public-asset-page';
-import {useContext,useEffect,useState,useSyncExternalStore} from 'react';
+import {useContext,useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import {PublicObjectArtwork} from './PublicObjectRow';
 import {OpenInvestment} from '../assets/OpenInvestment';
@@ -24,9 +24,12 @@ import {profilePagePath,profileUsername,retainedPublicProfile,subscribePublicPro
 import {AccountProfileLink} from '../../components/AccountProfileLink';
 import {PublicOwnerAvatar} from '../../public-explorer/PublicOwnerAvatar';
 import {PublicCollectibleArtwork} from '../collectibles/PublicCollectibleArtwork';
+import {OriginalEngagementContext,useOriginalEngagement} from '../../receiz/usePublicEngagement';
 import {admittedAssetPublicationItem} from '../../receiz/asset-publication-adoption';
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
+  const mediaRoot=useRef<HTMLElement>(null);
+  const engagement=useOriginalEngagement(item,!readOnly,'bankeiz_asset_detail',mediaRoot);
   const format=useContext(PublicDocumentFormatContext),firstFrame=useContext(PublicDocumentPulseContext)!==undefined;
   const owner=profileUsername(item.ownerUsername),profile=useSyncExternalStore(subscribePublicProfiles,()=>owner?retainedPublicProfile(owner):null,()=>null);
   // A selected local row may predate its owner's carried public metadata.
@@ -55,7 +58,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   // Keep its source facts, but never render an empty or unresolved creator row.
   const creatorUsername=/^receiz_[a-z0-9]{17}$/.test(carriedCreatorUsername)?'':carriedCreatorUsername;
   const creatorName=creator?.displayName?.trim()&&creator.displayName!==carriedCreatorUsername?creator.displayName.trim():!carriedCreatorUsername?creator?.userId?.trim():undefined;
-  const object=<AssetObject key={item.id} label={item.title} front={media??(collectibleArtwork?<PublicCollectibleArtwork item={item} eager/>:item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/>;
+  const object=<OriginalEngagementContext.Provider value={engagement}><AssetObject rootRef={mediaRoot} key={item.id} label={item.title} front={media??(collectibleArtwork?<PublicCollectibleArtwork item={item} eager/>:item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/></OriginalEngagementContext.Provider>;
   return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {publicImageOpen&&publicImage&&<PublicImageDialog title={item.title} url={publicImage} onClose={()=>setPublicImageOpen(false)}/>}
     {standalone&&owner&&profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)&&<a className="asset-profile-byline" href={profilePagePath(profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername))}><PublicOwnerAvatar item={admission?item:carried??item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)}</span></span><ExternalLink size={13}/></a>}

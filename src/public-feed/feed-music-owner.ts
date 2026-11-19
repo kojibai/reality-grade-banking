@@ -1,3 +1,4 @@
+import {observePublicPlayback,publicOriginalEngagement} from '../receiz/public-engagement';
 import {publicAssetEmbed} from '../receiz/public-asset-embed';
 import type {PublicMarketItem} from '../receiz/public-market';
 import {feedMediaPositions,saveFeedMediaPosition} from './feed-media-positions';
@@ -8,7 +9,7 @@ const initial:MusicState={itemId:null,paused:true,time:0,duration:0,message:''};
  * Closing/hiding a presentation never owns or stops this session. */
 export function createFeedMusicOwner(createAudio:()=>HTMLAudioElement,media?:MediaSession,metadata?:(item:PublicMarketItem)=>MediaMetadata){
  let state:MusicState=initial,queue:PublicMarketItem[]=[],at=0,intent=false,players:HTMLAudioElement[]=[],current:HTMLAudioElement|null=null,prepared:HTMLAudioElement|null=null;
- let revision=0,continuationRevision=-1;
+ let revision=0,continuationRevision=-1,releasePlayback:(()=>void)|undefined;
  const listeners=new Set<()=>void>(),removals:(()=>void)[]=[];
  const publish=(patch:Partial<MusicState>)=>{const next={...state,...patch};if(Object.keys(next).every(k=>next[k as keyof MusicState]===state[k as keyof MusicState]))return;state=next;for(const notify of listeners)notify();};
  const seconds=(value:number)=>Number.isFinite(value)?Math.max(0,value):0;
@@ -35,8 +36,10 @@ export function createFeedMusicOwner(createAudio:()=>HTMLAudioElement,media?:Med
   const same=state.itemId===selected.id;
   if(!play&&!players.length){publish({itemId:selected.id,paused:true,time:feedMediaPositions[selected.id]??0,duration:0,message:''});return;}
   ensure();if(!same||current!.getAttribute('src')!==stream.stream.url){
+   releasePlayback?.();releasePlayback=undefined;
    current!.pause();
    if(prepared!.getAttribute('src')===stream.stream.url){[current,prepared]=[prepared,current];}else{current!.src=stream.stream.url;current!.load();}
+   releasePlayback=observePublicPlayback(current!,publicOriginalEngagement(selected),'bankeiz_feed_audio');
    publish({itemId:selected.id,time:feedMediaPositions[selected.id]??0,duration:seconds(current!.duration),paused:!play,message:''});restore(current!);
    if(media&&metadata)try{media.metadata=metadata(selected);}catch{/* Optional system presentation never gates sound. */}
   }
@@ -52,7 +55,7 @@ export function createFeedMusicOwner(createAudio:()=>HTMLAudioElement,media?:Med
  const seek=(time:number)=>{if(current&&Number.isFinite(time)&&Number.isFinite(current.duration)){current.currentTime=Math.max(0,Math.min(current.duration,time));sync(current);}};
  const next=()=>{if(at+1<queue.length)activate(queue,at+1,intent);};
  if(media){const actions:Partial<Record<MediaSessionAction,MediaSessionActionHandler>>={play:()=>{if(queue.length)activate(queue,at,true);},pause,nexttrack:next,previoustrack:()=>{if(at>0)activate(queue,at-1,intent);},seekto:details=>{if(details.seekTime!==undefined)seek(details.seekTime);},seekbackward:details=>seek(state.time-(details.seekOffset??10)),seekforward:details=>seek(state.time+(details.seekOffset??10))};for(const [action,handle]of Object.entries(actions))try{media.setActionHandler(action as MediaSessionAction,handle!);}catch{/* Unsupported native controls are optional. */}}
- return {snapshot:()=>state,subscribe:(notify:()=>void)=>{listeners.add(notify);return()=>{listeners.delete(notify);};},select,toggle,pause,seek,next,extendQueue,continueFrom,queue:()=>queue,stop:()=>{revision++;pause();queue=[];publish({...initial});if(media)try{media.metadata=null;media.playbackState='none';}catch{}players.forEach(node=>{node.removeAttribute('src');node.load();});},dispose:()=>{revision++;intent=false;removals.splice(0).forEach(remove=>remove());players.forEach(node=>{node.pause();node.removeAttribute('src');node.load();node.remove();});players=[];current=prepared=null;listeners.clear();}};
+ return {snapshot:()=>state,subscribe:(notify:()=>void)=>{listeners.add(notify);return()=>{listeners.delete(notify);};},select,toggle,pause,seek,next,extendQueue,continueFrom,queue:()=>queue,stop:()=>{revision++;releasePlayback?.();releasePlayback=undefined;pause();queue=[];publish({...initial});if(media)try{media.metadata=null;media.playbackState='none';}catch{}players.forEach(node=>{node.removeAttribute('src');node.load();});},dispose:()=>{revision++;releasePlayback?.();releasePlayback=undefined;intent=false;removals.splice(0).forEach(remove=>remove());players.forEach(node=>{node.pause();node.removeAttribute('src');node.load();node.remove();});players=[];current=prepared=null;listeners.clear();}};
 }
 type Owner=ReturnType<typeof createFeedMusicOwner>;
 let owner:Owner|undefined;
