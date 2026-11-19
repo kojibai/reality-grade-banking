@@ -7,7 +7,7 @@ import {verifyGovernanceTally} from '../../receiz/governance-evidence';
 import {GovernanceProof} from './GovernanceProof';
 import type {GovernanceOriginal} from '../../receiz/governance-documents';
 import {receizKaiNow} from '@receiz/sdk';
-import {charterElectorate} from '../../receiz/governance-documents';
+import {charterAdmitsMember,charterElectorate} from '../../receiz/governance-documents';
 import {useState,type ReactNode} from 'react';
 import {ArrowLeft,FileCheck2,Vote} from 'lucide-react';
 import type {GovernanceRow} from '../../receiz/governance-directory';
@@ -19,7 +19,7 @@ import {GovernanceFileList} from './GovernanceFiles';
 export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:GovernanceTerms;practice?:boolean;member?:(id:string)=>string}){
   let facts:[string,string][]=[];
   switch(terms.kind){
-    case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Initial electorate',charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
+    case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',r.participation?'Open registration for each binding vote':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
       if(r.execution)facts.push(['Binding closure','Every voting member attests the same evidence after the appeal deadline.'],['Custodian',member(r.execution.custodian)],['Governance register',r.execution.registerProofObjectId],['Register genesis head',r.execution.registerGenesisHead]);
       for(const o of r.offices??[])facts.push([o.name,o.seats+' seat(s) · '+o.selection+' · '+(o.eligibility==='Open'?'Open eligibility':'Voting members')+'\n'+[o.powers,o.term,o.procedure,o.recall].join('\n')]);
       for(const a of r.articles??[])facts.push([a.title,a.text]);break;}
@@ -48,7 +48,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     finally{setChecking(false);}
   }
   const terms=row.document.terms,charter=ofKind(rows,'charter').find(item=>item.digest===(terms.kind==='charter'?row.digest:terms.charter)),ratified=charter?charterRatification(charter,rows):null;
-  const authorized=Boolean(actor&&charter&&charterElectorate(charter.document.terms.rules).includes(actor)),proposal=ofKind([row],'proposal')[0];
+  const authorized=Boolean(actor&&charter&&charterAdmitsMember(charter.document.terms.rules,actor)),proposal=ofKind([row],'proposal')[0];
   const register=proposal&&charter?ballotRegister(proposal,charter,rows):null;
   const founder=Boolean(actor&&charter?.document.terms.rules.founders.includes(actor));
   const offices=charter?.document.terms.rules.offices??[],candidateOffices=offices.filter(o=>o.selection==='Election'&&(o.eligibility==='Open'||authorized));
@@ -76,7 +76,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
       {founder&&!ratified.signed.has(actor!)&&<button className="gov-primary" onClick={()=>review({kind:'ratification',charter:row.digest})}><FileCheck2/>Review ratification</button>}
       {ratified.approvals.map(recordLink)}
     </section>}
-    {terms.kind==='charter'&&charterTab==='People'&&<><section><h3>Voting members</h3><ul className="gov-members">{charterElectorate(terms.rules).map(id=><li key={id}>{member(id)}</li>)}</ul></section>
+    {terms.kind==='charter'&&charterTab==='People'&&<><section><h3>Voting members</h3>{terms.rules.participation&&<p>Anyone with a Receiz identity may participate. Each binding decision has its own registered voter roll.</p>}<ul className="gov-members">{charterElectorate(terms.rules).map(id=><li key={id}>{member(id)}</li>)}</ul></section>
       <section><h3>Offices</h3>{offices.length?offices.map(o=><div key={o.name}><strong>{o.name}</strong><p>{o.seats} {o.seats===1?'seat':'seats'} · {o.selection} · {o.term}</p></div>):<p>This charter has no offices.</p>}</section>
       {ofKind(related,'mandate').length>0&&<section><h3>Public mandates</h3>{ofKind(related,'mandate').map(recordLink)}</section>}
       {ofKind(related,'candidacy').length>0&&<section><h3>Candidate statements</h3>{ofKind(related,'candidacy').map(recordLink)}</section>}
@@ -90,7 +90,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     {charter&&terms.kind!=='charter'&&<button className="gov-link" onClick={()=>go(charter.digest)}>Read governing charter · {charter.document.terms.rules.name}</button>}
     {proposal?.document.terms.nominations&&<details><summary>Candidates ({proposal.document.terms.nominations.length})</summary>{proposal.document.terms.nominations.map(id=>{const candidate=rows.find(r=>r.digest===id);return candidate?recordLink(candidate):<button key={id} onClick={()=>go(id)}>Open candidate Original</button>;})}</details>}
     {proposal&&register&&<section className="gov-box"><h3>Observed public ballots</h3><ul className="gov-bars">{[...register.counts].map(([key,n])=><li key={key}><span>{member(key)}</span><strong>{n}</strong><meter aria-label={member(key)} min={0} max={Math.max(1,register.effective.size+register.represented.size)} value={n}/></li>)}</ul>
-      <p>{register.effective.size} direct · {register.represented.size} represented · {charterElectorate(charter!.document.terms.rules).length} eligible. Voting closes at Kai pulse {register.closes.toString()}.</p>
+      <p>{register.effective.size} direct · {register.represented.size} represented · {charter!.document.terms.rules.participation?'open participation':charterElectorate(charter!.document.terms.rules).length+' eligible'}. Voting closes at Kai pulse {register.closes.toString()}.</p>
       {!example&&<button disabled={checking} onClick={()=>void verifyTally()}><FileCheck2 size={16}/>{checking?'Recounting…':'Verify tally'}</button>}
       {audit&&<p role="status">{audit.message}{audit.at!==rows?' New records may be available.':''}</p>}
       {!register.admitted&&<p>The charter, ratification or candidate evidence required for this proposal is incomplete.</p>}
@@ -114,7 +114,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     {proposal&&ofKind(related,'challenge').length>0&&<section><h3>Challenges</h3>{ofKind(related,'challenge').map(recordLink)}</section>}
     {terms.kind==='proposal'&&actor&&<details><summary>Challenge this decision</summary><form className="gov-form" onSubmit={e=>{e.preventDefault();review({kind:'challenge',charter:terms.charter,proposal:row.digest,text:text.trim()});}}><label>Public evidence and requested remedy<textarea required maxLength={4000} value={text} onChange={e=>setText(e.target.value)}/></label><button>Review challenge</button></form></details>}
     {terms.kind==='charter'&&charterTab==='People'&&terms.rules.allowMandates&&authorized&&ratified?.complete&&<details><summary>Manage representation</summary><form className="gov-form" onSubmit={e=>{e.preventDefault();review({kind:'mandate',charter:row.digest,delegate:delegate||null,scope:scope.trim(),untilKaiPulse:expiry,previous:mandateHeads[0]?.digest??null});}}>
-      <label>Representative<select value={delegate} onChange={e=>setDelegate(e.target.value)}><option value="">Revoke this scope</option>{charterElectorate(terms.rules).filter(id=>id!==actor).map(id=><option key={id} value={id}>{member(id)}</option>)}</select></label><label>Decision scope<select required value={scope} onChange={e=>setScope(e.target.value)}><option value="">Choose a scope</option>{['Policy','Poll','Treasury','Election','Amendment'].map(v=><option key={v} value={v}>{member(v)}</option>)}</select></label><small>A mandate applies to proposals opened after it is issued. A direct ballot overrides representation.</small>
+      <label>Representative{terms.rules.participation?<input value={delegate} placeholder="Receiz owner ID" onChange={e=>setDelegate(e.target.value.trim())}/>:<select value={delegate} onChange={e=>setDelegate(e.target.value)}><option value="">Revoke this scope</option>{charterElectorate(terms.rules).filter(id=>id!==actor).map(id=><option key={id} value={id}>{member(id)}</option>)}</select>}</label><label>Decision scope<select required value={scope} onChange={e=>setScope(e.target.value)}><option value="">Choose a scope</option>{['Policy','Poll','Treasury','Election','Amendment'].map(v=><option key={v} value={v}>{member(v)}</option>)}</select></label><small>A mandate applies to proposals opened after it is issued. A direct ballot overrides representation.</small>
       <label>Expiry in Kai pulses<input required pattern="[1-9][0-9]{0,24}" value={expiry} onChange={e=>setExpiry(e.target.value)}/></label><button disabled={mandateHeads.length>1||(!delegate&&!mandateHeads.length)}>Review mandate</button></form></details>}
     {(terms.kind!=='charter'||charterTab==='Charter rules')&&(example?<section className="gov-box"><h3>Example Original</h3><p>Issued under the example’s test root. Each download contains the complete sealed record.</p><dl className="gov-facts"><div><dt>Signing owner</dt><dd>{member(row.document.author)}</dd></div><div><dt>Original SHA-256</dt><dd className="gov-proof-id">{row.digest}</dd></div></dl>{example.file(row.digest)&&<a href={example.file(row.digest)!} download={'governance-'+terms.kind+'.receized.json'}>Download example Original</a>}</section>:read&&<GovernanceProof {...{row,rows,go,download,read}}/>)}
     {history.length>0&&<details><summary>Public history ({history.length})</summary>{history.map(recordLink)}</details>}

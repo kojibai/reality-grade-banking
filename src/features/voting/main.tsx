@@ -9,6 +9,9 @@ if((qualification==='election'||qualification==='treasury')&&/^\/vote\/?$/.test(
   void import('./GovernanceQualification').then(({GovernanceQualification})=>root.render(<GovernanceQualification name={qualification}/>));
 }else if(url.searchParams.get('example')==='harbor-tool-library'&&/^\/vote\/?$/.test(location.pathname)){
   void import('./GovernanceExample').then(({GovernanceExample})=>root.render(<GovernanceExample/>));
-}else root.render(<VotingBoard initialDigest={digest??undefined}/>);
+}else {
+  const draft=url.searchParams.get('draft');
+  root.render(<VotingBoard initialDigest={digest??undefined} initialDraft={draft==='receiz'?'Receiz':draft==='bankeiz'?'Bankeiz':undefined}/>);
+}
 
 if(import.meta.env.PROD&&'serviceWorker' in navigator)registerBankWorker(navigator.serviceWorker);

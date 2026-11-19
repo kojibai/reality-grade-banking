@@ -1,14 +1,13 @@
 import {collectibleSealTimes} from '../src/observatory/circulation-history';
 import {mergePublicSports} from '../src/receiz/public-sports';
-import {observatoryNavigationContent} from '../scripts/observatory-page.mjs';
 import {prepareSelectedPublicReferenceCatalog} from './public-reference-state';
-import {compressedCatalog} from './public-market-document';
+import {compressedCatalog,preparedExploreFrame} from './public-market-document';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {renderToString} from 'react-dom/server';
 import {shippedObservatoryDirectory} from '../src/observatory/directory';
 import {parsePublicMarket,retainPublicProfileHeaders} from '../src/receiz/public-market';
-import {mergePublicRecords,publicMarketRecord} from '../src/receiz/public-network';
+import {combineLedgerSnapshot,publicLedgerProofSnapshot} from '../src/receiz/public-ledger-snapshot';
 import {parsePublicNetworkCache,type PublicNetworkCache} from '../src/receiz/public-network-cache';
 import {publicLedgerDocumentSeedScript,type PublicLedgerDocumentSeed,type ObservatoryDirectory,type PublicLedgerCompressedSnapshot} from '../src/receiz/public-ledger-document-seed';
 import {publicNetworkCacheWire} from '../src/receiz/public-network-cache-wire';
@@ -19,7 +18,7 @@ import {Discover} from '../src/public-discover/Discover';
 import {feedSequenceItems,orderFeedItems} from '../src/public-feed/feed-items';
 import {orderDiscoveryItems} from '../src/public-discover/discovery-index';
 import {publicMarketDocumentSeedScript} from '../src/receiz/public-market-document-seed';
-type Input={material:string;generation:string;path:string;template:string;renderBuild?:string;collectibleCatalog?:ReturnType<typeof parsePublicMarket>};
+type Input={material:string;generation:string;path:string;template:string;renderBuild?:string;exploreFrame?:Awaited<ReturnType<typeof preparedExploreFrame>>;collectibleCatalog?:ReturnType<typeof parsePublicMarket>};
 type Prepared={readSports:()=>Promise<unknown>;catalog:ReturnType<typeof parsePublicMarket>;snapshot:PublicNetworkCache;packets:readonly PublicLedgerCompressedSnapshot[]};
 const prepared=new Map<string,Promise<Prepared>>(),history=new Map<string,{snapshot:PublicNetworkCache;packet:PublicLedgerCompressedSnapshot}>();
 const discoveryCatalogs=new Map<string,{catalog:ReturnType<typeof parsePublicMarket>;asOfPulse:number}>();
@@ -63,7 +62,8 @@ function prepare(material:string,generation:string):Promise<Prepared>{
  const cached=prepared.get(generation);if(cached)return cached;
  const job=Promise.resolve().then(async()=>{
   const input=JSON.parse(material),references=input.schema==='bank.public-market.render-material.refs.v1'?await prepareSelectedPublicReferenceCatalog({material,generation},false):null,ledger=references?.reader.root.preparedLedger?await references.reader.readPart(references.reader.root.preparedLedger):null,retained=retainedFinancialHistory(ledger?{preparedLedger:ledger}:input),catalog=references?.catalog??parsePublicMarket(input.membership,input.snapshot);if(!catalog.complete)throw Error('PUBLIC_LEDGER_COMPLETE_MEMBERSHIP_REQUIRED');
-  const proofs=catalog.items.map(publicMarketRecord),observedAt=Date.parse(catalog.observedAt??''),proofSnapshot:PublicNetworkCache={records:proofs,capturedAt:catalog.observedAt??retained.snapshot.capturedAt,inspectionVersion:retained.snapshot.inspectionVersion,coverage:[{source:'proofs',complete:true,anchorIds:proofs.map(row=>row.id),...(Number.isFinite(observedAt)?{observedAt}:{})}]},capturedAt=[retained.snapshot.capturedAt,proofSnapshot.capturedAt].filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,snapshot={...proofSnapshot,capturedAt,records:mergePublicRecords(retained.snapshot.records,proofs),coverage:[...retained.snapshot.coverage,...proofSnapshot.coverage]},packets=[retained.packet,packed(proofSnapshot)];
+  const proofSnapshot=publicLedgerProofSnapshot(catalog,retained.snapshot),snapshot=combineLedgerSnapshot(retained.snapshot,proofSnapshot);
+  const packets=[retained.packet,packed(proofSnapshot)];
   if(packets.reduce((total,packet)=>total+packet.bytes,0)>64*1024*1024||packets.reduce((total,packet)=>total+packet.gzipB64u.length,0)>Math.ceil(12*1024*1024*4/3))throw Error('PUBLIC_LEDGER_DOCUMENT_CAPACITY');
   const reader=references?.reader, sportsPart=reader?.root.sports, sports=input.sports;
   return {snapshot,packets,catalog,readSports:reader&&sportsPart?()=>reader.readPart(sportsPart):()=>Promise.resolve(sports)};
@@ -75,7 +75,7 @@ export {prepare as preparePublicLedgerDocumentState};
 /** Background-only rendering from the retained public ledger and the current
  * complete public membership. Existing transaction history is retained; only
  * the public proof projection is replaced by its accepted current cohort. */
-export async function renderPreparedDependentDocument({material,generation,path,template,renderBuild,collectibleCatalog}:Input):Promise<string>{
+export async function renderPreparedDependentDocument({material,generation,path,template,renderBuild,collectibleCatalog,exploreFrame}:Input):Promise<string>{
  if(!['ledger','ledger/proofs','observatory','feed','discover'].includes(path))throw Error('PUBLIC_DEPENDENT_RENDER_PATH_UNSUPPORTED');
  if(Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_DEPENDENT_RENDER_INPUT_INVALID');
  if(path==='feed'||path==='discover'){
@@ -95,20 +95,20 @@ export async function renderPreparedDependentDocument({material,generation,path,
   return alignPreparedPublicNavigation(html,path,content+legacySeed,generation,renderBuild);
  }
  const {snapshot,packets,catalog,readSports}=await prepare(material,generation);
- let directory:ObservatoryDirectory|undefined;
- if(path==='observatory'){
-  directory=observatoryDirectory(catalog);
-  const sports=collectibleCatalog?null:await readSports();
-  const inventory=collectibleCatalog??(sports?mergePublicSports({...catalog,items:[],sourceCount:0},sports):null);
+ const input=JSON.parse(material);
+ const market=exploreFrame??(input.schema==='bank.public-market.render-material.refs.v1'||input.history&&input.marketPrepared?await preparedExploreFrame(material,generation):null);
+ const directory=observatoryDirectory(catalog);
+ if(path==='observatory'||market){
+  const sports=collectibleCatalog||market?null:await readSports();
+  const inventory=collectibleCatalog??market?.seed.catalog??(sports?mergePublicSports({...catalog,items:[],sourceCount:0},sports):null);
   if(inventory)directory.collectibleSealTimes=collectibleSealTimes(inventory);
  }
  const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot,...(directory?{directory}:{})};
  const content=renderToString(<div><PublicLedgerApp active={false} initialDirectory={seed.directory} initialSnapshot={snapshot} initialHref={'https://bankeiz.com/'+path+'/'} initialFilter={path==='ledger/proofs'?'proofs':'all'} initialFormat={format}/></div>,{identifierPrefix:'public-ledger-'}),script=publicLedgerDocumentSeedScript(seed,packets);
  let replaced=false;
- const clean=template.replace(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/g,'');
+ const clean=template.replace(/<template id="ledger-explore-frame"[^>]*>[\s\S]*?<\/template>/g,'').replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>/g,'').replace(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/g,'');
  const html=clean.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});
  if(!replaced)throw Error('PUBLIC_LEDGER_PREPARED_TEMPLATE_INVALID');
- const navigationContent=path==='observatory'?observatoryNavigationContent(content):content;
- const aligned=alignPreparedPublicNavigation(html,path,navigationContent,generation,renderBuild);
- return aligned.replace('<script id="receiz-navigation"',()=>script+'<script id="receiz-navigation"');
+ const aligned=alignPreparedPublicNavigation(html,path==='observatory'?'analytics':path,content,generation,renderBuild);
+ return aligned.replace('<script id="receiz-navigation"',()=>script+(market?'<template id="ledger-explore-frame" data-generation="'+market.seed.generation+'">'+market.content+'</template>':'')+'<script id="receiz-navigation"');
 }

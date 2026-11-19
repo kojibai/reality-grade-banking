@@ -9,11 +9,11 @@ import {DocumentTableEditor} from './DocumentTableEditor';
 import {DocumentTermsView,DocumentFilePreview,saveDocumentFile} from './DocumentTermsView';
 import './documents.css';
 export type {DocumentAuthoringWorkspace} from '../../../receiz/chat-document-workspace';
-interface Props {presentation?:'modal'|'embedded';example?:{onAddToConversation():void};workspace:DocumentAuthoringWorkspace;onClose():void;onSent?:(message:ChatMessage)=>void;onCreated?:(file:File)=>void;canDraftWithTwin?:boolean;twinDraftingDisabled?:boolean;onTwinRequired?:(request?:string)=>void}
+interface Props {returnLabel?:string;presentation?:'modal'|'embedded';example?:{onAddToConversation():void};workspace:DocumentAuthoringWorkspace;onClose():void;onSent?:(message:ChatMessage)=>void;onCreated?:(file:File)=>void;canDraftWithTwin?:boolean;twinDraftingDisabled?:boolean;onTwinRequired?:(request?:string)=>void}
 const sentNotices=new WeakMap<DocumentAuthoringWorkspace,Set<string>>(),createdNotices=new WeakMap<DocumentAuthoringWorkspace,WeakSet<File>>();
 const formatLabels:Record<BusinessDocumentFormat,string>={pdf:'PDF',docx:'Word (.docx)',xlsx:'Spreadsheet (.xlsx)',pptx:'Slides (.pptx)'};
 export function DocumentComposer(props:Props){const key=useRef({workspace:props.workspace,value:0});if(key.current.workspace!==props.workspace)key.current={workspace:props.workspace,value:key.current.value+1};return <Composer key={key.current.value} {...props}/>;}
-function Composer({workspace,onClose,onSent,onCreated,canDraftWithTwin=true,twinDraftingDisabled=false,onTwinRequired,presentation,example}:Props){
+function Composer({workspace,returnLabel,onClose,onSent,onCreated,canDraftWithTwin=true,twinDraftingDisabled=false,onTwinRequired,presentation,example}:Props){
  const state=useSyncExternalStore(workspace.subscribe,workspace.snapshot,workspace.snapshot),draft=state.draft,isPrivate=state.mode==='private';
  const [template,setTemplate]=useState<DocumentTemplate>(draft.kind==='agreement'?'agreement':'document');
  const [editing,setEditing]=useState(false),[instruction,setInstruction]=useState(''),[running,setRunning]=useState(false),[error,setError]=useState(''),[rawTables,setRawTables]=useState<{text:string;source:string}|null>(null),alive=useRef(false),inFlight=useRef(false);
@@ -27,7 +27,7 @@ function Composer({workspace,onClose,onSent,onCreated,canDraftWithTwin=true,twin
  function update(next:BusinessDocumentDraft){setError('');workspace.updateDraft(next);}
  function tables(text:string){let source=JSON.stringify(draft.tables);try{const next=readBusinessDocumentDraft({...draft,tables:JSON.parse(text)});source=JSON.stringify(next.tables);update(next);}catch{/* Preserve incomplete input without sending it into a document. */}setRawTables({text,source});}
  const action=isPrivate?(draft.kind==='agreement'?'Create agreement':'Create file'):(draft.kind==='agreement'?'Request signature':'Create and share');
- const back=isPrivate?'Back to your Twin':'Back to chat';
+ const back=returnLabel??(isPrivate?'Back to your Twin':'Back to chat');
  return <Sheet presentation={presentation} title={draft.kind==='agreement'?'Agreement':'Create a file'} onClose={onClose} className="bank-document-sheet"><div className="bank-document-composer"><button type="button" className="bank-document-back" onClick={onClose}><ArrowLeft size={14}/>{back}</button>{example&&<p className="bank-document-note">Scripted example · Edit and download a plain draft. Nothing is sent, signed or charged.</p>}<p className="bank-document-context">{isPrivate?'Your private work':state.clientName||'This conversation'}</p>
   {state.phase==='unknown'?<section className="bank-document-outcome" role="status"><FileText size={24}/><h3>Result not confirmed</h3><p>Keep the existing attempt. Check its result before creating or sharing another file.</p><button type="button" className="secondary-button" disabled={busy} onClick={()=>void run(()=>workspace.check())}>{isPrivate?'Check saved file':'Check chat'}</button></section>
   :state.phase==='sent'||state.phase==='created'?<section className="bank-document-outcome" role="status"><Check size={24}/><h3>{state.phase==='created'?'File created':'Shared in this chat'}</h3><p>{state.phase==='created'?'Your Original is held with your account.':'The document and its request remain in this conversation.'}</p>{state.original&&<button type="button" className="secondary-button" onClick={()=>saveDocumentFile(state.original!)}>Save Original</button>}{state.payload&&<DocumentFilePreview file={state.payload} example={!!example}/>}</section>

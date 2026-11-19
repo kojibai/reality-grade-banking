@@ -3,6 +3,8 @@ export function publicMarketPreparedPath(input:unknown):string|null{
  return typeof input==='string'&&(PUBLIC_MARKET_PREPARED_PATHS as readonly string[]).includes(input)?input:null;
 }
 export function preparedPublicPagePath(input:unknown):string|null{
+ // Published Receiz documents retain their original storage coordinate.
+ if(input==='analytics')return 'observatory';
  if(input==='bank'||input==='bank-entry')return input;
  const market=publicMarketPreparedPath(input);if(market)return market;
  if(typeof input!=='string'||input.length>256)return null;

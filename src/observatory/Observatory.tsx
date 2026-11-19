@@ -1,7 +1,8 @@
 import {collectibleSealTimes,datedIssuances} from './circulation-history';
 import {useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore} from 'react';
 import {ArrowDown, ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play} from 'lucide-react';
-import {BankMark} from '../components/BankMark';
+import {ObservatoryHeader} from './ObservatoryHeader';
+import {ProfileFooter} from '../public-explorer/ProfileFooter';
 import {formatMoney} from '../core/money';
 import {PUBLIC_SOURCES, type PublicSource} from '../receiz/public-network';
 import {documentSourceStates,type usePublicNetwork} from '../receiz/usePublicNetwork';
@@ -186,11 +187,11 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   const following=paused===null, live=state.status==='live' && online;
   const status=!online?'Offline · saved records':live?'Public source connected':state.error?'Source unavailable · saved records':network.bootstrap?'Opening public history':'Saved public snapshot';
   const history=index.lineage;
-  return <div className="observatory"><header className="obs-header"><a href="/" className="obs-brand" aria-label="Bankeiz home"><BankMark/></a><nav aria-label="Main navigation"><a href="/observatory/" aria-current="page">Observatory</a><a href="/explore/">Explore</a><a href="/market-cap/">Market</a><a href="/ledger/">Ledger</a></nav></header>
+  return <div className="observatory"><ObservatoryHeader active={active}/>
     <main><section className="obs-engine"><div className="obs-inner">
-      <div className="obs-title"><h1>Observatory</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{!online?'Offline · saved':live?'Public source connected':state.error?'Source unavailable':network.bootstrap?'Opening history':'Saved public snapshot'}</span></span></div>
+      <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{!online?'Offline · saved':live?'Public source connected':state.error?'Source unavailable':network.bootstrap?'Opening history':'Saved public snapshot'}</span></span></div>
       <div className="obs-readings"><MarketReadings source={pricing} status={valuation.status} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong><small>Viewing and streaming time</small></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public ledger records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong><small>{covered} of {PUBLIC_SOURCES.length} sources represented</small></button></div>
-      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headlinePoints} issuances={issuances} onClose={()=>setHeadline(null)}/>}
+      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headline==='assets'?issuances??[]:headlinePoints} observations={headline==='assets'?circulation:undefined} onClose={()=>setHeadline(null)}/>}
       <div className="obs-chart-head" id="obs-pulse"><div><h2>Network pulse</h2><p>{anchor ? <><b>{num.format(plot.total)}</b> {source==='actions'?(plot.total===1?'public action':'public actions'):(plot.total===1?'public record':'public records')} · {day.format(plot.start)} – {fullDate.format(anchor)} · UTC</> : 'Awaiting dated public records'}</p></div>
         <div className="obs-controls"><div className="obs-period" aria-label="Chart range">{periods.map(p=><button key={p} aria-pressed={period===p} onClick={()=>{setPeriod(p);setPaused(null);setPicked(null);setLimit(8);}}>{p}</button>)}</div>
         <button className="obs-follow" aria-pressed={following} onClick={()=>{setPaused(following?anchor:null);setPicked(null);setLimit(8);}} disabled={!anchor}>{following?<Pause/>:<Play/>}{following?'Following latest':'Follow latest'}</button></div></div>
@@ -206,7 +207,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     {historyOpen&&history&&<section className="obs-history obs-inner" id="obs-history" aria-label="Carried ownership history"><div className="obs-section-head"><div><p className="obs-label">Carried history</p><h2>{ledgerRecordTitle(history.record)}</h2></div><a href={ledgerLink(history.record)}>Inspect in Ledger <ArrowUpRight/></a></div>
       <ol>{history.history.steps.map(step=><li key={step.id}><strong>{step.label}</strong>{step.occurredAt&&<time dateTime={step.occurredAt}>{fullDate.format(Date.parse(step.occurredAt))} · {clock.format(Date.parse(step.occurredAt))} UTC</time>}{step.detail&&<p>{step.detail}</p>}</li>)}</ol>
       {!!history.history.missingParentHashes?.length&&<p>{history.history.missingParentHashes.length} referenced predecessors are outside this carried history.</p>}</section>}
-    <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} actions={index.streams.actions}
+    <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
       actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={inspectAction}/>
     <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>
     <section className="obs-composition obs-inner" aria-label="Public source coverage"><div className="obs-section-head"><div><p className="obs-label">Public Ledger</p><h2>Network health</h2></div><a href="/ledger/">Explore Ledger <ArrowUpRight/></a></div>
@@ -221,5 +222,5 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     <section id="observatory-records" className="obs-records obs-inner"><h2>Interval records</h2>{selected.slice(0,limit).map(record=><a className="obs-row" key={record.id} href={ledgerLink(record)}><time>{clock.format(activityTime(record))} UTC</time><strong>{ledgerRecordTitle(record)}</strong><span>{record.pulse?'☤KAI '+record.pulse:sourceNames[source]}</span><ChevronRight/></a>)}
       {!selected.length&&<p>No dated records in the held interval.</p>}{selected.length>limit&&<button className="obs-more" onClick={()=>setLimit(n=>n+24)}>Show more records</button>}{!state.complete&&state.cursor&&!state.error&&<button className="obs-more" disabled={state.busy} onClick={()=>void network.loadMore()}>Read earlier public history</button>}</section>
     {future.length>0&&<details className="obs-future obs-inner"><summary>{num.format(future.length)} {future.length===1?'record dated':'records dated'} after the source observation</summary>{future.map(({record,time})=><a className="obs-row" key={record.id} href={ledgerLink(record)}><time>{fullDate.format(time)}</time><strong>{ledgerRecordTitle(record)}</strong><ChevronRight/></a>)}</details>}
-    </main></div>;
+    </main><div className="obs-inner"><ProfileFooter navigationLabel="Analytics footer"/></div></div>;
 }

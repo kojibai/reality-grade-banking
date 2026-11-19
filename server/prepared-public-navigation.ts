@@ -2,7 +2,7 @@ import {decodeNavigationEnvelope,encodeNavigationEnvelope} from '../scripts/navi
 import {profileNavigationHtml} from './profile-navigation.js';
 import {PUBLIC_MARKET_PREPARED_PATHS} from '../src/receiz/prepared-public-page-path.js';
 
-const affected=new Set([...PUBLIC_MARKET_PREPARED_PATHS.map(path=>'/'+path+'/'),'/ledger/','/ledger/proofs/','/observatory/','/feed/']);
+const affected=new Set([...PUBLIC_MARKET_PREPARED_PATHS.map(path=>'/'+path+'/'),'/ledger/','/ledger/proofs/','/analytics/','/feed/']);
 /** Other affected pages use their already prepared document through the
  * existing intent loader. Retain their lightweight route metadata, never an older body or
  * duplicate the complete carried catalog in this document's navigation. */

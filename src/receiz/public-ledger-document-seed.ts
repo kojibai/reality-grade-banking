@@ -31,7 +31,7 @@ export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof docum
    const records=additions.reduce((rows,packet)=>mergePublicRecords(rows,packet.records),base.records);
    const coverage=new Map(caches.flatMap(cache=>cache.coverage).map(item=>[item.source,item]));snapshot={records,capturedAt:caches.map(cache=>cache.capturedAt).filter((time):time is string=>time!==null).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,inspectionVersion:caches[0].inspectionVersion,coverage:[...coverage.values()]};
   }else snapshot=parsePublicNetworkCache(value.snapshot);
-  const raw=value.path==='observatory'?value.directory:null;
+  const raw=value.directory;
   const audience=typeof raw?.audience?.observedAt==='string'&&Number.isFinite(Date.parse(raw.audience.observedAt))?{observedAt:raw.audience.observedAt,heads:readPublicProfileHeads(raw.audience.heads)}:undefined;
   const seals=raw?.collectibleSealTimes;
   const collectibleSealTimes=Array.isArray(seals)&&seals.length<=100000&&seals.every((at,index)=>Number.isSafeInteger(at)&&at>=0&&at<=8.64e15&&(!index||at>=seals[index-1]))?seals:undefined;

@@ -1,8 +1,8 @@
-import {preparedBankCatalogState} from '../receiz/prepared-bank-catalog';
+import {preparedBankCatalogState,readPreparedBankCatalog,prepareCarriedBankCatalog} from '../receiz/prepared-bank-catalog';
 import {PublicDocumentCapabilitiesContext,PublicDocumentFormatContext,PublicDocumentPulseContext,readPublicFirstFrame,type PublicFirstFrame} from '../core/public-document-format';
 import {adoptPublicMarketDocument} from '../receiz/usePublicMarket';
 import {publishMarketDisplaySource} from '../receiz/market-projection/display-source';
-import {publicMarketDocumentHistory,readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed,type PublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
+import {publicMarketDocumentHistory,readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed,preparePublicMarketSeedText,type PublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import {StrictMode,useEffect,useState} from 'react';
 import {createRoot,hydrateRoot,type Root} from 'react-dom/client';
@@ -37,7 +37,8 @@ export function mountHeldPublicDocument(root:HTMLElement,held:PublicMarketDocume
  return roots.get(root)!;
 }
 function publicDocumentSeedElement(root:HTMLElement){
- const sibling=document.getElementById('public-market-seed'),source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&(sibling.nextElementSibling?.id==='receiz-navigation'||sibling.nextElementSibling?.id==='public-profile-seed'&&sibling.nextElementSibling.nextElementSibling?.id==='receiz-navigation')?sibling:null);
+ const sibling=document.getElementById('public-market-seed');
+ const source=root.querySelector<HTMLElement>('#public-market-seed')??(sibling?.parentElement===root.parentElement&&Boolean(root.compareDocumentPosition(sibling)&4)&&(sibling.nextElementSibling?.id==='receiz-navigation'||sibling.nextElementSibling?.id==='public-profile-seed'&&sibling.nextElementSibling.nextElementSibling?.id==='receiz-navigation')?sibling:null);
  return source;
 }
 function adoptResolvedPublicDocument(prepared:PublicMarketDocumentSeed,initialDocument:boolean,profileName=profilePageUsername(location.pathname)){
@@ -54,17 +55,60 @@ function mountResolvedPublicDocument(root:HTMLElement,prepared:PublicMarketDocum
  const current=preparedBankCatalogState(),selected=profileEntry?(current.value??current.carried)?.seed??prepared:prepared;
  const profileSource=root.hasAttribute('data-public-profile-source');
  const id=root.hasAttribute('data-public-asset-rendered')?assetPageId(location.pathname):null,frame=id||profileSource?readPublicFirstFrame(root):null,asset=id&&frame?assetPageSeed(id)??undefined:undefined;
- const content=<StrictMode><PublicExplorerRoot prepared={selected} path={profileSource?'/'+root.dataset.publicProfileEntry+'/':profilePath} reconcilePath={reconcilePath} asset={asset} frame={frame??undefined} profileSource={profileSource&&!!frame}/></StrictMode>;
+ const content=<StrictMode><PublicExplorerRoot prepared={selected} path={root.dataset.ledgerExploreFrame?'/explore/':profileSource?'/'+root.dataset.publicProfileEntry+'/':profilePath} reconcilePath={reconcilePath} asset={asset} frame={frame??undefined} profileSource={profileSource&&!!frame}/></StrictMode>;
  // Hydrate the actual profile prepared from this exact carried family.
  // A newer held selection replaces an older document without reviving it.
- const hydrate=!!asset||profileSource&&!!frame||!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared);
+ const exactFrame=!root.dataset.ledgerExploreFrame||root.dataset.ledgerExploreFrame===prepared?.generation;
+ const hydrate=exactFrame&&(!!asset||profileSource&&!!frame||!!prepared&&(!profileEntry||root.hasAttribute('data-public-profile-rendered')&&selected===prepared));
  const renderer=hydrate?hydrateRoot(root,content,{identifierPrefix:'public-explore-'}):createRoot(root,{identifierPrefix:'public-explore-'});roots.set(root,renderer);if(!hydrate)flushSync(()=>renderer.render(content));return renderer;
+}
+/** Only a new Explore reader needs its data. Opening the page has already
+ * moved its actual rendered rows into place, and retained roots reuse them. */
+async function installedExplorePacket(digest:string){
+ if(typeof caches==='undefined')return null;
+ try{
+  const entry=await caches.match('/explore/index.html');
+  if(!entry?.ok||Number(entry.headers.get('content-length'))>32*1024*1024)return null;
+  const text=await entry.text(),opening='<script id="public-market-seed" type="application/json">',start=text.indexOf(opening);
+  if(start<0)return null;
+  const end=text.indexOf('</script>',start+opening.length);if(end<0)return null;
+  const packet=text.slice(start+opening.length,end);
+  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(packet));
+  return Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('')===digest?packet:null;
+ }catch{return null;}
+}
+async function attachLedgerExploreFrame(root:HTMLElement){
+ const generation=root.dataset.ledgerExploreFrame!,digest=root.dataset.explorePacket;
+ if(!/^[a-f0-9]{64}$/.test(generation))throw Error('Invalid Explore frame.');
+ const held=()=>{const {value,carried}=preparedBankCatalogState();return (value??carried)?.seed;};
+ if(preparedBankCatalogState().bootstrapping)await prepareCarriedBankCatalog();
+ let seed=held();
+ if(!seed&&digest){
+  if(!/^[a-f0-9]{64}$/.test(digest))throw Error('Invalid Explore data reference.');
+  const integrity='sha256-'+btoa(digest.match(/../g)!.map(pair=>String.fromCharCode(parseInt(pair,16))).join(''));
+  let text=await installedExplorePacket(digest);
+  if(text===null){
+   const response=await fetch('/explore/data/'+digest+'.json',{credentials:'omit',redirect:'error',cache:'force-cache',integrity,signal:AbortSignal.timeout(30000)});
+   if(!response.ok||Number(response.headers.get('content-length'))>32*1024*1024)throw Error('Explore data unavailable.');
+   text=await response.text();
+  }
+  const parsed=await preparePublicMarketSeedText(text);
+  if(!parsed||parsed.path!=='explore'||parsed.generation!==generation)throw Error('Explore data does not match the saved view.');
+  seed=held()??parsed;
+ }
+ if(!seed)seed=(await readPreparedBankCatalog())?.seed??held();
+ if(!seed)throw Error('Explore data unavailable.');
+ if(root.isConnected)return mountResolvedPublicDocument(root,seed,true);
 }
 /** Raw prepared entries stay synchronous. A compressed static entry retains
  * its visible rows while the existing bounded, cached local decoder finishes. */
 export function mountPublicDocument(root=publicRuntimeRoot('explore')){
  const mounted=roots.get(root);if(mounted)return mounted;
  const held=preparingRoots.get(root);if(held)return held;
+ if(root.dataset.ledgerExploreFrame){
+  const pending=attachLedgerExploreFrame(root).finally(()=>preparingRoots.delete(root));
+  preparingRoots.set(root,pending);return pending;
+ }
  const source=publicDocumentSeedElement(root),prepared=readPublicMarketDocumentSeed({getElementById:()=>source});
  if(prepared||!source)return mountResolvedPublicDocument(root,prepared);
  const profileName=root.hasAttribute('data-public-profile-source')&&readPublicFirstFrame(root)?profilePageUsername(location.pathname):null;
@@ -84,5 +128,5 @@ export function mountPublicDocument(root=publicRuntimeRoot('explore')){
  // Attach normal interactivity now; unrelated cohort decoding only adopts data.
  return sourceProfile?mountResolvedPublicDocument(root,null):pending;
 }
-const start=()=>{mountPublicDocument();};
+const start=()=>{const root=publicRuntimeRoot('explore');if(!root.dataset.ledgerExploreFrame)mountPublicDocument(root);};
 if(profilePageUsername(location.pathname))startProfileDocumentRuntime(start);else if(document.querySelector('[data-public-runtime="explore"]')||/^\/(?:explore|explorer|market-cap|asset|shares)(?:\/|$)/.test(location.pathname))startPublicDocumentRuntime('explore',start);

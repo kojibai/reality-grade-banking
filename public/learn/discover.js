@@ -24,7 +24,7 @@ async function load(path,previous,build){
   const response=await aborted(fetch(path,{...request,method:'HEAD'}),signal),values=coordinate(response,build);void response.body?.cancel().catch(()=>{});
   if(values[0]===previous.preparedRevision&&values[1]===previous.preparedBuild&&(!previous.preparedHtmlSha256||values[2]===previous.preparedHtmlSha256)){const state=response.headers.get('x-receiz-public-html-state');return previous.preparedState===state&&previous.preparedBankIdentity===bankIdentity?previous:{...previous,preparedState:state,preparedBankIdentity:bankIdentity};}
  }
- const response=await aborted(fetch(path,request),signal),values=qualified?coordinate(response,build):null;
+ const response=await aborted(fetch(path,request),signal),values=qualified&&(path!=='/analytics/'||fields.some(key=>response.headers.has(key)))?coordinate(response,build):null;
  if(!response.ok||!/^text\/html(?:;|$)/i.test(response.headers.get('content-type')??'')||Number(response.headers.get('content-length'))>MAX)throw Error('DISCOVERY_DOCUMENT_UNAVAILABLE');
  const reader=response.body?.getReader();if(!reader)throw Error('DISCOVERY_DOCUMENT_UNAVAILABLE');const decoder=new TextDecoder('utf-8',{fatal:true});let text='',size=0;
  const cancel=()=>{void reader.cancel().catch(()=>{});};signal.addEventListener('abort',cancel,{once:true});
@@ -40,10 +40,14 @@ async function load(path,previous,build){
   if(previous.sharedExampleSha256){shared=globalThis.__bankNavigationEnvelope?.decodeNavigationEnvelope(doc.getElementById('receiz-navigation')?.textContent??'{}').shared||(text.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'');if(await sha(shared)!==previous.sharedExampleSha256)throw Error('DISCOVERY_DOCUMENT_INVALID');}
  }
 
- if(values){
+ if(values||path==='/analytics/'){
   const seed=doc.getElementById(runtime==='ledger'?'public-ledger-document-seed':'public-market-seed');let value;try{value=JSON.parse(seed?.textContent??'null');}catch{}
-  if(!value||value.schema!==(runtime==='ledger'?'bank.public-ledger.document.v1':'bank.public-market.document.v1')||value.generation!==values[0]||value.path!==path.slice(1,-1))throw Error('DISCOVERY_DOCUMENT_INVALID');
+  if(!value||value.schema!==(runtime==='ledger'?'bank.public-ledger.document.v1':'bank.public-market.document.v1')||value.generation!==(values?.[0]??previous?.analyticsSeed?.generation)||value.path!==(path==='/analytics/'?'observatory':path.slice(1,-1)))throw Error('DISCOVERY_DOCUMENT_INVALID');
   if(!root.contains(seed))root.append(seed);
+  if(runtime==='ledger'){
+   const frame=doc.getElementById('ledger-explore-frame');
+   if(frame?.content&&HEX.test(frame.dataset.generation??''))root.append(frame);
+  }
  }
  const entry=previous?.runtime||qualified?[...doc.head.querySelectorAll('script[type="module"][src]')].map(node=>node.getAttribute('src')).find(value=>previous?.entry?value===previous.entry:new RegExp(`^/(?:assets/${runtime}-[\\w-]+\\.js|src/public-${runtime}/main\\.tsx)$`).test(value??'')):undefined;
  if((previous?.runtime||qualified)&&!entry)throw Error('DISCOVERY_DOCUMENT_INVALID');
@@ -61,7 +65,7 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
  const reusable=(page,held)=>['feed','explore','ledger'].includes(page?.runtime)&&page.head&&page.entry&&held&&(page.runtime!=='explore'||held.capitalization&&held.history&&held.format);
  const reuse=(path,page,build)=>{
   const marker=document.getElementById('receiz-navigation');
-  if(typeof marker?.ensurePublicRuntime!=='function'||!reusable(page,heldPublicFamily()))return null;
+  if(path==='/analytics/'||typeof marker?.ensurePublicRuntime!=='function'||!reusable(page,heldPublicFamily()))return null;
   return import(page.entry).then(module=>{
    const held=heldPublicFamily();if(!reusable(page,held))return load(path,page,build);
    if(typeof module.mountHeldPublicDocument!=='function')throw Error('DISCOVERY_RUNTIME_UNAVAILABLE');
@@ -70,7 +74,7 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
  };
  const descriptor=path=>/^\/verify\/[a-f0-9]{64}\/$/.test(path)?'/verify/':path;
  const known=path=>Object.hasOwn(pages,descriptor(path))||path==='/feed/'||path==='/discover/';
- const needs=path=>{const page=pages[descriptor(path)];return known(path)&&!(page?.content||page?.runtime&&document.querySelector(`[data-public-runtime="${page.runtime}"]`));};
+ const needs=path=>{const page=pages[descriptor(path)];return known(path)&&!(page?.heldFrame||page?.content||page?.runtime&&document.querySelector(`[data-public-runtime="${page.runtime}"]`));};
  const destination=event=>{
   const link=event.target.closest?.('a[href]');if(!link||link.download||link.target&&link.target!=='_self')return;
   const url=new URL(link.href,location.href);return url.origin===location.origin&&!url.search&&known(url.pathname.replace(/\/?$/,'/'))?url:null;
@@ -86,12 +90,12 @@ export function init(pages=document.getElementById('receiz-navigation')?.pages,n
   const target=path;path=descriptor(path);
   const from=location.href,selected=url?++attempt:attempt,build=pages[path]?.preparedBuild??Object.values(pages).find(page=>page.preparedBuild)?.preparedBuild;
   let ready=pending.get(path);if(!ready){ready=(reuse(path,pages[path],build)??load(path,pages[path],build)).then(page=>pages[path]=page).finally(()=>pending.delete(path));pending.set(path,ready);}
-  return ready.then(page=>{if(url&&selected===attempt&&location.href===from){document.getElementById('public-navigation-status')?.remove();if(page.preparedRoot){dispatchEvent(new CustomEvent('bankeiz:prepared-discovery',{detail:{root:page.preparedRoot,path:page.runtime}}));delete page.preparedRoot;}navigate(target+url.hash);}}).catch(()=>{if(url&&selected===attempt&&location.href===from){
+  return ready.then(page=>{if(url&&selected===attempt&&location.href===from){document.getElementById('public-navigation-status')?.remove();if(page.preparedRoot){const frame=page.preparedRoot.querySelector('template#ledger-explore-frame');if(frame&&pages['/explore/'])pages['/explore/'].heldFrame=frame;dispatchEvent(new CustomEvent('bankeiz:prepared-discovery',{detail:{root:page.preparedRoot,path:page.runtime}}));delete page.preparedRoot;}navigate(target+url.hash);}}).catch(()=>{if(url&&selected===attempt&&location.href===from){
    document.getElementById('public-navigation-status')?.remove();const status=document.createElement('p'),retry=document.createElement('button');status.id='public-navigation-status';status.setAttribute('role','status');status.textContent='This page could not open. ';retry.textContent='Try again';retry.onclick=()=>{status.remove();void prepare(url);};status.append(retry);(document.querySelector('main:not([hidden])')??document.body).append(status);
   }});
  };
  opener=url=>prepare(url);const element=document.getElementById('receiz-navigation');if(element)element.openPreparedDiscovery=opener;
  document.addEventListener('click',event=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const url=destination(event);if(url&&needs(url.pathname.replace(/\/?$/,'/'))){event.preventDefault();void prepare(url);}});
- const warm=event=>{const url=destination(event);if(!url)return;const path=url.pathname.replace(/\/?$/,'/');if(path==='/discover/'){if(needs(path))void prepare(undefined,path);return;}if(!reusable(pages[descriptor(path)],heldPublicFamily())&&needs(path))void prepare(undefined,url.pathname);};
+ const warm=event=>{const url=destination(event);if(!url)return;const path=url.pathname.replace(/\/?$/,'/');if(path==='/analytics/')return;if(path==='/discover/'){if(needs(path))void prepare(undefined,path);return;}if(!reusable(pages[descriptor(path)],heldPublicFamily())&&needs(path))void prepare(undefined,url.pathname);};
  document.addEventListener('pointerover',warm,{passive:true});document.addEventListener('focusin',warm);return opener;
 }

@@ -138,3 +138,7 @@
 .gov-files{display:grid;gap:.5rem;min-width:0}
 .gov-files>div{display:flex;align-items:center;gap:.5rem;overflow-wrap:anywhere}
 .gov-files input[type=file]{max-width:100%;font:inherit}
+.gov-document-author .sheet-embedded{position:static;inset:auto;width:100%;max-width:100%;max-height:none;margin:0;border:1px solid var(--gov-rule);border-radius:12px;background:var(--gov-paper);color:var(--gov-ink);box-shadow:none}
+.gov-document-author .sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.gov-document-author .sheet-header h2{font-size:1.4rem}
+.gov-attachment pre{white-space:pre-wrap;overflow-wrap:anywhere}

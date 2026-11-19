@@ -90,7 +90,7 @@
   let publicRoot = document.getElementById('public-learn-root'), bankRoot = document.getElementById('root');
   let bankLoaded = !!bankRoot, bankUrl = '/', bankFocus = null;
   let bankLoading = null;
-  const pathname = path => aliases[path=path.endsWith('/')?path:path+'/']||(path==='/explorer/'?'/explore/':path);
+  const pathname = path => aliases[path=path.endsWith('/')?path:path+'/']||(path==='/explorer/'?'/explore/':path==='/observatory/'?'/analytics/':path);
   const assetMetadata=new Map(),assetEntries=new Map();
   const profileNames=new Set(reserved);
   const profileName=path=>{const match=/^\/(?:u\/)?([a-z0-9_]{3,24})\/?$/.exec(path);return match&&(path.startsWith('/u/')||!(pages[pathname(path)]||profileNames.has(match[1])))?match[1]:null;};
@@ -128,9 +128,11 @@
   let renderedPublicPath = pathname(new URL(document.querySelector('link[rel="canonical"]')?.href||location.href).pathname);
   const hide = root => { if (root) { root.hidden = true; root.setAttribute('inert', ''); } };
   const show = root => { root.hidden = false; root.removeAttribute('inert'); };
+  const exploreFrame=document.getElementById('ledger-explore-frame');
+  if(exploreFrame?.content&&pages['/explore/'])pages['/explore/'].heldFrame=exploreFrame;
   const ensurePublicRuntime = page => {
     let root=runtimeRoots.get(page.runtime);
-    if(!root){root=document.createElement('div');root.id='public-'+page.runtime+'-root';root.dataset.publicRuntime=page.runtime;root.innerHTML=page.content;hide(root);runtimeRoots.set(page.runtime,root);document.body.append(root);}
+    if(!root){root=document.createElement('div');root.id='public-'+page.runtime+'-root';root.dataset.publicRuntime=page.runtime;if(page.heldFrame){root.append(page.heldFrame.content);root.dataset.ledgerExploreFrame=page.heldFrame.dataset.generation;if(page.heldFrame.dataset.packet)root.dataset.explorePacket=page.heldFrame.dataset.packet;}else root.innerHTML=page.content;if(page.analyticsSeed&&page.content)root.analyticsSeed=page.analyticsSeed;hide(root);runtimeRoots.set(page.runtime,root);document.body.append(root);}
     return root;
   };
   const loadRuntime = (page, root) => {
@@ -275,6 +277,7 @@
     if (page?.runtime) loadRuntime(page, destination);
   };
   const navigate = target => {
+    target=target.replace(/^\/observatory(?:\/index\.html|\/)?(?=[?#]|$)/,'/analytics/');
     const leavingAsset=/^\/asset\//.test(location.pathname),enteringAsset=/^\/asset\//.test(target);
     const returning = leavingAsset && (pageAt(target)?.runtime === 'explore' && !enteringAsset || /^\/#(?:account|market|assets|ledger)$/.test(target));
     const panel=location.pathname==='/'&&/^#(account|market|assets|ledger)(?:\/|$)/.exec(location.hash)?.[1];
@@ -299,7 +302,7 @@
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
     const url=new URL(link.href,location.href);if(url.origin!==location.origin||url.search)return;
     const path=pathname(url.pathname),currentPath=pathname(location.pathname),page=pageAt(path),current=pageAt(currentPath);
-    if(path!==currentPath&&(page?!page.needsRuntime&&!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
+    if(path!==currentPath&&(page?!page.needsRuntime&&!page.heldFrame&&!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
       event.preventDefault();url.pathname=path;void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
       return;
     }
@@ -330,6 +333,7 @@
     const link = event.target.closest?.('a[href]'); if (!link) return;
     const url = new URL(link.href, location.href); if (url.origin !== location.origin || url.search) return;
     const page = pageAt(url.pathname), entry = page?.entry || (url.pathname === '/' ? bank.entry : null);
+    if (url.pathname.replace(/\/$/,'')==='/analytics')return;
     if (!entry || page?.runtime && loaded.has(page.runtime) || url.pathname === '/' && bankLoaded) return;
     if ([...document.head.querySelectorAll('link[rel="modulepreload"]')].some(node => node.getAttribute('href') === entry)) return;
     const code = document.createElement('link'); code.rel = 'modulepreload'; code.href = entry; document.head.append(code);

@@ -19,7 +19,7 @@ export type CharterExecution=Readonly<{
   rule:'unanimous-evidence-closure-v1';custodian:string;registerProofObjectId:string;registerGenesisHead:string;treasury:CharterPayment|null;
 }>;
 export type CharterRules=Readonly<{
-  execution?:CharterExecution;electorate?:readonly string[]; offices?:readonly CharterOffice[]; articles?:readonly CharterArticle[];
+  participation?:'open-registration';execution?:CharterExecution;electorate?:readonly string[]; offices?:readonly CharterOffice[]; articles?:readonly CharterArticle[];
   name:string; purpose:string; founders:readonly string[]; membership:string;
   decisions:string; representation:string; amendments:string; appeals:string; treasury:string;
   approvalPercent:number; minimumSupportPercent:number; voteDays:number; appealDays:number; allowMandates:boolean;
@@ -59,7 +59,8 @@ const layout:Record<Kind,string[]>={
   ballot:['charter','proposal','choice','previous'],mandate:['charter','delegate','scope','untilKaiPulse','previous'],
   challenge:['charter','proposal','text'],closure:['charter','proposal','evidence'],
 };
-export const charterElectorate=(rules:CharterRules)=>rules.electorate??rules.founders;
+export const charterElectorate=(rules:CharterRules)=>rules.participation==='open-registration'?[]:rules.electorate??rules.founders;
+export const charterAdmitsMember=(rules:CharterRules,owner:string)=>Boolean(owner)&&(rules.participation==='open-registration'||charterElectorate(rules).includes(owner));
 function optionalFields(value:unknown,keys:string[]){return keys.filter(k=>Boolean(value&&typeof value==='object'&&Object.hasOwn(value,k)));}
 function boundedRows<T>(value:unknown,max:number,read:(entry:unknown)=>T,key:(entry:T)=>string){
   if(!Array.isArray(value)||value.length>max)return fail();
@@ -97,10 +98,12 @@ export function readGovernanceTerms(input:unknown):GovernanceTerms{
   if(kind==='charter'){
     const logo='logo' in v?words(v.logo,65536):undefined;
     if(logo&&!/^data:image\/(?:png|webp);base64,[A-Za-z0-9+/]+={0,2}$/u.test(logo))return fail();
-    const r=fields(v.rules,['name','purpose','founders','membership','decisions','representation','amendments','appeals','treasury','approvalPercent','minimumSupportPercent','voteDays','appealDays','allowMandates',...optionalFields(v.rules,['electorate','offices','articles','execution'])]);
+    const r=fields(v.rules,['name','purpose','founders','membership','decisions','representation','amendments','appeals','treasury','approvalPercent','minimumSupportPercent','voteDays','appealDays','allowMandates',...optionalFields(v.rules,['electorate','offices','articles','execution','participation'])]);
     const integer=(n:unknown,min:number,max:number)=>{if(typeof n!=='number'||!Number.isInteger(n)||n<min||n>max)return fail();return n;};
     if(typeof r.allowMandates!=='boolean')return fail();
+    if('participation' in r&&(r.participation!=='open-registration'||'electorate' in r||'execution' in r))return fail();
     const rules={
+      ...('participation' in r?{participation:'open-registration' as const}:{}),
       ...('execution' in r?{execution:readExecution(r.execution)}:{}),
       ...('electorate' in r?{electorate:distinct(r.electorate,subject,4096)}:{}),
       ...('offices' in r?{offices:boundedRows(r.offices,64,readOffice,o=>o.name)}:{}),

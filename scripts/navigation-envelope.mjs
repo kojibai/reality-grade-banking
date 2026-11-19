@@ -15,6 +15,6 @@ export function encodeNavigationEnvelope(input,shared=''){
   for(const row of arrays){const next=[];for(let i=0;i<row.length;){const pair=i+1<row.length?key(row[i],row[i+1]):'';if(candidates.has(pair)){let id=known.get(pair);if(id===undefined){id=-dictionary.length-1;dictionary.push([row[i],row[i+1]]);known.set(pair,id);}next.push(id);i+=2;changed++;}else next.push(row[i++]);}row.length=0;for(const part of next)row.push(part);}
   if(!changed)break;
  }
- const bytes=Buffer.from(JSON.stringify({navigation,sharedExamples,dictionary,flatTokens}));return {format:'bank.presentation-envelope.v1',decodedBytes:bytes.length,data:gzipSync(bytes,{level:9}).toString('base64url')};
+ const bytes=Buffer.from(JSON.stringify({navigation,sharedExamples,dictionary,flatTokens}));return {format:'bank.presentation-envelope.v1',decodedBytes:bytes.length,data:gzipSync(bytes,{level:9,memLevel:5}).toString('base64url')};
 }
 export function navigationScript(navigation,shared=''){return `<script id="receiz-navigation" type="application/json">${JSON.stringify(encodeNavigationEnvelope(navigation,shared))}</script>`;}

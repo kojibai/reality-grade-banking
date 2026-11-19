@@ -103,8 +103,8 @@ function shareDeclarationSpans(input){
 
 
 // The flat reader already accepts both literal strings and table indexes.
-// Inline fragments used just once, then give the most reused fragments the
-// shortest indexes. Every destination still expands to its original bytes.
+// Inline single-use fragments and group similar strings in the compression window.
+// Every destination still expands to its original bytes.
 function inlineSingleUseParts(navigation) {
   const rows = [...Object.values(navigation.pages), navigation.bank]
     .flatMap(page => [page.head, page.content])
@@ -116,7 +116,7 @@ function inlineSingleUseParts(navigation) {
   }
   const shared = navigation.styles.map((_, index) => index)
     .filter(index => uses[index] > 1)
-    .sort((a, b) => uses[b] - uses[a]);
+    .sort((a, b) => navigation.styles[a] < navigation.styles[b] ? -1 : navigation.styles[a] > navigation.styles[b] ? 1 : 0);
   const indexes = new Map(shared.map((previous, index) => [previous, index]));
 
   for (const row of rows) {

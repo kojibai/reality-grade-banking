@@ -30,11 +30,12 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const origin='http://127.0.0.1:'+server.address().port,results=[];
+const analyticsEntry='/'+JSON.parse(await readFile(resolve(directory,'.vite/manifest.json'),'utf8'))['ledger/index.html'].file;
 const cases=[
  {name:'asset',path:'/asset/'+encodeURIComponent(id)+'/',selector:'.asset-detail-heading',text:asset.item.title},
  {name:'receipt',path:firstFrameReceiptPath,selector:'.transaction-receipt',text:'$125.00'},
  {name:'verify',path:'/verify/',selector:'.verify-header',text:'See the proof.'},
- {name:'observatory',path:'/observatory/',selector:'#obs-collectibles',text:'Collectible transfer volume'},
+ {name:'analytics',path:'/analytics/',selector:'#obs-collectibles',text:'Collectible transfer volume'},
  {name:'booking',path:'/book/bjklock/',selector:'.booking-card',text:'Good things start'},
 ];
 let browser,passed=false;
@@ -46,7 +47,7 @@ try{
    await page.route('**/api/**',()=>new Promise(()=>{}));await page.route('**/*.css',route=>route.abort());
    const response=await page.goto(origin+item.path,{waitUntil:'commit'});assert.equal(response.status(),200,item.name+' first HTML');await page.locator(item.selector).waitFor();assert.ok((await page.locator('body').textContent()).includes(item.text));assert.equal(await page.locator('.public-entry-placeholder,[data-profile-opening]').count(),0);
    assert.ok(await page.locator('style[data-public-page-style]').count()>0,item.name+' styles must already be inline');
-   if(item.name==='observatory'){
+   if(item.name==='analytics'){
     const volume=page.locator('#obs-collectibles .obs-audience-grid>div').filter({has:page.getByRole('heading',{name:'Collectible transfer volume'})}).locator('strong');
     for(const width of [320,768,390]){
      await page.setViewportSize({width,height:844});
@@ -72,6 +73,99 @@ try{
    assert.equal(await interactive.evaluate(selector=>window.firstFrameNode===document.querySelector(selector),item.selector),true,item.name+' must hydrate its existing DOM');assert.deepEqual(errors,[],item.name+' hydration errors');
    results.push({page:item.name,actualHTMLBeforeJavaScript:true,inlineStyles:true,APIsStalled:true,retainedDOM:true,errors});
   }finally{await context.close();}
+ }
+ for (const from of ['/', '/explore/']) {
+  const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await ctx.newPage(),errors=[],documents=[];
+  let releaseEntry;
+  const gate=new Promise(resolve=>{releaseEntry=resolve;});
+  try {
+   page.on('pageerror',e=>errors.push(e.message));
+   page.on('request',req=>{if(req.resourceType()==='document')documents.push(new URL(req.url()).pathname);});
+   await page.route('**/api/**',route=>route.abort());
+   await page.route(url=>url.pathname===analyticsEntry,async route=>{await gate;await route.continue();});
+   await page.goto(origin+from,{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>typeof document.querySelector('#receiz-navigation')?.navigate==='function');
+   const link=page.locator('a[href="/analytics/"]').filter({visible:true}).first();
+   await link.click();
+   const scope=page.locator('.observatory');
+   await scope.locator('#obs-assets tbody tr').first().waitFor();
+   assert.equal(new URL(page.url()).pathname,'/analytics/');
+   assert.deepEqual(documents,[from]);
+   const header=scope.locator('.obs-header');
+   assert.equal(await header.getByRole('link',{name:'Discover people and their work'}).count(),1);
+   assert.equal(await header.locator('a[href="/analytics/"]').count(),0);
+   assert.equal(await scope.locator('.profile-footer').count(),1);
+   assert.equal(await scope.locator('#obs-profiles tbody tr').count(),8);
+   assert.equal(await scope.getByLabel('Profiles per page').inputValue(),'8');
+   const trades=scope.locator('#obs-trading');assert.equal(await trades.locator('.obs-trading-plot svg').count(),2);
+   assert.equal(await trades.locator('.obs-trading-totals strong').count(),2);
+   await page.evaluate(()=>{window.analyticsNode=document.querySelector('#obs-assets');window.firstCap=document.querySelector('#obs-profiles tbody tr td:last-child')?.textContent;});
+   releaseEntry();
+   await page.waitForFunction(()=>Object.keys(document.querySelector('#obs-assets')??{}).some(k=>k.startsWith('__reactFiber$')),null,{timeout:30000});
+   assert.ok(await page.evaluate(()=>window.analyticsNode===document.querySelector('#obs-assets')&&window.firstCap===document.querySelector('#obs-profiles tbody tr td:last-child')?.textContent),'Analytics must hydrate the complete existing directory from '+from);
+   const row=scope.locator('#obs-assets tbody tr').first(),inspect=row.getByRole('button',{name:/^Inspect/});
+   await inspect.click();
+   assert.equal(await inspect.getAttribute('aria-expanded'),'true');
+   await row.locator('xpath=following-sibling::tr[1]').locator('.asset-proof-back-body').waitFor();
+   await inspect.click();assert.equal(await scope.locator('#obs-asset-details').count(),0);
+   await trades.getByLabel('Trading asset').selectOption({index:1});
+   await trades.getByRole('heading',{name:'Execution price'}).waitFor();
+   assert.ok(await trades.locator('.obs-candle').evaluateAll(nodes=>nodes.some(node=>node.getAttribute('d'))));
+   await trades.getByRole('slider',{name:'Inspect execution price'}).press('Home');
+   assert.equal(await trades.locator('.obs-trading-cursor').count(),2);
+   await trades.getByRole('button',{name:'Show full period'}).click();
+   await trades.locator('summary').click();assert.ok(await trades.locator('a[href^="/ledger/#record="]').count()>0);
+   assert.ok(await scope.locator('#obs-profiles table').evaluate(table=>getComputedStyle(table.tHead.rows[0].cells[1]).textAlign===getComputedStyle(table.tBodies[0].rows[0].cells[1]).textAlign));
+   await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo({top:0,behavior:'instant'});return new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())));});
+   await page.waitForFunction(()=>scrollY===0&&!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
+   await page.evaluate(()=>window.scrollTo(0,900));
+   await page.waitForFunction(()=>document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
+   await page.evaluate(()=>window.scrollTo(0,800));
+   await page.waitForFunction(()=>!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
+   assert.deepEqual(errors,[]);results.push({page:from+' to Analytics',completeBeforeRuntime:true,retainedDOM:true,documentReads:documents.length-1,inlineAssetProof:true});
+  }finally{releaseEntry();await ctx.close();}
+ }
+ for(const [landing,viaAnalytics] of [['/ledger/',false],['/ledger/',true],['/analytics/',false]]){
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),docs=[],errors=[],packets=[];
+  const exploreEntry='/'+JSON.parse(await readFile(resolve(directory,'.vite/manifest.json'),'utf8'))['explore/index.html'].file;
+  let release;const gate=new Promise(resolve=>{release=resolve;});
+  try{
+   page.on('pageerror',e=>errors.push(e.message));
+   page.on('request',r=>{const path=new URL(r.url()).pathname;if(r.resourceType()==='document')docs.push(path);if(path.startsWith('/explore/data/'))packets.push(path);});
+   await page.route('**/api/**',r=>r.abort());
+   await page.route(url=>url.pathname===exploreEntry,async r=>{await gate;await r.continue();});
+   await page.goto(origin+landing,{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>typeof document.querySelector('#receiz-navigation')?.navigate==='function');
+   const ledgerHeader=page.locator('.public-ledger-header');
+   if(landing==='/ledger/'){
+    assert.ok((await page.locator('.public-ledger-row').first().boundingBox()).y<800,'First transaction should be in the initial Ledger viewport');
+    assert.equal(await page.getByRole('navigation',{name:'Ledger footer'}).count(),1);
+   }
+   const installed=landing==='/analytics/';
+   if(installed){
+    // Same settled document the offline installer retains. Disable its separate
+    // data URL to exercise a cold reader with only local installation bytes.
+    await page.evaluate(async()=>{const cache=await caches.open('bank-test-installed');await cache.add('/explore/index.html');});
+    await page.route('**/explore/data/**',r=>r.abort('internetdisconnected'));
+   }
+   assert.deepEqual(packets,[],'Landing does not acquire the unopened Explore collection');
+   if(viaAnalytics)await ledgerHeader.getByRole('link',{name:'Analytics'}).click();
+   const header=viaAnalytics||landing==='/analytics/'?page.locator('.obs-header'):ledgerHeader;
+   await header.getByRole('link',{name:'Explore',exact:true}).click();
+   const rows=page.locator('.market-rows .asset-row');
+   await rows.first().waitFor();
+   assert.equal(await rows.count(),50);
+   await page.evaluate(()=>{window.exploreFirstRow=document.querySelector('.market-rows .asset-row');});
+   release();await page.waitForFunction(()=>Object.keys(document.querySelector('.market-rows .asset-row')??{}).some(k=>k.startsWith('__reactFiber$')),null,{timeout:30000});
+   assert.ok(await page.evaluate(()=>window.exploreFirstRow===document.querySelector('.market-rows .asset-row')));
+   await page.goBack();
+   await header.waitFor({state:'visible'});
+   await page.goForward();
+   await rows.first().waitFor();
+   assert.ok(await page.evaluate(()=>window.exploreFirstRow===document.querySelector('.market-rows .asset-row')));
+   assert.deepEqual(docs,[landing]);assert.equal(packets.length,installed?0:1,'Explore reuses installed bytes or reads missing data once across Back and Forward');assert.deepEqual(errors,[]);
+   results.push({page:viaAnalytics?'Ledger to Analytics to Explore':landing+' to Explore',carriedRows:50,retainedDOM:true,documentReads:0,packetReads:packets.length});
+  }finally{release();await context.close();}
  }
  const receiptContext=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),receiptPage=await receiptContext.newPage();
  try{

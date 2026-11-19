@@ -7,7 +7,7 @@ const PAGES = __PAGE_ROUTES__;
 const PUBLIC_RENDER_BUILD = '__PUBLIC_RENDER_BUILD__';
 const PUBLIC_CACHE = 'bankeiz-public-pages-__CACHE_VERSION__';
 const PUBLIC_LIMIT = 32 * 1024 * 1024;
-const PUBLIC_PATHS = ['explore','ledger','ledger/proofs','observatory','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed'];
+const PUBLIC_PATHS = ['explore','ledger','ledger/proofs','analytics','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed'];
 const publicRequests = new Map(), publicWrites = new Map(), publicBodies = new Map();
 let publicBodyBytes = 0;
 function discardPublicBody(path) {
@@ -343,6 +343,9 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (!['GET','HEAD'].includes(event.request.method) || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
+  if (/^\/observatory(?:\/index\.html|\/)?$/.test(url.pathname) && event.request.mode==='navigate') {
+    url.pathname='/analytics/';event.respondWith(Response.redirect(url.href,308));return;
+  }
   const publicPage = publicDigest(PUBLIC_RENDER_BUILD) && publicPath(url);
   if (publicPage) { event.respondWith(publicDocument(event.request, publicPage, PAGES[url.pathname])); return; }
   if (event.request.method !== 'GET') return;

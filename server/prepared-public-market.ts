@@ -51,7 +51,7 @@ async function bounded(request:Request):Promise<string>{
 }
 async function render(input:RenderInput):Promise<string>{
  const bank=input.path==='bank',bankEntry=input.path==='bank-entry',market=publicMarketPreparedPath(input.path),profile=input.path.startsWith('profile/'),module=bank||bankEntry||market||profile?'public-market-document':'prepared-dependent-documents';
- const templatePath=market?input.path:input.path==='ledger'||input.path==='ledger/proofs'?'ledger':input.path==='feed'||input.path==='discover'||input.path==='observatory'?input.path:input.path.startsWith('receipt/')?'receipt':'explore';
+ const templatePath=market?input.path:input.path==='ledger'||input.path==='ledger/proofs'?'ledger':input.path==='observatory'?'analytics':input.path==='feed'||input.path==='discover'?input.path:input.path.startsWith('receipt/')?'receipt':'explore';
  const [{readFile},runtime]=await Promise.all([import('node:fs/promises'),import(/* @vite-ignore */ pathToFileURL(resolve('server/profile-runtime/'+module+'.mjs')).href)]);
  const value={...input,renderBuild:await publicRenderBuild(),template:bank?'':await readFile(bankEntry?'dist/index.html':'dist/'+templatePath+'/index.html','utf8')};
  return bank?runtime.renderPreparedBankDocument(value satisfies PublicMarketRenderInput):bankEntry?runtime.renderPreparedBankEntryDocument(value satisfies PublicMarketRenderInput):profile?runtime.renderPreparedProfileDocument(value satisfies PublicMarketRenderInput):market?runtime.renderPublicMarketDocument(value satisfies PublicMarketRenderInput):runtime.renderPreparedDependentDocument(value satisfies PreparedPublicPageRenderInput);

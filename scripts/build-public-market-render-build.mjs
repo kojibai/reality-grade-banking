@@ -17,7 +17,7 @@ for(const path of ['server/public-market-preparation.ts','server/prepared-public
 await renderer('server/profile-runtime/public-market-document.mjs');
 await renderer('server/profile-runtime/public-page-preparation.mjs');
 try{await access('server/profile-runtime/prepared-dependent-documents.mjs');await renderer('server/profile-runtime/prepared-dependent-documents.mjs');}catch(error){if(error?.code!=='ENOENT')throw error;}
-const paths=['observatory','explore',...['music','images','videos','books','essays','moments','collectibles','documents'].map(category=>'explore/'+category),'market-cap'];
+const paths=['analytics','explore',...['music','images','videos','books','essays','moments','collectibles','documents'].map(category=>'explore/'+category),'market-cap'];
 for(const path of paths){const bytes=await include('dist/'+path+'/index.html');for(const match of bytes.toString('utf8').matchAll(/(?:src|href)="(\/assets\/[A-Za-z0-9_.-]+\.(?:js|css))"/g))await include('dist'+match[1]);}
 const manifest=JSON.parse(await readFile('dist/.vite/manifest.json','utf8')),seen=new Set();
 async function browser(key){if(seen.has(key))return;seen.add(key);const entry=manifest[key];if(!entry)throw Error('PUBLIC_MARKET_RENDER_BROWSER_GRAPH_INVALID');await include('dist/'+entry.file);for(const css of entry.css??[])await include('dist/'+css);for(const child of [...(entry.imports??[]),...(entry.dynamicImports??[])])await browser(child);}

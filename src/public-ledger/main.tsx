@@ -1,6 +1,7 @@
 import {documentCatalog} from '../observatory/catalog';
 import {heldProofCatalog} from '../receiz/usePublicNetwork';
 import {publishDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
+import {openAnalyticsNavigationSeed,type AnalyticsNavigationSeed} from '../observatory/navigation-seed';
 import {readPublicLedgerDocumentSeed,type PublicLedgerDocumentSeed} from '../receiz/public-ledger-document-seed';
 import {startPublicDocumentRuntime} from '../core/public-document-entry';
 import { StrictMode,useEffect,useState } from 'react';
@@ -36,13 +37,15 @@ export function mountPublicDocument(root=publicRuntimeRoot('ledger')):Root|Promi
  const mounted=roots.get(root);if(mounted)return mounted;
  const pending=preparing.get(root);if(pending)return pending;
  const job=(async()=>{
-  const prepared=await readPublicLedgerDocumentSeed();if(roots.has(root))return roots.get(root);
+  const carried=(root as HTMLElement&{analyticsSeed?:AnalyticsNavigationSeed}).analyticsSeed;
+  const prepared=await readPublicLedgerDocumentSeed()??(carried?await openAnalyticsNavigationSeed(carried):null);
+  if(roots.has(root))return roots.get(root);
   if(!prepared&&document.getElementById('public-ledger-document-seed'))return;
-  if(prepared?.path==='observatory'&&!heldProofCatalog()){
+  if(prepared&&!heldProofCatalog()){
    const catalog=documentCatalog(prepared.snapshot,prepared.directory);
    if(catalog?.complete)publishDiscoveredPublicCatalog(catalog);
   }
   const view=<StrictMode><PublicLedgerRoot prepared={prepared}/></StrictMode>,renderer=prepared?hydrateRoot(root,view,{identifierPrefix:'public-ledger-'}):createRoot(root,{identifierPrefix:'public-ledger-'});roots.set(root,renderer);if(!prepared)flushSync(()=>renderer.render(view));return renderer;
  })();preparing.set(root,job);void job.finally(()=>{if(preparing.get(root)===job)preparing.delete(root);}).catch(()=>{});return job;
 }
-if(document.querySelector('[data-public-runtime="ledger"],#public-ledger-root')||/^\/(?:ledger(?:\/proofs)?|receipt)(?:\/(?:index\.html)?)?$/.test(location.pathname))startPublicDocumentRuntime('ledger',()=>{void mountPublicDocument();});
+if(document.querySelector('[data-public-runtime="ledger"],#public-ledger-root')||/^\/(?:ledger(?:\/proofs)?|receipt)(?:\/(?:index\.html)?)?$/.test(location.pathname))startPublicDocumentRuntime('ledger',()=>{void Promise.resolve(mountPublicDocument()).catch(()=>{});});

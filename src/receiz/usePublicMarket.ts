@@ -84,10 +84,10 @@ subscribeAssetPublicationAdmissions((accepted,snapshot)=>{const before=readPubli
 },accepted?.complete===true&&accepted===retainedDiscoveredPublicCatalog());if(before&&selected&&!accepted){if(snapshot)retainPublicMarket(before,snapshot,selected);else reusePublicMarketResponse(before,selected);}if(accepted?.complete&&selected&&selected!==before){retainPublicMarket(accepted,snapshot,selected,before);membershipRevision++;lastRefreshAt=Date.now();lastRefreshFailed=false;}},readPublicCatalog);
 function exposePublicCatalog(){const marker=document.getElementById('receiz-navigation');if(marker)Object.assign(marker,{publicMarketCatalog:readPublicCatalog,subscribePublicMarketCatalog:subscribeCatalog});}
 if(typeof document!=='undefined'){void prepareCarriedBankCatalog().then(()=>{const prepared=preparedBankCatalogState();if(!prepared.bareCatalog&&!prepared.value&&!prepared.carried)return;const before=retainedCatalog;readPublicCatalog();if(before!==retainedCatalog)for(const listener of catalogListeners)listener();});exposePublicCatalog();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',exposePublicCatalog,{once:true});}
-let shippedCatalog:Promise<void>|undefined,shippedSports:Promise<void>|undefined;
+let shippedCatalog:Promise<PublicMarketCatalog>|undefined,shippedSports:Promise<void>|undefined;
 /** Shipped inputs belong to this document, not to a mounted surface. Parse and
  * adopt each once; closing one consumer cannot cancel another's preparation. */
-function prepareShippedCatalog():Promise<void>{
+export function prepareShippedCatalog():Promise<PublicMarketCatalog>{
   if(shippedCatalog)return shippedCatalog;
   const attempt=(async()=>{
     const signal=AbortSignal.timeout(15000),response=await untilAborted(fetch('/receiz-public-market.json',{credentials:'omit',signal}),signal);
@@ -105,6 +105,7 @@ function prepareShippedCatalog():Promise<void>{
         return {...retainPublicMomentManifest(retainPublicArtwork(presented,hint),hint),shareInventory:mergeShareInventory(compatibleShareInventory(item,item.shareInventory),compatibleShareInventory(item,hint.shareInventory)??null),...(item.hasLongForm===undefined?{hasLongForm:hint.hasLongForm,readingUrl:hint.readingUrl}:{}),...(!item.livePulseSeed&&hint.livePulseSeed?{livePulseSeed:hint.livePulseSeed,valuationBinding:hint.valuationBinding}:{})};
       })};reusePublicMarketResponse(current,updated);return updated;
     });
+    return cached;
   })();
   shippedCatalog=attempt;void attempt.catch(()=>{if(shippedCatalog===attempt)shippedCatalog=undefined;});return attempt;
 }

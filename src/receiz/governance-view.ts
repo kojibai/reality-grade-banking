@@ -1,6 +1,6 @@
 import {N_DAY_MICRO} from '../../native/receiz/app/utils/kai_pulse';
 import type {GovernanceRow} from './governance-directory';
-import {charterElectorate,type GovernanceTerms} from './governance-documents';
+import {charterAdmitsMember,type GovernanceTerms} from './governance-documents';
 type Kind=GovernanceTerms['kind'];
 export type Row<K extends Kind>=GovernanceRow&{document:{terms:Extract<GovernanceTerms,{kind:K}>}};
 export function ofKind<K extends Kind>(rows:readonly GovernanceRow[],kind:K):Row<K>[]{
@@ -18,11 +18,11 @@ export function voteEnds(proposal:Row<'proposal'>,charter:Row<'charter'>){
 }
 export function eligibleCandidates(charter:Row<'charter'>,officeName:string,rows:readonly GovernanceRow[],by?:string){
   const rules=charter.document.terms.rules,office=rules.offices?.find(o=>o.name===officeName);
-  return ofKind(rows,'candidacy').filter(r=>office?.selection==='Election'&&r.document.terms.charter===charter.digest&&r.document.terms.office===officeName&&BigInt(r.pulse)>=BigInt(charter.pulse)&&(!by||BigInt(r.pulse)<=BigInt(by))&&(office.eligibility==='Open'||charterElectorate(rules).includes(r.document.author)));
+  return ofKind(rows,'candidacy').filter(r=>office?.selection==='Election'&&r.document.terms.charter===charter.digest&&r.document.terms.office===officeName&&BigInt(r.pulse)>=BigInt(charter.pulse)&&(!by||BigInt(r.pulse)<=BigInt(by))&&(office.eligibility==='Open'||charterAdmitsMember(rules,r.document.author)));
 }
 export function eligibleProposal(proposal:Row<'proposal'>,charter:Row<'charter'>,rows:readonly GovernanceRow[]){
   const t=proposal.document.terms;
-  if(t.charter!==charter.digest||!charterElectorate(charter.document.terms.rules).includes(proposal.document.author)||!charterRatification(charter,rows,proposal.pulse).complete)return false;
+  if(t.charter!==charter.digest||!charterAdmitsMember(charter.document.terms.rules,proposal.document.author)||!charterRatification(charter,rows,proposal.pulse).complete)return false;
   if(!t.office)return true;
   const nominations=new Map(eligibleCandidates(charter,t.office,rows,proposal.pulse).map(r=>[r.digest,r.document.author]));
   return Boolean(t.nominations?.length&&t.nominations.length===t.choices.length&&t.nominations.every((digest,i)=>nominations.get(digest)===t.choices[i]));
@@ -43,12 +43,12 @@ function latestStatement<T extends Row<'mandate'>|Row<'ballot'>>(group:T[]):T|nu
   return null;
 }
 export function ballotRegister(proposal:Row<'proposal'>,charter:Row<'charter'>,rows:readonly GovernanceRow[]){
-  const terms=proposal.document.terms,rules=charter.document.terms.rules,voters=new Set(charterElectorate(rules)),closes=voteEnds(proposal,charter);
+  const terms=proposal.document.terms,rules=charter.document.terms.rules,closes=voteEnds(proposal,charter);
   const admitted=eligibleProposal(proposal,charter,rows);
   const ballots=ofKind(rows,'ballot').filter(row=>row.document.terms.proposal===proposal.digest&&row.document.terms.charter===charter.digest);
   const groups=new Map<string,Row<'ballot'>[]>(),excluded:Row<'ballot'>[]=[];
   for(const row of ballots){
-    if(!admitted||!voters.has(row.document.author)||!terms.choices.includes(row.document.terms.choice)||BigInt(row.pulse)<BigInt(proposal.pulse)||BigInt(row.pulse)>=closes){excluded.push(row);continue;}
+    if(!admitted||!charterAdmitsMember(rules,row.document.author)||!terms.choices.includes(row.document.terms.choice)||BigInt(row.pulse)<BigInt(proposal.pulse)||BigInt(row.pulse)>=closes){excluded.push(row);continue;}
     const group=groups.get(row.document.author)??[];group.push(row);groups.set(row.document.author,group);
   }
   const effective=new Map<string,Row<'ballot'>>(),disputed=new Set<string>();
@@ -59,7 +59,7 @@ export function ballotRegister(proposal:Row<'proposal'>,charter:Row<'charter'>,r
     const scopes=new Map<string,Row<'mandate'>[]>();
     for(const r of ofKind(rows,'mandate')){
       const m=r.document.terms;
-      if(m.charter!==charter.digest||m.scope!==terms.decision||!voters.has(r.document.author)||groups.has(r.document.author)||BigInt(r.pulse)>BigInt(proposal.pulse)||BigInt(r.pulse)<BigInt(charter.pulse))continue;
+      if(m.charter!==charter.digest||m.scope!==terms.decision||!charterAdmitsMember(rules,r.document.author)||groups.has(r.document.author)||BigInt(r.pulse)>BigInt(proposal.pulse)||BigInt(r.pulse)<BigInt(charter.pulse))continue;
       const group=scopes.get(r.document.author)??[];group.push(r);scopes.set(r.document.author,group);
     }
     for(const [actor,history] of scopes){

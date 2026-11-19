@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {receizKaiNow} from '@receiz/sdk';
-import {charterElectorate,type GovernanceTerms} from '../../receiz/governance-documents';
+import {charterAdmitsMember,charterElectorate,type GovernanceTerms} from '../../receiz/governance-documents';
 import {charterRatification,ofKind,type Row} from '../../receiz/governance-view';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import {exampleMemberName as member} from './example/governance-example';
@@ -11,7 +11,7 @@ export function PracticeActions({panel,charter,proposal,actor,practice,examples,
   const [scope,setScope]=useState('Policy'),[delegate,setDelegate]=useState(''),[expiry,setExpiry]=useState('');
   const [office,setOffice]=useState(''),[statement,setStatement]=useState(''),[text,setText]=useState(''),[error,setError]=useState('');
   const context=[...examples,...practice],rules=charter.document.terms.rules,id=charter.digest;
-  const voters=charterElectorate(rules),eligible=voters.includes(actor),founding=charterRatification(charter,context);
+  const voters=charterElectorate(rules),eligible=charterAdmitsMember(rules,actor),founding=charterRatification(charter,context);
   const local=practice.filter(r=>r.document.terms.kind!=='charter'&&r.document.terms.charter===id);
   const offices=(rules.offices??[]).filter(o=>o.selection==='Election'&&(o.eligibility==='Open'||eligible));
   function submit(terms:Exclude<GovernanceTerms,{kind:'closure'}>){try{save(terms);setError('');}catch(e){setError(e instanceof Error?e.message:'Check this practice statement.');}}

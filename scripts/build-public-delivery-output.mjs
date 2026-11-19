@@ -1,5 +1,5 @@
 import{readdir,lstat,mkdir,copyFile,rm}from'node:fs/promises';import{constants}from'node:fs';import{resolve,relative,dirname,join}from'node:path';import{fileURLToPath}from'node:url';
-const entries=['bank','explore','ledger','ledger/proofs','observatory','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed','discover'];
+const entries=['bank','explore','ledger','ledger/proofs','analytics','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap','feed','discover'];
 const relocated=new Map(entries.map(path=>[path==='bank'?'index.html':path+'/index.html','__bank_static_entry/'+path+'/index.html']));
 /** Deploy packaging only: original dist stays the private template/hash input.
  * No source, account, operator environment or arbitrary parent is copied. */

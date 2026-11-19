@@ -1,3 +1,4 @@
+import {ledgerAssetTrade,ledgerAssetTradeSide,type LedgerAssetTrade} from '../receiz/ledger-asset-trade';
 import {PUBLIC_SOURCES, type PublicRecord, type PublicSource} from '../receiz/public-network';
 import {marketPulseTime} from '../receiz/market-projection/coordinates';
 import {readLedgerCausalLineage, type LedgerCausalLineage} from '../receiz/ledger-causal-source';
@@ -21,22 +22,36 @@ export function activityTime(record:PublicRecord){
   return NaN;
 }
 
+export type MarketExecution={record:PublicRecord;time:number;side:'buy'|'sell';trade:LedgerAssetTrade|null};
+function marketExecution(record:PublicRecord,time:number):MarketExecution|null {
+  if(record.source!=='actions')return null;
+  const side=ledgerAssetTradeSide(record);
+  return side?{record,time,side,trade:ledgerAssetTrade(record)}:null;
+}
+function compareExecutions(a:MarketExecution,b:MarketExecution) {
+  return a.time-b.time||Number(a.record.details?.seq??0)-Number(b.record.details?.seq??0)||a.record.id.localeCompare(b.record.id);
+}
 export function indexActivity(records: readonly PublicRecord[]) {
   const streams = Object.fromEntries(PUBLIC_SOURCES.map(source => [source, []])) as unknown as Record<PublicSource, TimedRecord[]>;
+  const executions:MarketExecution[]=[];
   const counts = {actions: 0, wallet: 0, graph: 0, proofs: 0};
   let lineage: {record: PublicRecord; history: LedgerCausalLineage} | null = null;
   for (const record of records) {
     if (record.authority !== 'public-source-projection' || record.origin) continue;
     counts[record.source]++;
     const time = activityTime(record);
-    if (Number.isFinite(time)) streams[record.source].push({time, record});
+    if (Number.isFinite(time)) {
+      streams[record.source].push({time, record});
+      const execution=marketExecution(record,time);
+      if(execution)executions.push(execution);
+    }
     if (!lineage && record.details?.causalLineage && /transfer/i.test(record.kind)) {
       const history = readLedgerCausalLineage(record.details.causalLineage);
       if (history) lineage = {record, history};
     }
   }
   for (const source of PUBLIC_SOURCES) streams[source].sort((a, b) => a.time - b.time);
-  return {streams, counts, lineage};
+  return {streams, counts, lineage,executions:executions.sort(compareExecutions)};
 }
 
 export function periodBounds(first: number | undefined, period: Period, anchor: number) {

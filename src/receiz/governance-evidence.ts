@@ -1,4 +1,4 @@
-import {charterElectorate,openGovernanceOriginal,type GovernanceOriginal} from './governance-documents';
+import {charterAdmitsMember,openGovernanceOriginal,type GovernanceOriginal} from './governance-documents';
 import type {GovernanceRow} from './governance-directory';
 import {ballotRegister,ofKind} from './governance-view';
 
@@ -26,7 +26,7 @@ export async function verifyGovernanceEvidence(digest:string,read:ReadOriginal,i
     if(terms.kind!=='ballot')return proof('The author signed these terms against the displayed charter Original.');
     const proposal=await open(terms.proposal,'Proposal');
     if(proposal.document.terms.kind!=='proposal'||proposal.document.terms.charter!==charter.digest)return proof('The proposal and ballot refer to different charters.');
-    if(!charterElectorate(charter.document.terms.rules).includes(original.document.author)||!proposal.document.terms.choices.includes(terms.choice))return proof('This signed statement falls outside the eligible electorate or ballot choices.');
+    if(!charterAdmitsMember(charter.document.terms.rules,original.document.author)||!proposal.document.terms.choices.includes(terms.choice))return proof('This signed statement falls outside the eligible electorate or ballot choices.');
     const nominations=proposal.document.terms.nominations??[];
     for(const nomination of nominations)await open(nomination,'Candidate statement');
     const founders=new Set(charter.document.terms.rules.founders);

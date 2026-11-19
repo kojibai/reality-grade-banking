@@ -7,7 +7,7 @@ import {PracticeActions} from './PracticeActions';
 import {governanceExampleRows as rows,governanceExampleName,exampleMemberName,exampleOriginalUrl} from './example/governance-example';
 import {newPracticeRecord,practiceRows,restorePractice,savePractice,type PracticeTerms,type PracticeSession} from './example/practice-state';
 import type {GovernanceRow} from '../../receiz/governance-directory';
-import {charterElectorate,readGovernanceTerms,type GovernanceTerms} from '../../receiz/governance-documents';
+import {charterAdmitsMember,charterElectorate,readGovernanceTerms,type GovernanceTerms} from '../../receiz/governance-documents';
 import {charterRatification,governanceTitle,ofKind} from '../../receiz/governance-view';
 
 const path=(row:GovernanceRow)=>governanceExamplePath+'&record='+row.digest;
@@ -26,12 +26,12 @@ export function GovernanceExample({onExit}:{onExit?:()=>void}={}){
   const draft=drafts.find(r=>r.digest===selected),terms=(draft??row)?.document.terms,choices=[sampleCharter,...ofKind(local,'charter')];
   const owners=[...new Set(choices.flatMap(c=>[...c.document.terms.rules.founders,...charterElectorate(c.document.terms.rules)]))];
   const owner=owners.includes(practice.actor)?practice.actor:firstFounder;
-  const context=[...rows,...local],available=choices.filter(c=>charterElectorate(c.document.terms.rules).includes(owner)&&charterRatification(c,context).complete);
+  const context=[...rows,...local],available=choices.filter(c=>charterAdmitsMember(c.document.terms.rules,owner)&&charterRatification(c,context).complete);
   const charter=available.find(c=>c.digest===parent),currentCharter=choices.find(c=>c.digest===(terms?.kind==='charter'?selected:terms?.charter));
   const proposal=ofKind(draft?[draft]:row?[row]:[],'proposal')[0];
   const children=ofKind(local,'proposal').filter(p=>p.document.terms.charter===selected);
   const previousBallot=ofKind(local,'ballot').filter(r=>r.document.terms.proposal===selected&&r.document.author===owner).at(-1);
-  const canVote=currentCharter&&charterElectorate(currentCharter.document.terms.rules).includes(owner)&&charterRatification(currentCharter,context).complete;
+  const canVote=currentCharter&&charterAdmitsMember(currentCharter.document.terms.rules,owner)&&charterRatification(currentCharter,context).complete;
   function save(next:PracticeSession){setPractice(next);savePractice(next);}
   function record(input:PracticeTerms){
     const checked=readGovernanceTerms(input);

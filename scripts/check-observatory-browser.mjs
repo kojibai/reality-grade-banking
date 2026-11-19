@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 
 // Run against the compiled public document. Replay only inside the disposable
 // browser context so the real reader, chart and durable cache handle the change.
-const url=new URL('/observatory/',process.argv[2] || 'http://127.0.0.1:4173');
+const url=new URL('/analytics/',process.argv[2] || 'http://127.0.0.1:4173');
 assert.ok(['localhost','127.0.0.1'].includes(url.hostname));
 const profile=await mkdtemp(join(tmpdir(),'bankeiz-obs-browser-'));
 const launch={viewport:{width:1440,height:1000},headless:true,...(process.env.BANK_BROWSER_EXECUTABLE?{executablePath:process.env.BANK_BROWSER_EXECUTABLE}:{})};
@@ -100,7 +100,7 @@ try{
   // The preceding no-JavaScript entry cannot have populated browser storage.
   // A fresh Ledger visit must already have the complete public directory.
   page=await open({},'/ledger/');
-  await page.getByRole('link',{name:'Observatory',exact:true}).click();
+  await page.getByRole('link',{name:'Analytics',exact:true}).click();
   const plays=page.locator('#obs-audience').getByRole('button',{name:'Stream plays',exact:true});
   await plays.click();
   await page.waitForFunction(()=>document.querySelector('#obs-audience button[aria-pressed=true]')?.textContent==='Stream plays');
@@ -139,15 +139,12 @@ try{
     assert.ok((await dialog.locator('.obs-headline-line').getAttribute('d')).length>4);
     const bounds=await dialog.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=321);
     if(name==='Assets in circulation'){
-      for(const measure of ['Reported circulation','Dated issuances']){
-        await dialog.getByRole('button',{name:measure,exact:true}).click();
-        for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
-          await dialog.getByRole('button',{name:range,exact:true}).click();
-          const extent=await dialog.locator('.obs-headline-line').evaluate(path=>{
-            const box=path.getBBox();return [box.x,box.x+box.width];
-          });
-          assert.deepEqual(extent,[0,100],measure+' spans the entire '+range+' plot');
-        }
+      assert.equal(await dialog.getByRole('img').count(),1);
+      assert.ok(await dialog.getByRole('button',{name:/^Inventory on/}).count()>0);
+      for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
+        await dialog.getByRole('button',{name:range,exact:true}).click();
+        const extent=await dialog.locator('.obs-headline-line').evaluate(path=>{const box=path.getBBox();return [box.x,box.x+box.width];});
+        assert.deepEqual(extent,[0,100],'Dated issuance spans the entire '+range+' plot');
       }
       assert.ok(Number(await dialog.getByRole('slider').getAttribute('max'))>100,'Dated inventory issuances remain inspectable between published totals');
     }

@@ -69,6 +69,14 @@ export function renderSelectedPublicMarketState(input:PublicMarketSelectedState)
  const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format,history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
  return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog).packet:undefined)};
 }
+type ExploreFrame={seed:Pick<PublicMarketDocumentSeed,'generation'|'catalog'>;content:string};
+const exploreFrames=new WeakMap<object,ExploreFrame>();
+export async function preparedExploreFrame(material:string,generation:string){
+ const state=await prepare(material,generation);
+ let frame=exploreFrames.get(state);
+ if(!frame){frame={seed:{generation,catalog:state.catalog},content:renderSelectedPublicMarketContent({...state,generation})};exploreFrames.set(state,frame);}
+ return frame;
+}
 /** Called by accepted-publication preparation, never by the cold visitor. The
  * existing public projector selects display fields; arbitrary input fields do
  * not enter the saved seed. The exact source-input hash is a cache coordinate. */

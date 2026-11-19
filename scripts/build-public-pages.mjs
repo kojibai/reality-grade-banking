@@ -158,7 +158,7 @@ try {
   readingLedger=(await ledger.preparePublicLedgerDocumentState(material,ledgerGeneration)).snapshot;
   for(const path of ['ledger','ledger/proofs','observatory']){
    const template='<html><head></head><body><div id="public-ledger-root"></div><script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{['/'+path+'/']:{}},bank:{}})+'</script></body></html>';
-   const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template,collectibleCatalog:readingCatalog}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
+   const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template,collectibleCatalog:readingCatalog,exploreFrame:explorerStates.get('/explore/')}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
    if(!content||!seed)throw Error('PUBLIC_LEDGER_STATIC_STATE_REQUIRED');
    ledgerStates.set('/'+path+'/',{content:content[1],seedScript:seed[0]});
   }
@@ -221,8 +221,8 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
 // document seed, live subscriptions, retained history and drill-down links.
 {
  const {page,document}=observatoryPage(publicPages['/ledger/'],ledgerStates.get('/observatory/'));
- publicPages['/observatory/']=page;
- runtimeDocuments.set('/observatory/',document);
+ publicPages['/analytics/']=page;
+ runtimeDocuments.set('/analytics/',document);
 }
 // A direct certificate paints its own settled header/footer, never the
 // unrelated catalog. Keep the same Explorer runtime and Bank purchase host.
@@ -269,10 +269,18 @@ for (const match of [...entryHtml.matchAll(/<link rel="stylesheet"[^>]*href="([^
 }
 const withReadingLink=(html,path)=>{const page=publicPage(path);return page&&!page.noindex?html.replace('</head>',()=>readingLinks('page',page.path)+'</head>'):html;};
 await writeFile('dist/index.html', withReadingLink(entryHtml,'/'));
-const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>',()=>`${bundle}</body>`);
+// An unopened destination carries its real visible rows. Its complete display
+// input is fetched only on first interaction if the reader does not hold it.
+const exploreDestination=explorerStates.get('/explore/');
+const explorePacket=exploreDestination.seedScript.slice(exploreDestination.seedScript.indexOf('>')+1,-'</script>'.length);
+const explorePacketDigest=createHash('sha256').update(explorePacket).digest('hex');
+await mkdir('dist/explore/data',{recursive:true});
+await writeFile('dist/explore/data/'+explorePacketDigest+'.json',explorePacket);
+const ledgerExploreFrame='<template id="ledger-explore-frame" data-generation="'+exploreDestination.seed.generation+'" data-packet="'+explorePacketDigest+'">'+exploreDestination.content+'</template>';
+const runtimeDocumentHtml=(html,runtime)=>earlyPublicRuntimeDocument(html).replace('<body>',`<body data-bank-surface="${runtime}">`).replace('</head>',`<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', ()=>(runtime==='ledger'?ledgerExploreFrame:'')+bundle+'</body>');
 await writeFile('dist/discover/navigation.json',JSON.stringify(publicPages['/discover/']));
 const sharedExampleSha256=createHash('sha256').update(exampleBanks.shared).digest('hex');
-const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/discover/'?page:{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(!['explore','ledger','feed','discover'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
+const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/discover/'?page:{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(path==='/analytics/'||!['explore','ledger','feed','discover'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
@@ -284,6 +292,9 @@ for (const [path, page] of Object.entries(documents)) {
   if(directMarketing)assertDirectMarketingEntry(path,document);
   await writeFile(`dist${path}index.html`,document);
 }
+// Static hosts without platform redirects also preserve bookmarked Analytics entries.
+await mkdir('dist/observatory',{recursive:true});
+await writeFile('dist/observatory/index.html','<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Analytics | Bankeiz</title><link rel="canonical" href="https://bankeiz.com/analytics/"><meta http-equiv="refresh" content="0;url=/analytics/"></head><body><a href="/analytics/">Analytics</a></body></html>');
 // Independent editorial documents carry complete text and inline styling.
 // They stay outside the app/catalog navigation carrier and PWA installation.
 const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWorkPages,footer:siteFooterHtml,footerCss:await readFile('src/styles/site-footer.css','utf8'),head:page=>{
@@ -294,7 +305,7 @@ const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWork
 console.log(`Built ${libraryResult.pages} complete static client-work resources and ${libraryResult.downloads} usable text downloads, without app startup payloads.`);
 await mkdir('dist/ledger/proofs',{recursive:true});
 await writeFile('dist/ledger/proofs/index.html',runtimeDocumentHtml(runtimeDocuments.get('/ledger/proofs/'),'ledger'));
-const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),'/observatory/','/vote/',...assetPaths];
+const urls = [...metadataPages.filter(page=>!page.noindex).map(page=>page.path),'/analytics/','/vote/',...assetPaths];
 if(urls.length>50000)throw Error('SITEMAP_PARTITION_REQUIRED');
 // Omit lastmod rather than claiming that a build or a live pulse rewrote every
 // guide. Canonical publication dates can be added when they are source-backed.
