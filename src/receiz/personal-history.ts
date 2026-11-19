@@ -4,6 +4,7 @@ import { mergePublicRecords, type PublicRecord } from './public-network';
 import {projectAccountHistoryRecords} from './account-history-direction';
 import {calculateWalletFundingAttributions,walletAttributionFitsRecord} from './ledger-wallet-fifo';
 function object(value: unknown): Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
+const calendarDate = (value: unknown) => typeof value === 'string' && value.length <= 64 && Number.isFinite(Date.parse(value)) ? value : null;
 export interface PersonalHistory { records: PublicRecord[]; completeAtSealedHead: boolean; available: boolean; awaitingAccountBinding?: boolean; }
 // Called only with the projection held by an SDK-admitted Identity Seal. Never public lookup/filtering.
 export function projectPersonalHistory(projection: ReceizIdentityAccountProjection, boundAccountUid?: string): PersonalHistory {
@@ -16,7 +17,16 @@ export function projectPersonalHistory(projection: ReceizIdentityAccountProjecti
   if (!boundAccountUid && account.userId !== projection.owner.uid) return { records: [], completeAtSealedHead: false, available: false, awaitingAccountBinding: true };
   const actions = object(state.ledger ?? state.actionLedger), wallet = object(state.wallet);
   const entries = actions.entries ?? state.actionLedgerEntries ?? state.ledgerActions;
-  const actionRows = Array.isArray(entries) ? entries.map((raw, index) => { const row = object(raw), payload = object(row.payload); return { ...row, id: row.entryHash ?? row.entry_hash ?? row.id ?? `carried-action-${index}`, actionKind: row.actionKind ?? row.action_kind, occurredAt: row.occurredAt ?? row.occurred_at, pulse: row.kaiPulse ?? row.kai_pulse, kaiUpulse: row.kaiUpulse ?? row.kai_upulse, summary: payload.summary ?? payload.title ?? row.actionKind ?? row.action_kind, amountUsdCents: payload.amountUsdCents }; }) : [];
+  const appointments = new Map<string, NonNullable<PublicRecord['appointment']>>();
+  const actionRows = Array.isArray(entries) ? entries.map((raw, index) => {
+    const row = object(raw), payload = object(row.payload), id = row.entryHash ?? row.entry_hash ?? row.id ?? `carried-action-${index}`, actionKind = row.actionKind ?? row.action_kind;
+    if (typeof id === 'string' && typeof actionKind === 'string' && actionKind.startsWith('calendar.event.')) {
+      const event = object(payload.calendarEvent), command = object(payload.calendarOwnerCommand), values = command.schema === 'receiz.calendar-owner-command.v1' ? object(command.values) : event;
+      const scheduledFor = values.kind === 'appointment' ? calendarDate(values.start_at ?? values.startAt) : null;
+      if (scheduledFor) appointments.set(id, { scheduledFor, createdAt: calendarDate(event.createdAt) });
+    }
+    return { ...row, id, actionKind, occurredAt: row.occurredAt ?? row.occurred_at, pulse: row.kaiPulse ?? row.kai_pulse, kaiUpulse: row.kaiUpulse ?? row.kai_upulse, summary: payload.summary ?? payload.title ?? actionKind, amountUsdCents: payload.amountUsdCents };
+  }) : [];
   const ledgerEntries = wallet.ledgerEntries ?? state.walletLedgerEntries;
   const attributions=calculateWalletFundingAttributions(ledgerEntries,String(account.userId),projection.completeAtSealedHead&&(!Array.isArray(ledgerEntries)||wallet.ledgerEntryCount===undefined||wallet.ledgerEntryCount===ledgerEntries.length));
   const walletRows:Record<string,unknown>[] = Array.isArray(ledgerEntries) ? ledgerEntries.map(raw => { const row = object(raw); return { ...row, id: row.id, kind: row.entry_kind ?? row.kind, summary: row.description ?? row.entry_kind, createdAt: row.created_at ?? row.createdAt, pulse: row.kai_pulse ?? row.pulse, kaiUpulse: row.kai_upulse ?? row.kaiUpulse, amountUsdCents: row.amount_usd_cents ?? row.amountUsdCents, amountPhiMicro:row.amount_phi_micro??row.amountPhiMicro, proofBundle: row.proof_bundle ?? row.proofBundle }; }) : [];
@@ -39,5 +49,6 @@ export function projectPersonalHistory(projection: ReceizIdentityAccountProjecti
   return { records: mergePublicRecords(projectAccountHistoryRecords('actions',actionRows,String(account.userId)), mergePublicRecords(projectAccountHistoryRecords('wallet',[...legacyRows, ...transferRows],String(account.userId)), projectAccountHistoryRecords('wallet',activityRows,String(account.userId)))).map(record=>{const attribution=record.source==='wallet'?(attributions.get(record.sourceId.replace(/^wallet_ledger:/,''))??byTransfer.get(record.evidence.transferId??record.sourceId.replace(/^transfer:/,''))):undefined;
    const bound=attribution&&walletAttributionFitsRecord(attribution,record,byTransfer.has(record.evidence.transferId??''));
    const enriched=applyLedgerFundingContext(record,wallet.fundingContexts??state.walletFundingContexts);
-   return {...enriched,authority:'account-source-projection',origin:'identity-carried',...(bound?{details:{...enriched.details,fundingAttribution:attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}}:{})};}), available: true, completeAtSealedHead: projection.completeAtSealedHead };
+   const appointment=record.source==='actions'?appointments.get(record.sourceId):undefined;
+   return {...enriched,authority:'account-source-projection',origin:'identity-carried',...(appointment?{appointment}:{}),...(bound?{details:{...enriched.details,fundingAttribution:attribution as unknown as NonNullable<PublicRecord['details']>,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}}:{})};}), available: true, completeAtSealedHead: projection.completeAtSealedHead };
 }

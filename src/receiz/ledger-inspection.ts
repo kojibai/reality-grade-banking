@@ -14,9 +14,23 @@ import {readWalletFundingAttribution,readWalletFundingLinks} from './ledger-wall
 import {readWalletFundingHistory} from './ledger-funding-history';
 import {readWalletProofCohorts} from './ledger-wallet-cohorts';
 import {readLedgerAssetTrade,ledgerAssetTradeSide} from './ledger-asset-trade';
+import {marketUPulseTime} from './market-projection/coordinates';
 
 export type LedgerField = string | number | boolean | LedgerFields | LedgerField[];
 export interface LedgerFields { [key:string]:LedgerField; }
+/** Calendar scheduling actions can carry a slot in their occurrence field. The
+ * displayed recording date follows the admitted action's existing coordinate. */
+export function ledgerRecordedTime(record: PublicRecord): string | null {
+ if (record.source !== 'actions' || !record.kind.startsWith('calendar.event.')) return record.time;
+ const legacyCreation = /^calendar\.event\.(manual|message|embed|system)\.created$/.test(record.kind);
+ if (!legacyCreation && !record.appointment && record.kind !== 'calendar.event.owner.created') return record.time;
+ const coordinate = record.kaiUpulse ?? (record.pulse && record.pulse !== '0' ? `${record.pulse}000000` : record.pulse);
+ if (coordinate && /^(0|[1-9]\d{0,29})$/.test(coordinate)) {
+  const time = marketUPulseTime(coordinate);
+  if (time <= 8.64e15) return new Date(time).toISOString();
+ }
+ return legacyCreation ? record.appointment?.createdAt ?? null : record.time;
+}
 const object=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
 const primitive=(value:unknown):string|number|boolean|undefined=>typeof value==='string'&&value.length>0&&value.length<=4096?value:typeof value==='number'&&Number.isFinite(value)?value:typeof value==='boolean'?value:undefined;
 function select(raw:unknown,keys:readonly string[]):LedgerFields {

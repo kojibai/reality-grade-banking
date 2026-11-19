@@ -6,7 +6,7 @@ import {RECEIZ_VERSION} from '../../receiz/client';
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {ArrowUpRight,Download,FileText,Link2} from 'lucide-react';
 import type {PublicRecord} from '../../receiz/public-network';
-import {ledgerInspectionDocument,type LedgerField,type LedgerFields} from '../../receiz/ledger-inspection';
+import {ledgerInspectionDocument,ledgerRecordedTime,type LedgerField,type LedgerFields} from '../../receiz/ledger-inspection';
 import {ledgerValueLabel,ledgerValueForRecord,type LedgerValueIndex,type LedgerValueDisplay} from '../../receiz/ledger-value';
 import {receiptLink,openLedgerReceipt,localReceiptPath} from '../../receiz/ledger-receipts';
 import {formatMoney,formatUnits} from '../../core/money';
@@ -45,6 +45,7 @@ function ExactRecordJson({value,initiallyExpanded=false}:{value:unknown;initiall
 
 export function LedgerInspector({sourceReader,record,value,currentValue,valuation,relations,valueSource=null,inApp=false,receiptMode=false,preparedReceipt,initiallyExpanded=false}:{sourceReader?:HeldLedgerOriginalReader;record:PublicRecord;value:LedgerValueDisplay;currentValue?:LedgerValueDisplay|null;valuation?:LedgerFields|null;relations?:ReturnType<typeof indexLedgerRelations>;valueSource?:LedgerValueIndex|null;inApp?:boolean;receiptMode?:boolean;preparedReceipt?:string|null;initiallyExpanded?:boolean}){
  const title=ledgerRecordTitle(record),paymentRole=ledgerPaymentRole(record);
+ const recordedAt=ledgerRecordedTime(record),scheduledFor=record.appointment?.scheduledFor;
  const {copied,confirm,clear}=useCopyFeedback(record.id);
  const [notice,setNotice]=useState(''),[connectionsOpen,setConnectionsOpen]=useState(initiallyExpanded),[shownRelated,setShownRelated]=useState(20);
  const [downloading,setDownloading]=useState(false),downloadEpoch=useRef(0),downloadPending=useRef(false);
@@ -70,7 +71,7 @@ export function LedgerInspector({sourceReader,record,value,currentValue,valuatio
   {typeof details.publicNote==='string'&&<section className="ledger-public-note"><h4>Payment memo</h4><p>{details.publicNote}</p></section>}
   {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
   {value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
-  <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(record.time?{recordedAt:record.time}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
+  <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(recordedAt?{recordedAt}:{}),...(scheduledFor?{scheduledFor}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
   {Object.keys(participants).length>0&&<section><h4>People &amp; ownership</h4><LedgerFieldsView fields={participants}/></section>}
   {Object.keys(document.valueOperands).length>0&&<section><h4>Value inputs</h4><LedgerFieldsView fields={document.valueOperands as LedgerFields}/></section>}
   {Object.keys(record.evidence).length>0&&<section><h4>Evidence &amp; continuity</h4><LedgerFieldsView fields={record.evidence}/></section>}

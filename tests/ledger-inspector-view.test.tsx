@@ -5,9 +5,32 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {LedgerInspector} from '../src/features/ledger/LedgerInspector';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 import {ledgerValueForRecord} from '../src/receiz/ledger-value';
+import {projectPersonalHistory} from '../src/receiz/personal-history';
+import type {ReceizIdentityAccountProjection} from '@receiz/sdk';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 let root:ReturnType<typeof createRoot>|null=null;
 afterEach(()=>{if(root)act(()=>root!.unmount());root=null;document.body.replaceChildren();vi.unstubAllGlobals();});
+it('shows the held recording pulse and scheduled appointment date as separate fields without reading the network',()=>{
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const scheduledFor='2027-02-04T15:30:00.000Z',recordedAt='2026-11-11T09:09:28.995Z';
+ const legacy={entryHash:'a'.repeat(64),actionKind:'calendar.event.manual.created',occurredAt:scheduledFor,kaiUpulse:'15100000123456',payload:{calendarEvent:{kind:'appointment',startAt:scheduledFor,createdAt:recordedAt,attendees:['held@example.com']}}};
+ const native={entryHash:'b'.repeat(64),actionKind:'calendar.event.owner.created',occurredAt:recordedAt,kaiUpulse:'15100000123456',payload:{calendarOwnerCommand:{schema:'receiz.calendar-owner-command.v1',values:{kind:'appointment',start_at:scheduledFor}}}};
+ const history=projectPersonalHistory({authority:'verified-identity-portable-state',portableStateVerified:true,owner:{uid:'owner'},verifiedState:{account:{userId:'owner'},ledger:{entries:[legacy,native,{...legacy,entryHash:'c'.repeat(64),kaiUpulse:null}]}},completeAtSealedHead:true} as ReceizIdentityAccountProjection);
+ const publicRow=parsePublicNetworkPage('actions',{ok:true,actions:[{...legacy,id:'public'}]}).records[0];
+ const unknownTime=parsePublicNetworkPage('actions',{ok:true,actions:[{...legacy,id:'public-old',kaiUpulse:null}]}).records[0];
+ const host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ const fields=(record:typeof publicRow)=>{
+  act(()=>root!.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
+  return Object.fromEntries([...host.querySelectorAll('.ledger-inspector-grid section:first-child .ledger-field-tree > div')].map(field=>[field.querySelector('dt')?.textContent,field.querySelector('dd')?.textContent]));
+ };
+ for(const row of [legacy,native])expect(fields(history.records.find(record=>record.sourceId===row.entryHash)!)).toMatchObject({'Recorded At':recordedAt,'Scheduled For':scheduledFor});
+ expect(fields(history.records.find(record=>record.sourceId==='c'.repeat(64))!)).toMatchObject({'Recorded At':recordedAt,'Scheduled For':scheduledFor});
+ expect(fields(publicRow)).toMatchObject({'Recorded At':recordedAt});
+ expect(fields(publicRow)).not.toHaveProperty('Scheduled For');
+ expect(fields(unknownTime)).not.toHaveProperty('Recorded At');
+ expect(history.records.find(record=>record.sourceId===legacy.entryHash)?.time).toBe(scheduledFor);
+ expect(JSON.stringify(history.records)).not.toContain('held@example.com');expect(fetch).not.toHaveBeenCalled();
+});
 it('opens complete selected details, value operands and original evidence for any activity without another request',()=>{
  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
  const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'transfer-1',kind:'proof_transfer',summary:'Proof transferred',pulse:120,kaiUpulse:'120000001',amountUsdCents:'100',cardValueUsdCents:'9900',amountPhiMicro:'3456789',sender:{displayName:'Alex'},recipient:{displayName:'Sam'},entryHash:'a'.repeat(64),prevHash:'b'.repeat(64),proofBundle:{verificationVersion:'wallet-ledger-v1',capsuleHash:'c'.repeat(64)},transactionHref:'https://receiz.com/t/20261017_1646/92DD0339C992B40E/120?p=c1%3Aabc'}]}).records[0];

@@ -18,6 +18,8 @@ export interface PublicRecord {
   sender?:string|null; recipient?:string|null; evidence: Record<string, string>; authority: 'public-source-projection' | 'account-source-projection'; origin?: 'identity-carried' | 'private-account';
   valueOperands?: LedgerValueOperands;
   details?: LedgerFields;
+  /** Schedule carried in the opened Identity Record, for private display only. */
+  appointment?: { scheduledFor: string; createdAt: string | null };
   /** Account-relative display only; absent from public projections/receipts. */
   accountFlow?:import('./account-history-direction').AccountHistoryFlow;
   accountFlowConflict?:true;
