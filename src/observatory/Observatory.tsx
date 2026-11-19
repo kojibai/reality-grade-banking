@@ -34,16 +34,14 @@ const clock = new Intl.DateTimeFormat('en-GB', {hour:'2-digit',minute:'2-digit',
 type Network = ReturnType<typeof usePublicNetwork>;
 
 const noSubscription=()=>()=>{};
-function MarketReadings({source,status,onOpen}: {onOpen:(metric:Headline)=>void;source:ReturnType<typeof useMarketCapitalization>['source'];status:string}) {
+function MarketReadings({source,onOpen}: {onOpen:(metric:Headline)=>void;source:ReturnType<typeof useMarketCapitalization>['source']}) {
   const cap = source?.shareCapitalization;
   const priced = cap && (cap.covered > 0 || cap.complete && cap.listed === 0);
   return <>
     <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('cap')}><span>Global market cap <ArrowUpRight/></span>
-      <strong title={priced ? formatMoney(cap.usdCents) : undefined}>{priced ? '$' + compact.format(BigInt(cap.usdCents) / 100n) : '—'}</strong>
-      <small>{cap ? num.format(cap.covered) + ' of ' + num.format(cap.listed) + ' assets included' : 'Pricing unavailable'}{status !== 'live' && ' · retained pricing'}</small></button>
+      <strong title={priced ? formatMoney(cap.usdCents) : undefined}>{priced ? '$' + compact.format(BigInt(cap.usdCents) / 100n) : '—'}</strong></button>
     <button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>onOpen('assets')}><span>Assets <ArrowUpRight/></span>
-      <strong>{source ? num.format(source.marketAssetsPriced + source.cardsInCirculation) : '—'}</strong>
-      <small>{source && num.format(source.marketAssetsPriced)+' priced assets · '+num.format(source.cardsInCirculation)+' circulating collectibles'}</small></button>
+      <strong>{source ? num.format(source.marketAssetsPriced + source.cardsInCirculation) : '—'}</strong></button>
   </>;
 }
 
@@ -181,8 +179,11 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   return <div className="observatory"><ObservatoryHeader active={active}/>
     <main><section className="obs-engine"><div className="obs-inner">
       <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{!online?'Offline · saved':live?'Public source connected':state.error?'Source unavailable':network.bootstrap?'Opening history':'Saved public snapshot'}</span></span></div>
-      <div className="obs-readings"><MarketReadings source={pricing} status={valuation.status} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong><small>Viewing and streaming time</small></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong><small>{covered} of {PUBLIC_SOURCES.length} sources represented</small></button></div>
-      {active&&headline&&<HeadlineHistory key={headline} metric={headline} points={headlinePoints} through={headline==='assets'?inventoryThrough:undefined} inventoryTotal={inventoryTotal} onClose={()=>setHeadline(null)}/>}
+      <div className="obs-readings"><MarketReadings source={pricing} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong></button></div>
+      {active&&headline&&<HeadlineHistory key={headline} metric={headline} detail={headline==='cap'
+        ? (pricing?.shareCapitalization ? num.format(pricing.shareCapitalization.covered)+' of '+num.format(pricing.shareCapitalization.listed)+' assets included'+(valuation.status==='live'?'':' · retained pricing') : 'Pricing unavailable')
+        : headline==='assets'&&pricing ? num.format(pricing.marketAssetsPriced)+' priced assets · '+num.format(pricing.cardsInCirculation)+' circulating collectibles'
+        : headline==='ledger' ? covered+' of '+PUBLIC_SOURCES.length+' sources represented' : undefined} points={headlinePoints} through={headline==='assets'?inventoryThrough:undefined} inventoryTotal={inventoryTotal} onClose={()=>setHeadline(null)}/>}
       <div className="obs-chart-head" id="obs-pulse"><div><h2>Network pulse</h2><p>{anchor ? <><b>{num.format(plot.total)}</b> {source==='actions'?(plot.total===1?'public action':'public actions'):(plot.total===1?'public record':'public records')} · {day.format(plot.start)} – {fullDate.format(anchor)} · UTC</> : 'Awaiting dated public records'}</p></div>
         <div className="obs-controls"><div className="obs-period" aria-label="Chart range">{periods.map(p=><button key={p} aria-pressed={period===p} onClick={()=>{setPeriod(p);setPaused(null);setPicked(null);setLimit(8);}}>{p}</button>)}</div>
         <button className="obs-follow" aria-pressed={following} onClick={()=>{setPaused(following?anchor:null);setPicked(null);setLimit(8);}} disabled={!anchor}>{following?<Pause/>:<Play/>}{following?'Following latest':'Follow latest'}</button></div></div>

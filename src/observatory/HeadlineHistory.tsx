@@ -30,8 +30,8 @@ const notes: Record<Headline,string> = {
   ledger: 'Cumulative dated records across all public ledger sources, through each source’s observation time.',
 };
 
-export function HeadlineHistory({metric, points, through, inventoryTotal, onClose}: {
-  metric: Headline; points: readonly HistoryPoint[]; through?:number; inventoryTotal?:number; onClose: ()=>void;
+export function HeadlineHistory({metric, detail, points, through, inventoryTotal, onClose}: {
+  metric: Headline; detail?:string; points: readonly HistoryPoint[]; through?:number; inventoryTotal?:number; onClose: ()=>void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [period,setPeriod] = useState<Period>('All');
@@ -89,6 +89,7 @@ export function HeadlineHistory({metric, points, through, inventoryTotal, onClos
       <input type="range" aria-label="Inspect historical reading" aria-valuetext={format(point.value)+', recorded '+dates.format(observedAt)+' '+times.format(observedAt)+' UTC'} min={0} max={Math.max(0,rows.length-1)} disabled={rows.length<2} value={Math.max(0,i)} onChange={e=>setPicked(Number(e.target.value))}/>
       {metric==='assets'&&inventoryTotal!==undefined&&points.length>0&&points[points.length-1].value!==inventoryTotal&&<p>Verified issuance dates cover {units.format(points[points.length-1].value)} assets. Published inventory totals {units.format(inventoryTotal)}.</p>}
       {notes[metric]&&<p>{notes[metric]}</p>}</>:<p>No dated readings are available yet.</p>}
+    {detail&&<p className="obs-reading-detail">{detail}</p>}
     <footer className="obs-headline-footer"><a href={destinations[metric].href} onClick={()=>dialog.current?.close()}>
       {destinations[metric].label}<ArrowUpRight size={16} aria-hidden="true"/>
     </a></footer>

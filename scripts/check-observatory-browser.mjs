@@ -143,10 +143,11 @@ try{
   for(const [i,name] of ['Global market cap','Assets in circulation','Witnessed hours','Public ledger records'].entries()){
     const trigger=page.locator('.obs-reading').nth(i);
     assert.equal((await trigger.locator('span').first().innerText()).trim(),['Global market cap','Assets','Witnessed hours','Public records'][i]);
-    assert.ok(await trigger.locator('small').isVisible());
+    assert.equal(await trigger.locator('small').count(),0,'Headline details belong to the chart dialog');
     await trigger.click();
     const dialog=page.getByRole('dialog',{name,exact:true});
     await dialog.getByRole('img',{name:new RegExp(name+' history')}).waitFor();
+    assert.ok(await dialog.getByText([/assets included|Pricing unavailable/,/circulating collectibles/,/viewing and streaming hours/,/sources represented/][i]).isVisible());
     assert.equal(await dialog.getByRole('link').getAttribute('href'),['/market-cap/','/explore/','#obs-audience','/ledger/'][i]);
     assert.ok((await dialog.locator('.obs-headline-line').getAttribute('d')).length>4);
     assert.ok(await dialog.locator('h2').evaluate(h=>h.offsetHeight<2*parseFloat(getComputedStyle(h).lineHeight)),'Full metric title fits on one line');
