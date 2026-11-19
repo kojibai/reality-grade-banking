@@ -33,3 +33,25 @@ it('keeps cold Feed accepted B when the later Market owner loads and restores ol
  const p=await probe(),reader=await import('../src/receiz/prepared-bank-catalog');await act(async()=>{disk.finish(a.response());await reader.prepareCarriedBankCatalog();});
  expect((await source.prepareFeedItems()).map(item=>item.id)).toEqual(['accepted B']);expect(p.read().historyCatalog?.items[0].id).toBe('accepted B');expect(p.read().status).toBe('stale');expect(fetcher.mock.calls.filter(([path])=>String(path).startsWith('/api/'))).toHaveLength(1);
 });
+
+it('keeps the selected signed collection and its saved response through an older complete response and cold reopen',async()=>{
+ const provider='f'.repeat(64),source='5'.repeat(64),signature='6'.repeat(64);
+ const packet=(sequence:number,revision:string,rows:unknown[])=>({ok:true,transport:{generatedAt:'2026-11-05T18:00:00Z',publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:rows.length,revision,selection:{provider,sequence:String(sequence).padStart(20,'0')}},publicOriginals:rows}});
+ const signed=packet(2,'b'.repeat(64),[{id:'original',receizId:'original',title:'Signed Original',profileOriginal:{media:{originalDownloadSha256Hex:source},hasPbiSignature:true,pbiReceiptHash:signature}}]);
+ const stale=packet(1,'a'.repeat(64),[]),withdrawn=packet(3,'c'.repeat(64),[]);
+ let response=signed;
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(response)));
+ const market=await import('../src/receiz/public-market'),adoption=await import('../src/receiz/asset-publication-adoption');
+ const expected=await market.fetchPublicMarket();adoption.publishDiscoveredPublicCatalog(expected);
+ const feed=await import('../src/public-feed/feed-source');
+ response=stale;expect((await feed.prepareFeedItems(undefined,true)).map(item=>item.pbiReceiptHash)).toEqual([signature]);
+ expect(adoption.retainedDiscoveredPublicCatalog()).toBe(expected);
+ expect(JSON.parse(localStorage.getItem('receiz-bank-public-discovery-v2')!)).toEqual(signed);
+ vi.resetModules();vi.stubGlobal('fetch',vi.fn(async()=>new Response(null,{status:503})));
+ const reopened=await import('../src/public-feed/feed-source');expect((await reopened.prepareFeedItems()).map(item=>item.pbiReceiptHash)).toEqual([signature]);
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(withdrawn)));
+ expect(await reopened.prepareFeedItems(undefined,true)).toEqual([]);
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json(signed)));
+ expect(await reopened.prepareFeedItems(undefined,true)).toEqual([]);
+ expect(JSON.parse(localStorage.getItem('receiz-bank-public-discovery-v2')!).transport.publicMembership.revision).toBe('c'.repeat(64));
+});

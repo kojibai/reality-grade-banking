@@ -84,7 +84,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     return prepared?retainPublicProfileHeaders(prepared,directory):directory;
   },[initialSnapshot,initialDirectory,directory]);
   const liveCatalog=market.historyCatalog;
-  const catalog=useMemo(()=>active&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[active,liveCatalog,carried]);
+  const catalog=useMemo(()=>!hydrating&&active&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[hydrating,active,liveCatalog,carried]);
   const [capPeriod,setCapPeriod]=useState<ChartPeriod>('ALL');
   const pricingActive=active&&!!liveCatalog?.complete&&liveCatalog.sportsCoverage==='complete';
   const valuation=useMarketCapitalization(capPeriod,pricingActive,liveCatalog,pricingActive);
@@ -112,7 +112,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   },[active,liveCatalog?.complete,initialDirectory,carried]);
   const profileRevision=useSyncExternalStore(subscribePublicProfiles,publicProfilesRevision,()=>0);
   const audience=initialDirectory?.audience??directory.audience;
-  const overview=useMemo(()=>observeCatalog(catalog,audience),[catalog,profileRevision,audience]);
+  const overview=useMemo(()=>observeCatalog(catalog,audience,carried),[catalog,profileRevision,audience,carried]);
   const audienceSeries=useAudienceSeries(overview,overview?.observedAt??null);
   const [headline,setHeadline]=useState<Headline|null>(null);
   const index=useMemo(()=>indexActivity(network.records),[network.records]);

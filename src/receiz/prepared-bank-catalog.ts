@@ -4,7 +4,7 @@ import {parseMarketCapSource,type MarketCapSource} from './market-projection/sou
 import {SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
 
 export {PREPARED_BANK_CATALOG_PATH} from './prepared-bank-cache';
-import {parsePublicMarket,rememberPublicMarketResponse,prepareHeldPublicMarketResponse,retainPublicProfileHeaders,type PublicMarketCatalog} from './public-market';
+import {parsePublicMarket,refusesPublicMarketSelection,rememberPublicMarketResponse,prepareHeldPublicMarketResponse,retainPublicProfileHeaders,type PublicMarketCatalog} from './public-market';
 import {curatePublicProfileHead,curatePublicProfileHeadRefusal,publicProfileHeaderDisplayBasis} from './public-profile-header';
 import {publicProfileDirectoryBindings} from './public-profile-directory-contract';
 import {retainedDiscoveredPublicCatalog,publishDiscoveredPublicCatalog} from './asset-publication-adoption';
@@ -155,6 +155,7 @@ export function createPreparedBankCatalogReader(fetcher:Fetcher=(path,init)=>fet
    const response=await request('GET');
    // HEAD is an invalidation hint. GET qualifies its own exact complete bytes.
    const value=await openedResponse(response,signal);if(!current())return null;
+   if(refusesPublicMarketSelection(value.seed.catalog,selectedCatalog())){publish({phase:held?'ready':carried?'carried':'idle',value:held,error:null});return held;}
    held=immutable({seed:value.seed,capitalization:value.capitalization,history:value.history,receipt:value.receipt});bareCatalog=null;carried=null;carriedBodyVerified=false;acceptedIdentity=held.seed;acceptedAt=Date.now();retain(value);publish({phase:'ready',value:held,error:null});return held;
   }catch{if(selectedRead())publish({phase:'fallback',value:held,error:'Prepared public collection unavailable.'});return null;}
   })();flight=job;void job.finally(()=>{if(flight===job){flight=undefined;controller=undefined;}}).catch(()=>{});return job;

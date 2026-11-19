@@ -6,7 +6,7 @@ import {retainPublicMomentManifest} from './public-asset-manifest';
 import { useCallback, useEffect, useMemo, useRef, useState,useSyncExternalStore,type SetStateAction } from 'react';
 import {receizKaiNow} from '../../node_modules/@receiz/sdk/dist/v124Kai.js';
 import { fetchPublicSports, mergePublicSports,retainPublicSportsInput,readStoredPublicSportsInput,restorePublicSportsInput,retainSelectedPublicSportsInput } from './public-sports';
-import { fetchPublicMarket,observePublicMarketMembership, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
+import { fetchPublicMarket,observePublicMarketMembership, refusesPublicMarketSelection, rememberPublicMarketResponse, retainPublicMarket, retainPublicProfileHeaders, reusePublicMarketResponse, fetchPublicQuotes, readRetainedPublicQuotes, mergePublicQuotes, parsePublicMarket, rememberPublicOriginalLocators, retainPublicArtwork, validatePublicQuotes, type PublicMarketCatalog } from './public-market';
 import {prepareMarketDisplaySource,useMarketDisplaySource,adoptMarketDisplaySource} from './market-projection/display-source';
 import {publicCatalogAtPulse} from './market-projection/catalog-prices';
 
@@ -41,12 +41,12 @@ function readPublicCatalog(){
  if(!retainedCatalog&&!restored&&!prepared.value){const accepted=retainedDiscoveredPublicCatalog();if(accepted){restored=true;retainedCatalog=adoptCatalog(accepted);if(retainedCatalog)reusePublicMarketResponse(accepted,retainedCatalog);if(!lastRefreshAt)lastRefreshAt=Date.now();}}
  if((!prepared.value&&!prepared.carried||(prepared.value??prepared.carried)?.fromCache)&&!retainedCatalog&&!restored){restored=true;retainedCatalog=restoreAdoptedCatalog();}
  if(prepared.bareCatalog!==adoptedBare&&prepared.bareCatalog&&!retainedCatalog?.complete&&!retainedDiscoveredPublicCatalog()){adoptedBare=prepared.bareCatalog;restored=true;retainedCatalog=adoptCatalog(mergePublicSports(prepared.bareCatalog,retainedSports));restoredDiskCatalog=retainedCatalog;if(retainedCatalog)reusePublicMarketResponse(prepared.bareCatalog,retainedCatalog);rememberPublicOriginalLocators(retainedCatalog!);if(!lastRefreshAt)lastRefreshAt=Date.now();}
-  if(prepared.value){const value=prepared.value;if(value.fromCache&&retainedCatalog?.complete&&retainedCatalog!==value.seed.catalog){adoptedPrepared=value.seed;adoptedCarried=value.seed;return retainedCatalog;}if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(!lastRefreshAt)lastRefreshAt=Date.now();if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
+  if(prepared.value){const value=prepared.value;if(refusesPublicMarketSelection(value.seed.catalog,retainedCatalog)||value.fromCache&&retainedCatalog?.complete&&retainedCatalog!==value.seed.catalog){adoptedPrepared=value.seed;adoptedCarried=value.seed;return retainedCatalog;}if(adoptedPrepared!==value.seed){adoptedPrepared=value.seed;if(!lastRefreshAt)lastRefreshAt=Date.now();if(value.seed!==adoptedCarried){restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}}return retainedCatalog;}
  if(preparedBankCatalogEnabled()){
   if(prepared.carried){const value=prepared.carried;if(adoptedCarried!==value.seed){
    // A boot display cannot roll back a newer public discovery that completed
    // while this document's compressed seed was being decoded.
-   if(value.fromCache&&retainedCatalog?.complete){adoptedCarried=value.seed;}
+   if(refusesPublicMarketSelection(value.seed.catalog,retainedCatalog)||value.fromCache&&retainedCatalog?.complete){adoptedCarried=value.seed;}
    else if(!retainedCatalog||retainedCatalog===restoredDiskCatalog||retainedCatalog.revision==='local-admission'){adoptedCarried=value.seed;restored=true;retainedCatalog=adoptCatalog(value.seed.catalog);rememberPublicOriginalLocators(retainedCatalog!);}
    if(!lastRefreshAt)lastRefreshAt=value.receivedAt;
   }return retainedCatalog;}
@@ -60,6 +60,7 @@ function readPublicCatalog(){
  * its parsed family once; no new Bank receipt or caller funding is inferred. */
 export function adoptPublicMarketDocument(seed:PublicMarketDocumentSeed,qualification?:PublicDocumentHandoff,options?:{initialDocument?:boolean}){
  const previous=readPublicCatalog();
+ if(refusesPublicMarketSelection(seed.catalog,previous))return null;
  const adopted=adoptPublicDocumentCatalog(seed,display=>{retainedCatalog=adoptCatalog(display.seed.catalog);restored=true;preparedDocument=true;adoptedCarried=display.seed;lastRefreshAt=display.receivedAt;adoptMarketDisplaySource(display.capitalization);},qualification,options);
  const held=preparedBankCatalogState();if(adopted||(held.value??held.carried)?.seed.generation===seed.generation)preparedDocument=true;
  if(adopted){rememberPublicOriginalLocators(retainedCatalog!);if(seed.catalog.complete)publishDiscoveredPublicCatalog(seed.catalog,undefined,previous);for(const listener of catalogListeners)listener();}
@@ -70,7 +71,7 @@ function publishPublicCatalog(next:SetStateAction<PublicMarketCatalog|null>,sele
   // An already selected shared successor cannot be vetoed by a display
   // clock. Unselected legacy reads retain their late-response rollback guard.
   const currentAt=Date.parse(current?.observedAt??''),candidateAt=Date.parse(candidate?.observedAt??'');
-  if(!selectedSuccessor&&candidate?.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt)return current;
+  if(candidate&&(refusesPublicMarketSelection(candidate,current)||!candidate.selection&&!selectedSuccessor&&candidate.complete&&Number.isFinite(currentAt)&&Number.isFinite(candidateAt)&&candidateAt<currentAt))return current;
   const updated=adoptCatalog(candidate?retainPublicProfileHeaders(candidate,current):candidate);
   if(updated===current)return current;retainedCatalog=updated;for(const listener of catalogListeners)listener();return updated;
 }
@@ -211,8 +212,10 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
         const previous=new Map(current?.items.map(item=>[item.id,item]));
         let updated=mergePublicSports({...next,items:next.items.map(item=>{
           const quoted=previous.get(item.id);
-          const presented={...retainPublicMomentManifest(retainPublicArtwork(item,quoted),quoted),shareInventory:compatibleShareInventory(item,quoted?.shareInventory)};
-          return quoted?.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
+          const matches=quoted?.assetId===item.assetId&&quoted.originalDigest===item.originalDigest&&quoted.ownerIdentity?.userId===item.ownerIdentity?.userId&&quoted.ownerUsername===item.ownerUsername;
+          const inventory=mergeShareInventory(matches?compatibleShareInventory(item,quoted.shareInventory):undefined,compatibleShareInventory(item,item.shareInventory)??null);
+          const presented={...retainPublicMomentManifest(retainPublicArtwork(item,quoted),quoted),shareInventory:inventory};
+          return matches&&quoted.chart.length?{...presented,priceUsd:quoted.priceUsd,changePct:quoted.changePct,chart:quoted.chart}:presented;
         })},retainedSports,current);
         if(quotes)updated=mergePublicQuotes(updated,quotes);
         return updated;

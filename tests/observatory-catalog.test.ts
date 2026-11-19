@@ -24,6 +24,22 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     expect(observeCatalog(catalog).profiles).toMatchObject([{username:'public_card',stats:{originals:0,seconds:null}}]);
     expect(observeCatalog({...catalog,publicProfileHeadRefusals:[{profile:{userId:profile.userId,username:profile.username},viewer:{canView:false}}]}).profiles).toHaveLength(0);
   });
+  it('keeps carried priced shares visible when a signed Original arrives before its share inventory',()=>{
+    const ownerUserId='00000000-0000-4000-aaaa-000000000001',ownerUsername='artist',priceUsd=12;
+    const row=(id:string,digest:string,pbiReceiptHash?:string)=>({id,receizId:id,title:id,ownerUserId,ownerUsername,ownerCreatedAt:'2026-01-01',profileOriginal:{media:{originalDownloadSha256Hex:digest},pbiReceiptHash}});
+    const existing=row('existing','a'.repeat(64)),added=row('added','b'.repeat(64),'c'.repeat(64));
+    const catalog=(publicOriginals:ReturnType<typeof row>[])=>({...parsePublicMarket({ok:true,transport:{publicOriginals}}),complete:true});
+    const priced=(marketItemId:string,price:number)=>({...row(marketItemId,marketItemId==='existing'?'a'.repeat(64):'b'.repeat(64)),valueUsd:price});
+    const inventory=(id:string)=>({schema:'receiz.market.share-inventory.v1',marketItemId:id,assetId:id,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'15000000000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'0',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'});
+    const pricedCatalog=(rows:ReturnType<typeof priced>[])=>({...parsePublicMarket({ok:true,transport:{publicOriginals:rows}},{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:rows.map(entry=>({itemId:entry.id,visibility:'public',priceUsd:entry.valueUsd,shareInventory:inventory(entry.id)}))}}),complete:true});
+    const held=pricedCatalog([priced('existing',priceUsd)]);
+    expect(observeCatalog(held).profiles[0].capitalization).toBe('1200');
+    const thin=catalog([existing,added]);
+    expect(observeCatalog(thin,undefined,held).profiles[0]).toMatchObject({capitalization:'1200',capitalizationPartial:true});
+    expect(observeCatalog(pricedCatalog([priced('existing',priceUsd),priced('added',3)]),undefined,held).profiles[0].capitalization).toBe('1500');
+    expect(observeCatalog(catalog([added]),undefined,held).profiles[0].capitalization).toBeNull();
+    expect(observeCatalog(catalog([row('existing','d'.repeat(64))]),undefined,held).profiles[0].capitalization).toBeNull();
+  });
   it('covers the full span of dated observations and excludes undated entries',()=>{
     const series=growthSeries(['2025-02-01',null,'2025-02-01','2026-11-12']);
     expect(series?.points[0].count).toBe(2);

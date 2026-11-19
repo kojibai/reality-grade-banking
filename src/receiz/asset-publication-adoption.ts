@@ -1,5 +1,5 @@
 import {retainPublicMomentManifest} from './public-asset-manifest.js';
-import {parsePublicMarket,retainPublicMarketSports,retainPublicArtwork,retainPublicMarket,retainPublicProfileHeaders,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {parsePublicMarket,refusesPublicMarketSelection,retainPublicMarketSports,retainPublicArtwork,retainPublicMarket,retainPublicProfileHeaders,mergePublicQuotes,reusePublicMarketResponse,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {retainedPublicProfile,retainPublicProfile,type PublicProfile} from './public-profile.js';
 import {safeImportedSourceUrl} from './imported-source-url.js';
 import {readAccountAppearance} from './account-appearance.js';
@@ -135,7 +135,8 @@ function carriedPublicCatalog():PublicMarketCatalog|null{
  try{const selected=marker?.publicMarketCatalog?.()??marker?.publicDiscoveryDocument?.()?.catalog??marker?.publicMarketDocument?.()?.catalog;if(selected?.complete)return selected;}catch{/* A missing navigation marker does not erase an existing display. */}
  for(const read of publicDisplayReaders)try{const selected=read();if(selected?.complete)return selected;}catch{/* Optional display continuation. */}return null;
 }
-export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown,previous:PublicMarketCatalog|null=carriedPublicCatalog()??discoveredPublicCatalog):void{
+export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snapshot?:unknown,previous:PublicMarketCatalog|null=carriedPublicCatalog()??discoveredPublicCatalog):boolean{
+ if(refusesPublicMarketSelection(catalog,previous)||refusesPublicMarketSelection(catalog,discoveredPublicCatalog))return false;
  let carried=retainPublicProfileHeaders(catalog,previous);
  // Carry compatible held display once, before every surface receives this
  // successor. These public operands never become financial authority.
@@ -154,6 +155,7 @@ export function publishDiscoveredPublicCatalog(catalog:PublicMarketCatalog,snaps
  }
  const selected=snapshot?mergePublicQuotes(carried,snapshot):carried;
  if(selected!==catalog)reusePublicMarketResponse(catalog,selected);if(selected.complete)discoveredPublicCatalog=selected;mergeAdmittedPublicAssets(selected);for(const listener of listeners)listener(selected,snapshot);if(selected.complete)retainPublicMarket(catalog,snapshot,selected,previous);
+ return true;
 }
 function publishDiscoveredPublicQuotes(snapshot:unknown):void{
  const catalog=discoveredPublicCatalog;

@@ -1,5 +1,5 @@
 import {inspectPublicMarketCatalog} from './public-market-catalog-inspection.js';
-import {publicOriginalCreator,publicOriginalProvenance,safeReceizArtworkUrl,safeReceizPublicUrl,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
+import {publicOriginalCreator,publicOriginalProvenance,readPublicMarketSelection,safeReceizArtworkUrl,safeReceizPublicUrl,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {readPublicProfileHeads,readPublicProfileHeadRefusals} from './public-profile-header.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 import {publicCarriedText} from './public-carried-text.js';
@@ -20,7 +20,7 @@ import {publicProfileUsername} from './account-name.js';
  * response, admission receipt, financial permission or freshness verdict. */
 export type HeldPublicMarketInput={schema:'bank.public-market.held-catalog.v1';catalog:PublicMarketCatalog};
 const schema='bank.public-market.held-catalog.v1';
-const catalogFields=new Set(['items','complete','revision','observedAt','sourceCount','sportsCoverage','sportsObservedAt','sportsSealedBirthsObservedAt','sportsHistorySnapshot','publicProfileHeads','publicProfileHeadRefusals','publicProfileHeadsRevision']);
+const catalogFields=new Set(['items','complete','revision','selection','observedAt','sourceCount','sportsCoverage','sportsObservedAt','sportsSealedBirthsObservedAt','sportsHistorySnapshot','publicProfileHeads','publicProfileHeadRefusals','publicProfileHeadsRevision']);
 const itemFields=new Set(['id','assetId','title','summary','category','sourceUrl','verifyUrl','originalUrl','originalDigest','pulse','sealedAt','ownerUsername','ownerDisplayName','ownerProfileUrl','priceUsd','changePct','chart','authority','canTrade','originalCreator','sourceProvenance','shareInventory','hasPbiSignature','pbiReceiptHash','circulationCount','pricedCount','capitalizationUsdCents','nativeAsset','hasLongForm','carriedText','mediaKind','artworkUrl','videoPosterUrl','cardClaimHash','collectiblePresentation','playback','documentUrl','book','proofManifest','proofManifestSource','readingUrl','livePulseSeed','sportsValuation','sealedBirths','sealedCopies','localValuationPulse','valuationBinding','ownerReceivingUsername','ownerAvatarUrl','admittedOwnerUserId','ownerAvatarFallback','ownerIdentity']);
 const object=(value:unknown):Record<string,unknown>|null=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null)&&Object.getOwnPropertyNames(value).length===Object.keys(value).length?value as Record<string,unknown>:null;
 const text=(value:unknown,max=4096):value is string=>typeof value==='string'&&value.length>0&&value.length<=max;
@@ -114,6 +114,7 @@ export function readHeldPublicMarketInput(input:unknown):PublicMarketCatalog|nul
   const catalog=inspectPublicMarketCatalog(envelope.catalog);
   if(!catalog||!only(catalog,catalogFields)||!plainArray(catalog.items)||!text(catalog.revision,256)||!time(catalog.observedAt)||!count(catalog.sourceCount,100000)||catalog.publicProfileHeadsRevision!==undefined&&!hash(catalog.publicProfileHeadsRevision)||catalog.sportsCoverage!==undefined&&!['complete','partial','missing'].includes(catalog.sportsCoverage)||catalog.sportsObservedAt!==undefined&&!time(catalog.sportsObservedAt)||catalog.sportsSealedBirthsObservedAt!==undefined&&!time(catalog.sportsSealedBirthsObservedAt)||!optionalPublic(catalog.sportsHistorySnapshot,publicSportsHistorySnapshot)||!catalog.items.every(validItem))return null;
   if(envelope.bankProfileDirectoryRevision!==undefined&&(!hash(envelope.bankProfileDirectoryRevision)||envelope.bankProfileDirectoryRevision!==catalog.publicProfileHeadsRevision))return null;
+  if(!optionalPublic(catalog.selection,readPublicMarketSelection))return null;
   const curated=headers(catalog);if(!curated)return null;
   const {publicProfileHeads:_heads,publicProfileHeadRefusals:_refusals,...display}=catalog;
   return{...display,...curated};

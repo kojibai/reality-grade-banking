@@ -241,6 +241,18 @@ it('enriches retained assets from shipped share observations while every live so
 });
 
 const shareQuoteInput=(held='1000000',at='14710100000000')=>{const value=quoteInput();Object.assign(value.data.liveMarkets[0],{shareInventory:{schema:'receiz.market.share-inventory.v1',marketItemId:'a',assetId:'a',family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:at,outstandingShareQuantityMicro:held,availableShareQuantityMicro:'9000000',positionsMicro:held,certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'}});return value;};
+
+it('uses the inventory carried by a new Original while the independent quote reader is unavailable',async()=>{
+ const existing=sourceInput(['held']),successor=sourceInput(['held','a']);
+ network.membership.mockResolvedValueOnce(parsePublicMarket(existing)).mockResolvedValueOnce(parsePublicMarket(successor,shareQuoteInput()));
+ network.quotes.mockRejectedValue(Error('QUOTE_READ_UNAVAILABLE'));
+ await observe(async read=>{
+  expect(read().historyCatalog?.items.map(item=>item.id)).toEqual(['held']);
+  await act(async()=>read().refresh());
+  expect(read().historyCatalog?.items.find(item=>item.id==='a')?.shareInventory).toMatchObject({outstandingShareQuantityMicro:'1000000'});
+  expect(read().quoteStatus).toBe('stale');
+ });
+});
 function deferredQuote<T>(){let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r;});return{promise,resolve};}
 it('does not queue a post-trade share update behind a stalled collection or older quote',async()=>{
  const membership=deferredQuote<ReturnType<typeof parsePublicMarket>>(),oldQuote=deferredQuote<unknown>(),fresh=deferredQuote<unknown>();

@@ -1,4 +1,4 @@
-import {profileCollectionCapitalization} from '../public-explorer/profile-prices';
+import {compatibleShareInventory,mergeShareInventory,publicShareCapitalization} from '../receiz/market-share-inventory';
 import type {PublicNetworkCache} from '../receiz/public-network-cache';
 import type {ObservatoryDirectory} from '../receiz/public-ledger-document-seed';
 import {readPublicProofPresentation, type PublicMarketCatalog, type PublicMarketItem} from '../receiz/public-market';
@@ -26,10 +26,27 @@ export function documentCatalog(snapshot?:PublicNetworkCache, directory?:Observa
 }
 
 export interface RankedProfile {
-  username:string; name:string; createdAt:string|null; stats:PublicProfile['stats']; capitalization:string|null;
+  username:string; name:string; createdAt:string|null; stats:PublicProfile['stats']; capitalization:string|null; capitalizationPartial?:true;
 }
 
-export function observeCatalog(catalog:PublicMarketCatalog,audience?:ObservatoryDirectory['audience']) {
+export function observeCatalog(catalog:PublicMarketCatalog,audience?:ObservatoryDirectory['audience'],carried?:PublicMarketCatalog) {
+  // A thinner live collection can still use the first frame's exact pricing
+  // operands for surviving Originals. Missing supply contributes no amount.
+  const heldPrices=carried&&carried!==catalog?new Map(carried.items.map(item=>[item.id,item])):null;
+  const capitalization=(items:PublicMarketItem[])=>{
+    const priced=items.map(item=>{
+      const prior=heldPrices?.get(item.id);
+      const matches=!!prior&&!!item.originalDigest&&prior.originalDigest===item.originalDigest&&prior.assetId===item.assetId&&prior.pulse===item.pulse
+        &&!!item.ownerIdentity&&prior.ownerIdentity?.userId===item.ownerIdentity.userId&&prior.ownerUsername===item.ownerUsername;
+      const carriedInventory=matches?compatibleShareInventory(item,prior.shareInventory):undefined;
+      const currentInventory=compatibleShareInventory(item,item.shareInventory);
+      const shareInventory=carriedInventory===currentInventory?currentInventory:mergeShareInventory(carriedInventory,currentInventory??null);
+      const priceUsd=item.priceUsd??(matches?prior.priceUsd:null);
+      return priceUsd===item.priceUsd&&shareInventory===item.shareInventory?item:{...item,priceUsd,shareInventory};
+    });
+    const result=publicShareCapitalization({...catalog,items:priced});
+    return {capitalization:result.covered?result.usdCents:null,...(result.covered&&!result.complete?{capitalizationPartial:true as const}:{})};
+  };
   const bound=publicProfileDirectoryBindings(catalog);
   const cards=new Map(catalog.publicProfileHeads?.map(head=>[String(head.profile.username),head]));
   const names=new Set<string>();
@@ -75,7 +92,7 @@ export function observeCatalog(catalog:PublicMarketCatalog,audience?:Observatory
     }
     const profile=selectHeldPublicProfile(username,family);
     if(!profile||!bound(profile))continue;
-    profiles.push({username:profile.username,name:profile.displayName,createdAt:profile.createdAt,stats:statsFor(profile.userId,username,profile.stats),capitalization:profileCollectionCapitalization(profile.items)});
+    profiles.push({username:profile.username,name:profile.displayName,createdAt:profile.createdAt,stats:statsFor(profile.userId,username,profile.stats),...capitalization(profile.items)});
   }
   const sum=(key:'views'|'plays'|'seconds')=>{
     let total=0, covered=0;

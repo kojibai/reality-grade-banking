@@ -1,4 +1,4 @@
-import {fetchPublicMarket,parsePublicMarket,restorePublicMarketResponse,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
+import {fetchPublicMarket,parsePublicMarket,refusesPublicMarketSelection,restorePublicMarketResponse,rememberPublicOriginalLocators,type PublicMarketItem,type PublicMarketCatalog} from '../receiz/public-market';
 import {appendFeedItems,orderFeedItems,refreshFeedItems} from './feed-items';
 import {mergeAdmittedPublicAssets,publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog,subscribeAssetPublicationAdmissions} from '../receiz/asset-publication-adoption';
 import {readPublicMarketDocumentSeed,preparePublicMarketDocumentSeed} from '../receiz/public-market-document-seed';
@@ -32,6 +32,8 @@ export function subscribePreparedFeedCatalog(listener:(catalog:PublicMarketCatal
 /** The complete current document cohort replaces an older shipped expansion.
  * These are presentation bytes, never proof or account admission. */
 export function reusePreparedFeedCatalog(catalog:PublicMarketCatalog,generation:string|null):PublicMarketCatalog{
+ const selected=retainedDiscoveredPublicCatalog();
+ if(selected&&refusesPublicMarketSelection(catalog,selected)){catalog=selected;generation=null;}
  // The canonical Source is already verified and held. Reuse the same public
  // projection as Market/Profile; delivery is not permission to display it.
  const admitted=mergeAdmittedPublicAssets(catalog);
@@ -89,7 +91,7 @@ export function prepareFeedItems(signal?:AbortSignal,refresh=false):Promise<Publ
  if(!pending){const started=revision,work=(refresh?fetchPublicMarket(AbortSignal.timeout(12000)):shippedSource()).then(catalog=>{
   if(started!==revision&&held)return held;
   if(refresh&&catalog.complete){
-   publishDiscoveredPublicCatalog(catalog);
+   if(!publishDiscoveredPublicCatalog(catalog)){readHeldFeedCatalog();return held!;}
    const marker=typeof document==='undefined'?null:document.getElementById('receiz-navigation') as PublicCatalogMarker|null;
    if(marker?.publicMarketCatalog?.()?.complete){readHeldFeedCatalog();return held!;}
   }

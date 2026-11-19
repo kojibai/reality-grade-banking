@@ -61,7 +61,20 @@ export interface PublicMarketItem {
   priceUsd: number | null; changePct: number | null; chart: number[];
   authority: 'projection-only'; canTrade: false;
 }
-export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadRefusals?:readonly PublicProfileHeadRefusal[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+type PublicMarketSelection=Readonly<{provider:string;sequence:string}>;
+export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadRefusals?:readonly PublicProfileHeadRefusal[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; selection?:PublicMarketSelection;observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+export function readPublicMarketSelection(value:unknown):PublicMarketSelection|undefined{
+ const {provider,sequence}=record(value);
+ return typeof provider==='string'&&/^[a-f0-9]{64}$/.test(provider)&&typeof sequence==='string'&&/^\d{20}$/.test(sequence)?{provider,sequence}:undefined;
+}
+/** Order display replacements by the selected native vector. Its sequence is
+ * scoped to its provider and carries no proof or financial authority. */
+export function refusesPublicMarketSelection(candidate:PublicMarketCatalog,held:PublicMarketCatalog|null|undefined):boolean{
+ if(!held?.selection||!candidate.complete)return false;
+ const next=candidate.selection,previous=held.selection;
+ if(!next)return true;
+ return next.provider===previous.provider&&(next.sequence<previous.sequence||next.sequence===previous.sequence&&candidate.revision!==held.revision);
+}
 /** Both public display indexes participate in selection, including profiles
  * with no Originals. Neither revision supplies proof or transaction authority. */
 export function samePublicMarketMembership(a:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined,b:Pick<PublicMarketCatalog,'revision'|'publicProfileHeadsRevision'>|null|undefined):boolean{
@@ -225,9 +238,9 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
       ...(ownerUserId&&ownerUsername&&ownerCreatedAt&&Number.isFinite(Date.parse(ownerCreatedAt))?{ownerIdentity:{userId:ownerUserId,username:ownerUsername,createdAt:ownerCreatedAt}}:{}),
       priceUsd: nonnegative(source.valueUsd), changePct: null, chart: [], authority: 'projection-only', canTrade: false });
   }
-  const publicProfileHeadRefusals=readPublicProfileHeadRefusals(transport.publicProfileHeads),refusedOwners=new Set(publicProfileHeadRefusals.map(head=>head.profile.userId)),publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads).filter(head=>!refusedOwners.has(String(head.profile.userId))),headRevision=text(transport.publicProfileHeadsRevision,64);
+  const publicProfileHeadRefusals=readPublicProfileHeadRefusals(transport.publicProfileHeads),refusedOwners=new Set(publicProfileHeadRefusals.map(head=>head.profile.userId)),publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads).filter(head=>!refusedOwners.has(String(head.profile.userId))),headRevision=text(transport.publicProfileHeadsRevision,64),selection=readPublicMarketSelection(meta.selection);
   const catalog: PublicMarketCatalog = { ...(publicProfileHeads.length?{publicProfileHeads}:{}),...(publicProfileHeadRefusals.length?{publicProfileHeadRefusals}:{}),...(headRevision&&/^[a-f0-9]{64}$/.test(headRevision)?{publicProfileHeadsRevision:headRevision}:{}),items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
-    revision: text(meta.revision, 256) ?? '', observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
+    revision: text(meta.revision, 256) ?? '', ...(selection?{selection}:{}),observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
   return mergePublicQuotes(catalog, snapshot);
 }
 /** Curated proof presentation carried by Ledger records and receipts. Reuse the
@@ -402,9 +415,11 @@ async function readPublicMembership(signal?:AbortSignal,afterPublication=assetPu
   if(!response.ok)throw new Error('The public Market could not be refreshed.');
   const exact=preparedPublicCatalogCache&&/^application\/json(?:;|$)/i.test(response.headers.get('content-type')??'')?response.clone():null;
   const input=await response.json(),catalog=parsePublicMarket(input,input?.snapshot);
-  rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
+  if(!refusesPublicMarketSelection(catalog,selectedPublicMembership?.catalog)){
+   rememberPublicOriginalLocators(catalog);acceptDiscoveredPublicAssets(catalog);
+   if(catalog.complete&&(epoch===publicMembershipEpoch||!!catalog.selection))selectedPublicMembership={catalog,etag:response.headers.get('etag')};
+  }
   rememberPublicMarketResponse(catalog,input,exact);
-  if(catalog.complete&&epoch===publicMembershipEpoch)selectedPublicMembership={catalog,etag:response.headers.get('etag')};
   return samePublicMarketMembership(catalog,held)?null:catalog;
 }
 export async function fetchPublicMarket(signal?:AbortSignal,afterPublication=assetPublicationFreshnessHint()):Promise<PublicMarketCatalog>{
