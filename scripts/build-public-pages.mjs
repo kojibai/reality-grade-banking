@@ -288,11 +288,11 @@ const discoveryWorkspacePages={
  '/ledger/':{...publicPages['/ledger/'],content:ledgerStates.get('/ledger/').content,analyticsSeed:{...publicPages['/analytics/'].analyticsSeed,path:'ledger'}},
  '/explore/':{...publicPages['/explore/'],content:exploreDestination.content,exploreFrame:{generation:exploreDestination.seed.generation,packet:explorePacketDigest}},
 };
+const feedBundle=navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':{...publicPages['/feed/'],content:''},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}}));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  const feedBundle=page.runtime==='feed'?`<script id="receiz-navigation" type="application/json">${JSON.stringify(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata, '/feed/':{...publicPages['/feed/'],...(page.runtime==='feed'?{content:''}:{})},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})).replaceAll('<','\\u003c')}</script>`:null;
   const discoverBundle=page.runtime==='discover'?navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':publicPages['/feed/'],'/discover/':{...publicPages['/discover/'],content:''},...discoveryWorkspacePages},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})):null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${discoverBundle??feedBundle}</body>`):null;
   const directMarketing=directMarketingEntries.get(path);

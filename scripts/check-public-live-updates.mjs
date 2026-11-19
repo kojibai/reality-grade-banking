@@ -40,6 +40,16 @@ const addedIds=new Set(captured.added.map(row=>row.id)),withdrawnIds=new Set(cap
 const finalRows=[...captured.added,...baseline.transport.publicOriginals.filter(row=>!withdrawnIds.has(row.id)&&!addedIds.has(row.id))];
 const finalSource=exactSource??{ok:true,transport:{...baseline.transport,generatedAt:captured.generatedAt,publicProfileHeads:[],publicOriginals:finalRows,publicMembership:{...captured.membership,itemCount:finalRows.length,revision:revision(finalRows)}}};
 const intermediate=structuredClone(finalSource);intermediate.transport.publicOriginals=intermediate.transport.publicOriginals.filter(row=>row.id!==additions[1].id);intermediate.transport.generatedAt=generatedAt;intermediate.transport.publicMembership={...intermediate.transport.publicMembership,itemCount:intermediate.transport.publicOriginals.length,revision:revision(intermediate.transport.publicOriginals)};
+// The replay uses its own ordered delivery coordinates. A rebuilt predecessor
+// cannot keep the live selection of the later, unfiltered production capture.
+const finalSelection=exactSource?finalSource.transport.publicMembership.selection:{provider:createHash('sha256').update('Bankeiz public update replay').digest('hex'),sequence:'00000000000000000002'};
+if(finalSelection){
+ const sequence=BigInt(finalSelection.sequence);
+ assert.ok(sequence>=2n,'A selected replay needs two preceding delivery coordinates.');
+ baseline.transport.publicMembership.selection={provider:finalSelection.provider,sequence:(sequence-2n).toString().padStart(20,'0')};
+ intermediate.transport.publicMembership.selection={provider:finalSelection.provider,sequence:(sequence-1n).toString().padStart(20,'0')};
+ if(!exactSource)finalSource.transport.publicMembership.selection=finalSelection;
+}else delete baseline.transport.publicMembership.selection;
 const responses=[baseline,intermediate,finalSource];
 const sourceFixtureSha256=createHash('sha256').update(exactSourceBytes??JSON.stringify(finalSource)).digest('hex');
 const expectedOwnerCount=version=>responses[version].transport.publicOriginals.filter(row=>row.ownerUsername===owner).length;
@@ -51,7 +61,7 @@ const packet=JSON.parse(seedMatch[1]),catalog=packet.catalog??JSON.parse(gunzipS
 const heads=new Map((catalog.publicProfileHeads??[]).map(head=>[head.profile.userId,head.profile]));
 for(const row of catalog.items)if(Object.hasOwn(row,'ownerAvatarFromProfile')){assert.equal(row.ownerIdentity?.userId,row.ownerAvatarFromProfile);row.ownerAvatarUrl=heads.get(row.ownerAvatarFromProfile)?.avatarUrl;delete row.ownerAvatarFromProfile;}
 const beforeItems=catalog.items.filter(row=>!additionIds.has(row.id));
-const initialCatalog={...catalog,items:beforeItems,sourceCount:baseline.transport.publicOriginals.length,revision:baseline.transport.publicMembership.revision};
+const initialCatalog={...catalog,items:beforeItems,sourceCount:baseline.transport.publicOriginals.length,revision:baseline.transport.publicMembership.revision,selection:baseline.transport.publicMembership.selection};
 // Usually this is byte-for-byte the shipped seed. If a later build already
 // includes these two rows, the test supplies its older retained predecessor.
 const predecessor={...packet,catalog:initialCatalog};delete predecessor.catalogGzip;

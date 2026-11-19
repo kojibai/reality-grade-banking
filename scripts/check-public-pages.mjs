@@ -281,7 +281,9 @@ assert.ok(feedOpening.includes('data-public-runtime="feed"')&&feedOpening.includ
 assert.ok(feedOpening.includes('<style data-public-page-style="feed">')&&!/<link rel="stylesheet"/.test(feedOpening),'The feed stage never waits on a stylesheet request.');
 assert.ok(/<script type="module" async[^>]*src="\/assets\/feed-/.test(feedDocument),'Feed starts before its unrelated navigation payload.');
 assert.ok(!feedOpening.includes('site-footer')&&!feedOpening.includes('account-opening-screen'),'Feed first paint is the actual content, with no global footer or account-entry work.');
-const feedNavigation=JSON.parse(feedDocument.match(navigationPattern)[1]);
+const feedNavigationPacket=JSON.parse(feedDocument.match(navigationPattern)[1]);
+assert.equal(feedNavigationPacket.format,'bank.presentation-envelope.v1','Feed uses the existing lossless navigation envelope.');
+const {navigation:feedNavigation}=decodeNavigationEnvelope(feedNavigationPacket);
 assert.deepEqual(Object.keys(feedNavigation.pages).sort(),[...new Set([...Object.keys(navigation.pages),'/feed/','/discover/'])].sort(),'Feed retains every known destination for the existing instant controller.');
 for(const [path,page]of Object.entries(feedNavigation.pages))if(!['/explore/','/feed/','/discover/'].includes(path)){assert.equal(page.content,'','Only the existing Explore return carries a full body in the immersive Feed.');if(!page.runtime){if(path==='/legal/')assert.equal(page.head,navigation.pages[path].head,'The final legal generator keeps its exact current notices head.');else{assert.equal(page.head,'','Unvisited static heads remain compact.');assert.match(page.headSha256,/^[a-f0-9]{64}$/);}assert.match(page.contentSha256,/^[a-f0-9]{64}$/);}}
 assert.equal(feedNavigation.pages['/feed/'].content,'','The current Feed body is already present in its retained runtime root.');
@@ -315,7 +317,7 @@ assert.ok(feedInterfaceSize<600000,`The dedicated feed interface and non-text pa
 const feedImports=new Set();
 async function checkFeedEntry(key){if(feedImports.has(key))return;feedImports.add(key);const entry=builds[key];assert.ok(entry);const body=await readFile('dist/'+entry.file,'utf8');assert.ok(!/createNativeIdentity|\/api\/chat\/conversations|native-account\/ensure|createCheckoutIdentitySession/.test(body),'Feed static entry cannot mount account/payment/messaging execution before user intent.');for(const dep of entry.imports??[])await checkFeedEntry(dep);}
 await checkFeedEntry('feed/index.html');
-console.log('Verified source-carried Feed first paint, inline styles, lean navigation and intent-only account import boundary.');
+console.log(`Verified source-carried Feed first paint, inline styles, lean navigation and intent-only account import boundary (${feedInterfaceSize} of 600000 characters).`);
 
 const discoveryDocument=await readFile('dist/discover/index.html','utf8');
 const discoveryOpening=discoveryDocument.slice(0,discoveryDocument.indexOf('<script id="receiz-navigation"'));
