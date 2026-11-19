@@ -127,6 +127,12 @@ try{
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await graphTab.getAttribute('aria-pressed'),'true');
   assert.ok(await page.locator('.obs-bars [data-occupied]').count()>1,'Graph history spans multiple dated intervals');
+  const selectedOriginals=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')).transport.publicOriginals;
+  const graphPulses=new Map(ledgerSeed.records.filter(row=>row.source==='graph'&&row.kind==='market-asset').map(row=>[row.sourceId,row.pulse]));
+  assert.equal(graphPulses.size,selectedOriginals.length);
+  for(const original of selectedOriginals)assert.equal(graphPulses.get('market-asset-'+original.id),String(original.livePulseSeed.claimPulse));
+  await page.getByLabel('Filter by record type').selectOption('market-asset');
+  assert.equal(await page.locator('.obs-chart-head p b').innerText(),trafficText(selectedOriginals.length),'The offline graph plots every selected Original on its issuance date');
   await streams.getByRole('button',{name:'Showcase',exact:true}).click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await streams.getByRole('button',{name:'Showcase'}).getAttribute('aria-pressed'),'true');

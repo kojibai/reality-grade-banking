@@ -1,5 +1,5 @@
 export const governanceGuide = {
- slug:'governance',group:'Banking',title:'Governance',visual:'proof',
+ slug:'governance',path:'/learn/governance/',group:'Banking',title:'Governance',
  description:'Follow a public decision from its founding charter to a signed proposal, ballot and verifiable outcome. Open the live Receiz and Bankeiz charters.',
  intro:'Make a decision together. Keep the proof.',
  sections:[

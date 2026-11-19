@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {publicRouteAliases,canonicalPublicPath} from '../src/content/public-routes.mjs';
+import {governanceGuide} from '../src/content/governance-guide.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 import {togetherPages} from '../src/content/together.mjs';
 import {twinSalesPages} from '../src/content/twin-pages.mjs';
@@ -134,7 +135,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
       }
     }
     if(canonicalPath===matterPage.path){urls.add('/learn/matter.js');urls.add('/learn/product-walkthrough.js');}
-    const knownGuide=['/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,emailGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
+    const knownGuide=[governanceGuide.path,'/invitation/','/registry/','/build/','/accept/','/pay/',bookingGuidePage.path,emailGuidePage.path,matterPage.path].includes(canonicalPath)||canonicalPath===momentsPage.path||canonicalPath===meetingPage.path||standardPages.some(page=>page.path===canonicalPath)||outcomePages.some(page=>page.path===canonicalPath)||['/merchant/','/protect/','/vaults/','/id/','/guide/'].includes(canonicalPath)||cooperative||path==='/business/'||canonicalPath===directoryPage.path||businessFitPages.some(page=>page.path===path)||path==='/learn/guides/'||learningPages.some(page=>learningPath(page)===path),category=assetCategories.some(item=>item.path===path);
     if(canonicalPath===directoryPage.path)urls.add('/learn/business-fit.js');
     if (!/^\/learn\/(?:[a-z0-9-]+\/)?$/.test(path) && !['/legal/','/schemas/','/discover/','/feed/','/explore/','/ledger/','/analytics/','/verify/','/receipt/'].includes(path)&&!knownGuide&&!relationshipGuide&&!category) throw Error('OFFLINE_PUBLIC_ROUTE_INVALID');
     // Each retained document already carries the complete public catalog.

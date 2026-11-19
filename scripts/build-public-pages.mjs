@@ -70,6 +70,7 @@ import { writeValueExplainerAssets } from './value-explainer-assets.mjs';
 import {publicPages as metadataPages,publicPage,applyPublicMetadata,publicEntryFallback,socialMetadata,structuredMetadata} from './public-page-metadata.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 import {noteContinuityGuideSections} from '../src/content/note-continuity.mjs';
+import {governanceGuide} from '../src/content/governance-guide.mjs';
 import {learningPages,learningPath,assetCategories} from '../src/content/learning-pages.mjs';
 const origin = 'https://bankeiz.com';
 const pages=[{slug:'',title:'Reality-grade banking',description:'Money, assets, markets and proof continuity explained.',intro:'Your value. More possibilities.',sections:[]},{slug:'guides',title:'All guides',description:'The complete guide to your account, assets, markets, history and standards.',sections:[]},...learningPages];
@@ -163,7 +164,7 @@ try {
    if(!content||!seed)throw Error('PUBLIC_LEDGER_STATIC_STATE_REQUIRED');
    ledgerStates.set('/'+path+'/',{content:content[1],seedScript:seed[0]});
   }
-  pages.push(receivingInvitationPage,institutionScorecardPage,merchantPage,momentsPage,bankingPage,guidePage,meetingPage,bookingGuidePage,emailGuidePage,paymentGuidePage,matterPage,...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, acceptMoneyPage, independentBankPage, valueExplainerPage, businessPage,vaultPage,protectionPage,directoryPage,...businessFitPages,...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages,identityContinuityPage,...outcomePages,...standardPages,...proposalPages,...agreementPages,...clientWorkProductPages);
+  pages.push(governanceGuide,receivingInvitationPage,institutionScorecardPage,merchantPage,momentsPage,bankingPage,guidePage,meetingPage,bookingGuidePage,emailGuidePage,paymentGuidePage,matterPage,...accountNoticePages(BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_MESSAGING_CONSENT, BANK_MESSAGING_SCOPES), realityGradePage, acceptMoneyPage, independentBankPage, valueExplainerPage, businessPage,vaultPage,protectionPage,directoryPage,...businessFitPages,...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages,identityContinuityPage,...outcomePages,...standardPages,...proposalPages,...agreementPages,...clientWorkProductPages);
   const html = await readFile('dist/index.html', 'utf8');
   const launchImages = await buildLaunchImages('dist', AccountOpening);
   bankHtml = openingShellHtml(html, AccountOpening).replace('</head>', launchImages + '</head>');

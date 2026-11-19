@@ -1,3 +1,4 @@
+import {governanceGuide} from '../src/content/governance-guide.mjs';
 import {governanceGuideContent} from './governance-guide.mjs';
 import {emailGuidePage} from '../src/content/email-guide.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
@@ -29,6 +30,7 @@ import {agreementPages} from '../src/content/agreement-pages.mjs';
 import {clientWorkProductPages} from '../src/content/client-work-product-pages.mjs';
 // Public discovery only. Existing routes and native authorities are unchanged.
 const solutionGuides=[
+ governanceGuide,
  ...[...proposalPages,...agreementPages,...clientWorkProductPages].map(page=>({...page,group:'Banking'})),
  {...emailGuidePage,group:'Banking'},
  {...bookingGuidePage,group:'Banking'},

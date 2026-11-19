@@ -95,7 +95,7 @@ try{
    assert.equal(await header.getByRole('link',{name:'Discover people and their work'}).count(),1);
    assert.equal(await header.locator('a[href="/analytics/"]').count(),0);
    assert.deepEqual(await header.locator('nav a').evaluateAll(links=>links.map(link=>link.pathname)),['/explore/','/market-cap/','/ledger/','/learn/','/discover/']);
-   assert.deepEqual(await scope.locator('.profile-footer nav a').evaluateAll(links=>links.map(link=>link.pathname)),['/conformance/','/standards/','/legal/']);
+   assert.deepEqual(await scope.locator('.profile-footer nav a').evaluateAll(links=>links.map(link=>link.pathname)),['/vote/','/conformance/','/standards/','/legal/']);
    assert.equal(await scope.locator('#obs-profiles tbody tr').count(),8);
    assert.equal(await scope.getByLabel('Profiles per page').inputValue(),'8');
    const trades=scope.locator('#obs-trading');assert.equal(await trades.locator('.obs-trading-plot svg').count(),2);
