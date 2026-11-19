@@ -18,8 +18,8 @@ function matches(row:GovernanceRow,tab:Tab){
   return ({charter:'Charters',ballot:'Ballots',mandate:'Mandates',candidacy:'Candidates',challenge:'Challenges',ratification:'Ratifications',closure:'Closures'} as const)[t.kind]===tab;
 }
 export const governanceExamplePath='/vote/?example=harbor-tool-library';
-export function GovernanceRegister({rows,network,go,path,member,children,personal=false}:{rows:readonly GovernanceRow[];network:readonly GovernanceRow[];go:(digest:string)=>void;path:(row:GovernanceRow)=>string|null;member?:(id:string)=>string;children?:ReactNode;personal?:boolean}){
-  const [activityView,setActivityView]=useState(personal),[tab,setTab]=useState<Tab|'All records'>('All records'),[query,setQuery]=useState(''),[limit,setLimit]=useState(24);
+export function GovernanceRegister({rows,network,go,path,member,children,personal=false,initialActivity=personal}:{rows:readonly GovernanceRow[];network:readonly GovernanceRow[];go:(digest:string)=>void;path:(row:GovernanceRow)=>string|null;member?:(id:string)=>string;children?:ReactNode;personal?:boolean;initialActivity?:boolean}){
+  const [activityView,setActivityView]=useState(initialActivity),[tab,setTab]=useState<Tab|'All records'>('All records'),[query,setQuery]=useState(''),[limit,setLimit]=useState(24);
   const {byId,ballots,activity}=useMemo(()=>{
     const byId=new Map(network.map(r=>[r.digest,r])),ballots=new Map<string,number>(),activity=new Map<string,{proposals:number;polls:number}>();
     for(const r of network){const t=r.document.terms;if(t.kind==='proposal'){const count=activity.get(t.charter)??{proposals:0,polls:0};if(t.decision==='Poll')count.polls++;else count.proposals++;activity.set(t.charter,count);}

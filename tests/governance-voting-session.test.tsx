@@ -26,6 +26,10 @@ it('shows the owner-bound profile handle separately from the proof signer and ke
   expect(owner.querySelector('.gov-proof-owner code')?.textContent).toBe(proofOwner);
   expect(owner.querySelector('a[href="/vote/"]')).toBeNull();
   const visitor=renderToStaticMarkup(<VotingBoard profile={{...profile,ownerIdentity:null}}/>);
+  const guest=document.createElement('div');guest.innerHTML=visitor;
+  expect(guest.querySelector('.gov-tabs [aria-current="page"]')?.textContent).toBe('Charters');
+  expect(guest.querySelector('.gov-tabs')?.textContent).toContain('Account activity');
+  expect(owner.querySelector('.gov-scope [aria-pressed="true"]')?.textContent).toBe('My activity');
   expect(visitor).not.toContain(proofOwner);expect(visitor).not.toContain('My Receiz ID');
 });
 

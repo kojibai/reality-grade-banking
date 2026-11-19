@@ -9,7 +9,7 @@ import {saveIdentityRecord} from '../../checkout/CheckoutIdentity';
 import {MeetingIdentity} from '../meeting/MeetingIdentity';
 import {checkoutIdentitySession} from '../../checkout/checkout-identity';
 import type {OpenIdentity} from '../../receiz/native-identity';
-import {governanceRows,subscribeGovernance,openPublicGovernancePage,refreshGovernanceDirectory,restoreGovernanceDirectory,heldGovernanceOriginal,type GovernanceRow} from '../../receiz/governance-directory';
+import {governanceRowOnProfile,governanceRows,subscribeGovernance,openPublicGovernancePage,refreshGovernanceDirectory,restoreGovernanceDirectory,heldGovernanceOriginal,type GovernanceRow} from '../../receiz/governance-directory';
 import {charterAdmitsMember,openGovernanceOriginal,sealGovernanceOriginal,type GovernanceAttachment,type GovernanceOriginal,type GovernanceTerms} from '../../receiz/governance-documents';
 import {governanceOutbox,rememberGovernanceDelivery,reopenPendingGovernance,type PendingOriginal} from '../../receiz/governance-outbox';
 import {eligibleProposal,voteEnds,charterRatification,governanceTitle,ofKind,type Row} from '../../receiz/governance-view';
@@ -24,7 +24,7 @@ import {useGovernanceMemberNames} from './governance-member-names';
 import './voting.css';
 
 type Screen='list'|'charter'|'proposal'|'detail'|'review'|'saved';
-type Props={initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
+type Props={initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
 const closedSessionKey='bank.voting.session.closed';
 function closedVotingSession(){try{return sessionStorage.getItem(closedSessionKey)==='1';}catch{return false;}}
 const blank=Object.freeze([]) as readonly GovernanceRow[];
@@ -48,7 +48,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
   const chosen=rows.find(r=>r.digest===selected),charters=ofKind(rows,'charter'),actor=identity?.binding.artifactOwnerReceizId??null;
   const eligibleCharters=charters.filter(c=>actor&&charterAdmitsMember(c.document.terms.rules,actor)&&charterRatification(c,rows).complete);
   const publicProfile=Boolean(profile&&!profile.ownerIdentity);
-  const [personal,setPersonal]=useState(false);
+  const [personal,setPersonal]=useState(Boolean(profile?.ownerIdentity));
   const [preparedName,setPreparedName]=useState<{owner:OpenIdentity;name:string}|null>(null);
   const profileName=identity&&profile?.ownerIdentity===identity?profile.publicName:null;
   const knownName=profileName||identity?.knownProfile?.()?.username||identity?.confirmedAccountUsername?.()||(preparedName?.owner===identity?preparedName?.name:null);
@@ -63,7 +63,11 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
   const publicId=username?profileUsernameLabel(receivingUsernameForIdentity(username,identity?.username??'')):null;
   const member=useGovernanceMemberNames(rows,actor,publicId,profile);
   const publicDigests=new Set(publicRows.map(r=>r.digest));
-  const viewRows=publicProfile||personal?rows.filter(r=>publicProfile?r.profileUid===profile?.uid:r.document.author===actor):publicRows;
+  const viewRows=useMemo(()=>{
+    if(profile&&publicProfile)return publicRows.filter(r=>governanceRowOnProfile(r,profile));
+    if(personal)return rows.filter(r=>r.document.author===actor||Boolean(profile&&governanceRowOnProfile(r,profile)));
+    return publicRows;
+  },[publicRows,rows,publicProfile,personal,actor,profile]);
   const exact=(digest:string)=>{const local=privateSources.find(o=>o.digest===digest);return local?Promise.resolve(local):heldGovernanceOriginal(digest);};
   const check=(who:OpenIdentity|null)=>{if(!active.current||currentIdentity.current!==who)throw Error('The open identity changed.');};
   const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setFiles([]);setAttachments([]);setWriting(false);setFounding(null);setEditionSource('');setTerms(null);setScreen(prev=>prev==='detail'?prev:'list');setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
@@ -253,7 +257,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
       {!profile&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
       {!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
-      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
+      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} initialActivity={personal&&!profile} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
       <div className="gov-actions gov-tools" role="group" aria-label="Governance records"><button className="gov-link" aria-label="Open governance Original" onClick={()=>fileInput.current?.click()}><Upload size={16} aria-hidden="true"/>Open Original</button><button className="gov-link" disabled={syncing} aria-busy={syncing} onClick={()=>void refreshByRequest()}><RefreshCw size={16} aria-hidden="true"/>Refresh records</button></div>
       {actor&&identity&&<details><summary>My Receiz ID</summary>{publicId&&<p>@{publicId}</p>}<div className="gov-proof-owner"><small>Proof owner ID</small><code>{actor}</code></div><button onClick={()=>saveIdentityRecord(identity)}><Download size={15}/>Save Identity Record</button></details>}
       {outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}

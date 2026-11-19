@@ -3,10 +3,11 @@ import {governanceCursorKey} from './governance-cursor';
 import {loadReceiz} from './client';
 import {BANK_APPLICATION_ID,BANK_PUBLIC_ORIGIN} from './config';
 import {nativeFetch} from './native-transport';
+import {publicProfileDirectoryUid} from './public-profile-directory-contract';
 import {governanceNamespace,governanceSchema,readGovernanceTerms,openGovernanceOriginal,requireGovernanceOriginal,type GovernanceDocument,type GovernanceOriginal} from './governance-documents';
 import type {ReceizAppStateRecordInput,PublicProofTransportRecord} from '@receiz/sdk';
 
-export type GovernanceRow=Readonly<{digest:string;document:GovernanceDocument;pulse:string;profileUid:string|null}>;
+export type GovernanceRow=Readonly<{digest:string;document:GovernanceDocument;pulse:string;profileUid:string|null;publisherUids?:readonly string[]}>;
 const family='bankeiz-public-governance-v1';
 const prefix='/vote/original/';
 const records=new Map<string,GovernanceRow>(),originals=new Map<string,GovernanceOriginal>();
@@ -15,19 +16,29 @@ let view:readonly GovernanceRow[]=[],restore:Promise<void>|undefined,refresh:Pro
 export const governanceRows=()=>view;
 export const subscribeGovernance=(fn:()=>void)=>{listeners.add(fn);return()=>{listeners.delete(fn);};};
 function changed(){view=Array.from(records.values()).sort((a,b)=>Number(b.pulse)-Number(a.pulse)||a.digest.localeCompare(b.digest));for(const fn of listeners)fn();}
-function rowOf(original:GovernanceOriginal,publisher:unknown):GovernanceRow{
-  return {digest:original.digest,document:original.document,pulse:original.pulse,profileUid:typeof publisher==='string'&&publisher===original.document.accountUid?publisher:null};
+/** A public profile link is a display projection. The verified Original owns authorship. */
+export function governanceRowOnProfile(row:GovernanceRow,profile:{uid:string;username?:string}){
+  if(row.document.accountUid)return row.profileUid===profile.uid&&row.document.accountUid===profile.uid;
+  return Boolean(profile.username&&row.document.author===profile.username+'.receiz.id'&&row.publisherUids?.includes(profile.uid));
+}
+function withPublisher(row:GovernanceRow,publisher:unknown):GovernanceRow{
+  if(!publicProfileDirectoryUid(publisher))return row;
+  if(row.document.accountUid){
+    return publisher===row.document.accountUid&&row.profileUid!==publisher?{...row,profileUid:publisher}:row;
+  }
+  if(row.publisherUids?.includes(publisher))return row;
+  return {...row,publisherUids:[...(row.publisherUids??[]),publisher]};
 }
 function cache(){return typeof caches==='undefined'?Promise.resolve(null):caches.open(family);}
 const locationFor=(digest:string)=>new URL(prefix+digest,location.origin).href;
 async function retain(original:GovernanceOriginal,publisher:unknown){
   requireGovernanceOriginal(original);
-  const row=rowOf(original,publisher);
-  if(!row.profileUid&&records.get(original.digest)?.profileUid)return;
-  originals.set(row.digest,original);records.set(row.digest,row);changed();
+  const {digest,document,pulse}=original,prior=records.get(digest);
+  const row=withPublisher({digest,document,pulse,profileUid:prior?.profileUid??null,publisherUids:prior?.publisherUids},publisher);
+  originals.set(digest,original);records.set(digest,row);changed();
   // A failed public cache write leaves the existing owner-held Original intact.
   try{const held=await cache();if(!held)return;
-  await held.put(locationFor(row.digest),new Response(original.file,{headers:{'content-type':original.file.type,'x-vote-filename':encodeURIComponent(original.file.name)}}));
+  await held.put(locationFor(digest),new Response(original.file,{headers:{'content-type':original.file.type,'x-vote-filename':encodeURIComponent(original.file.name)}}));
   await held.put(locationFor(row.digest)+'/view',new Response(JSON.stringify(row),{headers:{'content-type':'application/json'}}));
   }catch{/* The verified source stays in memory when local storage is full. */}
 }
@@ -36,7 +47,8 @@ function savedProjection(value:unknown,digest:string):GovernanceRow|null{
   if(!row||row.digest!==digest||!doc||doc.schema!==governanceSchema||doc.visibility!=='public'||
     typeof doc.author!=='string'||!doc.author||typeof row.pulse!=='string'||!/^\d{1,16}$/.test(row.pulse)||!Number.isSafeInteger(Number(row.pulse))||
     row.profileUid!==null&&(typeof row.profileUid!=='string'||row.profileUid!==doc.accountUid))return null;
-  return {...row,document:{...doc,terms:readGovernanceTerms(doc.terms)}};
+  const publisherUids=doc.accountUid===null&&Array.isArray(row.publisherUids)?row.publisherUids.filter(publicProfileDirectoryUid):undefined;
+  return {...row,publisherUids,document:{...doc,terms:readGovernanceTerms(doc.terms)}};
 }
 export function restoreGovernanceDirectory(){
   return restore??=(async()=>{
@@ -84,12 +96,21 @@ export async function admitPublicGovernanceRow(input:unknown){
   if(!data||row.appNamespace!==governanceNamespace||row.appProjectionClientId!==BANK_APPLICATION_ID||typeof data.digest!=='string'||! /^[a-f0-9]{64}$/.test(data.digest)||row.appObjectId!=='bankeiz-voting-'+data.digest)return;
   const publisher=row.appProjectionPublishedByReceizUserId;
   const known=records.get(data.digest);
-  if(known&&originals.has(data.digest)&&known.profileUid===(typeof publisher==='string'&&publisher===known.document.accountUid?publisher:null))return;
-  // Reuses only exact bytes already accepted in this runtime or its retained source store.
+  // A previously admitted Original may predate publisher retention. Upgrade its
+  // display metadata from this same delivery without rewriting its proof bytes.
   let existing:GovernanceOriginal|undefined;
-  if(records.has(data.digest))try{existing=await heldGovernanceOriginal(data.digest);}catch{/* Recover a missing exact file from this incoming record. */}
-  if(existing&&records.get(data.digest)?.profileUid===rowOf(existing,publisher).profileUid)return;
-  const opened=existing??await openGovernanceTransportSource(data);
+  if(known){
+    try{existing=await heldGovernanceOriginal(data.digest);}catch{/* Repair a missing file from the incoming source. */}
+    if(existing){
+      const current=records.get(data.digest)!,updated=withPublisher(current,publisher);
+      if(updated!==current){
+        records.set(data.digest,updated);changed();
+        try{const held=await cache();await held?.put(locationFor(data.digest)+'/view',Response.json(updated));}catch{/* Held in memory. */}
+      }
+      return;
+    }
+  }
+  const opened=await openGovernanceTransportSource(data);
   await retain(opened,publisher);return opened;
 }
 let watermark:string|null=null;
