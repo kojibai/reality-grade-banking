@@ -59,11 +59,21 @@ it('carries Discover unchanged on a cold profile with no Bank family, while unre
 
 it('retains Discover metadata without duplicate body in immersive Feed and Discover documents, preserving global carried content',()=>{
  const metadata=new Function('publicPages','createHash','sharedExampleSha256',statement('navigationMetadata=')+';return navigationMetadata;')(pages,createHash,'a'.repeat(64));
- const line=builder.split('\n').find(line=>line.trimStart().startsWith('const feedBundle='))!;
+ const workspaces={
+  '/explore/':pages['/explore/'],
+  '/ledger/':{runtime:'ledger',head:'<title>Ledger</title>',content:'Held ledger'},
+  '/analytics/':{runtime:'ledger',head:'<title>Analytics</title>',content:'Held analytics'},
+ };
  for(const runtime of ['feed','discover']){
-  const html=new Function('page','compactNavigation','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent',line+';return feedBundle;')({runtime},compactNavigation,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank');
+  const name=runtime+'Bundle';
+  const line=builder.split('\n').find(row=>row.trimStart().startsWith('const '+name+'='))!;
+  const html=new Function('page','compactNavigation','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','navigationScript','discoveryWorkspacePages',line+';return '+name+';')({runtime},compactNavigation,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank',navigationScript,workspaces);
   const value=read(html);expect(value.pages['/discover/'].content).toBe('');expect(expand(value.pages['/discover/'].head,value.styles)).toBe(discoverHead);expect(value.pages['/discover/'].entry).toBe(pages['/discover/'].entry);
   expect(expand(value.pages['/explore/'].content,value.styles)).toBe(pages['/explore/'].content);
+  if(runtime==='discover'){
+   expect(expand(value.pages['/ledger/'].content,value.styles)).toBe('Held ledger');
+   expect(expand(value.pages['/analytics/'].content,value.styles)).toBe('Held analytics');
+  }
   expect(value.bank.styles).toEqual(['/assets/bank.css']);expect(Object.keys(value.bank.css)).toEqual(bankStyles);
  }
  expect(metadata['/discover/'].content).toBe(pages['/discover/'].content);
