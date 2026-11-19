@@ -22,5 +22,6 @@ export function bankOwnedStyles(styles, manifest) {
   // Its canonical frame owns these styles on both surfaces; never suspend
   // them as private Bank CSS when an already-loaded profile opens the editor.
   for (const [key, chunk] of Object.entries(manifest)) if (chunk?.name === 'AssetCreationSheet' && typeof chunk.file === 'string' && chunk.file.endsWith('.js')) visit(key);
-  return styles.filter(url => !shared.has(url));
+  // This CSS-only chunk stays with the already mounted dock on public routes.
+  return styles.filter(url => !shared.has(url)&&!/^\/assets\/bank-dock-[\w-]+\.css$/.test(url));
 }

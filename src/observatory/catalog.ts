@@ -90,7 +90,7 @@ export function observeCatalog(catalog:PublicMarketCatalog,audience?:Observatory
       profiles.push({username,name:publicAccountDisplayName(card.profile,username),createdAt:typeof card.profile.createdAt==='string'?card.profile.createdAt:null,stats:statsFor(uid,username,{originals:catalog.complete?0:null,views:null,plays:null,seconds:null,completion:null}),capitalization:null});
       continue;
     }
-    const profile=selectHeldPublicProfile(username,family);
+    const profile=selectHeldPublicProfile(username,family,{artwork:false});
     if(!profile||!bound(profile))continue;
     profiles.push({username:profile.username,name:profile.displayName,createdAt:profile.createdAt,stats:statsFor(profile.userId,username,profile.stats),...capitalization(profile.items)});
   }

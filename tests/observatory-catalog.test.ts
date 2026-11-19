@@ -1,4 +1,4 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {CollectibleActivity} from '../src/observatory/CollectibleActivity';
@@ -8,6 +8,8 @@ import type {PublicRecord} from '../src/receiz/public-network';
 import {walletActivity} from '../src/observatory/wallet';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
+import {selectHeldPublicProfile} from '../src/receiz/public-profile';
+import * as profileArtwork from '../src/receiz/profile-artwork';
 import archive from '../src/observatory/audience-observations.json';
 describe('Observatory directory, audience and wallet coverage',()=>{
   it('preserves the combined total when a partial release repeats a disjoint group of accounts',()=>{
@@ -23,6 +25,20 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     const catalog={...parsePublicMarket({ok:true,transport:{publicOriginals:[],publicProfileHeads:[{profile,viewer:{canView:true},unavailableDecorators:['profile-details']}]}}),complete:true};
     expect(observeCatalog(catalog).profiles).toMatchObject([{username:'public_card',stats:{originals:0,seconds:null}}]);
     expect(observeCatalog({...catalog,publicProfileHeadRefusals:[{profile:{userId:profile.userId,username:profile.username},viewer:{canView:false}}]}).profiles).toHaveLength(0);
+  });
+  it('uses the held ranking data without generating unused artwork or changing the full Profile projection',()=>{
+    const profile={userId:'00000000-0000-4000-aaaa-000000000009',username:'ranked_profile',displayName:'Ranked',isPrivate:false,createdAt:'2026-01-01T00:00:00Z'};
+    const catalog={...parsePublicMarket({ok:true,transport:{publicOriginals:[],publicProfileHeads:[{profile,viewer:{canView:true},stats:{originalViews:23}}]}}),complete:true};
+    const artwork=vi.spyOn(profileArtwork,'publicProfileArtwork');
+    try{
+      expect(observeCatalog(catalog).profiles[0]).toMatchObject({username:profile.username,stats:{views:23}});
+      expect(artwork).not.toHaveBeenCalled();
+      const selected=selectHeldPublicProfile(profile.username,catalog,{artwork:false});
+      const full=selectHeldPublicProfile(profile.username,catalog);
+      expect(selected?.stats).toEqual(full?.stats);
+      expect(artwork).toHaveBeenCalledOnce();
+      expect(full?.avatarUrl).toMatch(/^data:image\/svg\+xml/);
+    }finally{artwork.mockRestore();}
   });
   it('keeps carried priced shares visible when a signed Original arrives before its share inventory',()=>{
     const ownerUserId='00000000-0000-4000-aaaa-000000000001',ownerUsername='artist',priceUsd=12;

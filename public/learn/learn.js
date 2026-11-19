@@ -55,8 +55,10 @@
     scheduled = false;
     const header = document.querySelector('.learn-header'), progress = document.querySelector('.reading-progress');
     header?.classList.toggle('scrolled', scrollY > 12);
-    const range = root.scrollHeight - innerHeight;
-    if (progress) progress.style.transform = `scaleX(${range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0})`;
+    if (progress) {
+      const range = root.scrollHeight - innerHeight;
+      progress.style.transform = `scaleX(${range > 0 ? Math.min(1, Math.max(0, scrollY / range)) : 0})`;
+    }
   };
   const schedule = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(readProgress); } };
   addEventListener('scroll', schedule, { passive: true });
@@ -294,7 +296,7 @@
   addEventListener('bankeiz:navigate-bank', event => {
     const request = event.detail;
     if (!request || typeof request.hash !== 'string' || request.hash.length > 2048 || !/^#(?:account|market|assets|ledger)(?:\/[^\s?#]*)?$/.test(request.hash)) return;
-    if (!pageAt(location.pathname) && location.pathname !== '/') return;
+    if (!bankRoot && !pageAt(location.pathname) && location.pathname !== '/') return;
     request.handled = true;
     navigate('/' + request.hash);
   });

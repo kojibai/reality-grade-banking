@@ -1,0 +1,3 @@
+body:has(#retained-bank-navigation[data-public]) { --retained-bank-dock-space: calc(75px + env(safe-area-inset-bottom)); }
+body:has(#retained-bank-navigation[data-public]) > :is(#root, #public-learn-root, [data-public-runtime]:not([data-public-runtime="feed"])) { padding-bottom: var(--retained-bank-dock-space); }
+@media (min-width:720px) { body:has(#retained-bank-navigation[data-public]) { --retained-bank-dock-space: 82px; } }

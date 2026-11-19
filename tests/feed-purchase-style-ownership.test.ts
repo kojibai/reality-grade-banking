@@ -41,6 +41,11 @@ it('keeps the shared profile creator styles public while suspending unrelated Ba
  expect(bankOwnedStyles([...allStyles,'/assets/creator.css','/assets/private.css'],{...manifest,creator})).toEqual(['/assets/bank.css','/assets/private.css']);
 });
 
+it('keeps the retained Bank bar stylesheet enabled when the public router suspends private styles',()=>{
+ const dock='/assets/bank-dock-fixture.css';
+ expect(bankOwnedStyles([...allStyles,dock],manifest)).toEqual(['/assets/bank.css']);
+});
+
 it('keeps the already loaded Host closure enabled through the actual Bank→Feed router even when its module is cached',async()=>{
  const f=await setup(),bank=f.document.getElementById('root'),input=bank!.querySelector('input'),hostStyle=f.document.querySelector<TestStyleElement>('style[data-bank-stylesheet="/assets/host.css"]');
  f.api.navigate('/feed/');await Promise.resolve();

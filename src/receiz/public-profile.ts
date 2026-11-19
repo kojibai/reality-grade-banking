@@ -185,7 +185,7 @@ export function retainedPublicProfile(username:string,documentCatalog?:PublicMar
 /** A held Market row already supplies this public display binding. It does
  * not become profile PBI, owner authority, or an anonymous private account. */
 export const publicProfileHasHeader=(profile:PublicProfile)=>catalogProfiles.get(profile)?.header!==false;
-export function selectHeldPublicProfile(username:string,catalog:PublicMarketCatalog|null):PublicProfile|null{
+export function selectHeldPublicProfile(username:string,catalog:PublicMarketCatalog|null,{artwork=true}:{artwork?:boolean}={}):PublicProfile|null{
  username=heldPublicProfileUsername(username,catalog);
  if(!profileUsername(username)||['PROFILE_PRIVATE','PROFILE_NOT_FOUND','PROFILE_CHANGED'].includes(publicProfilePageError(username,catalog)))return null;
  const previous=retainedPublicProfile(username),basis=previous?catalogProfiles.get(previous):undefined;
@@ -194,7 +194,7 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
  if(typeof ownerUid==='string'&&privateProfileAccounts.has(ownerUid))return null;
  const saved=typeof ownerUid==='string'?storedPublicHead(ownerUid,username,notifyProfiles):null,rawBasis=publicProfileHeaderDisplayBasis(rawHead);
  const restored=saved&&(!rawHead||saved.consumedBasis===rawBasis||!!saved.head&&publicProfileHeaderDisplayBasis(saved.head)===rawBasis)?saved:null;
- const displayHead=restored?restored.head:rawHead,carried=restored?.header??(displayHead?readPublicProfileHeader(displayHead,username)??undefined:undefined);
+ const displayHead=restored?restored.head:rawHead,carried=restored?.header??(displayHead?readPublicProfileHeader(displayHead,username,artwork)??undefined:undefined);
  if(carried&&privateProfileAccounts.has(carried.userId))return null;
  const matchingHead=(uid:string,createdAt:string|null)=>carried?.userId===uid&&(!carried.createdAt||!createdAt||carried.createdAt===createdAt)?carried:undefined;
  const baseline=previous?fullProfileSelections.get(previous):null,selectedSuccessor=catalog.complete&&catalog===retainedDiscoveredPublicCatalog()&&!!baseline&&catalog.revision!==baseline.revision;
@@ -211,17 +211,18 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
   }
  }
  if(previous&&basis?.items===catalog.items&&(!carried||selectedHeaders.get(previous)===carried))return previous;
- let selections=selectedCatalogProfiles.get(catalog.items);if(!selections){selections=new Map();selectedCatalogProfiles.set(catalog.items,selections);}
- const cached=selections.get(username);if(cached&&cached.head===carried&&(cached.profile===previous||cached.base===previous))return cached.profile;
+ // Text-only consumers cannot populate the shared Profile presentation memo.
+ let selections=artwork?selectedCatalogProfiles.get(catalog.items):undefined;if(artwork&&!selections){selections=new Map();selectedCatalogProfiles.set(catalog.items,selections);}
+ const cached=selections?.get(username);if(cached&&cached.head===carried&&(cached.profile===previous||cached.base===previous))return cached.profile;
  const items=catalog.items.filter(item=>item.category==='proof'&&item.ownerUsername===username);
  if(!items.length){
   if(catalog.complete&&carried){
    const matching=previous?.userId===carried.userId?previous:null,profile:PublicProfile={...carried,...(matching?.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:matching.pbiReceiptHash}:{}),items:matching?.items.length===0?matching.items:[],stats:{...carried.stats,originals:0},nextCursor:null};
-   selectedHeaders.set(profile,carried);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:true});selections.set(username,{base:previous,profile,head:carried});return profile;
+   selectedHeaders.set(profile,carried);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:true});selections?.set(username,{base:previous,profile,head:carried});return profile;
   }
   if(!previous||!basis&&!selectedSuccessor||!catalog.complete)return previous;
   const profile={...previous,items:[],stats:{...previous.stats,originals:0},nextCursor:null};
-  catalogProfiles.set(profile,{items:catalog.items,header:basis?.header??true});selections.set(username,{base:previous,profile});return profile;
+  catalogProfiles.set(profile,{items:catalog.items,header:basis?.header??true});selections?.set(username,{base:previous,profile});return profile;
  }
  // Canonical local admission already carries the selected account UID. Reuse
  // its held public header or another exact owner identity for display fields;
@@ -231,10 +232,10 @@ export function selectHeldPublicProfile(username:string,catalog:PublicMarketCata
  if(!owner||owner.username!==username||items.some(item=>item.ownerIdentity?item.ownerIdentity.username!==username||item.ownerIdentity.userId!==owner.userId||item.ownerIdentity.createdAt!==owner.createdAt:item.admittedOwnerUserId!==owner.userId))return previous;
  const matching=previous?.userId===owner.userId?previous:null,head=matchingHead(owner.userId,owner.createdAt);
  const ordered=matching&&basis?.items===catalog.items?matching.items:items.slice().sort(compareProfileOriginals),known=!!head||!!matching&&(!basis||basis.header===true);
- const images=head?{avatarUrl:head.avatarUrl,bannerUrl:head.bannerUrl}:known?{avatarUrl:matching!.avatarUrl,bannerUrl:matching!.bannerUrl}:publicProfileArtwork({...owner,avatarUrl:items.find(item=>item.ownerAvatarUrl)?.ownerAvatarUrl});
+ const images=!artwork?{avatarUrl:null,bannerUrl:null}:head?{avatarUrl:head.avatarUrl,bannerUrl:head.bannerUrl}:known?{avatarUrl:matching!.avatarUrl,bannerUrl:matching!.bannerUrl}:publicProfileArtwork({...owner,avatarUrl:items.find(item=>item.ownerAvatarUrl)?.ownerAvatarUrl});
  const profile:PublicProfile={schema:'bankeiz.public-profile.v1',userId:owner.userId,username,...(items[0].ownerReceivingUsername?{receivingUsername:items[0].ownerReceivingUsername}:{}),displayName:items[0].ownerDisplayName??username,bio:null,location:null,websiteUrl:null,socialLinks:[],links:[],authorshipVerified:false,pbiReceiptHash:null,createdAt:owner.createdAt,...(known&&matching?matching:{}),...head,...images,
  ...(matching?.authorshipVerified?{authorshipVerified:true,pbiReceiptHash:matching.pbiReceiptHash}:{}),stats:{...(head?.stats??matching?.stats??{views:null,plays:null,seconds:null,completion:null}),originals:catalog.complete?ordered.length:matching?.stats.originals??null},items:ordered,nextCursor:catalog.complete?null:'all:'+owner.userId};
- if(head){selectedHeaders.set(profile,head);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);}if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:known});selections.set(username,{base:previous,profile,head:carried});return profile;
+ if(head){selectedHeaders.set(profile,head);if(rawBasis)catalogHeaderBases.set(profile,rawBasis);if(displayHead)rawSelectedHeaders.set(profile,displayHead);}if(restored?.header)projectedHeaders.set(profile,restored.header);if(restored?.consumedBasis)supersededHeaders.set(profile,restored.consumedBasis);catalogProfiles.set(profile,{items:catalog.items,header:known});selections?.set(username,{base:previous,profile,head:carried});return profile;
 }
 function refusePublicProfile(username:string,code:string,expectedUserId?:string){
  const current=held.get(username);if(expectedUserId&&current?.userId!==expectedUserId)return;

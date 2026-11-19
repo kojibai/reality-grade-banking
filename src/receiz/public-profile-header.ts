@@ -55,18 +55,18 @@ export function publicProfileHeaderDisplayBasis(input:unknown):string|null{
 }
 /** Header projection shared by full profile reads and the existing Market
  * response. PBI belongs to this profile, never to one of its Originals. */
-export function readPublicProfileHeader(input:unknown,expectedUsername?:string):PublicProfileHeader|null{
+export function readPublicProfileHeader(input:unknown,expectedUsername?:string,artwork=true):PublicProfileHeader|null{
  const decorators=object(input).unavailableDecorators;if(Array.isArray(decorators)&&decorators.includes('profile-details'))return null;
  const previous=input&&typeof input==='object'?selectedHeads.get(input):undefined;if(previous&&(expectedUsername===undefined||previous.username===expectedUsername))return previous;
  const view=curatePublicProfileHead(input);if(!view)return null;const p=view.profile;
  if(expectedUsername!==undefined&&p.username!==expectedUsername)return null;
- const header=projectProfileHeaderFields(p,view.stats,view.unavailableDecorators?.includes('engagement'));if(input&&typeof input==='object'){selectedHeads.set(input,header);const basis=publicProfileHeaderDisplayBasis(input);if(basis)headerBases.set(header,basis);}return header;
+ const header=projectProfileHeaderFields(p,view.stats,view.unavailableDecorators?.includes('engagement'),artwork);if(input&&typeof input==='object'){if(artwork)selectedHeads.set(input,header);const basis=publicProfileHeaderDisplayBasis(input);if(basis)headerBases.set(header,basis);}return header;
 }
 /** Pure display field projection. Callers preserve their own public/owner
  * scope and exact account binding; this performs no admission or lookup. */
-export function projectProfileHeaderFields(p:Record<string,unknown>,stats:Record<string,unknown>={},unavailable=false):PublicProfileHeader{
- const username=String(p.username),images=publicProfileArtwork(p),hash=text(p.authorshipPbiReceiptHash,64);
- return{...copyProfileArtworkCoordinates(p),schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
+export function projectProfileHeaderFields(p:Record<string,unknown>,stats:Record<string,unknown>={},unavailable=false,artwork=true):PublicProfileHeader{
+ const username=String(p.username),images=artwork?publicProfileArtwork(p):{avatarUrl:null,bannerUrl:null},hash=text(p.authorshipPbiReceiptHash,64);
+ return{...(artwork?copyProfileArtworkCoordinates(p):{}),schema:'bankeiz.public-profile.v1',userId:String(p.userId),username,...(typeof p.receivingUsername==='string'&&publicProfileUsername(username,p.receivingUsername)===p.receivingUsername?{receivingUsername:p.receivingUsername}:{}),displayName:publicAccountDisplayName(p,username),bookingEnabled:p.showSchedulerButton===true,bio:text(p.bio,280),location:text(p.location,100),websiteUrl:link(p.websiteUrl),...images,
  socialLinks:[['X','socialXUrl'],['Instagram','socialInstagramUrl'],['YouTube','socialYoutubeUrl'],['LinkedIn','socialLinkedinUrl'],['GitHub','socialGithubUrl']].flatMap(([label,key])=>{const url=link(p[key]);return url?[{label,url}]:[];}),links:Array.isArray(p.links)?p.links.slice(0,20).flatMap(value=>{const row=object(value),label=text(row.label,80),url=link(row.url);return label&&url&&url.length<=2048?[{label,url}]:[];}):[],
  authorshipVerified:p.authorshipVerified===true&&!!hash&&/^[a-f0-9]{64}$/i.test(hash),pbiReceiptHash:hash&&/^[a-f0-9]{64}$/i.test(hash)?hash:null,createdAt:text(p.createdAt,64),
  stats:{...publicSocialCounters(stats),originals:number(stats.originals),views:unavailable?null:number(stats.originalViews),plays:unavailable?null:number(stats.streams),seconds:unavailable?null:number(stats.witnessedSeconds),completion:unavailable?null:number(stats.streamCompletionRatePct)}};

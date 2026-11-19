@@ -44,7 +44,7 @@ it('suspends an open bank sheet on public pages and restores its retained draft 
   const host = document.createElement('div'), root = createRoot(host); document.body.append(host);
   try {
     await act(async () => root.render(<App />));
-    const opener = host.querySelector<HTMLButtonElement>('button.nav-deposit')!; opener.focus(); act(() => opener.click());
+    const opener = document.querySelector<HTMLButtonElement>('#retained-bank-navigation button.nav-deposit')!; opener.focus(); act(() => opener.click());
     const dialog = host.querySelector('dialog')!;
     expect(dialog.open).toBe(true); expect(document.body.style.position).toBe('fixed');
     act(() => [...dialog.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
@@ -63,6 +63,37 @@ it('suspends an open bank sheet on public pages and restores its retained draft 
     history.replaceState(null, '', '/#account'); await act(async () => window.dispatchEvent(new Event('receiz-bank:surface')));
     expect(host.querySelector('dialog')).toBeNull(); expect(document.activeElement).toBe(opener);
   } finally { act(() => root.unmount()); host.remove(); history.replaceState(null, '', '/'); }
+});
+
+it('keeps one mounted Bank bar through public destinations and switches an existing Bank tab before public code loads',async()=>{
+ history.replaceState(null,'','/#account');
+ const host=document.createElement('div'),root=createRoot(host),data=document.createElement('script');
+ host.id='root';data.id='receiz-navigation';data.type='application/json';document.body.append(host,data);
+ const paths={'/analytics/':'ledger','/discover/':'discover','/explore/':'explore','/ledger/':'ledger','/asset/held-original/':'explore','/feed/':'feed'};
+ const pages=Object.fromEntries(Object.entries(paths).map(([path,runtime])=>[path,{runtime,entry:'/'+runtime+'.js',head:`<title>${runtime}</title>`,content:'<main>Held public view</main>'}]));
+ data.textContent=JSON.stringify({pages,bank:{head:'<title>Bank</title>',styles:[],entry:'/private-bank.js'}});
+ const pending=vi.fn((_entry:string)=>new Promise(()=>{})),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ try{
+  await act(async()=>root.render(<App/>));
+  const bar=document.querySelector('#retained-bank-navigation .bottom-nav');expect(bar).not.toBeNull();
+  const router=readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1].replaceAll('import(','load(');
+  new Function('window','document','location','history','scrollTo','Event','URL','load','// All public guides'+router)(window,document,location,history,scroll,Event,URL,pending);
+  const navigate=(data as unknown as {navigate:(path:string)=>void}).navigate;
+  for(const path of Object.keys(paths)){
+   act(()=>navigate(path));
+   expect(location.pathname).toBe(path);expect(host.hidden).toBe(true);
+   expect(document.querySelectorAll('.bottom-nav')).toHaveLength(1);expect(document.querySelector('.bottom-nav')).toBe(bar);
+   expect(bar?.closest('[hidden],[inert]')).toBeNull();
+  }
+  const assets=[...bar!.querySelectorAll('button')].find(button=>button.textContent==='Assets')!;
+  act(()=>assets.click());
+  expect(location.hash).toBe('#assets');expect(host.hidden).toBe(false);expect(document.querySelector('.bottom-nav')).toBe(bar);expect(assets.getAttribute('aria-current')).toBe('page');
+  history.pushState(null,'','/vault/12345678-1234-4234-8234-123456789abc/');
+  act(()=>dispatchEvent(new Event('receiz-bank:surface')));
+  act(()=>assets.click());
+  expect(location.pathname).toBe('/');expect(location.hash).toBe('#assets');expect(document.querySelector('.bottom-nav')).toBe(bar);
+  expect(pending.mock.calls.some(([entry])=>entry==='/private-bank.js')).toBe(false);
+ }finally{act(()=>root.unmount());host.remove();data.remove();document.querySelectorAll('[data-public-runtime]').forEach(node=>node.remove());scroll.mockRestore();history.replaceState(null,'','/');}
 });
 
 it('releases the native modal before focusing and scrolling the public guide destination', async () => {

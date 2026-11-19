@@ -4,7 +4,7 @@ import {InlineOpening} from './components/InlineOpening';
 import {clearNotificationUrl,notificationFromUrl,notificationTarget,type NotificationTarget} from './pwa/notification-target';
 import {publishAccountAppearance} from './receiz/account-appearance';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import {bankTwinContextRecords} from './receiz/twin-bank-context';
 import {mergePublicRecords} from './receiz/public-network';
 import {useAssetEntry} from './features/assets/useAssetEntry';
@@ -12,7 +12,7 @@ import {useBusinessEntry} from './features/messages/useBusinessEntry';
 import {MessagesPanel} from './features/messages/MessagesPanel';
 import {identityProfileAvatar,identityProfileName} from './receiz/profile-avatar';
 import { ConsoleShell } from './components/ConsoleShell';
-import type { Panel } from './components/BottomNav';
+import { BottomNav, type Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
 import {ReceiptView} from './features/receipts/ReceiptView';
 import { Ledger } from './features/ledger/Ledger';
@@ -39,6 +39,7 @@ import {PublicAssetTradePortal} from './features/market/PublicAssetTradePortal';
 import {PublicProfilePortal} from './features/account/PublicProfilePortal';
 import {consumeProfileAccountAction,readProfileAccountAction,subscribeProfileActions} from './receiz/profile-actions';
 import {vaultLocation} from './receiz/vault/location';
+import './styles/bank-dock.css';
 const VaultPage=lazy(()=>import('./features/vault/VaultPage').then(module=>({default:module.VaultPage})));
 const EmailPaymentEntry=lazy(()=>import('./features/account/EmailPaymentEntry').then(module=>({default:module.EmailPaymentEntry})));
 const EmailMeetingEntry=lazy(()=>import('./features/account/EmailMeetingEntry').then(module=>({default:module.EmailMeetingEntry})));
@@ -124,7 +125,12 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   if (!account.identity) {
     return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} onPbi={account.pbi}/>}/></>;
   }
-  return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} onRefresh={refreshAccountSources}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})}>
+  const dock=createPortal(<div id="retained-bank-navigation" data-public={!onBank||undefined}>
+    <BottomNav panel={onBank?panel:null}
+      onNavigate={next=>{if(onBank)navigate(next);else requestBankNavigation(routeHash(next));}}
+      onDeposit={()=>{if(onBank)open({kind:'deposit'});else requestBankNavigation(routeHash('account',{kind:'deposit'}));}}/>
+  </div>,document.body);
+  return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} onRefresh={refreshAccountSources}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})} navigation={dock}>
     <div hidden={panel !== 'account'}><LiveAccount portfolio={investments.data} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} receivedNotes={account.receivedNotes} walletHistory={account.walletHistory} historyComplete={account.historyComplete} showcase={showcase} wallet={account.wallet} busy={account.busy} error={account.error} observedAt={account.observedAt} onRefresh={() => void account.refresh()} onSend={() => open({ kind: 'send' })} onReceive={() => open({ kind: 'receive' })} onBalance={() => open({ kind: 'balance' })} onAvailability={() => open({kind:'balance',focus:'settlement'})} onAssets={() => navigate('assets')} onInvestments={() => { positions.current.assets=0; navigate('assets'); }} onLedger={() => navigate('ledger')} /></div>
     <div hidden={panel !== 'market'}><Market source={publicMarket} active={onBank && panel === 'market'} onAction={open} /></div>
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} investments={investments} investmentHistory={investmentHistory} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} historyItems={publicMarket.historyCatalog?.items??EMPTY_MARKET_ITEMS} pulse={publicMarket.pulse} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
