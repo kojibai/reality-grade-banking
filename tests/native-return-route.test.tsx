@@ -69,9 +69,11 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
  history.replaceState(null,'','/#account');
  const host=document.createElement('div'),root=createRoot(host),data=document.createElement('script');
  host.id='root';data.id='receiz-navigation';data.type='application/json';document.body.append(host,data);
- const paths={'/analytics/':'ledger','/discover/':'discover','/explore/':'explore','/ledger/':'ledger','/asset/held-original/':'explore','/feed/':'feed'};
- const pages=Object.fromEntries(Object.entries(paths).map(([path,runtime])=>[path,{runtime,entry:'/'+runtime+'.js',head:`<title>${runtime}</title>`,content:'<main>Held public view</main>'}]));
- data.textContent=JSON.stringify({pages,bank:{head:'<title>Bank</title>',styles:[],entry:'/private-bank.js'}});
+ const viewport=document.createElement('meta'),publicViewport='width=device-width,initial-scale=1',bankViewport=publicViewport+',viewport-fit=cover';
+ viewport.name='viewport';viewport.content=bankViewport;document.head.append(viewport);
+ const paths={'/analytics/':'ledger','/discover/':'discover','/explore/':'explore','/ledger/':'ledger','/u/heldowner/':'explore','/asset/held-original/':'explore','/feed/':'feed'};
+ const pages=Object.fromEntries(Object.entries(paths).map(([path,runtime])=>[path,{runtime,entry:'/'+runtime+'.js',head:`<title>${runtime}</title>${path==='/discover/'?'':`<meta name="viewport" content="${path==='/analytics/'||path==='/feed/'?bankViewport:publicViewport}">`}`,content:'<main>Held public view</main>'}]));
+ data.textContent=JSON.stringify({pages,bank:{head:`<title>Bank</title><meta name="viewport" content="${bankViewport}">`,styles:[],entry:'/private-bank.js'}});
  const pending=vi.fn((_entry:string)=>new Promise(()=>{})),scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
  let y=0;const scrollY=vi.spyOn(window,'scrollY','get').mockImplementation(()=>y),frame=vi.spyOn(window,'requestAnimationFrame').mockImplementation(callback=>{callback(0);return 0;});
  const at=(position:number)=>act(()=>{y=position;dispatchEvent(new Event('scroll'));});
@@ -85,6 +87,7 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
    act(()=>{y=0;navigate(path);});
    expect(location.pathname).toBe(path);expect(host.hidden).toBe(true);
    expect(document.querySelectorAll('.bottom-nav')).toHaveLength(1);expect(document.querySelector('.bottom-nav')).toBe(bar);
+   expect(document.querySelector('meta[name="viewport"]')).toBe(viewport);expect(viewport.content).toBe(bankViewport);
    expect(bar?.closest('[hidden],[inert]')).toBeNull();
    const dock=bar!.parentElement!;expect(dock.hasAttribute('data-tucked')).toBe(false);
    if(path!=='/feed/'){
@@ -101,7 +104,10 @@ it('keeps one mounted Bank bar through public destinations and switches an exist
   act(()=>assets.click());
   expect(location.pathname).toBe('/');expect(location.hash).toBe('#assets');expect(document.querySelector('.bottom-nav')).toBe(bar);
   expect(pending.mock.calls.some(([entry])=>entry==='/private-bank.js')).toBe(false);
- }finally{act(()=>root.unmount());host.remove();data.remove();document.querySelectorAll('[data-public-runtime]').forEach(node=>node.remove());scroll.mockRestore();scrollY.mockRestore();frame.mockRestore();history.replaceState(null,'','/');}
+  act(()=>root.unmount());
+  act(()=>navigate('/explore/'));
+  expect(document.querySelector('meta[name="viewport"]')).toBe(viewport);expect(viewport.content).toBe(publicViewport);
+ }finally{act(()=>root.unmount());host.remove();data.remove();viewport.remove();document.querySelectorAll('[data-public-runtime]').forEach(node=>node.remove());scroll.mockRestore();scrollY.mockRestore();frame.mockRestore();history.replaceState(null,'','/');}
 });
 
 it('releases the native modal before focusing and scrolling the public guide destination', async () => {

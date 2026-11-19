@@ -168,6 +168,8 @@
   const restoreHead = head => {
     const template = document.createElement('template'); template.innerHTML = head;
     const selector = 'title,meta[name="viewport"],meta[name="description"],meta[name="theme-color"],meta[name="robots"],meta[name="referrer"],meta[name^="apple-"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],link[rel="alternate"],link[rel="manifest"],link[rel="icon"],link[rel="apple-touch-icon"],script[type="application/ld+json"],style[data-public-page-style]';
+    // The retained Bank dock keeps the active safe-area layout across routes.
+    const bankViewport = document.getElementById('retained-bank-navigation') && document.head.querySelector('meta[name="viewport"][content*="viewport-fit=cover"]');
     // Keep shared viewport, icons and other unchanged metadata attached. Replacing
     // the viewport on each guide can relayout mobile browser chrome.
     const key = node => node.tagName + ':' + (node.getAttribute('name') || node.getAttribute('property') || node.getAttribute('rel') || node.getAttribute('type') || '');
@@ -179,11 +181,12 @@
     template.content.querySelectorAll(selector).forEach(next => {
       const current = retained.get(key(next))?.shift();
       if (!current) { document.head.append(next); return; }
+      if (current === bankViewport) return;
       for (const attribute of [...current.attributes]) if (!next.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
       for (const attribute of next.attributes) if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
       if (current.textContent !== next.textContent) current.textContent = next.textContent;
     });
-    for (const remaining of retained.values()) remaining.forEach(node => node.remove());
+    for (const remaining of retained.values()) remaining.forEach(node => { if (node !== bankViewport) node.remove(); });
   };
   const renderPublicContent = content => {
     const template = document.createElement('template'); template.innerHTML = content;
