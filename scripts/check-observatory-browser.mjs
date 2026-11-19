@@ -80,11 +80,18 @@ try{
   assert.equal(await audienceCards.nth(2).innerText(),new Intl.NumberFormat('en-US').format(latestAudience.plays.value));
   assert.equal(await audienceCards.nth(3).innerText(),new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(latestAudience.seconds.value/3600));
   const movements=ledgerSeed.records.filter(row=>row.source==='wallet'&&['chat_transfer','transfer'].includes(row.kind));
-  const volume=movements.reduce((sum,row)=>{
-    if(row.amountUsdCents!=null)return sum+BigInt(row.amountUsdCents);
+  const amounts=movements.flatMap(row=>{
+    if(row.amountUsdCents!=null)return [BigInt(row.amountUsdCents)];
     const {settledUsdCents,phiUsdCents}=row.valueOperands??{};
-    return settledUsdCents!=null&&phiUsdCents!=null?sum+BigInt(settledUsdCents)+BigInt(phiUsdCents):sum;
-  },0n);
+    return settledUsdCents!=null&&phiUsdCents!=null?[BigInt(settledUsdCents)+BigInt(phiUsdCents)]:[];
+  }).sort((a,b)=>a<b?-1:a>b?1:0);
+  const volume=amounts.reduce((sum,cents)=>sum+cents,0n),n=amounts.length;
+  const money=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+  const sizes=page.getByRole('group',{name:'Transaction sizes'});
+  assert.deepEqual(await sizes.locator('dd').allTextContents(),[
+    Number(volume)/n,(Number(amounts[Math.floor((n-1)/2)])+Number(amounts[Math.floor(n/2)]))/2,
+    Number(amounts[Math.ceil(n*.9)-1]),Number(amounts.at(-1)),
+  ].map(cents=>money.format(cents/100)));
   assert.equal(await page.locator('#obs-wallets .obs-wallet-grid > div').filter({has:page.getByRole('heading',{name:'Wallet transfer volume',exact:true})}).locator('strong').innerText(),new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(volume)/100));
   assert.equal(await page.locator('#obs-wallets').getByText('Reserve',{exact:true}).count(),0);
   assert.equal(await page.locator('#obs-wallets').getByText('Settlement',{exact:true}).count(),0);
@@ -131,6 +138,31 @@ try{
     assert.equal(await dialog.getByRole('link').getAttribute('href'),['/market-cap/','/explore/','#obs-audience','/ledger/'][i]);
     assert.ok((await dialog.locator('.obs-headline-line').getAttribute('d')).length>4);
     const bounds=await dialog.boundingBox();assert.ok(bounds.x>=0&&bounds.x+bounds.width<=321);
+    if(name==='Assets in circulation'){
+      for(const measure of ['Reported circulation','Dated issuances']){
+        await dialog.getByRole('button',{name:measure,exact:true}).click();
+        for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
+          await dialog.getByRole('button',{name:range,exact:true}).click();
+          const extent=await dialog.locator('.obs-headline-line').evaluate(path=>{
+            const box=path.getBBox();return [box.x,box.x+box.width];
+          });
+          assert.deepEqual(extent,[0,100],measure+' spans the entire '+range+' plot');
+        }
+      }
+      assert.ok(Number(await dialog.getByRole('slider').getAttribute('max'))>100,'Dated inventory issuances remain inspectable between published totals');
+    }
+    if(name==='Witnessed hours'){
+      for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
+        await dialog.getByRole('button',{name:range,exact:true}).click();
+        assert.deepEqual(await dialog.locator('.obs-headline-line').evaluate(p=>{const b=p.getBBox();return [b.x,b.x+b.width];}),[0,100]);
+      }
+      const count=publishedAudience.filter(row=>row.seconds.value!==null).length;
+      assert.ok(Number(await dialog.getByRole('slider').getAttribute('max'))>=count-1,'Every hours publication can be inspected');
+    }
+    if(name==='Assets in circulation'||name==='Witnessed hours'){
+      const commands=await dialog.locator('.obs-headline-line').getAttribute('d');
+      assert.equal((commands.match(/V/g)??[]).length,Number(await dialog.getByRole('slider').getAttribute('max')),'Each dated change is drawn');
+    }
     await dialog.getByRole('button',{name:'7D',exact:true}).click();
     await dialog.getByRole('button',{name:'All time'}).click();
     await dialog.getByRole('slider').focus();await dialog.getByRole('slider').press('Home');
@@ -166,6 +198,7 @@ try{
     const audienceRange=page.getByRole('group',{name:'Audience history range'});
     await audienceRange.getByRole('button',{name:'24H',exact:true}).click();
     assert.equal(await page.locator('.obs-observation-field button').count(),1);
+    assert.deepEqual(await page.locator('.obs-published-line path').evaluate(p=>{const b=p.getBBox();return [b.x,b.x+b.width];}),[0,100]);
     await audienceRange.getByRole('button',{name:'All',exact:true}).click();
     assert.ok(await page.locator('.obs-observation-field button').count()>20);
   }

@@ -11,7 +11,8 @@ export function walletActivity(records:readonly PublicRecord[]){
     return point;
   }
   const firstSeen=new Map<string,number>(),transfers:PublicRecord[]=[];
-  let mints=0,claims=0,volume=0n,pricedTransfers=0;
+  const amounts:bigint[]=[];
+  let mints=0,claims=0,volume=0n;
   for(const row of records){
     if(row.origin||row.authority!=='public-source-projection'||row.source!=='wallet')continue;
     const at=Date.parse(row.time??'');
@@ -32,7 +33,7 @@ export function walletActivity(records:readonly PublicRecord[]){
         if(parts.length)cents=parts.reduce((sum,part)=>sum+BigInt(part.amountUsdCents),0n);
         else if(operands.settledUsdCents==='0'&&operands.phiUsdCents==='0')cents=0n;
       }
-      if(cents!==null){volume+=cents;pricedTransfers++;if(dated)dated.volume+=cents;}
+      if(cents!==null){volume+=cents;amounts.push(cents);if(dated)dated.volume+=cents;}
     }
   }
   for(const at of firstSeen.values())if(Number.isFinite(at))change(at).addresses++;
@@ -41,5 +42,13 @@ export function walletActivity(records:readonly PublicRecord[]){
     const p=timeline[i],before=timeline[i-1];
     p.addresses+=before.addresses;p.transfers+=before.transfers;p.volume+=before.volume;p.mints+=before.mints;p.claims+=before.claims;
   }
-  return {addresses:firstSeen.size,timeline,transfers,mints,claims,volume:pricedTransfers?volume.toString():null,pricedTransfers};
+  amounts.sort((a,b)=>a<b?-1:a>b?1:0);
+  const pricedTransfers=amounts.length, middle=Math.floor(pricedTransfers/2), n=BigInt(pricedTransfers);
+  const sizes=pricedTransfers?{
+    average:(volume+n/2n)/n,
+    median:pricedTransfers%2?amounts[middle]:(amounts[middle-1]+amounts[middle]+1n)/2n,
+    p90:amounts[Math.ceil(9*pricedTransfers/10)-1],
+    largest:amounts[pricedTransfers-1],
+  }:null;
+  return {addresses:firstSeen.size,timeline,transfers,mints,claims,volume:pricedTransfers?volume.toString():null,pricedTransfers,sizes};
 }

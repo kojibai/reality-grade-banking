@@ -86,7 +86,7 @@ export const NetworkAtlas=memo(function NetworkAtlas({catalog,data,audienceSerie
   const [profileSize,setProfileSize]=useState(25);
   const profileGrowth=useMemo(()=>growthSeries(data?.profiles.map(p=>p.createdAt)??[]),[data]);
   const profileSeries=useMemo(()=>profileGrowth?.points.map(p=>({at:p.at,value:p.count}))??[],[profileGrowth]);
-  const trends=[profileSeries,...(['views','plays','seconds'] as const).map(metric=>audienceSeries.flatMap(p=>p[metric].value===null?[]:[{at:Date.parse(p.at),value:p[metric].value!/(metric==='seconds'?3600:1)}]))];
+  const trends=[profileSeries,audienceSeries.views,audienceSeries.plays,audienceSeries.seconds];
   const sealGrowth=useMemo(()=>growthSeries(catalog?.items.filter(item=>item.category==='proof').map(item=>item.sealedAt)??[]),[catalog]);
   const pp=Math.min(profilePage,Math.max(0,Math.ceil(profiles.length/profileSize)-1)),ap=Math.min(assetPage,Math.max(0,Math.ceil(assets.length/pageSize)-1));
   return <div className="obs-atlas obs-inner">

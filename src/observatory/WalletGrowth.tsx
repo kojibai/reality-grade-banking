@@ -12,6 +12,7 @@ function seriesPath(points:WalletPoint[],metric:Metric,max:number){
 const count=(p:WalletPoint,k:Metric)=>k==='volume'?formatMoney(p.volume.toString()):number.format(Number(p[k]));
 export function WalletGrowth({wallets}:{wallets:ReturnType<typeof walletActivity>}){
   const [picked,setPicked]=useState<number|null>(null);
+  const sizes=wallets.sizes;
   const points=wallets.timeline,first=points[0],last=points.at(-1),index=Math.min(picked??points.length-1,points.length-1),selected=points[index];
   const tiles:{key:Metric;title:string;value:string;caption:string;secondary?:Metric}[]=[
     {key:'addresses',title:'Participating addresses',value:number.format(wallets.addresses),caption:'Distinct public addresses seen in wallet activity'},
@@ -31,5 +32,15 @@ export function WalletGrowth({wallets}:{wallets:ReturnType<typeof walletActivity
     </svg>{tile.secondary&&<div className="obs-chart-legend"><span>Minted</span><span>Claimed</span></div>}
     {picked!==null&&<output>{count(selected,tile.key)}{tile.secondary?' / '+count(selected,tile.secondary):''} · {date.format(selected.at)}</output>}</>}</div>;
   })}</div>
-  {last&&first&&selected&&<div className="obs-wallet-history-control"><label htmlFor="wallet-history-index">Inspect wallet history</label><input id="wallet-history-index" type="range" min={0} max={points.length-1} value={index} aria-valuetext={date.format(selected.at)} onChange={e=>setPicked(Number(e.target.value))}/><span>{date.format(first.at)} – {date.format(last.at)} UTC</span>{picked!==null&&<button onClick={()=>setPicked(null)}>Latest</button>}</div>}</>;
+  {last&&first&&selected&&<div className="obs-wallet-history-control"><label htmlFor="wallet-history-index">Inspect wallet history</label><input id="wallet-history-index" type="range" min={0} max={points.length-1} value={index} aria-valuetext={date.format(selected.at)} onChange={e=>setPicked(Number(e.target.value))}/><span>{date.format(first.at)} – {date.format(last.at)} UTC</span>{picked!==null&&<button onClick={()=>setPicked(null)}>Latest</button>}</div>}
+  {sizes&&<div className="obs-transfer-sizes" role="group" aria-labelledby="obs-transfer-size-title">
+    <h3 id="obs-transfer-size-title">Transaction sizes</h3>
+    <p>All time · {number.format(wallets.pricedTransfers)} of {number.format(wallets.transfers.length)} wallet transfers with recorded amounts</p>
+    <dl>{([
+      ['Average transaction size',sizes.average],
+      ['Median transaction size',sizes.median],
+      ['90th percentile',sizes.p90],
+      ['Largest transaction',sizes.largest],
+    ] as const).map(([label,cents])=><div key={label}><dt>{label}</dt><dd>{formatMoney(cents.toString())}</dd></div>)}</dl>
+  </div>}</>;
 }

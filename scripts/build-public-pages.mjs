@@ -158,7 +158,7 @@ try {
   readingLedger=(await ledger.preparePublicLedgerDocumentState(material,ledgerGeneration)).snapshot;
   for(const path of ['ledger','ledger/proofs','observatory']){
    const template='<html><head></head><body><div id="public-ledger-root"></div><script id="receiz-navigation" type="application/json">'+JSON.stringify({pages:{['/'+path+'/']:{}},bank:{}})+'</script></body></html>';
-   const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
+   const rendered=await ledger.renderPreparedDependentDocument({material,generation:ledgerGeneration,path,template,collectibleCatalog:readingCatalog}),content=rendered.match(/<div id="public-ledger-root">([\s\S]*?)<\/div>\s*<script id="public-ledger-document-seed"/),seed=rendered.match(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/);
    if(!content||!seed)throw Error('PUBLIC_LEDGER_STATIC_STATE_REQUIRED');
    ledgerStates.set('/'+path+'/',{content:content[1],seedScript:seed[0]});
   }

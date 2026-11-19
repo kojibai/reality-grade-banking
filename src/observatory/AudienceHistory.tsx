@@ -1,4 +1,5 @@
 import {useEffect,useMemo,useState} from 'react';
+import {visibleHistory} from './circulation-history';
 import {periodBounds,periods,type Period} from './activity';
 import archive from './audience-observations.json';
 import {profilePagePath} from '../receiz/public-profile';
@@ -28,9 +29,20 @@ export function useAudienceSeries(overview:ReturnType<typeof observeCatalog>|nul
       return [...prior,{at:new Date(seen).toISOString(),views,plays,seconds}];
     });
   },[overview,observedAt]);
-  return series;
+  return useMemo(()=>{
+    type Point={at:number;value:number;observation:Observation};
+    const history:Record<Metric,Point[]>={views:[],plays:[],seconds:[]};
+    for(const observation of series){
+      const at=Date.parse(observation.at);
+      for(const metric of ['views','plays','seconds'] as const){
+        const value=observation[metric].value;
+        if(value!==null)history[metric].push({at,value:metric==='seconds'?value/3600:value,observation});
+      }
+    }
+    return history;
+  },[series]);
 }
-export function AudienceHistory({overview,series}:{overview:ReturnType<typeof observeCatalog>|null;series:Observation[]}){
+export function AudienceHistory({overview,series}:{overview:ReturnType<typeof observeCatalog>|null;series:ReturnType<typeof useAudienceSeries>}){
   const [metric,setMetric]=useState<Metric>('views');
   const [mode,setMode]=useState<'profiles'|'history'>('history'),[focus,setFocus]=useState<number|null>(null),[page,setPage]=useState(0);
   const bands=useMemo(()=>{
@@ -53,24 +65,29 @@ export function AudienceHistory({overview,series}:{overview:ReturnType<typeof ob
     <div className="obs-mode" aria-label="Audience breakdown"><button aria-pressed={mode==='profiles'} onClick={()=>setMode('profiles')}>By profile</button><button aria-pressed={mode==='history'} onClick={()=>setMode('history')}>Totals over time</button></div>
     {mode==='profiles'?<><div className="obs-band-chart">{bands.map((band,i)=><button aria-pressed={focus===i} key={band.label} aria-label={band.label+' '+metrics[metric].toLowerCase()+', '+band.profiles.length+' profiles'} onClick={()=>{setFocus(focus===i?null:i);setPage(0);}}><span>{band.label}</span><i><b style={{width:(band.profiles.length/maxBand*100)+'%'}}/></i><strong>{number.format(band.profiles.length)} profiles</strong></button>)}</div>
     {chosen&&<div className="obs-band-members"><h4>{chosen.label} · {metrics[metric]}</h4>{chosen.profiles.slice(page*20,(page+1)*20).map(p=><a href={profilePagePath(p.username)} key={p.username}><span>@{p.username}</span><b>{number.format(p.stats[metric]!/(metric==='seconds'?3600:1))}</b></a>)}{!chosen.profiles.length&&<p>No reporting profiles in this range.</p>}{chosen.profiles.length>20&&<div className="obs-pager"><button disabled={!page} onClick={()=>setPage(n=>n-1)}>Previous</button><span>{page+1} / {Math.ceil(chosen.profiles.length/20)}</span><button disabled={(page+1)*20>=chosen.profiles.length} onClick={()=>setPage(n=>n+1)}>Next</button></div>}</div>}</>:<>
-    <PublicationChart series={series} metric={metric}/></>}</div>;
+    <PublicationChart series={series[metric]} metric={metric}/></>}</div>;
 }
 
-function PublicationChart({series,metric}:{series:Observation[];metric:Metric}){
+function PublicationChart({series,metric}:{series:ReturnType<typeof useAudienceSeries>[Metric];metric:Metric}){
   const [period,setPeriod]=useState<Period>('All');
   const [picked,setPicked]=useState<string|null>(null);
-  const published=series.filter(p=>p[metric].value!==null);
-  if(!published.length)return <p>No published readings for this metric.</p>;
-  const last=Date.parse(published.at(-1)!.at);
-  const {start:first}=periodBounds(Date.parse(published[0].at),period,last);
-  const rows=published.filter(p=>Date.parse(p.at)>=first);
-  const values=rows.map(p=>p[metric].value!/(metric==='seconds'?3600:1));
-  const high=Math.max(...values,1);
-  const selectedIndex=rows.findIndex(p=>p.at===picked);
+  const plot=useMemo(()=>{
+    if(!series.length)return null;
+    const last=series[series.length-1].at;
+    const first=Math.max(series[0].at,periodBounds(series[0].at,period,last).start);
+    const points=visibleHistory(series,first,last);
+    const rows=points.filter(point=>point.observedAt===undefined);
+    const high=points.reduce((max,point)=>Math.max(max,point.value),1);
+    const x=(at:number)=>last>first?100*(at-first)/(last-first):100;
+    const y=(value:number)=>93-86*value/high;
+    const line=points.length===1?'M0,'+y(points[0].value)+' H100':points.map((p,i)=>i?'H'+x(p.at).toFixed(3)+'V'+y(p.value).toFixed(3):'M0,'+y(p.value).toFixed(3)).join(' ');
+    return {rows,first,last,high,line,x};
+  },[period,series]);
+  if(!plot)return <p>No published readings for this metric.</p>;
+  const {rows,first,last,high,line,x}=plot;
+  const selectedIndex=rows.findIndex(p=>p.observation.at===picked);
   const selection=selectedIndex<0?rows.length-1:selectedIndex;
-  const selected=rows[selection];
-  const coordinates=rows.map((p,i)=>({x:100*(Date.parse(p.at)-first)/Math.max(1,last-first),y:93-86*values[i]/high}));
-  const line=coordinates.map(({x,y},i)=>(i?'L':'M')+x.toFixed(3)+','+y.toFixed(3)).join(' ');
+  const selected=rows[selection].observation;
   const tick=period==='1H'||period==='24H'?shortTime:date;
   return <>
     <p>The line combines each public profile’s latest reported total. Each point marks a publication. Activity between readings has no finer public timestamp.</p>
@@ -80,14 +97,14 @@ function PublicationChart({series,metric}:{series:Observation[];metric:Metric}){
     <div className="obs-observation-plot" aria-label={metrics[metric]+' publication history'}>
       <div className="obs-observation-y"><span>{number.format(high)}</span><span>0</span></div>
       <div className="obs-observation-field"><svg className="obs-published-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={line}/></svg>{rows.map((p,i)=><button type="button" key={p.at} aria-pressed={i===selection}
-        aria-label={p.at+' · '+number.format(values[i])+' '+metrics[metric].toLowerCase()+' · '+p[metric].covered+' profiles'}
-        onClick={()=>setPicked(p.at)} style={{left:((Date.parse(p.at)-first)/Math.max(1,last-first)*100)+'%',bottom:(values[i]/high*86+7)+'%'}}/>)}</div>
+        aria-label={p.observation.at+' · '+number.format(p.value)+' '+metrics[metric].toLowerCase()+' · '+p.observation[metric].covered+' profiles'}
+        onClick={()=>setPicked(p.observation.at)} style={{left:x(p.at)+'%',bottom:(p.value/high*86+7)+'%'}}/>)}</div>
     </div>
     <div className="obs-observation-dates"><time>{tick.format(first)}</time><time>{tick.format(last)}</time></div>
     <div className="obs-audience-inspect">
       <label htmlFor="obs-publication-index">Inspect publication</label>
-      <input id="obs-publication-index" type="range" min={0} max={rows.length-1} value={selection} disabled={rows.length<2} aria-valuetext={selected.at} onChange={e=>setPicked(rows[Number(e.target.value)].at)}/>
-      <output>{selected.at.slice(0,16).replace('T',' ')} UTC · <b>{number.format(values[selection])}</b> {metrics[metric].toLowerCase()} · {number.format(selected[metric].covered)} {selected[metric].covered===1?'profile':'profiles'}</output>
+      <input id="obs-publication-index" type="range" min={0} max={rows.length-1} value={selection} disabled={rows.length<2} aria-valuetext={selected.at} onChange={e=>setPicked(rows[Number(e.target.value)].observation.at)}/>
+      <output>{selected.at.slice(0,16).replace('T',' ')} UTC · <b>{number.format(rows[selection].value)}</b> {metrics[metric].toLowerCase()} · {number.format(selected[metric].covered)} {selected[metric].covered===1?'profile':'profiles'}</output>
     </div>
     {selected.intervals?.some(interval=>interval[metric]?.covered)&&<details><summary>Changes among returning profiles</summary>
       <div className="obs-table-scroll"><table><thead><tr><th>Previous reading (UTC)</th><th>Profiles compared</th><th>Net change</th></tr></thead>
@@ -97,7 +114,7 @@ function PublicationChart({series,metric}:{series:Observation[];metric:Metric}){
       })}</tbody></table></div></details>}
     <details><summary>{number.format(rows.length)} published {rows.length===1?'reading':'readings'}</summary>
       <div className="obs-table-scroll"><table><thead><tr><th>Observed (UTC)</th><th>{metrics[metric]}</th><th>Profiles included</th><th>Profiles in this release</th></tr></thead>
-      <tbody>{rows.map((p,i)=><tr key={p.at}><td>{p.at.slice(0,16).replace('T',' ')}</td><td>{number.format(values[i])}</td><td>{p[metric].covered}</td><td>{p.reported?.[metric]?.covered??'—'}</td></tr>)}</tbody></table></div>
+      <tbody>{rows.map(({at,value,observation})=><tr key={at}><td>{observation.at.slice(0,16).replace('T',' ')}</td><td>{number.format(value)}</td><td>{observation[metric].covered}</td><td>{observation.reported?.[metric]?.covered??'—'}</td></tr>)}</tbody></table></div>
     </details>
   </>;
 }

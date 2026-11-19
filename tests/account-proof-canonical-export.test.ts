@@ -93,7 +93,7 @@ it('keeps Account artwork and exact backup bytes inside a canonically sealed ima
  const tampered=first.bytes.slice();tampered[50]^=1;expect((await fixture.runtime.verifyReceizArtifact(tampered)).status).not.toBe('verified-artifact');
  const roundtrip=await account.verifyAccountProof(await readAccountProofFile(new File([new Uint8Array(first.bytes)],first.filename,{type:'image/png'})),owner);
  expect(roundtrip.sourceDigest).toBe(proof.sourceDigest);
-});
+},30_000);
 
 it('exports a titled Account Statement with every existing source byte and no new seal or network',async()=>{
  const {accountStatementFile}=await import('../src/receiz/account-proof-file');

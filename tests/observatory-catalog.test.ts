@@ -67,6 +67,15 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     expect(paid).toContain('<h3>Recorded payments</h3><strong>$0.01</strong>');
     expect(paid).toContain('aria-label="Recorded payments from');
   });
+  it('includes recorded zeroes in transaction sizes and excludes movements without amounts',()=>{
+    const transfers=(amounts:(string|null)[])=>walletActivity(parsePublicNetworkPage('wallet',{ok:true,rows:
+      amounts.map((amountUsdCents,i)=>({id:'transfer-'+i,kind:'transfer',amountUsdCents})),
+    }).records);
+    expect(transfers([null]).sizes).toBeNull();
+    expect(transfers(['0',null]).sizes).toEqual({average:0n,median:0n,p90:0n,largest:0n});
+    const amounts=['0','1','2','3','4','5','6','7','8','10000000000000000001',null];
+    expect(transfers(amounts)).toMatchObject({pricedTransfers:10,sizes:{average:1000000000000000004n,median:5n,p90:8n,largest:10000000000000000001n}});
+  });
   it('counts both rails once and retains mixed, single-rail and unclassified gross amounts',()=>{
     const rows=[
       {id:'mixed',kind:'chat_transfer',amountUsdCents:'10000',valueReceipt:{settledUsdCents:'150',phiUsdCents:'9850'}},
@@ -76,6 +85,6 @@ describe('Observatory directory, audience and wallet coverage',()=>{
       {id:'execution',actionKind:'wallet.transfer.connect',amountUsdCents:'10000'},
     ];
     const {records}=parsePublicNetworkPage('wallet',{ok:true,rows});
-    expect(walletActivity(records)).toMatchObject({volume:'50800',pricedTransfers:4});
+    expect(walletActivity(records)).toMatchObject({volume:'50800',pricedTransfers:4,sizes:{average:12700n,median:5250n,p90:40000n,largest:40000n}});
   });
 });

@@ -5,7 +5,7 @@ import {readPublicProfileHeads,readPublicProfileHeadRefusals} from './public-pro
 import type {PublicMarketCatalog} from './public-market';
 import {mergePublicRecords} from './public-network';
 
-export type ObservatoryDirectory=Pick<PublicMarketCatalog,'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'|'revision'|'observedAt'>&{audience?:{observedAt:string;heads:ReturnType<typeof readPublicProfileHeads>}};
+export type ObservatoryDirectory=Pick<PublicMarketCatalog,'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'|'revision'|'observedAt'>&{collectibleSealTimes?:number[];audience?:{observedAt:string;heads:ReturnType<typeof readPublicProfileHeads>}};
 export type PublicLedgerDocumentSeed=Readonly<{schema:'bank.public-ledger.document.v1';generation:string;path:'ledger'|'ledger/proofs'|'observatory';locale:string;timeZone:string;directory?:ObservatoryDirectory;snapshot:PublicNetworkCache}>;
 export type PublicLedgerCompressedSnapshot=Readonly<{gzipB64u:string;bytes:number}>;
 // The existing public Ledger archive delivery capacities. This is a display
@@ -33,7 +33,9 @@ export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof docum
   }else snapshot=parsePublicNetworkCache(value.snapshot);
   const raw=value.path==='observatory'?value.directory:null;
   const audience=typeof raw?.audience?.observedAt==='string'&&Number.isFinite(Date.parse(raw.audience.observedAt))?{observedAt:raw.audience.observedAt,heads:readPublicProfileHeads(raw.audience.heads)}:undefined;
-  const directory=raw&&typeof raw.revision==='string' ? {audience,revision:raw.revision,observedAt:typeof raw.observedAt==='string'?raw.observedAt:null,publicProfileHeads:readPublicProfileHeads(raw.publicProfileHeads),publicProfileHeadRefusals:readPublicProfileHeadRefusals(raw.publicProfileHeadRefusals),publicProfileHeadsRevision:typeof raw.publicProfileHeadsRevision==='string'?raw.publicProfileHeadsRevision:undefined} : undefined;
+  const seals=raw?.collectibleSealTimes;
+  const collectibleSealTimes=Array.isArray(seals)&&seals.length<=100000&&seals.every((at,index)=>Number.isSafeInteger(at)&&at>=0&&at<=8.64e15&&(!index||at>=seals[index-1]))?seals:undefined;
+  const directory=raw&&typeof raw.revision==='string' ? {audience,collectibleSealTimes,revision:raw.revision,observedAt:typeof raw.observedAt==='string'?raw.observedAt:null,publicProfileHeads:readPublicProfileHeads(raw.publicProfileHeads),publicProfileHeadRefusals:readPublicProfileHeadRefusals(raw.publicProfileHeadRefusals),publicProfileHeadsRevision:typeof raw.publicProfileHeadsRevision==='string'?raw.publicProfileHeadsRevision:undefined} : undefined;
   return {schema:value.schema,...(directory?{directory}:{}),generation:value.generation,path:value.path,locale:value.locale,timeZone:value.timeZone,snapshot} as PublicLedgerDocumentSeed;
  }catch{return null;}})();parsed.set(element,{text,seed});return seed;
 }
