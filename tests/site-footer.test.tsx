@@ -14,6 +14,8 @@ it('keeps existing asset destinations plus personal origination and Digital Matt
  expect(footer.textContent).not.toContain('$149');
  expect([...footer.querySelectorAll('a')].filter(a=>a.textContent==='Businesses')).toHaveLength(1);
  expect(footer.querySelector('a[href="/for/businesses/"]')?.textContent).toBe('Businesses');
+ const analytics=footer.querySelector('nav[aria-label="History footer links"] a');
+ expect(analytics?.getAttribute('href')).toBe('/analytics/');expect(analytics?.textContent).toBe('Analytics');
  const assets=footer.querySelector('nav[aria-label="Assets footer links"]')!;
  expect(assets.querySelectorAll('a')).toHaveLength(20);expect(assets.querySelector('a[href="/matter/"]')).not.toBeNull();expect(footer.querySelector('a[href="/book/"]')).not.toBeNull();expect(assets.querySelector('a[href="/moments/"]')).not.toBeNull();expect(assets.querySelector('a[href="/proof/"]')).not.toBeNull();
  for(const href of ['/crypto/','/nfts/','/explore/music/','/explore/images/','/explore/videos/','/explore/books/','/explore/essays/','/explore/moments/','/explore/collectibles/','/explore/documents/'])expect(assets.querySelector(`a[href="${href}"]`)).not.toBeNull();
