@@ -24,7 +24,7 @@ it('does not download a duplicate Feed document or mount a hidden view on pointe
  const f=fixture(),link=document.createElement('a');link.href='/feed/';document.body.append(link);link.dispatchEvent(new Event('pointerover',{bubbles:true}));await Promise.resolve();expect(f.fetcher).not.toHaveBeenCalled();expect(f.importEntry).not.toHaveBeenCalled();expect(f.ensure).not.toHaveBeenCalled();
 });
 it('keeps the qualified document loader when there is no held complete catalog',async()=>{
- const f=fixture();Object.assign(f.marker,{publicMarketDocument:()=>null});await f.open(new URL('https://bankeiz.com/feed/'));expect(f.fetcher).toHaveBeenCalledExactlyOnceWith('/feed/',expect.objectContaining({credentials:'omit',cache:'no-store'}));expect(f.ensure).not.toHaveBeenCalled();expect(f.mount).not.toHaveBeenCalled();expect(f.navigate).not.toHaveBeenCalled();expect(document.getElementById('public-navigation-status')?.textContent).toContain('Try again');
+ const f=fixture();Object.assign(f.marker,{publicMarketDocument:()=>null});await f.open(new URL('https://bankeiz.com/feed/'));expect(f.fetcher).toHaveBeenCalledExactlyOnceWith('/api/explore?path=feed',expect.objectContaining({credentials:'omit',cache:'no-store'}));expect(f.ensure).not.toHaveBeenCalled();expect(f.mount).not.toHaveBeenCalled();expect(f.navigate).not.toHaveBeenCalled();expect(document.getElementById('public-navigation-status')?.textContent).toContain('Try again');
 });
 it('does not bypass static code metadata requirements using an unrelated or incomplete catalog',async()=>{
  const f=fixture();f.page.head='';await f.open(new URL('https://bankeiz.com/feed/'));expect(f.fetcher).toHaveBeenCalledOnce();expect(f.importEntry).not.toHaveBeenCalled();expect(f.mount).not.toHaveBeenCalled();

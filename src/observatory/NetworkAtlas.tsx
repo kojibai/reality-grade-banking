@@ -1,5 +1,5 @@
 import {Fragment,memo,useMemo,useState} from 'react';
-import {ArrowUpRight} from 'lucide-react';
+import {ArrowUpRight,BookOpen} from 'lucide-react';
 import {Pager} from './Pager';
 import {formatMoney} from '../core/money';
 import {marketContentLabel} from '../receiz/market-categories';
@@ -77,7 +77,7 @@ export const NetworkAtlas=memo(function NetworkAtlas({catalog,data,audienceSerie
   const sealGrowth=useMemo(()=>growthSeries(catalog?.items.filter(item=>item.category==='proof').map(item=>item.sealedAt)??[]),[catalog]);
   const pp=Math.min(profilePage,Math.max(0,Math.ceil(profiles.length/profileSize)-1)),ap=Math.min(assetPage,Math.max(0,Math.ceil(assets.length/pageSize)-1));
   return <div className="obs-atlas obs-inner">
-    <nav className="obs-sections" aria-label="Analytics sections"><a href="#obs-audience">Audience</a><a href="#obs-growth">Growth</a><a href="#obs-profiles">Profiles</a><a href="#obs-assets">Assets</a><a href="#obs-trading">Trading</a><a href="#obs-wallets">Wallets</a><a href="#obs-economy">Economy</a><a href="#observatory-records">Records</a></nav>
+    <nav className="obs-sections" aria-label="Analytics sections"><a href="#obs-audience">Audience</a><a href="#obs-growth">Growth</a><a href="#obs-profiles">Profiles</a><a href="#obs-assets">Assets</a><a href="#obs-trading">Trading</a><a href="#obs-wallets">Wallets</a><a href="#obs-economy">Economy</a><a className="obs-records-jump" href="#observatory-records" aria-label="Records"><BookOpen size={16} aria-hidden="true"/><span>Records</span></a></nav>
     <section id="obs-audience"><div className="obs-section-head"><div><p className="obs-label">Public Showcase</p><h2>Audience</h2></div></div>
       <div className="obs-audience-grid">{([
         ['Public profiles',data?number.format(data.profiles.length):'—','Public headers and bound asset owners'],

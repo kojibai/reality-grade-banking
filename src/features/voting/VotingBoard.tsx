@@ -1,10 +1,10 @@
 import {receizKaiNow} from '@receiz/sdk';
-import {lazy,Suspense,useCallback,useEffect,useRef,useMemo,useState,useSyncExternalStore} from 'react';
+import {useCallback,useEffect,useRef,useMemo,useState,useSyncExternalStore} from 'react';
 import {BookOpen,Download,FileCheck2,LogOut,RefreshCw,Upload} from 'lucide-react';
 import {reviewClosure} from '../../receiz/governance-closure';
 import {followGovernanceAdditions,notifyGovernancePublication} from '../../receiz/governance-live';
 import {governanceLocation,governancePath} from '../../receiz/governance-links';
-import {GovernanceRegister,GovernanceHeading,governanceExamplePath} from './GovernanceRegister';
+import {GovernanceRegister,GovernanceHeading} from './GovernanceRegister';
 import {saveIdentityRecord} from '../../checkout/CheckoutIdentity';
 import {MeetingIdentity} from '../meeting/MeetingIdentity';
 import {checkoutIdentitySession} from '../../checkout/checkout-identity';
@@ -22,8 +22,6 @@ import {profileUsernameLabel} from '../../receiz/account-name';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
 import {useGovernanceMemberNames} from './governance-member-names';
 import './voting.css';
-
-const GovernanceExample=lazy(()=>import('./GovernanceExample').then(m=>({default:m.GovernanceExample})));
 
 type Screen='list'|'charter'|'proposal'|'detail'|'review'|'saved';
 type Props={initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
@@ -50,7 +48,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
   const chosen=rows.find(r=>r.digest===selected),charters=ofKind(rows,'charter'),actor=identity?.binding.artifactOwnerReceizId??null;
   const eligibleCharters=charters.filter(c=>actor&&charterAdmitsMember(c.document.terms.rules,actor)&&charterRatification(c,rows).complete);
   const publicProfile=Boolean(profile&&!profile.ownerIdentity);
-  const [personal,setPersonal]=useState(false),[exampleOpen,setExampleOpen]=useState(false);
+  const [personal,setPersonal]=useState(false);
   const [preparedName,setPreparedName]=useState<{owner:OpenIdentity;name:string}|null>(null);
   const profileName=identity&&profile?.ownerIdentity===identity?profile.publicName:null;
   const knownName=profileName||identity?.knownProfile?.()?.username||identity?.confirmedAccountUsername?.()||(preparedName?.owner===identity?preparedName?.name:null);
@@ -243,7 +241,6 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
     await rememberGovernanceDelivery(who,original);check(who);await who.publishGovernanceOriginal(original);notifyGovernancePublication();check(who);
     await rememberGovernanceDelivery(who,original,true);check(who);const pending=await governanceOutbox(who);check(who);setOutbox(pending);go(original.digest);
   }
-  if(profile&&exampleOpen)return <Suspense fallback={<p role="status">Opening example…</p>}><GovernanceExample onExit={()=>setExampleOpen(false)}/></Suspense>;
   return <div className="voting-board" aria-label="Voting">
     {screen==='list'&&<>
       <GovernanceHeading mark={!profile} eyebrow={profile&&!publicProfile?(publicId?'@'+publicId:undefined):profile?.name} title={profile&&!publicProfile?profile.name:publicProfile?'Public voting record':actor?'Voting dashboard':'Public voting'}>
@@ -256,9 +253,8 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
       {!profile&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
       {!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
-      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} onExample={profile?()=>setExampleOpen(true):undefined} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
-      <div className="gov-actions gov-tools"><button className="gov-link" onClick={()=>fileInput.current?.click()}><Upload size={16}/>Open governance Original</button><button className="gov-link" disabled={syncing} aria-busy={syncing} onClick={()=>void refreshByRequest()}><RefreshCw size={14}/>Refresh records</button>
-      {!profile&&viewRows.length>0&&<a className="gov-link" href={governanceExamplePath}>Explore example</a>}</div>
+      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
+      <div className="gov-actions gov-tools" role="group" aria-label="Governance records"><button className="gov-link" aria-label="Open governance Original" onClick={()=>fileInput.current?.click()}><Upload size={16} aria-hidden="true"/>Open Original</button><button className="gov-link" disabled={syncing} aria-busy={syncing} onClick={()=>void refreshByRequest()}><RefreshCw size={16} aria-hidden="true"/>Refresh records</button></div>
       {actor&&identity&&<details><summary>My Receiz ID</summary>{publicId&&<p>@{publicId}</p>}<div className="gov-proof-owner"><small>Proof owner ID</small><code>{actor}</code></div><button onClick={()=>saveIdentityRecord(identity)}><Download size={15}/>Save Identity Record</button></details>}
       {outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}
     </>}

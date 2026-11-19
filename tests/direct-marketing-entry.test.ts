@@ -65,7 +65,8 @@ it('keeps every real first frame, exact head, local example destination and nati
  expect(Buffer.byteLength(business)).toBeLessThan(Buffer.byteLength(rawPages['/business/'].content)-500_000);
  const runtime=readFileSync('public/learn/learn.js','utf8');
  expect(runtime.indexOf("loadPublic('client-work-demo')")).toBeLessThan(runtime.indexOf("getElementById('receiz-navigation')"));
- expect(runtime).toContain("if (!element?.textContent) return;");
+ expect(runtime).toContain("if (!element?.firstChild) return;");
+ expect(runtime).not.toContain("if (!element?.textContent) return;");
 });
 
 it('refuses missing marketing content, accidental app payloads and byte-budget regressions',()=>{
