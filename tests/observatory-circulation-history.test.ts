@@ -20,8 +20,20 @@ it('counts each dated issuance once across holders and preserves distinct issuan
 
 it('places archived claim dates and carried Original seals at their issue time across claim revisions',()=>{
  const t=marketPulseTime(51),later=marketPulseTime(52);
- const catalog={items:[{category:'sports',sealedBirths:[{collectibleId:'rsc_one',claimHash:'new',sealedAt:new Date(t).toISOString()}]},
-  {category:'proof',assetId:'legacy',pulse:'52'}, {category:'proof',assetId:'dated',sealedAt:new Date(t).toISOString()}]} as PublicMarketCatalog;
+ const item = (assetId:string):PublicMarketCatalog['items'][number] => ({
+  id:assetId, assetId, title:assetId, summary:'', category:'proof',
+  sourceUrl:null, verifyUrl:null, originalUrl:null, originalDigest:null, pulse:null, sealedAt:null,
+  ownerUsername:null, ownerDisplayName:null, ownerProfileUrl:null,
+  priceUsd:null, changePct:null, chart:[], authority:'projection-only', canTrade:false,
+ });
+ const catalog:PublicMarketCatalog = {
+  complete:true, revision:'issuance-history', observedAt:new Date(later).toISOString(), sourceCount:3,
+  items:[
+   {...item('card'),category:'sports',sealedBirths:[{collectibleId:'rsc_one',claimHash:'new',sealedAt:new Date(t).toISOString(),birthUsdValue:1}]},
+   {...item('legacy'),pulse:'52'},
+   {...item('dated'),sealedAt:new Date(t).toISOString()},
+  ],
+ };
  const seals=collectibleSealTimes(catalog,[['rsc_one:old',t],['rsc_two:other',later]]);
  expect(seals).toEqual([t,later]);
  expect(datedIssuances(catalog,seals,later)).toEqual([{at:t,value:2},{at:later,value:4}]);
