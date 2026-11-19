@@ -4,12 +4,12 @@ import {ArrowDown, ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play} from 'l
 import {ObservatoryHeader} from './ObservatoryHeader';
 import {ProfileFooter} from '../public-explorer/ProfileFooter';
 import {formatMoney} from '../core/money';
-import {PUBLIC_SOURCES, type PublicSource} from '../receiz/public-network';
+import {PUBLIC_SOURCES, type PublicRecord, type PublicSource} from '../receiz/public-network';
 import {documentSourceStates,type usePublicNetwork} from '../receiz/usePublicNetwork';
 import {ledgerRecordTitle} from '../receiz/ledger-payment-records';
 import {shippedMarketHistory, useMarketCapitalization} from '../receiz/market-projection/useMarketCapitalization';
 import {usePublicMarket} from '../receiz/usePublicMarket';
-import {activityTime, activityWindow, carriedActivityHistories, indexActivity, ledgerLink, periods, sourceNames, type Period} from './activity';
+import {activityTime, activityWindow, carriedActivityHistory, indexActivity, ledgerLink, periods, recentActivityRecord, sourceNames, type Period, type TimedRecord} from './activity';
 import type {ChartPeriod} from '../core/chart-history';
 import {HeadlineHistory, type Headline, type HistoryPoint} from './HeadlineHistory';
 import {useAudienceSeries} from './AudienceHistory';
@@ -45,14 +45,54 @@ function MarketReadings({source,onOpen}: {onOpen:(metric:Headline)=>void;source:
   </>;
 }
 
-function CarriedActivityHistory({histories}:{histories:ReturnType<typeof carriedActivityHistories>}) {
-  const [selected,setSelected]=useState<string|null>(null);
-  const history=histories.find(entry=>entry.record.id===selected)??histories[0];
-  return <section className="obs-history obs-inner" id="obs-history" aria-label="Carried history">
-    <div className="obs-section-head"><div><p className="obs-label">Carried history</p><h2>{ledgerRecordTitle(history.record)}</h2></div><a href={ledgerLink(history.record)}>Inspect in Ledger <ArrowUpRight/></a></div>
-    {histories.length>1&&<div className="obs-timeline-nav"><select aria-label="Record with carried history" value={history.record.id} onChange={event=>setSelected(event.target.value)}>{histories.map(({record})=><option key={record.id} value={record.id}>{ledgerRecordTitle(record)} · {fullDate.format(activityTime(record))} · {clock.format(activityTime(record))} UTC</option>)}</select></div>}
-    <ol>{history.steps.map(step=><li key={step.id}><strong>{step.label}</strong>{step.occurredAt&&<time dateTime={step.occurredAt}>{fullDate.format(Date.parse(step.occurredAt))} · {clock.format(Date.parse(step.occurredAt))} UTC</time>}{step.detail&&<p>{step.detail}</p>}</li>)}</ol>
-    {!!history.missingParentHashes?.length&&<p>{history.missingParentHashes.length} referenced predecessors are outside this carried history.</p>}
+const carriedReferences = [
+  ['entryHash','Entry hash'], ['prevHash','Previous entry hash'], ['artifactDigest','Original digest'],
+  ['proofHead','Proof head'], ['transferId','Transfer reference'], ['claimHash','Claim hash'],
+  ['bundleHash','Proof bundle hash'], ['capsuleHash','Capsule hash'], ['objectId','Object reference'],
+] as const;
+function CarriedActivityHistory({buckets,total,actions}:{buckets:readonly (readonly PublicRecord[])[];total:number;actions:readonly TimedRecord[]}) {
+  const [cursor,setCursor]=useState<{index:number;id:string}|null>(null);
+  const touch=useRef<{x:number;y:number}|null>(null);
+  let index=Math.min(cursor?.index??0,total-1);
+  if(cursor&&recentActivityRecord(buckets,index)?.id!==cursor.id){
+    let offset=0;
+    for(let i=buckets.length-1;i>=0;i--){
+      const row=buckets[i].findIndex(record=>record.id===cursor.id);
+      if(row>=0){index=offset+row;break;}
+      offset+=buckets[i].length;
+    }
+  }
+  const record=recentActivityRecord(buckets,index)!;
+  const history=useMemo(()=>carriedActivityHistory(record),[record]);
+  const choose=(next:number)=>{
+    const nextRecord=recentActivityRecord(buckets,next);
+    if(nextRecord)setCursor({index:next,id:nextRecord.id});
+  };
+  const previous=useMemo(()=>{
+    const hash=record.evidence.prevHash;
+    if(record.source!=='actions'||!/^[a-f0-9]{64}$/i.test(hash??'')||hash===record.evidence.entryHash)return;
+    for(let i=actions.length-1;i>=0;i--)if(actions[i].record.evidence.entryHash===hash)return actions[i].record;
+  },[actions,record]);
+  return <section className="obs-history obs-inner" id="obs-history" aria-label="Carried history" tabIndex={0}
+    onKeyDown={event=>{if(event.target!==event.currentTarget)return;if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();choose(index+(event.key==='ArrowLeft'?-1:1));}}}
+    onTouchStart={event=>{touch.current=event.touches.length===1&&!(event.target instanceof Element&&event.target.closest('a,button,select'))?{x:event.touches[0].clientX,y:event.touches[0].clientY}:null;}}
+    onTouchCancel={()=>{touch.current=null;}}
+    onTouchEnd={event=>{const start=touch.current,end=event.changedTouches[0];touch.current=null;if(!start||!end||event.touches.length)return;
+      const x=end.clientX-start.x,y=end.clientY-start.y;if(Math.abs(x)>45&&Math.abs(x)>Math.abs(y)*1.5)choose(index+(x<0?1:-1));}}>
+    <div className="obs-section-head"><div><p className="obs-label">Carried history</p><h2>{ledgerRecordTitle(record)}</h2></div><a href={ledgerLink(record)}>Inspect in Ledger <ArrowUpRight/></a></div>
+    {total>1&&<div className="obs-timeline-nav" aria-label="Carried history navigation">
+      <button type="button" aria-label="Previous history event" disabled={index===0} onClick={()=>choose(index-1)}><ChevronLeft/> Newer</button>
+      <output aria-live="polite">Record {num.format(index+1)} of {num.format(total)}</output>
+      <button type="button" aria-label="Next history event" disabled={index===total-1} onClick={()=>choose(index+1)}>Older <ChevronRight/></button>
+    </div>}
+    <ol>{history?.steps.length?history.steps.map(step=><li key={step.id}><strong>{step.label}</strong>{step.occurredAt&&<time dateTime={step.occurredAt}>{fullDate.format(Date.parse(step.occurredAt))} · {clock.format(Date.parse(step.occurredAt))} UTC</time>}{step.detail&&<p>{step.detail}</p>}</li>):
+      <>{previous&&<li><a href={ledgerLink(previous)}>Previous entry · {ledgerRecordTitle(previous)}</a></li>}
+      <li><strong>Recorded event</strong><time dateTime={new Date(activityTime(record)).toISOString()}>{fullDate.format(activityTime(record))} · {clock.format(activityTime(record))} UTC</time>{record.detail&&<p>{record.detail}</p>}</li></>}
+    </ol>
+    {carriedReferences.some(([key])=>record.evidence[key])&&<dl className="obs-carried-references">{carriedReferences.map(([key,label])=>record.evidence[key]&&<div key={key}><dt>{label}</dt><dd>{record.evidence[key]}</dd></div>)}</dl>}
+    {record.sourceUrl&&<a href={record.sourceUrl}>Open public source <ArrowUpRight size={14}/></a>}
+    {!!history?.missingParentHashes?.length&&<p>{history.missingParentHashes.length} referenced predecessors are outside this carried history.</p>}
+    {history?.fundingIncomplete&&<p>The record references funding history beyond the steps shown.</p>}
   </section>;
 }
 
@@ -191,7 +231,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     :network.bootstrap?'Opening public history'
     :'No public records available';
   const historyBucket=picked===null?null:focus;
-  const histories=useMemo(()=>carriedActivityHistories(plot.histories,historyBucket),[plot.histories,historyBucket]);
+  const historyTotal=historyBucket===null?plot.total:selected.length;
+  const hasHistory=historyTotal>0;
   return <div className="observatory"><ObservatoryHeader active={active}/>
     <main><section className="obs-engine"><div className="obs-inner">
       <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{status}</span></span></div>
@@ -210,8 +251,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     </div></section>
     <section className="obs-details obs-inner"><div><p className="obs-label">Selected interval</p><h3>{anchor?day.format(start)+' · '+clock.format(start)+'–'+(day.format(start)!==day.format(Math.min(plot.end,start+plot.width))?day.format(Math.min(plot.end,start+plot.width))+' · ':'')+clock.format(Math.min(plot.end,start+plot.width))+' UTC':'No interval selected'}</h3><p>{num.format(selected.length)} {source==='actions'?'public actions':source==='proofs'?'Showcase records':sourceNames[source].toLowerCase()+' records'} in this interval</p>
       <a href="#observatory-records">Inspect records <ArrowDown/></a></div>
-      <div><p className="obs-label">Continuity</p><h3>Carried history</h3><p>{histories.length?num.format(histories.length)+(histories.length===1?' record carries history':' records carry history')+' in this '+(historyBucket===null?'range.':'interval.'):'No carried history in this '+(historyBucket===null?'range.':'interval.')}</p>{histories.length>0?<button type="button" className="obs-detail-action" aria-expanded={historyOpen} aria-controls="obs-history" onClick={()=>setHistoryOpen(open=>!open)}>{historyOpen?'Close history':'Open history'} <ArrowDown/></button>:<a href="/ledger/">Open Ledger <ArrowUpRight/></a>}</div></section>
-    {historyOpen&&histories.length>0&&<CarriedActivityHistory histories={histories}/>}
+      <div><p className="obs-label">Continuity</p><h3>Carried history</h3><p>{hasHistory?'Inspect the records and evidence carried in this '+(historyBucket===null?'range.':'interval.'):'Choose an interval with recorded activity.'}</p>{hasHistory?<button type="button" className="obs-detail-action" aria-expanded={historyOpen} aria-controls="obs-history" onClick={()=>setHistoryOpen(open=>!open)}>{historyOpen?'Close history':'Open history'} <ArrowDown/></button>:<a href="/ledger/">Open Ledger <ArrowUpRight/></a>}</div></section>
+    {historyOpen&&hasHistory&&<CarriedActivityHistory key={source+':'+filter+':'+period+':'+(picked??'range')+':'+(paused??'live')} buckets={historyBucket===null?plot.buckets:[selected]} total={historyTotal} actions={index.streams.actions}/>}
     <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
       actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={inspectAction}/>
     <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>

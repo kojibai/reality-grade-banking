@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import type {PublicRecord} from '../src/receiz/public-network';
 import {marketPulseTime} from '../src/receiz/market-projection/coordinates';
-import {activityWindow,carriedActivityHistories,indexActivity,ledgerLink} from '../src/observatory/activity';
+import {activityWindow,carriedActivityHistory,indexActivity,ledgerLink,recentActivityRecord} from '../src/observatory/activity';
 const anchor=Date.parse('2026-11-18T16:10:00Z');
 function row(id:string, at:number|null):PublicRecord {
   return {id:'actions:'+id,source:'actions',sourceId:id,authority:'public-source-projection',kind:'record',title:id,detail:'',actor:null,time:at===null?null:new Date(at).toISOString(),amountUsdCents:null,kaiUpulse:null,pulse:null,sourceUrl:null,evidence:{}};
@@ -52,12 +52,16 @@ describe('Observatory public activity',()=>{
         steps:[{id:'origin',kind:'free_claim',label:'Claimed',occurredAt:new Date(anchor-2*hour).toISOString()},{id:'transfer',kind:'transfer',label:'Transferred'}],
       }},
     });
-    const index=indexActivity([candidate('older',anchor-hour),candidate('visible',anchor-30_000),candidate('later',anchor+1),candidate('other-source',anchor,'actions')]);
+    const index=indexActivity([candidate('older',anchor-hour),candidate('visible',anchor-30_000),row('ordinary',anchor-45_000),candidate('later',anchor+1),candidate('other-source',anchor,'actions')]);
     const graph=activityWindow(index.streams.graph,'1H',anchor);
-    expect(carriedActivityHistories(graph.histories,null).map(history=>history.record.sourceId)).toEqual(['visible','older']);
-    expect(carriedActivityHistories(graph.histories,0).map(history=>history.record.sourceId)).toEqual(['older']);
-    expect(carriedActivityHistories(graph.histories,graph.buckets.length-1)[0].steps.map(step=>step.id)).toEqual(['origin','transfer']);
-    expect(carriedActivityHistories(activityWindow(index.streams.actions,'1H',anchor).histories,null).map(history=>history.record.sourceId)).toEqual(['other-source']);
+    expect(recentActivityRecord(graph.buckets,0)?.sourceId).toBe('visible');
+    expect(recentActivityRecord(graph.buckets,1)?.sourceId).toBe('older');
+    expect(recentActivityRecord(graph.buckets,2)).toBeUndefined();
+    expect(recentActivityRecord([graph.buckets[0]],0)?.sourceId).toBe('older');
+    expect(carriedActivityHistory(recentActivityRecord(graph.buckets,0)!).steps.map(step=>step.id)).toEqual(['origin','transfer']);
+    const actions=activityWindow(index.streams.actions,'1H',anchor);
+    expect(recentActivityRecord(actions.buckets,0)?.sourceId).toBe('other-source');
+    expect(recentActivityRecord(actions.buckets,1)?.sourceId).toBe('ordinary');
   });
   it('opens the exact public Ledger identity through its supported fragment',()=>{
     expect(ledgerLink(row('a/b:c',anchor))).toBe('/ledger/#record=actions%3Aa%2Fb%3Ac');

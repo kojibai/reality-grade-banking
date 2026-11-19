@@ -89,22 +89,29 @@ const legalHtml = `<!doctype html><html lang="en" class="learn-surface"><head><m
 // Legal notices share the public shell. Bundle them after their source archive
 // link is known; every entry remains a complete readable document without JS.
 const publicLegalHtml=applyPublicMetadata(legalHtml,publicPage('/legal/'),socialImages.images['/legal/']);
-const bankHtml = await readFile('dist/index.html', 'utf8');
-const navigationPattern = /<script id="receiz-navigation" type="application\/json">[\s\S]*?<\/script>/;
-const navigationScript = bankHtml.match(navigationPattern)?.[0];
-const sharedExamples=bankHtml.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]??'';
-if (!navigationScript) throw Error('Build public pages before legal notices.');
-const opened=decodeNavigationEnvelope(navigationScript.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, ''));
-const navigation=opened.navigation;
-navigation.pages['/legal/'] = {
+const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
+const readNavigation=async file=>{
+ const html=await readFile(file,'utf8'),packet=html.match(navigationPattern)?.[1];
+ if(!packet)throw Error('Build public pages before legal notices.');
+ const opened=decodeNavigationEnvelope(packet);
+ return {...opened,shared:opened.shared||html.match(/<template data-shared-example-views>[^<]*<\/template>/)?.[0]||''};
+};
+const [home,publicEntry]=await Promise.all([readNavigation('dist/index.html'),readNavigation('dist/learn/index.html')]);
+const legalPage={
   head: publicLegalHtml.match(/<head>([\s\S]*?)<\/head>/)[1],
   content: publicLegalHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1],
 };
-const bundle = writeNavigationScript(navigation,opened.shared||sharedExamples);
+const patchLegal=({navigation,shared})=>{
+ navigation.pages['/legal/']=legalPage;
+ return writeNavigationScript(navigation,shared);
+};
+const bundle=patchLegal(publicEntry),homeBundle=patchLegal(home),navigation=publicEntry.navigation;
 await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`));
-// The dedicated Feed keeps its lean source/asset navigation. Its Legal link
-// opens the complete legal document through normal navigation.
-for (const file of ['dist/index.html', ...[...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})].filter(path => path !== '/legal/' && path !== '/feed/' && path !== '/discover/').map(path => `dist${path}index.html`)]) {
+// Preserve the exact Bank stylesheet bytes in just their existing carrier.
+await writeFile('dist/index.html',(await readFile('dist/index.html','utf8')).replace(navigationPattern,()=>homeBundle));
+for (const path of [...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})]) {
+  if(path==='/legal/'||path==='/feed/'||path==='/discover/')continue;
+  const file=`dist${path}index.html`;
   await writeFile(file, (await readFile(file, 'utf8')).replace(navigationPattern, () => bundle));
 }
 // Feed/Discover keep lightweight known destinations, including final Legal.

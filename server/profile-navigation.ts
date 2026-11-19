@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {publicProfileReservedNames} from '../src/receiz/public-profile.js';
 
 const navigation=/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
-const destinations=['/explore/','/feed/','/discover/','/standards/','/legal/','/learn/account-access/'];
+const destinations=['/explore/','/feed/','/discover/','/vote/','/standards/','/legal/','/learn/account-access/'];
 const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 
 /** Reuse the existing lean public-navigation contract. Profile workspaces,

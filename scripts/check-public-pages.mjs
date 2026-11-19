@@ -50,13 +50,27 @@ for (const path of ['', 'receiz-id/', 'proof-objects/', 'reserve-and-settlement/
 // App and guide navigation retains the same routes, including legal notices.
 // Independent marketing visits keep their selected page and use native links.
 const navigationPattern = /<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/;
-const openedNavigation = decodeNavigationEnvelope(html.match(navigationPattern)[1]);
+const openedBank=decodeNavigationEnvelope(html.match(navigationPattern)[1]);
+const coldPublic=await readFile('dist/learn/offline-banking/index.html','utf8');
+const openedNavigation=decodeNavigationEnvelope(coldPublic.match(navigationPattern)[1]);
 const carriedNavigation = openedNavigation.navigation;
 const sharedExamplePattern=/<template data-shared-example-views>[^<]*<\/template>/g;
 const sharedExampleBank=openedNavigation.shared?[openedNavigation.shared]:html.match(sharedExamplePattern);
 assert.equal(sharedExampleBank?.length,1,'The carried walkthrough destinations exist once in the initial document');
-const navigation = structuredClone(carriedNavigation);
-for(const page of [...Object.values(navigation.pages),navigation.bank,navigation.bank.css??{}])for(const field of Object.keys(page).filter(key=>key!=='styles'))if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
+function expandNavigation(source){
+ const navigation=structuredClone(source);
+ for(const page of [...Object.values(navigation.pages),navigation.bank,navigation.bank.css??{}])for(const field of Object.keys(page).filter(key=>key!=='styles'))if(Array.isArray(page[field]))page[field]=page[field].map(part=>typeof part==='number'?navigation.styles[part]:part).join('');
+ delete navigation.styles;
+ return navigation;
+}
+const navigation=expandNavigation(carriedNavigation),bankNavigation=expandNavigation(openedBank.navigation);
+const {css:coldBankCss,...bankRuntime}=navigation.bank;
+assert.deepEqual(bankNavigation,{...navigation,bank:bankRuntime},'The Bank entry carries every exact public destination and reuses its own embedded styles.');
+assert.equal(openedBank.shared,openedNavigation.shared,'The Bank entry retains the same complete shared examples.');
+for(const [url,css] of Object.entries(coldBankCss)){
+ assert.equal(css,await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
+ assert.ok(html.includes(`<style data-bank-stylesheet="${url}">${css}</style>`),'The Bank entry uses the same exact styles already embedded in its document.');
+}
 // Direct cold Explorer documents use the held complete build family. Keep the
 // ordinary navigation/Bank entry compact and independent of that public seed.
 assert.ok(!/<script\b[^>]*\bid="(?:public-market-seed|bank-public-market-(?:seed|hint))"/.test(html),'Static Bank entry never carries or waits for an Explorer document seed.');
@@ -97,7 +111,7 @@ for(const path of ['/explore/','/explore/images/']){
 console.log('Verified accepted publication rendering from actual compiled Explorer/category templates with one full seed inside the existing delivery capacity.');
 assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&navigation.pages['/explore/'].head.includes('.ledger-proof-actions'),'Retained public asset navigation carries evidence styles before the lazy reader opens');
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
-for(const url of navigation.bank.styles)assert.equal(navigation.bank.css[url],await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');
+for(const url of navigation.bank.styles)assert.ok(coldBankCss[url],'Every Bank-owned sheet stays available on a cold public return.');
 assert.deepEqual(navigation.aliases,publicRouteAliases,'Retained navigation carries the public document aliases');
 for(const [alias,path] of Object.entries(publicRouteAliases)){
  const legacy=await readFile(`dist${alias}index.html`,'utf8'),canonical=await readFile(`dist${path}index.html`,'utf8');
@@ -105,6 +119,11 @@ for(const [alias,path] of Object.entries(publicRouteAliases)){
  assert.ok(!sitemap.includes(`<loc>${publicOrigin}${alias}</loc>`),'Legacy URLs must not duplicate the canonical sitemap');
  assert.ok(canonical.includes(siteFooterHtml(path)),'The static footer omits its canonical current destination');
 }
+const vote=navigation.pages['/vote/'],voteDocument=await readFile('dist/vote/index.html','utf8');
+assert.equal(vote.runtime,'vote','Public Vote uses the retained workspace router.');
+assert.ok(vote.content.includes('class="profile-voting-workspace"')&&vote.head.includes('.profile-voting-workspace .gov-overview'),'The first Vote frame uses the existing popover styles.');
+assert.ok(voteDocument.includes('id="public-vote-root" data-public-runtime="vote">'+vote.content),'The direct and retained Vote entrances use the same first frame.');
+assert.ok(/<script type="module" async[^>]*src="\/assets\/vote-/.test(voteDocument),'Direct Vote starts its retained runtime before the unrelated navigation payload.');
 assert.equal(navigation.pages['/vault/'],undefined,'Marketing Vaults must never claim a proof route');
 assert.ok(navigation.pages['/legal/'], 'Legal notices must use the retained public header too');
 assert.ok(navigation.pages['/schemas/'], 'The complete schema reference must be carried for document-free public navigation');
@@ -149,7 +168,7 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
     assert.ok(entry.head.includes('<style data-public-page-style="schemas">'),'Reference styles travel with the carried page');
     assert.ok(!entry.head.includes('href="/schemas/schemas.css"'),'No new stylesheet request is required on reference navigation');
   } else if(entry.runtime) {
-    assert.ok(['explore','ledger','verify','conformance','receipt'].includes(entry.runtime));
+    assert.ok(['explore','ledger','verify','conformance','receipt','vote'].includes(entry.runtime));
     assert.ok(output.includes(`id="public-${entry.runtime}-root" data-public-runtime="${entry.runtime}"`));
     assert.ok(entry.head.includes(`<style data-public-page-style="${entry.runtime}">`),'Workspace styles are carried for immediate first paint');
     assert.ok(!entry.head.includes('<script type="module"'),'Carried metadata does not execute an unselected workspace');

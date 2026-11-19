@@ -1,5 +1,5 @@
-.gov-page{margin:0;background:var(--bg,#fcfbf8);color:var(--navy,#172b45);font:16px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.gov-page #vote-root{max-width:1080px;margin:0 auto;padding:clamp(12px,2.5vw,30px) clamp(14px,4vw,52px) 48px}
+:is(.gov-page,body[data-bank-surface="vote"]){margin:0;background:var(--bg,#fcfbf8);color:var(--navy,#172b45);font:16px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#vote-root,#public-vote-root{max-width:1080px;margin:0 auto;box-sizing:border-box;padding:16px max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 .voting-board{--gov-ink:var(--navy,#172b45);--gov-muted:#5c6b7e;--gov-rule:var(--line,#e9eaf0);--gov-accent:var(--blue,#244dcb);--gov-paper:var(--surface,#fff);color:var(--gov-ink);font:15px/1.55 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;container-type:inline-size;overflow-wrap:anywhere}
 .voting-board *{box-sizing:border-box}.voting-board h1,.voting-board h2{font:normal clamp(32px,6cqw,72px)/1.06 Georgia,serif;letter-spacing:-.045em;margin:.18em 0}.voting-board h2{font-size:clamp(29px,5cqw,46px)}.voting-board h3{font-size:17px;margin:0 0 8px}.voting-board p{color:var(--gov-muted);margin:6px 0 12px;max-width:68ch}.gov-kicker,.gov-facts dt{color:var(--gov-muted);font-weight:600;font-size:12px;letter-spacing:.035em}
 .gov-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:8px 0 28px}.gov-actions,.gov-scope,.voting-board .meeting-identity-actions,.gov-counts,.gov-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.gov-tabs{border-block:1px solid var(--gov-rule);padding:6px 0;margin:10px 0 18px}.voting-board button,.gov-actions a{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 14px;font:inherit;font-weight:550;font-size:14px;line-height:1.3;color:var(--gov-ink);border:1px solid var(--gov-rule);background:var(--gov-paper);border-radius:9px;cursor:pointer;text-decoration:none}.voting-board button:disabled{opacity:.55;cursor:default}.voting-board button:focus-visible,.voting-board a:focus-visible,.voting-board summary:focus-visible,.voting-board input:focus-visible,.voting-board select:focus-visible,.voting-board textarea:focus-visible{outline:3px solid #809df0;outline-offset:3px}.voting-board button:hover:enabled{border-color:#aab9ce}.voting-board .gov-primary{background:var(--gov-accent);color:white;border-color:var(--gov-accent)}.voting-board .meeting-identity-actions button{width:44px;height:44px;padding:0;border-radius:50%}.voting-board .gov-link,.gov-tabs button,.gov-scope button{border-color:transparent;background:transparent}.gov-tabs button[aria-current],.gov-scope button[aria-pressed=true]{background:#eaf0fd;color:var(--gov-accent)}
@@ -108,7 +108,7 @@
 .profile-voting-workspace .gov-tools button { font-size: 13px; }
 .profile-voting-workspace .voting-board :focus-visible { outline: 2px solid var(--gov-accent); outline-offset: 2px; }
 @media (min-width: 720px) {
-  .profile-voting-workspace > .sheet-body { padding: 28px clamp(24px, 5vw, 80px) 48px; }
+  .profile-voting-workspace > .sheet-body,#vote-root,#public-vote-root { padding: 28px clamp(24px, 5vw, 80px) 48px; }
 }
 
 

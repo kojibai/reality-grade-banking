@@ -4,11 +4,11 @@ import {resolve} from 'node:path';
  * only its existing mount API through Vite's generated bare-import facade. */
 export function publicRuntimeExportsPlugin(){
  const entries=new Map();
- const sources={feed:'/src/public-feed/main.tsx',explore:'/src/public-explorer/main.tsx',ledger:'/src/public-ledger/main.tsx'};
+ const sources={vote:'/src/features/voting/main.tsx',feed:'/src/public-feed/main.tsx',explore:'/src/public-explorer/main.tsx',ledger:'/src/public-ledger/main.tsx'};
  return {
   name:'bankeiz-public-runtime-exports',apply:'build',enforce:'post',
-  configResolved(config){for(const runtime of ['feed','explore','ledger'])entries.set(resolve(config.root,runtime,'index.html').replaceAll('\\','/'),runtime);},
+  configResolved(config){for(const runtime of Object.keys(sources))entries.set(resolve(config.root,runtime,'index.html').replaceAll('\\','/'),runtime);},
   buildStart(){for(const [id,name]of entries)this.emitFile({type:'chunk',id,name,preserveSignature:'strict'});},
-  transform(code,id){const runtime=entries.get(id);if(runtime)return code+`\nexport {mountHeldPublicDocument,mountPublicDocument} from "${sources[runtime]}";`;},
+  transform(code,id){const runtime=entries.get(id);if(runtime)return code+`\nexport {${runtime==='vote'?'':'mountHeldPublicDocument,'}mountPublicDocument} from "${sources[runtime]}";`;},
  };
 }

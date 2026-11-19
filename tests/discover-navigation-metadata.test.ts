@@ -8,10 +8,12 @@ import {profileNavigationHtml} from '../server/profile-navigation';
 
 const discoverHead='<title>Discover | Bankeiz</title><link rel="canonical" href="https://bankeiz.com/discover/"><style data-public-page-style="discover">.discover-shell{color:navy}</style>';
 const feedHead='<title>Feed | Bankeiz</title><link rel="canonical" href="https://bankeiz.com/feed/"><style data-public-page-style="feed">.feed-stage{color:navy}</style>';
+const vote={runtime:'vote',entry:'/assets/vote-held.js',title:'Public voting · Bankeiz',head:'<title>Public voting · Bankeiz</title>',content:'<main>Held Vote</main>'};
 const pages={
  '/explore/':{runtime:'explore',entry:'/assets/explore-held.js',head:'<title>Explore</title>',content:'Held Explore body'},
  '/discover/':{runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz',head:discoverHead,content:'<main>OLDER DISCOVER BODY</main><script id="public-discovery-seed">OLD CATALOG</script>'},
  '/feed/':{runtime:'feed',entry:'/assets/feed-held.js',head:feedHead,content:'Older Feed body'},
+ '/vote/':vote,
  '/learn/guide/':{head:'<title>Guide</title><style>.guide{color:blue}</style>',content:'<main>Unvisited static guide</main>'},
 };
 const builder=readFileSync('scripts/build-public-pages.mjs','utf8');
@@ -22,13 +24,18 @@ const bankStyles=['/assets/bank.css','/assets/public-host.css'],bankCss={'/asset
 const privateBankStyles=bankOwnedStyles(bankStyles,{host:{name:'PublicAssetTradeHost',file:'assets/public-host.js',css:['assets/public-host.css']}});
 
 it('carries the existing small Discover body beside Bank while Feed stays lightweight',()=>{
- const bundle=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',statement('bundle =')+';return bundle;')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''});
+ const builderStatements=['navigationPages=','bankRuntime=','navigation=','bundle=','bankBundle='].map(statement).join('\n');
+ const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''});
  const value=read(bundle),discover=value.pages['/discover/'];
  expect(discover).toMatchObject({runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz'});
  expect(expand(discover.head,value.styles)).toBe(discoverHead);
  expect(expand(discover.content,value.styles)).toBe(pages['/discover/'].content);expect(value.pages['/feed/']).toMatchObject({runtime:'feed',entry:'/assets/feed-held.js',content:''});expect(expand(value.pages['/feed/'].head,value.styles)).toBe(feedHead);expect(bundle).not.toContain('Older Feed body');
  expect(expand(value.bank.content,value.styles)).toBe('Frozen Bank content');expect(expand(value.pages['/learn/guide/'].content,value.styles)).toBe('<main>Unvisited static guide</main>');
  expect(value.bank.styles).toEqual(['/assets/bank.css']);expect(Object.keys(value.bank.css)).toEqual(bankStyles);
+ const home=read(bankBundle);
+ expect(home.bank.css).toBeUndefined();expect(home.bank.styles).toEqual(value.bank.styles);
+ expect(expand(home.pages['/discover/'].content,home.styles)).toBe(pages['/discover/'].content);
+ expect(expand(home.pages['/vote/'].content,home.styles)).toBe(vote.content);
 });
 
 it('keeps the exact Discover descriptor in workspace metadata while static guide hashes stay compact',()=>{
@@ -53,6 +60,8 @@ it('carries Discover unchanged on a cold profile with no Bank family, while unre
  const value=read(profileNavigationHtml(html));
  expect(expand(value.pages['/discover/'].content,value.styles)).toBe(pages['/discover/'].content);
  expect(expand(value.pages['/discover/'].head,value.styles)).toBe(discoverHead);
+ expect(expand(value.pages['/vote/'].content,value.styles)).toBe(vote.content);
+ expect(expand(value.pages['/vote/'].head,value.styles)).toBe(vote.head);
  expect(value.pages['/discover/'].preparedBuild).toBeUndefined();expect(value.pages['/discover/'].preparedRevision).toBeUndefined();
  expect(value.pages['/learn/guide/'].content).toBe('');expect(value.bank.content).toBe('Frozen Bank content');
 });
@@ -63,6 +72,7 @@ it('retains Discover metadata without duplicate body in immersive Feed and Disco
   '/explore/':pages['/explore/'],
   '/ledger/':{runtime:'ledger',head:'<title>Ledger</title>',content:'Held ledger'},
   '/analytics/':{runtime:'ledger',head:'<title>Analytics</title>',content:'Held analytics'},
+  '/vote/':vote,
  };
  for(const runtime of ['feed','discover']){
   const name=runtime+'Bundle';
@@ -73,7 +83,8 @@ it('retains Discover metadata without duplicate body in immersive Feed and Disco
   if(runtime==='discover'){
    expect(expand(value.pages['/ledger/'].content,value.styles)).toBe('Held ledger');
    expect(expand(value.pages['/analytics/'].content,value.styles)).toBe('Held analytics');
-  }
+   expect(expand(value.pages['/vote/'].content,value.styles)).toBe(vote.content);
+  }else expect(value.pages['/vote/'].content).toBe('');
   expect(value.bank.styles).toEqual(['/assets/bank.css']);expect(Object.keys(value.bank.css)).toEqual(bankStyles);
  }
  expect(metadata['/discover/'].content).toBe(pages['/discover/'].content);

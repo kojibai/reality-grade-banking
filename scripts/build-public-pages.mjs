@@ -195,13 +195,16 @@ publicPages['/schemas/'] = {
 // existing readable first paint and exact emitted CSS with every public entry;
 // route changes need neither a replacement document nor a stylesheet round trip.
 const runtimeDocuments = new Map();
-for (const runtime of ['ledger','explore','verify','conformance','receipt','feed','discover']) {
+for (const runtime of ['ledger','explore','verify','conformance','receipt','feed','discover','vote']) {
   const path = `/${runtime}/`; let html = await readFile(`dist${path}index.html`, 'utf8');
   if(runtime==='verify')html=html.replace(`<div id="root">${publicEntryFallback(path)}</div>`,()=>`<div id="root" data-public-verify-rendered>${verificationFrame}</div>`);
   if(runtime==='feed')html=applyFeedState(html,feedState);
   if(runtime==='discover')html=applyDiscoveryState(html,discoveryState);
   if(runtime==='ledger'){const state=ledgerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_LEDGER_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
   if(runtime==='explore'){const state=explorerStates.get(path),fallback=`<div id="root">${publicEntryFallback(path)}</div>`;if(!html.includes(fallback))throw Error('PUBLIC_MARKET_STATIC_TEMPLATE_INVALID');html=html.replace(fallback,()=>`<div id="root">${state.content}</div>`).replace('</body>',()=>state.seedScript+'</body>');}
+  const rootId=runtime==='vote'?'vote-root':'root';
+  const voteContent=runtime==='vote'?html.match(/<div id="vote-root">(<main\b[^>]*>[\s\S]*?<\/main>)<\/div>/)?.[1]:undefined;
+  if(runtime==='vote'&&!voteContent)throw Error('PUBLIC_VOTE_STATIC_TEMPLATE_INVALID');
   const head = html.match(/<head>([\s\S]+?)<\/head>/)[1];
   const cssLinks = [...head.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
   const css = (await Promise.all(cssLinks.map(async match => {
@@ -209,8 +212,8 @@ for (const runtime of ['ledger','explore','verify','conformance','receipt','feed
     return readFile('dist'+match[1], 'utf8');
   }))).join('\n');
   const pageHead = head.replace(/[ \t\r\n]*<link rel="(?:stylesheet|modulepreload)"[^>]*>/g,'').replace(/[ \t\r\n]*<script type="module"[^>]*>[\s\S]*?<\/script>/g,'') + `<style data-public-page-style="${runtime}">${css}</style>`;
-  publicPages[path] = { runtime, title: publicPage(path)?.title??'Transaction receipt · Bankeiz', content: runtime==='verify'?verificationFrame:runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>', head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
-  runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace('<div id="root"',`<div id="public-${runtime}-root" data-public-runtime="${runtime}"`));
+  publicPages[path] = { runtime, title: publicPage(path)?.title??head.match(/<title>([^<]+)<\/title>/)?.[1]??'Transaction receipt · Bankeiz', content: voteContent??(runtime==='verify'?verificationFrame:runtime==='discover'?discoveryState.navigationContent:runtime==='feed'?feedState.navigationContent:publicEntryFallback(path)||'<main><h1>Transaction receipt</h1></main>'), head: pageHead, entry: head.match(/<script type="module"[^>]*src="([^"]+)"/)[1] };
+  runtimeDocuments.set(path, html.replace(/<head>[\s\S]+?<\/head>/,`<head>${pageHead}${head.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/)[0]}</head>`).replace(`<div id="${rootId}"`,`<div id="public-${runtime}-root" data-public-runtime="${runtime}"`).replace('<body class="gov-page">','<body>'));
 }
 // The direct Proofs entry uses the same retained Ledger and runtime. Only its
 // current category, readable rows and seed path differ; navigation stays exact.
@@ -256,10 +259,16 @@ const bankContent = bankHtml.match(/<div id="root">([\s\S]*?)<\/div><noscript>/)
 const bankHead = bankHtml.match(/<head>([\s\S]+)<\/head>/)[1];
 const directMarketingEntries=captureDirectMarketingEntries(publicPages);
 const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,exampleBanks.pages);
-const bundle = navigationScript(compactNavigation({ reserved:feedState.profileNames, pages: Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page])), aliases:publicRouteAliases, bank: { head: bankHead, entry: bankEntry, styles: privateBankStyles,css:bankCss,content:bankContent } }),exampleBanks.shared);
+const navigationPages=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page]));
+const bankRuntime={head:bankHead,entry:bankEntry,styles:privateBankStyles,content:bankContent};
+const navigation={reserved:feedState.profileNames,pages:navigationPages,aliases:publicRouteAliases};
+const bundle=navigationScript(compactNavigation({...navigation,bank:{...bankRuntime,css:bankCss}}),exampleBanks.shared);
+// The home document already embeds every exact Bank sheet below. The router
+// toggles those nodes on return; only cold public entrances need carried copies.
+const bankBundle=navigationScript(compactNavigation({...navigation,bank:bankRuntime}),exampleBanks.shared);
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
-let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bundle}</body>`);
+let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueHead}</head>`).replace('</body>', () => `${bankBundle}</body>`);
 // The initial entrance must paint even while a deployment's CSS URLs are slow.
 // Embed the exact emitted styles, so the settled account also has its styles
 // before React can publish it. Navigation still retains the original CSS URLs.
@@ -285,6 +294,7 @@ const sharedExampleSha256=createHash('sha256').update(exampleBanks.shared).diges
 const navigationMetadata=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/discover/'?page:{...page,content:'',...(!page.runtime?{title:undefined}:{}),...(path==='/analytics/'||!['explore','ledger','feed','discover'].includes(page.runtime)?{head:''}:{}),...(!page.runtime?{head:'',headSha256:createHash('sha256').update(page.head).digest('hex'),headLength:page.head.length,contentSha256:createHash('sha256').update(page.content).digest('hex'),...(page.content.includes('data-example-views')?{sharedExampleSha256}:{})}:{})}]));
 const discoveryWorkspacePages={
  '/analytics/':publicPages['/analytics/'],
+ '/vote/':publicPages['/vote/'],
  '/ledger/':{...publicPages['/ledger/'],content:ledgerStates.get('/ledger/').content,analyticsSeed:{...publicPages['/analytics/'].analyticsSeed,path:'ledger'}},
  '/explore/':{...publicPages['/explore/'],content:exploreDestination.content,exploreFrame:{generation:exploreDestination.seed.generation,packet:explorePacketDigest}},
 };

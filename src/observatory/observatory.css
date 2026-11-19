@@ -163,3 +163,5 @@
 .obs-trading-summary{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:22px}
 .obs-trading-summary h3{font-size:13px;font-weight:550;margin:0}.obs-trading-summary strong,.obs-trading-summary b,.obs-trading-summary small{display:block}
 .obs-trading-summary strong{font-size:clamp(25px,5.5vw,46px);line-height:1.18;letter-spacing:-.045em}.obs-trading-summary b{font-size:20px;font-weight:600}
+
+.obs-history{touch-action:pan-y}.obs-carried-references{display:grid;gap:8px}.obs-carried-references dt{font-size:13px;font-weight:600}.obs-carried-references dd{margin:2px 0 0;overflow-wrap:anywhere}

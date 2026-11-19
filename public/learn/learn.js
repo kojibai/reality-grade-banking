@@ -120,7 +120,8 @@
   };
   addEventListener('bankeiz:asset-metadata',event=>{keepAsset(event.detail);if(pathname(location.pathname)==='/asset/'+encodeURIComponent(event.detail?.id)+'/'){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
   addEventListener('bankeiz:profile-metadata',event=>{const value=event.detail;if(!value||!profileName('/u/'+value.username+'/'))return;keepAsset({...value,id:'@'+value.username});if(profileName(pathname(location.pathname))===value.username){const page=assetAt(pathname(location.pathname));if(page)restoreHead(page.head);}});
-  const pageAt = path => pages[pathname(path)] || assetAt(pathname(path)) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
+  const voteRecord = /^\/vote\/(?:charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)\/[a-f0-9]{64}\/?$/;
+  const pageAt = path => pages[pathname(path)] || (voteRecord.test(path) ? pages['/vote/'] : undefined) || assetAt(pathname(path)) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(path) ? pages['/verify/'] : undefined);
   // An offline deep link can be served by the retained Learn document. Its
   // canonical identifies the markup actually present, not the requested URL.
   // The current document already owns its visible runtime; initialization is
@@ -305,7 +306,7 @@
   });
   document.addEventListener('click', event => {
     const link = event.target.closest?.('a[href]'); if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.download || link.target && link.target !== '_self') return;
-    const url=new URL(link.href,location.href);if(url.origin!==location.origin||url.search)return;
+    const url=new URL(link.href,location.href);if(url.origin!==location.origin||url.search&&!(/^\/vote\/?$/.test(url.pathname)&&/^\?original=[a-f0-9]{64}$/.test(url.search)))return;
     const path=pathname(url.pathname),currentPath=pathname(location.pathname),page=pageAt(path),current=pageAt(currentPath);
     if(path!==currentPath&&(page?!page.needsRuntime&&!page.heldFrame&&!page.content&&!runtimeRoots.has(page.runtime):/^\/(?:feed|discover)\/$/.test(path))){
       event.preventDefault();url.pathname=path;void import('/learn/discover.js').then(module=>module.init(pages,navigate)?.(url)).catch(()=>{});
@@ -322,9 +323,9 @@
         }
         return;
       }
-      if (!location.hash) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
+      if (!location.hash && url.search === location.search) { event.preventDefault(); scrollTo({top:0,behavior:'instant'}); return; }
     }
-    const target = url.pathname === '/' && !url.hash && current && bankLoaded ? bankUrl : url.pathname + url.hash;
+    const target = url.pathname === '/' && !url.hash && current && bankLoaded ? bankUrl : url.pathname + url.search + url.hash;
     event.preventDefault(); navigate(target);
   });
   // popstate already exposes the destination URL. Save the view being left

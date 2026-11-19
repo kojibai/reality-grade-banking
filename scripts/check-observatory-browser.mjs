@@ -123,40 +123,59 @@ try{
   assert.ok(Number(facts[0].replaceAll(',',''))>59&&facts[1].startsWith('$'));
   const streams=page.getByRole('group',{name:'Chart source'});
   assert.deepEqual(await streams.getByRole('button').allTextContents(),['Actions','Wallet records','Proof graph','Showcase']);
+  const historyPanel=page.getByRole('region',{name:'Carried history',exact:true});
+  const historyLink=historyPanel.getByRole('link',{name:'Inspect in Ledger'});
+  await page.getByRole('button',{name:'Open history',exact:true}).click();
+  assert.match(await historyLink.getAttribute('href'),/actions%3A/);
+  assert.ok(await historyPanel.getByText('Entry hash',{exact:true}).isVisible());
+  const actionHistoryLink=await historyLink.getAttribute('href');
+  await historyPanel.getByRole('button',{name:'Next history event'}).click();
+  assert.notEqual(await historyLink.getAttribute('href'),actionHistoryLink);
+  await historyPanel.getByRole('button',{name:'Previous history event'}).click();
+  assert.equal(await historyLink.getAttribute('href'),actionHistoryLink);
+
   const graphTab=streams.getByRole('button',{name:'Proof graph',exact:true});
   await graphTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
   assert.equal(await graphTab.getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('.obs-status-full').innerText(),'Showing public records','The held graph stays in view when the source cannot refresh');
-  const historyPanel=page.getByRole('region',{name:'Carried history',exact:true});
-  await page.getByRole('button',{name:'Open history',exact:true}).click();
-  const historyPicker=historyPanel.getByRole('combobox',{name:'Record with carried history'});
-  assert.ok(await historyPicker.getByRole('option').count()>1);
-  const historyLink=historyPanel.getByRole('link',{name:'Inspect in Ledger'});
-  assert.match(await historyLink.getAttribute('href'),/graph%3A/);
+  const kindFilter=page.getByLabel('Filter by record type');
+  await kindFilter.selectOption('card-transfer');
   const firstHistoryLink=await historyLink.getAttribute('href');
-  await historyPicker.selectOption({index:1});
-  assert.notEqual(await historyLink.getAttribute('href'),firstHistoryLink);
-  assert.ok(await historyPanel.locator('li').count()>1);
+  assert.match(firstHistoryLink,/graph%3A/);
+  await historyPanel.evaluate(panel=>{
+    const target=panel.querySelector('h2');
+    const start=new Touch({identifier:1,target,clientX:210,clientY:100});
+    const end=new Touch({identifier:1,target,clientX:100,clientY:109});
+    target.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,touches:[start]}));
+    target.dispatchEvent(new TouchEvent('touchend',{bubbles:true,changedTouches:[end]}));
+  });
+  await page.waitForFunction(first=>document.querySelector('#obs-history .obs-section-head a')?.getAttribute('href')!==first,firstHistoryLink);
   const ledgerRecordUrl=await historyLink.getAttribute('href');
+  assert.match(ledgerRecordUrl,/graph%3A/);
 
+  await kindFilter.selectOption('');
   assert.ok(await page.locator('.obs-bars [data-occupied]').count()>1,'Graph history spans multiple dated intervals');
   const selectedOriginals=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')).transport.publicOriginals;
   const graphPulses=new Map(ledgerSeed.records.filter(row=>row.source==='graph'&&row.kind==='market-asset').map(row=>[row.sourceId,row.pulse]));
   assert.equal(graphPulses.size,selectedOriginals.length);
   for(const original of selectedOriginals)assert.equal(graphPulses.get('market-asset-'+original.id),String(original.livePulseSeed.claimPulse));
-  await page.getByLabel('Filter by record type').selectOption('market-asset');
-  assert.equal(await historyPanel.count(),0,'Filtering the graph removes unrelated carried history');
-
+  await kindFilter.selectOption('market-asset');
+  assert.match(await historyLink.getAttribute('href'),/graph%3Amarket-asset/,'The selected graph record replaces the transfer');
   assert.equal(await page.locator('.obs-chart-head p b').innerText(),trafficText(selectedOriginals.length),'The offline graph plots every selected Original on its issuance date');
-  await streams.getByRole('button',{name:'Showcase',exact:true}).click();
+
+  const walletTab=streams.getByRole('button',{name:'Wallet records',exact:true});
+  await walletTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  assert.equal(await streams.getByRole('button',{name:'Showcase'}).getAttribute('aria-pressed'),'true');
-  assert.equal(await historyPanel.count(),0,'Switching sources cannot show a Proof graph transfer');
-  await graphTab.click();
+  assert.match(await historyLink.getAttribute('href'),/wallet%3A/);
+  assert.ok(await historyPanel.getByText('This transaction',{exact:true}).isVisible(),'Wallet reuses its existing carried funding steps');
+
+  const showcaseTab=streams.getByRole('button',{name:'Showcase',exact:true});
+  await showcaseTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  await slider.focus();await slider.press('Home');
-  assert.equal(await historyPanel.count(),0,'Selecting an earlier chart interval removes unrelated histories');
+  assert.equal(await showcaseTab.getAttribute('aria-pressed'),'true');
+  assert.match(await historyLink.getAttribute('href'),/proofs%3A/);
+  assert.ok(await historyPanel.getByText('Recorded event',{exact:true}).isVisible(),'Showcase shows the selected public proof record');
 
   await page.locator('.obs-streams').getByRole('button',{name:'Actions',exact:true}).click();
   await ranges.click();
@@ -244,12 +263,14 @@ try{
   await page.locator('#obs-audience').getByRole('button',{name:'By profile'}).click();
   await slider.focus();await slider.press('Home');
   assert.equal(await slider.getAttribute('aria-valuenow'),'1');
-  assert.equal(await historyPanel.count(),0);
+  if(await historyPanel.count()){
+    assert.match(await historyLink.getAttribute('href'),/actions%3A/);
+    assert.match(await historyPanel.locator('output').innerText(),/^Record 1 of /);
+  }
   await graphTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
-  const exactHref=await historyLink.getAttribute('href');
-  assert.match(ledgerRecordUrl,/graph%3A/);
-  assert.equal(exactHref,firstHistoryLink);
+  await kindFilter.selectOption('card-transfer');
+  assert.equal(await historyLink.getAttribute('href'),firstHistoryLink);
   await historyLink.click();
   await page.waitForSelector('.public-ledger-row.is-open');
   assert.ok(page.url().includes('/ledger/#record='));

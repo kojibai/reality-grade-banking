@@ -23,23 +23,31 @@ import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profi
 import {useGovernanceMemberNames} from './governance-member-names';
 import './voting.css';
 
+function navigateVoting(path:string){
+ const router=document.getElementById('receiz-navigation') as (HTMLElement&{navigate?:(path:string)=>void})|null;
+ if(router?.navigate)router.navigate(path);
+ else history.pushState(null,'',path);
+}
+
 type Screen='list'|'charter'|'proposal'|'detail'|'review'|'saved';
-type Props={initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
+type Props={activeWorkspace?:boolean;accountIdentity?:OpenIdentity|null;accountUid?:string|null;initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
 const closedSessionKey='bank.voting.session.closed';
 function closedVotingSession(){try{return sessionStorage.getItem(closedSessionKey)==='1';}catch{return false;}}
 const blank=Object.freeze([]) as readonly GovernanceRow[];
 const asRow=(o:GovernanceOriginal):GovernanceRow=>({digest:o.digest,document:o.document,pulse:o.pulse,profileUid:null});
 function save(file:File){const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 
-export function VotingBoard({profile,initialDigest,initialDraft}:Props){
+export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,accountUid,activeWorkspace=true}:Props){
   const publicRows=useSyncExternalStore(subscribeGovernance,governanceRows,()=>blank);
   const [privateSources,setPrivateSources]=useState<GovernanceOriginal[]>([]),[outbox,setOutbox]=useState<PendingOriginal[]>([]);
-  const [identity,setIdentity]=useState<OpenIdentity|null>(profile?.ownerIdentity??null),[screen,setScreen]=useState<Screen>(initialDigest?'detail':'list');
+  const [identity,setIdentity]=useState<OpenIdentity|null>(profile?.ownerIdentity??accountIdentity??null),[screen,setScreen]=useState<Screen>(initialDigest?'detail':'list');
   const [selected,select]=useState(initialDigest??''),[mode,setMode]=useState<'charter'|'proposal'>('charter'),[terms,setTerms]=useState<GovernanceTerms|null>(null);
   const [saved,setSaved]=useState<GovernanceOriginal|null>(null),[error,setError]=useState(''),[delivery,setDelivery]=useState(''),[syncing,setSyncing]=useState(false),[busy,setBusy]=useState(false),[entryBusy,setEntryBusy]=useState(false);
   const [files,setFiles]=useState<File[]>([]);
   const [attachments,setAttachments]=useState<GovernanceAttachment[]>([]),[writing,setWriting]=useState(false);
   const [founding,setFounding]=useState<FoundingDraft|null>(null),[editionSource,setEditionSource]=useState('');
+  const previouslyAccountBound=useRef(Boolean(accountIdentity));
+  const linkedRecord=useRef(initialDigest??null);
   const pendingFounding=useRef<FoundingOrganization|null>(null);
   const trail=useRef<string[]>([]);
   const session=useRef<ReturnType<typeof checkoutIdentitySession>|null>(null),fileInput=useRef<HTMLInputElement>(null),active=useRef(true),acting=useRef(false),currentIdentity=useRef(identity);
@@ -63,11 +71,14 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
   const publicId=username?profileUsernameLabel(receivingUsernameForIdentity(username,identity?.username??'')):null;
   const member=useGovernanceMemberNames(rows,actor,publicId,profile);
   const publicDigests=new Set(publicRows.map(r=>r.digest));
+  const uid=accountUid??identity?.walletReceivingAddress?.();
+  const accountUsername=identity?.knownProfile?.()?.username??identity?.confirmedAccountUsername?.()??undefined;
   const viewRows=useMemo(()=>{
     if(profile&&publicProfile)return publicRows.filter(r=>governanceRowOnProfile(r,profile));
-    if(personal)return rows.filter(r=>r.document.author===actor||Boolean(profile&&governanceRowOnProfile(r,profile)));
+    const personalProfile=profile??(uid?{uid,username:accountUsername}:null);
+    if(personal)return rows.filter(r=>r.document.author===actor||Boolean(personalProfile&&governanceRowOnProfile(r,personalProfile)));
     return publicRows;
-  },[publicRows,rows,publicProfile,personal,actor,profile]);
+  },[publicRows,rows,publicProfile,personal,actor,profile,uid,accountUsername]);
   const exact=(digest:string)=>{const local=privateSources.find(o=>o.digest===digest);return local?Promise.resolve(local):heldGovernanceOriginal(digest);};
   const check=(who:OpenIdentity|null)=>{if(!active.current||currentIdentity.current!==who)throw Error('The open identity changed.');};
   const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setFiles([]);setAttachments([]);setWriting(false);setFounding(null);setEditionSource('');setTerms(null);setScreen(prev=>prev==='detail'?prev:'list');setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
@@ -83,14 +94,31 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
       if(active.current)setDelivery('Public delivery is unavailable. You can still read the records on this device.');
     }finally{if(active.current)setSyncing(false);}
   }
-  useEffect(()=>{active.current=true;void restoreGovernanceDirectory().catch(()=>{});const stop=followGovernanceAdditions(sync);return()=>{stop();active.current=false;const held=session.current;session.current=null;void held?.then(s=>s.close()).catch(()=>{});};},[sync]);
+  useEffect(()=>{active.current=true;void restoreGovernanceDirectory().catch(()=>{});return()=>{active.current=false;const held=session.current;session.current=null;void held?.then(s=>s.close()).catch(()=>{});};},[]);
+  useEffect(()=>{if(activeWorkspace)return followGovernanceAdditions(sync);},[activeWorkspace,sync]);
   useEffect(()=>{let live=true;
     if(profile){setOwner(profile.ownerIdentity);return;}
+    if(accountIdentity){
+      previouslyAccountBound.current=true;
+      closed.current=false;
+      if(currentIdentity.current!==accountIdentity){
+        const held=session.current;session.current=null;
+        void held?.then(s=>s.close()).catch(()=>{});
+        setOwner(accountIdentity);
+      }
+      return;
+    }
+    if(previouslyAccountBound.current){
+      previouslyAccountBound.current=false;
+      closed.current=true;
+      setOwner(null);setPersonal(false);
+      return;
+    }
     closed.current=closedVotingSession();
     if(closed.current)return;
     void access().then(s=>s.restore()).then(who=>{if(live&&who&&!currentIdentity.current)setOwner(who);}).catch(()=>{});
     return()=>{live=false;};
-  },[profile?.uid,profile?.ownerIdentity,setOwner]);
+  },[profile?.uid,profile?.ownerIdentity,accountIdentity,setOwner]);
   useEffect(()=>{let live=true;if(identity)void governanceOutbox(identity).then(items=>{if(live)setOutbox(items);}).catch(()=>{});return()=>{live=false;};},[identity]);
   useEffect(()=>{
     if(screen!=='detail'||!selected||chosen)return;
@@ -100,27 +128,34 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
   },[screen,selected,Boolean(chosen)]);
   useEffect(()=>{
     if(profile)return;
-    function navigate(){trail.current=[];const id=governanceLocation(new URL(location.href));select(id??'');setScreen(id?'detail':'list');setError('');}
-    window.addEventListener('popstate',navigate);return()=>window.removeEventListener('popstate',navigate);
+    function navigate(){
+      if(!/^\/vote(?:\/|$)/.test(location.pathname))return;
+      const id=governanceLocation(new URL(location.href));
+      if(id===linkedRecord.current)return;
+      linkedRecord.current=id;if(!id)document.title='Public voting · Bankeiz';trail.current=[];select(id??'');setScreen(id?'detail':'list');setError('');
+    }
+    window.addEventListener('popstate',navigate);window.addEventListener('receiz-bank:surface',navigate);
+    return()=>{window.removeEventListener('popstate',navigate);window.removeEventListener('receiz-bank:surface',navigate);};
   },[Boolean(profile)]);
   useEffect(()=>{
-    if(profile||screen!=='detail'||!chosen)return;
+    if(profile||!activeWorkspace||!/^\/vote(?:\/|$)/.test(location.pathname)||screen!=='detail'||!chosen)return;
     document.title=governanceTitle(chosen)+' · Public voting';
     const path=governancePath(chosen.document.terms.kind,chosen.digest);
-    if(publicDigests.has(chosen.digest)&&location.pathname+location.search!==path)history.replaceState(null,'',path);
-    return()=>{document.title='Public voting · Bankeiz';};
-  },[Boolean(profile),screen,chosen?.digest,Boolean(chosen&&publicDigests.has(chosen.digest))]);
+    if(publicDigests.has(chosen.digest)&&location.pathname+location.search!==path){
+      linkedRecord.current=chosen.digest;history.replaceState(history.state,'',path);
+    }
+  },[Boolean(profile),activeWorkspace,screen,chosen?.digest,Boolean(chosen&&publicDigests.has(chosen.digest))]);
   function go(digest:string){
     if(screen==='detail'&&selected&&selected!==digest)trail.current.push(selected);
     const next=rows.find(r=>r.digest===digest);
-    if(!profile&&next&&publicDigests.has(digest)){const path=governancePath(next.document.terms.kind,digest);if(location.pathname!==path)history.pushState(null,'',path);}
-    if(!profile&&!next)history.pushState(null,'','/vote/?original='+encodeURIComponent(digest));
+    if(!profile&&next&&publicDigests.has(digest)){linkedRecord.current=digest;const path=governancePath(next.document.terms.kind,digest);if(location.pathname!==path)navigateVoting(path);}
+    if(!profile&&!next){linkedRecord.current=digest;navigateVoting('/vote/?original='+encodeURIComponent(digest));}
     select(digest);setScreen('detail');setError('');
   }
-  function browse(){if(!profile&&governanceLocation(new URL(location.href)))history.pushState(null,'','/vote/');setScreen('list');setError('');}
+  function browse(){if(!profile){if(linkedRecord.current){linkedRecord.current=null;navigateVoting('/vote/');}document.title='Public voting · Bankeiz';}setScreen('list');setError('');}
   function backFromDetail(){
     const previous=trail.current.pop();
-    if(previous){select(previous);setError('');const row=rows.find(r=>r.digest===previous);if(!profile&&row&&publicDigests.has(previous))history.replaceState(null,'',governancePath(row.document.terms.kind,previous));}
+    if(previous){select(previous);setError('');const row=rows.find(r=>r.digest===previous);if(!profile&&row&&publicDigests.has(previous)){linkedRecord.current=previous;history.replaceState(history.state,'',governancePath(row.document.terms.kind,previous));}}
     else browse();
   }
   function addAttachment(file:GovernanceAttachment){
@@ -254,7 +289,7 @@ export function VotingBoard({profile,initialDigest,initialDraft}:Props){
       {!profile&&!actor&&entry}
       {actor&&<div className="gov-scope"><button aria-pressed={!personal} onClick={()=>setPersonal(false)}>Network</button><button aria-pressed={personal} onClick={()=>setPersonal(true)}>My activity</button></div>}
       {!profile&&actor&&publicId&&<span className="gov-session-name">@{publicId}</span>}
-      {!profile&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
+      {!profile&&!accountIdentity&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
       {!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
       <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} initialActivity={personal&&!profile} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>

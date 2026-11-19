@@ -112,6 +112,8 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
     if (path === '/conformance/') continue;
+    // Vote already owns its exact installed document and runtime above.
+    if (path === '/vote/' && pages[path]) continue;
     const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath===bankingPage.path||canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
     const relationshipGuide=[...proposalPages,...agreementPages,...clientWorkProductPages].some(page=>page.path===canonicalPath);
     if(relationshipGuide){urls.add('/learn/cooperatives.js');urls.add('/learn/cooperative-twin.js');}

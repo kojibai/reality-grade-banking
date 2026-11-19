@@ -9,6 +9,11 @@ export function registerProfileGovernanceIdentity(uid:string,identity:OpenIdenti
   return ()=>{if(held===entry)held=null;};
 }
 
+export function readProfileGovernanceOwner(){
+  return held?.uid===readProfileOwner()?held:null;
+}
+
 export function profileGovernanceIdentity(uid:string){
-  return readProfileOwner()===uid&&held?.uid===uid?held.identity:null;
+  const owner=readProfileGovernanceOwner();
+  return owner?.uid===uid?owner.identity:null;
 }
