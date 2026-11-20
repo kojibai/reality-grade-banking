@@ -14,6 +14,18 @@ it('starts the asset template and source together and returns the same complete 
  try{expect(item).toHaveBeenCalledOnce();expect(page).toHaveBeenCalledOnce();}finally{source.resolve(asset);}
  const actual=await response;expect(actual.status).toBe(200);expect(await actual.text()).toBe(assetPreviewHtml(template,asset.id,asset));expect(image).not.toHaveBeenCalled();
 });
+it('starts the exact asset fallback as soon as the prepared frame is missing',async()=>{
+ const templateRead=deferred<string>(),item=vi.fn(async()=>asset),document=vi.fn(async()=>null);
+ const response=handleAssetPreview(new Request('https://bankeiz.com/api/asset?asset='+encodeURIComponent(asset.id)),{document,page:()=>templateRead.promise,item,image:vi.fn()});
+ try{
+  expect(document).toHaveBeenCalledExactlyOnceWith(asset.id);
+  await Promise.resolve();
+  expect(item).toHaveBeenCalledExactlyOnceWith(asset.id);
+ }finally{templateRead.resolve(template);}
+ const actual=await response;
+ expect(actual.headers.get('cache-control')).toBe('no-store');
+ expect(await actual.text()).toBe(assetPreviewHtml(template,asset.id,asset));
+});
 it('starts the short receipt template beside its existing source read',async()=>{
  const source=deferred<typeof receipt>(),page=vi.fn(async()=>template);ports.snapshot.mockReturnValue(source.promise);const response=handleReceiptPreview(new Request('https://bankeiz.com/receipt/'+'a'.repeat(64)+'/'),{page,image:vi.fn()});
  try{expect(ports.snapshot).toHaveBeenCalledExactlyOnceWith('a'.repeat(64));expect(page).toHaveBeenCalledOnce();}finally{source.resolve(receipt);}

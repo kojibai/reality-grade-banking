@@ -87,11 +87,15 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  try{if(!image&&!player){
   // A share preview and a browser visit use the same public URL and cache key.
   // Serve the prepared page to both so a preview cannot displace its real frame.
-  const [document,html]=await Promise.all([deps.document?.(id),deps.page()]);
-  if(document?.item?.id===id)return new Response(assetPreviewHtml(html,id,document.item,document),{headers});
-  const item=await deps.item(id);
-  headers.set('Cache-Control','no-store');
-  return new Response(assetPreviewHtml(html,id,item,!item&&document?.item===null?document:null),{headers});}
+  const page=deps.page();
+  const selection=deps.document?deps.document(id).then(async document=>{
+    if(document?.item?.id===id)return {item:document.item,document};
+    const item=await deps.item(id);
+    return {item,document:!item&&document?.item===null?document:null};
+  }):deps.item(id).then(item=>({item,document:null}));
+  const [{item,document},html]=await Promise.all([selection,page]);
+  if(!document?.item)headers.set('Cache-Control','no-store');
+  return new Response(assetPreviewHtml(html,id,item,document),{headers});}
 const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}
  catch{headers.set('Cache-Control','no-store');return new Response('The public asset preview is temporarily unavailable.',{status:503,headers});}
 }
