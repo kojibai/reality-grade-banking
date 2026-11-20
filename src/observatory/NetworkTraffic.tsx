@@ -13,44 +13,58 @@ const formatDay=(iso:string)=>date.format(Date.parse(iso));
 function TrafficChart({days,observedAt}:{days:TrafficObservation['days'];observedAt:string}){
   const [range,setRange]=useState<keyof typeof ranges>('All');
   const [route,setRoute]=useState(''),[picked,setPicked]=useState<string|null>(null);
+  const observationDay=new Date(observedAt).toISOString().slice(0,10);
   const series=useMemo(()=>{
     if(!days.length)return null;
-    const end=Date.parse(new Date(observedAt).toISOString().slice(0,10));
+    const end=Date.parse(observationDay);
     const start=Math.max(Date.parse(days[0].day),end-(ranges[range]-1)*dayMs);
     const byDay=new Map(days.map(row=>[row.day,row.routes]));
     const routes=new Map<string,number>();
     const points=[];
+    let latestReported=-1, renders=0, scale=1;
     for(let at=start;at<=end;at+=dayMs){
       const day=new Date(at).toISOString().slice(0,10),counts=byDay.get(day);
-      if(counts)for(const [key,value] of Object.entries(counts))routes.set(key,(routes.get(key)??0)+value);
-      points.push({day,value:counts?(route?counts[route]??0:total(Object.values(counts))):0});
+      let value=null;
+      if(counts){
+        latestReported=points.length;
+        let dayTotal=0;
+        for(const [key,count] of Object.entries(counts)){
+          routes.set(key,(routes.get(key)??0)+count);
+          dayTotal+=count;
+        }
+        value=route?counts[route]??0:dayTotal;
+        renders+=value;
+        scale=Math.max(scale,value);
+      }
+      points.push({day,value});
     }
-    return {points,routes:[...routes].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))};
-  },[days,observedAt,range,route]);
+    return {points,latestReported,renders,scale,routes:[...routes].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))};
+  },[days,observationDay,range,route]);
   const allRoutes=useMemo(()=>[...new Set(days.flatMap(row=>Object.keys(row.routes)))].sort(),[days]);
   if(!series?.points.length)return <p>Daily traffic observations are unavailable.</p>;
-  const {points}=series,index=points.findIndex(p=>p.day===picked),selected=index>=0?index:points.length-1;
-  const scale=Math.max(1,...points.map(p=>p.value));
+  const {points,latestReported,renders,scale}=series,index=points.findIndex(p=>p.day===picked);
+  const selected=index>=0?index:latestReported>=0?latestReported:points.length-1;
+  const selectedPoint=points[selected],pendingDay=points.at(-1)!.value===null;
   const x=(i:number)=>600*(i+.5)/points.length;
   const y=(n:number)=>88-84*n/scale;
   const inspect=(i:number)=>setPicked(points[Math.max(0,Math.min(points.length-1,i))].day);
   return <div className="obs-traffic-block">
-    <div className="obs-section-head"><div><h3>Web traffic</h3><p>Receiz web · Recorded page renders</p></div><strong>{number.format(total(points.map(p=>p.value)))}</strong></div>
+    <div className="obs-section-head"><div><h3>Web traffic</h3><p>Receiz web · Recorded page renders by UTC day</p></div><strong>{latestReported>=0?number.format(renders):'—'}</strong></div>
     <div className="obs-traffic-tools"><div className="obs-cap-period" role="group" aria-label="Web traffic range">{(Object.keys(ranges) as (keyof typeof ranges)[]).map(r=><button key={r} aria-pressed={r===range} onClick={()=>{setRange(r);setPicked(null);}}>{r}</button>)}</div>
       <div className="obs-filters"><label>Page group <select aria-label="Traffic page group" value={route} onChange={e=>{setRoute(e.target.value);setPicked(null);}}><option value="">All routes</option>{allRoutes.map(name=><option key={name}>{name}</option>)}</select></label></div></div>
     <div className="obs-traffic-plot"><div className="obs-traffic-axis"><span>{number.format(scale)}</span><span>0</span></div>
-      <svg viewBox="0 0 600 90" preserveAspectRatio="none" role="img" aria-label={'Daily recorded page renders for '+(route||'all Receiz routes')+', '+formatDay(points[0].day)+' through '+formatDay(points.at(-1)!.day)}
+      <svg viewBox="0 0 600 90" preserveAspectRatio="none" role="img" aria-label={'Recorded page renders by UTC day for '+(route||'all Receiz routes')+', '+formatDay(points[0].day)+' through '+formatDay(points.at(-1)!.day)}
         onPointerMove={e=>{if(e.pointerType!=='mouse')return;const box=e.currentTarget.getBoundingClientRect();inspect(Math.floor((e.clientX-box.left)*points.length/box.width));}}
         onClick={e=>{const box=e.currentTarget.getBoundingClientRect();inspect(Math.floor((e.clientX-box.left)*points.length/box.width));}}>
         {[4,46,88].map(t=><line key={t} x1="0" x2="600" y1={t} y2={t}/>)}
-        {points.map((p,i)=><rect key={p.day} x={600*i/points.length} y={y(p.value)} width={600/points.length*.89} height={88-y(p.value)} className={i===selected?'selected':''}/>)}
+        {points.map((p,i)=>p.value!==null&&<rect key={p.day} x={600*i/points.length} y={y(p.value)} width={600/points.length*.89} height={88-y(p.value)} className={i===selected?'selected':''}/>)}
         <line className="marker" x1={x(selected)} x2={x(selected)} y1="1" y2="89"/>
       </svg></div>
     <div className="obs-traffic-dates"><time>{formatDay(points[0].day)}</time><time>{formatDay(points.at(-1)!.day)}</time></div>
     <div className="obs-traffic-inspect"><label htmlFor="traffic-day">Inspect day</label><input id="traffic-day" type="range" min={0} max={points.length-1} value={selected} aria-valuetext={formatDay(points[selected].day)} onChange={e=>inspect(Number(e.target.value))}/>
-      <output>{formatDay(points[selected].day)} · {number.format(points[selected].value)} renders</output></div>
+      <output>{formatDay(selectedPoint.day)} · {selectedPoint.value===null?'No report':number.format(selectedPoint.value)+' renders'}</output></div>
     <details className="obs-traffic-detail"><summary>Page groups by traffic</summary><div className="obs-table-scroll"><table><thead><tr><th>Page group</th><th>Renders in range</th></tr></thead><tbody>{series.routes.map(([name,value])=><tr key={name}><th scope="row"><button className="obs-link-button" onClick={()=>{setRoute(name);setPicked(null);}}>{name}</button></th><td>{number.format(value)}</td></tr>)}</tbody></table></div></details>
-    <p className="obs-source-note">One recorded browser render on entry or navigation. External app visits have no shared pageview count. Updated {formatDay(observedAt)} · {utcTime.format(Date.parse(observedAt))} UTC.</p>
+    <p className="obs-source-note">One recorded browser render on entry or navigation. External app visits have no shared pageview count. {pendingDay&&<>No report for {formatDay(observationDay)} UTC yet. </>}Updated {formatDay(observedAt)} · {utcTime.format(Date.parse(observedAt))} UTC.</p>
   </div>;
 }
 
