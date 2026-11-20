@@ -8,7 +8,7 @@ import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {AccountEmail} from './AccountEmail';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
-import {identityProfileAvatar} from '../../receiz/profile-avatar';
+import {identityProfileAvatar,identityProfileUsername} from '../../receiz/profile-avatar';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
 import {profilePagePath,profileUsername,retainedPublicProfile,knownProfilePbiAuthorship} from '../../receiz/public-profile';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
@@ -35,7 +35,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
   };
   const [preparedProfile,setPreparedProfile]=useState<{owner:OpenIdentity;username:string}|null>(null),[profileOpening,setProfileOpening]=useState<OpenIdentity|null>(null),[profileError,setProfileError]=useState<{owner:OpenIdentity;message:string}|null>(null);
   const profilePending=useRef<OpenIdentity|null>(null);
-  const knownName = identity.accountUsername?.() || (preparedProfile?.owner===identity?preparedProfile.username:null) || identity.username;
+  const knownName = identity.confirmedAccountUsername?.() ?? (preparedProfile?.owner===identity?preparedProfile.username:null) ?? identityProfileUsername(identity);
   const publicName = (name: string) => {
     const fullName = receivingUsernameForIdentity(name, identity.username ?? '');
     return /^receiz_[a-z0-9]{17}$/.test(fullName) ? null : profileUsername(fullName);

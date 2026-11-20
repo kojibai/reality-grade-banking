@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { LiveActions } from '../src/features/account/LiveActions';
 import type { OpenIdentity } from '../src/receiz/native-identity';
+import {publishAccountAppearance,readAccountAppearance} from '../src/receiz/account-appearance';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -86,4 +87,25 @@ it('prepares the optional PNG only on backup click, coalesces taps and keeps exa
 it('does not download a previous identity backup after account selection changes during export',async()=>{
  let finish!:(value:{bytes:Uint8Array;filename:string;phrase:string})=>void;const first={...unresolvedIdentity(async()=>'maya'),backup:vi.fn(),exportIdentityRecord:()=>new Promise<{bytes:Uint8Array;filename:string;phrase:string}>(done=>{finish=done;})},h=profileHarness(first),download=vi.spyOn(URL,'createObjectURL');
  try{await act(async()=>h.host.querySelector<HTMLButtonElement>('.primary-button')!.click());h.render(unresolvedIdentity(async()=>'new_owner'));await act(async()=>finish({bytes:new Uint8Array([1]),filename:'previous.png',phrase:''}));expect(download).not.toHaveBeenCalled();expect(h.host.textContent).not.toContain('original file');}finally{h.close();download.mockRestore();}
+});
+
+
+it('reopens the popover with the exact saved owner portrait and chosen username before a session read',()=>{
+ const previous=readAccountAppearance(),keyId='c'.repeat(64),uid='retained-account',avatar='https://receiz.com/current-photo.webp';
+ const prepare=vi.fn(async()=>{throw Error('UNNEEDED_READ');});
+ const identity={...unresolvedIdentity(prepare),binding:{...unresolvedIdentity(prepare).binding,keyId},username:'older_name',
+  knownWallet:()=>({wallet:{userId:uid}})} as OpenIdentity;
+ publishAccountAppearance({name:'Current Name',username:'chosen_name',avatarUrl:avatar,accountUid:uid,identityKeyId:keyId});
+ const h=profileHarness(identity);
+ try{
+  expect(h.host.querySelector('code')?.textContent).toBe('chosen_name');
+  expect(h.host.querySelector('img')?.getAttribute('src')).toBe(avatar);
+  expect(h.host.querySelector('.identity-public-profile-link')?.getAttribute('href')).toBe('/chosen_name/');
+  expect(prepare).not.toHaveBeenCalled();
+  h.render({...identity,confirmedAccountUsername:()=> 'renamed_owner'});
+  expect(h.host.querySelector('code')?.textContent).toBe('renamed_owner');
+  h.render({...identity,binding:{...identity.binding,keyId:'f'.repeat(64)}});
+  expect(h.host.querySelector('code')?.textContent).toBe('older_name');
+  expect(h.host.querySelector('img')).toBeNull();
+ }finally{h.close();publishAccountAppearance(previous);}
 });

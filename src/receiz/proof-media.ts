@@ -121,6 +121,7 @@ async function openOriginalMedia(source:ProofMediaSource,signal?:AbortSignal):Pr
  const inspected=held?null:await preparedInspection;signal?.throwIfAborted();
  const readBytes=async()=>{let bytes:Uint8Array,filename:string;
  if(source.kind==='held'){bytes=new Uint8Array(source.bytes);filename=source.filename;}else if(retained){bytes=new Uint8Array(await retained.arrayBuffer());filename=retained.name;}else if(inspected){bytes=new Uint8Array(inspected.bytes);filename=inspected.filename;}else{
+  if(globalThis.navigator?.onLine===false)throw Error('This Original is not saved on this device.');
   const timeout=AbortSignal.timeout(90_000),publicSignal=signal?AbortSignal.any([signal,timeout]):timeout;
   const url=new URL(await resolvePublicOriginalUrl(source.url,source.digest,publicSignal));publicSignal.throwIfAborted();
   // Immutable public material already supports anonymous CORS. Use its exact

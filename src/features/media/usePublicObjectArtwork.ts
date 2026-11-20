@@ -28,7 +28,7 @@ export function usePublicObjectArtwork(artworkUrl:PublicMarketItem['artworkUrl']
    const known=native.peekHeldProfileOriginalMaterial(coordinate,reference.artifactSha256);if(known){await display(known);return;}
    const query=new URL(coordinate).searchParams,resource=await native.readHeldImportedProfileOriginalMaterial(reference,coordinate,{...(query.has('file')?{file:query.get('file')!}:{}),...(query.has('assetFile')?{assetFile:Number(query.get('assetFile'))}:{})});
    await display(resource);
-  }).catch(()=>{/* Failed proof or unavailable local bytes cannot replace settled media. */});
+  }).catch(()=>{if(active&&!served)setHeld({key:coordinate,url:null});});
   return()=>{active=false;release?.();};
  },[local,coordinate,matched,served,localCustody]);
  if(local)return local;if(!matched)return null;return coordinate?held?.key===coordinate?held.url:served??(!localCustody?remote:undefined):remote;

@@ -280,6 +280,13 @@ async function navigationDocument(request, installedPath) {
 self.addEventListener('install', event => { event.waitUntil(install()); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('receiz-bank-') && key !== CACHE || key.startsWith('bankeiz-public-pages-') && key !== PUBLIC_CACHE).map(key => caches.delete(key))))); });
 self.addEventListener('message', event => {
+  if (event.data?.type === 'BANK_VISITED_PORTRAIT' && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
+    const url=event.data.url, pending=pendingPortraits.get(url);
+    if (!pending || pending.clientId !== event.source.id) return;
+    pendingPortraits.delete(url);
+    event.waitUntil(openArtworkCache().then(cache=>cache&&rememberArtwork(cache,url,pending.response,'portrait')));
+    return;
+  }
   if (event.data?.type === 'BANK_PUSH_BIND' && event.data.version === 1 && event.source?.url && new URL(event.source.url).origin === self.location.origin) {
     if (event.data.accountUid !== null && !pushUuid(event.data.accountUid)) return;
     event.waitUntil((async () => {
@@ -340,8 +347,83 @@ self.addEventListener('notificationclick', event => {
     await self.clients.openWindow(url.href);
   })());
 });
+// This cache contains only visited public artwork. It survives a worker
+// release because the Receiz media URLs are versioned by their exact bytes.
+const ARTWORK_CACHE = 'bankeiz-visited-artwork-v1';
+const pendingPortraits = new Map(), artworkReads = new Map();
+let artworkCache, artworkWrites = Promise.resolve();
+function artworkKind(url) {
+  if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return null;
+  const q = url.searchParams;
+  if (url.pathname === '/api/storage/object' && q.size === 2 && q.get('bucket') === 'receiz-profile-media'
+    && /^profile\/[a-f0-9-]{36}\/avatar\/\d{14}_[a-f0-9]{20}\.webp$/.test(q.get('path') || '')) return 'portrait';
+  if (/^\/api\/proof-material\/packages\/[a-f0-9]{64}\/artifact$/.test(url.pathname) && !url.search) return 'immutable';
+  if (url.pathname === '/api/profile/showcase/imported-source' && url.href.length <= 8192 && q.size === 2 && q.has('reference')
+    && (q.get('payload') === '1' || /^[A-Za-z0-9_-]{1,100}$/.test(q.get('file') || '') || /^[0-7]$/.test(q.get('assetFile') || ''))) return 'immutable';
+  return null;
+}
+function openArtworkCache() {
+  return artworkCache ??= caches.open(ARTWORK_CACHE).catch(() => { artworkCache = undefined; return null; });
+}
+function rememberArtwork(cache, url, response, kind) {
+  const work = artworkWrites.catch(() => {}).then(async () => {
+    await cache.put(url, response);
+    const matching = (await cache.keys()).filter(key => artworkKind(new URL(key.url)) === kind);
+    const limit = kind === 'portrait' ? 4 : 40;
+    for (const old of matching.slice(0, Math.max(0, matching.length - limit))) await cache.delete(old);
+  });
+  artworkWrites = work;
+  return work.catch(() => {});
+}
+function reuseVisitedArtwork(event, url, kind) {
+  // The response and optional save have separate lifetimes. The renderer can
+  // decode the one streamed response while CacheStorage commits the same bytes.
+  const key = url.href;
+  const existing = artworkReads.get(key);
+  const result = existing ?? (async () => {
+    const cache = await openArtworkCache();
+    const saved = await cache?.match(url.href).catch(() => undefined);
+    if (saved) return {response: saved};
+    const pending = pendingPortraits.get(key);
+    if (pending) return {response: pending.response};
+    const request = new Request(event.request, {credentials:'omit', ...(kind === 'immutable' ? {mode:'cors',redirect:'error'} : {})});
+    const response = await fetch(request);
+    if (!cache) return {response};
+    if (kind === 'portrait' && response.type === 'opaque') {
+      // A cross-origin portrait may be opaque. Save it only after the img
+      // decoder confirms success, never from an uninspectable status alone.
+      pendingPortraits.set(key, {response:response.clone(),clientId:event.clientId});
+      while (pendingPortraits.size > 4) pendingPortraits.delete(pendingPortraits.keys().next().value);
+      return {response};
+    }
+    const policy = response.headers.get('cache-control') || '';
+    const size = Number(response.headers.get('content-length'));
+    if (response.status !== 200 || response.redirected || response.url !== url.href
+      || !/\bpublic\b/i.test(policy) || /\b(?:private|no-store)\b/i.test(policy) || kind === 'immutable' && !/\bimmutable\b/i.test(policy)
+      || !/^image\/(?:png|jpe?g|gif|webp|avif)$/i.test(response.headers.get('content-type') || '')
+      || !Number.isSafeInteger(size) || size <= 0 || size > 1024 * 1024) return {response};
+    if (url.pathname === '/api/profile/showcase/imported-source') {
+      try {
+        const {artifactSha256} = JSON.parse(url.searchParams.get('reference'));
+        if (!publicDigest(artifactSha256) || response.headers.get('x-receiz-source-sha256') !== artifactSha256) return {response};
+      } catch { return {response}; }
+    }
+    return {response, save:rememberArtwork(cache,url.href,response.clone(),kind)};
+  })();
+  const completed = result.then(value => value.save).catch(() => {});
+  if (!existing) {
+    artworkReads.set(key, result);
+    void completed.then(() => { if (artworkReads.get(key) === result) artworkReads.delete(key); });
+  }
+  event.respondWith(result.then(value => value.response.clone()));
+  event.waitUntil(completed);
+}
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
+  if (event.request.method === 'GET' && event.request.destination === 'image' && !event.request.headers.has('range')) {
+    const kind = artworkKind(url);
+    if (kind) { reuseVisitedArtwork(event, url, kind); return; }
+  }
   if (!['GET','HEAD'].includes(event.request.method) || url.origin !== self.location.origin || url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
   if (/^\/observatory(?:\/index\.html|\/)?$/.test(url.pathname) && event.request.mode==='navigate') {
     url.pathname='/analytics/';event.respondWith(Response.redirect(url.href,308));return;

@@ -5,13 +5,13 @@ import {runInNewContext} from 'node:vm';
 
 const origin='https://bank.test',renderA='a'.repeat(64),renderB='b'.repeat(64),coordinate='c'.repeat(64),generation='d'.repeat(64);
 const sha=(bytes:string|Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
-type WorkerEvent={request?:Request;waitUntil?:(promise:Promise<unknown>)=>void;respondWith?:(promise:Promise<Response>)=>void;data?:unknown;ports?:{postMessage:(value:unknown)=>void}[];source?:{url:string}};
+type WorkerEvent={request?:Request;waitUntil?:(promise:Promise<unknown>)=>void;respondWith?:(promise:Promise<Response>)=>void;data?:unknown;ports?:{postMessage:(value:unknown)=>void}[];source?:{url:string;id?:string};clientId?:string};
 function platform(){
  const stores=new Map<string,Map<string,Response>>(),network=new Map<string,string>(),requests:Request[]=[];
  let api:(request:Request)=>Promise<Response>=async()=>new Response(null,{status:503});
  const href=(input:Request|string)=>new URL(typeof input==='string'?input:input.url,origin).href;
  const caches={open:async(name:string)=>{if(!stores.has(name))stores.set(name,new Map());const store=stores.get(name)!;return {match:async(key:Request|string)=>store.get(href(key))?.clone(),put:async(key:Request|string,response:Response)=>{store.set(href(key),response.clone());},delete:async(key:Request|string)=>store.delete(href(key)),keys:async()=>[...store.keys()].map(key=>new Request(key))};},keys:async()=>[...stores.keys()],delete:async(name:string)=>stores.delete(name)};
- const fetch=async(input:Request|string)=>{const request=typeof input==='string'?new Request(href(input)):input;requests.push(request);let response:Response;if(new URL(request.url).pathname==='/api/explore')response=await api(request);else{const value=network.get(request.url);if(value===undefined)throw Error('OFFLINE');response=new Response(value,{headers:{'content-type':'text/html'}});}if(!response.url)Object.defineProperty(response,'url',{value:request.url});return response;};
+ const fetch=async(input:Request|string)=>{const request=typeof input==='string'?new Request(href(input)):input;requests.push(request);let response:Response;if(new URL(request.url).pathname==='/api/explore'||new URL(request.url).origin==='https://receiz.com')response=await api(request);else{const value=network.get(request.url);if(value===undefined)throw Error('OFFLINE');response=new Response(value,{headers:{'content-type':'text/html'}});}if(!response.url)Object.defineProperty(response,'url',{value:request.url});return response;};
  function worker(version='A',render=renderA,crypto=webcrypto){
   const values={'/index.html':`<html>Bank ${version}</html>`,'/explore/index.html':`<html>Explore ${version}</html>`,'/ledger/index.html':`<html>Ledger ${version}</html>`,'/feed/index.html':`<html>Feed ${version}</html>`,'/discover/index.html':`<html>Discover ${version}</html>`,'/assets/app.js':`app ${version}`,'/native/offline-notes.v129.mjs':`native ${version}`};
   for(const [path,body]of Object.entries(values))network.set(href(path),body);
@@ -22,8 +22,15 @@ function platform(){
   runInNewContext(source,{URL,Request,Response,Headers,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,Blob,AbortController,DOMException,ReadableStream,crypto,caches,fetch,setTimeout,clearTimeout,self:{location:{origin},addEventListener:(event:string,handler:typeof handlers[string])=>{handlers[event]=handler;},skipWaiting:()=>{forced=true;},clients:{claim:()=>{forced=true;}}}});
   async function lifetime(name:string){let promise:Promise<unknown>|undefined;handlers[name]!({waitUntil:work=>{promise=work;}});await promise;}
   async function load(path:string,{method='GET',navigate=false,signal}:{method?:string;navigate?:boolean;signal?:AbortSignal}={}){let promise:Promise<Response>|undefined;const request=new Request(href(path),{method,signal});if(navigate)Object.defineProperty(request,'mode',{value:'navigate'});handlers.fetch!({request,respondWith:work=>{promise=work;}});return promise;}
+  async function image(path:string,destination='image'){
+   let response:Promise<Response>|undefined,completion:Promise<unknown>|undefined;
+   const request=new Request(href(path),{mode:'no-cors'});Object.defineProperty(request,'destination',{value:destination});
+   handlers.fetch!({request,clientId:'image-client',respondWith:value=>{response=value;},waitUntil:value=>{completion=value;}});
+   const received=await response;await completion;return received;
+  }
+  async function portraitLoaded(url:string){let completion:Promise<unknown>|undefined;handlers.message!({data:{type:'BANK_VISITED_PORTRAIT',url},source:{url:origin+'/',id:'image-client'},waitUntil:value=>{completion=value;}});await completion;}
   async function status(){let promise:Promise<unknown>|undefined,result:unknown;handlers.message!({data:{type:'BANK_OFFLINE_STATUS',version:1},source:{url:origin+'/'},ports:[{postMessage:value=>{result=value;}}],waitUntil:work=>{promise=work;}});await promise;return result;}
-  return {install:()=>lifetime('install'),activate:()=>lifetime('activate'),load,status,forced:()=>forced};
+  return {install:()=>lifetime('install'),activate:()=>lifetime('activate'),load,image,portraitLoaded,status,forced:()=>forced};
  }
  return {worker,stores,network,requests,api:(handler:typeof api)=>{api=handler;},reads:()=>requests.filter(request=>new URL(request.url).pathname==='/api/explore')};
 }
@@ -172,4 +179,46 @@ it.each([['/explore/','/explore/index.html'],['/discover/','/discover/index.html
  expect(env.reads()).toHaveLength(0);
  env.network.delete(origin+path);
  expect((await worker.load(path,{navigate:true}))!.status).toBe(503);
+});
+
+
+it('keeps a visited immutable asset image available after a worker restart with no second network request',async()=>{
+ const {env,worker}=await installed();
+ const url='https://receiz.com/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify({artifactSha256:generation}),file:'preview'});
+ env.api(async request=>{
+  expect(request.credentials).toBe('omit');expect(request.mode).toBe('cors');
+  return new Response('exact image',{headers:{'content-type':'image/webp','content-length':'11','cache-control':'public, max-age=31536000, immutable','x-receiz-source-sha256':generation}});
+ });
+ expect(await (await worker.image(url))!.text()).toBe('exact image');
+ const requests=env.requests.length;env.api(async()=>{throw Error('OFFLINE');});
+ const cold=env.worker();await cold.activate();
+ expect(await (await cold.image(url))!.text()).toBe('exact image');
+ expect(env.requests).toHaveLength(requests);
+ expect(await cold.image(url,'video')).toBeUndefined();
+});
+
+it('keeps only a rendered versioned portrait and bypasses private and unversioned routes',async()=>{
+ const {env,worker}=await installed();
+ const portrait='https://receiz.com/api/storage/object?'+new URLSearchParams({bucket:'receiz-profile-media',path:'profile/11111111-1111-4111-8111-111111111111/avatar/20261120154000_abcdef12345678901234.webp'});
+ env.api(async request=>{
+   expect(request.credentials).toBe('omit');
+   const response=new Response('portrait');Object.defineProperty(response,'type',{value:'opaque'});return response;
+ });
+ await worker.image(portrait);
+ const saved=env.stores.get('bankeiz-visited-artwork-v1')!;expect(saved.size).toBe(0);
+ await worker.portraitLoaded(portrait);expect(saved.size).toBe(1);
+ const requests=env.requests.length;env.api(async()=>{throw Error('OFFLINE');});
+ expect(await(await env.worker().image(portrait))!.text()).toBe('portrait');
+ expect(await worker.image(portrait.replace('receiz-profile-media','receiz-private'))).toBeUndefined();
+ expect(await worker.image('https://receiz.com/api/profile/me/media')).toBeUndefined();
+ expect(env.requests).toHaveLength(requests);
+});
+
+it('serves an ordinary failed or private artwork response without retaining it for offline use',async()=>{
+ const {env,worker}=await installed(),target='https://receiz.com/api/proof-material/packages/'+generation+'/artifact';
+ const responses=[new Response(null,{status:503}),new Response('avatar',{headers:{'content-type':'image/webp','content-length':'6','cache-control':'private, no-store'}})];
+ env.api(async()=>responses.shift()!);
+ expect((await worker.image(target))?.status).toBe(503);
+ expect(await(await worker.image(target))!.text()).toBe('avatar');
+ expect(env.stores.get('bankeiz-visited-artwork-v1')?.size).toBe(0);
 });

@@ -38,13 +38,29 @@ export function freshGenesisProfile(identity:OpenIdentity,source:Record<string,u
   ||typeof genesis.kaiUPulse!=='string'||!/^\d{1,30}$/.test(genesis.kaiUPulse))return null;
  return {userId,username:identity.accountUsername?.()||account.username,createdAt:genesis.createdAt};
 }
+function heldIdentityAppearance(identity:OpenIdentity,uid:unknown){
+ const appearance=readAccountAppearance(),keyId=identity.binding?.keyId;
+ if(!appearance||typeof uid==='string'&&appearance.accountUid&&appearance.accountUid!==uid)return null;
+ if(appearance.identityKeyId)return appearance.identityKeyId===keyId?appearance:null;
+ return typeof uid==='string'&&appearance.accountUid===uid?appearance:null;
+}
+
+/** The saved handle is presentation for the same admitted owner only. */
+export function identityProfileUsername(identity:OpenIdentity):string|null {
+ const current=identity.knownProfile?.()?.username??identity.confirmedAccountUsername?.();if(current)return current;
+ const state=identity.localHistory?.portableStateVerified===true?object(identity.localHistory.verifiedState):{};
+ const uid=identity.knownWallet?.()?.wallet.userId??object(state.account).userId;
+ const saved=heldIdentityAppearance(identity,uid)?.username;
+ return saved??identity.accountUsername?.()??identity.username??null;
+}
+
 export function identityProfileAvatar(identity:OpenIdentity):string|null {
  const current=identity.knownProfile?.();if(current)return profileAvatarUrl(current.avatarUrl)??publicProfileAvatar(current);
  const source=identity.localHistory?.portableStateVerified===true?object(identity.localHistory.verifiedState):{},walletUid=identity.knownWallet?.()?.wallet.userId,uid=walletUid??object(source.account).userId;
  const observed=typeof uid==='string'?observedPortraits.get(uid):undefined;if(observed)return observed.avatarUrl;
  // The existing cold-page hint is usable only beneath this admitted account
  // or its exact local identity key. It never establishes identity or funds.
- const appearance=readAccountAppearance();if(appearance&&(typeof uid==='string'&&appearance.accountUid===uid||!walletUid&&appearance.identityKeyId&&appearance.identityKeyId===identity.binding?.keyId))return appearance.avatarUrl;
+ const appearance=heldIdentityAppearance(identity,uid);if(appearance)return appearance.avatarUrl;
  const held=identity.knownMessagingDisplay?.();
  if(held)for(const conversation of held.inbox){const own=conversation.members.find(person=>person.kind==='user'&&person.userId===held.accountUid),avatar=profileAvatarUrl(own?.avatarUrl)??(own?publicProfileAvatar(own as unknown as Record<string,unknown>):null);if(avatar)return avatar;}
  if(identity.localHistory?.portableStateVerified!==true)return null;
@@ -57,6 +73,9 @@ export function identityProfileAvatar(identity:OpenIdentity):string|null {
 /** The same display-name precedence as the public profile; never key/export time. */
 export function identityProfileName(identity:OpenIdentity):string{
  const current=identity.knownProfile?.();if(current)return accountPersonName(current);
+ const state=identity.localHistory?.portableStateVerified===true?object(identity.localHistory.verifiedState):{};
+ const heldAppearance=heldIdentityAppearance(identity,identity.knownWallet?.()?.wallet.userId??object(state.account).userId);
+ if(heldAppearance?.username&&heldAppearance.username===identityProfileUsername(identity))return heldAppearance.name;
  if(identity.localHistory?.portableStateVerified===true){const state=object(identity.localHistory.verifiedState),profile=object(object(state.profileView).profile),direct=object(state.profile);for(const candidate of [profile,direct])if(candidate.userId&&candidate.username)return accountPersonName(candidate);}
  const held=identity.knownMessagingDisplay?.(),own=held?.inbox.flatMap(row=>row.members).find(person=>person.kind==='user'&&person.userId===held.accountUid);
  return own?accountPersonName(own):identity.accountUsername?.()??identity.username??identity.binding.identityOwnerReceizId;

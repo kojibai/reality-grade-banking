@@ -1,7 +1,7 @@
 import {InlineOpening} from '../../components/InlineOpening';
 import {retainedAssetPublicationArtwork} from '../../receiz/asset-publication-adoption';
 import {usePublicObjectArtwork} from './usePublicObjectArtwork';
-import {lazy,Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type PointerEvent} from 'react';
+import {lazy,Suspense,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type PointerEvent} from 'react';
 import {ArrowUpRight,BookOpen,Check,ChevronLeft,ChevronRight,Download,File,FileText,Image,Maximize2,Music2,Play,ShieldCheck,Video} from 'lucide-react';
 import {openProofMedia,retainedPublicMedia,type MediaFile,type OpenedProofMedia,type ProofMediaSource} from '../../receiz/proof-media';
 import {readPublicProofReading,retainedPublicReading,type ProofReading} from '../../receiz/proof-reading';
@@ -17,6 +17,11 @@ import type {PublicBookSource} from '../../receiz/public-book';
 import {PublicBookMedia} from './PublicBookMedia';
 import {ExpandedMedia} from './ExpandedMedia';
 import './proof-media.css';
+const onlineMedia=()=>globalThis.navigator?.onLine!==false;
+function subscribeMediaConnection(update:()=>void){
+ addEventListener('online',update);addEventListener('offline',update);
+ return()=>{removeEventListener('online',update);removeEventListener('offline',update);};
+}
 const ProofPdfReader=lazy(()=>import('./ProofPdfReader'));
 const ProofBookReader=lazy(()=>import('./ProofBookReader'));
 const kinds={image:{label:'Image',icon:Image},audio:{label:'Audio',icon:Music2},video:{label:'Video',icon:Video},pdf:{label:'Document',icon:FileText},text:{label:'Reading',icon:FileText},book:{label:'Book',icon:BookOpen},file:{label:'Original file',icon:File}};
@@ -45,18 +50,20 @@ function OriginalProofMedia({title,source,active=true,carriedText,autoOpen=false
  const [reading,setReading]=useState<ProofReading|null>(()=>source.kind==='public'&&source.postUrl?retainedPublicReading(source.postUrl,source.digest):null),[readingOpen,setReadingOpen]=useState(false),[readingBusy,setReadingBusy]=useState(false),[readingUrl,setReadingUrl]=useState('');
  const displayReading=useMemo(()=>{if(reading)return reading;const carried=source.kind==='public'?publicCarriedText(carriedText):null;return carried?{title:carried.title??title,text:carried.text,sha256:carried.sha256Hex,artifactDigest:source.digest}:null;},[reading,carriedText,source.kind,source.digest,title]);
  const localArtwork=source.kind==='public'?retainedAssetPublicationArtwork(source.digest):null;
- const realizedArtwork=usePublicObjectArtwork(artworkUrl,source.kind==='public'?{originalDigest:source.digest}:undefined),realizedPreview=usePublicObjectArtwork(publicImageUrl,source.kind==='public'?{originalDigest:source.digest}:undefined);
+ const realizedArtwork=usePublicObjectArtwork(artworkUrl,source.kind==='public'?{originalDigest:source.digest}:undefined),realizedImage=usePublicObjectArtwork(publicImageUrl===artworkUrl?null:publicImageUrl,source.kind==='public'?{originalDigest:source.digest}:undefined),realizedPreview=publicImageUrl&&publicImageUrl===artworkUrl?realizedArtwork:realizedImage;
  const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=localArtwork??realizedArtwork,artwork=safeArtwork!==failedArtwork?safeArtwork:null;
  const publicPreviewUrl=source.kind==='public'&&publicImageUrl?(localArtwork??realizedPreview):null,publicImage=!opened?publicPreviewUrl:null;
  const standaloneImageCover=holdImageCover&&!publicImageUrl,carriedCover=standaloneImageCover&&!!artwork;
+ const resolvingImage=source.kind==='public'&&(publicImageUrl?realizedPreview===undefined:standaloneImageCover&&!!artworkUrl&&realizedArtwork===undefined);
  const expandedImage=publicImage??(!opened&&carriedCover?artwork:null);
  const attachArtwork=useCallback((image:HTMLImageElement|null)=>{
   if(holdImageCover&&image?.complete&&!image.naturalWidth)setFailedArtwork(safeArtwork??null);
  },[holdImageCover,safeArtwork]);
- const videoStream=source.kind==='public'&&publicVideo?publicMediaPlayback({receizId:publicVideo.assetId,profileOriginal:{mediaKind:'video',playback:publicVideo,media:{gateAudioPlayback:false,originalDownloadMime:publicVideo.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
- const audioStream=source.kind==='public'&&publicAudio?publicMediaPlayback({receizId:publicAudio.assetId,profileOriginal:{mediaKind:'audio',playback:publicAudio,media:{gateAudioPlayback:false,originalDownloadMime:publicAudio.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
+ const online=useSyncExternalStore(subscribeMediaConnection,onlineMedia,()=>true);
+ const videoStream=online&&source.kind==='public'&&publicVideo?publicMediaPlayback({receizId:publicVideo.assetId,profileOriginal:{mediaKind:'video',playback:publicVideo,media:{gateAudioPlayback:false,originalDownloadMime:publicVideo.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
+ const audioStream=online&&source.kind==='public'&&publicAudio?publicMediaPlayback({receizId:publicAudio.assetId,profileOriginal:{mediaKind:'audio',playback:publicAudio,media:{gateAudioPlayback:false,originalDownloadMime:publicAudio.mimeType,originalDownloadSha256Hex:source.digest,material:{sealedArtifactSha256Hex:source.digest}}}},source.url):null;
  const [failedDocument,setFailedDocument]=useState<string|null>(null);
- const documentCandidate=source.kind==='public'&&publicDocument?publicDocumentReaderUrl(publicDocument.url,publicDocument.assetId):null,documentStream=documentCandidate!==failedDocument?documentCandidate:null;
+ const documentCandidate=online&&source.kind==='public'&&publicDocument?publicDocumentReaderUrl(publicDocument.url,publicDocument.assetId):null,documentStream=documentCandidate!==failedDocument?documentCandidate:null;
  const [mediaRequested,setMediaRequested]=useState(false),showVideo=!!videoStream&&(autoOpen||mediaRequested),showAudio=!!audioStream&&!opened&&(autoOpen||mediaRequested),showDocument=!!documentStream&&(autoOpen||mediaRequested);
  const pending=useRef<AbortController|null>(null),epoch=useRef(0),positions=useRef<Record<string,number>>({}),readingOpener=useRef<HTMLElement|null>(null),key=source.digest+':'+(source.kind==='held'?source.filename:source.url+':'+(source.postUrl??''));
  const readingRequest=useRef<{controller:AbortController;promise:Promise<ProofReading|undefined>}|null>(null),readingEpoch=useRef(0);
@@ -71,11 +78,11 @@ function OriginalProofMedia({title,source,active=true,carriedText,autoOpen=false
  useEffect(()=>{if(!readingFile){setReadingUrl('');return;}const value=URL.createObjectURL(new Blob([new Uint8Array(readingFile.bytes)],{type:'text/plain'}));setReadingUrl(value);return()=>URL.revokeObjectURL(value);},[readingFile]);
  async function open(){if(busy)return;const controller=new AbortController(),revision=++epoch.current;pending.current=controller;setBusy(true);setError('');try{const result=await openProofMedia(source,controller.signal);if(revision===epoch.current&&!controller.signal.aborted){setOpened(result);return result;}}catch(cause){if(revision===epoch.current&&!controller.signal.aborted)setError(cause instanceof Error?cause.message:'The original could not be opened.');}finally{if(revision===epoch.current){setBusy(false);pending.current=null;}}}
  useEffect(()=>{setMediaRequested(false);setFailedDocument(null);},[key]);
- useEffect(()=>{if(active&&autoOpen&&!opened&&!carriedCover&&!publicPreviewUrl&&!audioStream&&!videoStream&&!documentStream)void open();},[key,active,autoOpen,carriedCover,publicPreviewUrl,audioStream?.url,videoStream?.url,documentStream]);
+ useEffect(()=>{if(active&&autoOpen&&!opened&&!carriedCover&&!publicPreviewUrl&&!resolvingImage&&!audioStream&&!videoStream&&!documentStream)void open();},[key,active,autoOpen,carriedCover,publicPreviewUrl,resolvingImage,audioStream?.url,videoStream?.url,documentStream]);
  function prepareReading():Promise<ProofReading|undefined>{
   if(displayReading)return Promise.resolve(displayReading);if(readingRequest.current)return readingRequest.current.promise;
   const controller=new AbortController(),revision=readingEpoch.current;
-  const promise=(async()=>{const readText=opened?.readText??(source.kind==='public'&&source.postUrl&&!safeImportedSourceUrl(source.url,'artifact')&&(autoOpen||publicPreviewUrl||audioStream)?((signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal)):(await open())?.readText);if(!readText)return;const result=await readText(controller.signal);if(revision===readingEpoch.current&&!controller.signal.aborted)setReading(result);return controller.signal.aborted?undefined:result;})().finally(()=>{if(readingRequest.current?.controller===controller)readingRequest.current=null;});
+  const promise=(async()=>{const readText=opened?.readText??(online&&source.kind==='public'&&source.postUrl&&!safeImportedSourceUrl(source.url,'artifact')&&(autoOpen||publicPreviewUrl||audioStream)?((signal?:AbortSignal)=>readPublicProofReading(source.postUrl!,source.digest,signal)):(await open())?.readText);if(!readText)return;const result=await readText(controller.signal);if(revision===readingEpoch.current&&!controller.signal.aborted)setReading(result);return controller.signal.aborted?undefined:result;})().finally(()=>{if(readingRequest.current?.controller===controller)readingRequest.current=null;});
   readingRequest.current={controller,promise};return promise;
  }
  // A carried cover can stay visible while independent text prepares. Imported

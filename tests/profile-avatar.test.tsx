@@ -155,8 +155,8 @@ it('updates the retained BankApp header and cold appearance after observing the 
  const source=readFileSync(process.cwd()+'/src/App.tsx','utf8'),start=source.indexOf('  const [profileRevision,setProfileRevision]'),end=source.indexOf('  const profileAction=',start);
  expect(start).toBeGreaterThan(0);expect(end).toBeGreaterThan(start);
  const code=ts.transpileModule(source.slice(start,end)+'\nreturn identityImage;',{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
- const hooks=new Function('account','useState','useEffect','useMemo','identityProfileAvatar','identityProfileName','publishAccountAppearance',code);
- function Header({active}:{active:boolean}){const src=hooks({identity,opening:false,busy:false},useState,useEffect,useMemo,avatar.identityProfileAvatar,avatar.identityProfileName,appearance.publishAccountAppearance);return <div hidden={!active}><img src={src}/></div>;}
+ const hooks=new Function('account','useState','useEffect','useMemo','identityProfileAvatar','identityProfileName','identityProfileUsername','publishAccountAppearance',code);
+ function Header({active}:{active:boolean}){const src=hooks({identity,opening:false,busy:false},useState,useEffect,useMemo,avatar.identityProfileAvatar,avatar.identityProfileName,avatar.identityProfileUsername,appearance.publishAccountAppearance);return <div hidden={!active}><img src={src}/></div>;}
  const host=document.createElement('div'),root=createRoot(host);
  try{
   await act(async()=>root.render(<Header active/>));expect(host.querySelector('img')?.getAttribute('src')).toBe('https://receiz.com/old-photo.webp');

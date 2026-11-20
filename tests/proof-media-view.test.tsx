@@ -278,3 +278,41 @@ it.each([source,{kind:'public' as const,url:'https://receiz.com/api/proof-materi
   await act(async()=>read!.click());expect(host.querySelector('dialog .proof-reading-text')?.textContent).toBe(reading.text);expect(readPublic).not.toHaveBeenCalled();expect(open).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());host.remove();}
 });
+
+
+it('reuses one carried artwork resolution before considering the enclosing Original on a cold mount',async()=>{
+ const runtime=await import('../src/receiz/asset-publication-runtime');
+ const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:source.digest,filename:'original.png',mimeType:'image/png',byteLength:128,bytes:{kind:'bytes',height:0,byteLength:128,contentByteLength:128,sha256:'b'.repeat(64)}};
+ const url='https://receiz.com/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference),file:'preview'});
+ let deliver!:(value:unknown)=>void;
+ const resolveArtwork=vi.fn(()=>new Promise(resolve=>{deliver=resolve;}));
+ const loader=vi.spyOn(runtime,'loadAssetPublicationRuntime').mockResolvedValue({retainMountedMaterial:()=>()=>{},peekHeldProfileOriginalMaterial:()=>null,readHeldImportedProfileOriginalMaterial:resolveArtwork} as never);
+ vi.stubGlobal('indexedDB',{});
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofMedia source={{kind:'public',digest:source.digest,url:'https://receiz.com/v/20261105_1234/ABCDEFGH/123'}} title="Held artwork" publicImageUrl={url} artworkUrl={url} autoOpen/>));
+  expect(loader).toHaveBeenCalledTimes(1);
+  expect(resolveArtwork).toHaveBeenCalledTimes(1);
+  expect(open).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Opening the original');
+  await act(async()=>deliver({payloadObjectUrl:'blob:held-image',payloadMimeType:'image/png',sealedArtifactSha256Hex:source.digest}));
+  expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:held-image');
+  expect(open).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());vi.unstubAllGlobals();}
+});
+
+
+it.each(['audio','video'] as const)('reopens held %s offline without starting the streaming URL',async kind=>{
+ const connection=vi.spyOn(navigator,'onLine','get').mockReturnValue(false);
+ const publicSource={kind:'public' as const,digest:source.digest,url:'https://receiz.com/api/proof-material/packages/'+'b'.repeat(64)+'/artifact'};
+ const mimeType=kind==='audio'?'audio/mpeg':'video/mp4',stream={assetId:'saved-media',url:publicSource.url,mimeType};
+ open.mockResolvedValue({...media,files:[{kind,filename:'Saved media',mimeType,bytes:new Uint8Array([1]),payloadDigest:'b'.repeat(64)}]});
+ vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:held-media');
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<ProofMedia source={publicSource} title="Held media" {...(kind==='audio'?{publicAudio:stream}:{publicVideo:stream})} autoOpen/>));
+  expect(open).toHaveBeenCalledExactlyOnceWith(publicSource,expect.any(AbortSignal));
+  expect(host.querySelector(kind)?.getAttribute('src')).toBe('blob:held-media');
+  expect(host.innerHTML).not.toContain(stream.url);
+ }finally{await act(async()=>root.unmount());connection.mockRestore();}
+});

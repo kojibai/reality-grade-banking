@@ -10,7 +10,7 @@ import {mergePublicRecords} from './receiz/public-network';
 import {useAssetEntry} from './features/assets/useAssetEntry';
 import {useBusinessEntry} from './features/messages/useBusinessEntry';
 import {MessagesPanel} from './features/messages/MessagesPanel';
-import {identityProfileAvatar,identityProfileName} from './receiz/profile-avatar';
+import {identityProfileAvatar,identityProfileName,identityProfileUsername} from './receiz/profile-avatar';
 import { ConsoleShell } from './components/ConsoleShell';
 import { BottomNav, type Panel } from './components/BottomNav';
 import { Market } from './features/market/Market';
@@ -79,7 +79,8 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   const [profileRevision,setProfileRevision]=useState(0);
   useEffect(()=>{const updated=()=>setProfileRevision(value=>value+1);addEventListener('bankeiz:profile-updated',updated);return()=>removeEventListener('bankeiz:profile-updated',updated);},[]);
   const identityImage=useMemo(()=>account.identity?identityProfileAvatar(account.identity):null,[account.identity,profileRevision]);
-  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:identityProfileName(account.identity),accountUid:account.identity.knownProfile?.()?.userId??account.identity.knownWallet?.()?.wallet.userId,identityKeyId:account.identity.binding.keyId});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,account.opening,account.busy,profileRevision]);
+  const identityUsername=account.identity?identityProfileUsername(account.identity):null;
+  useEffect(()=>{if(account.identity)publishAccountAppearance({avatarUrl:identityImage,name:identityProfileName(account.identity),username:identityUsername??undefined,accountUid:account.identity.knownProfile?.()?.userId??account.identity.knownWallet?.()?.wallet.userId,identityKeyId:account.identity.binding.keyId});else if(!account.opening&&!account.busy)publishAccountAppearance(null);},[account.identity,identityImage,identityUsername,account.opening,account.busy,profileRevision]);
   const profileAction=useSyncExternalStore(subscribeProfileActions,readProfileAccountAction,()=>null);
   const messageEntryAttempt=useRef<number|null>(null);
   useEffect(()=>{
@@ -92,12 +93,18 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   useEffect(()=>{if(!('serviceWorker'in navigator))return;const receive=(event:MessageEvent)=>{if(event.data?.type!=='BANK_NOTIFICATION_OPEN')return;const target=notificationTarget(event.data.target);setNotification(target);history.replaceState({panel:'account',sheet:{kind:'messages'}},'', '/'+location.search+'#account/messages');dispatchEvent(new PopStateEvent('popstate'));};navigator.serviceWorker.addEventListener('message',receive);return()=>navigator.serviceWorker.removeEventListener('message',receive);},[]);
   const [messageRecipient,setMessageRecipient]=useState<{owner:typeof account.identity;id:number;person:{userId:string;username:string;displayName:string;avatarUrl:string|null}}|null>(null);
   const publicMarket = usePublicMarket(onBank);
-  const showcase = useMemo(() => projectAccountShowcase(publicMarket.catalog, account.identity?.accountUsername?.() ?? account.identity?.username ?? null), [publicMarket.catalog, account.identity, account.wallet]);
+  const accountName = account.identity?.accountUsername?.() ?? account.identity?.username ?? null;
+  const showcaseUid = account.wallet?.userId ?? account.identity?.walletReceivingAddress?.();
+  const showcase = useMemo(() => {
+    const name = identityUsername && identityUsername !== accountName && showcaseUid && publicMarket.catalog?.publicProfileHeads?.some(({profile})=>profile.userId===showcaseUid&&profile.username===identityUsername) ? identityUsername : accountName;
+    return projectAccountShowcase(publicMarket.catalog, name);
+  }, [publicMarket.catalog, identityUsername, accountName, showcaseUid]);
   const [paymentRequest] = useState(() => { try { return location.search ? parsePaymentRequest(`${BANK_PUBLIC_ORIGIN}/${location.search}`) : null; } catch { return null; } });
   const [cardResumeSessionId,setCardResumeSessionId]=useState(()=>readCardResume(location.search));
   const consumeCardResume=()=>{setCardResumeSessionId(null);const url=new URL(location.href);url.searchParams.delete('resumeCardSession');history.replaceState(history.state,'',url.pathname+url.search+url.hash);};
   const [sourceRevision, setSourceRevision] = useState(0);
-  const [panel, setPanel] = useState<Panel>('account'), [sheet, setSheet] = useState<UIAction | null>(null);
+  const entryRoute=useMemo(()=>parseRoute(location.hash),[]);
+  const [panel, setPanel] = useState<Panel>(entryRoute.panel), [sheet, setSheet] = useState<UIAction | null>(entryRoute.sheet);
   const privateHistory = usePrivateHistory(account.identity, account.wallet?.userId, onBank && Boolean(account.identity));
   const investmentPricing=useMarketDisplaySource();
   const investments=useMarketPortfolio(account.identity,onBank);
