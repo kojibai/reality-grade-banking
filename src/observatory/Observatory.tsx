@@ -8,6 +8,7 @@ import {PUBLIC_SOURCES, type PublicRecord, type PublicSource} from '../receiz/pu
 import {documentSourceStates,type usePublicNetwork} from '../receiz/usePublicNetwork';
 import {ledgerRecordTitle} from '../receiz/ledger-payment-records';
 import {shippedMarketHistory, useMarketCapitalization} from '../receiz/market-projection/useMarketCapitalization';
+import type {MarketHistorySnapshot} from '../receiz/market-projection/history';
 import {usePublicMarket} from '../receiz/usePublicMarket';
 import {activityTime, activityWindow, carriedActivityHistory, indexActivity, ledgerLink, periods, recentActivityRecord, sourceNames, type Period, type TimedRecord} from './activity';
 import type {ChartPeriod} from '../core/chart-history';
@@ -122,7 +123,7 @@ function ActivityPlot({plot, selection, onSelect, period}: {plot:ReturnType<type
   </div>;
 }
 
-export function Observatory({network:heldNetwork,active,initialDirectory,initialSnapshot}: {network:Network;active:boolean;initialDirectory?:ObservatoryDirectory;initialSnapshot?:PublicNetworkCache}) {
+export function Observatory({network:heldNetwork,active,initialDirectory,initialSnapshot,initialMarketHistory}: {network:Network;active:boolean;initialDirectory?:ObservatoryDirectory;initialSnapshot?:PublicNetworkCache;initialMarketHistory?:MarketHistorySnapshot}) {
   // Hydrate the exact HTML observation, then display any newer held head immediately.
   const hydrating=useSyncExternalStore(noSubscription,()=>false,()=>true);
   const documentSources=useMemo(()=>documentSourceStates(initialSnapshot),[initialSnapshot]);
@@ -138,10 +139,12 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   // Suspension stops the readers without replacing the selected Atlas operands.
   const catalog=useMemo(()=>!hydrating&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[hydrating,liveCatalog,carried]);
   const [capPeriod,setCapPeriod]=useState<ChartPeriod>('ALL');
-  const pricingActive=active&&!!liveCatalog?.complete&&liveCatalog.sportsCoverage==='complete';
-  const valuation=useMarketCapitalization(capPeriod,pricingActive,liveCatalog,pricingActive);
-  const pricing=useSyncExternalStore(noSubscription,()=>valuation.source,()=>shippedMarketHistory().summary);
-  const points=useSyncExternalStore(noSubscription,()=>valuation.points,()=>shippedMarketHistory().series[capPeriod]);
+  // Use Market's existing valuation clock and accepted pricing coverage.
+  // An independently refreshing collectible feed cannot suspend held pricing.
+  const valuation=useMarketCapitalization(capPeriod,active,liveCatalog,active,initialMarketHistory);
+  const carriedHistory=initialMarketHistory??shippedMarketHistory();
+  const pricing=useSyncExternalStore(noSubscription,()=>valuation.source,()=>carriedHistory.summary);
+  const points=useSyncExternalStore(noSubscription,()=>valuation.points,()=>carriedHistory.series[capPeriod]);
   const directoryRestored=useRef(false);
   const selectedCatalog=useRef(liveCatalog);selectedCatalog.current=liveCatalog;
   useEffect(()=>{

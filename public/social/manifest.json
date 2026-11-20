@@ -1760,6 +1760,14 @@
       "sha256": "764a6c39ac823a5e46ecfb8976ab4cabcdda9bbebce59818a344df8aa513ca7b",
       "bytes": 467374,
       "alt": "Bankeiz. Documents. Open to explore. Original sources. Verifiable ownership. An engraved globe motif on layered cobalt, clear glass and navy forms."
+    },
+    "/analytics/": {
+      "url": "/social/analytics-2b293e683b3dc65d.png",
+      "width": 1730,
+      "height": 909,
+      "sha256": "2b293e683b3dc65d4aa0ff3c3cdd84ed28ad0ec080c19cee74812ee0c18ffade",
+      "bytes": 309361,
+      "alt": "Analytics. In the open. Market, ledger and activity. The bank mark and a chart engraved on layered cobalt and glass."
     }
   }
 }

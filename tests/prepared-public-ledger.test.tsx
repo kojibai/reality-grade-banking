@@ -11,6 +11,7 @@ import {readPublicLedgerDocumentSeed} from '../src/receiz/public-ledger-document
 import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
 import {parsePublicNetworkCache} from '../src/receiz/public-network-cache';
 import {publicNetworkCacheWire} from '../src/receiz/public-network-cache-wire';
+import {shippedMarketHistory} from '../src/receiz/market-projection/useMarketCapitalization';
 const target='imported-'+('c'.repeat(64)),title='New accepted public Original';
 const member=(id:string,label:string)=>({id:'profile:artist:'+id,receizId:id,title:label,visibility:'public',ownerUsername:'artist',createdAt:'2026-11-02T13:42:03.000Z',pulse:'14955302',profileOriginal:{hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64),media:{kind:'image',originalDownloadSha256Hex:'a'.repeat(64)},verifyPath:'/v/20261102_0942/21188918/14955302?c=rpb2.carried'}});
 const transaction={id:'wallet:existing',sourceId:'existing',source:'wallet',kind:'transfer',title:'Existing transfer',detail:'A recorded movement',time:'2026-11-03T00:01:00.000Z',actor:null,sender:'Public sender',recipient:'Public recipient',amountUsdCents:'1200',kaiUpulse:'14960000000000',pulse:'14960000',sourceUrl:null,evidence:{entryHash:'b'.repeat(64)},authority:'public-source-projection',privateKey:'MUST_NOT_CARRY'};
@@ -20,6 +21,19 @@ function input(gzip=false){const rows=[member('old','Existing proof'),member(tar
 beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);});
 afterEach(()=>{document.body.innerHTML='';vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('prepared public Ledger',()=>{
+ it('carries the selected Market history into Analytics first paint and reuses it on hydration',async()=>{
+  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));
+  const base=input(),shipped=shippedMarketHistory(),history={...shipped,summary:{...shipped.summary,marketAssetsPriced:1,cardsInCirculation:9999}};
+  const material=JSON.stringify({...JSON.parse(base.material),history,marketPrepared:{schema:'bank.public-market.prepared.v1',asOfPulse:history.summary.serverPulse}});
+  document.body.innerHTML=await renderPreparedDependentDocument({...base,path:'observatory',material,generation:createHash('sha256').update(material).digest('hex')});
+  const seed=(await readPublicLedgerDocumentSeed())!,container=document.querySelector('#public-ledger-root')!;
+  const headline=[...container.querySelectorAll('.obs-reading')][1];expect(headline.textContent).toContain('10,000');
+  expect(seed.marketHistory?.summary).toEqual(history.summary);
+  const errors:unknown[]=[];let root!:ReturnType<typeof hydrateRoot>;
+  await act(async()=>{root=hydrateRoot(container,createElement('div',{},createElement(PublicLedgerApp,{active:false,initialSnapshot:seed.snapshot,initialDirectory:seed.directory,initialMarketHistory:seed.marketHistory,initialHref:'https://bankeiz.com/analytics/',initialFormat:seed})),{identifierPrefix:'public-ledger-',onRecoverableError:error=>errors.push(error)});});
+  try{expect(errors).toEqual([]);expect([...container.querySelectorAll('.obs-reading')][1]).toBe(headline);expect(fetch).not.toHaveBeenCalled();}
+  finally{await act(async()=>root.unmount());}
+ });
  it.each([false,true])('carries the new proof before JavaScript, keeps existing financial history and requires no reads (%s)',async gzip=>{
   const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));const html=await renderPreparedDependentDocument(input(gzip));document.body.innerHTML=html;
   expect(document.querySelector('#public-ledger-root')?.textContent).toContain(title);expect(document.querySelector('#public-ledger-root')?.textContent).toContain('Existing proof');

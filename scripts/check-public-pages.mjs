@@ -244,6 +244,14 @@ for(const path of ['ledger','ledger/proofs']){
 assert.ok(!html.includes('id="public-ledger-document-seed"'),'Bank entry never duplicates the complete Ledger.');
 assert.ok(Object.values(navigation.pages).every(page=>!page.content.includes('id="public-ledger-document-seed"')),'Ordinary navigation keeps its existing compact Ledger entry.');
 console.log('Verified cold Ledger and Proofs rows, all selected Originals, retained financial history and exact shared history packets.');
+const analyticsPage=await readFile('dist/analytics/index.html','utf8'),analyticsImage=socialImages.images['/analytics/'];
+const analyticsImageUrl=publicOrigin+analyticsImage.url;
+assert.ok(analyticsPage.includes(`<meta property="og:image" content="${analyticsImageUrl}">`));
+assert.ok(analyticsPage.includes('<meta name="twitter:card" content="summary_large_image">'));
+assert.ok(analyticsPage.includes(`<meta name="twitter:image" content="${analyticsImageUrl}">`));
+const analyticsImageBytes=await readFile('dist'+analyticsImage.url);
+assert.equal(analyticsImageBytes.readUInt32BE(16),analyticsImage.width);
+assert.equal(analyticsImageBytes.readUInt32BE(20),analyticsImage.height);
 const builds = JSON.parse(await readFile('dist/.vite/manifest.json', 'utf8'));
 assert.ok(builds['ledger/index.html']?.isEntry, 'Public Ledger has its own read-only entry');
 const publicEntries = new Set();

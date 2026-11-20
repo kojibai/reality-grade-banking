@@ -103,8 +103,9 @@ export async function renderPreparedDependentDocument({material,generation,path,
   const inventory=collectibleCatalog??market?.seed.catalog??(sports?mergePublicSports({...catalog,items:[],sourceCount:0},sports):null);
   if(inventory)directory.collectibleSealTimes=networkCollectibleSealTimes(inventory);
  }
- const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot,...(directory?{directory}:{})};
- const content=renderToString(<div><PublicLedgerApp active={false} initialDirectory={seed.directory} initialSnapshot={snapshot} initialHref={'https://bankeiz.com/'+path+'/'} initialFilter={path==='ledger/proofs'?'proofs':'all'} initialFormat={format}/></div>,{identifierPrefix:'public-ledger-'}),script=publicLedgerDocumentSeedScript(seed,packets);
+ const marketHistory=path==='observatory'?market?.history:undefined;
+ const format=new Intl.DateTimeFormat().resolvedOptions(),seed:PublicLedgerDocumentSeed={schema:'bank.public-ledger.document.v1',generation,path:path as PublicLedgerDocumentSeed['path'],locale:format.locale,timeZone:format.timeZone,snapshot,...(directory?{directory}:{}),...(marketHistory?{marketHistory}:{})};
+ const content=renderToString(<div><PublicLedgerApp active={false} initialDirectory={seed.directory} initialSnapshot={snapshot} initialMarketHistory={marketHistory} initialHref={'https://bankeiz.com/'+path+'/'} initialFilter={path==='ledger/proofs'?'proofs':'all'} initialFormat={format}/></div>,{identifierPrefix:'public-ledger-'}),script=publicLedgerDocumentSeedScript(seed,packets);
  let replaced=false;
  const clean=template.replace(/<template id="ledger-explore-frame"[^>]*>[\s\S]*?<\/template>/g,'').replace(/<script id="public-market-seed" type="application\/json">[\s\S]*?<\/script>/g,'').replace(/<script id="public-ledger-document-seed" type="application\/json">[\s\S]*?<\/script>/g,'');
  const html=clean.replace(/(<div id="public-ledger-root"[^>]*>)[\s\S]*?(<\/div>\s*(?:<noscript>[\s\S]*?<\/noscript>\s*)?<script id="receiz-navigation")/,(_all,start,end)=>{replaced=true;return start+content+end;});

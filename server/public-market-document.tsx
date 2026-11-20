@@ -69,12 +69,12 @@ export function renderSelectedPublicMarketState(input:PublicMarketSelectedState)
  const seed:PublicMarketDocumentSeed={schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format,history:packMarketHistory(history),...(capitalization?{capitalization}:{})};
  return {content,seed,seedScript:publicMarketDocumentSeedScript(seed,compressCatalog?compressedCatalog(catalog).packet:undefined)};
 }
-type ExploreFrame={seed:Pick<PublicMarketDocumentSeed,'generation'|'catalog'>;content:string};
+type ExploreFrame={seed:Pick<PublicMarketDocumentSeed,'generation'|'catalog'>;content:string;history?:PublicMarketSelectedState['history']};
 const exploreFrames=new WeakMap<object,ExploreFrame>();
 export async function preparedExploreFrame(material:string,generation:string){
  const state=await prepare(material,generation);
  let frame=exploreFrames.get(state);
- if(!frame){frame={seed:{generation,catalog:state.catalog},content:renderSelectedPublicMarketContent({...state,generation})};exploreFrames.set(state,frame);}
+ if(!frame){frame={seed:{generation,catalog:state.catalog},history:state.history,content:renderSelectedPublicMarketContent({...state,generation})};exploreFrames.set(state,frame);}
  return frame;
 }
 /** Called by accepted-publication preparation, never by the cold visitor. The

@@ -4,9 +4,11 @@ import {decodePublicDocumentGzip} from './public-document-gzip';
 import {readPublicProfileHeads,readPublicProfileHeadRefusals} from './public-profile-header';
 import type {PublicMarketCatalog} from './public-market';
 import {mergePublicRecords} from './public-network';
+import {parseMarketHistory,SHARE_MARKET_HISTORY_POLICY,type MarketHistorySnapshot} from './market-projection/history';
+import {packMarketHistory} from './market-projection/history-wire';
 
 export type ObservatoryDirectory=Pick<PublicMarketCatalog,'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'|'revision'|'observedAt'>&{collectibleSealTimes?:number[];audience?:{observedAt:string;heads:ReturnType<typeof readPublicProfileHeads>}};
-export type PublicLedgerDocumentSeed=Readonly<{schema:'bank.public-ledger.document.v1';generation:string;path:'ledger'|'ledger/proofs'|'observatory';locale:string;timeZone:string;directory?:ObservatoryDirectory;snapshot:PublicNetworkCache}>;
+export type PublicLedgerDocumentSeed=Readonly<{schema:'bank.public-ledger.document.v1';generation:string;path:'ledger'|'ledger/proofs'|'observatory';locale:string;timeZone:string;directory?:ObservatoryDirectory;snapshot:PublicNetworkCache;marketHistory?:MarketHistorySnapshot}>;
 export type PublicLedgerCompressedSnapshot=Readonly<{gzipB64u:string;bytes:number}>;
 // The existing public Ledger archive delivery capacities. This is a display
 // cache inside HTML, never a verified Ledger original or an admission input.
@@ -36,10 +38,15 @@ export function readPublicLedgerDocumentSeed(doc:Document|undefined=typeof docum
   const seals=raw?.collectibleSealTimes;
   const collectibleSealTimes=Array.isArray(seals)&&seals.length<=100000&&seals.every((at,index)=>Number.isSafeInteger(at)&&at>=0&&at<=8.64e15&&(!index||at>=seals[index-1]))?seals:undefined;
   const directory=raw&&typeof raw.revision==='string' ? {audience,collectibleSealTimes,revision:raw.revision,observedAt:typeof raw.observedAt==='string'?raw.observedAt:null,publicProfileHeads:readPublicProfileHeads(raw.publicProfileHeads),publicProfileHeadRefusals:readPublicProfileHeadRefusals(raw.publicProfileHeadRefusals),publicProfileHeadsRevision:typeof raw.publicProfileHeadsRevision==='string'?raw.publicProfileHeadsRevision:undefined} : undefined;
-  return {schema:value.schema,...(directory?{directory}:{}),generation:value.generation,path:value.path,locale:value.locale,timeZone:value.timeZone,snapshot} as PublicLedgerDocumentSeed;
+  let marketHistory:MarketHistorySnapshot|undefined;
+  if(value.path==='observatory'&&value.marketHistory){
+   try{const selected=parseMarketHistory(value.marketHistory);if(selected.historyPolicy===SHARE_MARKET_HISTORY_POLICY)marketHistory=selected;}
+   catch{/* Ledger and its first frame remain available with the bundled pricing. */}
+  }
+  return {schema:value.schema,...(directory?{directory}:{}),generation:value.generation,path:value.path,locale:value.locale,timeZone:value.timeZone,snapshot,...(marketHistory?{marketHistory}:{})} as PublicLedgerDocumentSeed;
  }catch{return null;}})();parsed.set(element,{text,seed});return seed;
 }
 export function publicLedgerDocumentSeedScript(seed:PublicLedgerDocumentSeed,snapshotGzip?:PublicLedgerCompressedSnapshot|readonly PublicLedgerCompressedSnapshot[]):string{
- const {snapshot,...metadata}=seed;
- return '<script id="public-ledger-document-seed" type="application/json">'+JSON.stringify({...metadata,...(snapshotGzip?{snapshotGzip}:{snapshot:publicNetworkCacheWire(snapshot)})}).replaceAll('<','\\u003c')+'</script>';
+ const {snapshot,marketHistory,...metadata}=seed;
+ return '<script id="public-ledger-document-seed" type="application/json">'+JSON.stringify({...metadata,...(marketHistory?{marketHistory:packMarketHistory(marketHistory)}:{}),...(snapshotGzip?{snapshotGzip}:{snapshot:publicNetworkCacheWire(snapshot)})}).replaceAll('<','\\u003c')+'</script>';
 }

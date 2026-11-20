@@ -53,7 +53,7 @@ const PublicRow=memo(function PublicRow({record,valueSource,relations,capture,ex
   </article>;
 });
 
-type LedgerProps = {active?:boolean;initialSnapshot?:PublicNetworkCache;initialDirectory?:ObservatoryDirectory;initialHref?:string;initialFilter?:ActivityCategory;initialFormat?:{locale:string;timeZone:string}};
+type LedgerProps = {active?:boolean;initialSnapshot?:PublicNetworkCache;initialDirectory?:ObservatoryDirectory;initialMarketHistory?:import('../receiz/market-projection/history').MarketHistorySnapshot;initialHref?:string;initialFilter?:ActivityCategory;initialFormat?:{locale:string;timeZone:string}};
 function observatoryPath(path:string){return /^\/(?:analytics|observatory)(?:\/index\.html|\/)?$/.test(path);}
 export function PublicLedgerApp(props:LedgerProps){
   const [observing,setObserving]=useState(()=>observatoryPath(props.initialHref?new URL(props.initialHref,'https://bankeiz.com').pathname:typeof location==='undefined'?'':location.pathname));
@@ -68,7 +68,7 @@ export function PublicLedgerApp(props:LedgerProps){
     return()=>{removeEventListener('popstate',change);removeEventListener('receiz-bank:surface',change);};
   },[]);
   return <>{visitedLedger.current&&<div hidden={observing} inert={observing}><LedgerContents {...props} active={active&&!observing} liveLedger={network} captured={captured} setCaptured={setCaptured}/></div>}
-    {visitedObservatory.current&&<div hidden={!observing} inert={!observing}><Observatory initialDirectory={props.initialDirectory} initialSnapshot={props.initialSnapshot} network={network} active={active&&observing}/></div>}</>;
+    {visitedObservatory.current&&<div hidden={!observing} inert={!observing}><Observatory initialDirectory={props.initialDirectory} initialSnapshot={props.initialSnapshot} initialMarketHistory={props.initialMarketHistory} network={network} active={active&&observing}/></div>}</>;
 }
 function LedgerContents({active=true,initialHref,initialFilter='all',initialFormat:format,liveLedger,captured,setCaptured}:LedgerProps&{liveLedger:ReturnType<typeof usePublicNetwork>;captured:PublicLedgerFileReview|null;setCaptured:(review:PublicLedgerFileReview|null)=>void}){
   const scrollAnchor=useRef<HTMLDivElement>(null),scrollTools=useScrollReveal(active,'.public-ledger-tools .public-ledger-search',scrollAnchor);
