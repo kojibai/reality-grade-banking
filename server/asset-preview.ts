@@ -85,9 +85,13 @@ export async function handleAssetPreview(request:Request,dependencies?:Dependenc
  if(request.method==='HEAD')return new Response(null,{headers});
  const deps=dependencies??{document:readAssetFirstFrame,page:async()=>(await import('node:fs/promises')).readFile('dist/explore/index.html','utf8'),item:assetPreviewItem,image:async(item:PublicMarketItem)=>(await import('./asset-preview-render')).renderAssetImage(item)};
  try{if(!image&&!player){
-  const browser=request.headers.get('accept')?.includes('text/html')&&!/bot|crawler|spider|slurp|facebookexternalhit|whatsapp|telegram|discord|slack/i.test(request.headers.get('user-agent')??'');
-  if(browser&&deps.document){const [document,html]=await Promise.all([deps.document(id),deps.page()]);return new Response(assetPreviewHtml(html,id,document?.item??null,document),{headers});}
-  const [item,html]=await Promise.all([deps.item(id),deps.page()]);return new Response(assetPreviewHtml(html,id,item),{headers});}
+  // A share preview and a browser visit use the same public URL and cache key.
+  // Serve the prepared page to both so a preview cannot displace its real frame.
+  const [document,html]=await Promise.all([deps.document?.(id),deps.page()]);
+  if(document?.item?.id===id)return new Response(assetPreviewHtml(html,id,document.item,document),{headers});
+  const item=await deps.item(id);
+  headers.set('Cache-Control','no-store');
+  return new Response(assetPreviewHtml(html,id,item,!item&&document?.item===null?document:null),{headers});}
 const item=await deps.item(id);if(image)return item?new Response(await deps.image(item) as Uint8Array<ArrayBuffer>,{headers}):new Response(null,{status:404,headers});const body=item?assetEmbedPlayer(item):null;return new Response(body??'This public player is unavailable. Open the asset page to inspect its source.',{status:body?200:404,headers});}
  catch{headers.set('Cache-Control','no-store');return new Response('The public asset preview is temporarily unavailable.',{status:503,headers});}
 }

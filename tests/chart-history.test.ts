@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { chartChange, chartDateLabel, chartPeriodBounds, chartPeriodPoints, sampleChartIndices } from '../src/core/chart-history';
 import {mergeWalletPoints,type WalletPoint} from '../src/receiz/wallet-series';
 
@@ -17,6 +17,15 @@ it('fits the domain to the available selected history instead of padding missing
 it('distinguishes the real endpoints when history covers less than one minute', () => {
   const range={start:Date.UTC(2026,9,17,12),end:Date.UTC(2026,9,17,12,0,30)};
   expect(chartDateLabel(range.start,'ALL',range)).not.toBe(chartDateLabel(range.end,'ALL',range));
+});
+it('keeps a prepared intraday chart label identical across English date connectors', () => {
+  const format = { locale: 'en-US', timeZone: 'UTC' }, at = Date.UTC(2026, 10, 19, 16, 52);
+  const expected = chartDateLabel(at, '1D', undefined, format);
+  const date = vi.spyOn(Date.prototype, 'toLocaleString').mockReturnValue('Nov 19 at 4:52 PM');
+  try {
+    expect(chartDateLabel(at, '1D', undefined, format)).toBe(expected);
+    expect(chartDateLabel(at, '1D')).toBe('Nov 19 at 4:52 PM');
+  } finally { date.mockRestore(); }
 });
 it('calculates exact signed change without inventing a percentage from a zero baseline', () => {
   expect(chartChange('10000', '12345')).toEqual({ deltaCents: '2345', percent: 23.45, trend: 'up' });

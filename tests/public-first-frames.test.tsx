@@ -29,6 +29,27 @@ it('serves and hydrates the actual selected asset without a catalog read or an i
  const errors=vi.spyOn(console,'error');await act(async()=>{const main=await import('../src/public-explorer/main');await main.mountPublicDocument();});
  expect(documentNode('.public-asset-page')).toBe(page);expect(documentNode('.asset-detail-heading')).toBe(heading);expect(state.hydrated).toBe(1);expect(state.created).toBe(0);expect(errors.mock.calls.filter(call=>/hydrat|didn't match|server rendered/i.test(String(call[0])))).toEqual([]);
 });
+it('serves the same cacheable asset frame to a share crawler and to a browser',async()=>{
+ const item=parsePublicProfile(profileFixture(),'alexmorgan').items[0];
+ const document={schema:'bank.public-asset.first-frame.v1' as const,item,frame,content:renderAssetFirstFrame(item,frame)};
+ const read=vi.fn(async()=>item),deps={document:async()=>document,page:async()=>template,item:read,image:vi.fn()};
+ const url='https://bankeiz.com/asset/'+encodeURIComponent(item.id)+'/';
+ const share=await handleAssetPreview(new Request(url,{headers:{'user-agent':'facebookexternalhit'}}),deps);
+ const browser=await handleAssetPreview(new Request(url,{headers:{accept:'text/html','user-agent':'Browser'}}),deps);
+ expect(await share.text()).toBe(await browser.text());
+ expect(share.headers.get('cache-control')).toBe(browser.headers.get('cache-control'));
+ expect(read).not.toHaveBeenCalled();
+});
+it('does not cache an interim asset preview when its prepared frame is missing',async()=>{
+ const item=parsePublicProfile(profileFixture(),'alexmorgan').items[0];
+ const document={schema:'bank.public-asset.first-frame.v1' as const,item:null,frame,content:renderAssetFirstFrame(null,frame)};
+ const read=vi.fn(async()=>item),url='https://bankeiz.com/asset/'+encodeURIComponent(item.id)+'/';
+ const response=await handleAssetPreview(new Request(url,{headers:{accept:'text/html','user-agent':'Browser'}}),
+  {document:async()=>document,page:async()=>template,item:read,image:vi.fn()});
+ expect(response.headers.get('cache-control')).toBe('no-store');
+ expect(await response.text()).toContain('id="public-asset-seed"');
+ expect(read).toHaveBeenCalledExactlyOnceWith(item.id);
+});
 function documentNode(selector:string){const node=document.querySelector(selector);expect(node).not.toBeNull();return node!;}
 
 it('puts the real receipt in the response and hydrates it from that same carried packet',async()=>{
