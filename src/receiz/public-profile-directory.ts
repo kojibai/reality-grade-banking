@@ -87,15 +87,34 @@ export function createPublicProfileDirectoryObserver(dependencies:{fetch:typeof 
  // older walk may already have compared this owner's previous update key.
  const refreshDirectory=(changed=false)=>{if(pending){if(changed)rerun=true;return pending;}if(!consumers)return Promise.resolve();controller=new AbortController();const signal=controller.signal,attempt=(async()=>{do{rerun=false;await run(signal);}while(rerun&&consumers&&!signal.aborted);})();pending=attempt;void attempt.finally(()=>{if(pending===attempt){pending=undefined;controller=undefined;}}).catch(()=>{});return attempt;};
  const refresh=(changed=false)=>Promise.all([refreshDirectory(changed),refreshMembership(changed)]).then(()=>{});
- return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));for(const head of received)if('unavailableDecorators'in head&&head.unavailableDecorators?.includes('profile-details'))detailChanges.set(String(head.profile.userId),++detailChange);return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe(){consumers++;if(consumers===1)void retention.read().then(saved=>{
-  const current=dependencies.selected();if(!consumers||!saved||!current?.complete)return;
-  const next=restorePublicProfileDirectoryHeaders(saved.input,saved.revision,current);if(next!==current){prepareHeldPublicMarketResponse(current);reusePublicMarketResponse(current,next);dependencies.publish(next,current);}
- }).catch(()=>{});void refresh().catch(()=>{});let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};}};
+ function subscribe(){
+  if(++consumers===1){
+   void retention.read().then(saved=>{
+    const current=dependencies.selected();if(!consumers||!saved||!current?.complete)return;
+    const next=restorePublicProfileDirectoryHeaders(saved.input,saved.revision,current);if(next!==current){prepareHeldPublicMarketResponse(current);reusePublicMarketResponse(current,next);dependencies.publish(next,current);}
+   }).catch(()=>{});
+   void refresh().catch(()=>{});
+  }
+  let stopped=false;return()=>{if(stopped)return;stopped=true;if(!--consumers)controller?.abort();};
+ }
+ return{refresh,receive(input:unknown){const current=dependencies.selected();if(!consumers||!current?.complete)return Promise.resolve();const received=(Array.isArray(input)?input:[input]).flatMap(value=>{const head=curatePublicProfileHeadRefusal(value)??curatePublicProfileHead(value);return head?[head]:[];}),previous=new Map(heads(current).map(row=>[String(row.profile.userId),row]));for(const head of received)if('unavailableDecorators'in head&&head.unavailableDecorators?.includes('profile-details'))detailChanges.set(String(head.profile.userId),++detailChange);return adopt(new Map(received.map(head=>[String(head.profile.userId),head])),new Map(received.map(head=>[String(head.profile.userId),basis(previous.get(String(head.profile.userId)))])),new AbortController().signal);},subscribe};
 }
 const selections=new Set<()=>PublicMarketCatalog|null>();
 const observer=createPublicProfileDirectoryObserver({fetch:(input,init)=>fetch(input,init),selected:()=>retainedDiscoveredPublicCatalog()??[...selections].map(read=>read()).find(value=>value?.complete)??null,publish:(next,previous)=>publishDiscoveredPublicCatalog(next,undefined,previous),membership:current=>observePublicMarketMembership(current?.revision??'',current?.publicProfileHeadsRevision)});
 let stream:ReturnType<typeof createPublicProfileDirectoryStream>|undefined;
-export function subscribePublicProfileDirectory(selected:()=>PublicMarketCatalog|null){const selection=()=>selected();selections.add(selection);const stop=observer.subscribe();stream??=createPublicProfileDirectoryStream({fetch:(input,init)=>fetch(input,init),receive:observer.receive,refresh:observer.refresh});return()=>{selections.delete(selection);stop();if(!selections.size){stream?.close();stream=undefined;}};}
+export function subscribePublicProfileDirectory(selected:()=>PublicMarketCatalog|null){
+ const selection=()=>selected();selections.add(selection);
+ const surface=typeof document==='undefined'?undefined:document.body.dataset.bankSurface;
+ const stop=observer.subscribe();
+ stream??=createPublicProfileDirectoryStream({fetch:(input,init)=>fetch(input,init),receive:observer.receive,refresh:observer.refresh});
+ return()=>{
+  if(!selections.delete(selection))return;
+  // The next retained surface subscribes during the same navigation commit.
+  // Release after that handoff so it can reuse the existing reader and stream.
+  const release=()=>{stop();if(!selections.size){stream?.close();stream=undefined;}};
+  if(typeof document!=='undefined'&&surface!==document.body.dataset.bankSurface)queueMicrotask(release);else release();
+ };
+}
 export const publicProfileDirectoryIsLive=()=>stream?.isLive()===true;
 export const observePublicProfileDirectory=observer.refresh;
 export const receivePublicProfileForDiscovery=observer.receive;

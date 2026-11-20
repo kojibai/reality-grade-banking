@@ -23,7 +23,7 @@ import type {ObservatoryDirectory} from '../receiz/public-ledger-document-seed';
 import {publicProfilesRevision,subscribePublicProfiles} from '../receiz/public-profile';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../receiz/asset-publication-adoption';
 import {restorePublicProfileDirectoryHeaders} from '../receiz/public-profile-directory-retention';
-import {observePublicProfileDirectory,publicProfileDirectoryIsLive,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
+import {observePublicProfileDirectory,publicProfileDirectoryIsLive} from '../receiz/public-profile-directory';
 import './observatory.css';
 
 const num = new Intl.NumberFormat('en-US');
@@ -135,7 +135,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     return prepared?retainPublicProfileHeaders(prepared,directory):directory;
   },[initialSnapshot,initialDirectory,directory]);
   const liveCatalog=market.historyCatalog;
-  const catalog=useMemo(()=>!hydrating&&active&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[hydrating,active,liveCatalog,carried]);
+  // Suspension stops the readers without replacing the selected Atlas operands.
+  const catalog=useMemo(()=>!hydrating&&liveCatalog&&(liveCatalog.complete||!carried.complete)?retainPublicProfileHeaders(liveCatalog,carried):carried,[hydrating,liveCatalog,carried]);
   const [capPeriod,setCapPeriod]=useState<ChartPeriod>('ALL');
   const pricingActive=active&&!!liveCatalog?.complete&&liveCatalog.sportsCoverage==='complete';
   const valuation=useMarketCapitalization(capPeriod,pricingActive,liveCatalog,pricingActive);
@@ -155,11 +156,10 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
         if(next!==current)publishDiscoveredPublicCatalog(next,undefined,current);
       }
     }
-    const stop=subscribePublicProfileDirectory(()=>selectedCatalog.current);
     const refresh=()=>{if(document.visibilityState==='visible')void observePublicProfileDirectory().catch(()=>{});};
     const timer=setInterval(()=>{if(!publicProfileDirectoryIsLive())refresh();},60_000);
     window.addEventListener('online',refresh);
-    return()=>{stop();clearInterval(timer);window.removeEventListener('online',refresh);};
+    return()=>{clearInterval(timer);window.removeEventListener('online',refresh);};
   },[active,liveCatalog?.complete,initialDirectory,carried]);
   const profileRevision=useSyncExternalStore(subscribePublicProfiles,publicProfilesRevision,()=>0);
   const audience=initialDirectory?.audience??directory.audience;
@@ -253,7 +253,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
       <a href="#observatory-records">Inspect records <ArrowDown/></a></div>
       <div><p className="obs-label">Continuity</p><h3>Carried history</h3><p>{hasHistory?'Inspect the records and evidence carried in this '+(historyBucket===null?'range.':'interval.'):'Choose an interval with recorded activity.'}</p>{hasHistory?<button type="button" className="obs-detail-action" aria-expanded={historyOpen} aria-controls="obs-history" onClick={()=>setHistoryOpen(open=>!open)}>{historyOpen?'Close history':'Open history'} <ArrowDown/></button>:<a href="/ledger/">Open Ledger <ArrowUpRight/></a>}</div></section>
     {historyOpen&&hasHistory&&<CarriedActivityHistory key={source+':'+filter+':'+period+':'+(picked??'range')+':'+(paused??'live')} buckets={historyBucket===null?plot.buckets:[selected]} total={historyTotal} actions={index.streams.actions}/>}
-    <NetworkAtlas audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
+    <NetworkAtlas active={active} audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
       actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={inspectAction}/>
     <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>
     <section className="obs-composition obs-inner" aria-label="Public source coverage"><div className="obs-section-head"><div><p className="obs-label">Public Ledger</p><h2>Network health</h2></div><a href="/ledger/">Explore Ledger <ArrowUpRight/></a></div>

@@ -58,7 +58,7 @@ function comparison(a:RankedProfile,b:RankedProfile,key:Rank){
   return x>y?-1:1;
 }
 
-export const NetworkAtlas=memo(function NetworkAtlas({catalog,data,audienceSeries,records,actions,executions,actionsAsOf,onInspectAction}:{executions:readonly MarketExecution[];audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;data:Overview|null;records:readonly PublicRecord[]}){
+export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,data,audienceSeries,records,actions,executions,actionsAsOf,onInspectAction}:{active:boolean;executions:readonly MarketExecution[];audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;data:Overview|null;records:readonly PublicRecord[]}){
   const [rank,setRank]=useState<Rank>('seconds'),[person,setPerson]=useState(''),[profilePage,setProfilePage]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[assetPage,setAssetPage]=useState(0),[order,setOrder]=useState('recent');
   const profiles=useMemo(()=>data?.profiles.filter(p=>(p.name+' '+p.username).toLowerCase().includes(person.trim().replace(/^@/,'').toLowerCase())).sort((a,b)=>comparison(a,b,rank))??[],[data,person,rank]);
@@ -85,7 +85,7 @@ export const NetworkAtlas=memo(function NetworkAtlas({catalog,data,audienceSerie
         ['Stream plays',show(data?.plays.value??null),(data?.plays.covered??0)+' profiles reporting plays'],
         ['Witnessed hours',hours(data?.seconds.value??null),'Viewing and streaming time combined'],
       ] as const).map(([label,value,caption],i)=><div key={label}><h3>{label}</h3><strong>{value}</strong><small>{caption}</small><AudienceSpark points={trends[i]} label={label} publications={i>0}/></div>)}</div><AudienceHistory overview={data} series={audienceSeries}/></section>
-    <section id="obs-growth"><div className="obs-section-head"><div><p className="obs-label">Receiz network</p><h2>Network growth</h2></div></div><NetworkTraffic/><div className="obs-growth-grid"><Growth label="Profiles by creation date" series={profileGrowth} unit="public profiles"/><Growth label="Originals by seal date" series={sealGrowth} unit="Originals"/></div><ActionGrowth actions={actions} asOf={actionsAsOf} onInspect={onInspectAction}/></section>
+    <section id="obs-growth"><div className="obs-section-head"><div><p className="obs-label">Receiz network</p><h2>Network growth</h2></div></div><NetworkTraffic active={active}/><div className="obs-growth-grid"><Growth label="Profiles by creation date" series={profileGrowth} unit="public profiles"/><Growth label="Originals by seal date" series={sealGrowth} unit="Originals"/></div><ActionGrowth actions={actions} asOf={actionsAsOf} onInspect={onInspectAction}/></section>
     <TradingActivity executions={executions} asOf={actionsAsOf}/>
     <section id="obs-wallets"><div className="obs-section-head"><div><p className="obs-label">Public wallet ledger</p><h2>Wallet activity</h2></div><a href="/ledger/">Ledger <ArrowUpRight/></a></div>
       <WalletGrowth wallets={wallets}/></section>

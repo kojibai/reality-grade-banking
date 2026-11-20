@@ -107,6 +107,31 @@ it('updates held Proofs while Ledger is hidden and returns without a Proofs requ
   expect(network.read.mock.calls.map(([source])=>source)).toEqual(['actions','wallet','graph']);
  }finally{act(()=>root.unmount());}
 });
+it('reuses the held Ledger after an unavailable Source and retries at the existing deadline',async()=>{
+ const snapshot={records:page('actions',['held']).records,capturedAt:null,inspectionVersion:PUBLIC_NETWORK_INSPECTION_VERSION,
+   coverage:[{source:'actions' as const,complete:true,observedAt:1}]};
+ const root=createRoot(document.createElement('div'));
+ let state!:ReturnType<typeof usePublicNetwork>;
+ function Probe({active}:{active:boolean}){state=usePublicNetwork(active,snapshot,true);return null;}
+ const show=(active:boolean)=>act(async()=>root.render(<Probe active={active}/>));
+ vi.useFakeTimers();
+ vi.spyOn(document,'visibilityState','get').mockReturnValue('visible');
+ network.read.mockRejectedValue(Error('503'));
+ try{
+  await show(true);
+  expect(network.read.mock.calls.map(([source])=>source)).toEqual(['actions','wallet','graph']);
+  const held=state.records;
+  await show(false);
+  await act(()=>vi.advanceTimersByTimeAsync(20_000));
+  await show(true);
+  expect(state.records).toBe(held);
+  expect(network.read).toHaveBeenCalledTimes(3);
+  network.read.mockImplementation(async(source:PublicSource)=>page(source,source==='actions'?['successor']:[]));
+  await act(()=>vi.advanceTimersByTimeAsync(40_000));
+  expect(network.read.mock.calls.filter(([source])=>source==='actions')).toHaveLength(2);
+  expect(state.records.filter(row=>row.source==='actions').map(row=>row.sourceId)).toEqual(expect.arrayContaining(['held','successor']));
+ }finally{act(()=>root.unmount());vi.useRealTimers();vi.restoreAllMocks();}
+});
 it('reuses the selected Market update when its publication acknowledgment reaches Ledger',async()=>{
  const selected=parsePublicMarket(proofInput('2026-11-06T18:00:00Z',['published']));heldMarket(selected);
  network.read.mockImplementation(async(source:PublicSource)=>page(source));

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import {expect,it,vi} from 'vitest';
-import {createPublicProfileDirectoryObserver} from '../src/receiz/public-profile-directory';
+import {createPublicProfileDirectoryObserver,observePublicProfileDirectory,subscribePublicProfileDirectory} from '../src/receiz/public-profile-directory';
 import {parsePublicMarket,rememberPublicMarketResponse,type PublicMarketCatalog} from '../src/receiz/public-market';
 import {publishDiscoveredPublicCatalog,retainedDiscoveredPublicCatalog} from '../src/receiz/asset-publication-adoption';
 import {createHeldPublicMarketInput} from '../src/receiz/public-market-held-catalog';
@@ -9,6 +9,34 @@ const head=(n:number,name='Person '+n)=>({profile:{userId:uid(n),username:'perso
 const descriptor=(n:number)=>({userId:uid(n),username:'person_'+n,updatedAt:'2026-11-14T10:00:00Z'});
 const empty=():PublicMarketCatalog=>({items:[],complete:true,revision:'a'.repeat(64),observedAt:'2026-11-14T10:00:00Z',sourceCount:0});
 const page=(heads:unknown[],nextCursor:string|null=null)=>({ok:true,schema:'bank.public-profile-directory.v1',profiles:heads.map(h=>{const p=(h as ReturnType<typeof head>).profile;return{userId:p.userId,username:p.username,updatedAt:p.updatedAt??null};}),publicProfileHeads:heads,unavailable:[],nextCursor});
+it('keeps one directory walk and stream through a retained surface handoff',async()=>{
+ const selected=empty();
+ const fetcher=vi.fn<typeof fetch>(async input=>{
+  const path=String(input);
+  return path==='/api/bank/public-profile-directory'?Response.json(page([])):new Response(null,{status:503});
+ });
+ vi.stubGlobal('fetch',fetcher);
+ const previousSurface=document.body.dataset.bankSurface;
+ let first:(()=>void)|undefined,next:(()=>void)|undefined;
+ const reads=(path:string)=>fetcher.mock.calls.filter(([input])=>String(input)===path).length;
+ try{
+  document.body.dataset.bankSurface='bank';
+  first=subscribePublicProfileDirectory(()=>selected);
+  await observePublicProfileDirectory();
+  expect(reads('/api/bank/public-profile-directory')).toBe(1);
+  expect(reads('/api/bank/public-profile-directory/stream')).toBe(1);
+  document.body.dataset.bankSurface='ledger';
+  first();
+  next=subscribePublicProfileDirectory(()=>selected);
+  await new Promise(resolve=>setTimeout(resolve,0));
+  expect(reads('/api/bank/public-profile-directory')).toBe(1);
+  expect(reads('/api/bank/public-profile-directory/stream')).toBe(1);
+ }finally{
+  first?.();next?.();
+  if(previousSurface===undefined)delete document.body.dataset.bankSurface;else document.body.dataset.bankSurface=previousSurface;
+  vi.unstubAllGlobals();
+ }
+});
 it('traverses every page, shares subscribers, adds zero-Original accounts and persists the same held catalog',async()=>{
  localStorage.clear();let selected=empty();const initialItems=selected.items;let cycle=0;
  const fetcher=vi.fn<typeof fetch>(async input=>{const after=new URL(String(input),'https://bankeiz.com').searchParams.get('after');return Response.json(!after?page([head(1)],uid(1)):page([head(cycle?3:2)]));});

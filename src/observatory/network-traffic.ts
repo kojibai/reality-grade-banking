@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import observation from './network-activity.json';
 
 export type AppDay = [string, number, number, number, number, number, number, number];
@@ -9,6 +9,7 @@ export type TrafficObservation = {
 };
 const endpoint='https://yggkbnvikufnncormsrm.supabase.co/functions/v1/receiz-network-activity';
 const key='bankeiz.observatory.network-activity.v1';
+const refreshInterval=60_000;
 const dayPattern=/^\d{4}-\d{2}-\d{2}$/;
 const count=(v:unknown)=>Number.isSafeInteger(v)&&Number(v)>=0;
 function object(v:unknown):v is Record<string,unknown>{return v!==null&&typeof v==='object'&&!Array.isArray(v);}
@@ -25,36 +26,54 @@ export function isTrafficObservation(v:unknown):v is TrafficObservation{
 if(!isTrafficObservation(observation))throw Error('Invalid packaged traffic observation');
 export const shippedTraffic:TrafficObservation=observation;
 
-export function useNetworkTraffic(){
+export function useNetworkTraffic(active:boolean){
   const [data,setData]=useState(shippedTraffic);
+  const current=useRef(shippedTraffic);
+  const readSaved=useRef(false);
+  const nextRefresh=useRef(0);
   useEffect(()=>{
-    let current=shippedTraffic, pending=false;
+    if(!active)return;
+    let pending=false,timer:number|undefined;
     const control=new AbortController();
     function accept(value:unknown){
-      if(!isTrafficObservation(value)||Date.parse(value.observedAt)<=Date.parse(current.observedAt))return false;
+      const previous=current.current;
+      if(!isTrafficObservation(value)||Date.parse(value.observedAt)<=Date.parse(previous.observedAt))return false;
       // Most minute refreshes only advance the observation time. Keep open app
       // details and the chart inputs stable when their data is identical.
-      current={...value,days:JSON.stringify(value.days)===JSON.stringify(current.days)?current.days:value.days,
-        apps:value.apps.map((app,i)=>JSON.stringify(app)===JSON.stringify(current.apps[i])?current.apps[i]:app)};
-      setData(current);
+      current.current={...value,days:JSON.stringify(value.days)===JSON.stringify(previous.days)?previous.days:value.days,
+        apps:value.apps.map((app,i)=>JSON.stringify(app)===JSON.stringify(previous.apps[i])?previous.apps[i]:app)};
+      setData(current.current);
       return true;
     }
-    try{const saved=localStorage.getItem(key);if(saved)accept(JSON.parse(saved));}catch{/* Storage can be unavailable. */}
+    if(!readSaved.current){
+      readSaved.current=true;
+      try{const saved=localStorage.getItem(key);if(saved)accept(JSON.parse(saved));}catch{/* Storage can be unavailable. */}
+    }
+    function schedule(){
+      timer=window.setTimeout(refresh,Math.max(0,nextRefresh.current-Date.now()));
+    }
     async function refresh(){
       if(pending||document.hidden||!navigator.onLine)return;
+      window.clearTimeout(timer);
       pending=true;
+      const started=Date.now();
       try{
         const r=await fetch(endpoint,{credentials:'omit',referrerPolicy:'no-referrer',signal:control.signal});
         if(r.ok){
           const next:unknown=await r.json();
-          if(!control.signal.aborted&&accept(next))localStorage.setItem(key,JSON.stringify(current));
+          if(!control.signal.aborted&&accept(next))localStorage.setItem(key,JSON.stringify(current.current));
         }
-      }catch{/* The last complete observation stays visible. */}finally{pending=false;}
+      }catch{/* The last complete observation stays visible. */}finally{
+        pending=false;
+        if(!control.signal.aborted){
+          nextRefresh.current=started+refreshInterval;
+          schedule();
+        }
+      }
     }
-    void refresh();
-    const timer=window.setInterval(refresh,60000);
+    if(nextRefresh.current>Date.now())schedule();else void refresh();
     document.addEventListener('visibilitychange',refresh);window.addEventListener('online',refresh);
-    return()=>{control.abort();window.clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('online',refresh);};
-  },[]);
+    return()=>{control.abort();window.clearTimeout(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('online',refresh);};
+  },[active]);
   return data;
 }

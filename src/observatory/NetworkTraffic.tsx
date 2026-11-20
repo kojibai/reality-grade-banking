@@ -103,7 +103,7 @@ function AppActivityChart({app,observedAt}:{app:AppContribution;observedAt:strin
     <div className="obs-traffic-dates"><time>{date.format(start)}</time><time>{date.format(last)}</time></div></>;
 }
 
-export function NetworkTraffic(){
-  const data=useNetworkTraffic();
+export function NetworkTraffic({active}:{active:boolean}){
+  const data=useNetworkTraffic(active);
   return <><TrafficChart days={data.days} observedAt={data.observedAt}/><AppDirectory data={data}/></>;
 }

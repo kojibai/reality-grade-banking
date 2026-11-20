@@ -83,6 +83,7 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
   const check=(who:OpenIdentity|null)=>{if(!active.current||currentIdentity.current!==who)throw Error('The open identity changed.');};
   const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setFiles([]);setAttachments([]);setWriting(false);setFounding(null);setEditionSource('');setTerms(null);setScreen(prev=>prev==='detail'?prev:'list');setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
   const sync=useCallback(()=>refreshGovernanceDirectory(),[]);
+  const directoryPoll=useRef({nextReadAt:0});
   async function refreshByRequest(){
     if(syncing)return;
     setSyncing(true);
@@ -95,7 +96,7 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
     }finally{if(active.current)setSyncing(false);}
   }
   useEffect(()=>{active.current=true;void restoreGovernanceDirectory().catch(()=>{});return()=>{active.current=false;const held=session.current;session.current=null;void held?.then(s=>s.close()).catch(()=>{});};},[]);
-  useEffect(()=>{if(activeWorkspace)return followGovernanceAdditions(sync);},[activeWorkspace,sync]);
+  useEffect(()=>{if(activeWorkspace)return followGovernanceAdditions(sync,document,window,directoryPoll.current);},[activeWorkspace,sync]);
   useEffect(()=>{let live=true;
     if(profile){setOwner(profile.ownerIdentity);return;}
     if(accountIdentity){

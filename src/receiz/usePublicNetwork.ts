@@ -239,7 +239,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
       const needsSeed=initialSnapshot?false:await restored;
       if(controller.signal.aborted||!enabled.current)return;
       if(opened){
-        if(lastRefresh.current===null||Date.now()-lastRefresh.current>=refreshInterval||PUBLIC_SOURCES.some(source=>sourceState.current[source].error)){deferredRepairs.current.clear();void refresh();}
+        if(lastRefresh.current===null||Date.now()-lastRefresh.current>=refreshInterval){deferredRepairs.current.clear();void refresh();}
         else for(const source of deferredRepairs.current){deferredRepairs.current.delete(source);void readSource(source,'head');}
         return;
       }
@@ -315,9 +315,14 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
     void activate.current?.();
     const wake=()=>{if(document.visibilityState==='visible')void refresh(!followDocumentHeads);};
     const whenDue=()=>{if(lastRefresh.current===null||Date.now()-lastRefresh.current>=refreshInterval)wake();};
-    const interval=setInterval(whenDue,refreshInterval);
+    let timer:ReturnType<typeof setTimeout>;
+    const schedule=()=>{
+      const remaining=lastRefresh.current===null?refreshInterval:refreshInterval-(Date.now()-lastRefresh.current);
+      timer=setTimeout(()=>{whenDue();schedule();},remaining>0&&remaining<=refreshInterval?remaining:refreshInterval);
+    };
+    schedule();
     document.addEventListener('visibilitychange',whenDue);window.addEventListener('online',wake);const stopSync=subscribePublicLedgerSync(wake);
-    return()=>{clearInterval(interval);stopSync();document.removeEventListener('visibilitychange',whenDue);window.removeEventListener('online',wake);};
+    return()=>{clearTimeout(timer);stopSync();document.removeEventListener('visibilitychange',whenDue);window.removeEventListener('online',wake);};
   },[active,refresh,followDocumentHeads]);
   useEffect(() => {
     if (bootstrap || !records.length) return;
