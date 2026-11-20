@@ -57,3 +57,25 @@ it('paints and zooms the exact carried image while canonical Original reading re
   expect(fetcher).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());host.remove();}
 });
+
+it('keeps a standalone image visible and expands it without opening its artifact',async()=>{
+ const selected=profile().items[0],cover='https://receiz.com/api/proof-material/packages/'+selected.originalDigest+'/artifact';
+ const item={...selected,originalUrl:cover,artworkUrl:cover};
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ vi.spyOn(HTMLImageElement.prototype,'naturalWidth','get').mockReturnValue(640);
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});
+ vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});
+ vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+ try{
+  await act(async()=>root.render(<PublicAssetDetail item={item} readOnly standalone/>));
+  const image=host.querySelector('.proof-object-artwork img');
+  expect(image?.getAttribute('src')).toBe(cover);
+  expect(open).not.toHaveBeenCalled();
+  expect(host.querySelector('[aria-label="Preparing original"]')).toBeNull();
+  expect(document.querySelector('dialog[open]')).toBeNull();
+  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Open full image"]')!.click());
+  expect(host.querySelector('.proof-object-artwork img')).toBe(image);
+  expect(document.querySelector('dialog[open] img')?.getAttribute('src')).toBe(cover);
+  expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});

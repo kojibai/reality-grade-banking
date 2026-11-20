@@ -4,8 +4,8 @@ import {useEffect,useState} from 'react';
 import {Image,Maximize2,ZoomIn,ZoomOut} from 'lucide-react';
 
 /** Image presentation only. A public preview never becomes a verified payload. */
-export function ProofImageCanvas({url,label,expanded,onExpand,prioritize=false}:{url:string;label:string;expanded:boolean;onExpand:()=>void;prioritize?:boolean}){
- const projected=usePublicObjectArtwork(url),source=safeImportedSourceUrl(url,'media')?projected??undefined:url;
+export function ProofImageCanvas({url,label,expanded,onExpand,prioritize=false,resolved=false}:{url:string;label:string;expanded:boolean;onExpand:()=>void;prioritize?:boolean;resolved?:boolean}){
+ const projected=usePublicObjectArtwork(resolved?null:url),source=!resolved&&safeImportedSourceUrl(url,'media')?projected??undefined:url;
  const [zoom,setZoom]=useState(1),[error,setError]=useState(false);
  useEffect(()=>{setZoom(1);setError(false);},[url]);
  if(error)return <div className="proof-media-fallback"><Image size={36} strokeWidth={1}/><p>This image could not be displayed.</p><button onClick={()=>setError(false)}>Try image again</button></div>;
