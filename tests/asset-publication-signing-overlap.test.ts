@@ -12,7 +12,7 @@ const encode=(bytes:ArrayBuffer|Uint8Array)=>Buffer.from(bytes instanceof Uint8A
 
 // Removing the existing Bank delivery join must fail the pre-runtime case:
 // local PBI can finish before the unsigned native publisher has even opened.
-it.each(['before-runtime-publish','during-finalize'] as const)('signs locally while first delivery is paused %s, then accepts both transitions in causal order',async pause=>{
+it.each(['before-runtime-publish','during-finalize','during-finalize-then-reopen'] as const)('signs locally with overlapping first delivery %s and keeps the exact PBI through public acceptance',async pause=>{
  const f=await conformanceOfflineFixture({composer:true}),r=f.runtime;
  vi.stubGlobal('indexedDB',new IDBFactory());
  const values=new Map<string,string>(),events=new EventTarget();
@@ -26,8 +26,9 @@ it.each(['before-runtime-publish','during-finalize'] as const)('signs locally wh
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),firstDelivery=deferred(),releaseDelivery=deferred(),localSignature=deferred();
  const roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const receiver=r.createAcceptedPublicationReceiver(r,artifactId,roots,async(ref:{sha256:string})=>blocks.get(ref.sha256)??null).admit;
- let accepted:Record<string,unknown>={status:'unmigrated'},head:any,stalled=false,finalizations=0,ceremonies=0,localPbiReceipt:string|undefined;
+ let accepted:Record<string,unknown>={status:'unmigrated'},head:any,stalled=false,signedDeliveryInterrupted=false,finalizations=0,ceremonies=0,localPbiReceipt:string|undefined;
  const order:string[]=[];
+ const originalBlocks=new Set<string>(),plannedAfterFirstDelivery:string[]=[];
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');
   if(url.origin==='https://storage.test'){staged.set(url.pathname.slice(1),new Uint8Array(await new Response(init?.body).arrayBuffer()));return new Response(null,{status:200});}
@@ -38,20 +39,31 @@ it.each(['before-runtime-publish','during-finalize'] as const)('signs locally wh
   if(url.pathname===`/api/profile/${username}/originals`)return Response.json({ok:true,originals:[],page:{hasMore:false,nextCursor:null}});
   if(url.pathname!=='/api/profile/showcase/publication')throw Error('UNRELATED_SOURCE_READ');
   const body=JSON.parse(String(init?.body));
-  if(body.action==='initialize-blocks')return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:blocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
+  if(body.action==='initialize-blocks'){
+   if(head?.visibleChildren.length)for(const reference of body.references)if(originalBlocks.has(reference.sha256))plannedAfterFirstDelivery.push(reference.sha256);
+   return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:blocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
+  }
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('MISSING_STAGED_BYTES');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;
+  if(pause==='during-finalize-then-reopen'&&head?.visibleChildren.length&&!signedDeliveryInterrupted){
+   signedDeliveryInterrupted=true;
+   return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_PROJECTION_UNAVAILABLE'},{status:503});
+  }
   const next=await receiver(body.transport);
-  if(pause==='during-finalize'&&!stalled&&next.visibleChildren.length){stalled=true;firstDelivery.resolve();await releaseDelivery.promise;}
+  if(pause!=='before-runtime-publish'&&!stalled&&next.visibleChildren.length){stalled=true;firstDelivery.resolve();await releaseDelivery.promise;}
   head=next;order.push(body.transport.artifactDigest);
   accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:owner,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:next.admission.proofHistoryHead.nodeCount,visibleChildCount:next.visibleChildren.length});
  };
  vi.stubGlobal('fetch',request);
  let sourceDigest='';
- const runtime=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:request,sealDocument:seal,onLocalAdmission:(value:any,context?:{signing:boolean})=>{expect(value.original.originalCreator?.userId).toBe(uid);expect(value.original.originalCreator?.username).toBe(username);expect(value.original.ownershipKind).toBe('creator');expect(value.original.ownershipRole).toBe('creator');if(value.original.hasPbiSignature){localPbiReceipt=value.original.pbiReceiptHash;localSignature.resolve();if(context?.signing)return publication.waitForAssetPublicationDelivery?.(owner,sourceDigest);}}});
+ let runtime=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:request,sealDocument:seal,onLocalAdmission:(value:any,context?:{signing:boolean})=>{expect(value.original.originalCreator?.userId).toBe(uid);expect(value.original.originalCreator?.username).toBe(username);expect(value.original.ownershipKind).toBe('creator');expect(value.original.ownershipRole).toBe('creator');if(value.original.hasPbiSignature){localPbiReceipt=value.original.pbiReceiptHash;localSignature.resolve();if(context?.signing)return publication.waitForAssetPublicationDelivery?.(owner,sourceDigest);}}});
  const image=new File([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jQmcAAAAASUVORK5CYII=','base64')],'original.png',{type:'image/png'});
  const prepared=await runtime.prepare({kind:'image',title:'One exact Original',description:'The seal is unchanged',longForm:'A complete carried essay',files:[{id:'photo',role:'primary',file:image}]});
+ const custody=r.createImportedProofSourceCustody();
+ const originalReference=await custody.hold(await r.openImportedProofSource(prepared.artifact,{resolveSourceBlock:custody.resolveBlock}));
+ await custody.exportBlocks(originalReference,async(reference:{sha256:string})=>{originalBlocks.add(reference.sha256);});
+ expect(originalBlocks.size).toBeGreaterThan(0);
  const exact=new Uint8Array(await prepared.artifact.arrayBuffer());
  sourceDigest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',exact))].map(value=>value.toString(16).padStart(2,'0')).join('');
  let checkpoint:AssetPublicationState|null=null,unsigned!:Promise<AssetPublicationReceipt>,sourceSeals=0,publishCalls=0;
@@ -72,7 +84,16 @@ it.each(['before-runtime-publish','during-finalize'] as const)('signs locally wh
  await Promise.race([localSignature.promise,signed.then((outcome:{value:AssetPublicationReceipt}|{error:string})=>{throw Error('error'in outcome?outcome.error:'SIGNATURE_WAS_NOT_ADMITTED_LOCALLY');})]);
  expect(ceremonies).toBe(1);expect(finalizations,'signing is local while delivery retains its causal lock').toBe(beforeSigning);
  releaseDelivery.resolve();
- expect((await unsigned).status).toBe('published');const signedResult=await signed;if('error'in signedResult)throw Error(signedResult.error);expect(signedResult.value.status).toBe('published');
+ expect((await unsigned).status).toBe('published');
+ const signedResult=await signed;if('error'in signedResult)throw Error(signedResult.error);
+ expect(plannedAfterFirstDelivery).toEqual([]);
+ if(pause==='during-finalize-then-reopen'){
+  expect(signedResult.value.status).toBe('pending');
+  expect(signedDeliveryInterrupted).toBe(true);
+  const recovered=await r.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:request,sealDocument:async()=>{throw Error('PENDING_PBI_ALREADY_SEALED');}});
+  expect((await recovered.resumeSignedPublication(new File([exact],prepared.artifact.name,{type:prepared.artifact.type})))?.status).toBe('published');
+  runtime=recovered;
+ }else expect(signedResult.value.status).toBe('published');
  expect(publishCalls).toBe(1);expect(sourceSeals).toBe(1);
  expect(order).toHaveLength(new Set(order).size);
  expect(new Uint8Array(await prepared.artifact.arrayBuffer())).toEqual(exact);

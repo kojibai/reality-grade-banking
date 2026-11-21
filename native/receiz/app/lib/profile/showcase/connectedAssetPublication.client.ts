@@ -10,7 +10,9 @@ import {createProfileShowcaseBoundedEdgeVault} from "./boundedEdgeVault";
 import {createImportedProofSourceCustody} from "./importedSourceCustody.client";
 export {createImportedProofSourceCustody} from "./importedSourceCustody.client";
 export {readHeldImportedProfileOriginalMaterial,peekHeldProfileOriginalMaterial,retainMountedMaterial} from "../materialProjection.client";
-import {openImportedProofSource} from "./importedSource";
+import {openImportedProofSource,type ImportedProofSourceReference} from "./importedSource";
+import type {ExactByteBlockWriter} from "../../transport/exactByteBlocks";
+import {jcsCanonicalize} from "../../../utils/jcs";
 import {projectImportedSourceOriginal,readImportedSourceTransportReference} from "./importedSourceProjection";
 import {sealAndAdmitImportedSourcePlacement} from "./importedSourcePlacement.client";
 import {publishComposerBoundedShowcaseIfAuthorized,withProfileShowcaseCausalAppendLock} from "./composerPublication";
@@ -186,29 +188,31 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
   const sealed=await sealDocument({fileBytes:args.payloadBytes,filename:args.filename,mime:args.mimeType,options:{forceBundleEnvelope:true,nativeRecordSeal:{ownerReceizId:args.ownerReceizId,recordId:args.recordId}}});
   return new File([sealed.artifactBytes.slice()],sealed.downloadName,{type:sealed.kind==="bundle"?"application/vnd.receiz.bundle+json":"application/octet-stream"});
  };
+ const custody=createImportedProofSourceCustody();
+ // An acknowledged exact closure stays available to both delivery paths.
+ // A later PBI placement can carry its existing reference without staging it.
+ const deliveredSources=new Set<string>();
+ const rememberDeliveredSource=(reference:ImportedProofSourceReference)=>{deliveredSources.add(jcsCanonicalize(reference));};
+ const exportUnacknowledgedSource=async(reference:ImportedProofSourceReference,write:ExactByteBlockWriter)=>{
+  if(!deliveredSources.has(jcsCanonicalize(reference)))await custody.exportBlocks(reference,write);
+ };
  const incremental=createIncrementalAssetPublisher({artifactId,owner,username,uid:input.account.uid,actorAdmission:admitted,keyFile,passphrase:input.passphrase,
-  sealDocument,childSealer,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,vault,readAccepted:async(refresh=false)=>{
+  sealDocument,childSealer,fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,vault,rememberDeliveredSource,exportUnacknowledgedSource,readAccepted:async(refresh=false)=>{
    if(!refresh&&acceptedDelivery)return acceptedDelivery;const response=await fetchDelivery(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(username)}`,{credentials:'same-origin',cache:'no-store'});
    if(!response.ok)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');return acceptedDelivery;
   }});
  const deliveries=new Map<string,Promise<ProfileShowcasePublicProjectionPublicationResult>>();
- const custody=createImportedProofSourceCustody();
 
- // Acknowledged immutable source closures are already stored by this transport.
- // Reuse their exact references; never download/reopen/re-upload old media just
- // to append one new Original. Finalization still admits the full successor.
  let initialDeliveryAccepted=false;
- const deliveredSources=new Set<string>();
  const acceptedHeads=new Set<string>();
- const sourceKey=(reference:import('./importedSourceReference').ImportedProofSourceReference)=>JSON.stringify(reference);
- const rememberDeliveredSources=async(source:ProfileShowcasePublicationSource)=>{for(const child of ('witnessNodes'in source?source.children:(source.child?[source.child]:[]))){const reference=await readImportedSourceTransportReference(child.exactSealedArtifactBytes);if(reference)deliveredSources.add(sourceKey(reference));}acceptedHeads.add(source.artifactDigest);};
+ const rememberDeliveredSources=async(source:ProfileShowcasePublicationSource)=>{for(const child of ('witnessNodes'in source?source.children:(source.child?[source.child]:[]))){const reference=await readImportedSourceTransportReference(child.exactSealedArtifactBytes);if(reference)rememberDeliveredSource(reference);}acceptedHeads.add(source.artifactDigest);};
  const deliver=(source:ProfileShowcasePublicationSource)=>{
   const held=deliveries.get(source.artifactDigest);if(held)return held;let prepared:ProfileShowcaseCompleteSourceTransport|undefined;
   input.assertCurrent();const result=publishProfileShowcaseTransport(source.artifactDigest,owner,input.fetchImpl,username,
    {publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:source.artifactDigest,...account},()=>{input.assertCurrent();return account;},
    async()=>({actorAdmission:admitted,keyFile,passphrase:input.passphrase}),async()=>"unavailable" as const,async write=>{
     const cache=async(reference:import('../../transport/exactByteBlocks').ExactByteBlockReference,bytes:Uint8Array)=>{await custody.writeBlock(reference,bytes);await write(reference,bytes);};
-    const options={exportImportedSource:async(reference:import('./importedSourceReference').ImportedProofSourceReference,writer:import('../../transport/exactByteBlocks').ExactByteBlockWriter)=>{if(!deliveredSources.has(sourceKey(reference)))await custody.exportBlocks(reference,writer);}};
+    const options={exportImportedSource:exportUnacknowledgedSource};
     prepared='witnessNodes'in source?await writeProfileShowcaseCompleteSourceTransport(source,cache,options):await writeProfileShowcaseAcceptedTransitionTransport(source,cache,options);return prepared;
    }).then(async receipt=>{if(receipt.status==='published'){await rememberDeliveredSources(source);if(prepared)await incremental.acceptPublished(prepared);initialDeliveryAccepted=true;}return receipt;});
   deliveries.set(source.artifactDigest,result);return result;

@@ -44,7 +44,9 @@ const historyPoint=(root:HistoryPoint|undefined,count:number):string|undefined=>
 export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcaseArtifactId;owner:string;username:string;uid:string;
  actorAdmission:ReceizVerifiedIdentityArtifactAdmission;keyFile:ReceizKeyFile;passphrase:string;
  sealDocument:typeof receizeDocumentBytesClient;childSealer:Parameters<typeof sealAndAdmitImportedSourcePlacement>[0]['seal'];
- fetchImpl:typeof fetch;assertCurrent():void;readAccepted(refresh?:boolean):Promise<unknown>;vault:ProfileShowcaseBoundedEdgeVault}){
+ fetchImpl:typeof fetch;assertCurrent():void;readAccepted(refresh?:boolean):Promise<unknown>;vault:ProfileShowcaseBoundedEdgeVault;
+ rememberDeliveredSource(reference:ImportedProofSourceReference):void;
+ exportUnacknowledgedSource(reference:ImportedProofSourceReference,write:ExactByteBlockWriter):Promise<void>}){
  const custody=createImportedProofSourceCustody();let accepted:unknown;const heldBlocks=new Map<string,Promise<Uint8Array>>();
  const published=new Map<string,ProfileShowcasePublicProjectionPublicationResult>();
  let heldHead:AcceptedContext|undefined;
@@ -115,7 +117,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   for await(const _ of readExactByteBlocks(ref,async node=>{const bytes=await custody.resolveBlock(node);await write(node,bytes);return bytes;},{component:'prepared append transport',maxContentBytes:512*1024*1024,maxBlockReads:131072})){/* Existing byte-tree decoder verifies every exact block. */}
  };
  const emitPrepared=async(context:DeliveryContext,childDigest:string,reference:ImportedProofSourceReference,write:ExactByteBlockWriter)=>{
-  await custody.exportBlocks(reference,write);
+  await input.exportUnacknowledgedSource(reference,write);
   const child=childOf(context,childDigest);if(!child)throw TypeError('PROFILE_SHOWCASE_PREPARED_CHILD_REQUIRED');
   for(const ref of [context.transport.root,context.envelope.carrier,...("children"in context?[context.envelope.nodes,context.envelope.children,context.envelope.ancestry]:[]),child.bytes])if(ref)await emitTree(ref as ExactByteBlockReference,write);
  };
@@ -146,7 +148,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    ()=>{input.assertCurrent();return{username:input.username,profileIdentity:input.uid};},async()=>identity(),async()=> 'unavailable',async write=>{
     await emitPrepared(prepared,body.publicationChildArtifactDigest,reference,write);return body.transport;
    },{publicationSourceArtifactSha256:reference.artifactSha256,publicationChildArtifactDigest:body.publicationChildArtifactDigest,publicationPredecessorArtifactDigest:body.publicationPredecessorArtifactDigest});
-  if(result.status==='published'){heldHead=shared!.get(body.scope.artifactDigest);published.set(reference.artifactSha256,result);accepted={status:'accepted',artifactId:input.artifactId,transport:body.transport,
+  if(result.status==='published'){input.rememberDeliveredSource(reference);heldHead=shared!.get(body.scope.artifactDigest);published.set(reference.artifactSha256,result);accepted={status:'accepted',artifactId:input.artifactId,transport:body.transport,
    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:body.transport.artifactDigest}}};}
   return result;
  };
@@ -294,7 +296,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
     if(childAdmission.profile!=='portable-state'||childAdmission.artifactSha256!==child.reference.childArtifactDigest
      ||childAdmission.artifactId!==child.reference.stableChildArtifactId||childAdmission.payloadSha256!==child.reference.contentDigest||!sourceReference)throw TypeError('PROFILE_SHOWCASE_PREPARED_SOURCE_MISMATCH');
     input.assertCurrent();
-    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,child:{reference:child.reference,exactSealedArtifactBytes:childBytes}},custody.writeBlock,{acceptedPredecessor:next.context?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
+    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:digest,exactSealedArtifactBytes:candidate.exactBytes,child:{reference:child.reference,exactSealedArtifactBytes:childBytes}},custody.writeBlock,{acceptedPredecessor:next.context?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:input.exportUnacknowledgedSource});
     const prepared=await readContext(transport,custody.resolveBlock),signer=await actor();input.assertCurrent();
     const body={action:'finalize',scope:scope(digest),transport,publicationSourceArtifactSha256:sourceReference.artifactSha256,
      publicationChildArtifactDigest:childAdmission.artifactSha256,publicationPredecessorArtifactDigest:prior.admission.artifactSha256,identityBinding:signer.binding};
@@ -325,7 +327,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    const admitted=await admitReceizProfileShowcaseSuccessorWithPredecessorContext({predecessorAdmission:prior.admission,candidateArtifact:{artifact},resolveVerifiedHistoricalArtifactDigest:prior.resolveHistorical});
    const transport=await writeProfileShowcaseAcceptedTransitionTransport({artifactDigest:admitted.artifactSha256,
     exactSealedArtifactBytes:new Uint8Array(await admitted.openedArtifact.sealedArtifact.artifact.arrayBuffer()),
-    child:{reference:authority.children[0]!.reference,exactSealedArtifactBytes:new Uint8Array(await placement.admission.openedArtifact.sealedArtifact.artifact.arrayBuffer())}},custody.writeBlock,{acceptedPredecessor:acceptedContext?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:(reference,write)=>custody.exportBlocks(reference,write)});
+    child:{reference:authority.children[0]!.reference,exactSealedArtifactBytes:new Uint8Array(await placement.admission.openedArtifact.sealedArtifact.artifact.arrayBuffer())}},custody.writeBlock,{acceptedPredecessor:acceptedContext?.transport??(accepted as {transport:ProfileShowcaseCompleteSourceTransport}).transport,exportImportedSource:input.exportUnacknowledgedSource});
    prepared=await readContext(transport,custody.resolveBlock);
    const signer=await actor();input.assertCurrent();
    const action=await enqueueSourceBoundPublicationAction(JSON.stringify({action:'finalize',scope:scope(transport.artifactDigest),transport,...association,identityBinding:signer.binding}),signer.custody);
@@ -353,6 +355,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
     await emitPrepared(committedPrepared,association.publicationChildArtifactDigest,opened.reference,write);return transport;
    },association);
   if(result.status==='published'){
+   input.rememberDeliveredSource(opened.reference);
    published.set(publicationKey,result);accepted={status:'accepted',artifactId:input.artifactId,transport,
    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:transport.artifactDigest}}};}
   return result;

@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "a9c2ae0b119e57552610bdfe659569dde052c3731396ef8752c75f1c6a7cf379",
-  "sourceTreeSha256": "488d60f902c39686cbff48f08bf3620ccd3011037706eae9024287a12bf23bc2",
+  "moduleSha256": "d3545f214fab2644b3a5c8563dd2dc8f45cef7ed2baa4574e826df736eed93e1",
+  "sourceTreeSha256": "747daf9038ba3760b0d77a6c508d37d1a72893e26b66d8b3a65cbfe39456042d",
   "inputs": 531,
-  "bytes": 3094288,
+  "bytes": 3094397,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -2068,6 +2068,20 @@
       "canonicalSourceCommit": "37fd89794af93a615ffcdd8a2a189ebb3cd97755",
       "canonicalSourceFreezeSha256": "a3af2e9cc95183365df3289bdd0cf69c022ed42073bbc17837ad42c7b0c4db59",
       "purpose": "Compose the current canonical proof valuation reader and immutable old/new replay interpretations in the existing read-only Native verifier. Preserve enclosing Source custody, origin, PBI, privacy and strict cashflow/coordinate validation. No installed SDK/package/version, funding, publication, identity or profile behavior changes."
+    },
+    {
+      "id": "bankeiz-acknowledged-pbi-source-closure",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "1269c102dcc899974559a21c2541b758afd2d92b4ca91ef776c0c4e96b92c26a",
+      "sha256": "3ee356671f0671700de717ac72d9bfceb22bdb72fdef3a9ba92283f6df40ce23",
+      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver."
+    },
+    {
+      "id": "bankeiz-acknowledged-pbi-source-closure",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "b68f9cbb767ee48d2f7421d9f9ac4525cffae9e83633a186db83053f275af63f",
+      "sha256": "38c50581285f27e64b32c895c41d4606ba2238a602774dde0ebcbde16b8a1508",
+      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver."
     }
   ],
   "browserDefines": {
