@@ -169,6 +169,17 @@ try {
         await page.getByRole('button', {name: 'Enable synthetic camera', exact: true}).click();
         await page.waitForFunction(() => document.querySelector('.asset-camera')?.getAttribute('data-state') === 'ready' && document.querySelector('.asset-camera video')?.videoWidth === 640);
         await fullscreen(page, width);
+        const layout = await page.locator('.asset-camera').evaluate(camera => {
+          const frame = camera.querySelector('video').getBoundingClientRect();
+          const shutter = camera.querySelector('.asset-camera__shutter').getBoundingClientRect();
+          const overlay = getComputedStyle(camera.querySelector('.asset-camera__footer'));
+          return { top: frame.top, bottom: frame.bottom, viewport: innerHeight,
+            shutterTop: shutter.top, shutterBottom: shutter.bottom, footerColor: overlay.backgroundColor };
+        });
+        assert.equal(layout.top, 0);
+        assert.equal(layout.bottom, layout.viewport);
+        assert.ok(layout.shutterTop >= layout.top && layout.shutterBottom <= layout.bottom);
+        assert.equal(layout.footerColor, 'rgba(0, 0, 0, 0)');
       };
       const hold = async () => {
         const bounds = await page.getByRole('button', {name: 'Capture photo or hold for video', exact: true}).boundingBox();
