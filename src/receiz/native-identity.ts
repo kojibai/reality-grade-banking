@@ -9,7 +9,7 @@ import {permittedTwinConversationRead} from './twin-conversations';
 import {createHeldSourceView} from './held-source-view';
 import {withDeviceIdentityEntry} from './device-identity-entry';
 import {buildCheckoutReturn} from './checkout-request';
-import {loadHostedCheckoutState,saveHostedCheckoutState,loadMerchantCounterState,saveMerchantCounterState} from './identity-vault';
+import {loadHostedCheckoutState,saveHostedCheckoutState,loadMerchantCounterState,saveMerchantCounterState,loadShareCertificateState} from './identity-vault';
 import {BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT,BANK_ORGANIZER_SCOPES,BANK_ORGANIZER_CONSENT} from './config';
 import {openMessagingRetention} from './messaging-retention';
 import {loadMessagingConsent,saveMessagingConsent,loadMessagingDisplay,saveMessagingDisplay} from './identity-vault';
@@ -1852,7 +1852,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   async function assertNoOtherPending(reconcileNotes=true,continuingFundingNonce?:string,checkedMarket?:{state:import('./market-trade').MarketTradeState|null},continuingCreditOperation?:string) {
     noteOpen();
     await assertNoPendingTwinCreditPurchase(continuingCreditOperation);
-    const certificates=await(await import('./identity-vault')).loadShareCertificateState(binding);
+    const certificates=await loadShareCertificateState(binding);
     if(certificates&&(await import('./share-certificates')).readShareCertificateCheckpoint(certificates,binding.artifactSha256)?.current.status==='pending')throw Error('BANK_EXECUTION_PENDING');
     const legacy = await deviceBankExecutionStore(binding).load();
     if (legacy && ['prepared', 'unknown'].includes(legacy.state)) throw Error('BANK_EXECUTION_PENDING');
@@ -1896,7 +1896,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   async function assertWalletSendReady(continuingFundingNonce?:string,continuingCreditOperation?:string){
     if(hasLocalWalletHead())throw Error('BANK_WALLET_LOCAL_HEAD_REQUIRED');
     await assertNoPendingTwinCreditPurchase(continuingCreditOperation);
-    const certificates=await(await import('./identity-vault')).loadShareCertificateState(binding);
+    const certificates=await loadShareCertificateState(binding);
     if(certificates&&(await import('./share-certificates')).readShareCertificateCheckpoint(certificates,binding.artifactSha256)?.current.status==='pending')throw Error('BANK_EXECUTION_PENDING');
     await cancelUnsentNotesLocked();
     await assertWalletExecutionQualification(true,continuingFundingNonce,continuingCreditOperation);
