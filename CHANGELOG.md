@@ -4,6 +4,27 @@ Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 7.0.0 — An economy you can inspect
+
+[Full release notes](docs/releases/7.0.0.md) ·
+[Qualification](docs/releases/7.0.0-qualification.md) ·
+[Complete committed inventory](docs/releases/7.0.0-commit-inventory.json).
+
+- Live Analytics with selectable carried history, current capitalization and
+  asset totals, retained collection/share values, truthful traffic coverage
+  and direct links to recorded events.
+- Ledger reuses its selected catalog and financial heads. Proofs display a
+  matching Original once across Graph and Showcase. Appointment records and
+  future slots display their respective dates.
+- Charter-first Governance with full-screen access from Receiz ID and profiles,
+  public activity and chosen usernames, and proof-bearing election and
+  treasury examples.
+- Retained Bank navigation with consistent dock spacing across public routes,
+  stable standalone asset first paint, Feed playback continuity and offline
+  reuse of profile appearance and held media.
+- A build-time freeze and executable qualification for the existing Original
+  creation, signing and publication path. Receiz package pins remain 129.5.0.
+
 ## 6.0.0 — Your work. Your money. Your economy.
 
 Published [November 17, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v6.0.0)

@@ -1,6 +1,7 @@
 # Release process
 
-The current published release is **Bankeiz 6.0.0**:
+See the [v7.0.0 qualification and publication record](releases/7.0.0-qualification.md)
+for its exact release state. Bankeiz 6.0.0 was published as
 [Your work. Your money. Your economy.](releases/6.0.0.md).
 Its [qualification record](releases/6.0.0-qualification.md) separates the exact
 committed recap, final reviewed source, local qualification, CI, publication,

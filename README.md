@@ -4,7 +4,7 @@
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Version 6.0.0](https://img.shields.io/badge/Release-6.0.0-2349d8.svg)](https://github.com/kojibai/reality-grade-banking/releases/tag/v6.0.0)
+[![Bankeiz 7.0.0](https://img.shields.io/badge/Bankeiz-7.0.0-2349d8.svg)](docs/releases/7.0.0.md)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.5.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -290,6 +290,16 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 [qualification requirements](institution/qualification.md).
 
 ## Release evidence
+
+**[Bankeiz 7.0.0 — An economy you can inspect](docs/releases/7.0.0.md)**
+
+Create an Original and keep its proof through signing, public delivery,
+reopening and inspection. Follow the public economy in Analytics and Ledger.
+Open Governance through the same retained Bank experience. The build guards the
+working creation and publication path. The exact [implementation inventory](docs/releases/7.0.0-commit-inventory.json)
+and [qualification record](docs/releases/7.0.0-qualification.md) document the
+source and verified release state.
+
 
 **[Bankeiz 6.0 — Your work. Your money. Your economy.](docs/releases/6.0.0.md)**
 Published November 17, 2026 from `b72fdcce`. The release connects client Workspaces, standalone invoices, portable

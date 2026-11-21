@@ -1,0 +1,2086 @@
+{
+  "schema": "bankeiz.release-source-inventory.v1",
+  "scope": "Exact committed changes from the published v6.0.0 tag through the v7 implementation, Original guard and production catalog preparation checkpoint. Release documentation and version metadata follow this checkpoint.",
+  "baseline": {
+    "tag": "v6.0.0",
+    "commit": "b72fdccef263cd32179987ff86644f64b697faaf",
+    "tree": "3fee81731056f4ddcbe285860fb0a196ff838bad"
+  },
+  "head": {
+    "commit": "7b04b41b0dcf95613e05e2305e003103a690b456",
+    "tree": "a232e316e6c5c7dfc583067cfdea7a60755de11f"
+  },
+  "counts": {
+    "reachableCommits": 65,
+    "netChangedFileRecords": 370
+  },
+  "commitsOldestFirst": [
+    {
+      "sha": "60750564761c184a866a966e85b98b7f30d2d41e",
+      "tree": "1d01baabfcde1b15437cdcab894f7bc134e24874",
+      "parents": [
+        "b72fdccef263cd32179987ff86644f64b697faaf"
+      ],
+      "authoredAt": "2026-11-17T19:54:48-05:00",
+      "subject": "Record the 18-route SEO recheck against Bankeiz 6.0"
+    },
+    {
+      "sha": "3d731a36c80780a17045020edf388a314d547196",
+      "tree": "eda40f6d5029dfbfd6e28cbf4360c9e4528e73da",
+      "parents": [
+        "60750564761c184a866a966e85b98b7f30d2d41e"
+      ],
+      "authoredAt": "2026-11-17T20:43:24-05:00",
+      "subject": "Package the existing profile social image runtime and record v6 publication"
+    },
+    {
+      "sha": "578c88ea3fabf7992c854a5d7163612e32250f47",
+      "tree": "443a6c50a46d752b6dec06a82e719bf4a2e2b1c5",
+      "parents": [
+        "3d731a36c80780a17045020edf388a314d547196"
+      ],
+      "authoredAt": "2026-11-17T23:00:55-05:00",
+      "subject": "Reuse held Ledger navigation and exact publication roots"
+    },
+    {
+      "sha": "2879169f2b37c1ec6fa5ce61b78fa18dee3e1984",
+      "tree": "7ce6eb9e8a823b0994ebf6e157a751569a8ad858",
+      "parents": [
+        "578c88ea3fabf7992c854a5d7163612e32250f47"
+      ],
+      "authoredAt": "2026-11-18T01:12:54-05:00",
+      "subject": "Streamline receiving preparation and preserve Kai animation continuity"
+    },
+    {
+      "sha": "9fb8ab5e8c4e5318e9edae8af486045e683ceb3e",
+      "tree": "1631578c08bd60d7605eb361c313cfe3051b13db",
+      "parents": [
+        "2879169f2b37c1ec6fa5ce61b78fa18dee3e1984"
+      ],
+      "authoredAt": "2026-11-18T01:46:59-05:00",
+      "subject": "Preserve retained executable delivery and complete CI for the two updates"
+    },
+    {
+      "sha": "c1135822851c9273ab7133dfe61a4f7f991fadd9",
+      "tree": "ffa4a27056865ead4d287f54acd969ad61f03c22",
+      "parents": [
+        "9fb8ab5e8c4e5318e9edae8af486045e683ceb3e"
+      ],
+      "authoredAt": "2026-11-18T02:24:49-05:00",
+      "subject": "Use Copy address for the receiving-address action"
+    },
+    {
+      "sha": "d27e493378f3f86ca041f31e2b1b1c441c4db16a",
+      "tree": "cf52764a236a04891e83fcad5d8127c3a7219121",
+      "parents": [
+        "c1135822851c9273ab7133dfe61a4f7f991fadd9"
+      ],
+      "authoredAt": "2026-11-18T08:09:55-05:00",
+      "subject": "Keep Feed scroll snapping aligned with the playing song"
+    },
+    {
+      "sha": "3451982cf37fb83eb594eed05bb4febb56eee33a",
+      "tree": "399fccf09691bf4ddb6827e7c1deb8b160cfb0cb",
+      "parents": [
+        "d27e493378f3f86ca041f31e2b1b1c441c4db16a"
+      ],
+      "authoredAt": "2026-11-18T12:56:59-05:00",
+      "subject": "Add the live Bankeiz network Observatory and interactive metric histories"
+    },
+    {
+      "sha": "54c004cc2cc9f8b18388dcbef457118c589d1866",
+      "tree": "29bd13a22c531922edd6ad7aefddff6938dca4d2",
+      "parents": [
+        "3451982cf37fb83eb594eed05bb4febb56eee33a"
+      ],
+      "authoredAt": "2026-11-18T13:11:56-05:00",
+      "subject": "Surface collectible activity, expand graph history, and link Observatory chart details"
+    },
+    {
+      "sha": "4181f5c5e52a716f859d8d077e177246d491d66b",
+      "tree": "33abe118d41bdeed33f22eea6762c05a3ea6717b",
+      "parents": [
+        "54c004cc2cc9f8b18388dcbef457118c589d1866"
+      ],
+      "authoredAt": "2026-11-18T13:17:40-05:00",
+      "subject": "Add charter-first voting, profile governance consoles and verifiable execution"
+    },
+    {
+      "sha": "7d32b9780ac054b1781e9103441f2eb2f197cd4c",
+      "tree": "b09132695480d840dc2a4bbf88fbb4122612f4fc",
+      "parents": [
+        "4181f5c5e52a716f859d8d077e177246d491d66b"
+      ],
+      "authoredAt": "2026-11-18T13:25:03-05:00",
+      "subject": "Keep Observatory navigation within the document budget and verify market-cap entry"
+    },
+    {
+      "sha": "08674451085dfa1dfc1ff46f9b07b57d6ae36644",
+      "tree": "81b8c52b77af610811676ee6b54d5b93ff250327",
+      "parents": [
+        "7d32b9780ac054b1781e9103441f2eb2f197cd4c"
+      ],
+      "authoredAt": "2026-11-18T13:29:42-05:00",
+      "subject": "Fix duplicate PNG binding in the production preview check"
+    },
+    {
+      "sha": "4be8b5b03b9242b2afdba397e6afd9a0ec256772",
+      "tree": "ddd04eff22338e9a50faa3fdcd98a40a927f964e",
+      "parents": [
+        "08674451085dfa1dfc1ff46f9b07b57d6ae36644"
+      ],
+      "authoredAt": "2026-11-18T13:37:28-05:00",
+      "subject": "Keep public Ledger imports read-only and compact retained Feed navigation"
+    },
+    {
+      "sha": "43c7ecf138132ff2865f823927d6e482ffd6b0e5",
+      "tree": "5e1fb2f79646d9c6ca96c5f7fe39e75a2e50dc40",
+      "parents": [
+        "4be8b5b03b9242b2afdba397e6afd9a0ec256772"
+      ],
+      "authoredAt": "2026-11-18T13:44:17-05:00",
+      "subject": "Retain the selected Ledger catalog on entry and verify proof images efficiently"
+    },
+    {
+      "sha": "b3ae951d4e77548f2353b6364a6de874e13b17f7",
+      "tree": "9f75f05be59d19d5e5c5470522050cd5cb312191",
+      "parents": [
+        "43c7ecf138132ff2865f823927d6e482ffd6b0e5"
+      ],
+      "authoredAt": "2026-11-18T14:24:05-05:00",
+      "subject": "Show chosen Receiz IDs and keep voting inside a full-screen profile console"
+    },
+    {
+      "sha": "120c66a3be8ac9e235d7b3d64bc705abafba2c8d",
+      "tree": "9a598e15c31454c5faef551d947a986cf5ec56c3",
+      "parents": [
+        "b3ae951d4e77548f2353b6364a6de874e13b17f7"
+      ],
+      "authoredAt": "2026-11-18T14:33:44-05:00",
+      "subject": "Keep the chosen Receiz handle visible throughout the voting dashboard"
+    },
+    {
+      "sha": "098bf3e3211fa5ff5fdef11f60f0c03337f2a14a",
+      "tree": "71e544ff8521e7de6c90cda30f05b7df8bb1e3dc",
+      "parents": [
+        "120c66a3be8ac9e235d7b3d64bc705abafba2c8d"
+      ],
+      "authoredAt": "2026-11-18T14:51:45-05:00",
+      "subject": "Credit governance creators by public username and reuse verified chart preparation"
+    },
+    {
+      "sha": "347963839d03a7e70f6393a53b66feef2599beed",
+      "tree": "9bc0858d5e0992c8d7963f218bcdfe3f1bfd13a4",
+      "parents": [
+        "098bf3e3211fa5ff5fdef11f60f0c03337f2a14a"
+      ],
+      "authoredAt": "2026-11-18T15:00:07-05:00",
+      "subject": "Recognize Linux WebKit audio requests in the Feed playback test"
+    },
+    {
+      "sha": "25a10d1620771369947b63b5b4eaad2184b0352e",
+      "tree": "e76b1c04067a36acd4c4d170be40e87c5debcb0d",
+      "parents": [
+        "347963839d03a7e70f6393a53b66feef2599beed"
+      ],
+      "authoredAt": "2026-11-18T15:22:58-05:00",
+      "subject": "Keep Observatory content in place and continue scrolling through held Ledger records"
+    },
+    {
+      "sha": "41795e3cd5ce5fc4a108c93a9e70ba865dd69872",
+      "tree": "261464fb46b9d2b7f9af431b2a55eba68f3da5cb",
+      "parents": [
+        "25a10d1620771369947b63b5b4eaad2184b0352e"
+      ],
+      "authoredAt": "2026-11-18T16:19:11-05:00",
+      "subject": "Advance Observatory and Ledger charts from the shared public heads"
+    },
+    {
+      "sha": "2f213642d74fea0a038e4726f45358cff65a4b2c",
+      "tree": "6331430424e5508b6704408effc66d9aa3b21fe6",
+      "parents": [
+        "41795e3cd5ce5fc4a108c93a9e70ba865dd69872"
+      ],
+      "authoredAt": "2026-11-18T17:19:32-05:00",
+      "subject": "Extend the selected public Ledger from its accepted financial heads"
+    },
+    {
+      "sha": "987b0564cc51ed047879bbfd2ff8909b478827bc",
+      "tree": "3d8f4f1683e50110d128a66870dd1ec531330305",
+      "parents": [
+        "2f213642d74fea0a038e4726f45358cff65a4b2c"
+      ],
+      "authoredAt": "2026-11-18T18:05:12-05:00",
+      "subject": "Keep collection caps through Observatory hydration and seal governance files"
+    },
+    {
+      "sha": "a5361beb3ea21d08b1b53ce60a00b778cb326e70",
+      "tree": "2c0e30659eb9e7212b6704fe5edbe29b6ff3f560",
+      "parents": [
+        "987b0564cc51ed047879bbfd2ff8909b478827bc"
+      ],
+      "authoredAt": "2026-11-18T18:17:03-05:00",
+      "subject": "Cover Observatory HTML in the public runtime fingerprint fixture"
+    },
+    {
+      "sha": "03f6cdc405785439539dbf5328f2b2fc1b34f166",
+      "tree": "4214c0a41797f8688bac9165dbf75c91a561ce7f",
+      "parents": [
+        "a5361beb3ea21d08b1b53ce60a00b778cb326e70"
+      ],
+      "authoredAt": "2026-11-18T18:43:32-05:00",
+      "subject": "Carry selected inventory into the first Observatory frame and reuse its Ledger rows"
+    },
+    {
+      "sha": "5d72216d3e135dce1dff1b5782e03f9f8a474108",
+      "tree": "bbbf106e21c4727d0d2d800535b7b0c975c09ef7",
+      "parents": [
+        "03f6cdc405785439539dbf5328f2b2fc1b34f166"
+      ],
+      "authoredAt": "2026-11-18T19:04:31-05:00",
+      "subject": "Render the live-update qualification from its actual predecessor"
+    },
+    {
+      "sha": "db9c29a8aca36fdf54acc7b2a944ba3b455f168f",
+      "tree": "7f78361ba9855b9c8e82157459019505ac5be32c",
+      "parents": [
+        "5d72216d3e135dce1dff1b5782e03f9f8a474108"
+      ],
+      "authoredAt": "2026-11-18T19:26:37-05:00",
+      "subject": "Show full dated Observatory histories and public wallet transaction sizes"
+    },
+    {
+      "sha": "18ce23006085921fed71ced24c447fd3eb55662e",
+      "tree": "6dc024f7ee5fc4bed1cc3f86ae82b901082c9752",
+      "parents": [
+        "db9c29a8aca36fdf54acc7b2a944ba3b455f168f"
+      ],
+      "authoredAt": "2026-11-18T21:15:47-05:00",
+      "subject": "Settle public Analytics navigation, surface executed trades and prepare founding charters"
+    },
+    {
+      "sha": "5c7c26e690ac9e82091ad76e21635ec0bab800d5",
+      "tree": "8a114b9d35c98cc59a5e9a4d2ce388adf4e97ad2",
+      "parents": [
+        "18ce23006085921fed71ced24c447fd3eb55662e"
+      ],
+      "authoredAt": "2026-11-18T21:22:49-05:00",
+      "subject": "Verify the exact legacy Analytics and canonical docs redirects"
+    },
+    {
+      "sha": "c9ee348443bcaae2c8f90e57f5d0d9290b1d8775",
+      "tree": "10421ce2abbd27a9a175420c3c6ab7121ef8a02a",
+      "parents": [
+        "5c7c26e690ac9e82091ad76e21635ec0bab800d5"
+      ],
+      "authoredAt": "2026-11-18T22:36:53-05:00",
+      "subject": "Polish public navigation, inspect trades inline and restore verified issuance dates"
+    },
+    {
+      "sha": "4460052d5e6947f6687ffe050932d9cc037ee642",
+      "tree": "eb6396e7c93f6dcc5ce90640f71cc8b658f04b77",
+      "parents": [
+        "c9ee348443bcaae2c8f90e57f5d0d9290b1d8775"
+      ],
+      "authoredAt": "2026-11-18T22:42:46-05:00",
+      "subject": "Type-check the archived issuance history fixture"
+    },
+    {
+      "sha": "01f735cdf3ae054b22fe05c4d8044af33b9b3a5a",
+      "tree": "5f887337953745b328d64353235b21173ba9c84b",
+      "parents": [
+        "4460052d5e6947f6687ffe050932d9cc037ee642"
+      ],
+      "authoredAt": "2026-11-18T22:46:50-05:00",
+      "subject": "Encode each prepared public navigation document once"
+    },
+    {
+      "sha": "0c23bff347086a64cb05101ef33032e021cac7ad",
+      "tree": "017382564953f948925223484740aad8e4541af7",
+      "parents": [
+        "01f735cdf3ae054b22fe05c4d8044af33b9b3a5a"
+      ],
+      "authoredAt": "2026-11-18T23:00:32-05:00",
+      "subject": "Polish the public voting directory and its standalone footer"
+    },
+    {
+      "sha": "3179405e758db484beb6a3afde4ce9ffdc248b05",
+      "tree": "301a8ba2266b58e772c85be1472dc74f937b9771",
+      "parents": [
+        "0c23bff347086a64cb05101ef33032e021cac7ad"
+      ],
+      "authoredAt": "2026-11-18T23:08:17-05:00",
+      "subject": "Give governance records a readable hierarchy on phones and desktops"
+    },
+    {
+      "sha": "682c02b43a6ff2f51848c66650e2bf9e7d6be3ea",
+      "tree": "9594010e856b656feced174615e0f1cb43257c5f",
+      "parents": [
+        "3179405e758db484beb6a3afde4ce9ffdc248b05"
+      ],
+      "authoredAt": "2026-11-18T23:53:56-05:00",
+      "subject": "Restore Analytics issuance and proof history and open governance from Learn"
+    },
+    {
+      "sha": "54cc334472373705117979abd33939a65744effa",
+      "tree": "c0aed3f867e4d4130c8216a1fac5819afc2109e1",
+      "parents": [
+        "682c02b43a6ff2f51848c66650e2bf9e7d6be3ea"
+      ],
+      "authoredAt": "2026-11-19T08:07:23-05:00",
+      "subject": "Carry the complete Proof graph offline and qualify the governance guide"
+    },
+    {
+      "sha": "31bc81fb4cddb7ad6a13d89ccc30be864ff67396",
+      "tree": "8d6783c1338f918482648388d86fdc9703f06f26",
+      "parents": [
+        "54cc334472373705117979abd33939a65744effa"
+      ],
+      "authoredAt": "2026-11-19T08:37:27-05:00",
+      "subject": "Link the shared History footer directly to Analytics"
+    },
+    {
+      "sha": "1e719052b4b8f5c1eaa5f4e4d5c7b65290f2af0a",
+      "tree": "5d6519de9d5a9a866a86ab5263e3f74a9b1b9e4e",
+      "parents": [
+        "31bc81fb4cddb7ad6a13d89ccc30be864ff67396"
+      ],
+      "authoredAt": "2026-11-19T09:30:53-05:00",
+      "subject": "Keep Analytics headlines compact and return to the retained Bank from its toolbar"
+    },
+    {
+      "sha": "b83fea6496fce78b15b315a99d9743df3a3f9895",
+      "tree": "b41ed895beb726d900eec5e727d388fa075b88f5",
+      "parents": [
+        "1e719052b4b8f5c1eaa5f4e4d5c7b65290f2af0a"
+      ],
+      "authoredAt": "2026-11-19T09:56:12-05:00",
+      "subject": "Label the voting destination Governance in compact footers"
+    },
+    {
+      "sha": "c6819096faaf9b9711c21042299492e88ff0c337",
+      "tree": "98cfdbe9a3436a27c51650510a2322e95d6e48c6",
+      "parents": [
+        "b83fea6496fce78b15b315a99d9743df3a3f9895"
+      ],
+      "authoredAt": "2026-11-19T10:06:19-05:00",
+      "subject": "Show publicly attributed charters and activity on profile voting panels"
+    },
+    {
+      "sha": "ae431df3dd96fd40ca14729a98ee16f2d891592c",
+      "tree": "353338f26b46bc09a3a524690cbd30a3e0ec1628",
+      "parents": [
+        "c6819096faaf9b9711c21042299492e88ff0c337"
+      ],
+      "authoredAt": "2026-11-19T10:08:06-05:00",
+      "subject": "Match the Analytics toolbar to Bank and select retained tabs in one transition"
+    },
+    {
+      "sha": "f8321e035f063a62f4e3e0d2bacd97a8536ca4c9",
+      "tree": "43a7202d29bac8fbb63bdd72fff81774d5b89ae8",
+      "parents": [
+        "ae431df3dd96fd40ca14729a98ee16f2d891592c"
+      ],
+      "authoredAt": "2026-11-19T12:58:08-05:00",
+      "subject": "Retain selected public Originals and Analytics share pricing"
+    },
+    {
+      "sha": "471de12d984b8cce38f531bf135f1d6c74c3cc8b",
+      "tree": "008815c690f551559590ac3b80217d9f060dd0c3",
+      "parents": [
+        "f8321e035f063a62f4e3e0d2bacd97a8536ca4c9"
+      ],
+      "authoredAt": "2026-11-19T13:38:24-05:00",
+      "subject": "Pack Feed navigation with the existing lossless envelope"
+    },
+    {
+      "sha": "e805431dd493b73c4ac3e4e1d2c30530504e7992",
+      "tree": "0044b4762324125db3812185e1c04a79a259634d",
+      "parents": [
+        "471de12d984b8cce38f531bf135f1d6c74c3cc8b"
+      ],
+      "authoredAt": "2026-11-19T14:16:43-05:00",
+      "subject": "Keep Bank navigation mounted across public views"
+    },
+    {
+      "sha": "6900ed55230d5f3574d486aface5ae7736347385",
+      "tree": "a3a7d477a84161966866ff496ea8415390a777a0",
+      "parents": [
+        "e805431dd493b73c4ac3e4e1d2c30530504e7992"
+      ],
+      "authoredAt": "2026-11-19T14:21:46-05:00",
+      "subject": "Show recording and scheduled dates separately in Ledger"
+    },
+    {
+      "sha": "b16a1bdeaf58769c013a8d6a9ca5c44f444374af",
+      "tree": "6d500a268683e1fb7785909672da827f6d14fba9",
+      "parents": [
+        "6900ed55230d5f3574d486aface5ae7736347385"
+      ],
+      "authoredAt": "2026-11-19T14:28:26-05:00",
+      "subject": "Restore public dock scroll behavior and Feed overlay layering"
+    },
+    {
+      "sha": "a67a37513907558fc5ca1bb600271bb3a68ff980",
+      "tree": "7d839ff576442d5ff62b8d3eab5b1b1545a41ba7",
+      "parents": [
+        "b16a1bdeaf58769c013a8d6a9ca5c44f444374af"
+      ],
+      "authoredAt": "2026-11-19T15:17:18-05:00",
+      "subject": "Keep the Bank dock aligned across mobile routes"
+    },
+    {
+      "sha": "2cf4070e83d0d0abb5642a0bf5e3f260a2502ace",
+      "tree": "870c2dc5225c40475bf0057c4dcbfc40402211c8",
+      "parents": [
+        "a67a37513907558fc5ca1bb600271bb3a68ff980"
+      ],
+      "authoredAt": "2026-11-19T16:18:07-05:00",
+      "subject": "Align Analytics history and Receiz engagement tracking"
+    },
+    {
+      "sha": "3ca7339e015afe56fd1e49975f9b185c177de757",
+      "tree": "870c2dc5225c40475bf0057c4dcbfc40402211c8",
+      "parents": [
+        "2cf4070e83d0d0abb5642a0bf5e3f260a2502ace"
+      ],
+      "authoredAt": "2026-11-19T17:20:12-05:00",
+      "subject": "Retry Bankeiz deployment after Receiz database recovery"
+    },
+    {
+      "sha": "e8a5bb47db4a03698ff41fbd2af6a0d964a92b10",
+      "tree": "3b31fd67588df5d73cfcc4d7f41c11e1ea88a7b4",
+      "parents": [
+        "3ca7339e015afe56fd1e49975f9b185c177de757"
+      ],
+      "authoredAt": "2026-11-19T18:07:53-05:00",
+      "subject": "Retain Vote navigation and Analytics carried history"
+    },
+    {
+      "sha": "1e1f5e218f4ca523dfb03ed06b8ded393af2d9e6",
+      "tree": "91d4896eda89b0f018bd6365f7c8458ae3fa4a72",
+      "parents": [
+        "e8a5bb47db4a03698ff41fbd2af6a0d964a92b10"
+      ],
+      "authoredAt": "2026-11-19T18:15:20-05:00",
+      "subject": "Verify Vote exports and retained Bank styles in CI"
+    },
+    {
+      "sha": "860743dba3a5dec130fb582c80298b06e9d5551b",
+      "tree": "29fe21de0299193c3f03f7f64270f05f3aa19d99",
+      "parents": [
+        "1e1f5e218f4ca523dfb03ed06b8ded393af2d9e6"
+      ],
+      "authoredAt": "2026-11-19T20:00:34-05:00",
+      "subject": "Distinguish unreported traffic days from zero renders"
+    },
+    {
+      "sha": "3bb1da85b5daecd481e19d82c0ce554a9600cdc8",
+      "tree": "b87e394ec2f1d8f8172b259a0a2853e4ce22e85c",
+      "parents": [
+        "860743dba3a5dec130fb582c80298b06e9d5551b"
+      ],
+      "authoredAt": "2026-11-19T20:43:31-05:00",
+      "subject": "Reuse retained Bankeiz readers across navigation"
+    },
+    {
+      "sha": "ec883d0d7323a317e9f2dc21f074fe0e18164a47",
+      "tree": "2974a28224adf25befe7919abce7e5bd04d31919",
+      "parents": [
+        "3bb1da85b5daecd481e19d82c0ce554a9600cdc8"
+      ],
+      "authoredAt": "2026-11-19T20:49:59-05:00",
+      "subject": "Keep first-paint artwork open on standalone assets"
+    },
+    {
+      "sha": "943059a50befc3de2300f0ea509bf8985b771b2a",
+      "tree": "30a36ae5b285e09a94b441d6bb2c7bc5dc3ba26c",
+      "parents": [
+        "ec883d0d7323a317e9f2dc21f074fe0e18164a47"
+      ],
+      "authoredAt": "2026-11-19T21:17:44-05:00",
+      "subject": "Serve one stable first frame for public assets"
+    },
+    {
+      "sha": "03118fc5df1c45356317efb34dfad4ab3d0a7a8e",
+      "tree": "45fde78c9570e04f41f7f4bb99c9fac020958b46",
+      "parents": [
+        "943059a50befc3de2300f0ea509bf8985b771b2a"
+      ],
+      "authoredAt": "2026-11-19T21:31:29-05:00",
+      "subject": "Keep the asset fallback read parallel with its template"
+    },
+    {
+      "sha": "22e6604e756d53028bd61201004e021fa9042272",
+      "tree": "9825b86abdb88053aa8016ef5c575b955c5111e2",
+      "parents": [
+        "03118fc5df1c45356317efb34dfad4ab3d0a7a8e"
+      ],
+      "authoredAt": "2026-11-20T08:50:10-05:00",
+      "subject": "Keep Analytics valuation current and add the share card"
+    },
+    {
+      "sha": "a029180294ec089bcd59a9224dd15596d3f44db5",
+      "tree": "ad6a07a2ae23094223097c30ba3ce14b075efd73",
+      "parents": [
+        "22e6604e756d53028bd61201004e021fa9042272"
+      ],
+      "authoredAt": "2026-11-20T08:53:08-05:00",
+      "subject": "Polish the Analytics share card branding"
+    },
+    {
+      "sha": "de524fd73077d3da11f2fa8bf0f26f9f24ce35d4",
+      "tree": "bbb329d9f76aac9fb716f30af492cca76dc529d7",
+      "parents": [
+        "a029180294ec089bcd59a9224dd15596d3f44db5"
+      ],
+      "authoredAt": "2026-11-20T09:16:26-05:00",
+      "subject": "Align offline verifier source map metadata"
+    },
+    {
+      "sha": "1d8d7c29b43082d868821e3bac6a850cbb92f147",
+      "tree": "b58e21f0f84fb7113e4b92d2220e4d716fd52737",
+      "parents": [
+        "de524fd73077d3da11f2fa8bf0f26f9f24ce35d4"
+      ],
+      "authoredAt": "2026-11-20T10:55:15-05:00",
+      "subject": "Retain profile appearance and media offline"
+    },
+    {
+      "sha": "6fb14fd8d200a65d308f940f16b628b8b0eb508d",
+      "tree": "19ee1c37e87a1a88af057d708a492f04409891db",
+      "parents": [
+        "1d8d7c29b43082d868821e3bac6a850cbb92f147"
+      ],
+      "authoredAt": "2026-11-20T11:00:10-05:00",
+      "subject": "Remove final newline from AGENTS.md"
+    },
+    {
+      "sha": "9324e3597efbfadcd4bf1d6850228e7c6c66766d",
+      "tree": "f382e218d24a7bfe4257a2acf2728b510548d621",
+      "parents": [
+        "6fb14fd8d200a65d308f940f16b628b8b0eb508d"
+      ],
+      "authoredAt": "2026-11-20T19:13:19-05:00",
+      "subject": "Explain missing Ed25519 when proof creation fails"
+    },
+    {
+      "sha": "047ddf49e6a51dfb2649a9c465b162ce8efb71a3",
+      "tree": "f4fb9437eecae3d25b4fab9a2d06868c8c119ee0",
+      "parents": [
+        "9324e3597efbfadcd4bf1d6850228e7c6c66766d"
+      ],
+      "authoredAt": "2026-11-20T20:52:42-05:00",
+      "subject": "Open the full-screen Vote sheet from Receiz ID"
+    },
+    {
+      "sha": "7529ed08fc57aa0036663c1cdd024714a631851d",
+      "tree": "06226d72c0e2b2b652682ac5fdb929596fc1bfce",
+      "parents": [
+        "047ddf49e6a51dfb2649a9c465b162ce8efb71a3"
+      ],
+      "authoredAt": "2026-11-21T10:23:35-05:00",
+      "subject": "Show each public Original once in Ledger proofs"
+    },
+    {
+      "sha": "952c7ae05df1243c638d1e6ddbf70aa14bdc26df",
+      "tree": "d5d381c048c5a32caaeb6738cdcb251bc85ff1e7",
+      "parents": [
+        "7529ed08fc57aa0036663c1cdd024714a631851d"
+      ],
+      "authoredAt": "2026-11-21T10:32:35-05:00",
+      "subject": "Guard the working Original creation and publication flow"
+    },
+    {
+      "sha": "7b04b41b0dcf95613e05e2305e003103a690b456",
+      "tree": "a232e316e6c5c7dfc583067cfdea7a60755de11f",
+      "parents": [
+        "952c7ae05df1243c638d1e6ddbf70aa14bdc26df"
+      ],
+      "authoredAt": "2026-11-21T10:47:08-05:00",
+      "subject": "Carry compatible share observations through the catalog append"
+    }
+  ],
+  "netChangedFiles": [
+    {
+      "status": "M",
+      "path": ".github/workflows/verify.yml"
+    },
+    {
+      "status": "M",
+      "path": ".gitignore"
+    },
+    {
+      "status": "M",
+      "path": "AGENTS.md"
+    },
+    {
+      "status": "M",
+      "path": "CHANGELOG.md"
+    },
+    {
+      "status": "M",
+      "path": "README.md"
+    },
+    {
+      "status": "A",
+      "path": "api/governance.ts"
+    },
+    {
+      "status": "M",
+      "path": "branding/site-footer.mjs"
+    },
+    {
+      "status": "M",
+      "path": "docs/held-state-navigation-invariants.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/release-process.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/releases/6.0.0-qualification.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/releases/6.0.0.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/releases/README.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/verification/2026-11-15-public-seo-readiness.md"
+    },
+    {
+      "status": "A",
+      "path": "docs/verification/2026-11-17-public-seo-recheck.json"
+    },
+    {
+      "status": "A",
+      "path": "docs/voting-governance-contract.md"
+    },
+    {
+      "status": "M",
+      "path": "package.json"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/discover.js"
+    },
+    {
+      "status": "A",
+      "path": "public/learn/governance-guide.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/learn.js"
+    },
+    {
+      "status": "M",
+      "path": "public/receiz-public-chart-history.json"
+    },
+    {
+      "status": "M",
+      "path": "public/receiz-public-ledger.json.gz.bin"
+    },
+    {
+      "status": "M",
+      "path": "public/receiz-public-market.json"
+    },
+    {
+      "status": "M",
+      "path": "public/receiz-public-share-chart-history.json"
+    },
+    {
+      "status": "A",
+      "path": "public/social/analytics-c42e1ece26a78383.png"
+    },
+    {
+      "status": "A",
+      "path": "public/social/governance-7f177af097b46426.png"
+    },
+    {
+      "status": "M",
+      "path": "public/social/manifest.json"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/constitution-zero/Constitution-Zero.pdf"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/constitution-zero/index.html"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/constitution-zero/source.txt"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/.gitattributes"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/0e220fdb32d27744f4151581ea13f9e2c6610a1a00cbfd76606ecb1e87f9e35b.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/231f2502145d5dcbb8abd2f4a9fd3b626a272480c01c11e74c340915e0ee21d3.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/24241bcf4bd77fd26ac90d13b29e83e29b8e4db8037ed18094e10bb015d41dd7.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/3b91781fe3d9dcf9453c5a25ddfaa0244b74593f6a8d4a1d1d90b9309d3d5dc5.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/4369e31e3779af0b5b2620490a6006de371fdc01cbfd157e412f002022bb1ca8.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/58473220ad5448693c6d36f541a0a5307448ca24d3352b0fd7b950fb4387bf42.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/62e44508d21570056a69793d1f2f27379e56fd1705d150ebaa178994a83a26ac.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/657ac9e7506560c1d24189bc24b9f8d386fd84699363c16af5cf39c95448c68e.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/6c1b36ec5c0070fbee8577f803c8fdb95e05d0c7f8a4e4fbdc3794e8de1f0a75.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/7443b445ca5aaece39e9fb228647e65c698e1388f0298d8ee19e0ffd79378e64.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/7eb1e29c3e96fdbb46b0846c3ad67eee0a8c2ce4356e179cd02fae8205e7434c.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/9677a0a22326da0b88e3a1c067c72af8df334ab644fcfed944c97b0d08681df7.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/a1ecf6c53f0f8a16f3ef6925d69ec50ec60adec23cc35178313303805e32b0ea.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/a560b591e024eab41e7675a396534f7de2803a9cfa9f61d96e54573e25313dc7.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/a62448baa025d6c17eaa8f0963cf65ab08305e2121c2e67ed5e0d1496d13d495.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/b518d3df57c347ccbc6dcac0e00384b888255b3763ae72b30cd36a5822714f37.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/c50b140ead08ffbcfb9e9e9fb3816d224102679f9d18b130d608b3eafde02b67.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/d5c941eeb743e0567273beec20c2ae26a542040da406104287fa74d6d0b5d5b6.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/d8f6edf11ab42198181c70e0250fce236451124dfcfa2c003162acd33c6ead71.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/df11ba78cc6c9deaec6d8509e0086663cd8fc0e16cc20a46cb69c39ce8ddec6f.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/f12e1353f39db5e1bf355d0a20907e047e6328d7a548e8ad1cf19d2b49de6f34.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/f376fc3ef1e82d38493c2477cc16c3ec6d756c490b662aa1a0d6f45588576802.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/f714d73d75ad1547960085a41e5b04bfff05dd2cf8f5cf52dcf6962fa4120c41.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/f95cb1388fb52826b3619ef5ab783dd6f5a0b0f58b388940de4377c1c9698c88.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/fb93bf6e44e686606e0a0f1b8b4805e76bea4120ea04b762accf85d4cc5ecee2.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/examples/harbor-tool-library/originals/ffd841babc8c257880d09e4cf443e338b053de3677e33004e244b00759578e95.original"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/qualifications/election.zip"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/qualifications/treasury.zip"
+    },
+    {
+      "status": "A",
+      "path": "public/vote/receiz.svg"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-chart-valuation.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/build-governance-preview.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/build-governance-qualifications.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-license-notices.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-offline-shell.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-profile-preview.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-public-delivery-output.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-public-market-render-build.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-social-images.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-account-entry.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-asset-publication.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-asset-publication.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-feed-music-browser.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/check-observatory-browser.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-profile-first-response.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-first-frames.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-live-updates.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-server-entrypoints.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-source-archive.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/compact-navigation.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/governance-guide.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/learn-template.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/navigation-envelope.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/observatory-page.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "scripts/observatory-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/originals-qualification-assets.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-bank-styles.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-page-metadata.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-runtime-document.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-runtime-exports.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/seed-observatory-audience-history.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/seed-observatory-directory.mjs"
+    },
+    {
+      "status": "A",
+      "path": "scripts/social/analytics-glass.webp"
+    },
+    {
+      "status": "M",
+      "path": "scripts/source-files.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/user-guide-page-dev.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/value-explainer-assets.mjs"
+    },
+    {
+      "status": "M",
+      "path": "server/asset-preview.ts"
+    },
+    {
+      "status": "A",
+      "path": "server/governance-preview-plugin.ts"
+    },
+    {
+      "status": "A",
+      "path": "server/governance-preview.ts"
+    },
+    {
+      "status": "A",
+      "path": "server/governance-runtime/governance-preview.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "server/governance-share-art.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/prepared-dependent-documents.tsx"
+    },
+    {
+      "status": "M",
+      "path": "server/prepared-public-market-state.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/prepared-public-market.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/prepared-public-navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/profile-navigation.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/profile-preview.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/profile-runtime/public-market-render-build.json"
+    },
+    {
+      "status": "A",
+      "path": "server/public-ledger-heads.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-ledger-preparation.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-market-document.tsx"
+    },
+    {
+      "status": "M",
+      "path": "server/public-market-operands.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-market-preparation.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-market.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-network.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-runtime-asset.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/BottomNav.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/ConsoleShell.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/ProfileAvatar.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok-motion.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/components/useKaiOrb.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/ImplementationAssessment.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/ReceivingPreparation.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/receiving-preparation.css"
+    },
+    {
+      "status": "M",
+      "path": "src/content/client-work-demo.generated.json"
+    },
+    {
+      "status": "A",
+      "path": "src/content/governance-guide.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/content/meeting-ui.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/product-ui.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/public-asset-titles.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/core/chart-history.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/core/public-runtime.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/core/useScrollReveal.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/IdentityProfile.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LiveAccount.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LiveActions.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LivePayments.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/PublicProfilePortal.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/identity-governance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/identity/Entrance.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/Ledger.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/LedgerInspector.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/Market.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicAssetDetail.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/AssetObject.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofBookReader.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofImageCanvas.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofMedia.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-media.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/usePublicObjectArtwork.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/documents/DocumentComposer.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/CharterExecutionFields.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/CharterOffices.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceCertification.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceComposer.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceDetail.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceDocumentAuthor.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceExample.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceFiles.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceLink.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceProof.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceQualification.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceRegister.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceTreasury.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/PracticeActions.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/ProfileVotingSheet.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/VotingBoard.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/example/collection.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/example/governance-example.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/example/practice-state.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/founding/charters.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/founding/prepare.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/governance-member-names.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/governance-templates.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/main.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/profile-voting-sheet.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/approved-intent.json"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/election.json"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/settlement.json"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/treasury.json"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/verify-offline.mjs"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/qualification/verify.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/voting.css"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/ActionGrowth.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/AssetInspection.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/AudienceHistory.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/CapitalHistory.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/CollectibleActivity.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/HeadlineHistory.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/NetworkAtlas.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/NetworkTraffic.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/Observatory.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/ObservatoryHeader.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/Pager.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/TradeTape.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/TradingActivity.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/WalletGrowth.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/activity.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/archived-issuance-claims.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/audience-held-totals.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/audience-observations.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/catalog.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/circulation-history.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/circulation-observations.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/collectible-transfers.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/directory.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/market-trades.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/navigation-seed.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/network-activity.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/network-traffic.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/observatory.css"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/public-directory.json"
+    },
+    {
+      "status": "A",
+      "path": "src/observatory/wallet.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/public-discover/Discover.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-discover/discover.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/ProfileCollection.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/ProfileFooter.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicExplorer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicProfilePage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/main.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/public-explorer/profile-footer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/profile.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/FeedExperience.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/FeedPlayback.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/MusicMiniPlayer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/PublicFeed.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/feed-music-owner.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/feed-source.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/music-mini-player.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-ledger/PublicLedgerApp.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-ledger/main.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-ledger/public-ledger.css"
+    },
+    {
+      "status": "M",
+      "path": "src/pwa/sw.template.js"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/account-appearance.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/asset-publication-adoption.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/bank-execution.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/generated/chart-valuation.mjs"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-closed-decision.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-closure.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-cursor.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-directory.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-documents.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-evidence.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-execution-plan.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-execution-register.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-execution-settlement.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-execution-sign.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-execution.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-links.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-live.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-material.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-outbox.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-share.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/governance-view.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/identity-creation-stage.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/identity-vault.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/invoice-sharing.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-inspection.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-payment-records.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-search.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/history-additions.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/pricing-inputs.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/useMarketCapitalization.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-execution-paths.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-identity.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-transport.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/offline-proof-build.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/personal-history.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/prepared-bank-catalog.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/prepared-public-page-path.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/profile-avatar.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/profile-governance-access.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/profile-image.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/proof-browser-support.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/proof-material-sharing.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/proof-media.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/public-engagement.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-head-cache.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-ledger-document-seed.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/public-ledger-snapshot.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market-held-catalog.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-network-bootstrap.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-network-cache.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-network.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-profile-directory.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-profile-header.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-profile.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/usePublicEngagement.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/usePublicMarket.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/usePublicNetwork.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/app.css"
+    },
+    {
+      "status": "A",
+      "path": "src/styles/bank-dock.css"
+    },
+    {
+      "status": "A",
+      "path": "src/styles/bottom-nav.css"
+    },
+    {
+      "status": "M",
+      "path": "tests/account-proof-canonical-export.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/analytics-trades.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-build.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/chart-history.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/created-original-public-image.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/direct-marketing-entry.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/discover-build-checker-rollback.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/discover-held-navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/discover-navigation-metadata.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/docs-boundaries.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/feed-purchase-style-ownership.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/fixtures/asset-publication-freeze.json"
+    },
+    {
+      "status": "A",
+      "path": "tests/fixtures/governance-example/binding-sources.json.gz"
+    },
+    {
+      "status": "A",
+      "path": "tests/fixtures/governance-example/test-root.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-binding-archive.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-binding-sources.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-charter-navigation.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-elections.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-example.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-execution.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-founding.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-links.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-live-retention.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-originals.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-practice.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-retention.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-templates.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/governance-voting-session.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/helpers/conformance-offline-sealer.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/identity-profile.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/instant-public-document-loader.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/invoice-sharing.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/kai-klok-motion.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-inspector-view.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-search-ui.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-payments.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-capitalization-hook.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-worker-pricing-transport.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-worker-resume.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/music-mini-navigation.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-return-route.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/observatory-activity.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/observatory-catalog.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/observatory-circulation-history.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/observatory-traffic-retention.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/prepared-discovery-navigation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/prepared-public-ledger.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/profile-avatar.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/proof-browser-support.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/proof-media-view.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-delivery-output.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/public-engagement.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-first-frames.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-held-reuse-alignment.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-ledger-preparation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-market-hook.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-market-operands.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-market-proxy.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-market-seed-history-continuity.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-navigation-retained-bank-entry.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-network-hook.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-profile-directory.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-publication-persistence.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-runtime-asset.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-runtime-build-exports.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-runtime-fingerprint.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-template-preparation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/pwa-prepared-documents.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/receiving-preparation.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/site-footer.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/vault-entry.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "vercel.json"
+    },
+    {
+      "status": "M",
+      "path": "vite.config.ts"
+    },
+    {
+      "status": "A",
+      "path": "vote/index.html"
+    },
+    {
+      "status": "A",
+      "path": "vote/record.html"
+    }
+  ]
+}
