@@ -56,8 +56,8 @@ export function admittedAssetPublicationDelivery(sourceDigest:string,username:st
 export function admittedAssetPublicationSignatureDelivery(sourceDigest:string,username:string):import('./asset-publication').AssetPublicationDelivery|null{restore();const entry=additions.get(sourceDigest);if(entry?.username!==username||!entry.item.hasPbiSignature||!hex(entry.item.pbiReceiptHash))return null;const receipt=entry.receipt;if(receipt?.status==='published')return {...projectAssetPublicationReceipt(receipt)};if(entry.signatureDeliveryHash===entry.item.pbiReceiptHash&&(entry.marketSeen||entry.profileSeen))return {status:'published'};return receipt?{status:receipt.status,code:receipt.code}:null;}
 /** A small display locator set, never signature authority. The native runtime
  * reopens the selected source and requires its already-saved PBI proof. */
-export function pendingAssetPublicationSignatures(identityDigest:string,accountUid:string,username:string):readonly string[]{
- restore();return [...additions.values()].filter(entry=>entry.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&entry.username===username&&entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash)&&entry.receipt?.status!=='published'&&!entry.profileSeen&&!entry.marketSeen).map(entry=>entry.sourceDigest);
+export function pendingAssetPublicationSignatures(identityDigest:string,accountUid:string,username?:string):readonly string[]{
+ restore();return [...additions.values()].filter(entry=>entry.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&(username===undefined||entry.username===username)&&entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash)&&entry.receipt?.status!=='published'&&!entry.profileSeen&&!entry.marketSeen).map(entry=>entry.sourceDigest);
 }
 /** Bounded owner display locators only. Exact bytes and the canonical Source
  * opener, never delivery status or these rows, decide local projection. */

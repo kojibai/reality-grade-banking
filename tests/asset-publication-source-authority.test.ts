@@ -194,11 +194,17 @@ it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the
  statement = statement.replace(/import\('\.(\/[^']+)'\)/g, "modules['.$1']");
  const compiled = ts.transpileModule(statement, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  const digest = 'a'.repeat(64), owner = 'artist.receiz.id', account = 'account-id';
- const resumeSignature = vi.fn(async () => null), resumeSource = vi.fn(async () => undefined);
+ const preparedUsername = vi.fn(async () => 'artist');
+ const resumeSignature = vi.fn(async () => {
+  if (phase === 'recovering') expect(preparedUsername).toHaveBeenCalledOnce();
+  return null;
+ }), resumeSource = vi.fn(async () => undefined);
+ const pendingSignatures = vi.fn((identityDigest: string, accountUid: string, username?: string) =>
+  identityDigest === digest && accountUid === account && (username === undefined || username === 'artist') ? [digest] : []);
  const modules = {
   './asset-publication-adoption': {
    retainedAssetPublicationDigests: () => [],
-   pendingAssetPublicationSignatures: () => [digest],
+   pendingAssetPublicationSignatures: pendingSignatures,
   },
   './asset-publication': {
    readPendingAssetPublicationDigests: (_saved: unknown, _owner: string, _limit: number, after?: string) => after ? [] : [digest],
@@ -206,13 +212,17 @@ it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the
   },
   './identity-vault': Promise.resolve({ loadAssetPublicationState: async () => null }),
  };
- const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'createAsset', 'publishAssetSignature', `
+ const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'confirmedUsername', 'prepareReceivingUsername', 'createAsset', 'publishAssetSignature', `
   let assetSignatureSync;
   const navigator = { onLine: true }, publicAccountUsername = value => value, noteOpen = () => {};
   ${compiled}
   return source => { startAssetSignatureSync(source); return assetSignatureSync; };
- `)(modules, new AbortController(), { artifactOwnerReceizId: owner }, account, 'artist', resumeSource, resumeSignature);
+ `)(modules, new AbortController(), { artifactOwnerReceizId: owner, artifactSha256: digest }, account,
+  phase === 'recovering' ? 'receiz_saved_device_name' : 'artist', phase === 'recovering' ? null : 'artist',
+  preparedUsername, resumeSource, resumeSignature);
  await run(phase === 'creating' ? digest : undefined);
  expect(resumeSource).toHaveBeenCalledTimes(phase === 'recovering' ? 1 : 0);
+ expect(preparedUsername).toHaveBeenCalledTimes(phase === 'recovering' ? 1 : 0);
+ expect(pendingSignatures).toHaveBeenCalledExactlyOnceWith(digest, account);
  expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest, true);
 });

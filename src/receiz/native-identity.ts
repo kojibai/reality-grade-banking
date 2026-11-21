@@ -1769,20 +1769,23 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     if(lifetime.signal.aborted||assetSignatureSync)return;
     const attempt=(async()=>{
       const adoption=await import('./asset-publication-adoption');noteOpen();
-      const uid=accountUid??knownWallet?.wallet.userId,username=publicAccountUsername(presentationUsername??keyFile.owner.username);if(!uid||!username)return;
+      const uid=accountUid??knownWallet?.wallet.userId;if(!uid)return;
+      const username=publicAccountUsername(presentationUsername??keyFile.owner.username);
       // A published editor checkpoint may already have retired. Reopen only
       // this owner's bounded display coordinates from existing exact custody;
       // local media/text never depend on delivery or connectivity.
-      const held=adoption.retainedAssetPublicationDigests(binding.artifactSha256,uid,username);
-      for(let at=0;at<held.length;at+=2)await Promise.all(held.slice(at,at+2).map(async digest=>{
-        try{
-          noteOpen();let file=adoption.retainedAssetPublicationSource(digest);
-          if(!file){const[source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});noteOpen();if(!source)return;file=new File([new Uint8Array(source.bytes)],source.filename);}
-          if(await sdk.sha256ReceizBytes(new Uint8Array(await file.arrayBuffer()))!==digest)return;
-          const native=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();noteOpen();
-          await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationSource(digest,file!);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:admission.artwork});}});
-        }catch{noteOpen();}
-      }));
+      if(username){
+       const held=adoption.retainedAssetPublicationDigests(binding.artifactSha256,uid,username);
+       for(let at=0;at<held.length;at+=2)await Promise.all(held.slice(at,at+2).map(async digest=>{
+         try{
+           noteOpen();let file=adoption.retainedAssetPublicationSource(digest);
+           if(!file){const[source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});noteOpen();if(!source)return;file=new File([new Uint8Array(source.bytes)],source.filename);}
+           if(await sdk.sha256ReceizBytes(new Uint8Array(await file.arrayBuffer()))!==digest)return;
+           const native=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();noteOpen();
+           await native.admitConnectedComposerSource({file,ownerReceizId:binding.artifactOwnerReceizId,username,profileIdentity:uid,assertCurrent:noteOpen,onLocalAdmission:admission=>{retainCalendarOriginal(uid,admission.original);adoption.retainAssetPublicationSource(digest,file!);adoption.retainAssetPublicationAdmission(admission,{identityDigest:binding.artifactSha256,accountUid:uid,isCurrent:()=>!lifetime.signal.aborted&&(accountUid??knownWallet?.wallet.userId)===uid&&(!presentationUsername||presentationUsername===username),artwork:admission.artwork});}});
+         }catch{noteOpen();}
+       }));
+      }
       if(navigator.onLine===false)return;
       // Delivery recovery uses only compact checkpoints for this open owner.
       // New local creation and page opening never await these retries. Two
@@ -1801,7 +1804,11 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       }
       // Source delivery attempts do not acknowledge PBI. The signed publisher
       // joins an active attempt for this exact Source and reuses its saved proof.
-      for(const digest of adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid,username)){
+      // A cold identity may still expose its generated handle. Select
+      // by the original account binding and obtain a route only for a retry.
+      const signatures=adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid);
+      if(signatures.length&&!confirmedUsername){await prepareReceivingUsername();noteOpen();}
+      for(const digest of signatures){
         noteOpen();try{await publishAssetSignature(digest,true);}catch{noteOpen();}
       }
     })();assetSignatureSync=attempt;

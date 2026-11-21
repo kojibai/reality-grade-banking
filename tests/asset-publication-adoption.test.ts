@@ -111,6 +111,8 @@ it('retains only this account’s unacknowledged signed additions for exact-proo
  expect(adoption.pendingAssetPublicationSignatures('f'.repeat(64),owner.accountUid,'artist')).toEqual([]);
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,'another','artist')).toEqual([]);
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'another')).toEqual([]);
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid)).toEqual([digest]);
+ expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,'another')).toEqual([]);
  adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'DELIVERY_PENDING'},'e'.repeat(64));
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
  adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:2,visibleChildCount:1},'e'.repeat(64));
