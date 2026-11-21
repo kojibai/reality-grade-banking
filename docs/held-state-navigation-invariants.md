@@ -115,6 +115,13 @@ Generate default portrait/banner artwork locally from the existing deterministic
 
 ## Creation editor completion and file saving
 
+The production build checks the current working creation, signing and publication functions against [the source baseline](../tests/fixtures/asset-publication-freeze.json). Updating that baseline requires an explicit change to this flow and qualification through the real SDK publication, cold reopen and public delivery tests. Presentation and Ledger work leave this baseline in place.
+
+The existing flow has three independent outcomes. Local sealing and custody establish the Original and let the editor show it immediately. The exact PBI receipt marks that Original signed as soon as native admission retains it. Public delivery advances independently and completes only when the acknowledgment matches the owner's exact Source digest. Each outcome keeps its own state through retries, cold reopen and later public responses.
+
+The owner-bound checkpoint and the SDK's accepted append are the existing primitives behind that behavior. Retries reopen the same bytes and reuse the existing publication attempt. Discovery projects the accepted successor and keeps the older prefix. No extra seal, publication acknowledgment or catalog fetch belongs in the editor's completion path.
+
+
 A new Original keeps its result and optional Sign action throughout the current creation visit. Canonical native PBI admission durably retains its exact Source-bound proof before delivery. The existing owner-bound encrypted creation checkpoint indexes that proof for editor recovery; its successful write remains awaited, but an index-write failure cannot veto the already-retained proof or its delivery. Cold recovery uses the existing native saved-proof selector. Signed state is independent of public-delivery status: a pending or older unsigned response must preserve the saved PBI result. The immutable unsigned Original is not a reason to forget its verified native authorship append.
 
 Done or X finishes the current completion visit through that same exact source checkpoint. Neither dismissal nor a saved PBI flag acknowledges public delivery, grants transaction authority, removes proof bytes or rewrites another creation. The recovery reader returns no completion for a published, signed or dismissed checkpoint before reopening its source. For an older checkpoint lacking the PBI result, reuse the native saved-proof selector and verify that exact source's existing append once, without a ceremony, new seal or publication request; retain its result in the checkpoint. Assets preserves the Original and its supported actions.

@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import ts from 'typescript';
+import {checkFrozenAssetPublication} from './check-asset-publication.mjs';
 
 /** Account-entry law: this function stays at its working pre-regression
  * baseline. A presentation change cannot add onboarding inputs or waits. */
@@ -17,5 +18,7 @@ export function assertFrozenAccountCreation(source,baseline) {
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
  const [source,baseline]=await Promise.all([readFile('src/receiz/native-identity.ts','utf8'),readFile('tests/fixtures/account-entry-frozen.ts.txt','utf8')]);
  assertFrozenAccountCreation(source,baseline);
+ await checkFrozenAssetPublication();
+ console.log('Verified frozen Original creation, signing and publication boundaries.');
  console.log('Verified frozen Bankeiz account creation: exact SDK input, internal custody and phrase-free Identity Record; no added prompts, requests or waits.');
 }

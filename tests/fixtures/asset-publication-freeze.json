@@ -1,0 +1,44 @@
+{
+  "baseline": "047ddf49",
+  "files": {
+    "src/features/assets/CreateAsset.tsx": {
+      "create": "bf0a1aeb76df3c8bf22f8d3a49092a21b23a59be23a3a50667eedac025b12244",
+      "publishMarket": "39154e5c8bee15e0546f17f5639c610f6c6f7db5de2093d24d16a13cf5f28770"
+    },
+    "src/receiz/native-identity.ts": {
+      "assetDocumentSealer": "42392e64fa0ccde43de86aa59a2aabe7ef2b222c4aca3ddee94b00041ac5b950",
+      "openAssetPublicationRuntime": "367d689ad91084e7144b625eb8513ba3c3fa5d1317a6d52ca0b0e766352a3d42",
+      "openComposedPublisher": "8c88ed01f652e33a627627202b3d95cc047c0344a53cb53e62be5a931607a2a8",
+      "createAsset": "d95e970dfa207a148b28d8bbdac52faa6409ee2a5a5098c49e6d381eb485e5de",
+      "assetCreationState": "8dc3cf30eebbf9a778fedb8f105e62360ba20a343bdd9dc6484b5c739b36a733",
+      "recordAssetSignatureAdmission": "aa260850829234cae02509320d58a7c8eb6bd223a712c56d0af1bdc28794e478",
+      "publishAssetSignature": "593ab26d01c8e319acba8af0e5a240fb5cce7a109823d75fe493aae3cf8ee2d5",
+      "publishAssetToMarket": "97a5fa4f31cb7d7f05abbf879bbf4c94c767e06d060cc0592d06cd08bdb17a76",
+      "startAssetSignatureSync": "cbe6d3aacedbba189d91a52236c92c58e38ecc771da90148c7af3c3fe5c32d81"
+    },
+    "src/receiz/created-asset-file.ts": {
+      "prepareCreatedAssetPrimary": "8e5a90e0bfbafd77a5bf5f4300898f910d234d6d98113d2876370a914f203050",
+      "createdAssetOriginalFile": "e85f33581bead5242f0c3edb1d883c73ea68a4192ccbdebbcd5ae00c0bd4ff8e"
+    },
+    "src/receiz/asset-publication.ts": {
+      "createAssetPublication": "869f04a2d666dc5be0081eadd2248e9f441cbbe8743981582fb313ceff74ab72",
+      "acknowledgePublishedAssetSource": "148baa92e697828279cb9ec294ea9bdc3d4c747c4ae46ff427d3ed41a4d4fb90",
+      "retainAssetCreationSignature": "6a3c52f3ede08602ddb6c9e6958016d882051997715937380861f171d09d881e",
+      "dismissAssetCreation": "c3b0b0223fbb8e41bb8a567bcbb7d2147e30b8ea57a967b9b57e28804dc8eec3",
+      "readAssetPublicationState": "9667a5eac5cb114cfefec25ce020e2783a3fe3958746ca774a5452076fa9d6a3"
+    },
+    "src/receiz/asset-publication-adoption.ts": {
+      "retainAssetPublicationAdmission": "3e9455ef71db2459b81af265839b04c5e4a52ecde8d080212c1d7fcc64a0043b",
+      "acknowledgeAssetPublication": "55c29fccdf067e9e83c7cecd4d1022d9b8b18f103b85d7c1375dc6ad195c52a6",
+      "publishDiscoveredPublicCatalog": "5b871757935dadc1f53551ff9b9d74ec16d4b8f7359eeca7344aec2a1d4c7427",
+      "refreshAssetPublicationCatalog": "d43c41bf7672f72e6ddb851a6b85d8a5803f6fe89562a5b7da1a68d3ebbd7711"
+    },
+    "src/receiz/asset-publication-runtime.ts": {
+      "loadAssetPublicationRuntime": "d0470a689f0c67757a6f63e1d5e41eebcf4a9b509f46ac3d0705b615270dd6ed",
+      "publicationOperation": "7d75e95d97b00442ece48c20909d212fc2b2f9d6a4b7576456be9a247572529e",
+      "issuedUpload": "d04f0707415c1724ecd18383798bb868c18a94fa4745338780ba8c359880838c",
+      "issuedUploadTarget": "4ac83d7bfde8112ea5be0c9b2ee14ee6cbec387a7136a6f2bd3c342cd937a8d7",
+      "createAssetPublicationFetch": "508d22f476ffdacf65706a5f449c91839747dca45b2e4a5e4a91bc1e21f40490"
+    }
+  }
+}
