@@ -1,3 +1,5 @@
+import { receizKaiMomentFromSealedPulse } from '@receiz/sdk';
+import { sigilFrequencyFromMoment } from '../../native/receiz/app/lib/market/sigilFrequency';
 import {RECEIZ_VERSION} from '../receiz/client';
 import {
   computeIntrinsicUnsigned,
@@ -48,7 +50,8 @@ export function calculateIllustration(scenario: ValueScenario) {
   if (size < 1) throw new Error('Series size: use an integer of at least 1.');
   if (evaluation < origin) throw new Error('Evaluation pulse must be at or after the origin.');
   if (!['low', 'med', 'high'].includes(scenario.quality)) throw new Error('Quality is unsupported.');
-  const metadata: SigilMetadataLite = { pulse: origin, kaiPulse: origin, seriesSize: size, quality: scenario.quality };
+  const frequencyHz = sigilFrequencyFromMoment(receizKaiMomentFromSealedPulse(origin));
+  const metadata: SigilMetadataLite = { pulse: origin, kaiPulse: origin, seriesSize: size, quality: scenario.quality, frequencyHz };
   if (scenario.cashflows?.length) {
     if (scenario.cashflows.length > MAX_CASHFLOWS) throw new Error(`Use at most ${MAX_CASHFLOWS} cashflows.`);
     metadata.ip = { expectedCashflowPhi: scenario.cashflows.map((cashflow, index) => {
@@ -72,8 +75,8 @@ export function sampleIllustration(scenario: ValueScenario, count = 65) {
   const span = evaluation - origin;
   const coordinates = Array.from({ length: count }, (_, i) => (origin + span * BigInt(i) / BigInt(count - 1)).toString());
   const samples = coordinates.map(coordinate => {
-    const calculation = calculateIllustration({ ...scenario, evaluationPulse: coordinate });
-    return { pulse: coordinate, valuePhi: calculation.unsigned.valuePhi, floorPhi: calculation.unsigned.inputs.rarityFloor };
+    const { unsigned } = computeIntrinsicUnsigned(result.metadata, Number(coordinate));
+    return { pulse: coordinate, valuePhi: unsigned.valuePhi, floorPhi: unsigned.inputs.rarityFloor };
   });
   return { kind: 'recomputed-model-samples' as const, result, samples };
 }

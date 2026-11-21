@@ -107,6 +107,20 @@ it('keeps the policy inspector and focus intact across live quote updates', () =
   expect(root.querySelector('[data-phi-usd-trace] details')).toBe(details);expect(details.open).toBe(true);expect(document.activeElement).toBe(summary);
 });
 
+it('shows the frequency derived from the illustration origin across replay samples',()=>{
+  const root=mount(),trace=root.querySelector('[data-value-trace]')!;
+  const slider=root.querySelector<HTMLInputElement>('[data-value-sample]')!;
+  const frequency=sigilFrequencyFromMoment(momentFromPulse(Number(DEMO_SCENARIO.originPulse)));
+  expect(frequency).toBeGreaterThan(0);
+  for(const sample of [slider.value,'0']){
+    slider.value=sample;
+    slider.dispatchEvent(new Event('input',{bubbles:true}));
+    expect(trace.textContent).toContain('resonance.logPhi');
+    expect(trace.textContent).toContain(`"frequencyHz":"${frequency}"`);
+    expect(trace.textContent).not.toContain('resonance.neutral');
+  }
+});
+
 it('adds, calculates and removes cashflows without confusing them with the edition size',()=>{
   const root=mount(),form=root.querySelector<HTMLFormElement>('[data-value-demo]')!;
   const before=root.querySelector('[data-value-chart] path[stroke="#7e9aff"]')!.getAttribute('d');
