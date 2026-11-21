@@ -1,0 +1,7 @@
+/* Governance and Vaults share the same row layout in the ID sheet. */
+.identity-vault-entry + .identity-governance-entry {
+  border-top: 0;
+}
+.identity-governance-entry small {
+  color: #597286;
+}

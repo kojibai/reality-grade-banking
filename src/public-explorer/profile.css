@@ -37,34 +37,3 @@
 
 
 .profile-view-switch .profile-create-asset{color:var(--navy);border-color:#cbd6e5;background:#edf3ff;border-radius:50%;min-width:36px;min-height:36px}.profile-view-switch .profile-create-asset:hover{color:var(--blue);border-color:#a8bde1}.profile-view-switch .profile-create-asset:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
-
-dialog.sheet.profile-voting-workspace[open] {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100dvh;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
-}
-.profile-voting-workspace > .sheet-header {
-  flex: none;
-  padding-top: max(12px, env(safe-area-inset-top));
-  padding-left: max(16px, env(safe-area-inset-left));
-  padding-right: max(16px, env(safe-area-inset-right));
-}
-.profile-voting-workspace > .sheet-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 16px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-}
-.profile-voting-workspace .voting-board { max-width: 1080px; margin-inline: auto; }

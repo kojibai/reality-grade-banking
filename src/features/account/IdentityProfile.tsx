@@ -1,30 +1,33 @@
 import {IdentityRecordIcon} from '../../components/IdentityRecordIcon';
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUpRight, BadgeCheck, ChevronRight, FileText, Fingerprint, LockKeyhole } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, ChevronRight, FileText, Fingerprint, LockKeyhole, Vote } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import {QuickProfileEditor} from './QuickProfileEditor';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {AccountEmail} from './AccountEmail';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
-import {identityProfileAvatar,identityProfileUsername} from '../../receiz/profile-avatar';
+import {identityProfileAvatar,identityProfileName,identityProfileUsername} from '../../receiz/profile-avatar';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
 import {profilePagePath,profileUsername,retainedPublicProfile,knownProfilePbiAuthorship} from '../../receiz/public-profile';
+import {ProfileVotingSheet} from '../voting/ProfileVotingSheet';
+import './identity-governance.css';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
-export function IdentityProfile({ identity, onForget, onRefresh, active=true, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
+export function IdentityProfile({ identity, onForget, onRefresh, active=true, accountUid, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; accountUid?:string|null; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
   const [backupBusy,setBackupBusy]=useState<OpenIdentity|null>(null),[backupError,setBackupError]=useState<{owner:OpenIdentity;message:string}|null>(null);
   const backupPending=useRef<OpenIdentity|null>(null);
   const [vaultsOpen,setVaultsOpen]=useState<{owner:OpenIdentity;mode:'home'|'create'}|null>(null);
-  // Resume the child after the owning Identity modal has rejoined the top layer.
-  const [vaultsActive,setVaultsActive]=useState(false);
-  useLayoutEffect(()=>setVaultsActive(active),[active]);
+  const [governanceOpen,setGovernanceOpen]=useState<OpenIdentity|null>(null);
+  // Resume a child after the owning Identity modal has rejoined the top layer.
+  const [childSheetActive,setChildSheetActive]=useState(false);
+  useLayoutEffect(()=>setChildSheetActive(active),[active]);
   useEffect(()=>{if(active&&vaultsEntry==='create'&&identity.vaults){setVaultsOpen({owner:identity,mode:'create'});onVaultsEntryConsumed?.();}},[active,vaultsEntry,identity,onVaultsEntryConsumed]);
   const [passkeyBusy,setPasskeyBusy]=useState(false),[passkeyConnected,setPasskeyConnected]=useState(false),[passkeyError,setPasskeyError]=useState('');
   const current=useRef<OpenIdentity|null>(identity),passkeyPending=useRef(false);
-  useEffect(()=>{current.current=identity;setPasskeyConnected(false);setBackup(false);setBackupError(null);return()=>{current.current=null;};},[identity]);
+  useEffect(()=>{current.current=identity;setPasskeyConnected(false);setBackup(false);setBackupError(null);setGovernanceOpen(null);return()=>{current.current=null;};},[identity]);
   const connectPasskey=async()=>{
     if(passkeyPending.current||passkeyConnected)return;
     passkeyPending.current=true;setPasskeyBusy(true);setPasskeyError('');
@@ -42,6 +45,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
   };
   const profileName = knownName ? publicName(knownName) : null;
   const publicId = profileName ?? identity.binding.identityOwnerReceizId;
+  const governanceUid=accountUid??identity.walletReceivingAddress?.()??identity.knownWallet?.()?.wallet.userId;
   const openPublicProfile=async()=>{
     if(profilePending.current===identity||!identity.prepareReceivingUsername)return;
     profilePending.current=identity;setProfileOpening(identity);setProfileError(null);
@@ -93,7 +97,18 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, va
     <p className="identity-pbi-hint"><Fingerprint size={12} aria-hidden="true"/>Passkey sign-in &amp; recovery</p>
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
     {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}
-    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&vaultsActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
+    {governanceUid&&<button type="button" className="identity-vault-entry identity-governance-entry" aria-haspopup="dialog" onClick={()=>setGovernanceOpen(identity)}>
+      <Vote size={23} strokeWidth={1.4} aria-hidden="true"/>
+      <span><strong>Governance</strong><small>Charters, proposals &amp; votes</small></span>
+      <ChevronRight size={16} aria-hidden="true"/>
+    </button>}
+    {governanceOpen===identity&&governanceUid&&<ProfileVotingSheet
+      active={active&&childSheetActive}
+      isOwner
+      onClose={()=>setGovernanceOpen(null)}
+      profile={{uid:governanceUid,name:identityProfileName(identity),username:knownName??undefined,publicName:profileName??undefined,ownerIdentity:identity}}
+    />}
+    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&childSheetActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
     <AccountEmail identity={identity}/>
     <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />
