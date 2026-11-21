@@ -61,6 +61,7 @@ import {atNoteStage} from './note-stage';
 import {createReceivingUsernamePreparation,publicAccountUsername} from './receiving-username';
 import {atIdentityCreationStage} from './identity-creation-stage';
 import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer-time';
+import {isUnsupportedProofBrowser,proofBrowserUpdateNotice} from './proof-browser-support';
 import type {AssetComposerDraft} from './asset-composer';
 import type {AssetMomentDraft} from './asset-moment';
 import {loadConnectedNoteState,saveConnectedNoteState} from './identity-vault';
@@ -251,7 +252,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     sealingResources ??= await loadBankProofResources(fetch, undefined, lifetime.signal);
     const { createReceizOfflineSealer, createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
     const sealer = createReceizOfflineSealer({ ownerIdentityAdmission: admission, store: certificateTimeSafeStore(createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer')), resources: sealingResources, fetch: certificateTimeSafeFetch(heldFetch) });
-    await sealer.enroll(); return sealer;
+    try { await sealer.enroll(); }
+    catch (cause) {
+      if (await isUnsupportedProofBrowser(cause)) throw new Error(proofBrowserUpdateNotice, { cause });
+      throw cause;
+    }
+    return sealer;
   }
   let transportKeyFile = keyFile, transportPhrase = phrase, transportBytes = bytes, transportBinding = binding;
   if (keyFile.crypto.privateKeyPkcs8B64u && !consentApproved) throw new Error('Approve account opening before protecting this ID for Receiz transport.');
