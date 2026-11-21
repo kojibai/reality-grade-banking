@@ -41,6 +41,8 @@ import { BankConnectionError } from './bank-connection-error';
 import { createBankSubjectSource, openBankSubjectSource, type BankSubjectSource } from './bank-native-source';
 import { createBankNativeSession } from './bank-native-session';
 import { browserBankKaiFactory } from './bank-kai';
+import { GENESIS_TS, microPulsesSinceGenesisEpochMsV124 } from '../../native/receiz/packages/receiz-sdk/src/v124KaiBridge.generated';
+import { epochMsFromPulse } from '../../native/receiz/app/utils/kai_pulse';
 import { validateAssetDefinition, type AssetDefinition } from './asset-definition';
 import { readCarriedWalletObservation, createWalletQuoteHold, isWalletQuoteHeld, sameWalletFinancialState } from './wallet-observation';
 import { appendWalletPoint } from './wallet-series';
@@ -290,6 +292,18 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     try { await attempt; } finally { if (transportOpening === attempt) transportOpening = undefined; }
   }
   let client: ReceizClient | null = null, clientApplicationId: string | null = null, expiresAtKai = 0, grantedScopes: readonly string[] = [];
+  let grantClock: { observedAtKai: number; receivedAtMs: number } | undefined;
+  function millisecondsSinceObservation(clock: NonNullable<typeof grantClock>) {
+    return Math.floor(performance.now() - clock.receivedAtMs);
+  }
+  function grantKaiNow(clock = grantClock){
+    if(!clock)return sdk.receizKaiNow().pulse;
+    const elapsedMs = BigInt(millisecondsSinceObservation(clock));
+    const elapsedPulses = microPulsesSinceGenesisEpochMsV124(BigInt(GENESIS_TS) + elapsedMs) / 1_000_000n;
+    return clock.observedAtKai + Number(elapsedPulses);
+  }
+  const grantClockEpochMs = (clock: NonNullable<typeof grantClock>) =>
+    Number(epochMsFromPulse(clock.observedAtKai)) + millisecondsSinceObservation(clock);
   let callCleanupUntil=Infinity;
   const callMembershipAttempts=new Map<string,string|undefined>(),callMembershipQueue=new Map<string,Promise<unknown>>();
   function orderCallMembership<T>(path:string,operation:()=>Promise<T>):Promise<T>{
@@ -308,12 +322,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   let confirmedUsername:string|null=null;
   let confirmedTwinAccess:boolean|null=null;
   function knownTwinAccess(){return confirmedTwinAccess??knownMessagingDisplay()?.twinAccess??null;}
-  async function continueAccountPresentation(targetUnsigned=unsigned){
+  async function continueAccountPresentation(targetUnsigned=unsigned, nowMs = grantClock ? grantClockEpochMs(grantClock) : undefined){
     async function switchCarriedAccount(){
       noteOpen();
       const challengeB64Url=sdk.receizBase64UrlEncode(new TextEncoder().encode([
         'RECEIZ_DEVICE_SWITCH_V1',`keyId=${keyFile.keyId}`,`localUid=${keyFile.owner.uid}`,
-        `targetUid=${carriedAccountUid}`,`issuedAtMs=${Date.now()}`,
+        `targetUid=${carriedAccountUid}`,`issuedAtMs=${nowMs??Date.now()}`,
         `nonce=${sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(16)))}`,
       ].join('\n')));
       const signed=await targetUnsigned.identity.signLoginProof({keyFile:transportKeyFile,passphrase:transportPhrase,challengeB64Url});
@@ -325,7 +339,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if(switched.ok!==true||switched.session?.uid!==carriedAccountUid)throw Error('Your Identity Record did not open the same account. Your saved proof is unchanged.');
       return switched;
     }
-    let continued=carriedAccountUid&&carriedAccountUid!==keyFile.owner.uid?await switchCarriedAccount():await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase});
+    let continued=carriedAccountUid&&carriedAccountUid!==keyFile.owner.uid?await switchCarriedAccount():await targetUnsigned.identity.continueReceizId({schema:'receiz.device.identity.v1',createdAt:keyFile.issuedAt,updatedAt:keyFile.issuedAt,localUid:keyFile.owner.uid,username:keyFile.owner.username??keyFile.keyId,displayName:keyFile.owner.displayName??keyFile.owner.username??'Receiz account',deviceName:null,keyFile:transportKeyFile},{passphrase:transportPhrase,...(nowMs===undefined?{}:{nowMs})});
     if(carriedAccountUid&&continued.session&&typeof continued.session==='object'&&(continued.session as {uid?:unknown}).uid!==carriedAccountUid)continued=await switchCarriedAccount();
     const session=continued.session as {uid?:unknown;username?:unknown}|undefined;
     if(continued.ok!==true||typeof session?.uid!=='string')throw Error('Your Receiz account could not be opened. Your local Identity Record remains available.');
@@ -336,28 +350,71 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     if (!BANK_CARD_APPLICATION_IDS.some(id => id === applicationId)) throw new Error('Unsupported bank registration.');
     await prepareTransport();
     if (lifetime.signal.aborted) throw new Error('Receiz account read consent is required.');
-    if (!client || clientApplicationId !== applicationId || sdk.receizKaiNow().pulse >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
+    if (!client || clientApplicationId !== applicationId || grantKaiNow() >= expiresAtKai || scopes.some(scope => !grantedScopes.includes(scope))) {
       const targetUnsigned = applicationId === BANK_APPLICATION_ID ? unsigned : sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', fetchImpl: heldFetch });
       // Signed transport metadata comes from the genuine admitted identity. It is not a replacement source.
-      const continuing = continueAccountPresentation(targetUnsigned);
+      let clock = grantClock;
+      let continuing = continueAccountPresentation(targetUnsigned);
       // Existing key bindings can grant access while continuation is in flight.
       // Either operation can fail first; neither result alone opens the account.
       void continuing.catch(() => {});
+      let retriedContinuation = false;
+      async function continuedAccount() {
+        try { return await continuing; }
+        catch (cause) {
+          const refusal = cause instanceof sdk.ReceizHttpError && cause.status === 409 ? cause.payload as { error?: unknown } | null : null;
+          // This refusal occurs before signature admission or replay custody.
+          if (!clock || retriedContinuation || refusal?.error !== 'challenge_action_mismatch') throw cause;
+          noteOpen();
+          retriedContinuation = true;
+          continuing = continueAccountPresentation(targetUnsigned, grantClockEpochMs(clock));
+          return continuing;
+        }
+      }
       const statementDigest = await sdk.sha256ReceizBytes(new TextEncoder().encode(statement));
-      const exchange = async () => {
-        const created = sdk.createReceizProofAuthorityChallenge({ applicationId, artifactDigest: transportBinding.artifactSha256, scopes, consentStatementDigest: statementDigest, ttlPulses: 30 });
-        const proof = await targetUnsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url: created.challengeB64Url });
-        return targetUnsigned.identity.exchangeProofAuthority({ artifact: transportBytes, challenge: { ...created.challenge, proof }, applicationId, scopes });
+      const challengeInput = { applicationId, artifactDigest: transportBinding.artifactSha256, scopes, consentStatementDigest: statementDigest, ttlPulses: 30 };
+      const createChallenge = () => {
+        if (!clock) return sdk.createReceizProofAuthorityChallenge(challengeInput);
+        const issuedAtKai = grantKaiNow(clock);
+        const challenge = {
+          schema: 'receiz.identity.proof-authority-challenge.v123' as const,
+          audience: applicationId,
+          nonce: sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))),
+          issuedAtKai,
+          expiresAtKai: issuedAtKai + challengeInput.ttlPulses,
+          consent: { approved: true as const, statementDigest },
+        };
+        const basis = sdk.proofAuthorityChallengeBasisV123({ ...challengeInput, challenge });
+        return { challenge, challengeB64Url: sdk.receizBase64UrlEncode(new TextEncoder().encode(sdk.canonicalizeReceizV122(basis))) };
       };
-      const grant = await exchange().catch(async cause => {
-        const payload = cause instanceof sdk.ReceizHttpError ? cause.payload as { code?: unknown; writes?: unknown } | null : null;
-        if (payload?.code !== 'IDENTITY_NOT_BOUND' || payload.writes !== 0) throw cause;
-        // First use may need continuation to create the server key binding.
-        // Only its explicit zero-write response permits one fresh exchange.
-        await continuing;
-        if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
-        return exchange();
-      });
+      const exchange = async () => {
+        const { challenge, challengeB64Url } = createChallenge();
+        const proof = await targetUnsigned.identity.signLoginProof({ keyFile: transportKeyFile, passphrase: transportPhrase, challengeB64Url });
+        return targetUnsigned.identity.exchangeProofAuthority({ artifact: transportBytes, challenge: { ...challenge, proof }, applicationId, scopes });
+      };
+      async function exchangeWithRecovery() {
+        let retriedClock = false, retriedBinding = false;
+        for (;;) {
+          try { return await exchange(); }
+          catch (cause) {
+            const payload = cause instanceof sdk.ReceizHttpError ? cause.payload as { code?: unknown; writes?: unknown; observedAtKai?: unknown } | null : null;
+            if (payload?.writes !== 0) throw cause;
+            const observedAtKai = payload.observedAtKai;
+            if (cause instanceof sdk.ReceizHttpError && cause.status === 400 && payload.code === 'CHALLENGE_EXPIRED' && !retriedClock
+              && typeof observedAtKai === 'number' && Number.isSafeInteger(observedAtKai) && observedAtKai >= 0 && observedAtKai <= Math.floor(Number.MAX_SAFE_INTEGER / 1_000_000) - 30) {
+              retriedClock = true;
+              // Correct only this authority exchange, keeping the signed identity
+              // and the Source coordinates on their existing Kai path.
+              clock = { observedAtKai, receivedAtMs: performance.now() };
+            } else if (payload.code === 'IDENTITY_NOT_BOUND' && !retriedBinding) {
+              retriedBinding = true;
+              await continuedAccount();
+            } else throw cause;
+            if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
+          }
+        }
+      }
+      const grant = await exchangeWithRecovery();
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
       if (grant.applicationId !== applicationId || grant.keyId !== transportBinding.keyId || grant.artifactDigest !== transportBinding.artifactSha256 || scopes.some(scope => !grant.grantedScopes.includes(scope))) throw new Error('Receiz did not grant this bank access to the same identity and scopes.');
       const protectedClient = sdk.createReceizClient({ applicationId, baseUrl: 'https://receiz.com', accessToken: grant.accessToken, fetchImpl: heldFetch });
@@ -369,9 +426,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const walletResponse = walletRead ? (knownWallet || typeof protectedClient.request !== 'function' ? protectedClient.connect.wallet() : protectedClient.request('/api/connect/wallet/me?history=1', {method:'GET'}).then<unknown>(response => response && typeof response === 'object' && 'wallet' in response ? response : protectedClient.connect.wallet())) : undefined;
       // The HTTP read can reject before account continuation completes.
       if (walletResponse) void walletResponse.catch(() => {});
-      const session = await continuing;
+      const session = await continuedAccount();
       if (lifetime.signal.aborted) throw new Error('This identity was closed. Reopen your account to continue.');
-      client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; accountUid = session.uid;
+      client = protectedClient; clientApplicationId = applicationId; grantedScopes = granted; expiresAtKai = grant.expiresAtKai; grantClock = clock; accountUid = session.uid;
       if(session.twinAccess!==null)confirmedTwinAccess=session.twinAccess;
       const {authorityDigest,applicationId:grantApp,keyId,artifactDigest,revocationHead}=grant;
       governanceGrants.set(protectedClient,{authorityDigest,applicationId:grantApp,keyId,artifactDigest,revocationHead});
@@ -606,7 +663,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const retention=await openOrganizerRetention({accountUid:uid,load:async()=>saved,save:(value,expected)=>storage.saveOrganizerDisplay(binding,value,expected),isOpen:()=>!lifetime.signal.aborted});assertOpen();
       const request=async(path:string,init?:RequestInit)=>{
         assertOpen();if(!permittedOrganizerPath(new URL(path,'https://receiz.com'),init?.method??'GET'))throw Error('ORGANIZER_PATH_DENIED');
-        if(!connected||sdk.receizKaiNow().pulse>=expires){connected=await connectClient(BANK_ORGANIZER_SCOPES,BANK_ORGANIZER_CONSENT);expires=expiresAtKai;}
+        if(!connected||grantKaiNow()>=expires){connected=await connectClient(BANK_ORGANIZER_SCOPES,BANK_ORGANIZER_CONSENT);expires=expiresAtKai;}
         assertOpen();const owner=clientAccounts.get(connected);if(owner?.accountUid!==uid||owner.applicationId!==BANK_APPLICATION_ID)throw Error('ORGANIZER_IDENTITY_CHANGED');const send=clientFetches.get(connected);if(!send)throw Error('ORGANIZER_TRANSPORT_UNAVAILABLE');return send(path,init);
       };
       organizerRequest=request;
@@ -654,7 +711,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         const twin=url.pathname===`/api/developers/twin/${presentationUsername}/message`&&verb==='POST'&&!url.search;
         const twinHistory=url.pathname===`/api/developers/twin/${presentationUsername}/conversations`&&verb==='GET'&&permittedTwinConversationRead(url,uid);
         if(!path.startsWith('/api/')||url.origin!=='https://receiz.com'||url.hash||!permittedNativeChatPath(url,verb)&&!search&&!twin&&!moneyJournal&&!twinHistory)throw Error('MESSAGING_PATH_DENIED');
-        const connected=sdk.receizKaiNow().pulse<messagingExpires?messagingClient:await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),owner=clientAccounts.get(connected);
+        const connected=grantKaiNow()<messagingExpires?messagingClient:await connectClient(BANK_MESSAGING_SCOPES,BANK_MESSAGING_CONSENT),owner=clientAccounts.get(connected);
         if(connected!==messagingClient){messagingClient=connected;messagingExpires=expiresAtKai;}
         assertOpen();if(owner?.accountUid!==uid||owner.applicationId!==BANK_APPLICATION_ID)throw Error('MESSAGING_IDENTITY_CHANGED');
         const send=clientFetches.get(connected);if(!send)throw Error('MESSAGING_TRANSPORT_UNAVAILABLE');

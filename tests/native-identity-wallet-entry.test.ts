@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import { ReceizHttpError } from '@receiz/sdk';
+import { canonicalizeReceizV122, proofAuthorityChallengeBasisV123, ReceizHttpError } from '@receiz/sdk';
 import { BANK_APPLICATION_ID, BANK_READ_SCOPES } from '../src/receiz/config';
 import {portfolioFixture} from './fixtures/market-portfolio';
 import {parseSharedWallet} from '../src/receiz/shared-wallet';
@@ -7,10 +7,10 @@ import { openCanonicalIdentity } from '../src/receiz/native-identity';
 
 // Real connection, parsing and adoption choreography; isolate admission,
 // encrypted persistence and authenticated HTTP at their external boundaries.
-const p = vi.hoisted(() => ({ localUid:'local-owner',recovered:null as unknown, switchRequest:vi.fn(), retainedPortfolio:null as unknown,cachedWallet:null as unknown,portfolioSave:vi.fn(), pulse: 100, scopes: vi.fn(), wallet: vi.fn(), continuation: vi.fn(), grant: vi.fn(), challenge: vi.fn(), request: vi.fn(), save: vi.fn() }));
+const p = vi.hoisted(() => ({ profileUpdate:vi.fn(), localUid:'local-owner',recovered:null as unknown, switchRequest:vi.fn(), retainedPortfolio:null as unknown,cachedWallet:null as unknown,portfolioSave:vi.fn(), pulse: 100, scopes: vi.fn(), wallet: vi.fn(), continuation: vi.fn(), grant: vi.fn(), challenge: vi.fn(), request: vi.fn(), save: vi.fn() }));
 vi.mock('../src/receiz/identity-vault', async original => ({ ...await original<typeof import('../src/receiz/identity-vault')>(), loadWalletObservation: async () => p.cachedWallet, loadMarketPortfolioState:async()=>p.retainedPortfolio,saveMarketPortfolioState:p.portfolioSave, loadAccountLedgerState: async () => null, saveWalletObservation: p.save }));
 vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
-  ReceizHttpError,
+  ReceizHttpError, canonicalizeReceizV122, proofAuthorityChallengeBasisV123,
   verifyReceizArtifact: async () => ({ status: 'verified-artifact' }),
   createReceizArtifactAdmissionEngine: () => async () => ({ verdict: 'canonical-identity' }),
   isSdkIssuedReceizArtifactAdmission: () => true,
@@ -22,7 +22,7 @@ vi.mock('../src/receiz/client', () => ({ loadReceiz: async () => ({
   sha256ReceizBytes: async () => 'a'.repeat(64),
   createReceizProofAuthorityChallenge: p.challenge,
   createReceizClient: ({ accessToken, applicationId = BANK_APPLICATION_ID }: { accessToken?: string; applicationId?: string } = {}) => accessToken
-    ? { auth: { grantedScopes: () => p.scopes(accessToken) }, connect: { wallet: () => p.wallet(applicationId, accessToken) }, request: p.request }
+    ? { profile:{update:p.profileUpdate}, auth: { grantedScopes: () => p.scopes(accessToken) }, connect: { wallet: () => p.wallet(applicationId, accessToken) }, request: p.request }
     : { request:p.switchRequest,identity: { continueReceizId: p.continuation, signLoginProof: async ({challengeB64Url}:{challengeB64Url:string}) => ({challengeB64Url,signatureB64Url:'synthetic-signature'}), exchangeProofAuthority: p.grant } },
 }) }));
 
@@ -37,6 +37,7 @@ function deferred<T>() {
 }
 beforeEach(() => {
   p.localUid='local-owner';p.recovered=null;p.switchRequest.mockReset();p.pulse = 100;p.retainedPortfolio=null;p.cachedWallet=null;p.portfolioSave.mockReset().mockResolvedValue(undefined);
+  p.profileUpdate.mockReset();
   p.scopes.mockReset().mockResolvedValue([...BANK_READ_SCOPES]);
   p.wallet.mockReset().mockResolvedValue(wallet());
   p.continuation.mockReset().mockResolvedValue({ ok: true, session: { uid: 'bound-user' }, wallet: wallet('foreign-user').wallet });
@@ -202,8 +203,82 @@ it('retries an authenticated zero-write unbound-key failure once after successfu
   } finally { identity.dispose(); }
 });
 
+it.each([20, 180])('saves the username once after correcting a shifted device clock to Receiz pulse %d', async observedAtKai => {
+  p.challenge.mockImplementation(({applicationId, consentStatementDigest, ttlPulses}) => ({
+    challenge:{
+      schema:'receiz.identity.proof-authority-challenge.v123',
+      audience:applicationId,
+      nonce:`nonce-${p.challenge.mock.calls.length}`,
+      issuedAtKai:p.pulse,
+      expiresAtKai:p.pulse+ttlPulses,
+      consent:{approved:true,statementDigest:consentStatementDigest},
+    },
+    challengeB64Url:'fixture',
+  }));
+  p.grant.mockRejectedValueOnce(new ReceizHttpError(400, {ok:false, code:'CHALLENGE_EXPIRED', writes:0, observedAtKai}));
+  p.grant.mockImplementationOnce(async ({applicationId, challenge, scopes}) => ({
+    applicationId, keyId:'fixture-key', artifactDigest:'a'.repeat(64), grantedScopes:scopes,
+    accessToken:'corrected-grant', expiresAtKai:challenge.expiresAtKai,
+  }));
+  vi.stubGlobal('dispatchEvent',vi.fn());
+  p.profileUpdate.mockResolvedValue({accountUid:'bound-user',profilePath:'/rion',profile:{profile:{userId:'bound-user',username:'rion',isPrivate:false}}});
+  const identity = await open();
+  try {
+    const editor = await identity.profile!();
+    p.pulse = 100_000;
+    await editor.update({username:'rion'});
+    expect(identity.knownProfile?.()?.username).toBe('rion');
+    expect(p.profileUpdate).toHaveBeenCalledExactlyOnceWith({username:'rion'});
+    expect(p.continuation).toHaveBeenCalledOnce();
+    expect(p.grant).toHaveBeenCalledTimes(2);
+    const first = p.grant.mock.calls[0][0].challenge, corrected = p.grant.mock.calls[1][0].challenge;
+    expect(first.issuedAtKai).toBe(100);
+    expect(corrected.issuedAtKai).toBe(observedAtKai);
+    expect(corrected.expiresAtKai).toBe(observedAtKai+30);
+    expect(corrected.nonce).not.toBe(first.nonce);
+    const signed = JSON.parse(Buffer.from(corrected.proof.challengeB64Url,'base64url').toString());
+    expect(signed).toMatchObject({issuedAtKai:observedAtKai, expiresAtKai:observedAtKai+30, nonce:corrected.nonce,
+      applicationId:BANK_APPLICATION_ID, artifactDigest:'a'.repeat(64), scopes:expect.arrayContaining(['profile'])});
+  } finally { identity.dispose();vi.unstubAllGlobals(); }
+});
+
+it('reuses Receiz Kai for the existing account continuation when both challenges rejected the phone clock', async () => {
+  const observedAtKai=15_000_000;
+  p.continuation.mockRejectedValueOnce(new ReceizHttpError(409,{error:'challenge_action_mismatch'}));
+  p.grant.mockRejectedValueOnce(new ReceizHttpError(400,{ok:false,code:'CHALLENGE_EXPIRED',writes:0,observedAtKai}));
+  p.grant.mockImplementationOnce(async ({applicationId, challenge, scopes}) => ({
+    applicationId,keyId:'fixture-key',artifactDigest:'a'.repeat(64),grantedScopes:scopes,
+    accessToken:'corrected-grant',expiresAtKai:challenge.expiresAtKai,
+  }));
+  const identity = await open();
+  try {
+    await identity.profile!();
+    expect(p.continuation).toHaveBeenCalledTimes(2);
+    expect(p.continuation.mock.calls[0][1]).not.toHaveProperty('nowMs');
+    const correctedMs=p.continuation.mock.calls[1][1].nowMs;
+    const {microPulsesSinceGenesisEpochMsV124}=await import('../native/receiz/packages/receiz-sdk/src/v124KaiBridge.generated');
+    const correctedPulse=Number(microPulsesSinceGenesisEpochMsV124(BigInt(correctedMs)) / 1_000_000n);
+    expect(Math.abs(correctedPulse-observedAtKai)).toBeLessThanOrEqual(1);
+    expect(p.grant).toHaveBeenCalledTimes(2);
+    expect(p.profileUpdate).not.toHaveBeenCalled();
+  } finally { identity.dispose(); }
+});
+
+it('does not loop if Receiz rejects the corrected challenge', async () => {
+  const cause = new ReceizHttpError(400, {ok:false, code:'CHALLENGE_EXPIRED', writes:0, observedAtKai:p.pulse});
+  p.grant.mockRejectedValue(cause);
+  const identity = await open();
+  try {
+    await expect(identity.profile!()).rejects.toBe(cause);
+    expect(p.grant).toHaveBeenCalledTimes(2);
+    expect(p.profileUpdate).not.toHaveBeenCalled();
+  } finally { identity.dispose(); }
+});
+
 it.each([
   ['replay', new ReceizHttpError(409, { ok: false, code: 'CHALLENGE_REPLAYED', writes: 0 })],
+  ['clock rejection without an observed pulse', new ReceizHttpError(400, {code:'CHALLENGE_EXPIRED', writes:0})],
+  ['clock rejection without zero-write evidence', new ReceizHttpError(400, {code:'CHALLENGE_EXPIRED', observedAtKai:20})],
   ['scope', new ReceizHttpError(403, { ok: false, code: 'SCOPE_NOT_GRANTED', writes: 0 })],
   ['transport', Error('GRANT_RESPONSE_LOST')],
   ['unbound without zero-write evidence', new ReceizHttpError(400, { ok: false, code: 'IDENTITY_NOT_BOUND' })],
