@@ -71,7 +71,7 @@ export function Ledger({ sourceReader,active = true, personalHistory = null, pri
   const relations=tab==='mine'?mineRelations:publicRelations;
   const mineGroups=useMemo(()=>groupLedgerPaymentRecords(mine),[mine]);
   const visibleMine=useMemo(()=>filterLedgerGroups(historyFilter==='all'?mineGroups:mineGroups.filter(group=>group.record.accountFlow===historyFilter),queries.mine),[mineGroups,historyFilter,queries.mine]);
-  const publicGroups=useMemo(()=>groupLedgerPaymentRecords(records),[records]);
+  const publicGroups=useMemo(()=>groupLedgerPaymentRecords(records,{matchPublicProofs:true}),[records]);
   const publicCategories=useMemo(()=>{
     const categories=Object.fromEntries(ACTIVITY_FILTERS.map(category=>[category,category==='all'?publicGroups:[]])) as Record<ActivityCategory,typeof publicGroups>;
     for(const group of publicGroups)categories[activityCategory(group.record)].push(group);

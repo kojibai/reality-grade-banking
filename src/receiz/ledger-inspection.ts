@@ -21,9 +21,11 @@ export interface LedgerFields { [key:string]:LedgerField; }
 /** Calendar scheduling actions can carry a slot in their occurrence field. The
  * displayed recording date follows the admitted action's existing coordinate. */
 export function ledgerRecordedTime(record: PublicRecord): string | null {
- if (record.source !== 'actions' || !record.kind.startsWith('calendar.event.')) return record.time;
+ const graphEvent = record.source === 'graph' && ['market-asset','card-transfer'].includes(record.kind);
+ if (!graphEvent && (record.source !== 'actions' || !record.kind.startsWith('calendar.event.'))) return record.time;
+ if (graphEvent && record.time) return record.time;
  const legacyCreation = /^calendar\.event\.(manual|message|embed|system)\.created$/.test(record.kind);
- if (!legacyCreation && !record.appointment && record.kind !== 'calendar.event.owner.created') return record.time;
+ if (!graphEvent && !legacyCreation && !record.appointment && record.kind !== 'calendar.event.owner.created') return record.time;
  const coordinate = record.kaiUpulse ?? (record.pulse && record.pulse !== '0' ? `${record.pulse}000000` : record.pulse);
  if (coordinate && /^(0|[1-9]\d{0,29})$/.test(coordinate)) {
   const time = marketUPulseTime(coordinate);

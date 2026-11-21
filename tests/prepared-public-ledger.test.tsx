@@ -11,6 +11,8 @@ import {readPublicLedgerDocumentSeed} from '../src/receiz/public-ledger-document
 import {PublicLedgerApp} from '../src/public-ledger/PublicLedgerApp';
 import {parsePublicNetworkCache} from '../src/receiz/public-network-cache';
 import {publicNetworkCacheWire} from '../src/receiz/public-network-cache-wire';
+import {parsePublicNetworkPage} from '../src/receiz/public-network';
+import {ledgerRecordedTime} from '../src/receiz/ledger-inspection';
 import {shippedMarketHistory} from '../src/receiz/market-projection/useMarketCapitalization';
 const target='imported-'+('c'.repeat(64)),title='New accepted public Original';
 const member=(id:string,label:string)=>({id:'profile:artist:'+id,receizId:id,title:label,visibility:'public',ownerUsername:'artist',createdAt:'2026-11-02T13:42:03.000Z',pulse:'14955302',profileOriginal:{hasPbiSignature:true,pbiReceiptHash:'e'.repeat(64),media:{kind:'image',originalDownloadSha256Hex:'a'.repeat(64)},verifyPath:'/v/20261102_0942/21188918/14955302?c=rpb2.carried'}});
@@ -40,6 +42,24 @@ describe('prepared public Ledger',()=>{
   const seed=await readPublicLedgerDocumentSeed();expect(seed?.snapshot.records.map(row=>row.id)).toContain('wallet:existing');expect(seed?.snapshot.records.filter(row=>row.sourceId==='profile:artist:'+target)).toHaveLength(1);expect(html).not.toContain('MUST_NOT_CARRY');expect(fetch).not.toHaveBeenCalled();expect(await readPublicLedgerDocumentSeed()).toBe(seed);
   expect(seed?.snapshot.records.find(row=>row.id==='wallet:existing')?.evidence.entryHash).toBe('b'.repeat(64));
   const first=renderToString(createElement(PublicLedgerApp,{active:false,initialSnapshot:seed!.snapshot,initialHref:'https://bankeiz.com/ledger/proofs/',initialFilter:'proofs',initialFormat:seed!}));expect(first).toContain(title);expect(fetch).not.toHaveBeenCalled();
+ });
+ it('renders one dated Ledger row for the same Original carried by the graph and the public catalog',async()=>{
+  const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('NO_NETWORK'));
+  const request=input(),value=JSON.parse(request.material),id='market-asset-profile:artist:'+target;
+  const [graph]=parsePublicNetworkPage('graph',{ok:true,ledgerRows:[{
+   id,ledgerKind:'market-asset',label:'Market Asset · '+title,eventKaiPulse:14955302,sortKaiPulse:14999999,
+  }]}).records;
+  expect(ledgerRecordedTime(graph)).toBe(new Date(1715323541888+Math.round(14955302*5236.06797749979)).toISOString());
+  value.ledgerCache.records.push(graph);
+  const material=JSON.stringify(value);
+  document.body.innerHTML=await renderPreparedDependentDocument({...request,material,generation:createHash('sha256').update(material).digest('hex')});
+  const seed=(await readPublicLedgerDocumentSeed())!,container=document.querySelector('#public-ledger-root')!;
+  expect(seed.snapshot.records.map(row=>row.id)).toContain(graph.id);
+  const matching=()=>[...container.querySelectorAll('.public-ledger-row')].filter(row=>row.textContent?.includes(title));
+  expect(matching()).toHaveLength(1);
+  expect(matching()[0].textContent).toContain('Nov 2, 2026');
+  expect(matching()[0].textContent).not.toContain('Time not supplied');
+  expect(fetch).not.toHaveBeenCalled();
  });
  it('refuses changed material, incomplete membership and missing retained history without fabricating it',async()=>{
   const good=input();await expect(renderPreparedDependentDocument({...good,generation:'0'.repeat(64)})).rejects.toThrow(/INPUT_INVALID/);

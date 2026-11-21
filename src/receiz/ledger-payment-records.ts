@@ -77,15 +77,32 @@ export function ledgerPaymentReference(record:PublicRecord):string|null{
  }
  references.set(record,key);return key;
 }
-export type LedgerPaymentGroup={record:PublicRecord;executionRecords:PublicRecord[]};
+export type LedgerPaymentGroup={record:PublicRecord;executionRecords:PublicRecord[];proofGraphRecord?:PublicRecord};
 /** Presentation grouping only: retain every original row and evidence field.
  * Contradictory amounts and ambiguous movement references stay separate. */
-export function groupLedgerPaymentRecords(records:readonly PublicRecord[]):LedgerPaymentGroup[]{
+export function groupLedgerPaymentRecords(records:readonly PublicRecord[],options?:{matchPublicProofs:true}):LedgerPaymentGroup[]{
  const movements=new Map<string,PublicRecord|null>(),executions=new Map<PublicRecord,PublicRecord[]>(),included=new Set<PublicRecord>();
- for(const record of records){if(ledgerPaymentRole(record)!=='movement')continue;for(const key of new Set([ledgerPaymentReference(record),record.evidence.transferId].filter((key):key is string=>!!key)))movements.set(key,movements.has(key)?null:record);}
- for(const record of records){if(ledgerPaymentRole(record)!=='execution')continue;const keys=[ledgerPaymentReference(record),record.evidence.publicTransferId].filter((key):key is string=>!!key),matches=new Set(keys.map(key=>movements.get(key)).filter((row):row is PublicRecord=>!!row)),movement=keys.some(key=>movements.get(key)===null)||matches.size!==1?undefined:[...matches][0];
+ const proofs=new Map<string,PublicRecord>(),graphRecords=new Map<PublicRecord,PublicRecord>();
+ for(const record of records){
+  if(options?.matchPublicProofs&&record.authority==='public-source-projection'&&record.source==='proofs'
+   &&record.kind==='proof recorded'&&record.valueOperands?.marketItemId===record.sourceId)proofs.set(record.sourceId,record);
+  if(ledgerPaymentRole(record)!=='movement')continue;
+  for(const key of new Set([ledgerPaymentReference(record),record.evidence.transferId].filter((key):key is string=>!!key)))movements.set(key,movements.has(key)?null:record);
+ }
+ for(const record of records){
+  // The graph prefixes the same catalog item ID. Keep its exact observation
+  // for inspection and links while showing one Original in the Ledger.
+  if(options?.matchPublicProofs&&record.authority==='public-source-projection'&&record.source==='graph'
+   &&record.kind==='market-asset'&&record.sourceId.startsWith('market-asset-')){
+   const proof=proofs.get(record.sourceId.slice('market-asset-'.length));
+   if(proof){graphRecords.set(proof,record);included.add(record);}
+  }
+  if(ledgerPaymentRole(record)!=='execution')continue;const keys=[ledgerPaymentReference(record),record.evidence.publicTransferId].filter((key):key is string=>!!key),matches=new Set(keys.map(key=>movements.get(key)).filter((row):row is PublicRecord=>!!row)),movement=keys.some(key=>movements.get(key)===null)||matches.size!==1?undefined:[...matches][0];
   if(!movement||movement.authority!==record.authority||movement.amountUsdCents===null||movement.amountUsdCents!==record.amountUsdCents||movement.valueOperands?.amountPhiMicro&&record.valueOperands?.amountPhiMicro&&movement.valueOperands.amountPhiMicro!==record.valueOperands.amountPhiMicro)continue;
   const group=executions.get(movement);if(group)group.push(record);else executions.set(movement,[record]);included.add(record);
  }
- return records.filter(record=>!included.has(record)).map(record=>({record,executionRecords:executions.get(record)??[]}));
+ return records.filter(record=>!included.has(record)).map(record=>{
+  const proofGraphRecord=graphRecords.get(record);
+  return {record,executionRecords:executions.get(record)??[],...(proofGraphRecord?{proofGraphRecord}:{})};
+ });
 }

@@ -24,5 +24,5 @@ function document(record:PublicRecord){
 export function filterLedgerGroups<T extends readonly LedgerPaymentGroup[]>(groups:T,query:string):T|LedgerPaymentGroup[]{
  const terms=normalize(query).trim().split(/\s+/).filter(Boolean);
  if(!terms.length)return groups;
- return groups.filter(group=>{let text=groupDocuments.get(group);if(text===undefined){text=[document(group.record),...group.executionRecords.map(document)].join('\n');groupDocuments.set(group,text);}return terms.every(term=>text!.includes(term));});
+ return groups.filter(group=>{let text=groupDocuments.get(group);if(text===undefined){text=[document(group.record),...(group.proofGraphRecord?[document(group.proofGraphRecord)]:[]),...group.executionRecords.map(document)].join('\n');groupDocuments.set(group,text);}return terms.every(term=>text!.includes(term));});
 }
