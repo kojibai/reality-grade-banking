@@ -14,7 +14,7 @@
       "recordAssetSignatureAdmission": "aa260850829234cae02509320d58a7c8eb6bd223a712c56d0af1bdc28794e478",
       "publishAssetSignature": "593ab26d01c8e319acba8af0e5a240fb5cce7a109823d75fe493aae3cf8ee2d5",
       "publishAssetToMarket": "97a5fa4f31cb7d7f05abbf879bbf4c94c767e06d060cc0592d06cd08bdb17a76",
-      "startAssetSignatureSync": "cbe6d3aacedbba189d91a52236c92c58e38ecc771da90148c7af3c3fe5c32d81"
+      "startAssetSignatureSync": "1a0dd4279e860c034f536d6ca9d368efa9b87a1c64d95f40b242b4b287eb65c1"
     },
     "src/receiz/created-asset-file.ts": {
       "prepareCreatedAssetPrimary": "8e5a90e0bfbafd77a5bf5f4300898f910d234d6d98113d2876370a914f203050",

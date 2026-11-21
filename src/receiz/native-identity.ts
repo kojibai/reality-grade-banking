@@ -1799,10 +1799,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           attempted.add(digest);try{await createAsset(null,undefined,false,undefined,undefined,digest);}catch{noteOpen();}
         }));
       }
-      // Only retained pending additions for this open account, never its whole
-      // Showcase or history. A saved signature resumes without an authorizer.
+      // Source delivery attempts do not acknowledge PBI. The signed publisher
+      // joins an active attempt for this exact Source and reuses its saved proof.
       for(const digest of adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid,username)){
-        if(attempted.has(digest))continue;
         noteOpen();try{await publishAssetSignature(digest,true);}catch{noteOpen();}
       }
     })();assetSignatureSync=attempt;

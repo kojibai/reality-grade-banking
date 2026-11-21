@@ -180,3 +180,39 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
  const reopened=await cold.connectedComposer.createConnectedAssetPublicationRuntime({identity:new Uint8Array(f.identity.bytes),passphrase:f.identity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:forbidden,sealDocument:forbidden});
  expect(await reopened.readSignedSource(prepared.artifact)).toEqual({pbiReceiptHash:expectedPbi});expect(forbidden).not.toHaveBeenCalled();expect(sealDocument).toHaveBeenCalledTimes(sealsBeforeCold);expect(ceremonies).toBe(1);
 },60000);
+
+it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the same Source is %s', async phase => {
+ const path = new URL('../src/receiz/native-identity.ts', import.meta.url);
+ const file = ts.createSourceFile(path.pathname, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
+ let statement = '';
+ function find(node: ts.Node) {
+  if (ts.isFunctionDeclaration(node) && node.name?.text === 'startAssetSignatureSync') statement = node.getText(file);
+  ts.forEachChild(node, find);
+ }
+ find(file);
+ expect(statement).toBeTruthy();
+ statement = statement.replace(/import\('\.(\/[^']+)'\)/g, "modules['.$1']");
+ const compiled = ts.transpileModule(statement, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+ const digest = 'a'.repeat(64), owner = 'artist.receiz.id', account = 'account-id';
+ const resumeSignature = vi.fn(async () => null), resumeSource = vi.fn(async () => undefined);
+ const modules = {
+  './asset-publication-adoption': {
+   retainedAssetPublicationDigests: () => [],
+   pendingAssetPublicationSignatures: () => [digest],
+  },
+  './asset-publication': {
+   readPendingAssetPublicationDigests: (_saved: unknown, _owner: string, _limit: number, after?: string) => after ? [] : [digest],
+   isAssetPublicationDeliveryActive: () => false,
+  },
+  './identity-vault': Promise.resolve({ loadAssetPublicationState: async () => null }),
+ };
+ const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'createAsset', 'publishAssetSignature', `
+  let assetSignatureSync;
+  const navigator = { onLine: true }, publicAccountUsername = value => value, noteOpen = () => {};
+  ${compiled}
+  return source => { startAssetSignatureSync(source); return assetSignatureSync; };
+ `)(modules, new AbortController(), { artifactOwnerReceizId: owner }, account, 'artist', resumeSource, resumeSignature);
+ await run(phase === 'creating' ? digest : undefined);
+ expect(resumeSource).toHaveBeenCalledTimes(phase === 'recovering' ? 1 : 0);
+ expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest, true);
+});
