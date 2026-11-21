@@ -181,7 +181,7 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
  expect(await reopened.readSignedSource(prepared.artifact)).toEqual({pbiReceiptHash:expectedPbi});expect(forbidden).not.toHaveBeenCalled();expect(sealDocument).toHaveBeenCalledTimes(sealsBeforeCold);expect(ceremonies).toBe(1);
 },60000);
 
-it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the same Source is %s', async phase => {
+it.each(['creating', 'recovering', 'missing its display row', 'continuing after a checkpoint read fails'] as const)('resumes retained PBI even when the same Source is %s', async phase => {
  const path = new URL('../src/receiz/native-identity.ts', import.meta.url);
  const file = ts.createSourceFile(path.pathname, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
  let statement = '';
@@ -196,21 +196,26 @@ it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the
  const digest = 'a'.repeat(64), owner = 'artist.receiz.id', account = 'account-id';
  const preparedUsername = vi.fn(async () => 'artist');
  const resumeSignature = vi.fn(async () => {
-  if (phase === 'recovering') expect(preparedUsername).toHaveBeenCalledOnce();
+  if (phase !== 'creating') expect(preparedUsername).toHaveBeenCalledOnce();
   return null;
  }), resumeSource = vi.fn(async () => undefined);
  const pendingSignatures = vi.fn((identityDigest: string, accountUid: string, username?: string) =>
-  identityDigest === digest && accountUid === account && (username === undefined || username === 'artist') ? [digest] : []);
+  phase !== 'missing its display row' && identityDigest === digest && accountUid === account && (username === undefined || username === 'artist') ? [digest] : []);
  const modules = {
   './asset-publication-adoption': {
    retainedAssetPublicationDigests: () => [],
    pendingAssetPublicationSignatures: pendingSignatures,
+   hasObservedAssetPublicationSignature: () => false,
   },
   './asset-publication': {
-   readPendingAssetPublicationDigests: (_saved: unknown, _owner: string, _limit: number, after?: string) => after ? [] : [digest],
+   readPendingAssetPublicationDigests: (_saved: unknown, _owner: string, _limit: number, after?: string) => after || phase === 'continuing after a checkpoint read fails' ? [] : [digest],
    isAssetPublicationDeliveryActive: () => false,
+   readPendingAssetSignatureSources: (state: unknown) => state ? [{sourceDigest:digest,pbiReceiptHash:'e'.repeat(64)}] : [],
   },
-  './identity-vault': Promise.resolve({ loadAssetPublicationState: async () => null }),
+  './identity-vault': Promise.resolve({ loadAssetPublicationState: async () => {
+   if (phase === 'continuing after a checkpoint read fails') throw Error('CHECKPOINT_READ_FAILED');
+   return phase === 'missing its display row' ? { sourceDigest: digest } : null;
+  } }),
  };
  const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'confirmedUsername', 'prepareReceivingUsername', 'createAsset', 'publishAssetSignature', `
   let assetSignatureSync;
@@ -218,11 +223,11 @@ it.each(['creating', 'recovering'] as const)('resumes retained PBI even when the
   ${compiled}
   return source => { startAssetSignatureSync(source); return assetSignatureSync; };
  `)(modules, new AbortController(), { artifactOwnerReceizId: owner, artifactSha256: digest }, account,
-  phase === 'recovering' ? 'receiz_saved_device_name' : 'artist', phase === 'recovering' ? null : 'artist',
+  phase === 'creating' ? 'artist' : 'receiz_saved_device_name', phase === 'creating' ? 'artist' : null,
   preparedUsername, resumeSource, resumeSignature);
  await run(phase === 'creating' ? digest : undefined);
- expect(resumeSource).toHaveBeenCalledTimes(phase === 'recovering' ? 1 : 0);
- expect(preparedUsername).toHaveBeenCalledTimes(phase === 'recovering' ? 1 : 0);
+ expect(resumeSource).toHaveBeenCalledTimes(phase === 'creating' || phase === 'continuing after a checkpoint read fails' ? 0 : 1);
+ expect(preparedUsername).toHaveBeenCalledTimes(phase === 'creating' ? 0 : 1);
  expect(pendingSignatures).toHaveBeenCalledExactlyOnceWith(digest, account);
  expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest, true);
 });

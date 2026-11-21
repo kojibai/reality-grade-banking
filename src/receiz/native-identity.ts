@@ -1745,7 +1745,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const adoption=await import('./asset-publication-adoption');adoption.acknowledgeAssetPublication(digest,receipt,signaturePbiReceiptHash);
     if(receipt.status==='published'){
       const {acknowledgePublishedAssetSource}=await import('./asset-publication'),{loadAssetPublicationState,saveAssetPublicationState}=await import('./identity-vault');noteOpen();
-      try{await acknowledgePublishedAssetSource({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),lock:async run=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())},digest,receipt);}catch{/* A delivered canonical Source does not depend on the editor checkpoint. */}noteOpen();
+      try{await acknowledgePublishedAssetSource({ownerReceizId:binding.artifactOwnerReceizId,assertOpen:noteOpen,read:()=>loadAssetPublicationState(binding),write:(next,previous)=>saveAssetPublicationState(binding,next,previous),lock:async run=>await navigator.locks.request(`receiz-bank-asset-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run())},digest,receipt,signaturePbiReceiptHash);}catch{/* A delivered canonical Source does not depend on the editor checkpoint. */}noteOpen();
     }
     // A pending reply can follow accepted public Source (for example a cold
     // saved-page repair). Reconcile its exact public observation as well.
@@ -1791,8 +1791,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       // New local creation and page opening never await these retries. Two
       // exact sources may reopen together; the native append lock still owns
       // their causal publication order.
-      const {readPendingAssetPublicationDigests,isAssetPublicationDeliveryActive}=await import('./asset-publication');
-      const saved=await import('./identity-vault').then(vault=>vault.loadAssetPublicationState(binding));noteOpen();
+      const {readPendingAssetPublicationDigests,readPendingAssetSignatureSources,isAssetPublicationDeliveryActive}=await import('./asset-publication');
+      const saved=await import('./identity-vault').then(vault=>vault.loadAssetPublicationState(binding)).catch(()=>{noteOpen();return null;});noteOpen();
       const attempted=new Set<string>(typeof eventOrSource==='string'?[eventOrSource]:[]);let after:string|undefined;
       for(;;){
         const batch=readPendingAssetPublicationDigests(saved,binding.artifactOwnerReceizId,16,after);if(!batch.length)break;
@@ -1806,8 +1806,11 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       // joins an active attempt for this exact Source and reuses its saved proof.
       // A cold identity may still expose its generated handle. Select
       // by the original account binding and obtain a route only for a retry.
-      const signatures=adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid);
-      if(signatures.length&&!confirmedUsername){await prepareReceivingUsername();noteOpen();}
+      const signatures=new Set(adoption.pendingAssetPublicationSignatures(binding.artifactSha256,uid));
+      for(const {sourceDigest,pbiReceiptHash} of readPendingAssetSignatureSources(saved,binding.artifactOwnerReceizId)){
+        if(!adoption.hasObservedAssetPublicationSignature(binding.artifactSha256,uid,sourceDigest,pbiReceiptHash))signatures.add(sourceDigest);
+      }
+      if(signatures.size&&!confirmedUsername){await prepareReceivingUsername();noteOpen();}
       for(const digest of signatures){
         noteOpen();try{await publishAssetSignature(digest,true);}catch{noteOpen();}
       }

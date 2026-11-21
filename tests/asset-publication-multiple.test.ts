@@ -45,12 +45,19 @@ it('updates only the archived Original on late PBI, dismissal and delivery, pres
  expect(f.calls.filter(digest=>digest===first.digest)).toHaveLength(1);
 });
 
-it('retains a confirmed exact receipt for an in-flight result after pruning its archive and rejects a late downgrade',async()=>{
+it('retains pending PBI through an unsigned acknowledgment and prunes after exact signed delivery',async()=>{
  const f=fixture(),first=await f.api.createLocal({title:'Old confirmed'}),second=await f.api.createLocal({title:'Current'});
  await vi.waitFor(()=>expect(f.waiting.has(first.digest)).toBe(true));
  await publication.retainAssetCreationSignature(f.ports,first.digest,'e'.repeat(64));await publication.dismissAssetCreation(f.ports,first.digest);
  const joined=f.api.resume(first.digest);await vi.waitFor(()=>expect(f.calls.filter(digest=>digest===first.digest)).toHaveLength(1));
  await publication.acknowledgePublishedAssetSource(f.ports,first.digest,receipt);
+ const signedSource={sourceDigest:first.digest,pbiReceiptHash:'e'.repeat(64)};
+ expect(publication.readPendingAssetSignatureSources(f.state,owner)).toEqual([signedSource]);
+ expect(publication.readPendingAssetPublicationDigests(f.state,owner)).toEqual([second.digest]);
+ await publication.acknowledgePublishedAssetSource(f.ports,first.digest,receipt,'d'.repeat(64));
+ expect(publication.readPendingAssetSignatureSources(f.state,owner)).toEqual([signedSource]);
+ await publication.acknowledgePublishedAssetSource(f.ports,first.digest,receipt,signedSource.pbiReceiptHash);
+ expect(publication.readPendingAssetSignatureSources(f.state,owner)).toEqual([]);
  expect(f.state?.pendingSources??[]).toEqual([]);expect(f.state?.sourceDigest).toBe(second.digest);
  f.waiting.get(first.digest)!({status:'pending',code:'LATE_UNSIGNED_RESPONSE'});
  expect(await joined).toMatchObject({digest:first.digest,pbiSigned:true,publication:{status:'published',showcaseArtifactDigest:receipt.artifactDigest}});
@@ -66,7 +73,26 @@ it('cold retries both exact retained Originals without resealing and coalesces d
  const [a,b]=await Promise.all([cold.resume(first.digest),cold.resume(first.digest)]);
  expect(a).toMatchObject({digest:first.digest,pbiSigned:true});expect(b.digest).toBe(first.digest);expect(calls).toEqual([first.digest]);
  expect((await cold.resume(second.digest)).digest).toBe(second.digest);expect(calls).toEqual([first.digest,second.digest]);
- expect(f.seals).toBe(2);expect(f.sources.size).toBe(2);expect(snapshot?.pendingSources??[]).toEqual([]);
+ expect(f.seals).toBe(2);expect(f.sources.size).toBe(2);
+ expect(publication.readPendingAssetPublicationDigests(snapshot,owner)).toEqual([]);
+ expect(publication.readPendingAssetSignatureSources(snapshot,owner)).toEqual([{sourceDigest:first.digest,pbiReceiptHash:'e'.repeat(64)}]);
+});
+
+it('allows the same ordinary creation intent after an archived Original has only PBI delivery pending', async () => {
+ const f=fixture();
+ const create=publication.createAssetPublication({
+  ...f.dependencies,
+  seal:async(intent:unknown)=>new File([JSON.stringify(intent),'\n',String(f.sources.size)],'original.receizbundle'),
+  readIntent:async(file:File)=>JSON.parse((await file.text()).split('\n')[0]!),
+  publish:async()=>receipt,
+ });
+ const intent={title:'Repeated title'};
+ const first=await create.create(intent);
+ await publication.retainAssetCreationSignature(f.ports,first.digest,'e'.repeat(64));
+ await create.create({title:'Independent Original'});
+ const newest=await create.create(intent);
+ expect(newest.digest).not.toBe(first.digest);
+ expect(publication.readPendingAssetSignatureSources(f.state,owner)).toEqual([{sourceDigest:first.digest,pbiReceiptHash:'e'.repeat(64)}]);
 });
 
 it('shares an explicit cold retry before reopening so a fast accepted receipt cannot retire another caller',async()=>{

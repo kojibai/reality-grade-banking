@@ -1,6 +1,6 @@
 export type AssetCreationProgress={stage:'preparing'|'sealing'|'saving';ratio?:number};
 export type AssetPublicationReceipt={status:'published';artifactDigest:string;operationCount:number;visibleChildCount:number}|{status:'pending'|'rejected';code:string};
-export type AssetPublicationSourceState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;creationDismissed?:true;privateOriginalDeliveryPending?:true};
+export type AssetPublicationSourceState={schema:'bank.asset-publication.v1';ownerReceizId:string;intentDigest:string;sourceDigest:string;filename:string;mimeType:string;status:'pending'|'published'|'rejected';receipt?:AssetPublicationReceipt;pbiReceiptHash?:string;pbiDeliveryReceiptHash?:string;creationDismissed?:true;privateOriginalDeliveryPending?:true};
 export type AssetPublicationState=AssetPublicationSourceState&{pendingSources?:readonly AssetPublicationSourceState[]};
 export type AssetPublicationDelivery={status:'pending'|'published'|'rejected';showcaseArtifactDigest?:string;code?:string};
 type Dependencies={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:AssetPublicationState,previous:unknown):Promise<void>;seal(intent:unknown):Promise<File>;retain(source:File):Promise<string>;restore(digest:string,filename:string,mimeType:string):Promise<File>;readIntent(source:File):Promise<unknown>;readSignature?(source:File):Promise<{pbiReceiptHash:string}|null>;privateOriginalDelivery?(source:File):Promise<(()=>Promise<void>)|null>;publish(source:File):Promise<AssetPublicationReceipt>};
@@ -35,7 +35,9 @@ export function retainAssetPublicationDelivery(previous:AssetPublicationDelivery
 const projectReceipt=projectAssetPublicationReceipt;
 const currentSource=(state:AssetPublicationState):AssetPublicationSourceState=>{const{pendingSources:_pending,...current}=state;return current;};
 const selectedSource=(state:AssetPublicationState|null,digest:string)=>state?.sourceDigest===digest?currentSource(state):state?.pendingSources?.find(source=>source.sourceDigest===digest);
-const unfinished=(source:AssetPublicationSourceState)=>source.status!=='published'||source.privateOriginalDeliveryPending===true;
+const unfinishedSource=(source:AssetPublicationSourceState)=>source.status!=='published'||source.privateOriginalDeliveryPending===true;
+const unfinishedSignature=(source:AssetPublicationSourceState)=>!!source.pbiReceiptHash&&source.pbiReceiptHash!==source.pbiDeliveryReceiptHash;
+const unfinished=(source:AssetPublicationSourceState)=>unfinishedSource(source)||unfinishedSignature(source);
 /** Only unfinished delivery metadata is archived. Exact Original and native PBI
  * bytes remain in their existing custody after a confirmed entry is retired. */
 function replaceSource(state:AssetPublicationState,next:AssetPublicationSourceState):AssetPublicationState{
@@ -50,13 +52,14 @@ function strongestReceipt(previous:AssetPublicationSourceState,next:AssetPublica
 /** A later canonical signed-publication acknowledgment also includes its exact
  * Original. Settle only that saved creation so cold reopening cannot restore an
  * older pending checkpoint; a different/newer creation is never overwritten. */
-export async function acknowledgePublishedAssetSource(dependencies:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,sourceDigest:string,value:AssetPublicationReceipt):Promise<void>{
+export async function acknowledgePublishedAssetSource(dependencies:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,sourceDigest:string,value:AssetPublicationReceipt,pbiReceiptHash?:string):Promise<void>{
  const receipt=readReceipt(value);if(receipt.status!=='published')return;
  dependencies.assertOpen();await dependencies.lock(async()=>{
   dependencies.assertOpen();const prior=await dependencies.read(),state=readAssetPublicationState(prior,dependencies.ownerReceizId);dependencies.assertOpen();
   const selected=selectedSource(state,sourceDigest);if(!state||!selected)return;
   const next={...selected,status:'published' as const,receipt:strongestReceipt(selected,receipt)};
-  if(state.sourceDigest!==sourceDigest||selected.status!=='published'||next.receipt!==selected.receipt)await dependencies.write(replaceSource(state,next),prior);
+  if(pbiReceiptHash&&selected.pbiReceiptHash===pbiReceiptHash)next.pbiDeliveryReceiptHash=pbiReceiptHash;
+  if(state.sourceDigest!==sourceDigest||selected.status!=='published'||next.receipt!==selected.receipt||next.pbiDeliveryReceiptHash!==selected.pbiDeliveryReceiptHash)await dependencies.write(replaceSource(state,next),prior);
   rememberFlight(next);dependencies.assertOpen();
  });
 }
@@ -64,7 +67,7 @@ export async function acknowledgePublishedAssetSource(dependencies:Pick<Dependen
  * append. Carry its exact source-bound result through creation recovery. */
 export async function retainAssetCreationSignature(d:Pick<Dependencies,'ownerReceizId'|'assertOpen'|'lock'|'read'|'write'>,digest:string,pbiReceiptHash:string){
  if(!/^[a-f0-9]{64}$/.test(digest)||!/^[a-f0-9]{64}$/.test(pbiReceiptHash))throw Error('BANK_ASSET_SIGNATURE_STATE_INVALID');
- d.assertOpen();await d.lock(async()=>{d.assertOpen();const prior=await d.read(),state=readAssetPublicationState(prior,d.ownerReceizId),selected=selectedSource(state,digest);if(!state||!selected||selected.pbiReceiptHash===pbiReceiptHash)return;const next={...selected,pbiReceiptHash};await d.write(replaceSource(state,next),prior);rememberFlight(next);d.assertOpen();});
+ d.assertOpen();await d.lock(async()=>{d.assertOpen();const prior=await d.read(),state=readAssetPublicationState(prior,d.ownerReceizId),selected=selectedSource(state,digest);if(!state||!selected||selected.pbiReceiptHash===pbiReceiptHash)return;const {pbiDeliveryReceiptHash:_previousDelivery,...unsignedDelivery}=selected;const next={...unsignedDelivery,pbiReceiptHash};await d.write(replaceSource(state,next),prior);rememberFlight(next);d.assertOpen();});
 }
 /** Finishing an editor visit does not acknowledge public delivery or remove
  * the retained source. A different/newer creation can never be dismissed. */
@@ -82,7 +85,7 @@ export function readAssetPublicationState(value:unknown,ownerReceizId?:string):A
  const state=value as AssetPublicationState;
  const validate=(source:AssetPublicationSourceState)=>{
   if(!source||source.schema!=='bank.asset-publication.v1'||typeof source.ownerReceizId!=='string'||source.ownerReceizId!==(ownerReceizId??state.ownerReceizId)||!hex(source.intentDigest)||!hex(source.sourceDigest)||typeof source.filename!=='string'||!source.filename||typeof source.mimeType!=='string'||!source.mimeType||!['pending','published','rejected'].includes(source.status))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
-  if(source.pbiReceiptHash!==undefined&&!hex(source.pbiReceiptHash)||source.creationDismissed!==undefined&&source.creationDismissed!==true||source.privateOriginalDeliveryPending!==undefined&&source.privateOriginalDeliveryPending!==true)throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
+  if(source.pbiReceiptHash!==undefined&&!hex(source.pbiReceiptHash)||source.pbiDeliveryReceiptHash!==undefined&&(!hex(source.pbiDeliveryReceiptHash)||source.pbiDeliveryReceiptHash!==source.pbiReceiptHash||source.status!=='published')||source.creationDismissed!==undefined&&source.creationDismissed!==true||source.privateOriginalDeliveryPending!==undefined&&source.privateOriginalDeliveryPending!==true)throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
   if(source.receipt)readReceipt(source.receipt);
   if(source.status==='published'&&source.receipt?.status!=='published'||source.status==='rejected'&&source.receipt?.status!=='rejected')throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  };
@@ -100,9 +103,15 @@ export const hasPendingAssetPublication=(value:unknown)=>{const state=readAssetP
 export function readPendingAssetPublicationDigests(value:unknown,ownerReceizId?:string,limit=16,afterSourceDigest?:string):readonly string[]{
  if(!Number.isSafeInteger(limit)||limit<1||limit>64||afterSourceDigest!==undefined&&!hex(afterSourceDigest))throw Error('BANK_ASSET_PUBLICATION_STATE_INVALID');
  const state=readAssetPublicationState(value,ownerReceizId),selected:string[]=[];
- const consider=(source:AssetPublicationSourceState)=>{if(!unfinished(source)||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
+ const consider=(source:AssetPublicationSourceState)=>{if(!unfinishedSource(source)||afterSourceDigest&&source.sourceDigest<=afterSourceDigest)return;const index=selected.findIndex(digest=>digest>source.sourceDigest);if(index<0){if(selected.length<limit)selected.push(source.sourceDigest);}else{selected.splice(index,0,source.sourceDigest);if(selected.length>limit)selected.pop();}};
  if(state){consider(state);for(const source of state.pendingSources??[])consider(source);}
  return selected;
+}
+/** Exact saved signing intents use the existing encrypted creation checkpoint.
+ * Native custody reopens the bytes and verifies the proof before transport. */
+export function readPendingAssetSignatureSources(value:unknown,ownerReceizId:string){
+ const state=readAssetPublicationState(value,ownerReceizId);
+ return state?[state,...state.pendingSources??[]].flatMap(source=>unfinishedSignature(source)?[{sourceDigest:source.sourceDigest,pbiReceiptHash:source.pbiReceiptHash!}]:[]):[];
 }
 function readReceipt(value:unknown):AssetPublicationReceipt{
  const receipt=value as AssetPublicationReceipt;
@@ -139,7 +148,7 @@ export function createAssetPublication(dependencies:Dependencies){
   const held=await dependencies.lock(async()=>{
    dependencies.assertOpen();const prior=await dependencies.read(),root=readAssetPublicationState(prior,dependencies.ownerReceizId);let file:File|undefined,privateDelivery:(()=>Promise<void>)|null|undefined;
    let state=intentDigest===null?sourceDigest?selectedSource(root,sourceDigest):root?currentSource(root):undefined:
-    root?[currentSource(root),...root.pendingSources??[]].find(source=>source.intentDigest===intentDigest):undefined;
+    root?[currentSource(root),...(root.pendingSources??[]).filter(unfinishedSource)].find(source=>source.intentDigest===intentDigest):undefined;
    const flight=state?deliveries.get(deliveryKey(dependencies.ownerReceizId,state.sourceDigest)):undefined;
    if(!state&&intentDigest===null)throw Error('BANK_ASSET_PUBLICATION_SOURCE_UNAVAILABLE');
    if(!state){
