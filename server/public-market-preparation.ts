@@ -6,6 +6,7 @@ import {compatibleShareInventory} from '../src/receiz/market-share-inventory.js'
 import {mergePublicSports,retainPublicSportsInput} from '../src/receiz/public-sports.js';
 import {curatePublicMarketMembership,readReceizPublicMarketSource} from './public-market.js';
 import {buildMarketHistory} from '../src/receiz/market-projection/build-history.js';
+import {sameShareInventoryPrefix} from '../src/receiz/market-projection/history-additions.js';
 import {parseMarketHistory} from '../src/receiz/market-projection/history.js';
 import {packMarketHistory} from '../src/receiz/market-projection/history-wire.js';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source.js';
@@ -119,16 +120,16 @@ export async function buildMembershipOnlyPublicMarketState(input:{membership:Rec
  // transition. Preparing a build seed does not need a fresh clock or Source.
  const pulse=catalog.items.reduce((latest,item)=>Math.max(latest,item.livePulseSeed?.claimPulse??0,item.shareInventory?Number((BigInt(item.shareInventory.observedAtKaiUPulse)+999999n)/1000000n):0),Math.max(capitalization.serverPulse,previousHistory.summary.serverPulse,previousShares.summary.serverPulse));
  const history=await buildMarketHistory(capitalization,previousHistory,undefined,undefined,{catalog,pulse,priorInput:{source:capitalization,catalog:prior},requireRetained:true});
- // Membership and newly received quote observations are separate supported
- // transitions. Keep old members' retained pricing for the append, then let
- // the same-membership operator apply the supplied observations. Combining
- // both can mistake a newly received trade for an altered retained prefix.
+ // Include new observations that preserve the completed share prefix in the
+ // membership append. Only observations within the retained range need the
+ // separate quote transition, using its existing historical replay rules.
  const known=new Map(prior.items.map(item=>[item.id,item]));let quotesChanged=false;
  const membershipCatalog={...catalog,items:catalog.items.map(item=>{
   const inventory=compatibleShareInventory(item,known.get(item.id)?.shareInventory);
   if(!inventory||!item.shareInventory)return item;
   const pricing=(value:typeof inventory)=>[value.observedAtKaiUPulse,value.outstandingShareQuantityMicro,value.availableShareQuantityMicro,value.releaseCapitalization??null,value.family==='generic'?value.capitalizationHistory??[]:value.history??[]];
-  if(JSON.stringify(pricing(inventory))===JSON.stringify(pricing(item.shareInventory)))return item;
+  if(JSON.stringify(pricing(inventory))===JSON.stringify(pricing(item.shareInventory))||
+   sameShareInventoryPrefix(inventory,item.shareInventory,previousShares.summary.serverPulse))return item;
   quotesChanged=true;return {...item,shareInventory:inventory};
  })};
  let shareHistory=await buildMarketHistory(capitalization,previousShares,undefined,undefined,{catalog:membershipCatalog,pulse,capitalization:true,priorInput:{source:capitalization,catalog:prior},requireRetained:true});

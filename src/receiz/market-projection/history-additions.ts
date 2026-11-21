@@ -25,6 +25,9 @@ function inventoryPrefix(inventory:PublicShareInventory,last:number){
  const intervals:[string,string|null][]=[];for(const [at,quantity]of [...points].sort((a,b)=>a[0]<b[0]?-1:1))if(!intervals.length||intervals.at(-1)![1]!==quantity)intervals.push([String(at),quantity]);
  return {family:inventory.family,quantityScope:inventory.quantityScope,nativeAssetId:inventory.nativeAssetId,issuanceSourceSha256:inventory.issuanceSourceSha256,intervals,anchors:[...anchors].map(([at,price])=>[String(at),price])};
 }
+export function sameShareInventoryPrefix(previous:PublicShareInventory,current:PublicShareInventory,last:number){
+ return same(inventoryPrefix(previous,last),inventoryPrefix(current,last));
+}
 const identity=(item:PublicMarketPricingItem)=>item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;
 /** Shared membership, binding and prior-row checks for Original additions. */
 function originalAdditionInputs(beforeSource:MarketCapSource,source:MarketCapSource,before:PublicMarketPricingCatalog,catalog:PublicMarketPricingCatalog){
@@ -64,7 +67,7 @@ export function marketHistoryOriginalAdditions(beforeSource:MarketCapSource,sour
  const previous=publicCapitalizationAssets(publicCatalogAtPulse(before,beforeSource,last)).items,next=publicCapitalizationAssets(publicCatalogAtPulse(catalog,source,source.serverPulse)).items,selected=new Map(next.map(item=>[identity(item),item]));
  for(const item of previous){const current=selected.get(identity(item));if(!current)return null;
   if(item.category==='sports'){if(!same(priorMembership.get(item.id),membership.get(current.id)))return null;continue;}
-  if(current.id!==item.id||!same(pricingSeed(publicAssetPulseSeed(item,beforeSource)),pricingSeed(publicAssetPulseSeed(current,source)))||!same(inventoryPrefix(item.shareInventory!,last),inventoryPrefix(current.shareInventory!,last)))return null;
+  if(current.id!==item.id||!same(pricingSeed(publicAssetPulseSeed(item,beforeSource)),pricingSeed(publicAssetPulseSeed(current,source)))||!sameShareInventoryPrefix(item.shareInventory!,current.shareInventory!,last))return null;
  }
  const prior=new Set(previous.map(identity)),added=next.filter(item=>!prior.has(identity(item)));
  if(added.some(item=>item.category!=='proof'||!publicAssetPulseSeed(item,source)))return null;

@@ -52,3 +52,40 @@ it('adopts new Originals and newly received quote observations through their exi
  const retained=new Map(Object.values(shares.series).flat().map(point=>[point.pulse,point.usdCents]));for(const points of Object.values(parseMarketHistory(reopened.shareHistory).series))for(const point of points)if(retained.has(point.pulse))expect(point.usdCents).toBe(retained.get(point.pulse));
  expect(fetch).not.toHaveBeenCalled();
 });
+
+it('appends an intervening share quantity observation with the new membership', async () => {
+ const values = await input();
+ const old = parsePublicMarket(values.previous,values.previous.snapshot).items[0];
+ const inventory = old.shareInventory!;
+ const observedAtKaiUPulse = String(BigInt(pulse+1)*1000000n+123n);
+ const held = {...inventory,availableShareQuantityMicro:'0'};
+ values.previous.snapshot.data.liveMarkets = [{
+  itemId:old.id,visibility:'public',priceUsd:100,shareInventory:held,
+ }];
+ const prior = parsePublicMarket(values.previous,values.previous.snapshot);
+ const source = values.capitalization.marketCapProjection;
+ values.shareHistory = (await buildMarketHistory(source,null,undefined,undefined,{catalog:prior,pulse,capitalization:true}))!;
+ values.snapshot.data.liveMarkets.push({
+  itemId:old.id,visibility:'public',priceUsd:100,
+  shareInventory:{...held,observedAtKaiUPulse,availableShareQuantityMicro:'2000000'},
+ });
+
+ const result = await buildMembershipOnlyPublicMarketState(values);
+ const catalog = parsePublicMarket(result.source,result.source.snapshot);
+ const shares = parseMarketHistory(result.shareHistory);
+ const expected = (await buildMarketHistory(source,null,undefined,undefined,{
+  catalog,pulse:shares.summary.serverPulse,capitalization:true,
+ }))!;
+
+ expect(catalog.items.find(item=>item.id===old.id)?.shareInventory).toMatchObject({
+  observedAtKaiUPulse,availableShareQuantityMicro:'2000000',
+ });
+ expect(shares.summary).toEqual(expected.summary);
+ expect(shares.summary.serverPulse).toBe(pulse+3);
+ const heldPoints = new Map(Object.values(values.shareHistory.series).flat().map(point=>[point.pulse,point.usdCents]));
+ for (const points of Object.values(shares.series)) {
+  for (const point of points) {
+   if (heldPoints.has(point.pulse)) expect(point.usdCents).toBe(heldPoints.get(point.pulse));
+  }
+ }
+});
