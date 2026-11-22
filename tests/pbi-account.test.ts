@@ -27,7 +27,7 @@ it('keeps the exact retained signer when PBI recovers that same account',async()
  await expect(openPbiAccount(true,checkpoint)).resolves.toBe(retained);
  expect(retained.prepareAccountView).toHaveBeenCalledExactlyOnceWith({resume:true});
  expect(checkpoint).toHaveBeenCalledOnce();
- expect(p.recover).toHaveBeenCalledOnce();
+ expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true});
  expect(p.enroll).not.toHaveBeenCalled();
  expect(p.createIdentity).not.toHaveBeenCalled();
  expect(p.bridge).not.toHaveBeenCalled();

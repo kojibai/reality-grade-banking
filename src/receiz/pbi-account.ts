@@ -15,7 +15,7 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   const recovered=await recoverPbiAccountInline();
+   const recovered=await recoverPbiAccountInline({existingOnly:true});
    const retained=await restoreNativeIdentity();
    let previous:{accountUid:string;artifactSha256:string}|null=null;
    if(retained){

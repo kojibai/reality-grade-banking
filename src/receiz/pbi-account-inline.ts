@@ -45,9 +45,9 @@ async function complete(begin:Json,accountUid?:string,credentialId?:string,expec
  const payload=begin.flow==='register'?{attestation:{...common,response:{...common.response,attestationObject:encode((response as AuthenticatorAttestationResponse).attestationObject)}}}:{assertion:{...common,response:{...common.response,authenticatorData:encode((response as AuthenticatorAssertionResponse).authenticatorData),signature:encode((response as AuthenticatorAssertionResponse).signature),userHandle:(response as AuthenticatorAssertionResponse).userHandle?encode((response as AuthenticatorAssertionResponse).userHandle!):null}}};
  const finished=await pbiAccountRequest('finish',{challengeId:begin.challengeId,...payload});if(expectedEmail&&finished.session?.email?.trim().toLowerCase()!==expectedEmail)throw Error('PBI_ACCOUNT_MISMATCH');return{accountUid:expectedAccount(finished,accountUid),credentialId:rawId};
 }
-export async function recoverPbiAccountInline(options?:{existingOnly:true;email:string}){
+export async function recoverPbiAccountInline(options?:{existingOnly:true;email?:string}){
  if(!navigator.credentials?.get||!navigator.credentials?.create)throw Error('PBI_BROWSER_UNAVAILABLE');
- const email=options?.email.trim().toLowerCase();if(options&&(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw Error('PBI_ACCOUNT_MISMATCH');
+ const email=options?.email?.trim().toLowerCase();if(options?.email!==undefined&&(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw Error('PBI_ACCOUNT_MISMATCH');
  const begin=await pbiAccountRequest('begin',{intent:'auto',next:'/account',...(email?{email}:{})});
  if(options?.existingOnly&&begin.flow!=='authenticate')throw Error('PBI_ACCOUNT_MISMATCH');
  try{return await complete(begin,undefined,undefined,email);}catch(error){

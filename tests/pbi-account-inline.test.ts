@@ -21,6 +21,12 @@ it('existing paid-account PBI uses the exact email and never registers after can
  const f=setup('cancel');await expect(recoverPbiAccountInline({existingOnly:true,email:'Alex@Example.org'})).rejects.toThrow('passkey_cancelled');
  expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body))).toMatchObject({email:'alex@example.org',intent:'auto'});expect(f.create).not.toHaveBeenCalled();expect(f.fetch.mock.calls).toHaveLength(1);
 });
+it('existing account sign-in cannot start registration when its passkey is unavailable',async()=>{
+ const f=setup('new');
+ await expect(recoverPbiAccountInline({existingOnly:true})).rejects.toThrow('passkey_cancelled');
+ expect(f.create).not.toHaveBeenCalled();
+ expect(f.fetch).toHaveBeenCalledOnce();
+});
 it('existing paid-account PBI refuses a finished account for a different email',async()=>{
  const f=setup('existing');await expect(recoverPbiAccountInline({existingOnly:true,email:'alex@example.org'})).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(f.create).not.toHaveBeenCalled();
 });
