@@ -1,11 +1,20 @@
 /** The included headless v129 contract is shared by Bank form preparation and
  * verified media opening. It carries no Receiz page components. */
-export {readComposerCapacity,validateComposerAssetDraft,composerMediaKind,composerFileMime,readComposerAssetContent} from '../../native/receiz/app/lib/profile/composerPreparation';
-export type {ComposerCollectionPolicy,ComposerAssetDraft as AssetComposerDraft,ComposerCapacity as AssetComposerCapacity,ComposerAssetContent,ComposerAssetFile,PreparedComposerSource} from '../../native/receiz/app/lib/profile/composerPreparation';
+export {readComposerCapacity,composerMediaKind,composerFileMime,readComposerAssetContent} from '../../native/receiz/app/lib/profile/composerPreparation';
+export type {ComposerCollectionPolicy,ComposerCapacity as AssetComposerCapacity,ComposerAssetContent,ComposerAssetFile,PreparedComposerSource} from '../../native/receiz/app/lib/profile/composerPreparation';
 
 import {validateAssetDefinition,type AssetDefinition} from './asset-definition';
-import type {ComposerAssetDraft as AssetComposerDraft} from '../../native/receiz/app/lib/profile/composerPreparation';
-import {readComposerCapacity,validateComposerAssetDraft} from '../../native/receiz/app/lib/profile/composerPreparation';
+import type {ComposerAssetDraft} from '../../native/receiz/app/lib/profile/composerPreparation';
+import {readComposerCapacity,validateComposerAssetDraft as validateNativeDraft} from '../../native/receiz/app/lib/profile/composerPreparation';
+import {validateCollectionPreview,type CollectionPreview} from './collection-preview';
+export type AssetComposerDraft=ComposerAssetDraft & Readonly<{collectionPreview?:CollectionPreview}>;
+export function validateComposerAssetDraft(draft:AssetComposerDraft,capacity:ReturnType<typeof readComposerCapacity>):AssetComposerDraft{
+ const validated=validateNativeDraft(draft,capacity);
+ if(!draft.collectionPreview)return validated;
+ const selected={...validated,collectionPreview:draft.collectionPreview};
+ validateCollectionPreview(selected);
+ return selected;
+}
 /** Receiz's profile composer carries its external link in the sealed claim.
  * Keep this form-only value out of the canonical draft and proof-digest field. */
 export function composerDraftWithLink(draft:AssetComposerDraft,link=''):AssetComposerDraft{

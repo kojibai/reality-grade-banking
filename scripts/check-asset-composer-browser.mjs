@@ -157,6 +157,47 @@ try {
     } finally { await context.close(); }
   }
 
+  {
+    const {page, context, clean} = await pageFor(390, true);
+    try {
+      await page.goto(origin + '/tests/browser/asset-composer.html');
+      await page.getByLabel('Choose original', {exact: true}).setInputFiles({name:'private.png', mimeType:'image/png', buffer:png});
+      await page.getByLabel('Title', {exact: true}).fill('A locked Original');
+      await page.getByRole('button', {name:'Review original', exact:true}).click();
+      await page.locator('[data-composer-section="collection"] summary').click();
+      await page.getByRole('checkbox', {name:/Require purchase to open/}).check();
+      assert.equal(await page.getByLabel('Public preview', {exact:true}).inputValue(), 'hidden');
+      await page.getByLabel('Original download price (USD)', {exact:true}).fill('4.00');
+      await page.getByLabel('Public preview', {exact:true}).selectOption('blur');
+      await page.getByRole('button', {name:'Create asset', exact:true}).click();
+      await page.getByRole('heading', {name:'Your Original is sealed.', exact:true}).waitFor();
+      const result = await page.evaluate(async () => {
+        const {prepareLockedCollectionPreview}=await import('/src/receiz/collection-preview.ts');
+        const draft=window.composerFixture.draft, primary=draft.files.find(file=>file.role==='primary').file;
+        const files=await prepareLockedCollectionPreview(draft,primary,()=>{});
+        const wav = (name, seconds) => {
+          const samples = 8000 * seconds, bytes = new Uint8Array(44 + samples), view = new DataView(bytes.buffer);
+          const tag = (offset, text) => bytes.set(new TextEncoder().encode(text), offset);
+          tag(0,'RIFF'); view.setUint32(4,samples+36,true); tag(8,'WAVEfmt '); view.setUint32(16,16,true);
+          view.setUint16(20,1,true); view.setUint16(22,1,true); view.setUint32(24,8000,true);
+          view.setUint32(28,8000,true); view.setUint16(32,1,true); view.setUint16(34,8,true);
+          tag(36,'data'); view.setUint32(40,samples,true); bytes.fill(128,44);
+          return new File([bytes],name,{type:'audio/wav'});
+        };
+        const clip=wav('preview.wav',3), full=wav('private.wav',25);
+        const audio={...draft,kind:'audio',files:[{id:'primary',role:'primary',file:full}],collectionPreview:{kind:'clip',seconds:15,file:clip}};
+        const publicFiles=await prepareLockedCollectionPreview(audio,full,()=>{});
+        let refused=false;
+        try { await prepareLockedCollectionPreview({...audio,collectionPreview:{...audio.collectionPreview,file:wav('too-long.wav',16)}},full,()=>{}); }
+        catch(error) { refused=error.message.includes('longer than the selected limit'); }
+        return {selection:draft.collectionPreview,roles:files.map(file=>file.role),distinct:files[0].file!==primary,clip:publicFiles.length===1&&publicFiles[0].file===clip,refused};
+      });
+      assert.deepEqual(result,{selection:{kind:'blur'},roles:['cover'],distinct:true,clip:true,refused:true});
+      clean();
+      console.log('PASS mobile locked Original form, separate blurred cover and bounded audio preview with all external services stalled');
+    } finally { await context.close(); }
+  }
+
   for (const width of [320, 390, 1280]) {
     const {page, context, clean} = await pageFor(width);
     try {

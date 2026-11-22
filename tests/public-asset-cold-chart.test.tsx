@@ -61,3 +61,21 @@ it('coalesces discovery, object and overview reads of the same public endpoint',
  const first=readMarketDisplaySource('/api/bank/public-market/capitalization'),second=readMarketDisplaySource('/api/bank/public-market/capitalization');
  expect(first).toBe(second);finish(Response.json(sourceFile));await Promise.all([first,second]);expect(fetch).toHaveBeenCalledTimes(1);expect(retainedMarketDisplaySource()?.valueRows.some(row=>row.marketItem?.id===item.id)).toBe(true);
 });
+
+it('opens the asset with a carried purchase action in the first frame and keeps full media behind checkout',async()=>{
+ const transport={ok:true,transport:{publicOriginals:[{id:'profile:artist:paid-work',receizId:'paid-work',title:'Paid Original',canonicalHref:'https://receiz.com/artist/verified/paid-work',profileOriginal:{originalOffer:{amountCents:450,locked:true},mediaKind:'image',media:{originalDownloadSrc:'https://receiz.com/api/profile/originals/download?receizId=paid-work&kind=original',originalDownloadSha256Hex:'b'.repeat(64)}}}]}};
+ const selected=structuredClone(parsePublicMarket(transport).items[0]!);
+ const fetch=vi.fn().mockRejectedValue(Error('offline'));vi.stubGlobal('fetch',fetch);
+ const {PublicAssetDetail}=await import('../src/features/market/PublicAssetDetail'),host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<PublicAssetDetail item={selected} standalone readOnly/>));
+  expect(host.querySelector('a.asset-original-checkout')).toMatchObject({href:'https://receiz.com/artist/verified/paid-work#purchase-original'});
+  expect(host.querySelector('.asset-original-checkout')?.textContent).toContain('Unlock Original');
+  expect(host.querySelector('.asset-original-checkout')?.textContent).toContain('$4.50');
+  expect(host.querySelector('.proof-media')).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+  await act(async()=>root.render(<PublicAssetDetail item={{...selected,originalOffer:{...selected.originalOffer!,locked:false}}} readOnly/>));
+  expect(host.querySelector('.asset-original-checkout')?.textContent).toContain('Purchase Original');
+  expect(host.querySelector('.proof-media')).not.toBeNull();
+ }finally{act(()=>root.unmount());}
+});

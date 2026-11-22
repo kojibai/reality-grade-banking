@@ -9,8 +9,8 @@ const LedgerProofDetails=lazy(()=>import('../ledger/LedgerProofDetails').then(mo
 
 /** The public live-player manifest and the complete SDK-admitted original share
  * one back. Opening a side starts no reader; opened media publishes its report. */
-export function AssetProofBack({item}:{item:PublicMarketItem}){
- const [inspect,setInspect]=useState(false);
+export function AssetProofBack({item,showVerification=false}:{item:PublicMarketItem;showVerification?:boolean}){
+ const [inspect,setInspect]=useState(showVerification);
  const inspection=useSyncExternalStore(subscribeProofInspections,()=>retainedProofInspection(item.originalDigest??undefined),()=>null);
  const record=useMemo(()=>publicMarketRecord(item),[item]);
  const rows=useMemo(()=>{
@@ -26,5 +26,5 @@ export function AssetProofBack({item}:{item:PublicMarketItem}){
  return <div className="asset-proof-back-body"><header><span>{item.category==='sports'?'Collectible record':'Proof Manifest'}</span><h2>{item.title}</h2><p>{item.category==='sports'?'The card’s identity, issue, performance and source details, carried by its public record.':'The same manifest carried by the public live player. Open the original below for independent verification.'}</p></header><dl>{rows.map((row:PublicAssetManifestRow,index)=>{
   const href=publicManifestLink(row.href);
   return <div key={`${row.label}:${index}`}><dt>{row.label}</dt><dd>{href?<a href={href} target="_blank" rel="noreferrer" download={row.downloadName}>{row.value}</a>:row.value}</dd></div>;
- })}</dl>{item.originalUrl&&item.originalDigest&&<details className="asset-proof-original" onToggle={event=>setInspect(event.currentTarget.open)}><summary>Complete original &amp; independent verification</summary>{inspect&&<Suspense fallback={null}><LedgerProofDetails record={record}/></Suspense>}</details>}{item.sourceUrl&&<a className="asset-proof-source" href={item.sourceUrl} target="_blank" rel="noreferrer">Open public source ↗</a>}</div>;
+ })}</dl>{item.originalUrl&&item.originalDigest&&<details className="asset-proof-original" open={inspect} onToggle={event=>setInspect(event.currentTarget.open)}><summary>Complete original &amp; independent verification</summary>{inspect&&<Suspense fallback={null}><LedgerProofDetails record={record}/></Suspense>}</details>}{item.sourceUrl&&<a className="asset-proof-source" href={item.sourceUrl} target="_blank" rel="noreferrer">Open public source ↗</a>}</div>;
 }

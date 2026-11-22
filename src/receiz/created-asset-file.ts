@@ -26,14 +26,20 @@ export async function prepareCreatedAssetPrimary(input:{draft:AssetComposerDraft
  if(protectedFile){
   if(!input.profileIdentity||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(input.profileIdentity))throw Error('COMPOSER_PRIVATE_ORIGINAL_OWNER_REQUIRED');
   input.assertCurrent();const runtime=await loadAssetPublicationRuntime(),opened=await runtime.readComposerPrimaryFile(primary.file);input.assertCurrent();
-  let file=primary.file,preview=opened.payload;
-  if(!opened.verification.ok){
-   const verification=opened.verification;
-   if(verification.bundle||verification.errors.length!==1||!absentProof.has(verification.errors[0]!))throw Error('ORIGINAL_FILE_PROOF_INVALID');
+  const verification=opened.verification,selection=input.draft.collectionPreview;
+  if(!verification.ok&&(verification.bundle||verification.errors.length!==1||!absentProof.has(verification.errors[0]!)))throw Error('ORIGINAL_FILE_PROOF_INVALID');
+  let file=primary.file;const preview=verification.ok?opened.payload:primary.file;
+  let lockedFiles:AssetComposerDraft['files']|undefined;
+  if(selection){
+   const {prepareLockedCollectionPreview}=await import('./collection-preview');
+   lockedFiles=await prepareLockedCollectionPreview(input.draft,preview??null,input.assertCurrent);input.assertCurrent();
+  }
+  if(!verification.ok){
    const sealed=await input.seal({bytes:new Uint8Array(await primary.file.arrayBuffer()),filename:primary.file.name,mimeType:primary.file.type||'application/octet-stream'});input.assertCurrent();
    if(!sealed.verification.ok||/\.receizbundle$/i.test(sealed.filename))throw Error('ORIGINAL_FILE_FORMAT_REQUIRED');
-   file=new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType==='application/octet-stream'?primary.file.type:sealed.mimeType});preview=primary.file;
+   file=new File([new Uint8Array(sealed.artifactBytes)],sealed.filename,{type:sealed.mimeType==='application/octet-stream'?primary.file.type:sealed.mimeType});
   }
+  if(lockedFiles)return {...input.draft,collectionPreview:undefined,collection:selection?.kind==='clip'&&policy.gateAudioPlayback?{...policy,gateAudioPlayback:false}:policy,files:lockedFiles,protectedOriginal:{profileIdentity:input.profileIdentity,file}};
   if(!preview)throw Error('COMPOSER_PRIVATE_ORIGINAL_PREVIEW_UNAVAILABLE');
   const files=input.draft.files.filter(value=>value!==primary);
   if(input.draft.kind==='image'){

@@ -1,0 +1,85 @@
+.proof-media-dialog.proof-media-dialog--image-object {
+  width:min(730px,calc(100vw - 20px));
+  height:auto;
+  max-height:calc(100dvh - 24px);
+  border-radius:24px;
+  background:#f4f6fa;
+}
+.proof-media-dialog--image-object>header {background:#fbfcff}
+.proof-image-object-body {
+  min-height:0;
+  overflow:auto;
+}
+.asset-object--image {
+  margin:0;
+  --image-object-depth:3px;
+  --image-object-rotation:0deg;
+}
+.asset-object--image .asset-object-stage {
+  perspective:1050px;
+  display:grid;
+  place-items:center;
+  padding:clamp(20px,5vw,50px) clamp(12px,5vw,42px) clamp(24px,5vw,52px);
+  background:radial-gradient(ellipse at 50% 35%,#fbfcff,#f4f6fa 76%);
+}
+.asset-object--image .asset-object-float {
+  width:min(100%,calc((100dvh - 268px) * var(--image-object-ratio)));
+  min-width:min(100%,210px);
+  animation:none;
+  transform-style:preserve-3d;
+}
+.asset-object--image .asset-object-pose {
+  transform:translateY(-2px) rotateX(var(--asset-tilt-y,1.5deg)) rotateY(var(--asset-tilt-x,0deg));
+}
+.asset-object.asset-object--image[data-showing] .asset-object-turn {
+  position:relative;
+  aspect-ratio:var(--image-object-ratio);
+  transform:rotateY(calc(var(--image-object-rotation) + var(--asset-image-drag,0deg)));
+}
+.asset-object--image[data-showing=back] {
+  --image-object-rotation:180deg;
+}
+.asset-object--image .asset-object-metal-edge {
+  position:absolute;
+  inset:0;
+  border-radius:clamp(8px,1.5vw,14px);
+  background:#8292aa;
+  transform:translateZ(-2px);
+  box-shadow:0 1px #a4afc0,0 3px #8292aa,0 5px #6c7e97,0 13px 26px -8px #293b5646;
+  pointer-events:none;
+}
+.asset-object--image .asset-object-side {
+  position:absolute;
+  inset:0;
+  border-radius:clamp(8px,1.5vw,14px);
+  border:1px solid #dbe3ef;
+  overflow:hidden;
+}
+.asset-object--image .asset-object-front {
+  transform:translateZ(var(--image-object-depth));
+  background:#1a1614;
+}
+.asset-object--image .asset-object-back {
+  transform:rotateY(180deg) translateZ(4px);
+  box-shadow:none;
+  background:#fbfcff;
+  overflow:auto;
+  overscroll-behavior:contain;
+  padding:clamp(10px,3vw,22px);
+}
+.asset-object--image .proof-image-view.is-expanded {height:100%;background:#151312}
+.asset-object--image .proof-image-view:not([data-asset-no-swipe]) img {max-height:100%}
+.asset-object--image .proof-image-zoom {bottom:8px}
+.asset-object--image .asset-object-toolbar {
+  padding:8px 16px;
+  border-top:1px solid #dbe3ef;
+  background:#fbfcff;
+}
+.asset-object--image .asset-proof-back-body {max-height:none;overflow:visible}
+@media(max-height:580px) {
+  .asset-object--image .asset-object-float {width:min(100%,calc((100dvh - 210px) * var(--image-object-ratio)))}
+  .asset-object--image .asset-object-stage {padding-block:12px 17px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .asset-object--image .asset-object-pose {transform:none}
+}

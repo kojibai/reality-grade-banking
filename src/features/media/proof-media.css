@@ -9,3 +9,5 @@
 
 /* Readable text entry avoids automatic focus magnification; page zoom stays available. */
 @media(pointer:coarse){.proof-book-navigation select{font-size:16px}}
+
+.proof-image-view.is-expanded .proof-image-scroll{touch-action:pan-x pan-y}

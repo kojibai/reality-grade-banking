@@ -1,3 +1,4 @@
+import {projectPublicOriginalOffer,type PublicOriginalOffer} from './public-original-purchase.js';
 import {readPublicProfileHeads,readPublicProfileHeadRefusals,type PublicProfileHead,type PublicProfileHeadRefusal} from './public-profile-header.js';
 import {preparedPublicCatalogCache} from './prepared-bank-cache.js';
 import {publicAccountDisplayName,publicProfileUsername} from './account-name.js';
@@ -30,6 +31,7 @@ export interface PublicMarketItem {
   sourceUrl: string | null; verifyUrl: string | null; originalUrl: string | null;
   originalDigest: string | null; pulse: string | null; sealedAt: string | null;
   nativeAsset?:PublicNativeAssetBinding;
+  originalOffer?:PublicOriginalOffer;
   hasLongForm?: boolean;
   carriedText?:PublicCarriedText|null;
   mediaKind?:PublicMediaKind;
@@ -204,6 +206,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     if (!id || !assetId || !title || ids.has(id) || source.visibility === 'private') continue;
     ids.add(id);
     const profile=record(source.profileOriginal),media = record(profile.media), material = record(media.material);
+    const originalOffer=projectPublicOriginalOffer(source);
     // The canonical imported Source encloses the composer and its media. A
     // protected primary's download digest identifies that file, not this Source.
     const imported=record(profile.importedSource),reference=record(imported.reference),carriesSource=profile.importedSource!==undefined&&profile.importedSource!==null;
@@ -220,6 +223,7 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
     const ownerDisplayName=rawOwnerName&&rawOwnerName!=='Receiz ID'?rawOwnerName:ownerCreatedAt?publicAccountDisplayName({displayName:rawOwnerName,username:ownerUsername,createdAt:ownerCreatedAt},ownerUsername??''):rawOwnerName;
     items.push({ id, assetId, title,...(originalCreator?{originalCreator}:{}),...(publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)?.sourceArtifactSha256===digest?.toLowerCase()?{sourceProvenance:publicOriginalProvenance(profile.sourceProvenance??profile.importedSource)}:{}),...(typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)?{pbiReceiptHash:profile.pbiReceiptHash.toLowerCase()}:{}), hasPbiSignature:profile.hasPbiSignature===true||typeof profile.pbiReceiptHash==='string'&&/^[a-f0-9]{64}$/i.test(profile.pbiReceiptHash)||typeof profile.signedArtifactDownloadUrl==='string'&&Boolean(safeReceizPublicUrl(profile.signedArtifactDownloadUrl,'original')), summary: text(source.summary, 8192) ?? '', category: 'proof',
       sourceUrl: safeReceizPublicUrl(source.canonicalHref, 'source'), verifyUrl,readingUrl,
+      ...(originalOffer?{originalOffer}:{}),
       originalUrl: importedOriginal ?? (carriesSource ? null : materialOriginal ?? safeReceizPublicUrl(media.originalDownloadSrc, 'original')), originalDigest: digest && /^[a-f0-9]{64}$/i.test(digest) ? digest.toLowerCase() : null,
       ...(publicNativeAssetBinding(profile.nativeAsset)?{nativeAsset:publicNativeAssetBinding(profile.nativeAsset)}:{}),
       ...(publicCarriedText(profile.longForm)?{carriedText:publicCarriedText(profile.longForm)}:{}),
@@ -250,7 +254,7 @@ export function readPublicProofPresentation(input:unknown):PublicMarketItem|null
  if(input&&typeof input==='object'&&publicProofPresentations.has(input))return input as PublicMarketItem;
  const value=record(input);if(value.category!=='proof'||value.authority!=='projection-only'||value.canTrade!==false||!text(value.id,256)||!text(value.assetId,256)||!text(value.title,4096))return null;
  const manifest=record(value.proofManifestSource),manifestMedia=record(manifest.media),owner=record(value.ownerIdentity),book=record(value.book);
- const profile={...manifest,assetTitle:value.title,mediaKind:value.mediaKind,artworkUrl:value.artworkUrl,hasLongForm:value.hasLongForm,hasPbiSignature:value.hasPbiSignature,pbiReceiptHash:value.pbiReceiptHash,nativeAsset:value.nativeAsset,originalCreator:publicOriginalCreator(value.originalCreator),sourceProvenance:publicOriginalProvenance(value.sourceProvenance),playback:value.playback,documentUrl:value.documentUrl,media:{...manifestMedia,kind:value.mediaKind,sha256Hex:manifestMedia.sha256Hex??(book.assetId===value.assetId?book.payloadDigest:undefined),originalDownloadSrc:value.originalUrl,originalDownloadSha256Hex:value.originalDigest}};
+ const profile={...manifest,originalOffer:value.originalOffer,assetTitle:value.title,mediaKind:value.mediaKind,artworkUrl:value.artworkUrl,hasLongForm:value.hasLongForm,hasPbiSignature:value.hasPbiSignature,pbiReceiptHash:value.pbiReceiptHash,nativeAsset:value.nativeAsset,originalCreator:publicOriginalCreator(value.originalCreator),sourceProvenance:publicOriginalProvenance(value.sourceProvenance),playback:value.playback,documentUrl:value.documentUrl,media:{...manifestMedia,kind:value.mediaKind,sha256Hex:manifestMedia.sha256Hex??(book.assetId===value.assetId?book.payloadDigest:undefined),originalDownloadSrc:value.originalUrl,originalDownloadSha256Hex:value.originalDigest}};
  const item=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:value.id,receizId:value.assetId,title:value.title,summary:value.summary,canonicalHref:value.sourceUrl,verifyHref:value.verifyUrl,pulse:value.pulse,createdAt:value.sealedAt,valueUsd:value.priceUsd,livePulseSeed:value.livePulseSeed,ownerUsername:value.ownerUsername,ownerDisplayName:value.ownerDisplayName,...(value.ownerAvatarUrl!==undefined?{ownerAvatarUrl:value.ownerAvatarUrl}:{}),ownerUserId:owner.userId,ownerCreatedAt:owner.createdAt,profileOriginal:profile}]}}).items[0];
  if(!item||item.originalDigest!==value.originalDigest||item.pulse!==value.pulse)return null;
  const reading=safeReceizPublicUrl(value.readingUrl,'proof');if(reading&&item.verifyUrl&&new URL(reading).pathname===new URL(item.verifyUrl).pathname)item.readingUrl=reading;

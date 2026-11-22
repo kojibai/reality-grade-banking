@@ -17,7 +17,7 @@
       "startAssetSignatureSync": "4b7b1eda04acfbd165c3761f814f9b71b26b44a248d7c2dfef0dac825401fd2d"
     },
     "src/receiz/created-asset-file.ts": {
-      "prepareCreatedAssetPrimary": "8e5a90e0bfbafd77a5bf5f4300898f910d234d6d98113d2876370a914f203050",
+      "prepareCreatedAssetPrimary": "cc1666db32c4319272d03dd04cb364b9c3ba34fee35dc94841509305188327a3",
       "createdAssetOriginalFile": "e85f33581bead5242f0c3edb1d883c73ea68a4192ccbdebbcd5ae00c0bd4ff8e"
     },
     "src/receiz/asset-publication.ts": {

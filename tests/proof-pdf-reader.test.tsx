@@ -37,7 +37,7 @@ it('swipes PDF pages in both directions using the held document and preserves th
   expect(held.acquire).toHaveBeenCalledOnce();expect(back).not.toHaveBeenCalled();expect(host.querySelector('.asset-object')?.getAttribute('data-showing')).toBe('front');
  }finally{await act(async()=>root.unmount());}
 });
-it('leaves vertical scrolling, zoom panning, small drags, cancellation and pinch gestures alone',async()=>{
+it('preserves scroll, panning, small drags and single-finger cancellation',async()=>{
  const {host,root,paper,label}=await mount('blob:pdf-gestures');
  try{
   await swipe(paper,-100,140);await swipe(paper,-25);
@@ -51,4 +51,28 @@ it('leaves vertical scrolling, zoom panning, small drags, cancellation and pinch
 it('keeps cover previews on their first page without adding page gestures',async()=>{
  const {root,paper,label}=await mount('blob:pdf-cover',true);
  try{await swipe(paper,-100);expect(label()).toBe('A document · page 1');expect(paper.hasAttribute('data-asset-no-swipe')).toBe(false);}finally{await act(async()=>root.unmount());}
+});
+
+
+it('pinches the held canvas without requesting another PDF or changing pages',async()=>{
+ const {host,root,paper,label}=await mount('blob:pdf-pinch');
+ try{
+  const canvas=host.querySelector('canvas')!;
+  vi.spyOn(canvas,'getBoundingClientRect').mockReturnValue(new DOMRect(16,16,328,492));
+  const send=(type:string,x1:number,x2?:number)=>{
+   const first={identifier:1,clientX:x1,clientY:150},second={identifier:2,clientX:x2,clientY:150};
+   const event=new Event(type,{bubbles:true,cancelable:true});
+   Object.defineProperties(event,{touches:{value:x2===undefined?[first]:[first,second]},changedTouches:{value:[second]}});
+   act(()=>paper.dispatchEvent(event));return event;
+  };
+  const renders=held.getPage.mock.calls.length;
+  expect(send('touchstart',140,220).defaultPrevented).toBe(true);
+  expect(send('touchmove',95,275).defaultPrevented).toBe(true);
+  expect(canvas.style.transform).toContain('scale(2)');
+  expect(held.getPage).toHaveBeenCalledTimes(renders);
+  await act(async()=>{send('touchend',95);});
+  expect(canvas.style.width).toBe('656px');expect(canvas.style.transform).toBe('');
+  expect(held.getPage).toHaveBeenCalledTimes(renders+1);expect(held.acquire).toHaveBeenCalledOnce();
+  expect(label()).toBe('A document · page 1');
+ }finally{await act(async()=>root.unmount());}
 });

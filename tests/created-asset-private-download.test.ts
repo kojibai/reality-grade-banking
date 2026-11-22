@@ -45,11 +45,13 @@ it('saves exact canonically sealed protected PDF/audio from encrypted owner cust
  const identity={binding,accountUsername:()=> 'artist',walletReceivingAddress:()=>uid,sealRecordExport:forbidden} as unknown as OpenIdentity;
  selected.sdk=r;selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
  const inputs=[{kind:'pdf',name:'private-original.pdf',mime:'application/pdf',bytes:pdf()},
+  {kind:'audio',name:'locked-without-an-audio-preview.wav',mime:'audio/wav',bytes:wav(),hidden:true},
   {kind:'audio',name:'private-original.wav',mime:'audio/wav',bytes:wav()}] as const;
  let captured:{original:HeldDeposit;descriptor:{name:string;mime:string;sha256:string;bytes:{sha256:string}};bytes:Uint8Array}|undefined;
  for(const input of inputs){
   const draft:AssetComposerDraft={title:'Protected '+input.name,description:'Its exact sealed Original stays private.',kind:input.kind,longForm:'',
-   collection:{allowOriginalDownload:true,allowDerivativeDownload:false,allowMomentRecordDownload:false,gateAudioPlayback:input.kind==='audio',originalDownloadLimit:3,derivativeDownloadLimit:null,originalDownloadPriceCents:125,derivativeDownloadPriceCents:null},
+   ...('hidden' in input?{collectionPreview:{kind:'hidden' as const}}:{}),
+   collection:{allowOriginalDownload:true,allowDerivativeDownload:false,allowMomentRecordDownload:false,gateAudioPlayback:input.kind==='audio'&&!('hidden' in input),originalDownloadLimit:3,derivativeDownloadLimit:null,originalDownloadPriceCents:125,derivativeDownloadPriceCents:null},
    files:[{id:'primary',role:'primary',file:new File([input.bytes],input.name,{type:input.mime})}]};
   selected.sdk=r;selected.runtime=r.connectedComposer;selected.verify=r.offline.verifyReceizOfflineSealedFile;
   const count=seal.mock.calls.length,preparedDraft=await prepareCreatedAssetPrimary({draft,profileIdentity:uid,seal,assertCurrent(){}});
