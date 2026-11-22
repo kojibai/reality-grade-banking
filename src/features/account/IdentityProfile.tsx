@@ -36,7 +36,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
     try{
       const module=await import('../../receiz/pbi-account-connect');
       if(profileVerified)await module.enablePbiIdentityRecovery(identity,assertCurrent);
-      else await module.connectPbiToAccount(identity,assertCurrent,true);
+      else await module.connectPbiToAccount(identity,assertCurrent);
       assertCurrent();
       const {hasPbiIdentityRecovery}=await import('../../receiz/pbi-identity-recovery');
       assertCurrent();

@@ -42,7 +42,9 @@ export async function restorePbiIdentity(
   assertion:RecoveryAssertion,
   admit:(record:{bytes:Uint8Array;phrase:string;filename:string})=>Promise<OpenIdentity>,
 ):Promise<OpenIdentity|null>{
-  const stored=await pbiAccountRequest(query(assertion));
+  // Only a fresh install reaches this optional lookup. On an unavailable
+  // recovery service, continue the ordinary device-bound account entry.
+  const stored=await pbiAccountRequest(query(assertion),undefined,AbortSignal.timeout(3000));
   if(stored.recovery===null)return null;
   const manifest=readManifest(stored.recovery,assertion);
   const bytes=new Uint8Array(manifest.byteLength);

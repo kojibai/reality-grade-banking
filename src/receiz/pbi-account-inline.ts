@@ -8,11 +8,11 @@ const recoveryPrf={prf:{eval:{first:new TextEncoder().encode('receiz.account.ide
 const base='/api/bank/native/pbi/';
 const encode=(value:ArrayBuffer)=>{let raw='';for(const byte of new Uint8Array(value))raw+=String.fromCharCode(byte);return btoa(raw).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');};
 const decode=(value:string)=>{if(!/^[A-Za-z0-9_-]+$/.test(value)||value.length%4===1)throw Error('PBI_ACCOUNT_RESPONSE_INVALID');return Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)).buffer;};
-export async function pbiAccountRequest(operation:string,body?:unknown):Promise<Json>{
+export async function pbiAccountRequest(operation:string,body?:unknown,signal=AbortSignal.timeout(45000)):Promise<Json>{
  // Anonymous challenges retain the visitor's own canonical anti-abuse bucket.
  // All session-bearing operations stay behind the closed HttpOnly transport.
  const anonymous=operation==='begin';
- const response=await fetch(anonymous?'https://receiz.com/api/auth/passkey/related/begin':base+operation,{method:body===undefined?'GET':'POST',headers:body===undefined?{Accept:'application/json'}:{Accept:'application/json','Content-Type':'application/json'},credentials:anonymous?'omit':'same-origin',cache:'no-store',redirect:'error',...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(45000)});
+ const response=await fetch(anonymous?'https://receiz.com/api/auth/passkey/related/begin':base+operation,{method:body===undefined?'GET':'POST',headers:body===undefined?{Accept:'application/json'}:{Accept:'application/json','Content-Type':'application/json'},credentials:anonymous?'omit':'same-origin',cache:'no-store',redirect:'error',...(body===undefined?{}:{body:JSON.stringify(body)}),signal});
  const result=await response.json();if(!response.ok||result?.ok===false)throw Error(typeof result?.error==='string'?result.error:'PBI_ACCOUNT_UNAVAILABLE');return result;
 }
 export async function closePbiAccount(){await pbiAccountRequest('close',{}).catch(()=>{});}
@@ -74,15 +74,15 @@ export async function runPbiAccountInline(device:PbiAccountDevice,sign:(accountU
  if(admitted.sourceMode==='legacy-sql'&&(!admitted.binding||Object.keys(admitted.binding).length!==4||!Object.entries(device).every(([key,value])=>admitted.binding![key as keyof PbiAccountDevice]===value)))throw Error('PBI_ACCOUNT_MISMATCH');
  return{...admitted,request};
 }
-export async function runPbiAccountInlineConnection(device:PbiAccountDevice,accountUid:string,sign:()=>Promise<{challengeB64Url:string;signatureB64Url:string}>,assertCurrent:()=>void,withRecovery=false){
+export async function runPbiAccountInlineConnection(device:PbiAccountDevice,accountUid:string,sign:()=>Promise<{challengeB64Url:string;signatureB64Url:string}>,assertCurrent:()=>void){
  assertCurrent();const switched=await pbiAccountRequest('switch',{...device,targetUid:accountUid,...await sign(),next:'/account'});assertCurrent();expectedAccount(switched,accountUid);
  let completed:Awaited<ReturnType<typeof complete>>;
- try{completed=await complete(await pbiAccountRequest('begin',{intent:'auto',next:'/account'}),accountUid,undefined,undefined,withRecovery);}
+ try{completed=await complete(await pbiAccountRequest('begin',{intent:'auto',next:'/account'}),accountUid);}
  catch(error){
   if(!(error instanceof Error)||!['passkey_cancelled','passkey_not_registered','passkey_not_found'].includes(error.message))throw error;
-  assertCurrent();completed=await complete(await pbiAccountRequest('enroll',{next:'/account'}),accountUid,undefined,undefined,withRecovery);
+  assertCurrent();completed=await complete(await pbiAccountRequest('enroll',{next:'/account'}),accountUid);
  }
  assertCurrent();const source=handoff(await pbiAccountRequest(`credential-source?${new URLSearchParams({accountUid,credentialId:completed.credentialId})}`),accountUid);assertCurrent();
  if(source.sourceMode==='legacy-sql'&&source.credentialId!==completed.credentialId)throw Error('PBI_ACCOUNT_MISMATCH');
- return{...source,credentialId:completed.credentialId,...(completed.recoverySecret?{recoverySecret:completed.recoverySecret}:{})};
+ return{...source,credentialId:completed.credentialId};
 }

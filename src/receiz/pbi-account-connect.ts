@@ -6,8 +6,7 @@ import {admitPbiAccountCredential} from './pbi-account-source';
 
 /** Reuses held original custody. Its key signs the existing exact-account
  * switch before canonical enrollment; the private key stays on this device. */
-export async function connectPbiToAccount(identity:Pick<OpenIdentity,'binding'|'backup'|'knownWallet'|'readWallet'>,assertCurrent:()=>void,withRecovery=false){
- let recoverySecret:Uint8Array|undefined;
+export async function connectPbiToAccount(identity:Pick<OpenIdentity,'binding'|'backup'|'knownWallet'|'readWallet'>,assertCurrent:()=>void){
  try{
   assertCurrent();const sdk=await loadReceiz();
   // Explicit connection establishes this key's existing account binding before
@@ -20,19 +19,14 @@ export async function connectPbiToAccount(identity:Pick<OpenIdentity,'binding'|'
   const connected=await runPbiAccountInlineConnection(device,accountUid,async()=>{
    assertCurrent();const challengeB64Url=sdk.receizBase64UrlEncode(new TextEncoder().encode(['RECEIZ_DEVICE_SWITCH_V1',`keyId=${key.keyId}`,`localUid=${key.owner.uid}`,`targetUid=${accountUid}`,`issuedAtMs=${Date.now()}`,`nonce=${sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))}`].join('\n')));
    const proof=await sdk.signReceizIdentityLoginProof({keyFile:key,passphrase:held.phrase,challengeB64Url});assertCurrent();return{challengeB64Url,signatureB64Url:proof.signatureB64Url};
-  },assertCurrent,withRecovery);
-  recoverySecret=connected.recoverySecret;
+  },assertCurrent);
   assertCurrent();const admitted=connected.sourceMode==='native-history'?await admitPbiAccountCredential(connected.sourceB64u,{accountUid,credentialId:connected.credentialId}):connected.sourceMode==='legacy-sql'?{accountUid,credentialId:connected.credentialId}:null;
   if(!admitted)throw Error('PBI_ACCOUNT_SOURCE_REQUIRED');
   assertCurrent();const signature=await signPbiProfile(device,accountUid,connected.credentialId,assertCurrent);assertCurrent();
   const {retainProfilePbiAuthorship}=await import('./public-profile');assertCurrent();retainProfilePbiAuthorship(accountUid,signature.pbiReceiptHash);
   if(typeof dispatchEvent==='function')dispatchEvent(new Event('bankeiz:profile-updated'));
-  if(recoverySecret){
-   const {retainPbiIdentity}=await import('./pbi-identity-recovery');
-   await retainPbiIdentity(identity,{accountUid,credentialId:connected.credentialId,recoverySecret},assertCurrent).catch(()=>{});
-  }
   return {...admitted,signature};
- }finally{recoverySecret?.fill(0);await closePbiAccount();}
+ }finally{await closePbiAccount();}
 }
 
 /** Already verified profiles can prepare recovery without signing again. */

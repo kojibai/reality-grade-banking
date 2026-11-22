@@ -15,7 +15,7 @@ it('keeps profile signing lazy and connects the exact active identity only on ex
  try{
   await act(async()=>root.render(<IdentityProfile identity={identity} onForget={vi.fn()} onRefresh={vi.fn()}/>));
   const row=host.querySelector<HTMLButtonElement>('.identity-passkey')!;expect(row).not.toBeNull();expect(row.textContent).toBe('Verify profileSign with PBI');expect(row.querySelector('svg')?.getAttribute('width')).toBe('23');expect(row.querySelector('svg')?.getAttribute('stroke-width')).toBe('1.4');expect(p.module).not.toHaveBeenCalled();expect(p.reserve).not.toHaveBeenCalled();
-  await act(async()=>{row.click();});expect(p.connect).toHaveBeenCalledWith(identity,expect.any(Function),true);expect(row.textContent).toBe('Verified profileSet up recovery');
+  await act(async()=>{row.click();});expect(p.connect).toHaveBeenCalledWith(identity,expect.any(Function));expect(row.textContent).toBe('Verified profileSet up recovery');
   p.enable.mockImplementation(async()=>p.ready.mockReturnValue(true));
   await act(async()=>{row.click();});expect(p.enable).toHaveBeenCalledWith(identity,expect.any(Function));expect(p.connect).toHaveBeenCalledOnce();
   expect(row.textContent).toBe('Verified profileRecovery ready');expect(row.disabled).toBe(true);expect(identity.binding.identityOwnerReceizId).toBe('original-device');

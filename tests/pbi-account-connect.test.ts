@@ -13,7 +13,7 @@ beforeEach(()=>{p.profile.mockReset().mockResolvedValue({pbiReceiptHash:'a'.repe
 it('connects the held original account without replacing its ID, backup, balance or ordinary Identity Record custody',async()=>{
  const identity=held(),assertCurrent=vi.fn();
  await connectPbiToAccount(identity,assertCurrent);
- expect(identity.readWallet).not.toHaveBeenCalled();expect(p.bridge).toHaveBeenCalledWith({keyId:'held-key',alg:'Ed25519',publicKeyRawB64u:'held-public',localUid:'local-device'},'original-account',expect.any(Function),assertCurrent,false);
+ expect(identity.readWallet).not.toHaveBeenCalled();expect(p.bridge).toHaveBeenCalledWith({keyId:'held-key',alg:'Ed25519',publicKeyRawB64u:'held-public',localUid:'local-device'},'original-account',expect.any(Function),assertCurrent);
  await p.bridge.mock.calls[0][2]();const signed=p.sign.mock.calls[0][0];expect(signed.keyFile).toEqual(key);expect(signed.passphrase).toBe('original phrase');expect(Buffer.from(signed.challengeB64Url,'base64url').toString()).toContain('RECEIZ_DEVICE_SWITCH_V1\nkeyId=held-key\nlocalUid=local-device\ntargetUid=original-account\n');
  expect(p.profile).toHaveBeenCalledWith(expect.objectContaining({keyId:'held-key'}),'original-account','credential',assertCurrent);expect(p.admit).toHaveBeenCalledWith('original-source',{accountUid:'original-account',credentialId:'credential'});expect(identity.backup()).toEqual({bytes,phrase:'original phrase',filename:'original.png'});expect(identity.persistDeviceCustody).not.toHaveBeenCalled();expect(identity.dispose).not.toHaveBeenCalled();
 });

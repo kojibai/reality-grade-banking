@@ -5,6 +5,7 @@ const key={keyId:'key',alg:'Ed25519',issuedAt:'2026-10-24T00:00:00Z',owner:{uid:
 const email=vi.hoisted(()=>({load:vi.fn(),restore:vi.fn(),select:vi.fn(),activate:vi.fn(),retain:vi.fn()}));
 const recovery=vi.hoisted(()=>({restorePbiIdentity:vi.fn(),retainPbiIdentity:vi.fn()}));
 vi.mock('../src/receiz/pbi-identity-recovery',()=>recovery);
+beforeEach(()=>{recovery.restorePbiIdentity.mockReset();recovery.retainPbiIdentity.mockReset();});
 vi.mock('../src/receiz/identity-vault',()=>({loadDeviceIdentity:email.load,prepareVerifiedEmailAccountSelection:email.select}));
 vi.mock('../src/receiz/device-identity-entry',()=>({withDeviceIdentityEntry:async(run:()=>Promise<unknown>)=>run()}));
 vi.mock('../src/receiz/pbi-account-inline',()=>({runPbiAccountInline:p.bridge,recoverPbiAccountInline:p.recover,registerPbiAccountInline:p.register,closePbiAccount:async()=>{}}));
@@ -25,23 +26,35 @@ it('paid existing-account PBI retains the old guest custody beneath actual recov
  expect(p.createIdentity).not.toHaveBeenCalled();
  expect(recoverySecret.every(byte=>byte===0)).toBe(true);
 });
-it('checkout cannot replace an existing signer when its passkey backup is absent',async()=>{
+it('checkout binds the proven account on this device when its optional backup is absent',async()=>{
  const previous={binding:{artifactSha256:'a'.repeat(64)},knownWallet:()=>({wallet:{userId:'guest-account'}}),dispose:vi.fn()} as unknown as import('../src/receiz/native-identity').OpenIdentity;
  p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret:new Uint8Array(32)});
  recovery.restorePbiIdentity.mockResolvedValueOnce(null);
- await expect(openPbiCheckoutAccount(previous,'alex@example.org')).rejects.toThrow('PBI_RECOVERY_NOT_CONFIGURED');
- expect(email.retain).not.toHaveBeenCalled();
+ const opened=await openPbiCheckoutAccount(previous,'alex@example.org');
+ expect((await opened.prepareAccountView()).wallet.userId).toBe('original-account');
+ expect(email.retain).toHaveBeenCalledOnce();
  expect(previous.dispose).not.toHaveBeenCalled();
- expect(p.createIdentity).not.toHaveBeenCalled();
+ expect(p.createIdentity).toHaveBeenCalledOnce();
+ expect(p.register).not.toHaveBeenCalled();
 });
 it('cancelled existing-account PBI never replaces custody, enrolls or creates a replacement key',async()=>{
  p.recover.mockRejectedValue(Error('passkey_cancelled'));await expect(openPbiCheckoutAccount({} as never,'alex@example.org')).rejects.toThrow('passkey_cancelled');expect(email.select).not.toHaveBeenCalled();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
 });
-it('existing passkey with no retained Record never enrolls a replacement signer',async()=>{
- await expect(openPbiAccount(true)).rejects.toThrow('PBI_RECOVERY_PASSKEY_UNAVAILABLE');
+it('opens the same account with its authorized device path when no passkey backup is available',async()=>{
+ const opened=await openPbiAccount(true);
+ expect((await opened.prepareAccountView()).wallet.userId).toBe('original-account');
  expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true,withRecovery:true});
- expect(p.register).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
- expect(p.createIdentity).not.toHaveBeenCalled();expect(p.bridge).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+ expect(p.register).not.toHaveBeenCalled();expect(p.enroll).toHaveBeenCalledOnce();
+ expect(p.createIdentity).toHaveBeenCalledOnce();expect(p.bridge).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledOnce();
+ expect(recovery.restorePbiIdentity).not.toHaveBeenCalled();
+});
+it('an unavailable optional backup cannot gate account entry',async()=>{
+ p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret:new Uint8Array(32)});
+ recovery.restorePbiIdentity.mockRejectedValueOnce(Error('PBI_RECOVERY_UNAVAILABLE'));
+ const opened=await openPbiAccount(true);
+ expect((await opened.prepareAccountView()).wallet.userId).toBe('original-account');
+ expect(p.bridge).toHaveBeenCalledOnce();
+ expect(p.register).not.toHaveBeenCalled();
 });
 it('uses a fresh passkey assertion to open and retain the exact Identity Record in a fresh install',async()=>{
  const record={bytes:new Uint8Array([2]),phrase:'',filename:'same-device.receizkey'};

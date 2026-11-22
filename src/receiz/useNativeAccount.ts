@@ -160,9 +160,7 @@ export function useNativeAccount(custody = nativeCustody) {
     }
     catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
-      throw Error(code === 'PBI_RECOVERY_NOT_CONFIGURED' ? 'Set up passkey recovery in your Receiz ID on the device that already holds your signing key.'
-        : code === 'PBI_RECOVERY_PASSKEY_UNAVAILABLE' ? 'This passkey cannot unlock account recovery on this device.'
-        : code === 'PBI_EXISTING_IDENTITY_HELD' ? 'This device already holds an Identity Record. Open that account to connect a passkey.'
+      throw Error(code === 'PBI_EXISTING_IDENTITY_HELD' ? 'This device already holds an Identity Record. Open that account to connect a passkey.'
         : code === 'passkey_cancelled' ? 'Passkey sign-in was cancelled.'
         : ['PBI_BROWSER_UNAVAILABLE','PBI_RELATED_ORIGIN_UNAVAILABLE'].includes(code)
           ? 'This browser cannot use this passkey here. Use your Identity Record to sign in.'
