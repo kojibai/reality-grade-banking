@@ -64,6 +64,15 @@ function expandNavigation(source){
  return navigation;
 }
 const navigation=expandNavigation(carriedNavigation),bankNavigation=expandNavigation(openedBank.navigation);
+for (const [path, name] of [["/learn/earn-from-originals/", "originals-qualification"], ["/learn/how-value-works/", "value-explainer"]]) {
+ const css = await readFile(`dist/learn/${name}.css`, 'utf8');
+ const style = `<style data-public-page-style="${name}">${css}</style>`;
+ const direct = await readFile(`dist${path}index.html`, 'utf8');
+ assert.ok(direct.includes(style), `${path} carries its original styles on a direct visit.`);
+ assert.ok(bankNavigation.pages[path].head.includes(style), `${path} carries its original styles when opened from Bank.`);
+ assert.ok(navigation.pages[path].head.includes(style), `${path} carries its original styles when opened from another guide.`);
+ assert.ok(!html.includes(css), `The Bank entrance does not inline the ${name} guide stylesheet.`);
+}
 const {css:coldBankCss,...bankRuntime}=navigation.bank;
 assert.deepEqual(bankNavigation,{...navigation,bank:bankRuntime},'The Bank entry carries every exact public destination and reuses its own embedded styles.');
 assert.equal(openedBank.shared,openedNavigation.shared,'The Bank entry retains the same complete shared examples.');
