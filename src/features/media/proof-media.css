@@ -11,3 +11,8 @@
 @media(pointer:coarse){.proof-book-navigation select{font-size:16px}}
 
 .proof-image-view.is-expanded .proof-image-scroll{touch-action:pan-x pan-y}
+
+@media(hover:hover) and (pointer:fine) {
+ .proof-image-view.is-expanded[data-asset-no-swipe] .proof-image-scroll {cursor:grab}
+ .proof-image-view.is-expanded[data-asset-no-swipe] .proof-image-scroll:active {cursor:grabbing}
+}

@@ -1,21 +1,25 @@
 .proof-media-dialog.proof-media-dialog--image-object {
   width:min(730px,calc(100vw - 20px));
-  height:auto;
-  max-height:calc(100dvh - 24px);
+  height:min(880px,calc(100dvh - 24px));
   border-radius:24px;
   background:#f4f6fa;
 }
 .proof-media-dialog--image-object>header {background:#fbfcff}
 .proof-image-object-body {
+  flex:1;
   min-height:0;
   overflow:auto;
 }
 .asset-object--image {
+  display:flex;
+  flex-direction:column;
+  min-height:100%;
   margin:0;
   --image-object-depth:3px;
   --image-object-rotation:0deg;
 }
 .asset-object--image .asset-object-stage {
+  flex:1;
   perspective:1050px;
   display:grid;
   place-items:center;
@@ -69,9 +73,20 @@
 }
 .asset-object--image .proof-image-view.is-expanded {height:100%;background:#151312}
 .asset-object--image .proof-image-view:not([data-asset-no-swipe]) img {max-height:100%}
-.asset-object--image .proof-image-zoom {bottom:8px}
+.asset-object-zoom .proof-image-zoom {
+  position:static;
+  transform:none;
+  box-shadow:none;
+  background:transparent;
+  font-variant-numeric:tabular-nums;
+  touch-action:manipulation;
+}
+.asset-object-zoom .proof-image-zoom span {min-width:4ch;text-align:center}
+.asset-object--image[data-showing=back] .asset-object-zoom {display:none}
 .asset-object--image .asset-object-toolbar {
-  padding:8px 16px;
+  flex-shrink:0;
+  gap:8px;
+  padding:8px clamp(8px,3vw,16px);
   border-top:1px solid #dbe3ef;
   background:#fbfcff;
 }

@@ -76,3 +76,39 @@ it('pinches the held canvas without requesting another PDF or changing pages',as
   expect(label()).toBe('A document · page 1');
  }finally{await act(async()=>root.unmount());}
 });
+
+it('keeps desktop pinch input inside the held PDF while ordinary wheel scrolling stays native',async()=>{
+ const {host,root,paper,label}=await mount('blob:pdf-trackpad-pinch');
+ try{
+  const canvas=host.querySelector('canvas')!;
+  vi.spyOn(canvas,'getBoundingClientRect').mockReturnValue(new DOMRect(16,16,328,492));
+  const gesture=(type:string,scale:number)=>{
+   const event=Object.assign(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:180,clientY:150}),{scale});
+   act(()=>paper.dispatchEvent(event));
+   return event.defaultPrevented;
+  };
+  const wheel=(ctrlKey:boolean,deltaY:number)=>{
+   const event=Object.assign(new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY}),{ctrlKey,clientX:180,clientY:150});
+   act(()=>paper.dispatchEvent(event));
+   return event.defaultPrevented;
+  };
+  expect(wheel(false,-100)).toBe(false);
+  const renders=held.getPage.mock.calls.length;
+  expect(gesture('gesturestart',1)).toBe(true);
+  expect(gesture('gesturechange',1.5)).toBe(true);
+  expect(canvas.style.transform).toContain('scale(1.5)');
+  expect(held.getPage).toHaveBeenCalledTimes(renders);
+  await act(async()=>{expect(gesture('gestureend',1.5)).toBe(true);});
+  expect(canvas.style.width).toBe('492px');
+  vi.useFakeTimers();
+  expect(wheel(true,-100)).toBe(true);
+  expect(wheel(true,-100)).toBe(true);
+  expect(held.getPage).toHaveBeenCalledTimes(renders+1);
+  await act(async()=>{await vi.runOnlyPendingTimersAsync();});
+  expect(canvas.style.width).toBe('656px');
+  expect(canvas.style.transform).toBe('');
+  expect(held.getPage).toHaveBeenCalledTimes(renders+2);
+  expect(held.acquire).toHaveBeenCalledOnce();
+  expect(label()).toBe('A document · page 1');
+ }finally{vi.useRealTimers();await act(async()=>root.unmount());}
+});

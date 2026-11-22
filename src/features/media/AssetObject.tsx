@@ -9,6 +9,7 @@ export interface AssetObjectProps {
   label?:string;
   className?:string;
   image?:boolean;
+  toolbarControls?:ReactNode;
   onSideChange?:(side:'front'|'back')=>void;
   rootRef?:RefObject<HTMLElement|null>;
 }
@@ -19,7 +20,7 @@ function protectsControl(target:EventTarget|null,stage:Element):boolean {
 }
 
 /** A display surface only. Proof content is mounted on demand by its owner. */
-export function AssetObject({front,renderBack,label='Proof object',className='',image=false,onSideChange,rootRef}:AssetObjectProps){
+export function AssetObject({front,renderBack,label='Proof object',className='',image=false,toolbarControls,onSideChange,rootRef}:AssetObjectProps){
   const capabilities=useContext(PublicDocumentCapabilitiesContext);
  const [back,setBack]=useState(false),[inView,setInView]=useState(()=>(capabilities?.intersectionObserver??typeof IntersectionObserver!=='undefined')===false),[pageVisible,setPageVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
   const localRoot=useRef<HTMLElement>(null),root=rootRef??localRoot,gesture=useRef<{id:number;x:number;y:number;at:number}|null>(null),suppressClickUntil=useRef(0),backId=useId();
@@ -84,6 +85,6 @@ export function AssetObject({front,renderBack,label='Proof object',className='',
         <div id={backId} className={`asset-object-side asset-object-back ${!back?'is-inactive':''}`} data-side="back" aria-hidden={!back} inert={!back}>{back?renderBack():null}</div>
       </div></div></div>
     </div>
-    <div className="asset-object-toolbar"><span aria-hidden="true">{back?'Proof material':'The original'}</span><button type="button" className="asset-object-flip" aria-label={back?'Show front':'Show proof material'} aria-pressed={back} aria-controls={backId} onClick={()=>show(!back)}>{back?<RotateCcw size={14} strokeWidth={1.5}/>:<RotateCw size={14} strokeWidth={1.5}/>}<span>{back?'Front':'Proof'}</span></button></div>
+    <div className="asset-object-toolbar"><span aria-hidden="true">{back?'Proof material':'The original'}</span>{toolbarControls}<button type="button" className="asset-object-flip" aria-label={back?'Show front':'Show proof material'} aria-pressed={back} aria-controls={backId} onClick={()=>show(!back)}>{back?<RotateCcw size={14} strokeWidth={1.5}/>:<RotateCw size={14} strokeWidth={1.5}/>}<span>{back?'Front':'Proof'}</span></button></div>
   </section>;
 }

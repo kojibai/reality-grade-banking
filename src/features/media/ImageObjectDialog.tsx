@@ -13,10 +13,12 @@ export function ImageObjectDialog({item,title,url,label='Original image',resolve
  item:PublicMarketItem;title:string;url:string;label?:string;resolved?:boolean;onClose:()=>void;children?:ReactNode;
 }){
  const [ratio,setRatio]=useState(16/9);
+ const [zoomHost,setZoomHost]=useState<HTMLDivElement|null>(null);
  return <ExpandedMedia title={title} label={label} onClose={onClose} className="proof-media-dialog--image-object">
   <div className="proof-image-object-body" style={{'--image-object-ratio':ratio} as CSSProperties}>
    <AssetObject image className="asset-object--image" label={title}
-    front={<ProofImageCanvas url={url} label={title} resolved={resolved} expanded onAspect={setRatio} onExpand={()=>{}}/>}
+    toolbarControls={<div className="asset-object-zoom" ref={setZoomHost}/>}
+    front={<ProofImageCanvas url={url} label={title} resolved={resolved} expanded zoomControlsHost={zoomHost} onAspect={setRatio} onExpand={()=>{}}/>}
     renderBack={()=> <Suspense fallback={null}><AssetProofBack item={item} showVerification/></Suspense>}/>
   </div>
   {children}
