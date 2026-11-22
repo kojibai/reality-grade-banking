@@ -50,11 +50,20 @@ class Intersection {
 }
 async function intersections(entries:{target:Element;near:boolean}[]){
  await act(async()=>{for(const observer of [...observers]){
-  const observed=entries.filter(({target})=>observer.targets.has(target)).map(({target,near})=>({target,isIntersecting:near,intersectionRatio:near?1:0}) as IntersectionObserverEntry);
+  const observed=entries.filter(({target})=>observer.targets.has(target)).map(({target,near})=>({target,isIntersecting:near,intersectionRatio:near?1:0,boundingClientRect:new DOMRect(0,0,390,80)}) as IntersectionObserverEntry);
   if(observed.length)observer.callback(observed,observer as unknown as IntersectionObserver);
  }});
 }
 const intersect=(targets:Element[],near:boolean)=>intersections(targets.map(target=>({target,near})));
+// Rows stay mounted. The first observer prepares near artwork, then the
+// mounted PDF preview's own observer starts its shared document reader.
+async function showPdfRows(next:Element[],leaving:Element[]){
+ await intersections([...leaving.map(target=>({target,near:false})),...next.map(target=>({target,near:true}))]);
+ const previews=next.map(row=>row.querySelector('.proof-pdf-preview'));
+ for(const preview of previews)expect(preview).not.toBeNull();
+ await intersect(previews as Element[],true);
+}
+
 let sequence=0;
 function item(index:number,isDocument=false):PublicMarketItem{return {
  id:'pressure-'+index,assetId:'pressure-'+index,title:'Held work '+index,summary:'Retained accepted display',category:'proof',mediaKind:isDocument?'pdf':'image',
@@ -95,17 +104,20 @@ it('profiles accumulated DOM while reusing the exact held catalog during deep sc
 it('releases far pending readers and bounds the actual idle document cache while scrolling thirty cards',async()=>{
  const {root,host,fetcher,catalog}=await mount(50,true),before=pdf.acquired.length;
  try{
-  const cards=[...host.querySelectorAll('.proof-pdf-preview')];expect(cards).toHaveLength(50);
+  const rows=[...host.querySelectorAll('.market-rows .asset-row')];expect(rows).toHaveLength(50);
+  expect(host.querySelectorAll('.proof-pdf-preview')).toHaveLength(6);
   for(let offset=0;offset<30;offset+=2){
-   if(offset)await intersect(cards.slice(offset-2,offset),false);
-   await intersect(cards.slice(offset,offset+2),true);
+   await showPdfRows(rows.slice(offset,offset+2),offset?rows.slice(offset-2,offset):rows.slice(2,6));
    expect(pdf.acquired.length-before).toBe(offset+2);
+   expect(host.querySelectorAll('.proof-pdf-preview')).toHaveLength(2);
+   expect(references()).toBe(2);
   }
+  expect([...host.querySelectorAll('.market-rows .asset-row')]).toEqual(rows);
   console.info('DEEP_SCROLL_PENDING_PDF_PROFILE',JSON.stringify({nearCards:2,visitedCards:30,activeReferences:references(),cacheDocuments:liveDocuments().length,sharedWorkers:pdf.workers,mountedCanvases:host.querySelectorAll('canvas').length,catalogCount:catalog.items.length}));
   expect(fetcher).not.toHaveBeenCalled();expect(catalog.items).toHaveLength(50);
   expect(references(),'Only the two near cards should retain slow PDF preparations; the accepted catalog stays complete.').toBe(2);
   expect(host.querySelectorAll('canvas')).toHaveLength(2);expect(idleDocuments().length).toBeLessThanOrEqual(4);expect(liveDocuments().length).toBeLessThanOrEqual(6);expect(pdf.workers).toBe(1);
-  await intersect(cards.slice(28,30),false);expect(references()).toBe(0);expect(liveDocuments().length).toBeLessThanOrEqual(4);
+  await showPdfRows([],rows.slice(28,30));expect(references()).toBe(0);expect(liveDocuments().length).toBeLessThanOrEqual(4);
  }finally{await act(()=>root.unmount());host.remove();}
 });
 
@@ -123,10 +135,14 @@ it('uses the last proximity entry for a frame when rapid scrolling batches enter
 it('keeps a document alive for an explicitly open reader while far preview references are released',async()=>{
  const {root,host}=await mount(30,true);let opened:ReturnType<typeof acquirePdf>|undefined;
  try{
-  const cards=[...host.querySelectorAll('.proof-pdf-preview')];await intersect([cards[0]],true);
+  const rows=[...host.querySelectorAll('.market-rows .asset-row')];expect(rows).toHaveLength(30);
+  await showPdfRows([rows[0]],rows.slice(1,6));
   const url=pdf.acquired.at(-1)!;opened=acquirePdf(url);const pinned=liveDocuments().find(task=>task.url===url)!;
   for(let offset=1;offset<20;offset++){
-   await intersect([cards[offset-1]],false);await intersect([cards[offset]],true);
+   await showPdfRows([rows[offset]],[rows[offset-1]]);
+   expect(pdf.refs.get(url)).toBe(1);
+   expect(pinned.destroyed).toBe(false);
+   expect(references()).toBe(2);
   }
   expect(pdf.refs.get(url)).toBe(1);expect(pinned.destroyed).toBe(false);expect(references()).toBe(2);expect(host.querySelectorAll('canvas')).toHaveLength(1);
   expect(idleDocuments().length).toBeLessThanOrEqual(4);expect(liveDocuments().length).toBeLessThanOrEqual(6);expect(pdf.workers).toBe(1);
