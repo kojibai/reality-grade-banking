@@ -63,6 +63,10 @@ export function hasObservedAssetPublicationSignature(identityDigest:string,accou
  restore();const entry=additions.get(sourceDigest);
  return entry?.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&entry.signatureDeliveryHash===pbiReceiptHash;
 }
+export function readAdmittedAssetSignatureHash(identityDigest:string,accountUid:string,sourceDigest:string){
+ restore();const entry=additions.get(sourceDigest);
+ return entry?.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash)?entry.item.pbiReceiptHash:null;
+}
 /** Bounded owner display locators only. Exact bytes and the canonical Source
  * opener, never delivery status or these rows, decide local projection. */
 export function retainedAssetPublicationDigests(identityDigest:string,accountUid:string,username:string):readonly string[]{

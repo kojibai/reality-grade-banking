@@ -149,6 +149,7 @@ export interface OpenIdentity {
   createComposedAsset: (definition:AssetDefinition,draft:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void)=>Promise<HeldDeposit>;
   pendingAssetPublication?: () => Promise<HeldDeposit | null>;
   retryAssetPublication?: (sourceDigest?:string) => Promise<HeldDeposit>;
+  retryAssetSignatureOnOpen?: (sourceDigest:string,source?:HeldDeposit) => void;
   dismissAssetCreation?: (digest:string) => Promise<void>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   readNoteHistory?: () => Promise<import('./public-network').PublicRecord[]>;
@@ -1821,6 +1822,34 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       return {...source,pbiSigned:true,publication:source.publication?.status==='published'?source.publication:delivery,marketPublication:delivery};
     });
   }
+  const openedAssetSignatureRetries=new Map<string,Promise<void>>();
+  function retryAssetSignatureOnOpen(digest:string,source?:HeldDeposit){
+    if(lifetime.signal.aborted||navigator.onLine===false||!/^[a-f0-9]{64}$/.test(digest)||assetSigningFlights.has(digest)||openedAssetSignatureRetries.has(digest))return;
+    const uid=accountUid??knownWallet?.wallet.userId;
+    if(!uid)return;
+    const attempt=(async()=>{
+      const adoption=await import('./asset-publication-adoption');noteOpen();
+      const projected=adoption.readAdmittedAssetSignatureHash(binding.artifactSha256,uid,digest);
+      if(projected&&adoption.hasObservedAssetPublicationSignature(binding.artifactSha256,uid,digest,projected))return;
+      const [{readAssetSignatureCheckpoint},vault]=await Promise.all([import('./asset-publication'),import('./identity-vault')]);
+      const saved=await vault.loadAssetPublicationState(binding).catch(()=>null);noteOpen();
+      const checkpoint=readAssetSignatureCheckpoint(saved,binding.artifactOwnerReceizId,digest);
+      if(checkpoint?.delivered&&(!projected||projected===checkpoint.pbiReceiptHash))return;
+      if(!projected&&!checkpoint){
+        // A saved native receipt can predate its editor/display index. Look up
+        // that one held Original locally before starting any public delivery.
+        if(source?.digest!==digest||!source.composerOriginal||!publicAccountUsername(presentationUsername??keyFile.owner.username))return;
+        const file=new File([new Uint8Array(source.bytes)],source.filename,{type:'application/vnd.receiz.bundle+json'});
+        const runtime=await openComposedPublisher(undefined,true);noteOpen();
+        if(!await runtime.readSignedSource(file))return;
+        noteOpen();
+      }
+      if(!confirmedUsername){await prepareReceivingUsername();noteOpen();}
+      await publishAssetSignature(digest,true);
+    })();
+    openedAssetSignatureRetries.set(digest,attempt);
+    void attempt.finally(()=>openedAssetSignatureRetries.delete(digest)).catch(()=>{});
+  }
   let assetSignatureSync:Promise<void>|undefined;
   function startAssetSignatureSync(eventOrSource?:Event|string){
     if(lifetime.signal.aborted||assetSignatureSync)return;
@@ -2458,7 +2487,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       });
     }return transferOriginalReader(record);
   };
-  const openedIdentity:OpenIdentity = { governanceExecution, publishGovernanceOriginal, matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const openedIdentity:OpenIdentity = { retryAssetSignatureOnOpen, governanceExecution, publishGovernanceOriginal, matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, walletSend, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
   return openedIdentity;
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {

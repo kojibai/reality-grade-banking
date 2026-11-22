@@ -113,6 +113,12 @@ export function readPendingAssetSignatureSources(value:unknown,ownerReceizId:str
  const state=readAssetPublicationState(value,ownerReceizId);
  return state?[state,...state.pendingSources??[]].flatMap(source=>unfinishedSignature(source)?[{sourceDigest:source.sourceDigest,pbiReceiptHash:source.pbiReceiptHash!}]:[]):[];
 }
+export function readAssetSignatureCheckpoint(value:unknown,ownerReceizId:string,sourceDigest:string){
+ try{
+  const source=selectedSource(readAssetPublicationState(value,ownerReceizId),sourceDigest);
+  return source?.pbiReceiptHash?{pbiReceiptHash:source.pbiReceiptHash,delivered:!unfinishedSignature(source)}:null;
+ }catch{return null;}
+}
 function readReceipt(value:unknown):AssetPublicationReceipt{
  const receipt=value as AssetPublicationReceipt;
  if(!receipt)throw Error('BANK_ASSET_PUBLICATION_RECEIPT_INVALID');

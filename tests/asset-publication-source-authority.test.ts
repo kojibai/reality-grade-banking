@@ -46,6 +46,26 @@ function savedSignaturePublication(input:{host:ReturnType<typeof signatureSource
  return new Function('assetSigningFlights','noteOpen','loadDepositSources','binding','sdk','openComposedPublisher','adoptionModule','assetPublication','vault','navigator','lifetime',`${compiled};return publishAssetSignature;`)(input.host.flights,()=>{},async()=>[{bytes:new Uint8Array(await input.source.arrayBuffer()),filename:input.source.name}],{artifactOwnerReceizId:input.owner},sdk,async()=>input.runtime,adoption,assetPublication,vault,{locks:{request:async(_name:string,_options:unknown,run:()=>Promise<unknown>)=>run()}},{signal:new AbortController().signal}) as (digest:string,resumeOnly:boolean)=>Promise<assetPublication.AssetPublicationReceipt|null>;
 }
 
+function openedSignatureRetry(input:{uid:string;owner:string;read():unknown;resume:(digest:string,retry:boolean)=>Promise<unknown>;readNative?:()=>Promise<unknown>;online?:boolean}){
+ const path=new URL('../src/receiz/native-identity.ts',import.meta.url);
+ const file=ts.createSourceFile(path.pathname,readFileSync(path,'utf8'),ts.ScriptTarget.Latest,true);
+ let statement='';
+ function find(node:ts.Node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='retryAssetSignatureOnOpen')statement=node.getText(file);ts.forEachChild(node,find);}
+ find(file);
+ if(!statement)throw Error('SELECTED_ASSET_RETRY_MISSING');
+ const compiled=ts.transpileModule(statement.replace(/import\('\.(\/[^']+)'\)/g,"modules['.$1']"),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const modules={'./asset-publication-adoption':adoption,'./asset-publication':assetPublication,'./identity-vault':{loadAssetPublicationState:async()=>input.read()}};
+ return new Function('modules','input',`
+  const openedAssetSignatureRetries=new Map(),assetSigningFlights=new Map(),lifetime=new AbortController();
+  const navigator={onLine:input.online!==false},binding={artifactOwnerReceizId:input.owner,artifactSha256:'d'.repeat(64)};
+  const accountUid=input.uid,presentationUsername='artist',confirmedUsername='artist',noteOpen=()=>{};
+  const publicAccountUsername=value=>value,openComposedPublisher=async()=>({readSignedSource:input.readNative});
+  const publishAssetSignature=input.resume;
+  ${compiled}
+  return (digest,source)=>{retryAssetSignatureOnOpen(digest,source);return openedAssetSignatureRetries.get(digest);};
+ `)(modules,input) as (digest:string,source?:{digest:string;composerOriginal:true;bytes:Uint8Array;filename:string})=>Promise<void>|undefined;
+}
+
 afterEach(()=>{adoption.forgetAssetPublicationAdmissions();vi.restoreAllMocks();vi.unstubAllGlobals();});
 
 it('publishes the actual canonical Source despite a display observer failure and refuses unverified Source before transport',async()=>{
@@ -120,7 +140,7 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
  const sealDocument=vi.fn(await r.createBankNativeNoteSealer({enrollment:await f.store.load(),resources:f.resources}));
  const blocks=new Map<string,Uint8Array>(),staged=new Map<string,Uint8Array>(),roots=new Map(f.roots.map((root:{kid:string})=>[root.kid,root]));
  const receiver=r.createAcceptedPublicationReceiver(r,artifactId,roots,async(reference:{sha256:string})=>blocks.get(reference.sha256)??null,{indexedDB:new IDBFactory()});
- let finalizations=0,acceptedHead:any,expectedPbi:string|undefined,writes=0,currentChecks=0;
+ let finalizations=0,acceptedHead:any,expectedPbi:string|undefined,writes=0,currentChecks=0,interruptedSignature=false;
  let checkpoint:AssetPublicationState;
  let host:ReturnType<typeof signatureSourceRetention>|undefined;
  const request:typeof fetch=async(input,init)=>{
@@ -134,6 +154,7 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('EXACT_SOURCE_BLOCK_MISSING');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');
   if(expectedPbi){expect(writes).toBe(1);expect(host?.flight.signaturePbiReceiptHash).toBe(expectedPbi);if(checkpointStorage!=='quota')expect(checkpoint.pbiReceiptHash).toBe(expectedPbi);}
+  if(expectedPbi&&checkpointStorage==='available'&&!interruptedSignature){interruptedSignature=true;return new Response(null,{status:503});}
   finalizations++;acceptedHead=await receiver.admit(body.transport);
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:acceptedHead.admission.proofHistoryHead.nodeCount,visibleChildCount:acceptedHead.visibleChildren.length});
  };
@@ -163,14 +184,22 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
    return{credIdB64Url,pubKeyPem,authenticatorDataB64Url:encode(auth),clientDataJSONB64Url:encode(client),signatureB64Url:encode(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,payload))};
   },verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}})}});
  });
- expect(receipt.status).toBe('published');expect(finalizations).toBe(2);expect(writes).toBe(1);expect(currentChecks).toBeGreaterThan(0);expect(ceremonies).toBe(1);
+ expect(receipt.status).toBe(checkpointStorage==='available'?'pending':'published');expect(finalizations).toBe(checkpointStorage==='available'?1:2);expect(writes).toBe(1);expect(currentChecks).toBeGreaterThan(0);expect(ceremonies).toBe(1);
  expect(signedLocal).toBeDefined();const heldSigned=adoption.admittedAssetPublicationItem(digest,username,uid);expect(heldSigned).toMatchObject({hasPbiSignature:true,pbiReceiptHash:expectedPbi});
  await r.connectedComposer.admitConnectedComposerSource({file:prepared.artifact,ownerReceizId:owner,profileIdentity:uid,username,assertCurrent(){},onLocalAdmission:(unsigned:ConnectedAssetLocalAdmission)=>adoption.retainAssetPublicationAdmission(unsigned,{identityDigest:actor.artifactSha256,accountUid:uid,artwork:unsigned.artwork})});
  expect(adoption.admittedAssetPublicationItem(digest,username,uid)).toMatchObject({hasPbiSignature:true,pbiReceiptHash:expectedPbi,verifyUrl:heldSigned?.verifyUrl});
  let acknowledgmentWrites=0;
  const resume=savedSignaturePublication({host,runtime,source:prepared.artifact,digest,owner,read:()=>checkpoint,write:async(next,previous)=>{expect(previous).toEqual(checkpoint);acknowledgmentWrites++;if(checkpointStorage==='ack-quota')throw new DOMException('Host acknowledgment checkpoint is full','QuotaExceededError');checkpoint=structuredClone(next);}});
  host.flights.clear();
- expect((await resume(digest,true))?.status).toBe('published');expect(acknowledgmentWrites).toBe(1);expect(ceremonies).toBe(1);
+ if(checkpointStorage==='available'){
+  const retry=vi.fn(resume),open=openedSignatureRetry({uid,owner,read:()=>checkpoint,resume:retry});
+  await open(digest);
+  expect(retry).toHaveBeenCalledExactlyOnceWith(digest,true);
+  expect((await retry.mock.results[0]!.value)?.status).toBe('published');
+  await open(digest);
+  expect(retry).toHaveBeenCalledOnce();
+ }else expect((await resume(digest,true))?.status).toBe('published');
+ expect(finalizations).toBe(2);expect(acknowledgmentWrites).toBe(1);expect(ceremonies).toBe(1);
  expect(new Uint8Array(await prepared.artifact.arrayBuffer())).toEqual(exact);
  const complete=await acceptedHead.readCompleteSource(),child=complete.children.at(-1)!;
  const opened=await r.openPayload({fileBytes:child.exactSealedArtifactBytes,filename:'signed-original.receizbundle',mime:'application/vnd.receiz.bundle+json',signatureV4RootPublicKeys:roots});
@@ -230,4 +259,37 @@ it.each(['creating', 'recovering', 'missing its display row', 'continuing after 
  expect(preparedUsername).toHaveBeenCalledTimes(phase === 'creating' ? 0 : 1);
  expect(pendingSignatures).toHaveBeenCalledExactlyOnceWith(digest, account);
  expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest, true);
+});
+
+it('retries only the opened pending signature, joins overlapping opens, and stops after the exact acknowledgment',async()=>{
+ const digest='a'.repeat(64),pbiReceiptHash='b'.repeat(64),owner='artist.receiz.id';
+ let saved:AssetPublicationState={schema:'bank.asset-publication.v1',ownerReceizId:owner,sourceDigest:digest,intentDigest:'c'.repeat(64),filename:'held.receiz',mimeType:'application/json',status:'pending',pbiReceiptHash};
+ const read=vi.fn(()=>saved);
+ const resume=vi.fn(async()=>undefined);
+ const opened=openedSignatureRetry({uid:'account-id',owner,read,resume});
+ const first=opened(digest);
+ expect(opened(digest)).toBe(first);
+ await first;
+ expect(resume).toHaveBeenCalledExactlyOnceWith(digest,true);
+ await opened('e'.repeat(64));
+ expect(resume).toHaveBeenCalledOnce();
+ saved={...saved,status:'published',receipt:{status:'published',artifactDigest:'f'.repeat(64),operationCount:1,visibleChildCount:1},pbiDeliveryReceiptHash:pbiReceiptHash};
+ await opened(digest);
+ expect(resume).toHaveBeenCalledOnce();
+ const offline=openedSignatureRetry({uid:'account-id',owner,read,resume,online:false});
+ read.mockClear();
+ await offline(digest);
+ expect(read).not.toHaveBeenCalled();
+});
+
+it('opens a held native receipt when both indexes are missing and leaves an unsigned Original alone',async()=>{
+ const owner='artist.receiz.id',digest='a'.repeat(64),source={digest,composerOriginal:true as const,bytes:new Uint8Array([1,2,3]),filename:'held.receiz'};
+ const readNative=vi.fn<()=>Promise<unknown>>().mockResolvedValueOnce(null).mockResolvedValueOnce({pbiReceiptHash:'b'.repeat(64)});
+ const resume=vi.fn(async()=>undefined);
+ const opened=openedSignatureRetry({uid:'account-id',owner,read:()=>null,resume,readNative});
+ await opened(digest,source);
+ expect(resume).not.toHaveBeenCalled();
+ await opened(digest,source);
+ expect(resume).toHaveBeenCalledExactlyOnceWith(digest,true);
+ expect(readNative).toHaveBeenCalledTimes(2);
 });
