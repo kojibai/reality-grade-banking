@@ -3,6 +3,8 @@ import {openNewPbiAccount,openPbiAccount,openPbiCheckoutAccount,openVerifiedEmai
 const p=vi.hoisted(()=>({bridge:vi.fn(),recover:vi.fn(),register:vi.fn(),admit:vi.fn(),enroll:vi.fn(),createIdentity:vi.fn(),seal:vi.fn(),append:vi.fn(),open:vi.fn(),persist:vi.fn(),prepare:vi.fn(),dispose:vi.fn(),fresh:vi.fn(),sdk:vi.fn(),resources:vi.fn(),match:vi.fn()}));
 const key={keyId:'key',alg:'Ed25519',issuedAt:'2026-10-24T00:00:00Z',owner:{uid:'local-device'},crypto:{publicKeyRawB64u:'public'}};
 const email=vi.hoisted(()=>({load:vi.fn(),restore:vi.fn(),select:vi.fn(),activate:vi.fn(),retain:vi.fn()}));
+const recovery=vi.hoisted(()=>({restorePbiIdentity:vi.fn(),retainPbiIdentity:vi.fn()}));
+vi.mock('../src/receiz/pbi-identity-recovery',()=>recovery);
 vi.mock('../src/receiz/identity-vault',()=>({loadDeviceIdentity:email.load,prepareVerifiedEmailAccountSelection:email.select}));
 vi.mock('../src/receiz/device-identity-entry',()=>({withDeviceIdentityEntry:async(run:()=>Promise<unknown>)=>run()}));
 vi.mock('../src/receiz/pbi-account-inline',()=>({runPbiAccountInline:p.bridge,recoverPbiAccountInline:p.recover,registerPbiAccountInline:p.register,closePbiAccount:async()=>{}}));
@@ -21,10 +23,23 @@ it('cancelled existing-account PBI never replaces custody, enrolls or creates a 
  p.recover.mockRejectedValue(Error('passkey_cancelled'));await expect(openPbiCheckoutAccount({} as never,'alex@example.org')).rejects.toThrow('passkey_cancelled');expect(email.select).not.toHaveBeenCalled();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
 });
 it('existing passkey with no retained Record never enrolls a replacement signer',async()=>{
- await expect(openPbiAccount(true)).rejects.toThrow('PBI_IDENTITY_RECORD_REQUIRED');
- expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true});
+ await expect(openPbiAccount(true)).rejects.toThrow('PBI_RECOVERY_PASSKEY_UNAVAILABLE');
+ expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true,withRecovery:true});
  expect(p.register).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
  expect(p.createIdentity).not.toHaveBeenCalled();expect(p.bridge).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+});
+it('uses a fresh passkey assertion to open and retain the exact Identity Record in a fresh install',async()=>{
+ const record={bytes:new Uint8Array([2]),phrase:'',filename:'same-device.receizkey'};
+ const recoverySecret=new Uint8Array(32).fill(9);
+ p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret});
+ recovery.restorePbiIdentity.mockImplementationOnce((_proof,admit)=>admit(record));
+ const opened=await openPbiAccount(true);
+ expect(opened.binding.keyId).toBe('key');
+ expect(p.open).toHaveBeenCalledExactlyOnceWith(record.bytes,record.phrase,record.filename,true,undefined,true);
+ expect(email.retain).toHaveBeenCalledExactlyOnceWith({...record,readConsent:true});
+ expect(p.createIdentity).not.toHaveBeenCalled();
+ expect(p.enroll).not.toHaveBeenCalled();
+ expect(recoverySecret.every(byte=>byte===0)).toBe(true);
 });
 it('does not register a new passkey over a held Identity Record',async()=>{
  email.load.mockResolvedValue({readConsent:true});
@@ -38,7 +53,7 @@ it('keeps the exact retained signer when PBI recovers that same account',async()
  await expect(openPbiAccount(true,checkpoint)).resolves.toBe(retained);
  expect(retained.prepareAccountView).toHaveBeenCalledExactlyOnceWith({resume:true});
  expect(checkpoint).toHaveBeenCalledOnce();
- expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true});
+ expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true,withRecovery:true});
  expect(p.enroll).not.toHaveBeenCalled();
  expect(p.createIdentity).not.toHaveBeenCalled();
  expect(p.bridge).not.toHaveBeenCalled();

@@ -2,12 +2,13 @@
  * Canonical account/session admission remains in Receiz. No bearer reaches JS. */
 const prefix='/api/bank/native/pbi/';
 const cookieName='__Secure-bankeiz-pbi';
-const routes:Record<string,{path:string;method:'GET'|'POST';session?:boolean}>={
+const routes:Record<string,{path:string;method:'GET'|'POST'|'BOTH';session?:boolean}>={
  finish:{path:'/api/auth/passkey/finish',method:'POST'},
  switch:{path:'/api/auth/receiz-id/switch',method:'POST'},
  enroll:{path:'/api/auth/passkey/enroll/begin',method:'POST',session:true},
  bind:{path:'/api/auth/receiz-id/pbi-account',method:'POST',session:true},
  'credential-source':{path:'/api/auth/receiz-id/pbi-account',method:'GET',session:true},
+ 'identity-recovery':{path:'/api/auth/receiz-id/pbi-account/recovery',method:'BOTH',session:true},
  credential:{path:'/api/pbi/webauthn/credential',method:'GET',session:true},
  'presence-challenge':{path:'/api/auth/identity-key/challenge',method:'POST',session:true},
  'presence-enroll':{path:'/api/auth/identity-key/enroll',method:'POST',session:true},
@@ -38,9 +39,13 @@ export async function relayPbiAccount(request:Request):Promise<Response>{
  if(request.headers.has('origin')?request.headers.get('origin')!==url.origin:request.method!=='GET'||request.headers.get('sec-fetch-site')!=='same-origin')return fail(403);
  if(url.pathname===prefix+'close'&&request.method==='POST'&&!url.search)return Response.json({ok:true},{headers:{...base,'Set-Cookie':cookie('',0)}});
  const operation=url.pathname.startsWith(prefix)?url.pathname.slice(prefix.length):'',route=routes[operation];
- if(!route||request.method!==route.method)return fail(400);
+ if(!route||request.method!==route.method&&(route.method!=='BOTH'||!['GET','POST'].includes(request.method)))return fail(400);
  if(operation==='credential-source'){
   if([...url.searchParams.keys()].length!==2||!['accountUid','credentialId'].every(key=>url.searchParams.getAll(key).length===1)||!/^[-_A-Za-z0-9]{1,2048}$/.test(url.searchParams.get('credentialId')??'')||!/^[-A-Za-z0-9]{1,160}$/.test(url.searchParams.get('accountUid')??''))return fail(400);
+ }else if(operation==='identity-recovery'&&request.method==='GET'){
+  if([...url.searchParams.keys()].some(key=>!['credentialId','part'].includes(key))
+   ||url.searchParams.getAll('credentialId').length!==1||!/^[-_A-Za-z0-9]{1,2048}$/.test(url.searchParams.get('credentialId')??'')
+   ||url.searchParams.getAll('part').length>1||url.searchParams.has('part')&&!/^[a-f0-9]{64}$/.test(url.searchParams.get('part')??''))return fail(400);
  }else if(operation==='credential'&&url.search){
   if([...url.searchParams.keys()].length!==1||url.searchParams.getAll('credentialId').length!==1||!/^[-_A-Za-z0-9]{1,2048}$/.test(url.searchParams.get('credentialId')??''))return fail(400);
  }else if(url.search)return fail(400);
@@ -51,11 +56,11 @@ export async function relayPbiAccount(request:Request):Promise<Response>{
   const headers:Record<string,string>={Accept:'application/json',Origin:url.origin};
   if(route.session||operation==='finish'){if(recentSession(token))headers.Cookie=`receiz_session=${token}`;}
   let body:Uint8Array|undefined;
-  if(route.method==='POST'){
+  if(request.method==='POST'){
    if(request.headers.get('content-type')?.split(';')[0].trim()!=='application/json')return fail(415);
-   body=await bounded(request.body,32*1024);headers['Content-Type']='application/json';
+   body=await bounded(request.body,operation==='identity-recovery'?1500*1024:32*1024);headers['Content-Type']='application/json';
   }
-  const upstream=await fetch(`https://receiz.com${route.path}${url.search}`,{method:route.method,headers,body:body?new Uint8Array(body).buffer:undefined,redirect:'error',credentials:'omit',signal:AbortSignal.any([request.signal,AbortSignal.timeout(45000)])});
+  const upstream=await fetch(`https://receiz.com${route.path}${url.search}`,{method:request.method,headers,body:body?new Uint8Array(body).buffer:undefined,redirect:'error',credentials:'omit',signal:AbortSignal.any([request.signal,AbortSignal.timeout(45000)])});
   if(upstream.headers.get('content-type')?.split(';')[0].trim()!=='application/json')return fail(502);
   const bytes=await bounded(upstream.body,12*1024*1024),responseHeaders=new Headers({...base,'Content-Type':'application/json'});
   for(const value of operation==='finish'||operation==='switch'?upstream.headers.getSetCookie():[]){

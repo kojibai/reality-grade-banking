@@ -26,14 +26,28 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
   useLayoutEffect(()=>setChildSheetActive(active),[active]);
   useEffect(()=>{if(active&&vaultsEntry==='create'&&identity.vaults){setVaultsOpen({owner:identity,mode:'create'});onVaultsEntryConsumed?.();}},[active,vaultsEntry,identity,onVaultsEntryConsumed]);
   const [passkeyBusy,setPasskeyBusy]=useState(false),[passkeyConnected,setPasskeyConnected]=useState(false),[passkeyError,setPasskeyError]=useState('');
+  const [recoveryChecked,setRecoveryChecked]=useState<{owner:OpenIdentity;ready:boolean}|null>(null);
   const current=useRef<OpenIdentity|null>(identity),passkeyPending=useRef(false);
   useEffect(()=>{current.current=identity;setPasskeyConnected(false);setBackup(false);setBackupError(null);setGovernanceOpen(null);return()=>{current.current=null;};},[identity]);
   const connectPasskey=async()=>{
-    if(passkeyPending.current||passkeyConnected)return;
+    if(passkeyPending.current||recoveryReady)return;
     passkeyPending.current=true;setPasskeyBusy(true);setPasskeyError('');
     const assertCurrent=()=>{if(current.current!==identity)throw Error('PBI_ACCOUNT_CLOSED');};
-    try{await(await import('../../receiz/pbi-account-connect')).connectPbiToAccount(identity,assertCurrent);if(current.current===identity)setPasskeyConnected(true);}
-    catch(cause){if(current.current===identity&&!(cause instanceof Error&&['passkey_cancelled','PBI_ACCOUNT_CLOSED'].includes(cause.message)))setPasskeyError('Your passkey could not be connected. Try again.');}
+    try{
+      const module=await import('../../receiz/pbi-account-connect');
+      if(profileVerified)await module.enablePbiIdentityRecovery(identity,assertCurrent);
+      else await module.connectPbiToAccount(identity,assertCurrent,true);
+      assertCurrent();
+      const {hasPbiIdentityRecovery}=await import('../../receiz/pbi-identity-recovery');
+      assertCurrent();
+      setRecoveryChecked({owner:identity,ready:hasPbiIdentityRecovery(identity.knownWallet?.()?.wallet.userId??'',identity.binding.keyId)});
+      setPasskeyConnected(true);
+    }catch(cause){
+      if(current.current!==identity)return;
+      const code=cause instanceof Error?cause.message:'';
+      if(['passkey_cancelled','PBI_ACCOUNT_CLOSED'].includes(code))return;
+      setPasskeyError(code==='PBI_RECOVERY_PASSKEY_UNAVAILABLE'?'This passkey can verify your account but cannot unlock a recovery backup.':'Passkey setup could not finish. Try again.');
+    }
     finally{passkeyPending.current=false;if(current.current===identity)setPasskeyBusy(false);}
   };
   const [preparedProfile,setPreparedProfile]=useState<{owner:OpenIdentity;username:string}|null>(null),[profileOpening,setProfileOpening]=useState<OpenIdentity|null>(null),[profileError,setProfileError]=useState<{owner:OpenIdentity;message:string}|null>(null);
@@ -59,6 +73,14 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
     finally{if(profilePending.current===identity)profilePending.current=null;if(current.current===identity)setProfileOpening(null);}
   };
   const profileVerified=passkeyConnected||!!knownProfilePbiAuthorship(identity.knownWallet?.()?.wallet.userId??'')||!!retainedPublicProfile(knownName??publicId)?.authorshipVerified;
+  const recoveryReady=recoveryChecked?.owner===identity&&recoveryChecked.ready;
+  useEffect(()=>{
+    let active=true;
+    if(profileVerified)void import('../../receiz/pbi-identity-recovery').then(({hasPbiIdentityRecovery})=>{
+      if(active)setRecoveryChecked({owner:identity,ready:hasPbiIdentityRecovery(identity.knownWallet?.()?.wallet.userId??'',identity.binding.keyId)});
+    });
+    return()=>{active=false;};
+  },[identity,profileVerified]);
  const downloadBackup = (held:ReturnType<OpenIdentity['backup']>) => {
     const url = URL.createObjectURL(new Blob([new Uint8Array(held.bytes)]));
     const link = document.createElement('a'); link.href = url; link.download = held.filename; link.click();
@@ -93,7 +115,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
       {identity.needsPhrase && <input type="password" readOnly value={identity.backup().phrase} aria-label="Private recovery phrase" />}
       <button className="text-button" onClick={() => setBackup(false)}>{identity.needsPhrase ? 'Hide recovery phrase' : 'Hide backup details'}</button>
     </div>}
-    <button type="button" className={"identity-passkey"+(profileVerified?" is-verified":"")} aria-label={profileVerified?'Passkey connected':'Connect passkey'} disabled={passkeyBusy||profileVerified} onClick={()=>void connectPasskey()}><span className="identity-passkey-icon"><BadgeCheck size={23} strokeWidth={1.4} aria-hidden="true"/></span><span>{profileVerified?'Verified profile':'Verify profile'}</span><small>{passkeyBusy?'Signing…':profileVerified?'Verified':'Sign with PBI'}</small></button>
+    <button type="button" className={"identity-passkey"+(profileVerified?" is-verified":"")} aria-label={recoveryReady?'Passkey recovery ready':profileVerified?'Set up passkey recovery':'Connect passkey'} disabled={passkeyBusy||recoveryReady} onClick={()=>void connectPasskey()}><span className="identity-passkey-icon"><BadgeCheck size={23} strokeWidth={1.4} aria-hidden="true"/></span><span>{profileVerified?'Verified profile':'Verify profile'}</span><small>{passkeyBusy?'Confirming…':recoveryReady?'Recovery ready':profileVerified?'Set up recovery':'Sign with PBI'}</small></button>
     <p className="identity-pbi-hint"><Fingerprint size={12} aria-hidden="true"/>Passkey sign-in &amp; recovery</p>
     {passkeyError&&<p className="error-message" role="alert">{passkeyError}</p>}
     {identity.vaults&&<button type="button" className="identity-vault-entry" onClick={()=>setVaultsOpen({owner:identity,mode:'home'})}><LockKeyhole size={23} strokeWidth={1.3}/><span><strong>Your vaults</strong><small>Your money. Your originals. Their proof.</small></span><ChevronRight size={16}/></button>}

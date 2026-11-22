@@ -8,19 +8,29 @@ import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer
 import {nativeFetch} from './native-transport';
 import {unprotectIdentityKeyFile} from './identity-protection';
 
-/** A passkey proves the selected account. Reuse its admitted Identity Record
- * when this install still holds it. A missing record cannot enroll a substitute. */
+/** An existing passkey always restores the same admitted signer, from local
+ * custody or from the encrypted exact Original unlocked by that credential. */
 export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
+ let secret:Uint8Array|undefined;
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   const recovered=await recoverPbiAccountInline({existingOnly:true});
+   const recovered=await recoverPbiAccountInline({existingOnly:true,withRecovery:true});
+   secret=recovered.recoverySecret;
+   const proof=secret?{...recovered,recoverySecret:secret}:null;
+   const retain=async(identity:OpenIdentity)=>{
+    if(!proof)return;
+    const {retainPbiIdentity}=await import('./pbi-identity-recovery');
+    await retainPbiIdentity(identity,proof).catch(error=>{
+     if(error instanceof Error&&error.message==='PBI_RECOVERY_SIGNER_MISMATCH')throw error;
+    });
+   };
    const retained=await restoreNativeIdentity();
    let previous:{accountUid:string;artifactSha256:string}|null=null;
    if(retained){
     try{
      const view=await retained.prepareAccountView({resume:true});
-     if(view.wallet.userId===recovered.accountUid){onIdentityPrepared?.();return retained;}
+     if(view.wallet.userId===recovered.accountUid){onIdentityPrepared?.();await retain(retained);return retained;}
      previous={accountUid:view.wallet.userId,artifactSha256:retained.binding.artifactSha256};
     }catch(error){retained.dispose();throw error;}
     retained.dispose();
@@ -34,14 +44,27 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
      onIdentityPrepared?.();
      const view=await identity.prepareAccountView({resume:true});
      if(view.wallet.userId!==recovered.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
+     await retain(identity);
      await selection.activateRetained();
      return identity;
     }catch(error){identity.dispose();throw error;}
    }
+   if(proof){
+    const {restorePbiIdentity}=await import('./pbi-identity-recovery');
+    const identity=await restorePbiIdentity(proof,record=>openCanonicalIdentity(record.bytes,record.phrase,record.filename,true,undefined,true));
+    if(identity){
+     try{
+      onIdentityPrepared?.();
+      if((await identity.prepareAccountView({resume:true})).wallet.userId!==recovered.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
+      await selection.retainRecovered({...identity.backup(),readConsent:true});
+      return identity;
+     }catch(error){identity.dispose();throw error;}
+    }
+   }
    if(previous)throw Error('PBI_ACCOUNT_MISMATCH');
-   throw Error('PBI_IDENTITY_RECORD_REQUIRED');
+   throw Error(proof?'PBI_RECOVERY_NOT_CONFIGURED':'PBI_RECOVERY_PASSKEY_UNAVAILABLE');
   });
- }finally{await closePbiAccount();}
+ }finally{secret?.fill(0);await closePbiAccount();}
 }
 
 /** Explicit new passkey registration is the only entry that enrolls new custody. */
@@ -52,7 +75,14 @@ export async function openNewPbiAccount(consentApproved:boolean,onIdentityPrepar
    const {loadDeviceIdentity}=await import('./identity-vault');
    if(await loadDeviceIdentity())throw Error('PBI_EXISTING_IDENTITY_HELD');
    const registered=await registerPbiAccountInline();
-   return createRecoveredAccountDevice(Promise.resolve(registered),onIdentityPrepared);
+   try{
+    const identity=await createRecoveredAccountDevice(Promise.resolve(registered),onIdentityPrepared);
+    if(registered.recoverySecret){
+     const {retainPbiIdentity}=await import('./pbi-identity-recovery');
+     await retainPbiIdentity(identity,{...registered,recoverySecret:registered.recoverySecret}).catch(()=>{});
+    }
+    return identity;
+   }finally{registered.recoverySecret?.fill(0);}
   });
  }finally{await closePbiAccount();}
 }
