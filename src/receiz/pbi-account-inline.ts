@@ -50,22 +50,33 @@ async function complete(begin:Json,accountUid?:string,credentialId?:string,expec
  const first=withRecovery?(credential.getClientExtensionResults?.() as PrfResult|undefined)?.prf?.results?.first:undefined;
  return{accountUid:expectedAccount(finished,accountUid),credentialId:rawId,...(first instanceof ArrayBuffer&&first.byteLength===32?{recoverySecret:new Uint8Array(first)}:{})};
 }
-export async function recoverPbiAccountInline(options?:{existingOnly:true;email?:string;withRecovery?:true}){
- if(!navigator.credentials?.get||!options?.existingOnly&&!navigator.credentials.create)throw Error('PBI_BROWSER_UNAVAILABLE');
+type PbiEntryOptions =
+ | {existingOnly:true;email?:string;withRecovery?:true}
+ | {existingOnly?:false;email?:never;withRecovery?:true;beforeRegistration?:()=>Promise<void>};
+
+export async function recoverPbiAccountInline(options?:PbiEntryOptions):Promise<PbiRecoveryAssertion & {registered?:true}>{
+ if(!navigator.credentials?.get)throw Error('PBI_BROWSER_UNAVAILABLE');
  const email=options?.email?.trim().toLowerCase();if(options?.email!==undefined&&(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))throw Error('PBI_ACCOUNT_MISMATCH');
  const begin=await pbiAccountRequest('begin',{intent:'auto',next:'/account',...(email?{email}:{})});
+ const beforeRegistration=options?.existingOnly?undefined:options?.beforeRegistration;
  if(options?.existingOnly&&begin.flow!=='authenticate')throw Error('PBI_ACCOUNT_MISMATCH');
+ if(begin.flow==='register'){
+  if(!navigator.credentials.create)throw Error('PBI_BROWSER_UNAVAILABLE');
+  await beforeRegistration?.();
+  return {...await complete(begin,undefined,undefined,email,options?.withRecovery),registered:true};
+ }
  try{return await complete(begin,undefined,undefined,email,options?.withRecovery);}catch(error){
   if(options?.existingOnly)throw error;
   if(!(error instanceof Error)||!['passkey_cancelled','passkey_not_registered','passkey_not_found'].includes(error.message)||begin.flow!=='authenticate'||begin.allowCredentialIds?.length)throw error;
-  return await complete(await pbiAccountRequest('begin',{intent:'register',next:'/account'}));
+  await beforeRegistration?.();
+  return {...await registerPbiAccountInline(options?.withRecovery ?? false),registered:true};
  }
 }
-export async function registerPbiAccountInline(){
+export async function registerPbiAccountInline(withRecovery=true){
  if(!navigator.credentials?.create)throw Error('PBI_BROWSER_UNAVAILABLE');
  const begin=await pbiAccountRequest('begin',{intent:'register',next:'/account'});
  if(begin.flow!=='register')throw Error('PBI_ACCOUNT_MISMATCH');
- return complete(begin,undefined,undefined,undefined,true);
+ return complete(begin,undefined,undefined,undefined,withRecovery);
 }
 export async function runPbiAccountInline(device:PbiAccountDevice,sign:(accountUid:string)=>Promise<{challengeB64Url:string;signatureB64Url:string}>,recovery:Promise<{accountUid:string;credentialId?:string}>=recoverPbiAccountInline()){
  const recovered=await recovery;

@@ -153,10 +153,10 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
-  const openWithPbi = (createAccount:boolean) => open(async identityPrepared => {
+  const pbi = () => open(async identityPrepared => {
     try {
       const pbiAccount=await import('./pbi-account');
-      return await (createAccount?pbiAccount.openNewPbiAccount:pbiAccount.openPbiAccount)(true,identityPrepared);
+      return await pbiAccount.openPbiAccount(true,identityPrepared,{allowRegistration:true});
     }
     catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
@@ -167,9 +167,6 @@ export function useNativeAccount(custody = nativeCustody) {
           : 'Passkey sign-in could not finish. Try again or use your Identity Record.');
     }
   }, true);
-
-  const pbi = () => openWithPbi(false);
-  const createPbi = () => openWithPbi(true);
 
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
   const forget = async () => {
@@ -188,5 +185,5 @@ export function useNativeAccount(custody = nativeCustody) {
     lastRead.current=null;
     setIdentity(null);setWallet(null);setWalletHistory([]);setReceivedNotes([]);setHistoryComplete(false);setObservedAt(null);setOpeningStage('identity');setOpening(false);setBusy(false);setSyncPending(false);
   };
-  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, createPbi, importId, forget };
+  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, importId, forget };
 }

@@ -1,6 +1,6 @@
 import {loadReceiz} from './client';
 import {withDeviceIdentityEntry} from './device-identity-entry';
-import {runPbiAccountInline,recoverPbiAccountInline,registerPbiAccountInline,closePbiAccount,type PbiRecoveryAssertion} from './pbi-account-inline';
+import {runPbiAccountInline,recoverPbiAccountInline,closePbiAccount,type PbiRecoveryAssertion} from './pbi-account-inline';
 import {admitPbiAccountBinding} from './pbi-account-source';
 import {openCanonicalIdentity,restoreNativeIdentity,type OpenIdentity} from './native-identity';
 import {loadBankProofResources} from './proof-resource-continuity';
@@ -22,13 +22,19 @@ async function openPbiRecoveryBackup(assertion:PbiRecoveryAssertion):Promise<Ope
 
 /** Keep the proven account. Prefer the exact held or passkey-recovered signer
  * and admit an authorized device only when neither Record is available. */
-export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
+export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void,options?:{allowRegistration:true}):Promise<OpenIdentity>{
  let secret:Uint8Array|undefined;
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   const recovered=await recoverPbiAccountInline({existingOnly:true,withRecovery:true});
+   const recovered=await recoverPbiAccountInline(options?.allowRegistration
+    ? {withRecovery:true,beforeRegistration:async()=>{
+      const {loadDeviceIdentity}=await import('./identity-vault');
+      if(await loadDeviceIdentity())throw Error('PBI_EXISTING_IDENTITY_HELD');
+    }}
+    : {existingOnly:true,withRecovery:true});
    secret=recovered.recoverySecret;
+   if(recovered.registered)return createRecoveredAccountDevice(Promise.resolve(recovered),onIdentityPrepared);
    const retained=await restoreNativeIdentity();
    let previous:{accountUid:string;artifactSha256:string}|null=null;
    if(retained){
@@ -65,21 +71,6 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
    }catch(error){identity.dispose();throw error;}
   });
  }finally{secret?.fill(0);await closePbiAccount();}
-}
-
-/** Explicit new passkey registration is the only entry that enrolls new custody. */
-export async function openNewPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
- try{
-  if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
-  return await withDeviceIdentityEntry(async()=>{
-   const {loadDeviceIdentity}=await import('./identity-vault');
-   if(await loadDeviceIdentity())throw Error('PBI_EXISTING_IDENTITY_HELD');
-   const registered=await registerPbiAccountInline();
-   try{
-    return await createRecoveredAccountDevice(Promise.resolve(registered),onIdentityPrepared);
-   }finally{registered.recoverySecret?.fill(0);}
-  });
- }finally{await closePbiAccount();}
 }
 
 /** Explicit paid-checkout account selection after its old unpaid reservation

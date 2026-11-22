@@ -4,11 +4,11 @@ const uid='11111111-1111-4111-8111-111111111111';
 const device={keyId:'key',alg:'Ed25519',publicKeyRawB64u:'pub',localUid:'device'};
 const credential={id:'credential',type:'public-key',rawId:new Uint8Array([1,2]).buffer,response:{clientDataJSON:new Uint8Array([1]).buffer,authenticatorData:new Uint8Array([2]).buffer,signature:new Uint8Array([3]).buffer,attestationObject:new Uint8Array([4]).buffer,userHandle:null}};
 function setup(mode='existing'){
- const get=vi.fn(async(_options:CredentialRequestOptions)=>{if(mode==='new'||mode==='cancel')throw new DOMException('cancel','NotAllowedError');return credential;}),create=vi.fn(async()=>{if(mode==='cancel')throw new DOMException('cancel','NotAllowedError');return credential;});
+ const get=vi.fn(async(_options:CredentialRequestOptions)=>{if(mode==='new'||mode==='cancel'||mode==='known-unavailable')throw new DOMException('cancel','NotAllowedError');return credential;}),create=vi.fn(async()=>{if(mode==='cancel')throw new DOMException('cancel','NotAllowedError');return credential;});
  vi.stubGlobal('navigator',{credentials:{get,create}});vi.stubGlobal('window',{open:()=>{throw Error('MUST_STAY_ON_PAGE');}});
  const fetch=vi.fn(async(input:string,init?:RequestInit)=>{
   const operation=input==='https://receiz.com/api/auth/passkey/related/begin'?'begin':input.split('/pbi/')[1],body=init?.body?JSON.parse(String(init.body)):{};
-  if(operation==='begin'||operation==='enroll')return Response.json({ok:true,flow:body.intent==='register'||operation==='enroll'?'register':'authenticate',challengeId:'challenge',challengeB64Url:'Y2hhbGxlbmdl',rpId:mode==='realm'?'wrong.test':'receiz.com',rpName:'Receiz',user:{idB64Url:Buffer.from(uid.replaceAll('-',''),'hex').toString('base64url'),name:'Account',displayName:'Account'}});
+  if(operation==='begin'||operation==='enroll')return Response.json({ok:true,flow:body.intent==='register'||operation==='enroll'?'register':'authenticate',challengeId:'challenge',challengeB64Url:'Y2hhbGxlbmdl',rpId:mode==='realm'?'wrong.test':'receiz.com',rpName:'Receiz',...(mode==='known-unavailable'?{allowCredentialIds:['AQI']}:{}),user:{idB64Url:Buffer.from(uid.replaceAll('-',''),'hex').toString('base64url'),name:'Account',displayName:'Account'}});
   if(operation==='finish'||operation==='switch')return Response.json({ok:true,session:{uid:mode==='wrong-account'?'other':uid,...(mode==='matched-email'?{email:'alex@example.org'}:{})}});
   if(operation==='credential')return Response.json({credential:mode==='other-device'?{credIdB64Url:'YW5vdGhlcg',pubKeyPem:'other'}:null});
   if(operation==='bind')return Response.json({ok:true,accountUid:uid,sourceMode:'legacy-sql',binding:device});
@@ -26,6 +26,39 @@ it('existing account sign-in cannot start registration when its passkey is unava
  await expect(recoverPbiAccountInline({existingOnly:true})).rejects.toThrow('passkey_cancelled');
  expect(f.create).not.toHaveBeenCalled();
  expect(f.fetch).toHaveBeenCalledOnce();
+});
+it.each(['existing','new'])('one fingerprint action handles a %s passkey with the same account protocol',async mode=>{
+ const f=setup(mode),beforeRegistration=vi.fn(async()=>{});
+ const result=await recoverPbiAccountInline({withRecovery:true,beforeRegistration});
+ expect(result.accountUid).toBe(uid);
+ const isNew=mode==='new';
+ expect(result.registered).toBe(isNew?true:undefined);
+ expect(f.get).toHaveBeenCalledOnce();
+ expect(f.create).toHaveBeenCalledTimes(isNew?1:0);
+ expect(beforeRegistration).toHaveBeenCalledTimes(isNew?1:0);
+ expect(f.fetch.mock.calls.filter(([url])=>url.endsWith('/finish'))).toHaveLength(1);
+});
+it('a browser that can authenticate can still open an existing account without creation support',async()=>{
+ const f=setup('existing'),beforeRegistration=vi.fn(async()=>{});
+ vi.stubGlobal('navigator',{credentials:{get:f.get}});
+ await expect(recoverPbiAccountInline({withRecovery:true,beforeRegistration})).resolves.toMatchObject({accountUid:uid});
+ expect(beforeRegistration).not.toHaveBeenCalled();
+});
+it('never offers registration when a known passkey was declined or held custody blocks creation',async()=>{
+ const known=setup('known-unavailable'),beforeRegistration=vi.fn(async()=>{});
+ await expect(recoverPbiAccountInline({beforeRegistration})).rejects.toThrow('passkey_cancelled');
+ expect(beforeRegistration).not.toHaveBeenCalled();
+ expect(known.create).not.toHaveBeenCalled();
+ const fresh=setup('new');
+ await expect(recoverPbiAccountInline({beforeRegistration:async()=>{throw Error('PBI_EXISTING_IDENTITY_HELD');}})).rejects.toThrow('PBI_EXISTING_IDENTITY_HELD');
+ expect(fresh.create).not.toHaveBeenCalled();
+ expect(fresh.fetch).toHaveBeenCalledOnce();
+});
+it('canceling the native creation prompt finishes neither a registration nor a sign-in',async()=>{
+ const f=setup('cancel');
+ await expect(recoverPbiAccountInline({beforeRegistration:async()=>{}})).rejects.toThrow('passkey_cancelled');
+ expect(f.create).toHaveBeenCalledOnce();
+ expect(f.fetch.mock.calls.some(([url])=>url.endsWith('/finish'))).toBe(false);
 });
 it('explicit new-passkey entry registers once without a failed authentication first',async()=>{
  const f=setup('new');
