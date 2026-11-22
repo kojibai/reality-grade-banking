@@ -1,7 +1,8 @@
 import {afterEach,beforeAll,expect,it,vi} from 'vitest';
 import {createLocalPbiAuthorshipProof,type LocalPbiAuthorshipInput} from '../native/receiz/packages/receiz-sdk/src/pbiLocalAuthorship';
+import {writeExactByteBlocks} from '../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
 import {verifyLocalPbiAssertion} from '../native/receiz/packages/receiz-sdk/src/pbiLocalVerifier';
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBFactory,IDBObjectStore as FakeIDBObjectStore} from 'fake-indexeddb';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 
 import {createAssetPublication,readPendingAssetPublicationDigests,type AssetPublicationState} from '../src/receiz/asset-publication';
@@ -123,6 +124,11 @@ it('delivers exact known protected Source without requiring a subordinate privat
 
  // Passkey entry on a fresh install has this same account and a different
  // device key. Sign the accepted Original without opening its private copy.
+ const current=await r.showcaseTransport.readProfileShowcaseCarrierTransport(acceptedHead!.transport,async(ref:{sha256:string})=>publicBlocks.get(ref.sha256)??null);
+ expect(current.predecessor).toBeDefined();
+ const {predecessor:_wireParent,...legacyEnvelope}=current.envelope;
+ const root=await writeExactByteBlocks(new Blob([JSON.stringify(legacyEnvelope)]),async(ref,bytes)=>{publicBlocks.set(ref.sha256,bytes.slice());});
+ accepted={...(accepted as object),transport:{...current.transport,root},predecessorTransports:[current.predecessor]};
  values.clear();vi.stubGlobal('indexedDB',new IDBFactory());
  const freshIdentity=await f.otherIdentity(),signer=await cold.connectedComposer.createConnectedAssetPublicationRuntime({
   identity:freshIdentity.bytes,passphrase:freshIdentity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:request,sealDocument:seal,
@@ -151,7 +157,20 @@ ${Buffer.from(spki).toString('base64')}
  };
  await expect(signer.signExistingOriginal({...prepared.reference,filename:'substituted.receizbundle'},authorize)).rejects.toThrow('PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED');
  expect(ceremonies).toBe(0);
- const signed=await signer.signExistingOriginal(prepared.reference,authorize).catch((error:Error)=>{throw Error(error.message);});
+ // Once the accepted Original blocks are available for reading, a failure
+ // restaging its media cannot prevent the receipt ceremony.
+ const selectedBlockWrites: string[] = [];
+ const put=FakeIDBObjectStore.prototype.put;
+ const write=vi.spyOn(FakeIDBObjectStore.prototype,'put').mockImplementation(function(this:InstanceType<typeof FakeIDBObjectStore>,value,key){
+  if(this.transaction.db.name==='receiz-imported-source-custody-v1'&&this.name==='segments'&&
+   (value.sha256===prepared.reference.bytes.sha256||value.sha256===prepared.reference.artifactSha256)){
+   selectedBlockWrites.push(value.sha256);
+   throw new DOMException('The existing Original must not be saved again','QuotaExceededError');
+  }
+  return put.call(this,value,key);
+ });
+ const signed=await signer.signExistingOriginal(prepared.reference,authorize).finally(()=>write.mockRestore());
+ expect(selectedBlockWrites).toEqual([]);
  expect(signed.receipt).toMatchObject({status:'published'});
  const signedChild=(await acceptedHead!.readCompleteSource()).children.at(-1);
  const signedSource=await cold.openImportedProofSource(new File([signedChild.exactSealedArtifactBytes],'profile-original.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:async(ref:{sha256:string})=>publicBlocks.get(ref.sha256)});

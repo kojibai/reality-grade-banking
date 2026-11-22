@@ -301,6 +301,7 @@ export type ProfileShowcaseCompleteSourceChildDescriptor = Readonly<{
 async function* iterateCompleteSourceInventoryRecords(
   input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver, kind: "children" | "nodes",
   capacity: CompleteSourceExecutionCapacity = COMPLETE_SOURCE_EXECUTION_CAPACITY,
+  recoverPredecessor?: (carrier: Awaited<ReturnType<typeof readProfileShowcaseCarrierTransport>>) => Promise<ProfileShowcaseCompleteSourceTransport | undefined>,
 ): AsyncGenerator<unknown> {
   const transport = parseCompleteSourceTransport(input);
   let blockReads = 0, retainedBytes = 0, records = 0;
@@ -329,8 +330,11 @@ async function* iterateCompleteSourceInventoryRecords(
       if(++records>capacity.inventoryRecords)throw new ExactByteBlockExecutionUnavailable("complete publication inventory records",records,capacity.inventoryRecords,true);
       suffix.push(sparse.child);
     }
-    if(!sparse.predecessor)throw new TypeError("PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED");
-    cursor=parseCompleteSourceTransport(sparse.predecessor);
+    const predecessor=sparse.predecessor??(recoverPredecessor
+      ? await recoverPredecessor(await readProfileShowcaseCarrierTransport({transportVersion:2,...cursor},resolve,capacity))
+      : undefined);
+    if(!predecessor)throw new TypeError("PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED");
+    cursor=parseCompleteSourceTransport(predecessor);
   }
   for await (const child of readCompleteSourceInventory(envelope[kind], resolve, capacity,
     length => reserve(length, "complete publication inventory", capacity.inventoryBytes), () => {
@@ -344,8 +348,9 @@ async function* iterateCompleteSourceInventoryRecords(
 export async function* iterateProfileShowcaseCompleteSourceChildDescriptors(
   input: ProfileShowcaseCompleteSourceTransport, resolveBlock: ExactByteBlockResolver,
   capacity: CompleteSourceExecutionCapacity = COMPLETE_SOURCE_EXECUTION_CAPACITY,
+  recoverPredecessor?: Parameters<typeof iterateCompleteSourceInventoryRecords>[4],
 ): AsyncGenerator<ProfileShowcaseCompleteSourceChildDescriptor> {
-  for await (const child of iterateCompleteSourceInventoryRecords(input, resolveBlock, "children", capacity)) {
+  for await (const child of iterateCompleteSourceInventoryRecords(input, resolveBlock, "children", capacity, recoverPredecessor)) {
     if (!object(child) || !exactKeys(child, ["reference", "bytes"])) invalid();
     yield Object.freeze({ reference: Object.freeze(parseReference(child.reference)), bytes: Object.freeze(parseExactByteBlockReference(child.bytes)) });
   }

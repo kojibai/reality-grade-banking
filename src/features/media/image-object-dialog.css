@@ -13,7 +13,8 @@
 .asset-object--image {
   display:flex;
   flex-direction:column;
-  min-height:100%;
+  height:100%;
+  min-height:0;
   margin:0;
   --image-object-depth:3px;
   --image-object-rotation:0deg;
@@ -21,15 +22,22 @@
 .asset-object--image .asset-object-stage {
   flex:1;
   perspective:1050px;
-  display:grid;
-  place-items:center;
+  display:flex;
+  align-items:safe center;
+  justify-content:safe center;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  touch-action:pan-x pan-y;
+  container-type:inline-size;
   padding:clamp(20px,5vw,50px) clamp(12px,5vw,42px) clamp(24px,5vw,52px);
   transition:none;
   background:radial-gradient(ellipse at 50% 35%,#fbfcff,#f4f6fa 76%);
 }
 .asset-object--image .asset-object-float {
-  width:min(100%,calc((100dvh - 268px) * var(--image-object-ratio)));
-  min-width:min(100%,210px);
+  --image-object-fit:max(min(100cqw,210px),min(100cqw,calc((100dvh - 268px) * var(--image-object-ratio))));
+  flex:none;
+  width:calc(var(--image-object-fit) * var(--image-object-zoom,1));
   animation:none;
   transform-style:preserve-3d;
 }
@@ -62,7 +70,7 @@
 }
 .asset-object--image .asset-object-front {
   transform:translateZ(var(--image-object-depth));
-  background:#1a1614;
+  background:#f4f6fa;
 }
 .asset-object--image .asset-object-back {
   transform:rotateY(180deg) translateZ(4px);
@@ -72,9 +80,9 @@
   overscroll-behavior:contain;
   padding:clamp(10px,3vw,22px);
 }
-.asset-object--image .proof-image-view.is-expanded {height:100%;background:#151312}
-.asset-object--image .proof-image-scroll img {transition:none}
-.asset-object--image .proof-image-view:not([data-asset-no-swipe]) img {max-height:100%}
+.asset-object--image .proof-image-view.is-expanded {height:100%;background:transparent}
+.asset-object--image .proof-image-scroll {overflow:hidden}
+.asset-object--image .proof-image-scroll img {width:100%;height:100%;max-height:100%;transition:none}
 .asset-object-zoom .proof-image-zoom {
   position:static;
   transform:none;
@@ -94,36 +102,9 @@
 }
 .asset-object--image .asset-proof-back-body {max-height:none;overflow:visible}
 @media(max-height:580px) {
-  .asset-object--image .asset-object-float {width:min(100%,calc((100dvh - 210px) * var(--image-object-ratio)))}
+  .asset-object--image .asset-object-float {--image-object-fit:max(min(100cqw,210px),min(100cqw,calc((100dvh - 210px) * var(--image-object-ratio))))}
   .asset-object--image .asset-object-stage {padding-block:12px 17px}
 }
 @media(prefers-reduced-motion:reduce) {
   .asset-object--image .asset-object-pose {transform:none}
-}
-
-.asset-object--image[data-showing=front]:has(.proof-image-view[data-asset-no-swipe]) {
-  height:100%;
-}
-.asset-object--image[data-showing=front]:has(.proof-image-view[data-asset-no-swipe]) .asset-object-stage {
-  min-height:0;
-  padding:0;
-  overflow:hidden;
-  perspective:none;
-  grid-template:minmax(0,1fr)/minmax(0,1fr);
-}
-.asset-object--image[data-showing=front]:has(.proof-image-view[data-asset-no-swipe]) :is(.asset-object-float,.asset-object-pose,.asset-object-turn) {
-  width:100%;
-  height:100%;
-  min-width:0;
-  aspect-ratio:auto;
-  transform:none;
-  transition:none;
-}
-.asset-object--image[data-showing=front]:has(.proof-image-view[data-asset-no-swipe]) .asset-object-metal-edge {
-  display:none;
-}
-.asset-object--image[data-showing=front]:has(.proof-image-view[data-asset-no-swipe]) .asset-object-front {
-  border:0;
-  border-radius:0;
-  transform:none;
 }

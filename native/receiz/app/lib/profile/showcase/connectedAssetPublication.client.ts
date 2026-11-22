@@ -147,7 +147,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    input.assertCurrent();
    const selected=await publication();
    await selected.requireExistingOriginal(reference);
-   const source=await custody.reopen(reference,selected.resolveAcceptedSourceBlock);
+   const source=await custody.openForAuthorship(reference,selected.resolveAcceptedSourceBlock);
    const digest=reference.artifactSha256;
    input.assertCurrent();
    const continuity=source.verification.assetContinuity;

@@ -12,6 +12,8 @@ export interface AssetObjectProps {
   toolbarControls?:ReactNode;
   onSideChange?:(side:'front'|'back')=>void;
   rootRef?:RefObject<HTMLElement|null>;
+  stageRef?:RefObject<HTMLDivElement|null>;
+  objectRef?:RefObject<HTMLDivElement|null>;
 }
 const controls='a,button,input,textarea,select,option,audio,video,iframe,dialog,summary,[role="dialog"],[role="button"],[role="slider"],[contenteditable]:not([contenteditable="false"]),[data-asset-no-swipe]';
 function protectsControl(target:EventTarget|null,stage:Element):boolean {
@@ -20,7 +22,7 @@ function protectsControl(target:EventTarget|null,stage:Element):boolean {
 }
 
 /** A display surface only. Proof content is mounted on demand by its owner. */
-export function AssetObject({front,renderBack,label='Proof object',className='',image=false,toolbarControls,onSideChange,rootRef}:AssetObjectProps){
+export function AssetObject({front,renderBack,label='Proof object',className='',image=false,toolbarControls,onSideChange,rootRef,stageRef,objectRef}:AssetObjectProps){
   const capabilities=useContext(PublicDocumentCapabilitiesContext);
  const [back,setBack]=useState(false),[inView,setInView]=useState(()=>(capabilities?.intersectionObserver??typeof IntersectionObserver!=='undefined')===false),[pageVisible,setPageVisible]=useState(()=>typeof document==='undefined'||!document.hidden);
   const localRoot=useRef<HTMLElement>(null),root=rootRef??localRoot,gesture=useRef<{id:number;x:number;y:number;at:number}|null>(null),suppressClickUntil=useRef(0),backId=useId();
@@ -78,8 +80,8 @@ export function AssetObject({front,renderBack,label='Proof object',className='',
     stage.style.setProperty('--asset-tilt-y',`${(.5-(event.clientY-box.top)/box.height)*(image?5:3)}deg`);
   }
   return <section ref={root} className={`asset-object ${className}`} aria-label={label} data-motion={inView&&pageVisible?'running':'paused'} data-showing={back?'back':'front'}>
-    <div className="asset-object-stage" onTouchStart={start} onTouchEnd={end} onTouchCancel={()=>{gesture.current=null;}} onPointerMove={tilt} onPointerLeave={event=>{if(!event.currentTarget.hasPointerCapture(event.pointerId)){mouse.current=null;reset(event.currentTarget);}}} {...(image?{onPointerDown:startMouse,onPointerUp:stopMouse,onPointerCancel:stopMouse}:{})} onClickCapture={event=>{if(event.detail>0&&Date.now()<suppressClickUntil.current){event.preventDefault();event.stopPropagation();suppressClickUntil.current=0;}}}>
-      <div className="asset-object-float"><div className="asset-object-pose"><div className="asset-object-turn">
+    <div ref={stageRef} className="asset-object-stage" onTouchStart={start} onTouchEnd={end} onTouchCancel={()=>{gesture.current=null;}} onPointerMove={tilt} onPointerLeave={event=>{if(!event.currentTarget.hasPointerCapture(event.pointerId)){mouse.current=null;reset(event.currentTarget);}}} {...(image?{onPointerDown:startMouse,onPointerUp:stopMouse,onPointerCancel:stopMouse}:{})} onClickCapture={event=>{if(event.detail>0&&Date.now()<suppressClickUntil.current){event.preventDefault();event.stopPropagation();suppressClickUntil.current=0;}}}>
+      <div ref={objectRef} className="asset-object-float"><div className="asset-object-pose"><div className="asset-object-turn">
         {image&&<div className="asset-object-metal-edge" aria-hidden="true"/>}
         <div className={`asset-object-side asset-object-front ${back?'is-inactive':''}`} data-side="front" aria-hidden={back} inert={back}>{front}</div>
         <div id={backId} className={`asset-object-side asset-object-back ${!back?'is-inactive':''}`} data-side="back" aria-hidden={!back} inert={!back}>{back?renderBack():null}</div>

@@ -25,7 +25,7 @@ export {parseImportedProofSourceReference} from "./importedSourceReference";
 export type ImportedProofSourceOptions = Readonly<{
   /** Transport supplied by the host; references never confer admission. */
   resolveSourceBlock?: ExactByteBlockResolver;
-  nestedColdSpool?: (reference: ImportedProofSourceReference) => ImportedProofSourceColdSpool;
+  nestedColdSpool?: (reference: ImportedProofSourceReference) => ImportedProofSourceColdSpool | undefined;
   /** Trusted host configuration, never read from the source descriptor. */
   canonicalSignatureV4RootPublicKeys?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
 }>;
@@ -81,6 +81,7 @@ export type OpenedImportedProofSource = Readonly<{
 // reconstruction followed by the canonical enclosing verifier on a cold node.
 const openedSources = new WeakSet<OpenedImportedProofSource>();
 const HASH_CHUNK_BYTES = 1024 * 1024;
+export const IMPORTED_SOURCE_IN_MEMORY_REOPEN_MAX = 16 * HASH_CHUNK_BYTES;
 async function digestBlob(blob: Blob): Promise<string> {
   const hash = sha256.create();
   for (let offset = 0; offset < blob.size; offset += HASH_CHUNK_BYTES) {
@@ -380,7 +381,7 @@ async function reopenImportedProofSourceWithTraversal(
   const spool = options.coldSpool;
   // Compatibility materialization is explicitly bounded. Generic/server callers
   // must opt into an actual source-backed host spool for larger cold sources.
-  if (!spool && descriptor.byteLength > 16 * HASH_CHUNK_BYTES) {
+  if (!spool && descriptor.byteLength > IMPORTED_SOURCE_IN_MEMORY_REOPEN_MAX) {
     throw new ImportedProofSourceUnavailableError("IMPORTED_SOURCE_COLD_STORAGE_REQUIRED", "IMPORTED_SOURCE_COLD_STORAGE_REQUIRED", "not-evaluated");
   }
   const chunks: Blob[] = [];

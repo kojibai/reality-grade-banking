@@ -29,17 +29,17 @@ function UnsignedOriginalSigning({identity,source,item,digest}:{identity:OpenIde
   const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
   running.current=true;setBusy(true);setError('');
   try{
+   const sealedOwner=item?.sourceProvenance?.genesisOwnerReceizId;
+   const coordinate=sealedOwner&&sealedOwner!==identity.binding.artifactOwnerReceizId&&safeImportedSourceUrl(item?.originalUrl,'artifact');
+   if(coordinate&&identity.signPublishedOriginal){
+    const reference:ImportedProofSourceReference=JSON.parse(new URL(coordinate).searchParams.get('reference')!);
+    if(reference.artifactSha256!==digest)throw Error('This source does not match the selected Original.');
+    const signed=await identity.signPublishedOriginal(reference,controller.signal);
+    if(!controller.signal.aborted){if(signed)setSigned(true);else throw Error('The signature was not confirmed. Your Original remains saved.');}
+    return;
+   }
    let original=source;
    if(!original){
-    const sealedOwner=item?.sourceProvenance?.genesisOwnerReceizId;
-    const coordinate=sealedOwner&&sealedOwner!==identity.binding.artifactOwnerReceizId&&safeImportedSourceUrl(item?.originalUrl,'artifact');
-    if(coordinate&&identity.signPublishedOriginal){
-     const reference:ImportedProofSourceReference=JSON.parse(new URL(coordinate).searchParams.get('reference')!);
-     if(reference.artifactSha256!==digest)throw Error('This source does not match the selected Original.');
-     const signed=await identity.signPublishedOriginal(reference,controller.signal);
-     if(!controller.signal.aborted){if(signed)setSigned(true);else throw Error('The signature was not confirmed. Your Original remains saved.');}
-     return;
-    }
     // A Showcase-only Original may not be held on this device yet. Reuse the
     // exact retained file first; otherwise read only this selected Original.
     let file=retainedAssetPublicationSource(digest);

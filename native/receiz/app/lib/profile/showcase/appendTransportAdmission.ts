@@ -63,6 +63,20 @@ async function admitCompleteAppendTransport(input:{context:ProfileShowcaseAppend
  return {admission,carrier:current.carrier,io,resolveHistorical:historical};
 }
 
+/** A historical delivery locator is usable only for the exact parent named
+ * by the inspected sealed successor. */
+export async function readLegacyAppendPredecessor(
+ cursor:Awaited<ReturnType<typeof readProfileShowcaseCarrierTransport>>,
+ artifactId:string,predecessors:readonly import('./completeSourceTransport').ProfileShowcaseCompleteSourceTransport[],
+ roots=receizCurrentPinnedSignatureV4Roots(),
+){
+ const artifact=new File([cursor.exactSealedArtifactBytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
+ const inspected=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(artifact,roots),ownerConstraint:artifactId.slice('profile-showcase:'.length),dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
+ const carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspected);
+ if(inspected.artifactSha256!==cursor.transport.artifactDigest||carrier.artifactId!==artifactId)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_IDENTITY_MISMATCH');
+ if(carrier.receizProofHistory.parentRefs.length===1)return predecessors.find(value=>value.artifactDigest===carrier.receizProofHistory.parentRefs[0]!.artifactDigest);
+}
+
 /** A new device follows exact carrier coordinates back to its complete prefix.
  * Reuse that prefix's SDK admission and node custody, then admit only the sparse
  * successors. No historical child payload or imported media is reopened. */
@@ -76,13 +90,7 @@ export async function admitProfileShowcaseAppendTransport(input:{context:Profile
   if(seen.has(cursor.transport.artifactDigest))throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
   let predecessor=cursor.predecessor;
   if(!predecessor&&input.predecessorTransports?.length){
-   // Older saved actions did not carry a wire parent. Header metadata only
-   // locates the exact parent named by this canonically inspected artifact.
-   const roots=input.roots??receizCurrentPinnedSignatureV4Roots(),artifact=new File([cursor.exactSealedArtifactBytes.slice().buffer as ArrayBuffer],'source.receizbundle',{type:'application/vnd.receiz.bundle+json'});
-   const inspected=await inspectReceizBoundedProfileShowcaseV114({verification:await verifyReceizArtifactWithCanonicalRoots(artifact,roots),ownerConstraint:input.artifactId.slice('profile-showcase:'.length),dependencies:{canonicalSignatureV4RootPublicKeys:roots}});
-   const carrier=readReceizBoundedProfileShowcaseInspectionCarrier(inspected);
-   if(inspected.artifactSha256!==cursor.transport.artifactDigest||carrier.artifactId!==input.artifactId)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_IDENTITY_MISMATCH');
-   if(carrier.receizProofHistory.parentRefs.length===1)predecessor=input.predecessorTransports.find(value=>value.artifactDigest===carrier.receizProofHistory.parentRefs[0]!.artifactDigest);
+   predecessor=await readLegacyAppendPredecessor(cursor,input.artifactId,input.predecessorTransports,input.roots);
   }
   if(!predecessor)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED');
   seen.add(cursor.transport.artifactDigest);suffix.push(cursor);

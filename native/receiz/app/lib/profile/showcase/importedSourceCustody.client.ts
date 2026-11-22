@@ -5,7 +5,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { completeBlobCustodyTransaction, blobCustodyRequestResult } from "@/app/lib/transport/blobCustodyTransactions.client";
 import { EXACT_BYTE_BLOCK_MAX_BYTES, parseExactByteBlockReference, readExactByteBlocks, writeExactByteBlocks, type ExactByteBlockReference, type ExactByteBlockResolver, type ExactByteBlockWriter } from "@/app/lib/transport/exactByteBlocks";
 import {
-  openImportedProofSource, reopenImportedProofSource, parseImportedProofSourceReference, requireOpenedImportedProofSource, writeImportedProofSourceReference,
+  IMPORTED_SOURCE_IN_MEMORY_REOPEN_MAX, openImportedProofSource, reopenImportedProofSource, parseImportedProofSourceReference, requireOpenedImportedProofSource, writeImportedProofSourceReference,
   type ImportedProofSourceDescriptor, type ImportedProofSourceReference, type ImportedProofSourceOptions,
   type OpenedImportedProofSource,
   type ImportedProofSourceColdSpool,
@@ -227,6 +227,20 @@ export function createImportedProofSourceCustody() {
       const opened = await reopenImportedProofSource(reference, resolver, {
         ...options, coldSpool: createColdSpool(), nestedColdSpool: createColdSpool });
       await this.hold(opened);
+      return retain(opened);
+    },
+    /** An accepted Original is already retained by the publisher. Reopen only
+     * the exact proof for the new receipt, without restaging its media. Large
+     * sources still use the bounded cold reader's durable spool. */
+    async openForAuthorship(value: ImportedProofSourceReference, resolver: ExactByteBlockResolver) {
+      const reference = parseImportedProofSourceReference(value);
+      const known = admitted.get(sourceKey(reference));
+      if (known) return known;
+      const spool = (descriptor: ImportedProofSourceReference) =>
+        descriptor.byteLength > IMPORTED_SOURCE_IN_MEMORY_REOPEN_MAX ? createColdSpool() : undefined;
+      const opened = await reopenImportedProofSource(reference, resolver, {
+        coldSpool: spool(reference), nestedColdSpool: spool,
+      });
       return retain(opened);
     },
     async readHeld(value: ImportedProofSourceReference, options: ImportedProofSourceOptions = {}) {

@@ -13,7 +13,7 @@ import {createReceizBrowserArtifactTransitionStore} from './browserTransitionSto
 import {createProfileShowcaseAppendAuthority} from './authorityProvider';
 import {sealCommitAndReadmitBoundedProfileShowcaseTransition} from './boundedTransitionPublication';
 import {iterateProfileShowcaseCompleteSourceChildDescriptors,readProfileShowcaseAppendTransport,readProfileShowcaseCarrierTransport,writeProfileShowcaseAcceptedTransitionTransport,type ProfileShowcaseAppendTransport,type ProfileShowcaseCompleteSourceTransport} from './completeSourceTransport';
-import {admitProfileShowcaseAppendTransport} from './appendTransportAdmission';
+import {admitProfileShowcaseAppendTransport,readLegacyAppendPredecessor} from './appendTransportAdmission';
 import {publishProfileShowcaseTransport,type ProfileShowcasePublicProjectionPublicationResult} from './publicProjectionPublication';
 import {createImportedProofSourceCustody} from './importedSourceCustody.client';
 import {peekRecoveredAccountShowcaseScope} from './recoveredAccountScope.client';
@@ -62,14 +62,15 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   const before=historyBases.get(prior)??{root:undefined,base:prior.resolveHistorical},state={root:addHistoryPoint(before.root,Number(carrier['profile-showcase'].resultingOperationCount),admission.artifactSha256),base:before.base};
   const result={admission,carrier,io:prior.io,resolveHistorical:async(count:number)=>historyPoint(state.root,count)??await state.base(count)};historyBases.set(result,state);return result;
  };
- const resolve=async(ref:ExactByteBlockReference)=>{
+ const readBlock=async(ref:ExactByteBlockReference,retainTransport:boolean)=>{
   input.assertCurrent();let held=heldBlocks.get(ref.sha256);if(held)return held;
   held=(async()=>{try{return await custody.resolveBlock(ref);}catch(error){if(!(error instanceof Error)||error.message!=='IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING')throw error;}
    const response=await input.fetchImpl(`/api/profile/showcase/accepted-source?username=${encodeURIComponent(input.username)}&block=${encodeURIComponent(JSON.stringify(ref))}`,{credentials:'same-origin',cache:'no-store'});
    if(!response.ok)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_DELIVERY_PENDING');
-   const bytes=new Uint8Array(await response.arrayBuffer());await custody.writeBlock(ref,bytes);input.assertCurrent();return bytes;
-  })();heldBlocks.set(ref.sha256,held);try{return await held;}catch(error){heldBlocks.delete(ref.sha256);throw error;}
+   const bytes=new Uint8Array(await response.arrayBuffer());if(retainTransport)await custody.writeBlock(ref,bytes);input.assertCurrent();return bytes;
+  })();heldBlocks.set(ref.sha256,held);try{return await held;}catch(error){heldBlocks.delete(ref.sha256);throw error;}finally{if(!retainTransport&&heldBlocks.get(ref.sha256)===held)heldBlocks.delete(ref.sha256);}
  };
+ const resolve=(ref:ExactByteBlockReference)=>readBlock(ref,true);
  const scope=(artifactDigest:string)=>({publicationVersion:2 as const,ownerReceizId:input.owner,artifactId:input.artifactId,
   artifactDigest,username:input.username,profileIdentity:input.uid});
  const identity=()=>({actorAdmission:input.actorAdmission,keyFile:input.keyFile,passphrase:input.passphrase});
@@ -227,18 +228,27 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
   const referenceKey=jcsCanonicalize(reference),headDigest=prior.admission.artifactSha256;
   if(confirmedSigningSource?.head===headDigest&&confirmedSigningSource.reference===referenceKey)return;
   const contentDigest=await sha256ReceizBytes(encodeImportedSourceReference(reference));
+  const acceptPlacement=async(child:Readonly<Record<string,unknown>>)=>{
+   if(child.stableChildArtifactId!==contentDigest)return false;
+   const placement=await deriveReceizProfileShowcasePersistentPlacementV114({placementRoot:String(head.placementRoot),io:prior.io,child});
+   if(placement?.visibility!=='visible'||jcsCanonicalize(placement.reference)!==jcsCanonicalize(child))return false;
+   input.assertCurrent();input.rememberDeliveredSource(reference);confirmedSigningSource={head:headDigest,reference:referenceKey};return true;
+  };
+  // A carried child reference already locates the exact membership under the
+  // admitted head. Older sparse delivery envelopes can omit their wire parent.
+  const firstPaint=head.firstPaintWindow as {children:readonly {reference:Readonly<Record<string,unknown>>}[]};
+  for(const child of firstPaint.children)if(await acceptPlacement(child.reference))return;
+  const custodyReference=await input.vault.resolveOriginalChildReference(input.artifactId,`imported-${reference.artifactSha256}`);
+  if(custodyReference&&await acceptPlacement(custodyReference))return;
   const transport=context?.transport??(accepted as {transport?:ProfileShowcaseCompleteSourceTransport}|undefined)?.transport;
   if(!transport)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');
-  for await(const child of iterateProfileShowcaseCompleteSourceChildDescriptors(transport,resolve)){
-   if(child.reference.stableChildArtifactId!==contentDigest)continue;
-   const placement=await deriveReceizProfileShowcasePersistentPlacementV114({placementRoot:String(head.placementRoot),io:prior.io,child:child.reference});
-   if(placement?.visibility==='visible'&&jcsCanonicalize(placement.reference)===jcsCanonicalize(child.reference)){
-    input.assertCurrent();input.rememberDeliveredSource(reference);confirmedSigningSource={head:headDigest,reference:referenceKey};return;
-   }
+  const locators=(accepted as {predecessorTransports?:readonly ProfileShowcaseCompleteSourceTransport[]}|undefined)?.predecessorTransports??[];
+  for await(const child of iterateProfileShowcaseCompleteSourceChildDescriptors(transport,resolve,undefined,locators.length?carrier=>readLegacyAppendPredecessor(carrier,input.artifactId,locators):undefined)){
+   if(await acceptPlacement(child.reference))return;
   }
   throw TypeError('PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED');
  };
- return {requireExistingOriginal,resolveAcceptedSourceBlock:resolve,async acceptPublished(transport:ProfileShowcaseCompleteSourceTransport){
+ return {requireExistingOriginal,resolveAcceptedSourceBlock:(ref:ExactByteBlockReference)=>readBlock(ref,false),async acceptPublished(transport:ProfileShowcaseCompleteSourceTransport){
   input.assertCurrent();let selected=shared!.get(transport.artifactDigest);
   if(!selected){const admission=await input.vault.reopenHead(input.artifactId,transport.artifactDigest);if(!admission||admission.artifactSha256!==transport.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CUSTODY_REQUIRED');
    const context=await readContext(transport,custody.resolveBlock),carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,transport.artifactDigest);
