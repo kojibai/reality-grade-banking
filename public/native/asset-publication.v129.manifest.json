@@ -2,10 +2,10 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "97df4eb6feab3c2bec0425baf82dbdd88adfa1c1b70736eb2f318a1e138f0fcb",
-  "sourceTreeSha256": "cf5b1eb3912e4e0af8bf1926227e2565ec7201456a3656e7765e6c0cadf82ed9",
+  "moduleSha256": "6fa5672fda54b6bd3d9e1e598cc7995bf9271d0f4629df4252b1e06920928f33",
+  "sourceTreeSha256": "8d38d2ae45efa48f39837e14fc2de3ed8d40d0ed950792aee4aed8c4b27dbf9d",
   "inputs": 531,
-  "bytes": 3098857,
+  "bytes": 3099552,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -2082,6 +2082,48 @@
       "baseSha256": "b68f9cbb767ee48d2f7421d9f9ac4525cffae9e83633a186db83053f275af63f",
       "sha256": "080cb45b70fab62345d115012b815bb3fee64f7a6704a602726529a73140df19",
       "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver. Permit the admitted account to sign its exact accepted Original after passkey recovery with a different device key, preserving the sealed creator and private content."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/appendTransportAdmission.ts",
+      "baseSha256": "ef8a918a65c8ce29103805e929ff46803e67e1956737c9356e1d5430591f09a3",
+      "sha256": "9512c5560e5edd45babd9b6bacb52974c505f93eb88940cd4cb12f35cea760b4",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/completeSourceTransport.ts",
+      "baseSha256": "a652bc755da0f4f1bec23b23dea7f0bb9a45d4e0f39e1d1c98e21e086e4fd802",
+      "sha256": "1d96cc6735b3a6897a9bbe21c8db5bdf1205aada07971b95df484492bf0a96d2",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "1dc843865e09c78dcb0a616995cf6a37b0a1f171a25ba0fc898275a23eae07e0",
+      "sha256": "1100b7296b1887097052113c297e8dafefa82dd437c7b69d540472c1426dbf58",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/importedSource.ts",
+      "baseSha256": "6f99fbd2b07c4e972b7b7de764a75f9dc1284c5971ebe7ada3685e5a00c29957",
+      "sha256": "5568e49e41ecba6952d445c370c763b7dc64ae67f2fb3a835a68222e2e4320a7",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "59d0f5dd275bb8fc82702eafd66637a935a63e99dfcd536a3061f77ee3da7ca8",
+      "sha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-accepted-original-pbi-append",
+      "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
+      "baseSha256": "080cb45b70fab62345d115012b815bb3fee64f7a6704a602726529a73140df19",
+      "sha256": "d7d7a209035dc3f1a4f45ab6c83672427813a621898e1459cd50fae1565d5e1a",
+      "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
     }
   ],
   "browserDefines": {
