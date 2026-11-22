@@ -26,6 +26,17 @@ async function setup(source=bytes){
  });
  return{api:await import('../src/receiz/ledger-offline-proof'),inspection:await import('../src/receiz/proof-inspection'),fetcher};
 }
+it('reads only the selected legacy Original and preserves the creator’s purchase response',async()=>{
+ const {api,fetcher}=await setup();
+ const path='/api/profile/originals/download?receizId=3abf4d16-6d7f-425c-81b6-65689fdf3fe6&kind=original';
+ const record={...row(),evidence:{artifactDigest:'cc47243615ceb79168fd6f3aba6d3e6b67daf24b531c950dc2657979c24e71a1'},details:{originalUrl:'https://receiz.com'+path}};
+ fetcher.mockImplementation(async input=>{
+  expect(input).toBe('/api/bank/public-market/original?path='+encodeURIComponent(path));
+  return new Response(null,{status:402});
+ });
+ await expect(api.inspectLedgerOriginal(record)).rejects.toMatchObject({name:'PublicOriginalPurchaseRequired'});
+ expect(fetcher).toHaveBeenCalledOnce();
+});
 it('opens held receipt coordinates without IO and routes the native v/ payload through the fixed Receiz exporter',()=>{
  const fetcher=vi.spyOn(globalThis,'fetch'),record=row();expect(hasLedgerNativeRecord(record)).toBe(true);expect(fetcher).not.toHaveBeenCalled();
  const source=ledgerNativeRecord(record)!;expect(source.filename).toBe('receiz_20261107_2109_62E2508A_record.png');

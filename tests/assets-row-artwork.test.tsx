@@ -9,7 +9,7 @@ const item={id:'exact-held-original',artworkUrl:'/already-held.png'} as PublicMa
 afterEach(()=>{vi.unstubAllGlobals();document.body.innerHTML='';});
 it('releases distant media while preserving its frame, restores before entry, and retains artwork across hidden-tab zero geometry',async()=>{
  let notify!:IntersectionObserverCallback;const observe=vi.fn(),unobserve=vi.fn();
- vi.stubGlobal('IntersectionObserver',class{constructor(callback:IntersectionObserverCallback,options:IntersectionObserverInit){notify=callback;expect(options.rootMargin).toBe('600px 0px');}observe=observe;unobserve=unobserve;});
+ vi.stubGlobal('IntersectionObserver',class{constructor(callback:IntersectionObserverCallback,options:IntersectionObserverInit){notify=callback;expect(options.rootMargin).toBe('600px 0px');}observe=observe;unobserve=unobserve;disconnect(){}});
  const host=document.createElement('div');document.body.append(host);const root=createRoot(host);
  await act(()=>root.render(<AssetsRowArtwork item={item} initiallyNear={true}/>));
  const frame=host.firstElementChild!;expect(frame.querySelector('img')?.getAttribute('src')).toBe('/already-held.png');

@@ -4,6 +4,7 @@ import { PublicObjectArtwork } from '../market/PublicObjectRow';
 
 const visibility = new WeakMap<Element, (near: boolean) => void>();
 let observer: IntersectionObserver | undefined;
+let observedCount = 0;
 
 function observeArtwork(element: Element, update: (near: boolean) => void) {
   observer ??= new IntersectionObserver(entries => {
@@ -14,9 +15,14 @@ function observeArtwork(element: Element, update: (near: boolean) => void) {
   }, { rootMargin: '600px 0px' });
   visibility.set(element, update);
   observer.observe(element);
+  observedCount++;
   return () => {
     observer?.unobserve(element);
     visibility.delete(element);
+    if(--observedCount===0){
+      observer?.disconnect();
+      observer=undefined;
+    }
   };
 }
 
@@ -26,12 +32,15 @@ export function AssetsRowArtwork({ item, initiallyNear }: { item: PublicMarketIt
   const canObserve = typeof IntersectionObserver === 'function';
   const [near, setNear] = useState(initiallyNear);
   useEffect(() => {
-    if (canObserve && frame.current) return observeArtwork(frame.current, setNear);
+    if (!canObserve) {
+      setNear(true);
+      return;
+    }
+    const node=frame.current;
+    if(node)return observeArtwork(node.closest('.original-unlock-row')??node.closest('.asset-row')??node,setNear);
   }, [canObserve]);
 
-  if (!canObserve) return <PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} />;
-
   return <span ref={frame} className="asset-mark proof" aria-hidden="true">
-    {near && <PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} />}
+    {near && <PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={canObserve || initiallyNear} />}
   </span>;
 }

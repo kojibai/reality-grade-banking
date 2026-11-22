@@ -6,15 +6,22 @@ export class PublicOriginalPurchaseRequired extends Error{
   constructor(){super('The creator offers this sealed Original as a separate download. Its public media and proof links remain available.');this.name='PublicOriginalPurchaseRequired';}
 }
 
+/** Use the selected exact locator or its already-held material equivalent. */
+export function selectedPublicOriginalUrl(input:string,expectedDigest:string):string {
+  const safe=safeReceizPublicUrl(input,'original');if(!safe)throw Error('This original source is not supported.');
+  const url=new URL(safe);
+  if(url.pathname!=='/api/profile/originals/download')return safe;
+  return retainedPublicOriginalUrl(url.searchParams.get('receizId')!,expectedDigest)??safe;
+}
+
 /** Older public caches retain the download-sale URL. Resolve its current exact
  * public artifact before opening; a locator never replaces SDK verification. */
 let shippedOriginalsRead = false;
 export async function resolvePublicOriginalUrl(input: string, expectedDigest: string, signal?: AbortSignal): Promise<string> {
   signal?.throwIfAborted();
-  const safe = safeReceizPublicUrl(input, 'original'); if (!safe) throw new Error('This original source is not supported.');
+  const safe = selectedPublicOriginalUrl(input,expectedDigest);
   const url = new URL(safe); if (url.pathname !== '/api/profile/originals/download') return safe;
   const id = url.searchParams.get('receizId')!;
-  const retained = retainedPublicOriginalUrl(id, expectedDigest); if (retained) return retained;
   if (!shippedOriginalsRead) try {
     const seed = await fetch('/receiz-public-market.json', { credentials: 'omit', redirect: 'error', signal });
     if (seed.ok) {

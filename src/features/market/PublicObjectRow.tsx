@@ -1,4 +1,4 @@
-import {useContext,useState,type ReactNode} from 'react';
+import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
 import {AssetMark} from '../../components/AssetMark';
@@ -7,6 +7,7 @@ import {ProofPdfPreview} from '../media/ProofPdfPreview';
 import {publicDocumentReaderUrl} from '../../receiz/public-document';
 import {formatPublicPrice,type PublicMarketItem} from '../../receiz/public-market';
 import {marketContentLabel} from '../../receiz/market-categories';
+import {observeOriginalImpression,publicOriginalEngagement} from '../../receiz/public-engagement';
 import {usePublicObjectArtwork} from '../media/usePublicObjectArtwork';
 import './market.css';
 const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
@@ -27,7 +28,12 @@ function PublicObjectProvenance({item}:{item:PublicMarketItem}){
 }
 /** Shared discovery/showcase row. Pricing and ownership remain the supplied
  * source projection; opening the row never establishes transferable rights. */
-export function PublicObjectRow({item,onOpen,eagerArtwork=true,artwork}:{item:PublicMarketItem;onOpen:()=>void;eagerArtwork?:boolean;artwork?:ReactNode}){
+export function PublicObjectRow({item,onOpen,eagerArtwork=true,artwork,trackImpression=false}:{item:PublicMarketItem;onOpen:(item:PublicMarketItem)=>void;eagerArtwork?:boolean;artwork?:ReactNode;trackImpression?:boolean}){
+ const row=useRef<HTMLButtonElement>(null);
+ const {username,receizId,mediaKind}=trackImpression?publicOriginalEngagement(item)??{}:{};
+ useEffect(()=>{
+  if(row.current&&username&&receizId)return observeOriginalImpression(row.current,{username,receizId,mediaKind},'bankeiz_market_collection');
+ },[username,receizId,mediaKind]);
  const change=item.changePct;
- return <button className="asset-row" onClick={onOpen}>{artwork??<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/>}<span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
+ return <button className="asset-row" ref={row} onClick={()=>onOpen(item)}>{artwork??<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/>}<span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
 }

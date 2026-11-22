@@ -57,10 +57,21 @@ it.each([{mode:'market' as const,active:false,overviewOnly:false},{mode:'explore
  const add=vi.spyOn(window,'addEventListener'),held=loadedSource(),host=document.createElement('div'),root=createRoot(host);roots.push(root);document.body.append(host);
  try{act(()=>root.render(<Market {...props} source={held}/>));expect(add.mock.calls.filter(([event])=>event==='scroll')).toHaveLength(0);if(props.overviewOnly)expect(host.querySelector('.market-explorer-tools')).toBeNull();else{expect(host.querySelector('.market-explorer-tools')).not.toBeNull();expect(host.querySelector(props.mode==='market'?'[aria-label="Search assets or currencies"]':'[aria-label="Search proof objects"]')).not.toBeNull();}expect(held.refresh).not.toHaveBeenCalled();}finally{add.mockRestore();}
 });
-it('prioritizes leading artwork without eagerly loading the whole retained list or replacing images on a value update',()=>{
+it('keeps the collection rows and only mounts near artwork without replacing visible images on a value update',()=>{
+ const visibility=new Map<Element,IntersectionObserverCallback>();
+ vi.stubGlobal('IntersectionObserver',class{
+  constructor(private notify:IntersectionObserverCallback){}
+  observe(element:Element){visibility.set(element,this.notify);}
+  unobserve(element:Element){visibility.delete(element);}
+  disconnect(){}
+ });
  const held=catalog(50);held.items=held.items.map((item,index)=>({...item,artworkUrl:`https://receiz.com/artwork/list-${index}.png`}));source.value={catalog:held,status:'live',error:null,refresh:vi.fn()};
  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);roots.push(root);act(()=>root.render(<Market/>));
- const images=[...host.querySelectorAll<HTMLImageElement>('.market-rows img')];expect(images).toHaveLength(50);expect(images[0].loading).toBe('eager');expect(images.at(-1)!.loading).toBe('lazy');expect(images.filter(image=>image.loading==='eager').length).toBeLessThan(10);
+ const rows=host.querySelectorAll<HTMLButtonElement>('.market-rows .asset-row');expect(rows).toHaveLength(50);
+ const later=rows[28],bounds=new DOMRect(0,0,390,80);
+ const observe=(isIntersecting:boolean)=>act(()=>visibility.get(later)!([{target:later,isIntersecting,boundingClientRect:bounds,intersectionRatio:Number(isIntersecting),intersectionRect:isIntersecting?bounds:new DOMRect(),rootBounds:null,time:0}],{} as IntersectionObserver));
+ expect(later.querySelector('img')).toBeNull();observe(true);expect(later.querySelector('img')?.loading).toBe('eager');observe(false);expect(later.querySelector('img')).toBeNull();
+ const images=[...host.querySelectorAll<HTMLImageElement>('.market-rows img')];expect(images).toHaveLength(6);expect(images[0].loading).toBe('eager');
  const urls=images.map(image=>image.src);source.value={...source.value,catalog:{...held,items:held.items.map(item=>({...item,priceUsd:7,localValuationPulse:14720001}))}};act(()=>root.render(<Market/>));
  const updated=[...host.querySelectorAll<HTMLImageElement>('.market-rows img')];expect(updated.every((image,index)=>image===images[index])).toBe(true);expect(updated.map(image=>image.src)).toEqual(urls);expect(host.querySelector('.price-stack')?.textContent).toContain('7.00');
 });
@@ -187,7 +198,7 @@ it('prefers refreshed carried copy ownership over earlier fetched details at the
 it('loads more public rows automatically before reaching the list end', () => {
   let reveal: ((entries: { isIntersecting: boolean }[]) => void) | undefined;
   let margin = '';
-  vi.stubGlobal('IntersectionObserver', class { constructor(callback: typeof reveal, options: { rootMargin: string }) { reveal = callback; margin = options.rootMargin; } observe() {} disconnect() {} });
+  vi.stubGlobal('IntersectionObserver', class { constructor(private callback: typeof reveal, options: { rootMargin: string }) { margin = options.rootMargin; } observe(element:Element) {if(element.classList.contains('public-market-sentinel'))reveal=this.callback;} unobserve() {} disconnect() {} });
   source.value = { catalog: catalog(), status: 'live', quoteStatus: 'fresh', error: null, refresh: vi.fn() };
   const { host, commit } = mount();
   expect(host.querySelectorAll('.market-rows .asset-row')).toHaveLength(50);
