@@ -8,14 +8,24 @@ import {certificateTimeSafeStore,certificateTimeSafeFetch} from './device-signer
 import {nativeFetch} from './native-transport';
 import {unprotectIdentityKeyFile} from './identity-protection';
 
-/** Explicit PBI entry only. The canonical ceremony proves the recovered
- * account and appends this new device key through the existing native binding.
- * No failed assertion, session JSON or account UID creates a Bank account. */
+/** A passkey proves the selected account. Reuse its admitted Identity Record
+ * when this install still holds it. New device enrollment remains the existing
+ * recovery path for installations with no retained signing custody. */
 export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   return createRecoveredAccountDevice(recoverPbiAccountInline(),onIdentityPrepared);
+   const recovery=recoverPbiAccountInline();
+   void recovery.catch(()=>{});
+   const retained=await restoreNativeIdentity();
+   if(!retained)return createRecoveredAccountDevice(recovery,onIdentityPrepared);
+   try{
+    const {accountUid}=await recovery;
+    onIdentityPrepared?.();
+    const view=await retained.prepareAccountView();
+    if(view.wallet.userId!==accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
+    return retained;
+   }catch(error){retained.dispose();throw error;}
   });
  }finally{await closePbiAccount();}
 }

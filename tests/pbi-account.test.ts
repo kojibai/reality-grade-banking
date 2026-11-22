@@ -20,6 +20,26 @@ it('paid existing-account PBI retains the old guest custody beneath actual recov
 it('cancelled existing-account PBI never replaces custody, enrolls or creates a replacement key',async()=>{
  p.recover.mockRejectedValue(Error('passkey_cancelled'));await expect(openPbiCheckoutAccount({} as never,'alex@example.org')).rejects.toThrow('passkey_cancelled');expect(email.select).not.toHaveBeenCalled();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
 });
+it('keeps the exact retained signer when PBI recovers that same account',async()=>{
+ const retained={prepareAccountView:vi.fn(async()=>({wallet:{userId:'original-account'}})),dispose:vi.fn()};
+ email.restore.mockResolvedValue(retained);
+ const checkpoint=vi.fn();
+ await expect(openPbiAccount(true,checkpoint)).resolves.toBe(retained);
+ expect(checkpoint).toHaveBeenCalledOnce();
+ expect(p.recover).toHaveBeenCalledOnce();
+ expect(p.enroll).not.toHaveBeenCalled();
+ expect(p.createIdentity).not.toHaveBeenCalled();
+ expect(p.bridge).not.toHaveBeenCalled();
+ expect(p.persist).not.toHaveBeenCalled();
+});
+it('preserves the saved signer when PBI returns a different account',async()=>{
+ const retained={prepareAccountView:vi.fn(async()=>({wallet:{userId:'held-account'}})),dispose:vi.fn()};
+ email.restore.mockResolvedValue(retained);
+ await expect(openPbiAccount(true)).rejects.toThrow('PBI_ACCOUNT_MISMATCH');
+ expect(retained.dispose).toHaveBeenCalledOnce();
+ expect(p.enroll).not.toHaveBeenCalled();
+ expect(p.persist).not.toHaveBeenCalled();
+});
 it('opens only the original recovered account after source admission and retains the original source under the new local key',async()=>{
  await openPbiAccount(true);expect(p.admit).toHaveBeenCalledOnce();expect(p.append).toHaveBeenCalledWith(expect.objectContaining({schema:'receiz.account.state.v3',snapshot:expect.objectContaining({account:{userId:'original-account'},pbiAccountBinding:expect.objectContaining({sourceB64u:'original-source'})})}));
  expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);expect(p.fresh).not.toHaveBeenCalled();
