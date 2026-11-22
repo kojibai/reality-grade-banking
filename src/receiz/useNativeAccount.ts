@@ -77,7 +77,8 @@ export function useNativeAccount(custody = nativeCustody) {
       // PBI already admitted and prepared this exact account before saving
       // custody. Reuse its complete frame rather than valuing it a second time.
       const prepared = reusePrepared ? next.knownWallet?.() ?? null : null;
-      const known = prepared && hasSettledAccountView(prepared) ? prepared : await next.prepareAccountView(resume?{resume:true}:undefined);
+      const known = prepared && (hasSettledAccountView(prepared) || (resume && prepared.history?.length))
+        ? prepared : await next.prepareAccountView(resume ? {resume:true} : undefined);
       if (ticket !== generation.current) { next.dispose(); return; }
       // Reuse the already-started local restore in the first complete frame;
       // account entry and the Ledger hook must not start separate reads.
@@ -147,7 +148,7 @@ export function useNativeAccount(custody = nativeCustody) {
       const next = await operation(()=>{if(ticket===generation.current)setOpeningStage('history');});
       if (ticket !== generation.current) { next.dispose(); return; }
       // Prepare the full visible account before publishing the admitted identity.
-      await accept(next, ticket, false, reusePrepared);
+      await accept(next, ticket, reusePrepared, reusePrepared);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your ID could not be opened.'); }
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };

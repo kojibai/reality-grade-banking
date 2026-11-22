@@ -43,6 +43,18 @@ it('keeps preparing incomplete PBI observations and ordinary Identity Record imp
   await observe(async read=>{await act(async()=>{if(pbi)await read().pbi();else await read().importId({} as File,'',true);});expect(prepare).toHaveBeenCalledOnce();expect(read().walletHistory).toEqual(observation.history);});
  }
 });
+it('opens the passkey account with its retained history while the same restore refresh is stalled',async()=>{
+ const original=identity(),retained={...observation,historyBasis:undefined};
+ original.knownWallet=()=>retained;
+ original.prepareAccountView=vi.fn(()=>new Promise<WalletObservation>(()=>{}));
+ p.pbi.mockResolvedValue(original);
+ await observe(async read=>{
+  await act(async()=>{await read().pbi();});
+  expect(read().identity).toBe(original);
+  expect(read().walletHistory).toEqual(retained.history);
+  expect(read().opening).toBe(false);
+ });
+});
 it('updates the PBI history checkpoint while the same sign-in is still pending',async()=>{
  let release!:()=>void;p.pbi.mockImplementation(async(_consent,checkpoint?:()=>void)=>{checkpoint?.();await new Promise<void>(resolve=>{release=resolve;});return identity();});
  await observe(async read=>{let opening!:Promise<void>;await act(async()=>{opening=read().pbi();});

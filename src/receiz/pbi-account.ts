@@ -15,17 +15,32 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
   return await withDeviceIdentityEntry(async()=>{
-   const recovery=recoverPbiAccountInline();
-   void recovery.catch(()=>{});
+   const recovered=await recoverPbiAccountInline();
    const retained=await restoreNativeIdentity();
-   if(!retained)return createRecoveredAccountDevice(recovery,onIdentityPrepared);
-   try{
-    const {accountUid}=await recovery;
-    onIdentityPrepared?.();
-    const view=await retained.prepareAccountView();
-    if(view.wallet.userId!==accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
-    return retained;
-   }catch(error){retained.dispose();throw error;}
+   let previous:{accountUid:string;artifactSha256:string}|null=null;
+   if(retained){
+    try{
+     const view=await retained.prepareAccountView({resume:true});
+     if(view.wallet.userId===recovered.accountUid){onIdentityPrepared?.();return retained;}
+     previous={accountUid:view.wallet.userId,artifactSha256:retained.binding.artifactSha256};
+    }catch(error){retained.dispose();throw error;}
+    retained.dispose();
+   }
+   const {prepareVerifiedEmailAccountSelection}=await import('./identity-vault');
+   const selection=await prepareVerifiedEmailAccountSelection(previous,recovered.accountUid);
+   if(selection.saved){
+    const saved=selection.saved;
+    const identity=await openCanonicalIdentity(saved.bytes,saved.phrase,saved.filename,true,saved.protectedTransport);
+    try{
+     onIdentityPrepared?.();
+     const view=await identity.prepareAccountView({resume:true});
+     if(view.wallet.userId!==recovered.accountUid)throw Error('PBI_ACCOUNT_MISMATCH');
+     await selection.activateRetained();
+     return identity;
+    }catch(error){identity.dispose();throw error;}
+   }
+   if(previous)throw Error('PBI_ACCOUNT_MISMATCH');
+   return createRecoveredAccountDevice(Promise.resolve(recovered),onIdentityPrepared);
   });
  }finally{await closePbiAccount();}
 }
