@@ -17,7 +17,22 @@ vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>{await p.sdk();return {
 beforeEach(()=>{email.load.mockReset();email.restore.mockReset();email.select.mockReset();email.activate.mockReset();email.retain.mockReset();email.select.mockResolvedValue({saved:null,activateRetained:email.activate,retainRecovered:email.retain});for(const fn of Object.values(p))fn.mockReset();p.resources.mockResolvedValue({});p.recover.mockResolvedValue({accountUid:'original-account'});p.register.mockResolvedValue({accountUid:'original-account'});p.createIdentity.mockResolvedValue({artifactBytes:new Uint8Array([1])});p.bridge.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceMode:'native-history',request:{}});p.admit.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceDigest:'native-digest'});p.append.mockResolvedValue(key);p.seal.mockResolvedValue({artifactBytes:new Uint8Array([2]),filename:'same-device.receizkey'});p.match.mockResolvedValue(true);p.prepare.mockResolvedValue({wallet:{userId:'original-account',totalUsdCents:'45123'},history:[{kaiUPulse:'0'},{kaiUPulse:'100'}]});p.open.mockResolvedValue({backup:()=>({bytes:new Uint8Array([2]),filename:'same-device.receizkey',phrase:''}),binding:{keyId:'key',artifactOwnerReceizId:'local-device'},matchesAccountEmail:p.match,prepareAccountView:p.prepare,persistDeviceCustody:p.persist,dispose:p.dispose});});
 it('paid existing-account PBI retains the old guest custody beneath actual recovery and uses the existing target selection',async()=>{
  const previous={binding:{artifactSha256:'a'.repeat(64)},knownWallet:()=>({wallet:{userId:'guest-account'}})} as unknown as import('../src/receiz/native-identity').OpenIdentity;
- await openPbiCheckoutAccount(previous,'alex@example.org');expect(p.recover).toHaveBeenCalledWith({existingOnly:true,email:'alex@example.org'});expect(email.select).toHaveBeenCalledWith({accountUid:'guest-account',artifactSha256:'a'.repeat(64)},'original-account');expect(email.retain).toHaveBeenCalledOnce();expect(p.persist).not.toHaveBeenCalled();expect(p.fresh).not.toHaveBeenCalled();
+ const record={bytes:new Uint8Array([2]),phrase:'',filename:'same-device.receizkey'};
+ const recoverySecret=new Uint8Array(32).fill(1);
+ p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret});
+ recovery.restorePbiIdentity.mockImplementationOnce((_proof,admit)=>admit(record));
+ await openPbiCheckoutAccount(previous,'alex@example.org');expect(p.recover).toHaveBeenCalledWith({existingOnly:true,email:'alex@example.org',withRecovery:true});expect(email.select).toHaveBeenCalledWith({accountUid:'guest-account',artifactSha256:'a'.repeat(64)},'original-account');expect(email.retain).toHaveBeenCalledExactlyOnceWith({...record,readConsent:true});expect(p.persist).not.toHaveBeenCalled();expect(p.fresh).not.toHaveBeenCalled();
+ expect(p.createIdentity).not.toHaveBeenCalled();
+ expect(recoverySecret.every(byte=>byte===0)).toBe(true);
+});
+it('checkout cannot replace an existing signer when its passkey backup is absent',async()=>{
+ const previous={binding:{artifactSha256:'a'.repeat(64)},knownWallet:()=>({wallet:{userId:'guest-account'}}),dispose:vi.fn()} as unknown as import('../src/receiz/native-identity').OpenIdentity;
+ p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret:new Uint8Array(32)});
+ recovery.restorePbiIdentity.mockResolvedValueOnce(null);
+ await expect(openPbiCheckoutAccount(previous,'alex@example.org')).rejects.toThrow('PBI_RECOVERY_NOT_CONFIGURED');
+ expect(email.retain).not.toHaveBeenCalled();
+ expect(previous.dispose).not.toHaveBeenCalled();
+ expect(p.createIdentity).not.toHaveBeenCalled();
 });
 it('cancelled existing-account PBI never replaces custody, enrolls or creates a replacement key',async()=>{
  p.recover.mockRejectedValue(Error('passkey_cancelled'));await expect(openPbiCheckoutAccount({} as never,'alex@example.org')).rejects.toThrow('passkey_cancelled');expect(email.select).not.toHaveBeenCalled();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
@@ -158,6 +173,8 @@ it('same-account invitation entry reuses held custody without another seal, bind
 
 it('paid PBI checks the actual admitted device against the requested existing email before account preparation or custody retention',async()=>{
  const previous={binding:{artifactSha256:'a'.repeat(64)},knownWallet:()=>({wallet:{userId:'guest-account'}})} as unknown as import('../src/receiz/native-identity').OpenIdentity;
+ p.recover.mockResolvedValue({accountUid:'original-account',credentialId:'AQI',recoverySecret:new Uint8Array(32)});
+ recovery.restorePbiIdentity.mockImplementationOnce((_proof,admit)=>admit({bytes:new Uint8Array([2]),phrase:'',filename:'same-device.receizkey'}));
  p.match.mockResolvedValue(false);await expect(openPbiCheckoutAccount(previous,'target@example.org')).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(p.match).toHaveBeenCalledExactlyOnceWith('target@example.org','original-account');expect(p.prepare).not.toHaveBeenCalled();expect(email.retain).not.toHaveBeenCalled();expect(email.activate).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
 });
 it('paid PBI checks a retained target before reopening it and leaves unrelated guest custody selected on mismatch',async()=>{
