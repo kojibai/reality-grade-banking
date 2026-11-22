@@ -1,5 +1,5 @@
 import {afterEach,expect,it,vi} from 'vitest';
-import {recoverPbiAccountInline,runPbiAccountInline,runPbiAccountInlineConnection} from '../src/receiz/pbi-account-inline';
+import {recoverPbiAccountInline,registerPbiAccountInline,runPbiAccountInline,runPbiAccountInlineConnection} from '../src/receiz/pbi-account-inline';
 const uid='11111111-1111-4111-8111-111111111111';
 const device={keyId:'key',alg:'Ed25519',publicKeyRawB64u:'pub',localUid:'device'};
 const credential={id:'credential',type:'public-key',rawId:new Uint8Array([1,2]).buffer,response:{clientDataJSON:new Uint8Array([1]).buffer,authenticatorData:new Uint8Array([2]).buffer,signature:new Uint8Array([3]).buffer,attestationObject:new Uint8Array([4]).buffer,userHandle:null}};
@@ -26,6 +26,14 @@ it('existing account sign-in cannot start registration when its passkey is unava
  await expect(recoverPbiAccountInline({existingOnly:true})).rejects.toThrow('passkey_cancelled');
  expect(f.create).not.toHaveBeenCalled();
  expect(f.fetch).toHaveBeenCalledOnce();
+});
+it('explicit new-passkey entry registers once without a failed authentication first',async()=>{
+ const f=setup('new');
+ await expect(registerPbiAccountInline()).resolves.toEqual({accountUid:uid,credentialId:'AQI'});
+ expect(f.get).not.toHaveBeenCalled();
+ expect(f.create).toHaveBeenCalledOnce();
+ expect(f.fetch).toHaveBeenCalledTimes(2);
+ expect(JSON.parse(String(f.fetch.mock.calls[0][1]?.body))).toMatchObject({intent:'register'});
 });
 it('existing paid-account PBI refuses a finished account for a different email',async()=>{
  const f=setup('existing');await expect(recoverPbiAccountInline({existingOnly:true,email:'alex@example.org'})).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(f.create).not.toHaveBeenCalled();

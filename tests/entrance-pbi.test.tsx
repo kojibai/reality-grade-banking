@@ -14,3 +14,16 @@ it('uses the same fingerprint and no added visible text as the optional PBI butt
   act(()=>[...host.querySelectorAll('button')].find(value=>value.textContent?.trim()==='Enter')!.click());expect(onCreate).toHaveBeenCalledWith(true);expect(onPbi).toHaveBeenCalledOnce();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
 });
+
+
+it('uses an explicit creation action independent of the existing-account passkey',()=>{
+ const host=document.createElement('div'),root=createRoot(host),onPbi=vi.fn(),onPbiCreate=vi.fn(),onCreate=vi.fn();
+ vi.stubGlobal('requestAnimationFrame',()=>1);vi.stubGlobal('cancelAnimationFrame',vi.fn());
+ try{
+  act(()=>root.render(<Entrance opening={false} busy={false} error={null} onCreate={onCreate} onImport={vi.fn()} onPbi={onPbi} onPbiCreate={onPbiCreate}/>));
+  act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Create account with a passkey')!.click());
+  expect(onPbiCreate).toHaveBeenCalledOnce();
+  expect(onPbi).not.toHaveBeenCalled();
+  expect(onCreate).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});

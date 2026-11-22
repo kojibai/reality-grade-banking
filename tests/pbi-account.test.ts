@@ -1,24 +1,35 @@
 import {beforeEach,expect,it,vi} from 'vitest';
-import {openPbiAccount,openPbiCheckoutAccount,openVerifiedEmailAccount,openVerifiedInvitationAccount} from '../src/receiz/pbi-account';
-const p=vi.hoisted(()=>({bridge:vi.fn(),recover:vi.fn(),admit:vi.fn(),enroll:vi.fn(),createIdentity:vi.fn(),seal:vi.fn(),append:vi.fn(),open:vi.fn(),persist:vi.fn(),prepare:vi.fn(),dispose:vi.fn(),fresh:vi.fn(),sdk:vi.fn(),resources:vi.fn(),match:vi.fn()}));
+import {openNewPbiAccount,openPbiAccount,openPbiCheckoutAccount,openVerifiedEmailAccount,openVerifiedInvitationAccount} from '../src/receiz/pbi-account';
+const p=vi.hoisted(()=>({bridge:vi.fn(),recover:vi.fn(),register:vi.fn(),admit:vi.fn(),enroll:vi.fn(),createIdentity:vi.fn(),seal:vi.fn(),append:vi.fn(),open:vi.fn(),persist:vi.fn(),prepare:vi.fn(),dispose:vi.fn(),fresh:vi.fn(),sdk:vi.fn(),resources:vi.fn(),match:vi.fn()}));
 const key={keyId:'key',alg:'Ed25519',issuedAt:'2026-10-24T00:00:00Z',owner:{uid:'local-device'},crypto:{publicKeyRawB64u:'public'}};
 const email=vi.hoisted(()=>({load:vi.fn(),restore:vi.fn(),select:vi.fn(),activate:vi.fn(),retain:vi.fn()}));
 vi.mock('../src/receiz/identity-vault',()=>({loadDeviceIdentity:email.load,prepareVerifiedEmailAccountSelection:email.select}));
 vi.mock('../src/receiz/device-identity-entry',()=>({withDeviceIdentityEntry:async(run:()=>Promise<unknown>)=>run()}));
-vi.mock('../src/receiz/pbi-account-inline',()=>({runPbiAccountInline:p.bridge,recoverPbiAccountInline:p.recover,closePbiAccount:async()=>{}}));
+vi.mock('../src/receiz/pbi-account-inline',()=>({runPbiAccountInline:p.bridge,recoverPbiAccountInline:p.recover,registerPbiAccountInline:p.register,closePbiAccount:async()=>{}}));
 vi.mock('../src/receiz/pbi-account-source',()=>({admitPbiAccountBinding:p.admit}));
 vi.mock('../src/receiz/native-identity',()=>({openCanonicalIdentity:p.open,createNativeIdentity:p.fresh,restoreNativeIdentity:email.restore}));
 vi.mock('../src/receiz/proof-resource-continuity',()=>({loadBankProofResources:p.resources}));
 vi.mock('../src/receiz/identity-protection',()=>({unprotectIdentityKeyFile:async(value:unknown)=>value}));
 vi.mock('@receiz/sdk/offline',()=>({createReceizIndexedDbSealStore:()=>({}),createReceizOfflineSealer:()=>({enroll:p.enroll,createIdentity:p.createIdentity,seal:p.seal})}));
 vi.mock('../src/receiz/client',()=>({loadReceiz:async()=>{await p.sdk();return {receizBase64UrlEncode:()=> 'random-protection',readReceizIdentityArtifact:async()=>key,verifyReceizArtifact:async()=>({status:'verified-artifact'}),createReceizArtifactAdmissionEngine:()=>async()=>({verdict:'canonical-identity'}),isSdkIssuedReceizArtifactAdmission:()=>true,readReceizIdentityPublicBinding:async()=>({keyId:'key',artifactOwnerReceizId:'local-device'}),signReceizIdentityLoginProof:async()=>({signatureB64Url:'signature'}),appendReceizIdentityPortableState:p.append,serializeReceizIdentityArtifact:()=> 'portable-original'};}}));
-beforeEach(()=>{email.load.mockReset();email.restore.mockReset();email.select.mockReset();email.activate.mockReset();email.retain.mockReset();email.select.mockResolvedValue({saved:null,activateRetained:email.activate,retainRecovered:email.retain});for(const fn of Object.values(p))fn.mockReset();p.resources.mockResolvedValue({});p.recover.mockResolvedValue({accountUid:'original-account'});p.createIdentity.mockResolvedValue({artifactBytes:new Uint8Array([1])});p.bridge.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceMode:'native-history',request:{}});p.admit.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceDigest:'native-digest'});p.append.mockResolvedValue(key);p.seal.mockResolvedValue({artifactBytes:new Uint8Array([2]),filename:'same-device.receizkey'});p.match.mockResolvedValue(true);p.prepare.mockResolvedValue({wallet:{userId:'original-account',totalUsdCents:'45123'},history:[{kaiUPulse:'0'},{kaiUPulse:'100'}]});p.open.mockResolvedValue({backup:()=>({bytes:new Uint8Array([2]),filename:'same-device.receizkey',phrase:''}),binding:{keyId:'key',artifactOwnerReceizId:'local-device'},matchesAccountEmail:p.match,prepareAccountView:p.prepare,persistDeviceCustody:p.persist,dispose:p.dispose});});
+beforeEach(()=>{email.load.mockReset();email.restore.mockReset();email.select.mockReset();email.activate.mockReset();email.retain.mockReset();email.select.mockResolvedValue({saved:null,activateRetained:email.activate,retainRecovered:email.retain});for(const fn of Object.values(p))fn.mockReset();p.resources.mockResolvedValue({});p.recover.mockResolvedValue({accountUid:'original-account'});p.register.mockResolvedValue({accountUid:'original-account'});p.createIdentity.mockResolvedValue({artifactBytes:new Uint8Array([1])});p.bridge.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceMode:'native-history',request:{}});p.admit.mockResolvedValue({accountUid:'original-account',sourceB64u:'original-source',sourceDigest:'native-digest'});p.append.mockResolvedValue(key);p.seal.mockResolvedValue({artifactBytes:new Uint8Array([2]),filename:'same-device.receizkey'});p.match.mockResolvedValue(true);p.prepare.mockResolvedValue({wallet:{userId:'original-account',totalUsdCents:'45123'},history:[{kaiUPulse:'0'},{kaiUPulse:'100'}]});p.open.mockResolvedValue({backup:()=>({bytes:new Uint8Array([2]),filename:'same-device.receizkey',phrase:''}),binding:{keyId:'key',artifactOwnerReceizId:'local-device'},matchesAccountEmail:p.match,prepareAccountView:p.prepare,persistDeviceCustody:p.persist,dispose:p.dispose});});
 it('paid existing-account PBI retains the old guest custody beneath actual recovery and uses the existing target selection',async()=>{
  const previous={binding:{artifactSha256:'a'.repeat(64)},knownWallet:()=>({wallet:{userId:'guest-account'}})} as unknown as import('../src/receiz/native-identity').OpenIdentity;
  await openPbiCheckoutAccount(previous,'alex@example.org');expect(p.recover).toHaveBeenCalledWith({existingOnly:true,email:'alex@example.org'});expect(email.select).toHaveBeenCalledWith({accountUid:'guest-account',artifactSha256:'a'.repeat(64)},'original-account');expect(email.retain).toHaveBeenCalledOnce();expect(p.persist).not.toHaveBeenCalled();expect(p.fresh).not.toHaveBeenCalled();
 });
 it('cancelled existing-account PBI never replaces custody, enrolls or creates a replacement key',async()=>{
  p.recover.mockRejectedValue(Error('passkey_cancelled'));await expect(openPbiCheckoutAccount({} as never,'alex@example.org')).rejects.toThrow('passkey_cancelled');expect(email.select).not.toHaveBeenCalled();expect(p.createIdentity).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
+});
+it('existing passkey with no retained Record never enrolls a replacement signer',async()=>{
+ await expect(openPbiAccount(true)).rejects.toThrow('PBI_IDENTITY_RECORD_REQUIRED');
+ expect(p.recover).toHaveBeenCalledExactlyOnceWith({existingOnly:true});
+ expect(p.register).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();
+ expect(p.createIdentity).not.toHaveBeenCalled();expect(p.bridge).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
+});
+it('does not register a new passkey over a held Identity Record',async()=>{
+ email.load.mockResolvedValue({readConsent:true});
+ await expect(openNewPbiAccount(true)).rejects.toThrow('PBI_EXISTING_IDENTITY_HELD');
+ expect(p.register).not.toHaveBeenCalled();expect(p.enroll).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();
 });
 it('keeps the exact retained signer when PBI recovers that same account',async()=>{
  const retained={prepareAccountView:vi.fn(async()=>({wallet:{userId:'original-account'}})),dispose:vi.fn()};
@@ -41,8 +52,8 @@ it('preserves the saved signer when PBI returns a different account',async()=>{
  expect(p.enroll).not.toHaveBeenCalled();
  expect(p.persist).not.toHaveBeenCalled();
 });
-it('opens only the original recovered account after source admission and retains the original source under the new local key',async()=>{
- await openPbiAccount(true);expect(p.admit).toHaveBeenCalledOnce();expect(p.append).toHaveBeenCalledWith(expect.objectContaining({schema:'receiz.account.state.v3',snapshot:expect.objectContaining({account:{userId:'original-account'},pbiAccountBinding:expect.objectContaining({sourceB64u:'original-source'})})}));
+it('registers a new PBI account before enrolling its first signer',async()=>{
+ await openNewPbiAccount(true);expect(p.register).toHaveBeenCalledOnce();expect(p.recover).not.toHaveBeenCalled();expect(p.admit).toHaveBeenCalledOnce();expect(p.append).toHaveBeenCalledWith(expect.objectContaining({schema:'receiz.account.state.v3',snapshot:expect.objectContaining({account:{userId:'original-account'},pbiAccountBinding:expect.objectContaining({sourceB64u:'original-source'})})}));
  expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);expect(p.fresh).not.toHaveBeenCalled();
 });
 it('restores the exact retained signer for the selected account from an inactive slot',async()=>{
@@ -66,31 +77,31 @@ it('never opens or creates custody after a failed passkey ceremony',async()=>{
  expect(p.enroll).not.toHaveBeenCalled();
 });
 it.each(['passkey_cancelled','PBI_ACCOUNT_SOURCE_INVALID'])('leaves ordinary account creation and retained identity untouched on %s',async error=>{
- if(error==='passkey_cancelled')p.bridge.mockRejectedValue(Error(error));else p.admit.mockRejectedValue(Error(error));
- await expect(openPbiAccount(true)).rejects.toThrow(error);expect(p.append).not.toHaveBeenCalled();expect(p.open).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();expect(p.fresh).not.toHaveBeenCalled();
+ if(error==='passkey_cancelled')p.register.mockRejectedValue(Error(error));else p.admit.mockRejectedValue(Error(error));
+ await expect(openNewPbiAccount(true)).rejects.toThrow(error);expect(p.append).not.toHaveBeenCalled();expect(p.open).not.toHaveBeenCalled();expect(p.persist).not.toHaveBeenCalled();expect(p.fresh).not.toHaveBeenCalled();
 });
-it('refuses a wallet for any different account before retaining the local identity',async()=>{p.prepare.mockResolvedValue({wallet:{userId:'wrong-account'}});await expect(openPbiAccount(true)).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(p.persist).not.toHaveBeenCalled();expect(p.dispose).toHaveBeenCalledOnce();});
+it('refuses a wallet for any different account before retaining the local identity',async()=>{p.prepare.mockResolvedValue({wallet:{userId:'wrong-account'}});await expect(openNewPbiAccount(true)).rejects.toThrow('PBI_ACCOUNT_MISMATCH');expect(p.persist).not.toHaveBeenCalled();expect(p.dispose).toHaveBeenCalledOnce();});
 
 it('requires fresh canonical account admission before retaining legacy PBI recovery',async()=>{
  p.bridge.mockResolvedValue({accountUid:'original-account',sourceMode:'legacy-sql',binding:{},request:{}});
- await openPbiAccount(true);expect(p.admit).not.toHaveBeenCalled();expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);
+ await openNewPbiAccount(true);expect(p.admit).not.toHaveBeenCalled();expect(p.prepare).toHaveBeenCalledOnce();expect(p.persist).toHaveBeenCalledWith(true);
  expect(p.append.mock.calls[0][0].snapshot.pbiAccountBinding).toBeUndefined();
 });
 
 it('starts the system ceremony without waiting for local signer enrollment',async()=>{
  let release!:()=>void;p.enroll.mockImplementation(()=>new Promise<void>(resolve=>{release=resolve;}));
- const opening=openPbiAccount(true);await vi.waitFor(()=>expect(p.enroll).toHaveBeenCalled());
- try{expect(p.recover).toHaveBeenCalledOnce();expect(p.recover.mock.invocationCallOrder[0]).toBeLessThan(p.enroll.mock.invocationCallOrder[0]);}finally{release();await opening;}
+ const opening=openNewPbiAccount(true);await vi.waitFor(()=>expect(p.enroll).toHaveBeenCalled());
+ try{expect(p.register).toHaveBeenCalledOnce();expect(p.register.mock.invocationCallOrder[0]).toBeLessThan(p.enroll.mock.invocationCallOrder[0]);}finally{release();await opening;}
 });
 
 it('loads independent proof resources while the SDK is still loading',async()=>{
  let release!:()=>void;p.sdk.mockImplementation(()=>new Promise<void>(resolve=>{release=resolve;}));
- const opening=openPbiAccount(true);await vi.waitFor(()=>expect(p.sdk).toHaveBeenCalled());
+ const opening=openNewPbiAccount(true);await vi.waitFor(()=>expect(p.sdk).toHaveBeenCalled());
  try{expect(p.resources).toHaveBeenCalledOnce();expect(p.enroll).not.toHaveBeenCalled();}finally{release();await opening;}
 });
 it('reports the admitted identity checkpoint before account history preparation finishes',async()=>{
  let release!:(value:unknown)=>void;p.prepare.mockImplementation(()=>new Promise(resolve=>{release=resolve;}));
- const checkpoint=vi.fn(),opening=openPbiAccount(true,checkpoint);await vi.waitFor(()=>expect(p.prepare).toHaveBeenCalled());
+ const checkpoint=vi.fn(),opening=openNewPbiAccount(true,checkpoint);await vi.waitFor(()=>expect(p.prepare).toHaveBeenCalled());
  try{expect(checkpoint).toHaveBeenCalledOnce();expect(p.persist).not.toHaveBeenCalled();}finally{release({wallet:{userId:'original-account'}});await opening;}
 });
 it('uses the same recovered-device admission for a verified email recipient without a passkey or fresh account genesis',async()=>{

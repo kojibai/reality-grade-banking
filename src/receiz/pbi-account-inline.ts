@@ -56,6 +56,12 @@ export async function recoverPbiAccountInline(options?:{existingOnly:true;email?
   return await complete(await pbiAccountRequest('begin',{intent:'register',next:'/account'}));
  }
 }
+export async function registerPbiAccountInline(){
+ if(!navigator.credentials?.create)throw Error('PBI_BROWSER_UNAVAILABLE');
+ const begin=await pbiAccountRequest('begin',{intent:'register',next:'/account'});
+ if(begin.flow!=='register')throw Error('PBI_ACCOUNT_MISMATCH');
+ return complete(begin);
+}
 export async function runPbiAccountInline(device:PbiAccountDevice,sign:(accountUid:string)=>Promise<{challengeB64Url:string;signatureB64Url:string}>,recovery:Promise<{accountUid:string;credentialId?:string}>=recoverPbiAccountInline()){
  const recovered=await recovery;
  const request:PbiAccountBindRequest={...device,...await sign(recovered.accountUid),next:'/account'};

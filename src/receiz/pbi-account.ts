@@ -1,6 +1,6 @@
 import {loadReceiz} from './client';
 import {withDeviceIdentityEntry} from './device-identity-entry';
-import {runPbiAccountInline,recoverPbiAccountInline,closePbiAccount} from './pbi-account-inline';
+import {runPbiAccountInline,recoverPbiAccountInline,registerPbiAccountInline,closePbiAccount} from './pbi-account-inline';
 import {admitPbiAccountBinding} from './pbi-account-source';
 import {openCanonicalIdentity,restoreNativeIdentity,type OpenIdentity} from './native-identity';
 import {loadBankProofResources} from './proof-resource-continuity';
@@ -9,8 +9,7 @@ import {nativeFetch} from './native-transport';
 import {unprotectIdentityKeyFile} from './identity-protection';
 
 /** A passkey proves the selected account. Reuse its admitted Identity Record
- * when this install still holds it. New device enrollment remains the existing
- * recovery path for installations with no retained signing custody. */
+ * when this install still holds it. A missing record cannot enroll a substitute. */
 export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
  try{
   if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
@@ -40,7 +39,20 @@ export async function openPbiAccount(consentApproved:boolean,onIdentityPrepared?
     }catch(error){identity.dispose();throw error;}
    }
    if(previous)throw Error('PBI_ACCOUNT_MISMATCH');
-   return createRecoveredAccountDevice(Promise.resolve(recovered),onIdentityPrepared);
+   throw Error('PBI_IDENTITY_RECORD_REQUIRED');
+  });
+ }finally{await closePbiAccount();}
+}
+
+/** Explicit new passkey registration is the only entry that enrolls new custody. */
+export async function openNewPbiAccount(consentApproved:boolean,onIdentityPrepared?:()=>void):Promise<OpenIdentity>{
+ try{
+  if(!consentApproved)throw Error('Approve account access before continuing with PBI.');
+  return await withDeviceIdentityEntry(async()=>{
+   const {loadDeviceIdentity}=await import('./identity-vault');
+   if(await loadDeviceIdentity())throw Error('PBI_EXISTING_IDENTITY_HELD');
+   const registered=await registerPbiAccountInline();
+   return createRecoveredAccountDevice(Promise.resolve(registered),onIdentityPrepared);
   });
  }finally{await closePbiAccount();}
 }

@@ -139,7 +139,7 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
     setPanel('account');setSheet(action);history.replaceState({panel:'account',sheet:action},'',routeHash('account',action));consumeProfileAccountAction(id);
   },[onBank,account.identity,profileAction]);
   if (!account.identity) {
-    return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} onPbi={account.pbi}/>}/></>;
+    return <><PublicProfilePortal identity={null} userId={null}/><PublicAssetTradePortal account={account} fallback={<Entrance opening={account.opening} openingStage={account.openingStage} busy={account.busy} error={account.error} onCreate={account.create} onImport={account.importId} onPbi={account.pbi} onPbiCreate={account.createPbi}/>}/></>;
   }
   const dock=<RetainedBankNavigation onBank={onBank} panel={panel} navigate={navigate} deposit={()=>open({kind:'deposit'})}/>;
   return <><PublicProfilePortal identity={account.identity} userId={account.wallet?.userId??account.identity.walletReceivingAddress?.()??null} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} onRefresh={refreshAccountSources}/><PublicAssetTradePortal account={account}/><ConsoleShell identityImage={identityImage} active={onBank} panel={panel} onNavigate={navigate} onDeposit={() => open({ kind: 'deposit' })} onProfile={() => open({ kind: 'profile' })} onMessages={()=>open({kind:'messages'})} navigation={dock}>

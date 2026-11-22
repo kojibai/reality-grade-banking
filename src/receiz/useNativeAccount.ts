@@ -153,16 +153,24 @@ export function useNativeAccount(custody = nativeCustody) {
     finally { openingOperation.current = false; if (!held.current) setBusy(false); }
   };
   const create = (consent: boolean) => open(() => custody.createNativeIdentity(consent));
-  const pbi = () => open(async identityPrepared => {
-    try { return await (await import('./pbi-account')).openPbiAccount(true,identityPrepared); }
+  const openWithPbi = (createAccount:boolean) => open(async identityPrepared => {
+    try {
+      const pbiAccount=await import('./pbi-account');
+      return await (createAccount?pbiAccount.openNewPbiAccount:pbiAccount.openPbiAccount)(true,identityPrepared);
+    }
     catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
-      throw Error(code === 'passkey_cancelled' ? 'Passkey sign-in was cancelled.'
+      throw Error(code === 'PBI_IDENTITY_RECORD_REQUIRED' ? 'Your passkey opened the account. Use your Identity Record to restore its original signing key on this device.'
+        : code === 'PBI_EXISTING_IDENTITY_HELD' ? 'This device already holds an Identity Record. Open that account to connect a passkey.'
+        : code === 'passkey_cancelled' ? 'Passkey sign-in was cancelled.'
         : ['PBI_BROWSER_UNAVAILABLE','PBI_RELATED_ORIGIN_UNAVAILABLE'].includes(code)
           ? 'This browser cannot use this passkey here. Use your Identity Record to sign in.'
           : 'Passkey sign-in could not finish. Try again or use your Identity Record.');
     }
   }, true);
+
+  const pbi = () => openWithPbi(false);
+  const createPbi = () => openWithPbi(true);
 
   const importId = (file: File, phrase: string, consent: boolean) => open(() => custody.importNativeIdentity(file, phrase, consent));
   const forget = async () => {
@@ -181,5 +189,5 @@ export function useNativeAccount(custody = nativeCustody) {
     lastRead.current=null;
     setIdentity(null);setWallet(null);setWalletHistory([]);setReceivedNotes([]);setHistoryComplete(false);setObservedAt(null);setOpeningStage('identity');setOpening(false);setBusy(false);setSyncPending(false);
   };
-  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, importId, forget };
+  return { identity, wallet, walletHistory, receivedNotes, historyComplete, opening, openingStage, busy, error, observedAt, syncPending, refresh, create, pbi, createPbi, importId, forget };
 }
