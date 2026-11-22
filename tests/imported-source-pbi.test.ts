@@ -31,6 +31,11 @@ it('verifies the actual SDK PBI signature and rejects altered action inputs with
   return{credIdB64Url,pubKeyPem,authenticatorDataB64Url:encode(auth),clientDataJSONB64Url:encode(client),signatureB64Url:encode(signature)};
  },verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}})}});
  const bytes=await source.exactArtifact.arrayBuffer(),signed=await r.sourceAuthorship.projectPbiSignedImportedSourceOriginal(source,reference,proof);
+ const custody=r.createImportedProofSourceCustody();
+ await custody.retainAuthorship(reference,proof);
+ const carriedReference=Object.fromEntries(Object.entries(reference).reverse()) as typeof reference;
+ await expect(r.createImportedProofSourceCustody().readAuthorship(carriedReference)).resolves.toEqual(proof);
+ await expect(custody.readAuthorship({...carriedReference,bytes:{...reference.bytes,sha256:'f'.repeat(64)}})).rejects.toThrow('IMPORTED_SOURCE_CUSTODY_AUTHORSHIP_BINDING_INVALID');
  expect(signed.hasPbiSignature).toBe(true);expect(signed.pbiReceiptHash).toBe(proof.pbiReceiptHash);
  await expect(r.sourceAuthorship.projectPbiSignedImportedSourceOriginal(source,reference,{...proof,input:{...proof.input,claimHashHex:'f'.repeat(64)}})).rejects.toThrow('PBI_PROOF_INVALID');
  expect(new Uint8Array(await source.exactArtifact.arrayBuffer())).toEqual(new Uint8Array(bytes));

@@ -39,12 +39,12 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
   if(body.action==='commit-blocks'){for(const item of body.blocks){const bytes=staged.get(item.stagingObjectName);if(!bytes)throw Error('Missing staged bytes');blocks.set(item.reference.sha256,bytes);}return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;timeline.push('finalize');
   if(finalHTTPStatus)return Response.json({error:'access_denied'},{status:finalHTTPStatus});
-  const {source,admission:admitted}=await receiveActual(body.transport);
+  const {source,carrier,admission:admitted}=await receiveActual(body.transport);
   expect(admitted.artifactSha256).toBe(body.transport.artifactDigest);
   if(interrupt){pendingSignedSource=source;attemptDigest=body.transport.artifactDigest;return Response.json({status:'pending',code:'PROFILE_SHOWCASE_PUBLIC_DELIVERY_PENDING'});}
   if(attemptDigest)expect(body.transport.artifactDigest).toBe(attemptDigest);
   complete=source;
-  accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:owner,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
+  accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:carrier['profile-showcase'].profileIdentity,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:admitted.proofHistoryHead.nodeCount,visibleChildCount:source.children.length});
  };
  vi.stubGlobal('fetch',request);
@@ -105,8 +105,15 @@ it('a cold runtime resumes a valid saved legacy-scoped PBI proof for the exact s
  runtime=await open();interrupt=false;
  for(const digest of restored.pendingAssetPublicationSignatures(identityDigest,uid,username)){
   expect(digest).toBe(next.reference.artifactSha256);
-  const receipt=await runtime.resumeSignedPublication(next.artifact);expect(receipt?.status).toBe('published');
-  restored.acknowledgeAssetPublication(digest,receipt!,localAdmissions.at(-1).original.pbiReceiptHash);
+  // A restored install can hold the receipt and accepted reference without
+  // having the enclosing file in Bankeiz's deposit list.
+  const reference=Object.fromEntries(Object.entries(next.reference).reverse());
+  const proof=await r.createImportedProofSourceCustody().readAuthorship(reference);
+  expect(proof?.pbiReceiptHash).toBe(localAdmissions.at(-1).original.pbiReceiptHash);
+  const result=await runtime.resumeExistingOriginalSignature(reference,proof);
+  expect(result.receipt.status,JSON.stringify(result.receipt)).toBe('published');
+  expect(result.pbiReceiptHash).toBe(proof.pbiReceiptHash);
+  restored.acknowledgeAssetPublication(digest,result.receipt,result.pbiReceiptHash);
  }
  expect(restored.pendingAssetPublicationSignatures(identityDigest,uid,username)).toEqual([]);
  restored.forgetAssetPublicationAdmissions();

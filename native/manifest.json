@@ -7548,7 +7548,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "1100b7296b1887097052113c297e8dafefa82dd437c7b69d540472c1426dbf58",
+      "sha256": "d498e3b270565fa2654cc7fe9ed2ff8da1e9bb5413967f73f97ed44b9ae6ba2a",
       "bytes": 34894,
       "mode": 420
     },
@@ -7590,7 +7590,7 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
-      "sha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4",
+      "sha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4",
       "bytes": 17238,
       "mode": 420
     },
@@ -20235,6 +20235,20 @@
       "baseSha256": "080cb45b70fab62345d115012b815bb3fee64f7a6704a602726529a73140df19",
       "sha256": "d7d7a209035dc3f1a4f45ab6c83672427813a621898e1459cd50fae1565d5e1a",
       "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
+    },
+    {
+      "id": "bankeiz-retained-original-pbi-replay",
+      "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
+      "baseSha256": "1100b7296b1887097052113c297e8dafefa82dd437c7b69d540472c1426dbf58",
+      "sha256": "d498e3b270565fa2654cc7fe9ed2ff8da1e9bb5413967f73f97ed44b9ae6ba2a",
+      "purpose": "Replay the exact retained PBI receipt on the existing accepted Original using the canonical Source reference and owner append."
+    },
+    {
+      "id": "bankeiz-retained-original-pbi-replay",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4",
+      "sha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4",
+      "purpose": "Replay the exact retained PBI receipt on the existing accepted Original using the canonical Source reference and owner append."
     }
   ],
   "historicalValuation": {
@@ -20923,7 +20937,7 @@
     },
     {
       "path": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-      "sha256": "1100b7296b1887097052113c297e8dafefa82dd437c7b69d540472c1426dbf58"
+      "sha256": "d498e3b270565fa2654cc7fe9ed2ff8da1e9bb5413967f73f97ed44b9ae6ba2a"
     },
     {
       "path": "app/lib/profile/showcase/economyRetry.ts",
@@ -20951,7 +20965,7 @@
     },
     {
       "path": "app/lib/profile/showcase/importedSourceCustody.client.ts",
-      "sha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4"
+      "sha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4"
     },
     {
       "path": "app/lib/profile/showcase/importedSourceErrors.ts",

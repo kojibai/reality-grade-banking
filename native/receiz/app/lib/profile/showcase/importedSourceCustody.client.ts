@@ -1,5 +1,6 @@
 "use client";
 
+import { jcsCanonicalize } from "@/app/utils/jcs";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { completeBlobCustodyTransaction, blobCustodyRequestResult } from "@/app/lib/transport/blobCustodyTransactions.client";
@@ -116,7 +117,7 @@ export function createImportedProofSourceCustody() {
       const reference=parseImportedProofSourceReference(value),key='authorship:'+sourceKey(reference);
       const stored=await readRecord('sources',key) as {key?:unknown;reference?:unknown;proof?:unknown}|undefined;
       if(!stored)return null;
-      if(stored.key!==key||JSON.stringify(stored.reference)!==JSON.stringify(reference))throw TypeError(`${PREFIX}_AUTHORSHIP_BINDING_INVALID`);
+      if(stored.key!==key||jcsCanonicalize(parseImportedProofSourceReference(stored.reference as ImportedProofSourceReference))!==jcsCanonicalize(reference))throw TypeError(`${PREFIX}_AUTHORSHIP_BINDING_INVALID`);
       return stored.proof??null;
     },
     /** Same bounded exact-byte store used by imported source custody. This does

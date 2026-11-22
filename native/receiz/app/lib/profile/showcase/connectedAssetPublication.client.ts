@@ -142,8 +142,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    const selected=await publication();input.assertCurrent();
    return selected.publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
- return {
-  async signExistingOriginal(reference:ImportedProofSourceReference,authorizeMarket:AuthorizeMarket){
+ async function appendExistingOriginalAuthorship(reference:ImportedProofSourceReference,authorship:{authorize:AuthorizeMarket}|{saved:unknown}){
    input.assertCurrent();
    const selected=await publication();
    await selected.requireExistingOriginal(reference);
@@ -160,18 +159,30 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
     throw TypeError('PROFILE_SHOWCASE_SIGNING_ACCOUNT_REQUIRED');
    }
    const base=projectImportedSourceOriginal(source,reference),opened={source,reference,original:base};
-   const {pbi,action,held,retainedProof}=await readRetainedComposerAuthorship(opened,true,true);
-   if(!action)throw TypeError('IMPORTED_SOURCE_PBI_SOURCE_REQUIRED');
-   const authorshipProof=signedSources.get(digest)??held?.proof??retainedProof??await authorizeMarket(action);
+   const pbi=await import('./importedSourceAuthorship');
+   let authorshipProof:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof;
+   if('saved' in authorship){
+    const normalized=normalizeLocalPbiAuthorshipProof(authorship.saved);
+    if(!normalized)throw TypeError('IMPORTED_SOURCE_PBI_PROOF_INVALID');
+    authorshipProof=normalized;
+   }else{
+    const {action,held,retainedProof}=await readRetainedComposerAuthorship(opened,true,true);
+    if(!action)throw TypeError('IMPORTED_SOURCE_PBI_SOURCE_REQUIRED');
+    authorshipProof=signedSources.get(digest)??held?.proof??retainedProof??await authorship.authorize(action);
+   }
    const original=await pbi.projectPbiSignedImportedSourceOriginal(source,reference,authorshipProof);
-   await custody.retainAuthorship(reference,authorshipProof);input.assertCurrent();
+   if(!('saved' in authorship))await custody.retainAuthorship(reference,authorshipProof);
+   input.assertCurrent();
    signedSources.set(digest,authorshipProof);
    retainImportedProfileOriginalMaterial(original,username,source);
    await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid,source.projection.ownerReceizId??undefined),sourceReference:reference,firstPaint:null,artwork:sourceArtwork(source)}),{signing:true});
    input.assertCurrent();
    const result=await selected.publishOpened({...opened,original},authorshipProof,false,true);input.assertCurrent();
    return {receipt:result,pbiReceiptHash:authorshipProof.pbiReceiptHash};
-  },
+ }
+ return {
+  signExistingOriginal:(reference:ImportedProofSourceReference,authorize:AuthorizeMarket)=>appendExistingOriginalAuthorship(reference,{authorize}),
+  resumeExistingOriginalSignature:(reference:ImportedProofSourceReference,saved:unknown)=>appendExistingOriginalAuthorship(reference,{saved}),
   async stage(file:File){return(await publication()).stage(file);},
   prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:identityAdmission.ownerReceizId!,creatorUsername:username,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
   sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),

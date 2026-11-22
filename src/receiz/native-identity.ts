@@ -150,7 +150,7 @@ export interface OpenIdentity {
   createComposedAsset: (definition:AssetDefinition,draft:AssetComposerDraft,onProgress?:(progress:import('./asset-publication').AssetCreationProgress)=>void)=>Promise<HeldDeposit>;
   pendingAssetPublication?: () => Promise<HeldDeposit | null>;
   retryAssetPublication?: (sourceDigest?:string) => Promise<HeldDeposit>;
-  retryAssetSignatureOnOpen?: (sourceDigest:string,source?:HeldDeposit) => void;
+  retryAssetSignatureOnOpen?: (sourceDigest:string,source?:HeldDeposit,originalUrl?:string|null) => void;
   dismissAssetCreation?: (digest:string) => Promise<void>;
   readPrivateHistory: (cursor?: string) => Promise<PrivateHistoryPage>;
   readNoteHistory?: () => Promise<import('./public-network').PublicRecord[]>;
@@ -1844,7 +1844,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     });
   }
   const openedAssetSignatureRetries=new Map<string,Promise<void>>();
-  function retryAssetSignatureOnOpen(digest:string,source?:HeldDeposit){
+  function retryAssetSignatureOnOpen(digest:string,source?:HeldDeposit,originalUrl?:string|null){
     if(lifetime.signal.aborted||navigator.onLine===false||!/^[a-f0-9]{64}$/.test(digest)||assetSigningFlights.has(digest)||openedAssetSignatureRetries.has(digest))return;
     const uid=accountUid??knownWallet?.wallet.userId;
     if(!uid)return;
@@ -1852,6 +1852,26 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const adoption=await import('./asset-publication-adoption');noteOpen();
       const projected=adoption.readAdmittedAssetSignatureHash(binding.artifactSha256,uid,digest);
       if(projected&&adoption.hasObservedAssetPublicationSignature(binding.artifactSha256,uid,digest,projected))return;
+      // An accepted Original from another install can have a local receipt
+      // without a held deposit. Recover only the selected exact reference.
+      if(originalUrl){
+        const {safeImportedSourceUrl}=await import('./imported-source-url'),coordinate=safeImportedSourceUrl(originalUrl,'artifact');
+        if(coordinate){
+          const reference=JSON.parse(new URL(coordinate).searchParams.get('reference')!) as import('../../native/receiz/app/lib/profile/showcase/importedSourceReference').ImportedProofSourceReference;
+          if(reference.artifactSha256===digest){
+            const native=await(await import('./asset-publication-runtime')).loadAssetPublicationRuntime();
+            const proof=await native.createImportedProofSourceCustody().readAuthorship(reference);noteOpen();
+            if(proof){
+              if(!confirmedUsername){await prepareReceivingUsername();noteOpen();}
+              const runtime=await openComposedPublisher(undefined,true);
+              const {receipt,pbiReceiptHash}=await runtime.resumeExistingOriginalSignature(reference,proof);noteOpen();
+              adoption.acknowledgeAssetPublication(digest,receipt,pbiReceiptHash);
+              if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(digest);
+              return;
+            }
+          }
+        }
+      }
       const [{readAssetSignatureCheckpoint},vault]=await Promise.all([import('./asset-publication'),import('./identity-vault')]);
       const saved=await vault.loadAssetPublicationState(binding).catch(()=>null);noteOpen();
       const checkpoint=readAssetSignatureCheckpoint(saved,binding.artifactOwnerReceizId,digest);
