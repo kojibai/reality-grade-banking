@@ -21,7 +21,7 @@ it('does no PBI preparation on cold entry, Enter or import',async()=>{
 });
 it('keeps the selected recovered account, original balance and full history in the same settled frame',async()=>{
  const original=identity();p.pbi.mockResolvedValue(original);
- await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBe(original);expect(read().wallet?.userId).toBe('original-account');expect(read().wallet?.totalUsdCents).toBe('45123');expect(read().walletHistory).toEqual(observation.history);expect(p.pbi).toHaveBeenCalledWith(true,expect.any(Function));expect(p.reserve).not.toHaveBeenCalled();expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
+ await observe(async read=>{await act(async()=>{await read().pbi();});expect(read().identity).toBe(original);expect(read().wallet?.userId).toBe('original-account');expect(read().wallet?.totalUsdCents).toBe('45123');expect(read().walletHistory).toEqual(observation.history);expect(p.pbi).toHaveBeenCalledExactlyOnceWith(true,expect.any(Function),{allowRegistration:true});expect(p.reserve).not.toHaveBeenCalled();expect(p.create).not.toHaveBeenCalled();expect(p.importId).not.toHaveBeenCalled();});
 });
 it('keeps cancelled PBI on the unchanged entrance without creating or importing an account',async()=>{
  p.pbi.mockRejectedValue(Error('passkey_cancelled'));
