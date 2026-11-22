@@ -1,4 +1,6 @@
 import {afterEach,beforeAll,expect,it,vi} from 'vitest';
+import {createLocalPbiAuthorshipProof,type LocalPbiAuthorshipInput} from '../native/receiz/packages/receiz-sdk/src/pbiLocalAuthorship';
+import {verifyLocalPbiAssertion} from '../native/receiz/packages/receiz-sdk/src/pbiLocalVerifier';
 import {IDBFactory} from 'fake-indexeddb';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 
@@ -30,9 +32,10 @@ it('delivers exact known protected Source without requiring a subordinate privat
  const scopeStarted=deferred(),releaseScope=deferred(),privateStarted=deferred(),completeStarted=deferred(),releasePrivate=deferred();
  let initializations=0,completions=0,scopeReads=0,finalizations=0,failPrivate=false,accepted:unknown={status:'unmigrated'};
  let exactPrivate=new Uint8Array(),admissions=0,publicInitializations=0;
+ let acceptedHead:Awaited<ReturnType<typeof receiver>>;
  const request:typeof fetch=async(input,init)=>{
   const url=new URL(String(input),'https://bankeiz.test');
-  if(url.pathname==='/api/profile/showcase/accepted-source'){scopeReads++;scopeStarted.resolve();await releaseScope.promise;return Response.json(accepted);}
+  if(url.pathname==='/api/profile/showcase/accepted-source'){const block=url.searchParams.get('block');if(block){const bytes=publicBlocks.get(JSON.parse(block).sha256);return new Response(bytes?.slice(),{status:bytes?200:404});}scopeReads++;scopeStarted.resolve();await releaseScope.promise;return Response.json(accepted);}
   if(url.pathname==='/api/profile/originals/upload-signed'){
    const body=JSON.parse(String(init?.body)),path=`originals/${uid}/${body.sha256Hex}.png`;
    const response={ok:true,provider:'crystal',upload:{name:body.filename,path,sha256Hex:body.sha256Hex,size:body.size,mime:body.mime,storage:{bucket:'receiz-profile-originals-private',path},stagingObjectName:'private-stage',signedUrl:'https://private.test/sealed-original.png'}};
@@ -48,8 +51,8 @@ it('delivers exact known protected Source without requiring a subordinate privat
   if(body.action==='initialize-blocks')return Response.json({status:'uploads',scope:body.scope,uploads:body.references.map((reference:{sha256:string})=>({reference,alreadyStored:publicBlocks.has(reference.sha256),signedUrl:`https://storage.test/${reference.sha256}`,stagingObjectName:reference.sha256}))});
   if(body.action==='commit-blocks'){for(const item of body.blocks)publicBlocks.set(item.reference.sha256,staged.get(item.stagingObjectName)!);return Response.json({status:'stored',scope:body.scope});}
   expect(body.action).toBe('finalize');finalizations++;
-  const next=await receiver(body.transport);
-  accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:owner,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
+  const next=await receiver(body.transport);acceptedHead=next;
+  accepted={status:'accepted',artifactId,transport:body.transport,binding:{schema:'receiz.profile-showcase.route-migration-binding.v1',status:'accepted',username,profileIdentity:uid,proofIdentity:next.carrier['profile-showcase'].profileIdentity,locator:{tenantId:'receiz.com',showcaseArtifactId:artifactId,acceptedArtifactDigest:body.transport.artifactDigest,acceptedImmutableObjectVersion:body.transport.artifactDigest,projectionVersion:2}}};
   return Response.json({status:'published',publicationVersion:2,scope:body.scope,artifactDigest:body.transport.artifactDigest,operationCount:next.admission.proofHistoryHead.nodeCount,visibleChildCount:next.visibleChildren.length});
  };
  vi.stubGlobal('fetch',request);
@@ -118,4 +121,48 @@ it('delivers exact known protected Source without requiring a subordinate privat
  expect(new Uint8Array(await prepared.artifact.arrayBuffer())).toEqual(exactSource);
  expect([...privateBlocks.keys()].some(key=>publicBlocks.has(key))).toBe(false);
 
-},30_000);
+ // Passkey entry on a fresh install has this same account and a different
+ // device key. Sign the accepted Original without opening its private copy.
+ values.clear();vi.stubGlobal('indexedDB',new IDBFactory());
+ const freshIdentity=await f.otherIdentity(),signer=await cold.connectedComposer.createConnectedAssetPublicationRuntime({
+  identity:freshIdentity.bytes,passphrase:freshIdentity.phrase,account:{uid,username},assertCurrent(){},fetchImpl:request,sealDocument:seal,
+ });
+ const signSource=await cold.openImportedProofSource(prepared.artifact,{resolveSourceBlock:async(ref:{sha256:string})=>publicBlocks.get(ref.sha256)});
+ expect(signSource.verification.assetContinuity).toMatchObject({state:'verified',genesisOwnerReceizId:owner,ownerReceizId:owner});
+ const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+ const spki=await crypto.subtle.exportKey('spki',keys.publicKey);
+ const credential={credIdB64Url:'AQI',pubKeyPem:`-----BEGIN PUBLIC KEY-----
+${Buffer.from(spki).toString('base64')}
+-----END PUBLIC KEY-----`};
+ const encode=(bytes:Uint8Array|ArrayBuffer)=>Buffer.from(bytes instanceof Uint8Array?bytes:new Uint8Array(bytes)).toString('base64url');
+ let ceremonies=0;
+ const authorize=async(input:LocalPbiAuthorshipInput)=>{
+  ceremonies++;
+  return createLocalPbiAuthorshipProof({input,credential,dependencies:{
+   performAssertion:async({challengeB64Url,credIdB64Url,pubKeyPem})=>{
+    const authenticatorData=new Uint8Array(37);
+    authenticatorData.set(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('receiz.com'))));authenticatorData[32]=5;
+    const clientData=new TextEncoder().encode(JSON.stringify({type:'webauthn.get',challenge:challengeB64Url,origin:'https://bankeiz.com',crossOrigin:false}));
+    const signed=new Uint8Array(69);signed.set(authenticatorData);signed.set(new Uint8Array(await crypto.subtle.digest('SHA-256',clientData)),37);
+    return{credIdB64Url,pubKeyPem,authenticatorDataB64Url:encode(authenticatorData),clientDataJSONB64Url:encode(clientData),signatureB64Url:encode(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,signed))};
+   },
+   verifyAssertion:args=>verifyLocalPbiAssertion({...args,policy:{rpId:'receiz.com',originAllowList:['https://bankeiz.com'],requireUP:true,requireUV:true}}),
+  }});
+ };
+ await expect(signer.signExistingOriginal({...prepared.reference,filename:'substituted.receizbundle'},authorize)).rejects.toThrow('PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED');
+ expect(ceremonies).toBe(0);
+ const signed=await signer.signExistingOriginal(prepared.reference,authorize).catch((error:Error)=>{throw Error(error.message);});
+ expect(signed.receipt).toMatchObject({status:'published'});
+ const signedChild=(await acceptedHead!.readCompleteSource()).children.at(-1);
+ const signedSource=await cold.openImportedProofSource(new File([signedChild.exactSealedArtifactBytes],'profile-original.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:async(ref:{sha256:string})=>publicBlocks.get(ref.sha256)});
+ expect(signedSource.projection.carriedOriginal).toMatchObject({hasPbiSignature:true,pbiReceiptHash:signed.pbiReceiptHash});
+ const deliveries=finalizations;
+ expect(await signer.signExistingOriginal(prepared.reference,authorize)).toEqual(signed);
+ expect(ceremonies).toBe(1);expect(finalizations).toBe(deliveries);
+ const ordinarySignature=await signer.signExistingOriginal(baseline.reference,authorize).catch((error:Error)=>{throw Error(error.message);});
+ expect(ordinarySignature.receipt).toMatchObject({status:'published'});
+ expect(ceremonies).toBe(2);
+ expect(initializations).toBe(2);expect(completions).toBe(2);
+ expect([...privateBlocks.keys()].some(key=>publicBlocks.has(key))).toBe(false);
+
+},60_000);

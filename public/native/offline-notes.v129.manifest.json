@@ -2072,15 +2072,15 @@
       "id": "bankeiz-acknowledged-pbi-source-closure",
       "path": "receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts",
       "baseSha256": "1269c102dcc899974559a21c2541b758afd2d92b4ca91ef776c0c4e96b92c26a",
-      "sha256": "3ee356671f0671700de717ac72d9bfceb22bdb72fdef3a9ba92283f6df40ce23",
-      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver."
+      "sha256": "1dc843865e09c78dcb0a616995cf6a37b0a1f171a25ba0fc898275a23eae07e0",
+      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver. Permit the admitted account to sign its exact accepted Original after passkey recovery with a different device key, preserving the sealed creator and private content."
     },
     {
       "id": "bankeiz-acknowledged-pbi-source-closure",
       "path": "receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts",
       "baseSha256": "b68f9cbb767ee48d2f7421d9f9ac4525cffae9e83633a186db83053f275af63f",
-      "sha256": "38c50581285f27e64b32c895c41d4606ba2238a602774dde0ebcbde16b8a1508",
-      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver."
+      "sha256": "080cb45b70fab62345d115012b815bb3fee64f7a6704a602726529a73140df19",
+      "purpose": "Reuse the exact acknowledged Original byte closure when delivering its signed Showcase successor. Unacknowledged Sources still export their full closure and every successor is verified by the existing receiver. Permit the admitted account to sign its exact accepted Original after passkey recovery with a different device key, preserving the sealed creator and private content."
     }
   ]
 }

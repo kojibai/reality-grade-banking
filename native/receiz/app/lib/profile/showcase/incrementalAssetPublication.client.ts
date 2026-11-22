@@ -3,15 +3,16 @@ import {createReceizArtifactAdmissionEngine,readReceizIdentityPublicBinding,admi
 import {verifyReceizArtifactWithCanonicalRoots} from '../../../../packages/receiz-sdk/src/artifactVerification';
 import {receizCurrentPinnedSignatureV4Roots} from '../../../../packages/receiz-sdk/src/verifier/roots';
 import {createReceizProfileShowcaseSegmentMechanicsV114} from '../../../../packages/receiz-sdk/src/compositeProofTransport';
+import {sha256ReceizBytes} from '../../../../packages/receiz-sdk/src/artifacts';
 import {createReceizBrowserAdmissionStore} from '../../../../packages/receiz-sdk/src/browserAdmissionStore';
-import {readImportedSourceTransportReference} from './importedSourceProjection';
+import {encodeImportedSourceReference,readImportedSourceTransportReference} from './importedSourceProjection';
 import {jcsCanonicalize} from '../../../utils/jcs';
 import type {ReceizKeyFile,ReceizVerifiedIdentityArtifactAdmission} from '../../../../packages/receiz-sdk/src/index';
 import {deriveReceizProfileShowcasePersistentPlacementV114} from '../../../../packages/receiz-sdk/src/profileShowcasePersistentState';
 import {createReceizBrowserArtifactTransitionStore} from './browserTransitionStore';
 import {createProfileShowcaseAppendAuthority} from './authorityProvider';
 import {sealCommitAndReadmitBoundedProfileShowcaseTransition} from './boundedTransitionPublication';
-import {readProfileShowcaseAppendTransport,readProfileShowcaseCarrierTransport,writeProfileShowcaseAcceptedTransitionTransport,type ProfileShowcaseAppendTransport,type ProfileShowcaseCompleteSourceTransport} from './completeSourceTransport';
+import {iterateProfileShowcaseCompleteSourceChildDescriptors,readProfileShowcaseAppendTransport,readProfileShowcaseCarrierTransport,writeProfileShowcaseAcceptedTransitionTransport,type ProfileShowcaseAppendTransport,type ProfileShowcaseCompleteSourceTransport} from './completeSourceTransport';
 import {admitProfileShowcaseAppendTransport} from './appendTransportAdmission';
 import {publishProfileShowcaseTransport,type ProfileShowcasePublicProjectionPublicationResult} from './publicProjectionPublication';
 import {createImportedProofSourceCustody} from './importedSourceCustody.client';
@@ -152,16 +153,6 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:body.transport.artifactDigest}}};}
   return result;
  };
- return {async acceptPublished(transport:ProfileShowcaseCompleteSourceTransport){
-  input.assertCurrent();let selected=shared!.get(transport.artifactDigest);
-  if(!selected){const admission=await input.vault.reopenHead(input.artifactId,transport.artifactDigest);if(!admission||admission.artifactSha256!==transport.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CUSTODY_REQUIRED');
-   const context=await readContext(transport,custody.resolveBlock),carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,transport.artifactDigest);
-   selected={context,prior:{admission,carrier,io,resolveHistorical:count=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,transport.artifactDigest,count)}};remember(selected);}
-  if(!selected)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CUSTODY_REQUIRED');heldHead=selected;accepted={status:'accepted',artifactId:input.artifactId,transport,binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:transport.artifactDigest}}};input.assertCurrent();
- },async publish(opened:{source:OpenedImportedProofSource;reference:ImportedProofSourceReference},authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
-  input.assertCurrent();
-  const publicationKey=opened.reference.artifactSha256+(authorshipProof?':'+authorshipProof.pbiReceiptHash:'');
-  const known=published.get(publicationKey);if(known)return known;
   const readHead=async()=>{
    if(!validAccepted(accepted)){
     const binding=peekRecoveredAccountShowcaseScope({username:input.username,accountId:input.uid,artifactId:input.artifactId});
@@ -217,6 +208,46 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    try{const admitted=await admitProfileShowcaseAppendTransport({context,artifactId:input.artifactId,resolveBlock:resolve,predecessorTransports:(accepted as any).predecessorTransports});const value={context,prior:{...admitted,resolveHistorical:async(count:number)=>admitted.resolveHistorical(count)}};remember(value);return value;}
    catch(error){if(error instanceof Error&&error.message==='PROFILE_SHOWCASE_PREDECESSOR_CONTEXT_REQUIRED')return null;throw error;}
   };
+ /** A transport descriptor only locates the child. The admitted carrier and
+  * its persistent placement bind the exact imported reference to this account. */
+ let confirmedSigningSource:{head:string;reference:string}|undefined;
+ const requireExistingOriginal=async(reference:ImportedProofSourceReference)=>{
+  input.assertCurrent();
+  if(!heldHead){
+   heldHead=await readHead()??undefined;
+   if(!heldHead){
+    accepted??=await input.readAccepted();
+    if(validAccepted(accepted))heldHead=await readHead()??undefined;
+   }
+  }
+  if(!heldHead)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');
+  const {prior,context}=heldHead,head=prior.carrier['profile-showcase'];
+  const binding=peekRecoveredAccountShowcaseScope({username:input.username,accountId:input.uid,artifactId:input.artifactId});
+  if(!binding||binding.proofIdentity!==head.profileIdentity||prior.carrier.artifactId!==input.artifactId)throw TypeError('PROFILE_SHOWCASE_SIGNING_ACCOUNT_REQUIRED');
+  const referenceKey=jcsCanonicalize(reference),headDigest=prior.admission.artifactSha256;
+  if(confirmedSigningSource?.head===headDigest&&confirmedSigningSource.reference===referenceKey)return;
+  const contentDigest=await sha256ReceizBytes(encodeImportedSourceReference(reference));
+  const transport=context?.transport??(accepted as {transport?:ProfileShowcaseCompleteSourceTransport}|undefined)?.transport;
+  if(!transport)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');
+  for await(const child of iterateProfileShowcaseCompleteSourceChildDescriptors(transport,resolve)){
+   if(child.reference.stableChildArtifactId!==contentDigest)continue;
+   const placement=await deriveReceizProfileShowcasePersistentPlacementV114({placementRoot:String(head.placementRoot),io:prior.io,child:child.reference});
+   if(placement?.visibility==='visible'&&jcsCanonicalize(placement.reference)===jcsCanonicalize(child.reference)){
+    input.assertCurrent();input.rememberDeliveredSource(reference);confirmedSigningSource={head:headDigest,reference:referenceKey};return;
+   }
+  }
+  throw TypeError('PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED');
+ };
+ return {requireExistingOriginal,resolveAcceptedSourceBlock:resolve,async acceptPublished(transport:ProfileShowcaseCompleteSourceTransport){
+  input.assertCurrent();let selected=shared!.get(transport.artifactDigest);
+  if(!selected){const admission=await input.vault.reopenHead(input.artifactId,transport.artifactDigest);if(!admission||admission.artifactSha256!==transport.artifactDigest)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CUSTODY_REQUIRED');
+   const context=await readContext(transport,custody.resolveBlock),carrier=await rederiveReceizBoundedProfileShowcaseCarrierFromAdmission(admission),io=await input.vault.createTransitionPersistentStateIO(input.artifactId,transport.artifactDigest);
+   selected={context,prior:{admission,carrier,io,resolveHistorical:count=>input.vault.resolveVerifiedHistoricalArtifactDigest(input.artifactId,transport.artifactDigest,count)}};remember(selected);}
+  if(!selected)throw TypeError('PROFILE_SHOWCASE_PREDECESSOR_CUSTODY_REQUIRED');heldHead=selected;accepted={status:'accepted',artifactId:input.artifactId,transport,binding:{username:input.username,profileIdentity:input.uid,locator:{acceptedArtifactDigest:transport.artifactDigest}}};input.assertCurrent();
+ },async publish(opened:{source:OpenedImportedProofSource;reference:ImportedProofSourceReference},authorshipProof?:import('./importedSourceAuthorship').ImportedSourceAuthorshipProof,existingOnly=false):Promise<ProfileShowcasePublicProjectionPublicationResult|null>{
+  input.assertCurrent();
+  const publicationKey=opened.reference.artifactSha256+(authorshipProof?':'+authorshipProof.pbiReceiptHash:'');
+  const known=published.get(publicationKey);if(known)return known;
   // Exact committed Source and its signed delivery action precede weaker
   // remote metadata. Only an unmatched PBI prerequisite needs that selection.
   let replay=await readPreparedAction(opened.reference,authorshipProof);
@@ -312,6 +343,7 @@ export function createIncrementalAssetPublisher(input:{artifactId:ProfileShowcas
    }
    heldHead=next;
   }
+  if(existingOnly)await requireExistingOriginal(opened.reference);
   const {prior,context:acceptedContext}=heldHead;input.assertCurrent();
   if(!opened.source.projection.pulse)throw TypeError('PROFILE_SHOWCASE_SOURCE_KAI_REQUIRED');
   const placement=await sealAndAdmitImportedSourcePlacement({source:opened.source,reference:opened.reference,ownerReceizId:input.owner,

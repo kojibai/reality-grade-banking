@@ -17,11 +17,12 @@ export function useMediaPinch(frame:RefObject<HTMLDivElement|null>,content:RefOb
  const anchor=useRef<Anchor|null>(null);
  const restoreAnchor=useCallback(()=>{
   const scroller=frame.current,node=content.current,held=anchor.current;
-  if(!scroller||!node||!held)return;
+  if(!scroller||!node||!held)return false;
   anchor.current=null;
   const rect=node.getBoundingClientRect();
   scroller.scrollLeft+=rect.left+rect.width*held.fraction.x-held.center.x;
   scroller.scrollTop+=rect.top+rect.height*held.fraction.y-held.center.y;
+  return true;
  },[frame,content]);
  useEffect(()=>{
   const scroller=frame.current;

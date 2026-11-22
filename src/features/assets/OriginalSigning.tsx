@@ -7,6 +7,8 @@ import {InlineOpening} from '../../components/InlineOpening';
 import {retainedAssetPublicationSource} from '../../receiz/asset-publication-adoption';
 import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from '../../receiz/public-original';
 import {readPublicLedgerBytes} from '../../receiz/public-ledger-transfer';
+import {safeImportedSourceUrl} from '../../receiz/imported-source-url';
+import type {ImportedProofSourceReference} from '../../../native/receiz/app/lib/profile/showcase/importedSourceReference';
 import './original-signing.css';
 
 /** Only a display entry into the existing owner-signing operation. No reads or
@@ -29,6 +31,15 @@ function UnsignedOriginalSigning({identity,source,item,digest}:{identity:OpenIde
   try{
    let original=source;
    if(!original){
+    const sealedOwner=item?.sourceProvenance?.genesisOwnerReceizId;
+    const coordinate=sealedOwner&&sealedOwner!==identity.binding.artifactOwnerReceizId&&safeImportedSourceUrl(item?.originalUrl,'artifact');
+    if(coordinate&&identity.signPublishedOriginal){
+     const reference:ImportedProofSourceReference=JSON.parse(new URL(coordinate).searchParams.get('reference')!);
+     if(reference.artifactSha256!==digest)throw Error('This source does not match the selected Original.');
+     const signed=await identity.signPublishedOriginal(reference,controller.signal);
+     if(!controller.signal.aborted){if(signed)setSigned(true);else throw Error('The signature was not confirmed. Your Original remains saved.');}
+     return;
+    }
     // A Showcase-only Original may not be held on this device yet. Reuse the
     // exact retained file first; otherwise read only this selected Original.
     let file=retainedAssetPublicationSource(digest);
@@ -41,7 +52,8 @@ function UnsignedOriginalSigning({identity,source,item,digest}:{identity:OpenIde
      const bytes=await readPublicLedgerBytes(response,16*1024*1024);signal.throwIfAborted();
      file=new File([new Uint8Array(bytes)],'original.receizbundle',{type:'application/vnd.receiz.bundle+json'});
     }
-    controller.signal.throwIfAborted();original=await identity.holdProof(file);
+    controller.signal.throwIfAborted();
+    original=await identity.holdProof(file);
    }
    controller.signal.throwIfAborted();
    if(original.digest!==digest)throw Error('This source does not match the selected Original.');

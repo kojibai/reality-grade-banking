@@ -143,6 +143,35 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    return selected.publishOpened({...opened,original},authorshipProof,!authorizeMarket&&!requireSavedSignature);
  }
  return {
+  async signExistingOriginal(reference:ImportedProofSourceReference,authorizeMarket:AuthorizeMarket){
+   input.assertCurrent();
+   const selected=await publication();
+   await selected.requireExistingOriginal(reference);
+   const source=await custody.reopen(reference,selected.resolveAcceptedSourceBlock);
+   const digest=reference.artifactSha256;
+   input.assertCurrent();
+   const continuity=source.verification.assetContinuity;
+   const originalAccount=source.projection.bankAsset?.composer?.protectedOriginal?.profileIdentity;
+   // The exact accepted Showcase carries its original owner's binding.
+   // A different sealing device must carry the account in the sealed Source.
+   if(source.descriptor.artifactSha256!==digest||continuity?.state!=='verified'||!continuity.genesisOwnerReceizId
+    ||continuity.genesisOwnerReceizId!==source.projection.ownerReceizId||continuity.ownerReceizId!==continuity.genesisOwnerReceizId
+    ||(originalAccount===undefined?continuity.genesisOwnerReceizId!==selected.owner:originalAccount!==input.account.uid)){
+    throw TypeError('PROFILE_SHOWCASE_SIGNING_ACCOUNT_REQUIRED');
+   }
+   const base=projectImportedSourceOriginal(source,reference),opened={source,reference,original:base};
+   const {pbi,action,held,retainedProof}=await readRetainedComposerAuthorship(opened,true,true);
+   if(!action)throw TypeError('IMPORTED_SOURCE_PBI_SOURCE_REQUIRED');
+   const authorshipProof=signedSources.get(digest)??held?.proof??retainedProof??await authorizeMarket(action);
+   const original=await pbi.projectPbiSignedImportedSourceOriginal(source,reference,authorshipProof);
+   await custody.retainAuthorship(reference,authorshipProof);input.assertCurrent();
+   signedSources.set(digest,authorshipProof);
+   retainImportedProfileOriginalMaterial(original,username,source);
+   await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid,source.projection.ownerReceizId??undefined),sourceReference:reference,firstPaint:null,artwork:sourceArtwork(source)}),{signing:true});
+   input.assertCurrent();
+   const result=await selected.publishOpened({...opened,original},authorshipProof,false,true);input.assertCurrent();
+   return {receipt:result,pbiReceiptHash:authorshipProof.pbiReceiptHash};
+  },
   async stage(file:File){return(await publication()).stage(file);},
   prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:identityAdmission.ownerReceizId!,creatorUsername:username,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
   sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),
@@ -217,14 +246,14 @@ async function openConnectedAssetPublisher(input:ConnectedAssetRuntimeInput,admi
    }).then(async receipt=>{if(receipt.status==='published'){await rememberDeliveredSources(source);if(prepared)await incremental.acceptPublished(prepared);initialDeliveryAccepted=true;}return receipt;});
   deliveries.set(source.artifactDigest,result);return result;
  };
- return {async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await Promise.all([stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)}),...(source.projection.bankAsset?.composer?.protectedOriginal?[retainPrivateOriginal(source)]:[])]);return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false){
+ return {owner,requireExistingOriginal:incremental.requireExistingOriginal,resolveAcceptedSourceBlock:incremental.resolveAcceptedSourceBlock,async stage(file:File){input.assertCurrent();const source=await openImportedProofSource(file,{resolveSourceBlock:custody.resolveBlock,nestedColdSpool:custody.createColdSpool});if(source.projection.ownerReceizId!==admitted.ownerReceizId)throw new TypeError('PROFILE_SHOWCASE_CONNECTED_SOURCE_OWNER_MISMATCH');const reference=await custody.hold(source),{stageProfileShowcaseSourceBlocks}=await import('./sourceBlockPublication.client');await Promise.all([stageProfileShowcaseSourceBlocks({scope:{publicationVersion:2,ownerReceizId:owner,artifactId,artifactDigest:reference.artifactSha256,...account},fetchImpl:input.fetchImpl,assertCurrent:input.assertCurrent,exportBlocks:write=>custody.exportBlocks(reference,write)}),...(source.projection.bankAsset?.composer?.protectedOriginal?[retainPrivateOriginal(source)]:[])]);return reference;},prepareContent:(draft:ComposerAssetDraft)=>prepareConnectedComposerContent({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),sealContent:(content:import("../composerPreparation").ComposerAssetContent)=>sealConnectedComposerContent({content,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),prepare:(draft:ComposerAssetDraft)=>prepareConnectedComposerSource({draft,ownerReceizId:admitted.ownerReceizId!,creatorUsername:username,sealDocument,writeBlock:custody.writeBlock,writeProtectedBlock:input.writeProtectedBlock,assertCurrent:input.assertCurrent}),async publishOpened(opened:Awaited<ReturnType<typeof admitConnectedComposerSource>>,authorshipProof?:import("./importedSourceAuthorship").ImportedSourceAuthorshipProof,allowBootstrap=false,existingOnly=false){
   input.assertCurrent();const {source,reference}=opened,original=opened.original;
   input.assertCurrent();
   const sourceResultKey=`original:${reference.artifactSha256}:${authorshipProof?.pbiReceiptHash??''}`,known=deliveries.get(sourceResultKey);if(known)return known;
   const remember=(result:ProfileShowcasePublicProjectionPublicationResult)=>{if(result.status==='published')deliveries.set(sourceResultKey,Promise.resolve(result));return result;};
   // Explicit signing only advances a current head. Ordinary first delivery may
   // already carry the saved PBI; bootstrap that same signed placement once.
-  if(authorshipProof&&!allowBootstrap){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof));if(!result)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');input.assertCurrent();return remember(result);}
+  if(authorshipProof&&!allowBootstrap){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof,existingOnly));if(!result)throw TypeError('PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED');input.assertCurrent();return remember(result);}
   const authorizeMarket=undefined;
   if(!authorizeMarket){const result=await withProfileShowcaseCausalAppendLock(artifactId,()=>incremental.publish(opened,authorshipProof));if(result){input.assertCurrent();return remember(result);}}
 
