@@ -1,3 +1,4 @@
+import { readReceizAccountFinancialSourceCustody, type ReceizAccountFinancialSource } from '../../../../packages/receiz-sdk/src/accountFinancialSource';
 import {createBankPreparedCashStorage} from "./preparedCashStorage";
 export {createBankNoteAccountReceivingRequest,verifyBankNoteAccountReceivingRequest} from './accountReceiving';
 export {openBankNoteAccountDeposit,readBankNoteAccountDeposit,exportBankNoteAccountDepositImage,verifyBankNoteAccountDepositCredit,prepareBankNoteAccountDepositSubmission,isBankNoteAccountDeposit} from './accountDeposit';
@@ -376,3 +377,30 @@ export type {BankNoteAccountReceivingRequest} from "./accountReceiving";
 // Shared native financial composition; preserve the existing Bank Note profile.
 export * from '../../../../packages/receiz-sdk/src/accountFinancialBrowser';
 export { exportReceizAccountFinancialRelease } from '../../../../packages/receiz-sdk/src/accountFinancialCommit';
+
+/** Existing admitted custody and signed recipients, available to the Wallet UI. */
+export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) {
+  const held = readReceizAccountFinancialSourceCustody(source);
+  const binding = held.walletCustody;
+  if (!binding) throw Error('ACCOUNT_FINANCIAL_WALLET_CUSTODY_REQUIRED');
+  const program = held.body.program as {
+    identity: { keyId: string };
+    custodian: { publicKeyRawB64u: string };
+    recipientBindings?: readonly { recipientUserId: string; recipientOwnerReceizId: string; conversationId: string }[];
+  };
+  return {
+    keyId: program.identity.keyId, signerPublicKey: program.custodian.publicKeyRawB64u,
+    origin: binding.origin, rpId: binding.rpId, credentialIdB64u: binding.credentialIdB64u, received: held.receivedWallet,
+    recipients: (program.recipientBindings ?? []).map(row => ({
+      accountUid: row.recipientUserId, ownerReceizId: row.recipientOwnerReceizId, conversationId: row.conversationId,
+      nearby: held.hasWalletRecipient(row.recipientUserId, row.conversationId),
+    })),
+  };
+}
+
+export function assertBankFinancialWalletDevice(input: Readonly<{
+  origin: string; rpId: string; credentialIdB64u: string; challengeB64u: string;
+}>) {
+  return createKairosNoteBrowserWebAuthnClient({ origin: input.origin, rpId: input.rpId })
+    .assert({ credentialIdB64u: input.credentialIdB64u, challengeB64u: input.challengeB64u });
+}

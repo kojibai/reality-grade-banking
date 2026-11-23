@@ -750,7 +750,7 @@ export const loadAssetPublicationState = (binding:{artifactSha256:string}) => lo
 export const saveAssetPublicationState = (binding:{artifactSha256:string},value:unknown,expected:unknown) => saveNoteState(binding,'asset-publication',value,expected);
 
 /** Immutable encrypted byte custody; digest references never replace SDK admission. */
-type PrivateByteFamily = 'offline-note-source' | 'composer-original-source';
+type PrivateByteFamily = 'offline-note-source' | 'composer-original-source' | 'wallet-financial-original';
 async function savePrivateByteBlob(family: PrivateByteFamily, binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {
   const bytes = new Uint8Array(input); if (!bytes.length || bytes.length > 32 * 1024 * 1024) throw new Error('BANK_NOTE_DEVICE_CAPACITY');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
@@ -780,6 +780,15 @@ export async function saveOfflineNoteBlob(binding: { artifactSha256: string }, i
 export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, digest: string): Promise<Uint8Array> {
   return loadPrivateByteBlob('offline-note-source', binding, digest);
 }
+export const saveWalletFinancialOriginal=(binding:{artifactSha256:string},bytes:Uint8Array)=>savePrivateByteBlob('wallet-financial-original',binding,bytes);
+export const loadWalletFinancialOriginal=(binding:{artifactSha256:string},digest:string)=>loadPrivateByteBlob('wallet-financial-original',binding,digest);
+export const loadFundedWalletState=(binding:{artifactSha256:string})=>loadNoteState(binding,'funded-wallet');
+export const loadFundedWalletAssertion=async(binding:{artifactSha256:string},digest:string)=>
+  await loadNoteState(binding,'wallet-assertion:'+digest) as import('./local-financial-runtime').FinancialWalletCustodyAssertion|null;
+export const saveFundedWalletAssertion=(binding:{artifactSha256:string},digest:string,assertion:import('./local-financial-runtime').FinancialWalletCustodyAssertion)=>
+  saveNoteState(binding,'wallet-assertion:'+digest,assertion,null);
+export const saveFundedWalletState=(binding:{artifactSha256:string},state:unknown,prior:unknown)=>saveNoteState(binding,'funded-wallet',state,prior);
+
 /** Exact composer blocks use the same owner-encrypted byte servant. This
  * separate role grants no proof admission, Note custody or financial input. */
 export async function saveComposerOriginalBlob(binding: { artifactSha256: string }, input: Uint8Array): Promise<string> {

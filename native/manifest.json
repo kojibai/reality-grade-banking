@@ -140,7 +140,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582"
+      "sha256": "ee12b4f026b8a155bce0d5dee96b661a46f6f3287cca21c9ea4425a85344fff3"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1406,7 +1406,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582"
+      "sha256": "ee12b4f026b8a155bce0d5dee96b661a46f6f3287cca21c9ea4425a85344fff3"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -8030,8 +8030,8 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
-      "bytes": 36066,
+      "sha256": "ee12b4f026b8a155bce0d5dee96b661a46f6f3287cca21c9ea4425a85344fff3",
+      "bytes": 37648,
       "mode": 420
     },
     {
@@ -20348,6 +20348,13 @@
       "baseSha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
       "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
       "purpose": "Expose the existing SDK release Original to the Bank Wallet session for reconciliation."
+    },
+    {
+      "id": "bankeiz-funded-wallet-device-port",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
+      "sha256": "ee12b4f026b8a155bce0d5dee96b661a46f6f3287cca21c9ea4425a85344fff3",
+      "purpose": "Expose the verified Wallet Source’s existing device binding and its existing browser assertion adapter."
     }
   ],
   "historicalValuation": {

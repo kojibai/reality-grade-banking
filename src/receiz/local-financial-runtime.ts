@@ -14,6 +14,11 @@ export type FinancialWalletCustodyChallenge=Readonly<{credentialIdB64u:string;ch
 export type FinancialWalletCustodyAssertion=Readonly<{
  credentialIdB64u:string;authenticatorDataB64u:string;clientDataJSONB64u:string;signatureB64u:string;
 }>;
+export type WalletRecipient = Readonly<{accountUid:string;ownerReceizId:string;conversationId:string;nearby:boolean}>;
+export type WalletDevice = Readonly<{
+ keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;
+ recipients:readonly WalletRecipient[];
+}>;
 export type FinancialRelease=Readonly<{artifactSha256:string}>;
 export type FinancialExecutor=Readonly<{
  execute(input:{operationId:string;action:FinancialAction}):Promise<FinancialCommit|Readonly<{status:'not-committed';operationId:string}>>;
@@ -34,6 +39,8 @@ export type LocalFinancialRuntime=Readonly<{
  createReceizAccountFinancialPublisher(input:{source:FinancialSource;executor:FinancialExecutor;store:ReceizAdmissionStore;originals:FinancialOriginalStore;publish(batch:FinancialPublication):Promise<unknown>;batchSize?:number}):Promise<{flush():Promise<Readonly<{status:'published'|'pending'}>>;received(operationId:string):Promise<FinancialReceivedReceipt|null>;dispose():void}>;
  projectReceizAccountFinancialAction(source:FinancialSource,state:FinancialState,action:FinancialAction,atKaiUPulse:string):{effect:Readonly<Record<string,unknown>>;next:FinancialState};
  financialSourceApplicationId(source:FinancialSource):string;
+ bankFinancialWalletDevice?(source:FinancialSource):WalletDevice;
+ assertBankFinancialWalletDevice?(input:FinancialWalletCustodyChallenge&{origin:string;rpId:string}):Promise<FinancialWalletCustodyAssertion>;
  financialSourceWalletAt(source:FinancialSource,state:FinancialState,atKaiUPulse:string):FinancialState['wallet'];
  financialKaiNow():string;
 }>;

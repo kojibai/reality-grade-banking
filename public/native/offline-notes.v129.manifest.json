@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.5.0",
-  "moduleSha256": "240cb2f24e8fcb72cd244d1270471a49fda9778aaa286d3a00b6195bc645c8f9",
-  "sourceTreeSha256": "eb8df6f2929def1aef628aa74628d3fc5e7bd1972c45e7af8ffe354adf858932",
+  "moduleSha256": "c051db7d0720a92c1de112ee139b549b8d24b3d9f7226afe1db34dcdf11ae27d",
+  "sourceTreeSha256": "243c5492bdf54eac752fa15a5cc21b9aad69ae15cc1d3b7c0f0bc556b935235d",
   "inputs": 318,
-  "bytes": 2490169,
+  "bytes": 2490849,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -2208,6 +2208,13 @@
       "baseSha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
       "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
       "purpose": "Expose the existing SDK release Original to the Bank Wallet session for reconciliation."
+    },
+    {
+      "id": "bankeiz-funded-wallet-device-port",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
+      "sha256": "ee12b4f026b8a155bce0d5dee96b661a46f6f3287cca21c9ea4425a85344fff3",
+      "purpose": "Expose the verified Wallet Source’s existing device binding and its existing browser assertion adapter."
     }
   ]
 }
