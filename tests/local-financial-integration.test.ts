@@ -1,5 +1,6 @@
-import {beforeAll,expect,it} from 'vitest';
+import {beforeAll,expect,it,vi} from 'vitest';
 import {createLocalFinancialSession} from '../src/receiz/local-financial';
+import type {FinancialPublication} from '../src/receiz/local-financial-runtime';
 import {createLocalFinancialFixtureFactory} from './helpers/local-financial-fixture';
 
 let localFinancialFixture:Awaited<ReturnType<typeof createLocalFinancialFixtureFactory>>;
@@ -131,6 +132,31 @@ it('retains the verified received proof on reconnect and reopens it offline with
  const proof=await session.received(id);expect(proof?.schema).toBe('receiz.account-financial-receipt.v2');expect(proof?.atKaiUPulse).toBe(result.operation.atKaiUPulse);expect(BigInt(proof!.receivedAtKaiUPulse)).toBeGreaterThan(BigInt(proof!.atKaiUPulse));expect(proof?.financialOriginalSha256).toBe(result.operation.artifactSha256);
  const requestCount=f.requests.length;session.dispose();const cold=await createLocalFinancialSession({...f.options,online:()=>false});
  expect(await cold.received(id)).toEqual(proof);expect(await cold.resolve(id)).toEqual(result);expect(f.requests).toHaveLength(requestCount);cold.dispose();
+});
+
+it('retries the same signed Send when reconnect overlaps a failed publication',async()=>{
+ const f=await localFinancialFixture({receivedProof:true});
+ const batches:FinancialPublication[]=[];
+ let markStarted!:()=>void,failDelivery!:(cause:Error)=>void;
+ const started=new Promise<void>(resolve=>{markStarted=resolve;}),failed=new Promise<never>((_,reject)=>{failDelivery=reject;});
+ const session=await createLocalFinancialSession({...f.options,publish:async batch=>{
+  batches.push(structuredClone(batch));
+  if(batches.length===1){markStarted();return failed;}
+  return f.options.publish(batch);
+ }});
+ const id='f7777777-7777-4777-8777-777777777777';
+ try{
+  const sent=await session.execute({operationId:id,action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
+  expect(sent.status).toBe('committed');if(sent.status!=='committed')throw Error('Fixture send');
+  expect(batches).toHaveLength(0);
+  f.connect();await started;
+  f.connect();await Promise.resolve();
+  failDelivery(Error('Previous connection closed before acknowledgement'));
+  await vi.waitFor(async()=>expect((await session.received(id))?.financialOriginalSha256).toBe(sent.operation.artifactSha256));
+  expect(batches).toEqual([batches[0],batches[0]]);
+  expect(await session.resolve(id)).toEqual(sent);
+  expect((await session.current()).state.sequence).toBe('1');
+ }finally{session.dispose();}
 });
 
 it('keeps a locally sealed Send pending when delivery lacks its genuine received proof',async()=>{
