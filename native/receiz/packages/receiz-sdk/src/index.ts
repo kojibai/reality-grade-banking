@@ -221,7 +221,13 @@ export * from "./v1241Capabilities.js";
 export * from "./offlineNoteDestination.js";
 export * from "./offlineNoteReceivingSeal.js";
 export * from "./offlineNoteIrreversibleCustody.js";
-export * from "./offlineNotePlatformAttestation.js";
+export {
+  RECEIZ_OFFLINE_NOTE_PLATFORM_ATTESTATION_CERTIFICATE_SCHEMA,
+  createReceizOfflineNotePlatformAttestationCertificate,
+  verifyReceizOfflineNotePlatformAttestationCertificate,
+  type ReceizOfflineNotePlatformAttestationFormat,
+  type ReceizOfflineNotePlatformAttestationCertificateV1,
+} from "./offlineNotePlatformAttestation.js";
 export * from "./offlineNoteRollbackConformance.js";
 export * from "./offlineNoteAttestedCustody.js";
 export * from "./offlineNoteWebAuthnCustody.js";

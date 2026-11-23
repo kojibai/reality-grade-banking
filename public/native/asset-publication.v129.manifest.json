@@ -2,8 +2,8 @@
   "schema": "bankeiz.native-asset-publication.v129",
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
-  "moduleSha256": "1ecf43837f29980b9bce97166357e6f9170b8fbc9a54f7c5dc2ef9d6f69d9876",
-  "sourceTreeSha256": "48953fd9605f8fe4b319a1f063797b3d14e2a4033132d6093cf07a7df554f4eb",
+  "moduleSha256": "7ee52550631c69c7547172d6ed933f3802789320ed7715b2ffd04fb1fb775d02",
+  "sourceTreeSha256": "938d67722c21aacb9082d4a227bea2508a5bfb1f23d572dbf03b78ec94ee9d09",
   "inputs": 531,
   "bytes": 3099797,
   "applicationPatches": [
@@ -2138,6 +2138,77 @@
       "baseSha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4",
       "sha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4",
       "purpose": "Replay the exact retained PBI receipt on the existing accepted Original using the canonical Source reference and owner append."
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "baseSha256": "4488eb78660013989bce87ea821e7e223df2395c5477f4d3da54ede08d35ac4b",
+      "sha256": "e99d7f18583b154018a72a6db517c33974312d3038489a4c80c0500d11b37455",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "baseSha256": "07b518af37b1ad4234e010ef1b5d82942e49e6ccac450f6aa8a2e1a5ccb03fe7",
+      "sha256": "7de16639dee509e5c1e6d2cc979e0919c8b5b2c83b33962b6a4f5046eff1d673",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "baseSha256": "113310149002a1d3e420bd8f7a4dc1e40ccc6faa1751acfb636800845cd5505f",
+      "sha256": "cd4465e206b19db9f13b4289c0aae7106f5764cec8ac6c7d802dbcfa389e710e",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "baseSha256": "79a12f2b7a262beed61ae65b6fb8404eaa93c360de4d683a50a127b7c3384769",
+      "sha256": "144c167d328f03d58d3398e52bb5e72afe20d3b16a92f1a192b9f12c41af7013",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
+      "baseSha256": null,
+      "sha256": "c2a1aa224e826cf6c8c31af45d60dac74ed2e1b293bf4d100c833912d938ae8e",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/index.ts",
+      "baseSha256": "761d5c37903965ce40c75603e9e5e5a46b2058d728e182688d71b3d83c6ae831",
+      "sha256": "e2a6aec67c4c73cfd9a4f03775fea1ba141a37ea8cd7f88bf3d806e9b52ca170",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/nativeWalletEconomics.ts",
+      "baseSha256": null,
+      "sha256": "cfcb1b2fb70ff76648f97177c4bb6fb7c93c4a763bf5f0899afa36ef60fac751",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-merged-native-wallet",
+      "path": "receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts",
+      "baseSha256": "9c0c136596891c6e6589dbc7c3187a52bc5e720e4539a02865aa0477ba0d4eea",
+      "sha256": "3d8cdbef95883d5888f61e00b6449530f422424a2c93d3da4b135e0559de2b90",
+      "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+    },
+    {
+      "id": "bankeiz-wallet-release-original-export",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "aff2874a827edf693150670a40f4c9ea315a9989e2c5af068f9db54b927c26f1",
+      "sha256": "f019607b4378b9850c92806be241580fca1eb9b30177d6b9af43e4ae67548582",
+      "purpose": "Expose the existing SDK release Original to the Bank Wallet session for reconciliation."
     }
   ],
   "browserDefines": {

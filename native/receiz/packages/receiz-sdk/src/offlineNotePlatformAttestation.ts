@@ -149,6 +149,22 @@ export async function verifyReceizOfflineNotePlatformAttestationCertificate(
     expectedCustodyPublicKeyRawB64u: string;
   }>,
 ): Promise<ReceizOfflineNotePlatformAttestationCertificateV1> {
+  return verifyPlatformAttestationCertificate(candidate, options, false);
+}
+
+/** Internal Wallet verification of an issuer at the certificate's signed Kai. */
+export function verifyReceizWalletPlatformAttestationAtIssuance(
+  candidate: unknown,
+  options: Parameters<typeof verifyReceizOfflineNotePlatformAttestationCertificate>[1],
+): Promise<ReceizOfflineNotePlatformAttestationCertificateV1> {
+  return verifyPlatformAttestationCertificate(candidate, options, true);
+}
+
+async function verifyPlatformAttestationCertificate(
+  candidate: unknown,
+  options: Parameters<typeof verifyReceizOfflineNotePlatformAttestationCertificate>[1],
+  historicalRootAtIssuance: boolean,
+): Promise<ReceizOfflineNotePlatformAttestationCertificateV1> {
   try {
     if (!isRecord(candidate)) fail();
     exactKeys(candidate, [
@@ -194,7 +210,14 @@ export async function verifyReceizOfflineNotePlatformAttestationCertificate(
     if (digest !== candidate.certificateDigest) fail();
     const roots = options.roots ?? receizCurrentPinnedSignatureV4Roots();
     const root = roots.get(candidate.issuerKid);
-    if (!root || root.status !== "active" || root.alg !== "Ed25519") fail();
+    if (!root || root.alg !== "Ed25519") fail();
+    if (historicalRootAtIssuance) {
+      const issuedAt = BigInt(typed.issuedAtKai);
+      if ((root.status !== "active" && root.status !== "retired")
+        || (root.activeFromPulse && issuedAt < BigInt(root.activeFromPulse))
+        || (root.status === "retired" && !root.retiredAtPulse)
+        || (root.retiredAtPulse && issuedAt > BigInt(root.retiredAtPulse))) fail();
+    } else if (root.status !== "active") fail();
     const key = await crypto.subtle.importKey(
       "raw",
       strictBuffer(receizBase64UrlDecode(root.publicKeyRawB64u)),

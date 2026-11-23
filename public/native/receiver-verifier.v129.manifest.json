@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.5.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "9b2052f4492bcbdf0a0250f79d52a2d501b03a97c4db9b43407b782b5a1c05db",
-  "sourceMapSha256": "53567aa8de35d899c047b28e057449fccc8d2454cbabd8c4b50b25b92e3a4f19",
-  "sourceTreeSha256": "7a20702b2e4506f17ae7d61ea224d0c38fcc1195a622749db3eea4f5ee19b5fc",
-  "bytes": 2105176,
+  "moduleSha256": "ba6dd3f814aab9047e4b25d0431bf77e32f54eb25f315582cb4d8ea8606f6eb8",
+  "sourceMapSha256": "b55634dcb28ff2224f7d567bfc1909832a29a986d714d17ecd28304554929600",
+  "sourceTreeSha256": "c7165b2dcf6728d5c322e5e522c9a028b01b1d99f48023b323694e40b6636d05",
+  "bytes": 2105448,
   "inputs": [
     {
       "path": "receiz/packages/receiz-sdk/src/v124KaiBridge.generated.ts",
@@ -469,7 +469,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/index.ts",
-      "sha256": "761d5c37903965ce40c75603e9e5e5a46b2058d728e182688d71b3d83c6ae831"
+      "sha256": "e2a6aec67c4c73cfd9a4f03775fea1ba141a37ea8cd7f88bf3d806e9b52ca170"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/httpOperationSupport.ts",
@@ -673,7 +673,7 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts",
-      "sha256": "9c0c136596891c6e6589dbc7c3187a52bc5e720e4539a02865aa0477ba0d4eea"
+      "sha256": "3d8cdbef95883d5888f61e00b6449530f422424a2c93d3da4b135e0559de2b90"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineNoteRollbackConformance.ts",

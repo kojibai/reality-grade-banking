@@ -1,4 +1,5 @@
 import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {bankNativeWalletDebit,bankNativeWalletDebitAvailable,bankNativeWalletTransferRate,bankNativeWalletValue,type BankNativeWalletFundingParts} from './nativeWalletEconomics.js';
 import {deriveMarketShareAccounting,marketNotionalPhiMicroFromUsdCents,marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid,type AccountExecutionMarketFlow,type AccountExecutionWalletAmounts,type AccountExecutionWalletLedger,type AccountExecutionPositionAmounts}from './accountFinancialMath.generated.js';
 
 type Position=AccountExecutionPositionAmounts&Readonly<{marketItemId:string}>;
@@ -7,9 +8,9 @@ type Term=Capacity&Readonly<{sourceArtifactSha256:string;bidPriceUsdCents:string
 /** References to actually admitted order-custody partitions. A typed entry
  * alone conveys no funded rights; its exact Original must be admitted. */
 export type ReceizAccountOrderEscrow=Readonly<{orderId:string;marketItemId:string;reservedShareQuantityMicro:string;fundingSourceSha256:string}>;
-export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
+export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];reserveBackingPhiMicro?:string;marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
 type Recipient=Readonly<{recipientUserId:string;recipientOwnerReceizId:string;conversationId:string;sourceAccountArtifactSha256:string}>;
-export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string}>;
+export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true}>;
 export type ReceizAccountMarketAction=Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
 const MAX=(1n<<63n)-1n;
 const min=(a:bigint,b:bigint)=>a<b?a:b;
@@ -29,19 +30,56 @@ const indexed=new WeakMap<ReceizAccountFinancialSource,ReadonlyMap<string,Term>>
  * candidate only. It neither admits a supplied successor state nor commits a
  * trade; accepted ancestry, signatures and durable CAS are required separately. */
 export function projectReceizAccountFinancialAction(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,action:ReceizAccountMarketAction|ReceizAccountSendAction,atKaiUPulse:string){
- const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[]};
+ const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all'};
  if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==source.allocationId||state.accountUserId!==source.accountUserId)fail('STATE');
  const at=uint(atKaiUPulse,true);if(at<uint(program.validFromKaiUPulse,true)||at>uint(program.expiresAtKaiUPulse,true)||at<=uint(state.lastKaiUPulse))fail('CAUSAL_PULSE');
  if(action?.kind==='send'){
-  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note'].includes(k)))fail('ACTION');
+  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby'].includes(k))
+   ||Object.hasOwn(action,'nearby')&&action.nearby!==true)fail('ACTION');
   const recipient=program.recipientBindings?.find(r=>r.recipientUserId===action.recipientUserId&&r.conversationId===action.conversationId);if(!recipient)fail('RECIPIENT_REQUIRED');
-  const value=custody.valuation.at(state.walletLedger,source.accountUserId,atKaiUPulse),cents=uint(action.amountUsdCents,true),phi=marketNotionalPhiMicroFromUsdCents(cents,uint(value.usdPerPhiMicrocents,true));
-  if(phi<=0n||cents>uint(value.wallet.availableUsdCents)||phi>uint(value.wallet.balancePhiMicro))fail('WALLET_INSUFFICIENT_BALANCE');
-  const settled=min(cents,uint(value.wallet.settledUsdCents)),ecosystem=cents-settled;
+  const cents=uint(action.amountUsdCents,true);
+  if(custody.receivedWallet&&action.nearby!==true)fail('WALLET_PEER_CUSTODY');
+  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+   ||!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
+   ||state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents))fail('WALLET_PEER_CUSTODY');
+  let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;
+  let nativeWalletMovement:Readonly<{rail:'reserve'|'settlement'|'composite';fundingParts:BankNativeWalletFundingParts}>|undefined;
+  let reserveBackingPhiMicro:string|undefined;
+  if(source.sourceFamily==='native-wallet-reserve'&&program.walletRails==='all'){
+   const {accountBalancePhiMicro,settledUsdCents}=state.walletLedger;
+   const debit=bankNativeWalletDebitAvailable({
+    balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:String(uint(state.reserveBackingPhiMicro)),
+   },String(cents),program.usdPerPhiMicrocents);
+   if(action.nearby===true&&debit.after.balancePhiMicro!=='0')fail('WALLET_PEER_CUSTODY');
+   phi=BigInt(debit.amountPhiMicro);
+   settled=BigInt(debit.fundingParts.reserve.amountUsdCents);
+   balanceAfter=debit.after.balancePhiMicro;
+   reserveBackingPhiMicro=debit.after.reserveBackingPhiMicro;
+   rate=program.usdPerPhiMicrocents;
+   nativeWalletMovement={rail:debit.rail,fundingParts:debit.fundingParts};
+   nativeWallet={balancePhiMicro:balanceAfter,availableUsdCents:bankNativeWalletValue(debit.after,rate).totalUsdCents,settledUsdCents:debit.after.reserveUsdCents};
+  }else if(source.sourceFamily==='native-wallet-reserve'){
+   const {accountBalancePhiMicro,settledUsdCents}=state.walletLedger;
+   const debit=bankNativeWalletDebit({balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:accountBalancePhiMicro},'reserve',String(cents),program.usdPerPhiMicrocents);
+   phi=BigInt(debit.amountPhiMicro);
+   settled=cents;
+   balanceAfter=debit.after.balancePhiMicro;
+   rate=bankNativeWalletTransferRate(debit.amountPhiMicro,debit.amountUsdCents);
+   nativeWallet={balancePhiMicro:balanceAfter,availableUsdCents:debit.after.reserveUsdCents,settledUsdCents:debit.after.reserveUsdCents};
+  }else{
+   const value=custody.valuation.at(state.walletLedger,source.accountUserId,atKaiUPulse);
+   rate=value.usdPerPhiMicrocents;
+   phi=marketNotionalPhiMicroFromUsdCents(cents,uint(rate,true));
+   if(phi<=0n||cents>uint(value.wallet.availableUsdCents)||phi>uint(value.wallet.balancePhiMicro))fail('WALLET_INSUFFICIENT_BALANCE');
+   settled=min(cents,uint(value.wallet.settledUsdCents));
+   balanceAfter=bounded(uint(value.wallet.balancePhiMicro)-phi);
+  }
+  const ecosystem=cents-settled;
   const note=action.note?.replace(/\s+/gu,' ').trim();if(action.note!==undefined&&(typeof action.note!=='string'||(note?.length??0)>280))fail('NOTE');
-  const ledger:AccountExecutionWalletLedger={...state.walletLedger,accountBalancePhiMicro:bounded(uint(value.wallet.balancePhiMicro)-phi),totalDebitPhiMicro:bounded(uint(state.walletLedger.totalDebitPhiMicro)+phi),totalDebitUsdCents:bounded(uint(state.walletLedger.totalDebitUsdCents)+cents),settledUsdCents:bounded(uint(state.walletLedger.settledUsdCents)-settled)};
-  return{effect:{kind:'send'as const,senderUserId:source.accountUserId,recipientUserId:recipient.recipientUserId,recipientOwnerReceizId:recipient.recipientOwnerReceizId,conversationId:recipient.conversationId,amountUsdCents:String(cents),amountPhiMicro:String(phi),settlementUsdCents:String(cents),settlementPhiMicro:String(phi),usdPerPhiMicrocents:value.usdPerPhiMicrocents,settledUsdCents:String(settled),ecosystemUsdCents:String(ecosystem),fundingRule:'settled_first_then_phi'as const,settledFundingSource:settled>=cents?'stripe_origin':settled>0n?'mixed_stripe_ecosystem':'unsettled_ecosystem',...(note?{note}:{})},next:{...state,sequence:bounded(uint(state.sequence)+1n),lastKaiUPulse:atKaiUPulse,wallet:custody.valuation.at(ledger,source.accountUserId,atKaiUPulse).wallet,walletLedger:ledger,positions:state.positions.map(p=>({...p})),marketCapacity:state.marketCapacity.map(c=>({...c}))}};
+  const ledger:AccountExecutionWalletLedger={...state.walletLedger,accountBalancePhiMicro:balanceAfter,totalDebitPhiMicro:bounded(uint(state.walletLedger.totalDebitPhiMicro)+phi),totalDebitUsdCents:bounded(uint(state.walletLedger.totalDebitUsdCents)+cents),settledUsdCents:bounded(uint(state.walletLedger.settledUsdCents)-settled)};
+  return{effect:{kind:'send'as const,senderUserId:source.accountUserId,recipientUserId:recipient.recipientUserId,recipientOwnerReceizId:recipient.recipientOwnerReceizId,conversationId:recipient.conversationId,amountUsdCents:String(cents),amountPhiMicro:String(phi),settlementUsdCents:String(cents),settlementPhiMicro:String(phi),usdPerPhiMicrocents:rate,settledUsdCents:String(settled),ecosystemUsdCents:String(ecosystem),fundingRule:'settled_first_then_phi'as const,settledFundingSource:settled>=cents?'stripe_origin':settled>0n?'mixed_stripe_ecosystem':'unsettled_ecosystem',...(note?{note}:{}),...(nativeWalletMovement?{nativeWalletMovement}:{})},next:{...state,...(reserveBackingPhiMicro===undefined?{}:{reserveBackingPhiMicro}),sequence:bounded(uint(state.sequence)+1n),lastKaiUPulse:atKaiUPulse,wallet:nativeWallet??custody.valuation.at(ledger,source.accountUserId,atKaiUPulse).wallet,walletLedger:ledger,positions:state.positions.map(p=>({...p})),marketCapacity:state.marketCapacity.map(c=>({...c}))}};
  }
+ if(source.sourceFamily==='native-wallet-reserve')fail('NATIVE_RESERVE_SEND_ONLY');
  if(!action||!['buy','sell'].includes(action.kind)||typeof action.marketItemId!=='string'||Object.keys(action).some(k=>!['kind','marketItemId','amountUsdCents','shareQuantityMicro'].includes(k))||(action.amountUsdCents===undefined)===(action.shareQuantityMicro===undefined)||action.kind==='buy'&&action.amountUsdCents===undefined)fail('ACTION');
  let terms=indexed.get(source);if(!terms){terms=new Map(program.marketTerms.map(t=>[t.marketItemId,t]));indexed.set(source,terms);}
  const term=terms.get(action.marketItemId),capacity=state.marketCapacity.find(c=>c.marketItemId===action.marketItemId);if(!term||!capacity)fail('TERMS_REQUIRED');

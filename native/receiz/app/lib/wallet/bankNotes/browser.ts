@@ -375,3 +375,4 @@ export type {BankNoteAccountReceivingRequest} from "./accountReceiving";
 
 // Shared native financial composition; preserve the existing Bank Note profile.
 export * from '../../../../packages/receiz-sdk/src/accountFinancialBrowser';
+export { exportReceizAccountFinancialRelease } from '../../../../packages/receiz-sdk/src/accountFinancialCommit';

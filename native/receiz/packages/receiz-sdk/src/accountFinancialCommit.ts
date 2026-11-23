@@ -1,10 +1,12 @@
+import {ReceizFinancialWalletCustodyCancelledBeforeAssertion,receizFinancialWalletCredentialClaims,MAX_RECEIZ_FINANCIAL_WALLET_ASSERTION_BYTES,prepareReceizFinancialWalletCustodyChallenge,verifyReceizFinancialWalletCustodyAssertion,type ReceizFinancialWalletCustodyChallenge} from './accountFinancialWalletCustody.js';
+import type {ReceizOfflineNoteRollbackAssertion} from './offlineNoteRollbackConformance.js';
 import {sha256ReceizBytes}from './artifacts.js';
 import {receizBase64UrlDecode as dec,receizBase64UrlEncode as enc,verifyReceizIdentityPublicKeyProjectionSignature,type ReceizIdentityLoginProof}from './identity.js';
 import {canonicalizeReceizV122 as canonical,digestReceizCanonicalV122 as digest}from './v122Canonical.js';
 import {receizKaiNow}from './v124Kai.js';
 import type{ReceizAdmissionStore,ReceizAdmissionAggregate}from './admissionStore.js';
 import type{ReceizConstitutionJson}from './constitution.js';
-import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {assertReceizAccountFinancialWalletProofCapacity,readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {projectReceizAccountFinancialAction,type ReceizAccountFinancialState,type ReceizAccountSendAction,type ReceizAccountMarketAction}from './accountFinancialExecution.js';
 import {admitReceizAccountMarketOrderRequest,exportReceizAccountMarketOrderRequest,type ReceizVerifiedAccountMarketOrderRequest}from './accountMarketOrder.js';
 import {projectReceizAccountMarketOrderFunding}from './accountMarketOrderFunding.js';
@@ -24,12 +26,25 @@ const json=(v:unknown):ReceizConstitutionJson=>JSON.parse(canonical(v))as Receiz
 function actionSnapshot(v:ReceizAccountFinancialAction):ReceizAccountFinancialAction{const r=structuredClone(v);if(r.kind==='reserve-market-order'){exact(r,['kind','requestOriginalB64u']);if(typeof r.requestOriginalB64u!=='string'||r.requestOriginalB64u.length>90000)fail('ORDER_REQUEST');return json(r)as ReserveAction;}if(r.kind==='send'){const{note,...base}=r;if(note!==undefined&&typeof note!=='string')fail('NOTE');const normalized=note?.replace(/\s+/gu,' ').trim();if((normalized?.length??0)>280)fail('NOTE');return json({...base,...(normalized?{note:normalized}:{})})as ReceizAccountFinancialAction;}return json(r)as ReceizAccountFinancialAction;}
 const ownerChallenge=(v:unknown)=>'receiz.account-financial-operation.owner.v1\0'+canonical(v);
 const custodyChallenge=(command:unknown,ownerConsent:unknown)=>utf8.encode('receiz.account-financial-operation.custody.v1\0'+canonical({command,ownerConsent}));
+type WalletCommandKind='spend'|'release';
+type WalletDraftPhase='ready'|'attempted'|'recovering'|'cancelled';
+type SignedWalletCommand=Readonly<{command:RecordValue;ownerConsent:ReceizIdentityLoginProof;custodianSignature:string}>;
+async function verifyFinancialCommandSignatures(source:ReceizAccountFinancialSource,kind:WalletCommandKind,command:RecordValue,ownerConsent:unknown,custodianSignature:unknown){
+ const proof=exact(ownerConsent,['schema','keyId','alg','challengeB64Url','signatureB64Url']);
+ const program=object(readReceizAccountFinancialSourceCustody(source).body.program),identity=object(program.identity),signer=object(program.custodian);
+ const owner=kind==='spend'?ownerChallenge(command):releaseOwnerChallenge(command);
+ if(proof.schema!=='receiz.identity.login_proof.v1'||proof.keyId!==identity.keyId||proof.alg!==identity.alg||proof.challengeB64Url!==enc(utf8.encode(owner))||!await verifyReceizIdentityPublicKeyProjectionSignature({keyId:text(identity.keyId),alg:identity.alg as 'Ed25519'|'P-256',publicKeyRawB64u:text(identity.publicKeyRawB64u),challengeB64Url:text(proof.challengeB64Url),signatureB64Url:text(proof.signatureB64Url)}))fail('OWNER_CONSENT');
+ const key=await crypto.subtle.importKey('raw',b64(signer.publicKeyRawB64u,32).slice().buffer,'Ed25519',false,['verify']);
+ const challenge=kind==='spend'?custodyChallenge(command,proof):releaseCustodyChallenge(command,proof);
+ if(!await crypto.subtle.verify('Ed25519',key,b64(custodianSignature,64).slice().buffer,challenge))fail('RECORD_SIGNER');
+ return proof as ReceizIdentityLoginProof;
+}
 export type ReceizVerifiedAccountFinancialOperation=Readonly<{status:'verified-account-financial-operation';artifactSha256:string;allocationId:string;operationId:string;requestDigest:string;predecessorArtifactSha256:string;predecessorOperationId:string|null;sequence:string;atKaiUPulse:string;action:ReceizAccountFinancialAction;effect:Effect;nextState:ReceizAccountFinancialState}>;
 type OperationCustody=Readonly<{sourceSha256:string;bytes:Uint8Array;body:RecordValue;command:RecordValue;commandDigest:string;parent:ReceizVerifiedAccountFinancialOperation|null}>;
 const operations=new WeakMap<ReceizVerifiedAccountFinancialOperation,OperationCustody>();
 function requireOperation(op:ReceizVerifiedAccountFinancialOperation){const c=operations.get(op);if(!c)fail('OPERATION_CUSTODY_REQUIRED');return c;}
 /** Internal provider composition; a projected operation label conveys no custody. */
-export function readReceizAccountFinancialOperationCustody(op:ReceizVerifiedAccountFinancialOperation){const c=requireOperation(op);return Object.freeze({sourceSha256:c.sourceSha256,artifactBytes:()=>c.bytes.slice()});}
+export function readReceizAccountFinancialOperationCustody(op:ReceizVerifiedAccountFinancialOperation){const c=requireOperation(op);return Object.freeze({sourceSha256:c.sourceSha256,commandDigest:c.commandDigest,artifactBytes:()=>c.bytes.slice()});}
 async function requestDigest(source:ReceizAccountFinancialSource,id:string,action:ReceizAccountFinancialAction){return digest({schema:'receiz.account-financial-request.v1',sourceArtifactSha256:source.artifactSha256,operationId:id,action});}
 
 /** Historical inspection is not local acceptance. A signed candidate remains
@@ -37,8 +52,8 @@ async function requestDigest(source:ReceizAccountFinancialSource,id:string,actio
 function financialEnvelope(input:Uint8Array,source:ReceizAccountFinancialSource){
  // Whole funded-original admission precedes native succession. This append
  // grants no funding independently of source custody and admitted ancestry.
- readReceizAccountFinancialSourceCustody(source);
- const original=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(original),parsed=object(JSON.parse(raw)),body=exact(parsed,['schema','allocationId','sourceArtifactSha256','operationId','requestDigest','predecessorArtifactSha256','predecessorOperationId','sequence','atKaiUPulse','action','effect','nextState',...(parsed.schema==='receiz.account-market-order-reservation.v1'?[]:['ownerConsent','custodianSignature'])]);
+ const {walletCustody}=readReceizAccountFinancialSourceCustody(source);
+ const original=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(original),parsed=object(JSON.parse(raw)),body=exact(parsed,['schema','allocationId','sourceArtifactSha256','operationId','requestDigest','predecessorArtifactSha256','predecessorOperationId','sequence','atKaiUPulse','action','effect','nextState',...(parsed.schema==='receiz.account-market-order-reservation.v1'?[]:['ownerConsent','custodianSignature']),...(walletCustody?['walletCustodyAssertion']:[])]);
  return{original,body,raw};
 }
 export async function admitReceizAccountFinancialOperation(input:Uint8Array,options:Readonly<{source:ReceizAccountFinancialSource;predecessor?:ReceizVerifiedAccountFinancialOperation|null}>):Promise<ReceizVerifiedAccountFinancialOperation>{
@@ -59,15 +74,16 @@ async function admitFinancialEnvelope(envelope:Awaited<ReturnType<typeof financi
  }
  if(canonical(body)!==raw||body.schema!=='receiz.account-financial-operation.v1'||body.allocationId!==source.allocationId||body.sourceArtifactSha256!==source.artifactSha256||!UUID.test(text(body.operationId))||body.predecessorArtifactSha256!==(parent?.artifactSha256??source.artifactSha256)||body.predecessorOperationId!==(parent?.operationId??null))fail('CAUSAL_ORIGINAL');
  const action=actionSnapshot(body.action as ReceizAccountFinancialAction);if(action.kind==='reserve-market-order')fail('CAUSAL_ORIGINAL');same(action,body.action);
+ if(action.kind==='send'&&action.nearby===true)assertReceizAccountFinancialWalletProofCapacity(source,original.byteLength);
  if(body.requestDigest!==await requestDigest(source,text(body.operationId),action))fail('REQUEST_DIGEST');
  const state=parent?.nextState??custody.body.initialState as ReceizAccountFinancialState,projected=projectReceizAccountFinancialAction(source,state,action,text(body.atKaiUPulse));
  same(projected.effect,body.effect);same(projected.next,body.nextState);if(body.sequence!==projected.next.sequence)fail('SEQUENCE');
- const command=Object.fromEntries(Object.entries(body).filter(([k])=>k!=='ownerConsent'&&k!=='custodianSignature'));
- const proof=exact(body.ownerConsent,['schema','keyId','alg','challengeB64Url','signatureB64Url']);
- const program=object(custody.body.program),identity=object(program.identity),signer=object(program.custodian);
- if(proof.schema!=='receiz.identity.login_proof.v1'||proof.keyId!==identity.keyId||proof.alg!==identity.alg||proof.challengeB64Url!==enc(utf8.encode(ownerChallenge(command)))||!await verifyReceizIdentityPublicKeyProjectionSignature({keyId:text(identity.keyId),alg:identity.alg as 'Ed25519'|'P-256',publicKeyRawB64u:text(identity.publicKeyRawB64u),challengeB64Url:text(proof.challengeB64Url),signatureB64Url:text(proof.signatureB64Url)}))fail('OWNER_CONSENT');
- const key=await crypto.subtle.importKey('raw',b64(signer.publicKeyRawB64u,32).slice().buffer,'Ed25519',false,['verify']);
- if(!await crypto.subtle.verify('Ed25519',key,b64(body.custodianSignature,64).slice().buffer,custodyChallenge(command,proof)))fail('RECORD_SIGNER');
+ const command=Object.fromEntries(Object.entries(body).filter(([k])=>k!=='ownerConsent'&&k!=='custodianSignature'&&k!=='walletCustodyAssertion'));
+ const proof=await verifyFinancialCommandSignatures(source,'spend',command,body.ownerConsent,body.custodianSignature);
+ if(custody.walletCustody){
+  const binding=custody.walletCustody,challenge=await prepareReceizFinancialWalletCustodyChallenge({binding,kind:'spend',sequence:text(body.sequence),command,ownerConsent:proof});
+  await verifyReceizFinancialWalletCustodyAssertion(binding,challenge,body.walletCustodyAssertion);
+ }
  freeze(body);const accepted=Object.freeze({status:'verified-account-financial-operation'as const,artifactSha256:await sha256ReceizBytes(original),allocationId:source.allocationId,operationId:text(body.operationId),requestDigest:text(body.requestDigest),predecessorArtifactSha256:text(body.predecessorArtifactSha256),predecessorOperationId:body.predecessorOperationId as string|null,sequence:text(body.sequence),atKaiUPulse:text(body.atKaiUPulse),action:body.action as ReceizAccountFinancialAction,effect:body.effect as Effect,nextState:body.nextState as ReceizAccountFinancialState});
  operations.set(accepted,{sourceSha256:source.artifactSha256,bytes:original,body,command,commandDigest:await digest(command),parent});return accepted;
 }
@@ -84,16 +100,17 @@ export function exportReceizAccountFinancialRelease(release:ReceizVerifiedAccoun
 export async function admitReceizAccountFinancialRelease(input:Uint8Array,options:Readonly<{source:ReceizAccountFinancialSource;financialHead?:ReceizVerifiedAccountFinancialOperation|null}>):Promise<ReceizVerifiedAccountFinancialRelease>{
  const source=options.source,custody=readReceizAccountFinancialSourceCustody(source),parent=options.financialHead??null;
  if(parent&&requireOperation(parent).sourceSha256!==source.artifactSha256)fail('SOURCE_MISMATCH');
- const bytes=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(bytes),body=exact(JSON.parse(raw),['schema','allocationId','sourceArtifactSha256','financialHeadArtifactSha256','financialHeadOperationId','sequence','atKaiUPulse','ownerConsent','custodianSignature']);
+ const bytes=input.slice(),raw=new TextDecoder('utf-8',{fatal:true}).decode(bytes),body=exact(JSON.parse(raw),['schema','allocationId','sourceArtifactSha256','financialHeadArtifactSha256','financialHeadOperationId','sequence','atKaiUPulse','ownerConsent','custodianSignature',...(custody.walletCustody?['walletCustodyAssertion']:[])]);
  if(canonical(body)!==raw||body.schema!=='receiz.account-financial-release.v1'||body.allocationId!==source.allocationId||body.sourceArtifactSha256!==source.artifactSha256||body.financialHeadArtifactSha256!==(parent?.artifactSha256??source.artifactSha256)||body.financialHeadOperationId!==(parent?.operationId??null)||body.sequence!==(parent?.sequence??'0'))fail('RELEASE_PARENT');
  const at=text(body.atKaiUPulse),state=parent?.nextState??custody.body.initialState as ReceizAccountFinancialState;
  if(state.orderEscrows?.length)fail('OPEN_ORDERS');
  if(!/^[1-9][0-9]{0,18}$/u.test(at)||BigInt(at)>((1n<<63n)-1n)||BigInt(at)<=BigInt(state.lastKaiUPulse))fail('RELEASE_PULSE');
- const command=Object.fromEntries(Object.entries(body).filter(([key])=>key!=='ownerConsent'&&key!=='custodianSignature')),proof=exact(body.ownerConsent,['schema','keyId','alg','challengeB64Url','signatureB64Url']);
- const program=object(custody.body.program),identity=object(program.identity),signer=object(program.custodian);
- if(proof.schema!=='receiz.identity.login_proof.v1'||proof.keyId!==identity.keyId||proof.alg!==identity.alg||proof.challengeB64Url!==enc(utf8.encode(releaseOwnerChallenge(command)))||!await verifyReceizIdentityPublicKeyProjectionSignature({keyId:text(identity.keyId),alg:identity.alg as 'Ed25519'|'P-256',publicKeyRawB64u:text(identity.publicKeyRawB64u),challengeB64Url:text(proof.challengeB64Url),signatureB64Url:text(proof.signatureB64Url)}))fail('OWNER_CONSENT');
- const key=await crypto.subtle.importKey('raw',b64(signer.publicKeyRawB64u,32).slice().buffer,'Ed25519',false,['verify']);
- if(!await crypto.subtle.verify('Ed25519',key,b64(body.custodianSignature,64).slice().buffer,releaseCustodyChallenge(command,proof)))fail('RECORD_SIGNER');
+ const command=Object.fromEntries(Object.entries(body).filter(([key])=>key!=='ownerConsent'&&key!=='custodianSignature'&&key!=='walletCustodyAssertion'));
+ const proof=await verifyFinancialCommandSignatures(source,'release',command,body.ownerConsent,body.custodianSignature);
+ if(custody.walletCustody){
+  const binding=custody.walletCustody,challenge=await prepareReceizFinancialWalletCustodyChallenge({binding,kind:'release',sequence:text(body.sequence),command,ownerConsent:proof});
+  await verifyReceizFinancialWalletCustodyAssertion(binding,challenge,body.walletCustodyAssertion);
+ }
  const accepted=Object.freeze({status:'verified-account-financial-release'as const,artifactSha256:await sha256ReceizBytes(bytes),allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,financialHeadArtifactSha256:text(body.financialHeadArtifactSha256),financialHeadOperationId:body.financialHeadOperationId as string|null,sequence:text(body.sequence),atKaiUPulse:at});
  releases.set(accepted,{bytes,commandDigest:await digest(command)});return accepted;
 }
@@ -104,7 +121,12 @@ export function exportReceizAccountFinancialCommit(commit:ReceizAccountFinancial
 /** Durable exact-byte retention supplied by the host's existing original store.
  * Coordination storage carries references only and grants no artifact custody. */
 export type ReceizAccountFinancialOriginalStore=Readonly<{retain(sha256:string,bytes:Uint8Array):Promise<void>;read(sha256:string):Promise<Uint8Array|null>}>;
-type ExecutorOptions=Readonly<{originals:ReceizAccountFinancialOriginalStore;source:ReceizAccountFinancialSource;store:ReceizAdmissionStore;signOwner(challengeText:string):Promise<ReceizIdentityLoginProof>;signRecord(bytes:Uint8Array):Promise<Uint8Array>;/** Trusted host/test clock; never a payment request field. */kai?:()=>string}>;
+type ExecutorOptions=Readonly<{originals:ReceizAccountFinancialOriginalStore;source:ReceizAccountFinancialSource;store:ReceizAdmissionStore;signOwner(challengeText:string):Promise<ReceizIdentityLoginProof>;signRecord(bytes:Uint8Array):Promise<Uint8Array>;
+ /** Device custody must resume the same retained assertion for the exact challenge.
+  * Only ReceizFinancialWalletCustodyCancelledBeforeAssertion confirms that this
+  * attempt never advanced the credential. All other errors preserve the draft. */
+ assertWalletCustody?(request:ReceizFinancialWalletCustodyChallenge):Promise<ReceizOfflineNoteRollbackAssertion>;
+ /** Trusted host/test clock; never a payment request field. */kai?:()=>string}>;
 /** Normal admitted Identity signing + the existing SDK record signer. No
  * enrollment, network, PBI, or hardware ceremony occurs in this path. */
 export async function createReceizAccountFinancialExecutor(options:ExecutorOptions){
@@ -121,8 +143,16 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
   if(!(retained instanceof Uint8Array)||await sha256ReceizBytes(retained)!==sha256)fail('ORIGINAL_RETENTION_REQUIRED');
  }
  await retainExact(source.artifactSha256,custody.artifactBytes());
- const originalSeed=await seed('account-financial-source:'+source.artifactSha256,source.artifactSha256,{artifactSha256:source.artifactSha256});
- if(originalSeed.headDigest!==source.artifactSha256||object(originalSeed.state).artifactSha256!==source.artifactSha256)fail('RETAINED_SOURCE');
+ if(custody.walletCustody){
+  const {publicKey} = await receizFinancialWalletCredentialClaims(custody.walletCustody);
+  const heldCredential = await seed('account-financial-wallet-credential:'+publicKey,source.allocationId,{allocationId:source.allocationId});
+  if(heldCredential.headDigest!==source.allocationId||object(heldCredential.state).allocationId!==source.allocationId)
+   fail('WALLET_CUSTODY_ALREADY_ALLOCATED');
+ }
+ const sourceKey = custody.receivedWallet?'account-financial-received-wallet:'+source.allocationId:'account-financial-source:'+source.artifactSha256;
+ const originalSeed=await seed(sourceKey,source.artifactSha256,{artifactSha256:source.artifactSha256});
+ if(originalSeed.headDigest!==source.artifactSha256||object(originalSeed.state).artifactSha256!==source.artifactSha256)
+  fail(custody.receivedWallet?'RECEIVED_WALLET_ORIGINAL_CONFLICT':'RETAINED_SOURCE');
  await seed(headId,source.artifactSha256,{operationId:null});
  async function stage(id:string){const row=await store.readAggregate(stageId(id));if(!row)return null;const state=exact(row.state,['requestDigest']);if(row.revision!==0||typeof row.headDigest!=='string')fail('RETAINED_ORIGINAL');return{row,state};}
 
@@ -155,6 +185,83 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
  }
  function receipt(op:ReceizVerifiedAccountFinancialOperation){return{schema:'receiz.account-financial-commit.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,atKaiUPulse:op.atKaiUPulse};}
  async function recorded(id:string,currentHead?:Awaited<ReturnType<typeof head>>):Promise<ReceizAccountFinancialCommit|null>{const r=await store.readIdempotency(idem(id));if(!r)return null;const current=currentHead??await head(),op=await open(id);same(r.receipt,receipt(op));if(r.commandDigest!==requireOperation(op).commandDigest||!lineage.has(op.artifactSha256)||current.row.revision<Number(op.sequence))fail('COMMIT_RECEIPT');const result=Object.freeze({status:'committed'as const,publication:'pending'as const,operation:op});commits.add(result);return result;}
+ async function signCommand(kind:WalletCommandKind,command:RecordValue):Promise<SignedWalletCommand>{
+  const ownerConsent=await options.signOwner(kind==='spend'?ownerChallenge(command):releaseOwnerChallenge(command));
+  const challenge=kind==='spend'?custodyChallenge(command,ownerConsent):releaseCustodyChallenge(command,ownerConsent);
+  const custodianSignature = enc(await options.signRecord(challenge));
+  const signedEnvelope = {...command,ownerConsent,custodianSignature,walletCustodyAssertion:null};
+  const maximumBytes = utf8.encode(canonical(signedEnvelope)).byteLength+MAX_RECEIZ_FINANCIAL_WALLET_ASSERTION_BYTES;
+  if(kind==='release'&&maximumBytes>65_536)fail('RELEASE_ORIGINAL');
+  if(kind==='spend'&&object(command.action).nearby===true)assertReceizAccountFinancialWalletProofCapacity(source,maximumBytes);
+  return {command,ownerConsent,custodianSignature};
+ }
+ async function advanceWalletDraft(id:string,row:ReceizAdmissionAggregate,priorArtifactSha256:string,nextDigest:string,
+   nextState:Readonly<{intentDigest:string;kind:WalletCommandKind;phase:WalletDraftPhase}>){
+  const state=json(nextState),revision=row.revision+1;
+  const reference=json({kind:'wallet-custody-draft',phase:nextState.phase,draftDigest:nextDigest});
+  const commandDigest=await digest({id,revision,priorDraftDigest:row.headDigest,nextDigest,state});
+  let committed=false;
+  try{
+   const result=await store.commit({schema:'receiz.admission.unit-of-work.v1',aggregateId:id,commandDigest,
+    idempotencyKey:id+':revision:'+revision,expectedRevision:row.revision,expectedHeadDigest:row.headDigest,
+    readDependencies:[{aggregateId:headId,expectedHeadDigest:priorArtifactSha256}],
+    acceptedCommand:reference,events:[],nextHead:{revision,digest:nextDigest,state},resourceEffects:{},
+    receipt:reference,outboxIntents:[],auditReference:reference});
+   committed=result.status==='committed';
+  }catch{/* A lost admission reply cannot establish who owns the first attempt. */}
+  if(committed)return {revision,headDigest:nextDigest,state};
+  const latest=await store.readAggregate(id);
+  if(!latest||latest.revision<=row.revision)fail('WALLET_CUSTODY_DRAFT_PERSISTENCE_REQUIRED');
+  return null;
+ }
+ // Pin the exact owner-signed challenge before requesting the irreversible
+ // device assertion. A retry records that another attempt may have signed
+ // before entering the provider, fencing any earlier cancellation.
+ async function prepareWalletCommand(kind:WalletCommandKind,priorArtifactSha256:string,intentDigest:string,create:()=>Promise<RecordValue>){
+  const binding=custody.walletCustody,assertWalletCustody=options.assertWalletCustody;
+  if(!binding){const {command,...signatures}=await signCommand(kind,await create());return {...command,...signatures};}
+  if(!assertWalletCustody)fail('WALLET_CUSTODY_REQUIRED');
+  const id=headId+':wallet-custody-draft:'+priorArtifactSha256;
+  const intent={intentDigest,kind};
+  while(true){
+   let row=await store.readAggregate(id);
+   if(!row||object(row.state).phase==='cancelled'){
+    const made=await signCommand(kind,await create()),bytes=utf8.encode(canonical(made)),sha=await sha256ReceizBytes(bytes);
+    await retainExact(sha,bytes);
+    const state={...intent,phase:'ready' as const};
+    row=row?await advanceWalletDraft(id,row,priorArtifactSha256,sha,state):await seed(id,sha,state);
+    if(!row)continue;
+   }
+   const legacy=row.revision===0&&!Object.hasOwn(object(row.state),'phase');
+   const draft=exact(row.state,legacy?['intentDigest','kind']:['intentDigest','kind','phase']);
+   const phase=legacy?'recovering':draft.phase;
+   if(draft.intentDigest!==intentDigest||draft.kind!==kind||typeof row.headDigest!=='string'
+     ||(phase!=='ready'&&phase!=='attempted'&&phase!=='recovering'))fail('WALLET_CUSTODY_DRAFT_CONFLICT');
+   const bytes=await options.originals.read(row.headDigest);
+   if(!(bytes instanceof Uint8Array)||await sha256ReceizBytes(bytes)!==row.headDigest)fail('ORIGINAL_RETENTION_REQUIRED');
+   const raw=new TextDecoder('utf-8',{fatal:true}).decode(bytes),signed=exact(JSON.parse(raw),['command','ownerConsent','custodianSignature']);
+   if(canonical(signed)!==raw)fail('WALLET_CUSTODY_DRAFT_CONFLICT');
+   const command=object(signed.command),expectedHead=kind==='spend'?command.predecessorArtifactSha256:command.financialHeadArtifactSha256;
+   if(command.allocationId!==source.allocationId||command.sourceArtifactSha256!==source.artifactSha256||expectedHead!==priorArtifactSha256
+     ||kind==='spend'&&command.requestDigest!==intentDigest)fail('WALLET_CUSTODY_DRAFT_CONFLICT');
+   const ownerConsent=await verifyFinancialCommandSignatures(source,kind,command,signed.ownerConsent,signed.custodianSignature);
+   const challenge=await prepareReceizFinancialWalletCustodyChallenge({binding,kind,sequence:text(command.sequence),command,ownerConsent});
+   const firstAttempt=phase==='ready'
+    ? await advanceWalletDraft(id,row,priorArtifactSha256,row.headDigest,{...intent,phase:'attempted'}) : null;
+   if(phase==='ready'&&!firstAttempt)continue;
+   if(phase==='attempted'&&!await advanceWalletDraft(id,row,priorArtifactSha256,row.headDigest,{...intent,phase:'recovering'}))continue;
+   let assertion:ReceizOfflineNoteRollbackAssertion;
+   try{assertion=await assertWalletCustody(challenge);}
+   catch(error){
+    if(firstAttempt&&error instanceof ReceizFinancialWalletCustodyCancelledBeforeAssertion){
+     await advanceWalletDraft(id,firstAttempt,priorArtifactSha256,row.headDigest,{...intent,phase:'cancelled'});
+    }
+    throw error;
+   }
+   return {...command,ownerConsent,custodianSignature:text(signed.custodianSignature),
+    walletCustodyAssertion:await verifyReceizFinancialWalletCustodyAssertion(binding,challenge,assertion)};
+  }
+ }
  async function build(id:string,action:ReceizAccountFinancialAction,parent:ReceizVerifiedAccountFinancialOperation|null,state:ReceizAccountFinancialState,at:string){
   if(action.kind==='reserve-market-order'){
    const request=await admitReceizAccountMarketOrderRequest(b64(action.requestOriginalB64u),{source,predecessor:parent});
@@ -165,9 +272,11 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
    // financial projection is admitted without another prompt or document seal.
    return admitReceizAccountFinancialOperation(utf8.encode(canonical(command)),{source,predecessor:parent});
   }
-  const projection=projectReceizAccountFinancialAction(source,state,action,at);
-  const command={schema:'receiz.account-financial-operation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:id,requestDigest:await requestDigest(source,id,action),predecessorArtifactSha256:parent?.artifactSha256??source.artifactSha256,predecessorOperationId:parent?.operationId??null,sequence:projection.next.sequence,atKaiUPulse:at,action,effect:projection.effect,nextState:projection.next};
-  const ownerConsent=await options.signOwner(ownerChallenge(command)),custodianSignature=enc(await options.signRecord(custodyChallenge(command,ownerConsent))),body={...command,ownerConsent,custodianSignature};
+  const predecessorArtifactSha256=parent?.artifactSha256??source.artifactSha256,wanted=await requestDigest(source,id,action);
+  const body=await prepareWalletCommand('spend',predecessorArtifactSha256,wanted,async()=>{
+   const projection=projectReceizAccountFinancialAction(source,state,action,at);
+   return {schema:'receiz.account-financial-operation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:id,requestDigest:wanted,predecessorArtifactSha256,predecessorOperationId:parent?.operationId??null,sequence:projection.next.sequence,atKaiUPulse:at,action,effect:projection.effect,nextState:projection.next};
+  });
   const candidate=await admitReceizAccountFinancialOperation(utf8.encode(canonical(body)),{source,predecessor:parent});same(requireOperation(candidate).body,body);return candidate;
  }
  const execute=async(input:Readonly<{operationId:string;action:ReceizAccountFinancialAction}>)=>{exact(input,['operationId','action']);const request={operationId:text(input.operationId),action:actionSnapshot(input.action),atKaiUPulse:input.action.kind==='reserve-market-order'?text(object(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(b64(input.action.requestOriginalB64u)))).orderKaiUPulse):clock()};if(!UUID.test(request.operationId))fail('OPERATION_ID');return serial(async()=>{
@@ -184,7 +293,7 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
    }
    // Actual committed originals recover forever. A never-accepted candidate
    // must still be eligible after asynchronous preparation/head reads finish.
-   const now=BigInt(clock()),program=object(custody.body.program);if(now<BigInt(op.atKaiUPulse)||now>BigInt(text(program.expiresAtKaiUPulse))||now/1000000n>BigInt(op.atKaiUPulse)/1000000n+1n)return{status:'not-committed'as const,operationId:request.operationId};
+   const now=BigInt(clock()),program=object(custody.body.program);if(now<BigInt(op.atKaiUPulse)||!custody.walletCustody&&(now>BigInt(text(program.expiresAtKaiUPulse))||now/1000000n>BigInt(op.atKaiUPulse)/1000000n+1n))return{status:'not-committed'as const,operationId:request.operationId};
    const c=requireOperation(op);let result:Awaited<ReturnType<ReceizAdmissionStore['commit']>>|undefined;
    try{result=await store.commit({schema:'receiz.admission.unit-of-work.v1',aggregateId:headId,commandDigest:c.commandDigest,idempotencyKey:idem(op.operationId),expectedRevision:current.row.revision,expectedHeadDigest:op.predecessorArtifactSha256,readDependencies:[{aggregateId:stageId(op.operationId),expectedHeadDigest:op.artifactSha256}],acceptedCommand:json({operationId:op.operationId,requestDigest:op.requestDigest,originalReference:stageId(op.operationId),artifactSha256:op.artifactSha256}),events:[json(receipt(op))],nextHead:{revision:Number(op.sequence),digest:op.artifactSha256,state:json({operationId:op.operationId})},resourceEffects:{},receipt:json(receipt(op)),outboxIntents:[json({kind:'account-financial-original',allocationId:source.allocationId,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,predecessorOperationId:op.predecessorOperationId})],auditReference:json({sourceArtifactSha256:source.artifactSha256,atKaiUPulse:op.atKaiUPulse})});}catch{/* Reopen actual retained acceptance after acknowledgement loss. */}
    const accepted=await recorded(op.operationId);if(accepted)return accepted;
@@ -198,9 +307,11 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
    const reference=headId+':release:'+current.row.headDigest,prior=await store.readAggregate(reference);let release:ReceizVerifiedAccountFinancialRelease;
    if(prior){const bytes=await options.originals.read(prior.headDigest!);if(!(bytes instanceof Uint8Array))fail('ORIGINAL_RETENTION_REQUIRED');release=await admitReceizAccountFinancialRelease(bytes,{source,financialHead:current.operation});if(release.artifactSha256!==prior.headDigest)fail('HEAD_ORIGINAL');}
    else{
-    const command={schema:'receiz.account-financial-release.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,financialHeadArtifactSha256:current.row.headDigest,financialHeadOperationId:current.operation?.operationId??null,sequence:current.operation?.sequence??'0',atKaiUPulse};
-    const ownerConsent=await options.signOwner(releaseOwnerChallenge(command)),custodianSignature=enc(await options.signRecord(releaseCustodyChallenge(command,ownerConsent)));
-    release=await admitReceizAccountFinancialRelease(utf8.encode(canonical({...command,ownerConsent,custodianSignature})),{source,financialHead:current.operation});
+    const financialHeadArtifactSha256=text(current.row.headDigest);
+    const body=await prepareWalletCommand('release',financialHeadArtifactSha256,'release',async()=>({
+     schema:'receiz.account-financial-release.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,financialHeadArtifactSha256,financialHeadOperationId:current.operation?.operationId??null,sequence:current.operation?.sequence??'0',atKaiUPulse,
+    }));
+    release=await admitReceizAccountFinancialRelease(utf8.encode(canonical(body)),{source,financialHead:current.operation});
     await retainExact(release.artifactSha256,exportReceizAccountFinancialRelease(release));
     const staged=await seed(reference,release.artifactSha256,{financialHeadArtifactSha256:current.row.headDigest});
     if(staged.headDigest!==release.artifactSha256){const bytes=await options.originals.read(staged.headDigest!);if(!(bytes instanceof Uint8Array))fail('ORIGINAL_RETENTION_REQUIRED');release=await admitReceizAccountFinancialRelease(bytes,{source,financialHead:current.operation});if(release.artifactSha256!==staged.headDigest)fail('HEAD_ORIGINAL');}
