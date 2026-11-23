@@ -29,11 +29,27 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const kai=input.kai??runtime.financialKaiNow;
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store:input.store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
  const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store:input.store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
- let closed=false,scheduled=false;
+ let closed=false,scheduled=false,publication:ReturnType<typeof publisher.flush>|undefined;
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
+ function flushPublication(){
+  if(publication)return publication;
+  scheduled=false;
+  publication=publisher.flush().finally(()=>{
+   publication=undefined;
+   runScheduledPublication();
+  });
+  return publication;
+ }
+ function runScheduledPublication(){
+  // A reconnect during a failed request needs a new SDK flush after the
+  // existing one settles. Joining the old flush would lose the reconnect.
+  if(!scheduled||publication||closed)return;
+  scheduled=false;
+  if(input.online())void flushPublication();
+ }
  function nudge(){
   if(closed||scheduled||!input.online())return;
-  scheduled=true;queueMicrotask(()=>{scheduled=false;if(!closed)void publisher.flush();});
+  scheduled=true;queueMicrotask(runScheduledPublication);
  }
  const unsubscribe=input.subscribeReconnect?.(nudge);
  nudge();
@@ -53,7 +69,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
   resolve(operationId:string){open();return executor.resolve(operationId);},
   async received(operationId:string){open();const proof=await publisher.received(operationId);open();return proof;},
-  flush(){open();return publisher.flush();},
+  flush(){open();return flushPublication();},
   dispose(){if(closed)return;closed=true;unsubscribe?.();publisher.dispose();},
  });
 }
