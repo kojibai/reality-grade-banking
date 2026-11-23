@@ -13,11 +13,24 @@ export type LocalFinancialSessionOptions=Readonly<{
  signOwner:ExecutorOptions['signOwner'];signRecord:ExecutorOptions['signRecord'];
  publish(batch:FinancialPublication):Promise<unknown>;
  assertOpen():void;online():boolean;
- /** Host lifecycle connection, shared with its existing synchronization. */
+ /** Optional host lifecycle in place of the browser's connection events. */
  subscribeReconnect?(listener:()=>void):()=>void;
  onCommitted?(commit:FinancialCommit):void|Promise<void>;
  runtime?:FinancialRuntime;kai?:()=>string;
 }>;
+function subscribeBrowserReconnect(listener:()=>void){
+ const page=globalThis.window;
+ if(!page)return;
+ const resumed=()=>{if(page.document.visibilityState==='visible')listener();};
+ page.addEventListener('online',listener);
+ page.addEventListener('pageshow',listener);
+ page.document?.addEventListener('visibilitychange',resumed);
+ return()=>{
+  page.removeEventListener('online',listener);
+  page.removeEventListener('pageshow',listener);
+  page.document?.removeEventListener('visibilitychange',resumed);
+ };
+}
 /** Thin composition only. The SDK admits the whole funded Source and owns all
  * arithmetic, signatures, atomic commitment, recovery and publication checks.
  * No observation, callback result or queued request can report completion. */
@@ -59,7 +72,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   if(closed||scheduled||!input.online())return;
   scheduled=true;queueMicrotask(runScheduledPublication);
  }
- const unsubscribe=input.subscribeReconnect?.(nudge);
+ const unsubscribe=(input.subscribeReconnect??subscribeBrowserReconnect)(nudge);
  nudge();
  return Object.freeze({
   async preview(action:FinancialAction){open();const current=await executor.current();open();return runtime.projectReceizAccountFinancialAction(source,current.state,action,kai());},

@@ -160,11 +160,13 @@ it('retries the same signed Send when reconnect overlaps a failed publication',a
  }finally{session.dispose();}
 });
 
-it('automatically publishes a saved Wallet Send after the browser admission store reopens',async()=>{
+it('automatically publishes a saved Wallet Send when its reopened page resumes online',async()=>{
  const fixture=await localFinancialFixture({receivedProof:true});
- const options={...fixture.options,store:undefined};
+ const options={...fixture.options,store:undefined,subscribeReconnect:undefined};
  const id='f8888888-8888-4888-8888-888888888888';
  const request={operationId:id,action:{kind:'send' as const,recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}};
+ const page=new EventTarget();
+ vi.stubGlobal('window',page);
  vi.stubGlobal('indexedDB',new IDBFactory());
  const sessions:Awaited<ReturnType<typeof createLocalFinancialSession>>[]=[];
  try{
@@ -181,6 +183,7 @@ it('automatically publishes a saved Wallet Send after the browser admission stor
   expect(await reopened.resolve(id)).toEqual(sent);
   expect(fixture.requests).toHaveLength(0);
   fixture.connect();
+  page.dispatchEvent(new Event('pageshow'));
   await vi.waitFor(async()=>expect((await reopened.received(id))?.financialOriginalSha256).toBe(sent.operation.artifactSha256));
   expect(fixture.requests.flatMap(batch=>batch.originals)).toEqual([expect.objectContaining({operationId:id,artifactSha256:sent.operation.artifactSha256})]);
   expect((await reopened.current()).state.sequence).toBe('1');

@@ -111,9 +111,16 @@ preparation, so offline Send can only use recipients already carried by it.
 
 The Bank session uses the SDK browser admission store when no store is supplied.
 It scopes the admission coordinates to the exact funded Source. Signed payment
-and receipt bytes still use the supplied private Original custody. The browser
-store test reconnects after rebuilding the session from retained state and
-verifies exactly one publication and a receipt for the original debit.
+and receipt bytes still use the supplied private Original custody. Browser
+connection and resume events wake publication. The retained-state test triggers
+page resume when a connection returned during suspension and verifies exactly
+one publication and a receipt for the original debit.
+
+The native Wallet carries the original Phi backing of fixed-dollar Reserve.
+The compatibility Send reducer derives the transfer's Phi at the action quote.
+Native handoff must carry the exact backing and apply the native Wallet rule at
+local signing. Recalculating those Phi amounts after reconnect would change the
+already signed payment. Existing compatibility Originals keep their own rules.
 
 The Wallet delivery receipt carries read-only rights. It cannot establish an
 offline recipient balance or authorize another payment. The existing nearby QR
