@@ -1,4 +1,5 @@
 import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication} from './local-financial-runtime';
+import {loadReceiz} from './client';
 export type {LocalFinancialRuntime} from './local-financial-runtime';
 type FinancialRuntime=LocalFinancialRuntime;
 type ExecutorOptions=FinancialExecutorOptions;
@@ -8,15 +9,28 @@ export function loadLocalFinancialRuntime():Promise<FinancialRuntime>{
 }
 export type LocalFinancialSessionOptions=Readonly<{
  sourceBytes:Uint8Array;applicationId:string;accountUid:string;ownerReceizId:string;
- originals:ExecutorOptions['originals'];store:ExecutorOptions['store'];
+ originals:ExecutorOptions['originals'];store?:ExecutorOptions['store'];
  signOwner:ExecutorOptions['signOwner'];signRecord:ExecutorOptions['signRecord'];
  publish(batch:FinancialPublication):Promise<unknown>;
  assertOpen():void;online():boolean;
- /** Host lifecycle connection, shared with its existing synchronization. */
+ /** Optional host lifecycle in place of the browser's connection events. */
  subscribeReconnect?(listener:()=>void):()=>void;
  onCommitted?(commit:FinancialCommit):void|Promise<void>;
  runtime?:FinancialRuntime;kai?:()=>string;
 }>;
+function subscribeBrowserReconnect(listener:()=>void){
+ const page=globalThis.window;
+ if(!page)return;
+ const resumed=()=>{if(page.document.visibilityState==='visible')listener();};
+ page.addEventListener('online',listener);
+ page.addEventListener('pageshow',listener);
+ page.document?.addEventListener('visibilitychange',resumed);
+ return()=>{
+  page.removeEventListener('online',listener);
+  page.removeEventListener('pageshow',listener);
+  page.document?.removeEventListener('visibilitychange',resumed);
+ };
+}
 /** Thin composition only. The SDK admits the whole funded Source and owns all
  * arithmetic, signatures, atomic commitment, recovery and publication checks.
  * No observation, callback result or queued request can report completion. */
@@ -26,16 +40,39 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const source=await runtime.admitReceizAccountFinancialSource(input.sourceBytes.slice());
  input.assertOpen();
  if(source.accountUserId!==input.accountUid||source.ownerReceizId!==input.ownerReceizId||runtime.financialSourceApplicationId(source)!==input.applicationId)throw Error('BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH');
+ // Persist only SDK admission coordinates here. Complete Originals remain in
+ // the existing private custody port, and financial truth still comes from them.
+ const store=input.store??(await loadReceiz()).createReceizBrowserAdmissionStore({
+  databaseName:'receiz-bankeiz-wallet-admission',namespace:`wallet:${source.artifactSha256}`,
+ });
+ input.assertOpen();
  const kai=input.kai??runtime.financialKaiNow;
- const executor=await runtime.createReceizAccountFinancialExecutor({source,store:input.store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
- const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store:input.store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
- let closed=false,scheduled=false;
+ const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
+ const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
+ try{input.assertOpen();}catch(error){publisher.dispose();throw error;}
+ let closed=false,scheduled=false,publication:ReturnType<typeof publisher.flush>|undefined;
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
+ function flushPublication(){
+  if(publication)return publication;
+  scheduled=false;
+  publication=publisher.flush().finally(()=>{
+   publication=undefined;
+   runScheduledPublication();
+  });
+  return publication;
+ }
+ function runScheduledPublication(){
+  // A reconnect during a failed request needs a new SDK flush after the
+  // existing one settles. Joining the old flush would lose the reconnect.
+  if(!scheduled||publication||closed)return;
+  scheduled=false;
+  if(input.online())void flushPublication();
+ }
  function nudge(){
   if(closed||scheduled||!input.online())return;
-  scheduled=true;queueMicrotask(()=>{scheduled=false;if(!closed)void publisher.flush();});
+  scheduled=true;queueMicrotask(runScheduledPublication);
  }
- const unsubscribe=input.subscribeReconnect?.(nudge);
+ const unsubscribe=(input.subscribeReconnect??subscribeBrowserReconnect)(nudge);
  nudge();
  return Object.freeze({
   async preview(action:FinancialAction){open();const current=await executor.current();open();return runtime.projectReceizAccountFinancialAction(source,current.state,action,kai());},
@@ -53,7 +90,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
   resolve(operationId:string){open();return executor.resolve(operationId);},
   async received(operationId:string){open();const proof=await publisher.received(operationId);open();return proof;},
-  flush(){open();return publisher.flush();},
+  flush(){open();return flushPublication();},
   dispose(){if(closed)return;closed=true;unsubscribe?.();publisher.dispose();},
  });
 }

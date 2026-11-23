@@ -92,3 +92,38 @@ changed. Strict types, exact native-source reproduction and proving-resource
 integrity also pass. The corresponding SDK/service component gate passes 102
 tests with zero skips. These are qualification results, not consumer offline
 activation or measured production latency savings.
+
+## Reconnect overlap
+
+If the connection returns while a publication is still in flight, the Bankeiz
+session schedules another SDK flush after that flight settles. The publisher
+reuses its retained Original and acknowledgement cursor. The regression test
+interrupts the first delivery, fires reconnect before it settles, and verifies
+an identical second batch, one local debit and the genuine received proof.
+
+Ordinary Wallet Send still opens the connected transfer path. Receiz implements
+the scoped financial preparation and publication components for the compatibility
+provider. Those components explicitly refuse when the native Account source is
+selected. The native Wallet host must supply the exclusive funding hold and
+exact-original adoption before Bankeiz can expose this session through Send.
+The current Source binds the recipient Account Original and conversation during
+preparation, so offline Send can only use recipients already carried by it.
+
+The Bank session uses the SDK browser admission store when no store is supplied.
+It scopes the admission coordinates to the exact funded Source. Signed payment
+and receipt bytes still use the supplied private Original custody. Browser
+connection and resume events wake publication. The retained-state test triggers
+page resume when a connection returned during suspension and verifies exactly
+one publication and a receipt for the original debit.
+
+The native Wallet carries the original Phi backing of fixed-dollar Reserve.
+The compatibility Send reducer derives the transfer's Phi at the action quote.
+Native handoff must carry the exact backing and apply the native Wallet rule at
+local signing. Recalculating those Phi amounts after reconnect would change the
+already signed payment. Existing compatibility Originals keep their own rules.
+
+The Wallet delivery receipt carries read-only rights. It cannot establish an
+offline recipient balance or authorize another payment. The existing nearby QR
+flow uses qualified Note custody for that boundary. Reusing the QR transport for
+Wallet requires a Wallet custody mechanism that prevents competing offline
+spends and lets the next holder verify and spend the accepted successor.
