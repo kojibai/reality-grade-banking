@@ -211,7 +211,7 @@
           "const": "1.0.0"
         },
         "receizVersion": {
-          "const": "129.0.0"
+          "const": "129.5.0"
         },
         "ruleset": {
           "const": "127.0.0"

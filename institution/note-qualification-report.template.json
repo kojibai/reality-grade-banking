@@ -9,7 +9,7 @@
     "bankCommit": null,
     "receizCommit": null,
     "lockfileSha256": null,
-    "sdkVersion": "129.0.0",
+    "sdkVersion": "129.5.0",
     "rulesetVersion": "127.0.0",
     "registryDigest": null,
     "operationMatrixDigest": null,

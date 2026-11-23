@@ -1,6 +1,6 @@
 # Digital value: accept, hold and transfer
 
-Use the coordinated v129 SDK's edge-value lifecycle. These retained `V124`/`V125` method names are exported by `@receiz/sdk@129.0.0`; they are not package downgrades. Settlement is proof-native value. Reserve is proof-backed funds. Phi micro-units are moved; USD is a deterministic display projection.
+Use the coordinated v129 SDK's edge-value lifecycle. These retained `V124`/`V125` method names are exported by `@receiz/sdk@129.5.0`; they are not package downgrades. Settlement is proof-native value. Reserve is proof-backed funds. Phi micro-units are moved; USD is a deterministic display projection.
 
 ## Exact lifecycle
 

@@ -48,7 +48,7 @@ The [Conformance Console](https://bankeiz.com/conformance/) offers the browser r
 
 ## v129 toolchain
 
-The reference pins `@receiz/sdk`, `@receiz/mcp-server` and `@receiz/ai-skills` to **129.0.0**. The active ruleset is **127.0.0**; both digests are pinned in [receiver-profile.json](receiver-profile.json). Retained method names such as `V124` and `V125` are part of the coordinated v129 package surface, not instructions to install older packages.
+The reference pins `@receiz/sdk`, `@receiz/mcp-server` and `@receiz/ai-skills` to **129.5.0**. The active ruleset is **127.0.0**; both digests are pinned in [receiver-profile.json](receiver-profile.json). Retained method names such as `V124` and `V125` are part of the coordinated v129 package surface, not instructions to install older packages.
 
 The SDK supplies runtime verification and execution primitives. MCP supplies agent tools whose opaque handles remain in trusted-host custody. AI Skills explain the required laws and exact SDK/MCP mapping. People using a finished receiver do not need to run MCP or AI Skills themselves. Neither tool descriptions nor model output are proof authority.
 

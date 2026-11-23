@@ -1,5 +1,9 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {expect,it,vi} from 'vitest';
+import {RECEIZ_CURRENT_APPLICATION_OPERATION_MATRIX_DIGEST,RECEIZ_GENERATED_CURRENT_REGISTRY_DIGEST,RECEIZ_RULESET_VERSION,RECEIZ_SDK_VERSION} from '@receiz/sdk';
+import independentSchema from '../institution/conformance-independent-assessment.schema.json';
+import independentTemplate from '../institution/conformance-independent-assessment.template.json';
+import noteQualificationTemplate from '../institution/note-qualification-report.template.json';
 import profile from '../institution/receiver-profile.json';
 import reportTemplate from '../institution/conformance-report.template.json';
 import coverage from '../src/conformance/coverage.json';
@@ -29,6 +33,21 @@ it('assesses the shipped receiver profile and report template with exact version
   const changed=await assessImplementation({...input,profile:changedProfile},[]);
   expect(changed.checks.find(c=>c.id==='profile')?.status).toBe('FAIL');
  }
+});
+it('keeps published assessment formats pinned to the installed SDK profile',()=>{
+ const pins={
+  profileVersion:profile.profileVersion,
+  receizVersion:RECEIZ_SDK_VERSION,
+  ruleset:RECEIZ_RULESET_VERSION,
+  registryDigest:RECEIZ_GENERATED_CURRENT_REGISTRY_DIGEST,
+  operationMatrixDigest:RECEIZ_CURRENT_APPLICATION_OPERATION_MATRIX_DIGEST,
+ };
+ expect(profile).toMatchObject(pins);
+ expect(independentTemplate.profile).toEqual(pins);
+ const schemaProfile=independentSchema.properties.profile;
+ expect(schemaProfile.required).toEqual(Object.keys(pins));
+ expect(Object.fromEntries(Object.entries(schemaProfile.properties).map(([name,rule])=>[name,rule.const]))).toEqual(pins);
+ expect(noteQualificationTemplate.source).toMatchObject({sdkVersion:pins.receizVersion,rulesetVersion:pins.ruleset});
 });
 it('refuses changed profile, unsupported scope and mismatched source hashes with actionable retests',async()=>{
  const {assessImplementation}=await import('../src/conformance/assessment');

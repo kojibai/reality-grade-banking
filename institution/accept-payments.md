@@ -129,7 +129,7 @@ The separate embedded-card example below remains available for card-only flows.
 Install the coordinated SDK version used by this repository:
 
 ```sh
-npm install @receiz/sdk@129.0.0
+npm install @receiz/sdk@129.5.0
 ```
 
 The [type-checked example](examples/merchant-checkout.ts) uses the actual v129
