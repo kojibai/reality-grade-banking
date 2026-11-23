@@ -92,3 +92,19 @@ changed. Strict types, exact native-source reproduction and proving-resource
 integrity also pass. The corresponding SDK/service component gate passes 102
 tests with zero skips. These are qualification results, not consumer offline
 activation or measured production latency savings.
+
+## Reconnect overlap
+
+If the connection returns while a publication is still in flight, the Bankeiz
+session schedules another SDK flush after that flight settles. The publisher
+reuses its retained Original and acknowledgement cursor. The regression test
+interrupts the first delivery, fires reconnect before it settles, and verifies
+an identical second batch, one local debit and the genuine received proof.
+
+Ordinary Wallet Send still opens the connected transfer path. Receiz implements
+the scoped financial preparation and publication components for the compatibility
+provider. Those components explicitly refuse when the native Account source is
+selected. The native Wallet host must supply the exclusive funding hold and
+exact-original adoption before Bankeiz can expose this session through Send.
+The current Source binds the recipient Account Original and conversation during
+preparation, so offline Send can only use recipients already carried by it.
