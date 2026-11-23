@@ -6,28 +6,28 @@
   "receizVersion": "129.5.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
-  "verifierModuleSha256": "9b2052f4492bcbdf0a0250f79d52a2d501b03a97c4db9b43407b782b5a1c05db",
-  "suiteSourceSha256": "63d5d97142899cb8b7fb00c71f78eb3eb96b07933e7bc77ab3202524f12944ff",
-  "startedAt": "2026-11-17T23:05:35.495Z",
-  "completedAt": "2026-11-17T23:05:35.866Z",
+  "verifierModuleSha256": "ba6dd3f814aab9047e4b25d0431bf77e32f54eb25f315582cb4d8ea8606f6eb8",
+  "suiteSourceSha256": "e4f8788590ec55309c2f2df883b358b184a5f11e3b8a3f75fbfac81795c3255c",
+  "startedAt": "2026-11-23T22:48:51.403Z",
+  "completedAt": "2026-11-23T22:48:51.799Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 64
+      "durationMs": 62
     },
     {
       "id": "ownership",
       "passed": true,
       "evidence": null,
-      "durationMs": 29
+      "durationMs": 28
     },
     {
       "id": "atomic",
       "passed": true,
       "evidence": null,
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "recovery",
@@ -51,7 +51,7 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 54
+      "durationMs": 56
     },
     {
       "id": "source",
@@ -75,13 +75,13 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 206
+      "durationMs": 233
     },
     {
       "id": "edges",
       "passed": true,
       "evidence": null,
-      "durationMs": 5
+      "durationMs": 4
     }
   ],
   "localChecksPassed": true,
