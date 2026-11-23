@@ -1,4 +1,5 @@
 import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication} from './local-financial-runtime';
+import {loadReceiz} from './client';
 export type {LocalFinancialRuntime} from './local-financial-runtime';
 type FinancialRuntime=LocalFinancialRuntime;
 type ExecutorOptions=FinancialExecutorOptions;
@@ -8,7 +9,7 @@ export function loadLocalFinancialRuntime():Promise<FinancialRuntime>{
 }
 export type LocalFinancialSessionOptions=Readonly<{
  sourceBytes:Uint8Array;applicationId:string;accountUid:string;ownerReceizId:string;
- originals:ExecutorOptions['originals'];store:ExecutorOptions['store'];
+ originals:ExecutorOptions['originals'];store?:ExecutorOptions['store'];
  signOwner:ExecutorOptions['signOwner'];signRecord:ExecutorOptions['signRecord'];
  publish(batch:FinancialPublication):Promise<unknown>;
  assertOpen():void;online():boolean;
@@ -26,9 +27,16 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const source=await runtime.admitReceizAccountFinancialSource(input.sourceBytes.slice());
  input.assertOpen();
  if(source.accountUserId!==input.accountUid||source.ownerReceizId!==input.ownerReceizId||runtime.financialSourceApplicationId(source)!==input.applicationId)throw Error('BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH');
+ // Persist only SDK admission coordinates here. Complete Originals remain in
+ // the existing private custody port, and financial truth still comes from them.
+ const store=input.store??(await loadReceiz()).createReceizBrowserAdmissionStore({
+  databaseName:'receiz-bankeiz-wallet-admission',namespace:`wallet:${source.artifactSha256}`,
+ });
+ input.assertOpen();
  const kai=input.kai??runtime.financialKaiNow;
- const executor=await runtime.createReceizAccountFinancialExecutor({source,store:input.store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
- const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store:input.store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
+ const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,kai});
+ const publisher=await runtime.createReceizAccountFinancialPublisher({source,executor,store,originals:input.originals,publish:async batch=>{input.assertOpen();if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');return input.publish(batch);}});
+ try{input.assertOpen();}catch(error){publisher.dispose();throw error;}
  let closed=false,scheduled=false,publication:ReturnType<typeof publisher.flush>|undefined;
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
  function flushPublication(){

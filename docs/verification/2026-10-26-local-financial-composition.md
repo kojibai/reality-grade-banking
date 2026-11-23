@@ -108,3 +108,15 @@ selected. The native Wallet host must supply the exclusive funding hold and
 exact-original adoption before Bankeiz can expose this session through Send.
 The current Source binds the recipient Account Original and conversation during
 preparation, so offline Send can only use recipients already carried by it.
+
+The Bank session uses the SDK browser admission store when no store is supplied.
+It scopes the admission coordinates to the exact funded Source. Signed payment
+and receipt bytes still use the supplied private Original custody. The browser
+store test reconnects after rebuilding the session from retained state and
+verifies exactly one publication and a receipt for the original debit.
+
+The Wallet delivery receipt carries read-only rights. It cannot establish an
+offline recipient balance or authorize another payment. The existing nearby QR
+flow uses qualified Note custody for that boundary. Reusing the QR transport for
+Wallet requires a Wallet custody mechanism that prevents competing offline
+spends and lets the next holder verify and spend the accepted successor.

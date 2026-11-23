@@ -1,4 +1,5 @@
 import {beforeAll,expect,it,vi} from 'vitest';
+import {IDBFactory} from 'fake-indexeddb';
 import {createLocalFinancialSession} from '../src/receiz/local-financial';
 import type {FinancialPublication} from '../src/receiz/local-financial-runtime';
 import {createLocalFinancialFixtureFactory} from './helpers/local-financial-fixture';
@@ -157,6 +158,36 @@ it('retries the same signed Send when reconnect overlaps a failed publication',a
   expect(await session.resolve(id)).toEqual(sent);
   expect((await session.current()).state.sequence).toBe('1');
  }finally{session.dispose();}
+});
+
+it('automatically publishes a saved Wallet Send after the browser admission store reopens',async()=>{
+ const fixture=await localFinancialFixture({receivedProof:true});
+ const options={...fixture.options,store:undefined};
+ const id='f8888888-8888-4888-8888-888888888888';
+ const request={operationId:id,action:{kind:'send' as const,recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}};
+ vi.stubGlobal('indexedDB',new IDBFactory());
+ const sessions:Awaited<ReturnType<typeof createLocalFinancialSession>>[]=[];
+ try{
+  const sender=await createLocalFinancialSession(options);
+  sessions.push(sender);
+  const before=await sender.wallet();
+  const sent=await sender.execute(request);
+  expect(sent.status).toBe('committed');if(sent.status!=='committed')throw Error('Fixture send');
+  expect(BigInt((await sender.wallet()).availableUsdCents)).toBe(BigInt(before.availableUsdCents)-100n);
+  sender.dispose();
+
+  const reopened=await createLocalFinancialSession(options);
+  sessions.push(reopened);
+  expect(await reopened.resolve(id)).toEqual(sent);
+  expect(fixture.requests).toHaveLength(0);
+  fixture.connect();
+  await vi.waitFor(async()=>expect((await reopened.received(id))?.financialOriginalSha256).toBe(sent.operation.artifactSha256));
+  expect(fixture.requests.flatMap(batch=>batch.originals)).toEqual([expect.objectContaining({operationId:id,artifactSha256:sent.operation.artifactSha256})]);
+  expect((await reopened.current()).state.sequence).toBe('1');
+ }finally{
+  for(const session of sessions)session.dispose();
+  vi.unstubAllGlobals();
+ }
 });
 
 it('keeps a locally sealed Send pending when delivery lacks its genuine received proof',async()=>{
