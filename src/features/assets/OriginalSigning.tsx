@@ -1,10 +1,10 @@
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {HeldDeposit} from '../../receiz/deposit-source';
 import type {PublicMarketItem} from '../../receiz/public-market';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import {Fingerprint} from 'lucide-react';
 import {InlineOpening} from '../../components/InlineOpening';
-import {retainedAssetPublicationSource} from '../../receiz/asset-publication-adoption';
+import {readAdmittedAssetSignatureHash,retainedAssetPublicationSource,subscribeAssetPublicationAdmissions} from '../../receiz/asset-publication-adoption';
 import {resolvePublicOriginalUrl,PublicOriginalPurchaseRequired} from '../../receiz/public-original';
 import {readPublicLedgerBytes} from '../../receiz/public-ledger-transfer';
 import {safeImportedSourceUrl} from '../../receiz/imported-source-url';
@@ -22,8 +22,10 @@ export function OriginalSigning({identity,source,item}:{identity:OpenIdentity;so
 function UnsignedOriginalSigning({identity,source,item,digest}:{identity:OpenIdentity;source?:HeldDeposit;item?:PublicMarketItem;digest:string}){
  const [busy,setBusy]=useState(false),[signed,setSigned]=useState(false),[error,setError]=useState('');
  const running=useRef(false),lifetime=useRef<AbortController|null>(null);
+ const accountUid=identity.walletReceivingAddress?.();
+ const admittedSignature=useSyncExternalStore(subscribeAssetPublicationAdmissions,()=>accountUid?readAdmittedAssetSignatureHash(identity.binding.artifactSha256,accountUid,digest):null,()=>null);
  useEffect(()=>{const controller=new AbortController();lifetime.current=controller;setSigned(false);setError('');setBusy(false);running.current=false;return()=>{controller.abort();};},[identity,digest]);
- if(signed)return null;
+ if(signed||admittedSignature)return null;
  async function sign(){
   if(running.current||!digest)return;
   const controller=lifetime.current;if(!controller||controller.signal.aborted)return;
