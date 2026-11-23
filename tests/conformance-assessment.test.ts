@@ -1,6 +1,7 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {expect,it,vi} from 'vitest';
 import profile from '../institution/receiver-profile.json';
+import reportTemplate from '../institution/conformance-report.template.json';
 import coverage from '../src/conformance/coverage.json';
 
 it('keeps external caller claims missing until applicable original execution evidence is independently established', async()=>{
@@ -14,6 +15,20 @@ it('keeps external caller claims missing until applicable original execution evi
  expect(report.assessmentPassed).toBe(false);
  expect(report.checks.some(r=>r.status==='PASS')).toBe(true);
  expect(report.financialActionsPerformed).toBe(0);
+});
+it('assesses the shipped receiver profile and report template with exact version and registry pins',async()=>{
+ const {assessImplementation}=await import('../src/conformance/assessment');
+ const input={...reportTemplate,implementation:{...reportTemplate.implementation,buildSha256:'a'.repeat(64)}};
+ const receiverReport=await assessImplementation({...input,profile},[]);
+ expect(receiverReport.checks.find(c=>c.id==='profile')?.status).toBe('PASS');
+ expect(reportTemplate.profile).toEqual(receiverReport.checks.find(c=>c.id==='profile')?.expected);
+ expect(receiverReport.assessmentPassed).toBe(false);
+ expect(receiverReport.requirements).toHaveLength(16);
+ expect(receiverReport.requirements.every(r=>r.status==='FAIL'&&r.reason==='missing-proof')).toBe(true);
+ for(const changedProfile of [{...profile,receizVersion:'129.0.0'},{...profile,registryDigest:'0'.repeat(64)}]){
+  const changed=await assessImplementation({...input,profile:changedProfile},[]);
+  expect(changed.checks.find(c=>c.id==='profile')?.status).toBe('FAIL');
+ }
 });
 it('refuses changed profile, unsupported scope and mismatched source hashes with actionable retests',async()=>{
  const {assessImplementation}=await import('../src/conformance/assessment');
