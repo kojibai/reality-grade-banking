@@ -127,3 +127,59 @@ it.each([
 });
 
 it('ignores an older entry rejection after a replayed checkout opened successfully',async()=>{const f=hostedFixture(1000),controller=f.newController();await controller.ready;const identity={hostedCheckout:async()=>controller,knownWallet:()=>({wallet:{totalUsdCents:'1000'}}),backup:()=>({bytes:new Uint8Array([1]),filename:'identity_record.png',phrase:''})}as unknown as OpenIdentity;let reject!:(cause:Error)=>void;const session={open:vi.fn().mockImplementationOnce(()=>new Promise((_resolve,no)=>{reject=no;})).mockResolvedValue(identity),import:vi.fn(),close:vi.fn()},host=document.createElement('div'),root=createRoot(host);try{await act(async()=>root.render(<StrictMode><HostedCheckout request={{username:'merchant',amount:'10.00'}} identitySession={session}/></StrictMode>));await act(async()=>reject(Error('closed older entry')));expect(host.textContent).not.toContain('Your saved account could not be opened');expect(f.transfer).not.toHaveBeenCalled();expect(f.begin).not.toHaveBeenCalled();}finally{await act(async()=>root.unmount());}});
+
+it.each([599,250])('buys the Original with %i cents in the Wallet and downloads the exact file after reopen',async balance=>{
+ const originalId='imported-'+'a'.repeat(64),f=hostedFixture(balance,599);
+ const terms={schema:'bank.fixed-checkout.v1',saleId:'20000000-0000-4000-8000-000000000001',recipientUserId:'10000000-0000-4000-8000-000000000002',username:'merchant',currency:'usd',amountUsdCents:'599',originalId,originalSha256:'4353a1de7e0dcc4e87350e22d5c9ee9f3e70e8ce9c31533ec991bee8870c4814'};
+ const {createOriginalPurchaseClient,originalPurchasePath}=await import('../src/receiz/original-checkout');
+ const png=Uint8Array.of(137,80,78,71,13,10,26,10,1,2,3,4);
+ const read=vi.fn(async(path:string)=>{
+  if(path===originalPurchasePath(originalId,'merchant'))return Response.json({ok:true,terms});
+  if(path===originalPurchasePath(originalId)&&f.state?.current.receipt?.fixedSale?.originalId===originalId)return new Response(png,{headers:{'content-disposition':"attachment; filename*=UTF-8''Original.png",'content-type':'image/png'}});
+  return Response.json({ok:false,error:'payment_required'},{status:402});
+ });
+ const account=createOriginalPurchaseClient(read),downloaded=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{}),save=vi.spyOn(URL,'createObjectURL');
+ const host=document.createElement('div');let root=createRoot(host);
+ let controller=f.newController();
+ const identity={hostedCheckout:async()=>controller,originalPurchase:account}as unknown as OpenIdentity;
+ const session={open:async()=>identity,import:vi.fn(),close:vi.fn()};
+ const open=async()=>act(async()=>root.render(<HostedCheckout request={{username:'merchant',originalId}} identitySession={session}/>));
+ try{
+  await open();await settle(host,'Continue');
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Payment amount"]')?.value).toBe('5.99');
+  expect(host.textContent).not.toContain('Download Original');
+  expect(host.querySelector('[aria-label="Payment method"]')).toBeNull();
+  await act(async()=>click(host,'Continue'));
+  await settle(host,'Review payment');
+  if(balance===250){
+   expect(host.textContent).toContain('$2.50');
+   expect(host.textContent).toContain('$3.49');
+  }
+  await act(async()=>click(host,'Pay $5.99'));
+  if(balance===250){
+   await settle(host,'Complete your payment.');
+   expect(f.begin).toHaveBeenCalledExactlyOnceWith('3.49',controller.snapshot().approval!.clientNonce,{checkoutId:controller.snapshot().approval!.checkoutId,username:'merchant'});
+   expect(host.textContent).not.toContain('Download Original');
+   await act(async()=>root.unmount());
+   root=createRoot(host);controller=f.newController();
+   await open();await settle(host,'Resume secure checkout');
+   await act(async()=>click(host,'Resume secure checkout'));await settle(host,'Check payment status');
+   f.creditCard();
+   await act(async()=>click(host,'Check payment status'));
+  }else expect(f.begin).not.toHaveBeenCalled();
+  await settle(host,'Original unlocked.');
+  const paid=controller.snapshot().receipt!;
+  expect(f.request.mock.calls.filter(([path])=>path==='/api/connect/transfers/original')).toHaveLength(balance===250?2:1);
+  expect(paid).toMatchObject({fixedSale:{originalId},amountUsdCents:'599'});
+  await act(async()=>root.unmount());
+  root=createRoot(host);controller=f.newController();
+  await open();await settle(host,'Download Original');
+  await act(async()=>click(host,'Download Original'));
+  await settle(host,'Download Original');
+  expect(downloaded).toHaveBeenCalledOnce();
+  expect((downloaded.mock.instances[0] as HTMLAnchorElement).download).toBe('Original.png');
+  expect(new Uint8Array(await (save.mock.calls[0][0] as Blob).arrayBuffer())).toEqual(png);
+  expect(read.mock.calls).toEqual([[originalPurchasePath(originalId,'merchant')],[originalPurchasePath(originalId)]]);
+  expect(f.state?.current.receipt?.transferId).toBe(paid.transferId);
+ }finally{await act(async()=>root.unmount());save.mockRestore();downloaded.mockRestore();}
+});

@@ -18,7 +18,7 @@ export function OriginalPurchase({item,checkout,price,locked}:{item:PublicMarket
    ?<audio aria-label={item.title+' audio preview'} src={preview.url} controls preload="none"/>
    :<video aria-label={item.title+' video preview'} src={preview.url} poster={artwork??undefined} controls playsInline preload="none"/>}</div>}
   {readExcerpt&&<a className="asset-original-excerpt" href={readExcerpt} target="_blank" rel="noreferrer">Read the preview <ArrowUpRight size={14}/></a>}
-  <a className="asset-original-checkout" href={checkout} target="_blank" rel="noreferrer">
+  <a className="asset-original-checkout" href={checkout}>
    {locked&&artwork&&!preview&&<img src={artwork} alt="" loading="lazy" decoding="async"/>}
    <span className="asset-original-purchase-action">
     <LockKeyhole size={17} strokeWidth={1.6}/>
