@@ -12,11 +12,13 @@ export async function sourceFiles() {
     // Reproduced after the final legal navigation is written. Archiving this
     // derived cache coordinate would make the source-download URL circular.
     if (path === 'server/profile-runtime/public-market-render-build.json') return;
+    // Android's local Gradle outputs and machine settings are not release source.
+    if (path.startsWith('native/android/') && /(?:^|\/)(?:\.gradle|build|local\.properties)$/.test(path)) return;
     const stat = await lstat(path);
     if (stat.isSymbolicLink()) throw Error(`Source archive rejects symlink: ${path}`);
     const name = path.split('/').at(-1);
     if (/^(?:\.env(?:\..*)?|\.git|\.aws|\.npmrc|id_rsa|id_ed25519)$/.test(name) && path !== '.env.example') throw Error(`Source archive rejects private/config path: ${path}`);
-    if (/\.(?:pem|p12|pfx|key)$/i.test(name)) throw Error(`Source archive rejects private-key container: ${path}`);
+    if (/\.(?:pem|p12|pfx|key|jks|keystore)$/i.test(name)) throw Error(`Source archive rejects private-key container: ${path}`);
     if (stat.isDirectory()) {
       for (const entry of await readdir(path)) {
         if (entry === '.DS_Store' || path === 'docs-app' && ['dist','node_modules','.vercel'].includes(entry)) continue;
