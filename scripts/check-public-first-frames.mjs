@@ -81,6 +81,7 @@ try{
   try {
    page.on('pageerror',e=>errors.push(e.message));
    page.on('request',req=>{if(req.resourceType()==='document')documents.push(new URL(req.url()).pathname);});
+   await page.clock.setFixedTime(new Date('2026-11-24T17:20:00Z'));
    await page.route('**/api/**',route=>route.abort());
    await page.route(url=>url.pathname===analyticsEntry,async route=>{await gate;await route.continue();});
    await page.goto(origin+from,{waitUntil:'domcontentloaded'});
@@ -100,10 +101,27 @@ try{
    assert.equal(await scope.getByLabel('Profiles per page').inputValue(),'8');
    const trades=scope.locator('#obs-trading');assert.equal(await trades.locator('.obs-trading-plot svg').count(),2);
    assert.equal(await trades.locator('.obs-trading-totals strong').count(),2);
-   await page.evaluate(()=>{window.analyticsNode=document.querySelector('#obs-assets');window.firstCap=document.querySelector('#obs-profiles tbody tr td:last-child')?.textContent;});
+   const capSelector='#obs-profiles tbody tr td:last-child';
+   const savedCap=await page.evaluate(selector=>{
+    window.analyticsNode=document.querySelector('#obs-assets');
+    window.analyticsCap=document.querySelector(selector);
+    return window.analyticsCap?.textContent;
+   },capSelector);
+   assert.match(savedCap,/^\$[\d,]+\.\d{2}$/,'The saved collection cap is visible before Analytics starts');
    releaseEntry();
    await page.waitForFunction(()=>Object.keys(document.querySelector('#obs-assets')??{}).some(k=>k.startsWith('__reactFiber$')),null,{timeout:30000});
-   assert.ok(await page.evaluate(()=>window.analyticsNode===document.querySelector('#obs-assets')&&window.firstCap===document.querySelector('#obs-profiles tbody tr td:last-child')?.textContent),'Analytics must hydrate the complete existing directory from '+from);
+   assert.ok(await page.evaluate(selector=>window.analyticsNode===document.querySelector('#obs-assets')&&window.analyticsCap===document.querySelector(selector),capSelector),'Analytics must hydrate the complete existing directory and cap cell from '+from);
+   const afterCap=async(previous)=>{
+    const reading=await page.waitForFunction(({selector,previous})=>{
+     const current=document.querySelector(selector)?.textContent;
+     return current && /^\$[\d,]+\.\d{2}$/.test(current) && current!==previous ? current : null;
+    },{selector:capSelector,previous},{timeout:15000});
+    return reading.jsonValue();
+   };
+   const liveCap=await afterCap(savedCap);
+   await page.clock.setFixedTime(new Date('2026-11-24T17:20:30Z'));
+   await afterCap(liveCap);
+   assert.deepEqual(documents,[from],'Collection repricing reuses the already-open document');
    const row=scope.locator('#obs-assets tbody tr').first(),inspect=row.getByRole('button',{name:/^Inspect/});
    await inspect.click();
    assert.equal(await inspect.getAttribute('aria-expanded'),'true');
