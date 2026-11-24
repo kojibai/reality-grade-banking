@@ -12,30 +12,6 @@ const walletError=(cause:unknown)=>cause instanceof Error&&cause.message==='BANK
  :'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
 const pairFrames=(value:unknown)=>createOpticalNoteFrames('wallet',new TextEncoder().encode(JSON.stringify(value)));
 
-export function WalletOfflinePreparation({identity,amount}:{identity:OpenIdentity;amount?:()=>string}){
-  const [working,setWorking]=useState(false),[status,setStatus]=useState('');
-  return <details><summary>Prepare for offline payments</summary>
-    <button type="button" className="text-button" disabled={working} onClick={async()=>{
-      setWorking(true);setStatus('');
-      try{
-        const cents=amount?.();
-        if(amount&&(!cents||!/^\d+$/.test(cents)||BigInt(cents)<=0n)){setStatus('Enter the amount to keep available offline.');return;}
-        await (await identity.fundedWallet!()).prepareOffline(cents);
-        setStatus(cents?`${formatMoney(cents)} is available to send offline.`:'This device is ready to receive one offline payment.');
-      }catch(cause){setStatus(walletError(cause));}finally{setWorking(false);}
-    }}>{working?'Preparing…':amount?'Prepare entered amount':'Prepare this device to receive'}</button>
-    {amount&&<button type="button" className="text-button" disabled={working} onClick={async()=>{
-      setWorking(true);setStatus('');
-      try{const wallet=await identity.fundedWallet!(),hold=await wallet.availableFunding();
-        if(!hold){setStatus('There are no unused offline funds on this device.');return;}
-        const result=await wallet.release(hold.allocationId);
-        setStatus(result.status==='published'?'Unused funds returned to your Wallet.':'Wallet will return these funds on reconnect.');
-      }catch(cause){setStatus(walletError(cause));}finally{setWorking(false);}
-    }}>Return unused offline funds</button>}
-    {status&&<p role="status" className="body-copy small-copy">{status}</p>}
-  </details>;
-}
-
 export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
   onRefresh:()=>void;onNext:()=>void;children:ReactNode;
