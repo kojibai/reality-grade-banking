@@ -391,6 +391,8 @@ export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) 
     custodian: { publicKeyRawB64u: string };
     walletRecipientMode?: string;
     walletPartialPayments?: true;
+    walletConnectedPayments?: true;
+    walletFunding?: 'set-aside';
     recipientBindings?: readonly { recipientUserId: string; recipientOwnerReceizId: string; conversationId: string }[];
   };
   return {
@@ -398,6 +400,9 @@ export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) 
     origin: binding.origin, rpId: binding.rpId, credentialIdB64u: binding.credentialIdB64u, received: held.receivedWallet,
     scanTime: program.walletRecipientMode === 'scan-time',
     ...(program.walletPartialPayments ? { partialPayments: true } : {}),
+    ...(program.walletConnectedPayments ? { connectedPayments: true } : {}),
+    ...(program.walletFunding === 'set-aside' ? { setAside: true } : {}),
+    ...(held.walletOpening ? { paymentOpening: held.walletOpening } : {}),
     ...(held.sharedWalletCounter ? { sharedWalletCounter: true } : {}),
     async verifyAssertion(request: WalletChallenge, assertion: unknown) {
       const { verifyReceizLiveFinancialWalletCustodyAssertion } = await import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody');

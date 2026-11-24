@@ -18,6 +18,7 @@ import { PaymentScanner } from './PaymentScanner';
 import {RecipientInput} from './RecipientInput';
 import {PaymentTools} from './PaymentTools';
 import {FundedWalletReceive,FundedWalletSend} from './FundedWalletPayments';
+import type {FundedWalletReview} from '../../receiz/funded-wallet';
 const subscribeConnection=(listener:()=>void)=>{
   window.addEventListener('online',listener);window.addEventListener('offline',listener);
   return()=>{window.removeEventListener('online',listener);window.removeEventListener('offline',listener);};
@@ -76,6 +77,7 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
   useWalletCustody(identity,active);
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
   const [nearby,setNearby]=useState(false),[keepOffline,setKeepOffline]=useState(false);
+  const [fundedReview,setFundedReview]=useState<{identity:OpenIdentity;review:FundedWalletReview}>();
   const [noteMode, setNoteMode] = useState<'create'|'deposit'|null>(null);
   const [recipient, setRecipient] = useState(initialRequest?.recipient ?? initialRecipient?.username ?? ''), [amount, setAmount] = useState(initialRequest?.amount ?? ''), [mode, setMode] = useState<'value' | 'asset'>('value'), [sendNote,setSendNote]=useState(initialMemo);
   // The displayed handle is presentation. A chat handoff keeps its selected
@@ -94,14 +96,26 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
   const choices = <>{identity && <button className="text-button note-action" onClick={() => setNoteMode('create')}>Create note</button>}<div className="segmented"><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send money</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
   if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} onRefresh={onRefresh} /></>;
   const request=()=>({amountUsdCents:bankOperationDollars(amount),recipient:recipientCoordinate,note:sendNote});
-  const useFunded=active&&!!identity?.fundedWallet&&(offline||keepOffline);
+  const initialReview=fundedReview?.identity===identity?fundedReview?.review:undefined;
+  const useFunded=active&&!!identity?.fundedWallet&&(offline||keepOffline||!!initialReview);
+  const returnToSend=()=>{setFundedReview(undefined);setKeepOffline(false);};
+  const checkFunded=active&&identity?.fundedWallet?{
+    async prepare(value:ReturnType<typeof request>){
+      try{return await (await identity.fundedWallet!()).review({...value,nearby:false});}
+      catch(error){
+        if(error instanceof Error&&['BANK_WALLET_ACCOUNT_REQUIRED','BANK_WALLET_DEVICE_REQUIRED','BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'].includes(error.message))return null;
+        throw error;
+      }
+    },
+    show(review:FundedWalletReview){setFundedReview({identity,review});},
+  }:undefined;
   const fields=<>
     <h1 className="sheet-hero">Move money.<br />Send it anywhere.</h1>
     <AmountInput label="Amount to send" value={amount} onChange={setAmount} dollars />
     <div className="send-recipient"><RecipientInput allowEmail identity={identity} value={recipient} onChange={value=>{setNearby(false);setSelectedRecipient(undefined);setRecipient(value);}} onSelect={person=>{setNearby(false);setSelectedRecipient(person);setRecipient(person.username);}}/><PaymentScanner compact onRequest={request=>applyPaymentRequest(request,false)} onCameraRequest={request=>applyPaymentRequest(request,true)}/></div>
     <details className="send-note-field"><summary>Add a memo <span>Optional</span></summary><label className="form-field"><span>Payment memo</span><textarea aria-label="Payment memo" aria-describedby={noteHint} value={sendNote} onChange={event=>setSendNote(event.target.value)} maxLength={280} rows={2} placeholder="What is this payment for?"/><small id={noteHint}>This memo is included with your payment in the public Ledger.</small></label></details>
   </>;
-  return <>{choices}{useFunded?<FundedWalletSend key={identity!.binding.artifactSha256} identity={identity!} request={()=>{setKeepOffline(true);return {...request(),nearby};}} onRefresh={onRefresh} onNext={()=>setKeepOffline(false)}>{fields}</FundedWalletSend>:
-  <WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate, amount,sendNote])} input={request} onRefresh={onRefresh} secondaryAction={identity&&<details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">For receiving through another application or institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details>}>{fields}</WalletSendOperation>}
+  return <>{choices}{useFunded?<FundedWalletSend key={identity!.binding.artifactSha256} identity={identity!} request={()=>{setKeepOffline(true);return {...request(),nearby};}} onRefresh={onRefresh} initialReview={initialReview} onEdit={returnToSend} onNext={returnToSend}>{fields}</FundedWalletSend>:
+  <WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate,amount,sendNote])} input={request} fundedReview={checkFunded} onRefresh={onRefresh} secondaryAction={identity&&<details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">For receiving through another application or institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details>}>{fields}</WalletSendOperation>}
   {identity&&receivingHelp&&<ReceivingHelp active={active} key={identity.binding.artifactSha256} identity={identity} initial={{recipient,amount,purpose:sendNote,...(selectedRecipient?{recipientUserId:selectedRecipient.userId,recipientUsername:selectedRecipient.username,recipientName:selectedRecipient.displayName}:{})} satisfies ReceivingHelpInput} onClose={()=>setReceivingHelp(false)} onPay={input=>{const label=input.recipientUserId?input.recipientUsername||input.recipient:input.recipient;if(label!==recipient||input.amount!==amount)setSendNote('');setSelectedRecipient(input.recipientUserId?{userId:input.recipientUserId,username:label}:undefined);setRecipient(label);setAmount(input.amount);}}/>}</>;
 }

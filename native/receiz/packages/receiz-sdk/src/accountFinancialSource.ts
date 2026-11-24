@@ -1,6 +1,6 @@
 import {bankNativeWalletValue} from './nativeWalletEconomics.js';
 import {deflateSync} from 'fflate';
-import {admitReceizAccountFinancialOperation, exportReceizAccountFinancialCommit, readReceizAccountFinancialOperationCustody, type ReceizAccountFinancialCommit, type ReceizAccountFinancialOriginalStore, type ReceizVerifiedAccountFinancialOperation} from './accountFinancialCommit.js';
+import {admitReceizAccountFinancialOperation,  readReceizAccountFinancialOperationCustody, type ReceizAccountFinancialCommit, type ReceizAccountFinancialOriginalStore, type ReceizVerifiedAccountFinancialOperation} from './accountFinancialCommit.js';
 import {verifyReceizFinancialWalletCustodyBinding,verifyReceizFinancialWalletRecipientAcceptance,type ReceizFinancialWalletCustodyBinding} from './accountFinancialWalletCustody.js';
 import type {ReceizAccountSendAction} from './accountFinancialExecution.js';
 import {createReceizArtifactAdmissionEngine, readReceizIdentityPublicBinding} from './artifactAdmission.js';
@@ -83,22 +83,58 @@ const admitted = new WeakMap<ReceizAccountFinancialSource,Readonly<{
  roots: ReadonlyMap<string,ReceizSignatureV4RootPublicKey>;
  usedWalletCredentials: ReadonlySet<string>;
  walletLineage?: ReceizAccountFinancialWalletProof;
+ walletOpening?: Readonly<{allocationId:string;sourceArtifactSha256:string;amountUsdCents:string;conversationId:string}>;
  valuation: ReturnType<typeof compileBankOfflineWalletValuation>;
  marketPricing: ReadonlyMap<string,ReturnType<typeof compileBankOfflineMarketPricing>>;
 }>>();
 const scanned = new WeakMap<ReceizAccountFinancialSource,WeakMap<object,{at:string;command:string;recipient:WalletRecipient}>>();
+type WalletDestination = Pick<WalletRecipient,'userId'|'ownerReceizId'>;
+const destinations = new WeakMap<ReceizAccountFinancialSource,WeakMap<object,{at:string;command:string;recipient:WalletDestination}>>();
 export function readReceizScannedWalletRecipient(source:ReceizAccountFinancialSource,action:ReceizAccountSendAction,at:string){
  const saved=scanned.get(source)?.get(action);
  return saved?.at===at&&saved.command===canonical(action)?saved.recipient:null;
+}
+export function readReceizWalletDestination(source:ReceizAccountFinancialSource,action:ReceizAccountSendAction,at:string):WalletDestination|null{
+ if(action.nearby===true)return readReceizScannedWalletRecipient(source,action,at);
+ const saved=destinations.get(source)?.get(action);
+ return saved?.at===at&&saved.command===canonical(action)?saved.recipient:null;
+}
+
+async function verifyWalletRecipientAccount(account:Record<string,unknown>,payload:Record<string,unknown>,roots:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>,at:string){
+ const issued=BigInt(positive(payload.issuedAtKaiUPulse)),pulse=issued/1_000_000n;
+ const signature=object(account.signature,['kid','alg','sig','signedAtMs']);
+ const root=roots.get(string(signature.kid));
+ if(issued>BigInt(at)||!root||root.alg!=='Ed25519'||signature.alg!=='Ed25519'||root.status!=='active'&&root.status!=='retired'
+  ||!Number.isSafeInteger(signature.signedAtMs)||Number(signature.signedAtMs)<=0
+  ||root.status==='retired'&&!root.retiredAtPulse||root.activeFromPulse&&pulse<BigInt(root.activeFromPulse)
+  ||root.retiredAtPulse&&pulse>BigInt(root.retiredAtPulse))fail('WALLET_RECIPIENT');
+ const publicKey=await crypto.subtle.importKey('raw',bytes(root.publicKeyRawB64u,32).slice().buffer,'Ed25519',false,['verify']);
+ if(!await crypto.subtle.verify('Ed25519',publicKey,bytes(signature.sig,64).slice().buffer,
+  new TextEncoder().encode(WALLET_RECIPIENT_ACCOUNT_DOMAIN+'\0'+canonical(payload))))fail('WALLET_RECIPIENT');
 }
 
 /** Admit the Receiz-signed account/device binding and the holder's exact
  * receive assertion before exposing the recipient to the Wallet reducer. */
 export async function prepareReceizScannedWalletRecipient(source:ReceizAccountFinancialSource,action:ReceizAccountSendAction,at:string,priorRecipients?:ReadonlySet<string>){
  const held=admitted.get(source),program=held?.body.program as Record<string,unknown>|undefined;
- if(!held?.walletCustody||program?.walletRecipientMode!=='scan-time'||action.nearby!==true||action.recipientUserId===source.accountUserId
+ if(!held?.walletCustody||program?.walletRecipientMode!=='scan-time'||action.recipientUserId===source.accountUserId
   ||!UUID.test(action.recipientUserId)||!UUID.test(action.conversationId))fail('WALLET_RECIPIENT');
  const snapshot=structuredClone(action),command=canonical(snapshot);
+ if(snapshot.nearby!==true){
+  if(program.walletConnectedPayments!==true)fail('WALLET_RECIPIENT');
+  const row=object(snapshot.scannedRecipient,['account']);
+  const account=object(row.account,['payload','signature']);
+  const payload=object(account.payload,['applicationId','accountUserId','ownerReceizId','keyId','issuedAtKaiUPulse']);
+  const ownerReceizId=string(payload.ownerReceizId);
+  hash(payload.keyId);
+  if(payload.applicationId!==program.applicationId||payload.accountUserId!==snapshot.recipientUserId
+   ||ownerReceizId===source.ownerReceizId||!/^[-a-z0-9_]+\.receiz\.id$/u.test(ownerReceizId))fail('WALLET_RECIPIENT');
+  await verifyWalletRecipientAccount(account,payload,held.roots,at);
+  const entries=destinations.get(source)??new WeakMap();
+  entries.set(action,{at,command,recipient:freeze({userId:snapshot.recipientUserId,ownerReceizId})});
+  destinations.set(source,entries);
+  return [];
+ }
  const shared=program.walletCounterMode==='device';
  const row=object(snapshot.scannedRecipient,['account','identity','custodian','ownerConsent','assertion',...(shared?['signCount']:[])]);
  const account=object(row.account,['payload','signature']);
@@ -111,15 +147,7 @@ export async function prepareReceizScannedWalletRecipient(source:ReceizAccountFi
   ||!['Ed25519','P-256'].includes(string(identity.alg))||custodian.kind!=='existing-sdk-record-signer'
   ||p.recordSignerPublicKey!==custodian.publicKeyRawB64u||BigInt(positive(p.issuedAtKaiUPulse))>BigInt(at))fail('WALLET_RECIPIENT');
  bytes(custodian.publicKeyRawB64u,32);
- const signature=object(account.signature,['kid','alg','sig','signedAtMs']);
- const root=held.roots.get(string(signature.kid)),pulse=BigInt(string(p.issuedAtKaiUPulse))/1_000_000n;
- if(!root||root.alg!=='Ed25519'||signature.alg!=='Ed25519'||root.status!=='active'&&root.status!=='retired'
-  ||!Number.isSafeInteger(signature.signedAtMs)||Number(signature.signedAtMs)<=0
-  ||root.status==='retired'&&!root.retiredAtPulse||root.activeFromPulse&&pulse<BigInt(root.activeFromPulse)
-  ||root.retiredAtPulse&&pulse>BigInt(root.retiredAtPulse))fail('WALLET_RECIPIENT');
- const publicKey=await crypto.subtle.importKey('raw',bytes(root.publicKeyRawB64u,32).slice().buffer,'Ed25519',false,['verify']);
- if(!await crypto.subtle.verify('Ed25519',publicKey,bytes(signature.sig,64).slice().buffer,
-  new TextEncoder().encode(WALLET_RECIPIENT_ACCOUNT_DOMAIN+'\0'+canonical(p))))fail('WALLET_RECIPIENT');
+ await verifyWalletRecipientAccount(account,p,held.roots,at);
  const credential=await verifyReceizFinancialWalletCustodyBinding(custodian.walletWebAuthn,{roots:held.roots,fundedAtKaiUPulse:string(p.issuedAtKaiUPulse)});
  const credentialKeys=[credential.credentialIdB64u,credential.custodyPublicKeyRawB64u];
  if(credential.certificateDigest!==p.credentialCertificateDigest||credential.origin!==held.walletCustody.origin||credential.rpId!==held.walletCustody.rpId
@@ -151,6 +179,7 @@ export function readReceizAccountFinancialSourceCustody(source:ReceizAccountFina
   walletCustody: held.walletCustody,
   sharedWalletCounter: (held.body.program as Record<string,unknown>).walletCounterMode==='device',
   receivedWallet: held.walletLineage!==undefined,
+  walletOpening: held.walletOpening,
   hasWalletRecipient: (accountId:string,conversationId:string) => held.walletRecipients.has(accountId+':'+conversationId),
   valuation: held.valuation,
   marketPricingAt: (id:string,delta:string,flow:Parameters<ReturnType<typeof compileBankOfflineMarketPricing>['at']>[1],at:string) =>
@@ -177,9 +206,13 @@ async function validateSourceOpenings(
   const scanTime=Object.hasOwn(body.program as object,'walletRecipientMode');
   const partial=Object.hasOwn(body.program as object,'walletPartialPayments');
   const shared=Object.hasOwn(body.program as object,'walletCounterMode');
-  const p=object(body.program,['schema','sourceFamily','applicationId','accountUserId','ownerReceizId','nativeValueEnabled','usdPerPhiMicrocents','validFromKaiUPulse','expiresAtKaiUPulse','walletValuation','marketTerms','identity','custodian',...(dynamic?['marketPricing']:[]),...(Object.hasOwn(body.program as object,'recipientBindings')?['recipientBindings']:[]),...(orderProgram?['orderPolicy']:[]),...(nativeReserve?['sourceWalletHead']:[]),...(publicIdentityOpening?['identityOpening']:[]),...(allWalletRails?['walletRails']:[]),...(scanTime?['walletRecipientMode']:[]),...(partial?['walletPartialPayments']:[]),...(shared?['walletCounterMode']:[])]);
+  const connected=Object.hasOwn(body.program as object,'walletConnectedPayments');
+  const setAside=Object.hasOwn(body.program as object,'walletFunding');
+  const p=object(body.program,['schema','sourceFamily','applicationId','accountUserId','ownerReceizId','nativeValueEnabled','usdPerPhiMicrocents','validFromKaiUPulse','expiresAtKaiUPulse','walletValuation','marketTerms','identity','custodian',...(dynamic?['marketPricing']:[]),...(Object.hasOwn(body.program as object,'recipientBindings')?['recipientBindings']:[]),...(orderProgram?['orderPolicy']:[]),...(nativeReserve?['sourceWalletHead']:[]),...(publicIdentityOpening?['identityOpening']:[]),...(allWalletRails?['walletRails']:[]),...(scanTime?['walletRecipientMode']:[]),...(partial?['walletPartialPayments']:[]),...(shared?['walletCounterMode']:[]),...(connected?['walletConnectedPayments']:[]),...(setAside?['walletFunding']:[])]);
   if(!['receiz.bank.offline-financial-program.v1','receiz.bank.offline-financial-program.v2','receiz.bank.offline-financial-program.v3','receiz.bank.offline-financial-program.v4',NATIVE_RESERVE_PROGRAM].includes(string(p.schema))||p.sourceFamily!==(nativeReserve?NATIVE_RESERVE_FAMILY:'connected-wallet-share-market')||p.applicationId!==f.applicationId||p.accountUserId!==f.accountUserId||p.ownerReceizId!==f.ownerReceizId||p.validFromKaiUPulse!==at||BigInt(positive(p.expiresAtKaiUPulse))<=BigInt(at))fail('PROGRAM');
   if(allWalletRails&&p.walletRails!=='all'||partial&&(!scanTime||p.walletPartialPayments!==true)||shared&&(!partial||p.walletCounterMode!=='device'))fail('PROGRAM');
+  if(connected&&(!shared||p.walletConnectedPayments!==true))fail('PROGRAM');
+  if(setAside&&(!shared||connected||p.walletFunding!=='set-aside'))fail('PROGRAM');
   if(scanTime&&(!nativeReserve||!publicIdentityOpening||!allWalletRails||p.walletRecipientMode!=='scan-time'||array(p.recipientBindings).length))fail('PROGRAM');
   if(orderProgram){const policy=object(p.orderPolicy,['schema','origin','priceRule','remainder','fillAuthority']);if(policy.schema!=='receiz.bank.account-market-order-policy.v1'||policy.origin!=='offline'||policy.priceRule!=='approved-bound'||policy.remainder!=='keep-open'||policy.fillAuthority!=='source-financial-root')fail('ORDER_POLICY');}
   const identity=object(p.identity,['keyId','alg','publicKeyRawB64u']);if(identity.keyId!==f.receizKeyId||!['Ed25519','P-256'].includes(string(identity.alg)))fail('IDENTITY');
@@ -405,15 +438,21 @@ export function exportReceizAccountFinancialWalletProof(
  source: ReceizAccountFinancialSource,
  commit: ReceizAccountFinancialCommit,
 ): Uint8Array {
+ return encodeAcceptedWalletOperation(source,commit.operation);
+}
+
+function encodeAcceptedWalletOperation(source:ReceizAccountFinancialSource,operation:ReceizVerifiedAccountFinancialOperation){
  const held = admitted.get(source);
- const {operation} = commit;
  if(!held||(!held.walletRecipients.size&&(operation.action.kind!=='send'||!readReceizScannedWalletRecipient(source,operation.action,operation.atKaiUPulse)))||readReceizAccountFinancialOperationCustody(operation).sourceSha256!==source.artifactSha256
   ||operation.action.kind!=='send'||operation.action.nearby!==true)fail('WALLET_PROOF');
  const previous = held.walletLineage;
- const original = exportReceizAccountFinancialCommit(commit);
+ const original = readReceizAccountFinancialOperationCustody(operation).artifactBytes();
  const preceding=readReceizAccountFinancialOperationCustody(operation).precedingOriginals();
  assertReceizAccountFinancialWalletProofCapacity(source,original.byteLength,preceding);
  return encodeWalletProof(previous?.sourceOriginal??held.bytes,[...(previous?.paymentOriginals??[]),...preceding,original]);
+}
+export function measureReceizAccountFinancialWalletProof(source:ReceizAccountFinancialSource,operation:ReceizVerifiedAccountFinancialOperation){
+ return encodeAcceptedWalletOperation(source,operation).byteLength;
 }
 function encodeWalletProof(root:Uint8Array,payments:readonly Uint8Array[]){
  const encoded = new TextEncoder().encode(canonical({
@@ -554,7 +593,9 @@ function receiveWalletPayment(
  // The incoming, protected debit is this Source's exact opening. Its accepted
  // bytes and funded ancestry are retained, with no new seal or issuer.
  const walletLineage = {sourceOriginal:rootOriginal,paymentOriginals:[...(held.walletLineage?.paymentOriginals??[]),...currentSourceOriginals]};
- admitted.set(next,{...held,bytes:paymentCustody.artifactBytes(),walletCustody:recipient.binding,walletRecipients,walletLineage,
+ const walletOpening = Object.freeze({allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,
+  amountUsdCents:effect.amountUsdCents,conversationId:payment.action.conversationId});
+ admitted.set(next,{...held,bytes:paymentCustody.artifactBytes(),walletCustody:recipient.binding,walletRecipients,walletLineage,walletOpening,
   usedWalletCredentials:new Set([...held.usedWalletCredentials,...paymentCustody.walletRecipientCredentials(),recipient.binding.credentialIdB64u,recipient.binding.custodyPublicKeyRawB64u]),
   body:freeze({funding:held.body.funding,program,initialState})});
  return next;

@@ -1,15 +1,20 @@
 /** Browser composition of the existing financial Source, local executor and
  * exact-original publisher. No provider, enrollment or signing keys are made. */
 export {admitReceizAccountFinancialSource, exportReceizAccountFinancialWalletProof, readReceizAccountFinancialWalletProof, receiveReceizAccountFinancialWalletProof, receizAccountFinancialWalletReceiverChallenge} from './accountFinancialSource.js';
-export {createReceizAccountFinancialExecutor} from './accountFinancialCommit.js';
+export {createReceizAccountFinancialExecutor,commitReceizAccountFinancialWalletPaymentBatch} from './accountFinancialCommit.js';
 export {ReceizFinancialWalletCustodyCancelledBeforeAssertion, type ReceizFinancialWalletCustodyChallenge} from './accountFinancialWalletCustody.js';
 export {createReceizAccountFinancialPublisher} from './accountFinancialPublication.js';
 export {projectReceizAccountFinancialAction} from './accountFinancialExecution.js';
-import {createReceizBrowserAdmissionStore,type ReceizBrowserAdmissionStoreOptions} from './browserAdmissionStore.js';
+import {createReceizBrowserAdmissionStoreInternal,type ReceizBrowserAdmissionStoreOptions} from './browserAdmissionStore.js';
 import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource} from './accountFinancialSource.js';
 import {receizKaiNow} from './v124Kai.js';
+const walletAdmissionStores=new Map<string,ReturnType<typeof createReceizBrowserAdmissionStoreInternal>>();
 export function createWalletAdmissionStore(options:Pick<ReceizBrowserAdmissionStoreOptions,'databaseName'|'namespace'>){
- return createReceizBrowserAdmissionStore({...options,writeDurability:'strict'});
+ const key=JSON.stringify([options.databaseName,options.namespace]),existing=walletAdmissionStores.get(key);
+ if(existing)return existing;
+ const store=createReceizBrowserAdmissionStoreInternal({...options,writeDurability:'strict',maxRecordsPerTransaction:8192});
+ walletAdmissionStores.set(key,store);
+ return store;
 }
 /** Read-only scope inspection after genuine enclosing Source admission. */
 export function financialSourceApplicationId(source:ReceizAccountFinancialSource):string{

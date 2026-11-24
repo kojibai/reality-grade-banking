@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletPairOffer } from '../../receiz/funded-wallet';
+import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletOffer } from '../../receiz/funded-wallet';
 import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
+import { AmountInput } from '../../components/AmountInput';
+import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
 import { WalletPaymentReview } from './WalletSendOperation';
 import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
@@ -12,23 +15,104 @@ const walletError=(cause:unknown)=>{
     if(cause.message===WALLET_RECEIPT_RETENTION_REQUIRED)return 'Wallet couldn’t save the payment proof. Scan the payment again.';
     if(cause.message===WALLET_STALE_ALLOCATION)return 'This balance has older payment history. Use another available balance or scan a newer payment proof.';
     if(cause.message==='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')return 'No funded offline payment is available for this recipient on this device.';
+    if(cause.message==='BANK_WALLET_DEVICE_REQUIRED')return 'This device couldn’t open secure offline Wallet custody.';
+    if(cause.message==='BANK_WALLET_MOVE_BACK_AMOUNT')return 'Enter an amount within your available offline balance.';
+    if(cause.message==='BANK_WALLET_MOVE_BACK_PENDING')return 'Finish moving back the previous amount first.';
   }
   return 'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
 };
 const pairFrames=(value:unknown)=>createOpticalNoteFrames('wallet',new TextEncoder().encode(JSON.stringify(value)));
 
-export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
+type OfflineBalance = Awaited<ReturnType<Awaited<ReturnType<NonNullable<OpenIdentity['fundedWallet']>>>['offlineBalance']>>;
+
+export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;onRefresh:()=>void}){
+  const [balance,setBalance]=useState<OfflineBalance|null>(null);
+  const [online,setOnline]=useState(()=>navigator.onLine!==false);
+  const [editing,setEditing]=useState<'add'|'moveBack'|null>(null),[amount,setAmount]=useState('');
+  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
+  const running=useRef(false),formId=useId();
+  useEffect(()=>{
+    let active=true;
+    const refresh=async()=>{
+      setOnline(navigator.onLine!==false);
+      try{
+        const wallet=await identity.fundedWallet!();
+        const current=await wallet.offlineBalance();
+        if(active)setBalance(current);
+      }catch(cause){if(active)setError(walletError(cause));}
+    };
+    void refresh();
+    window.addEventListener('online',refresh);
+    window.addEventListener('offline',refresh);
+    return()=>{active=false;window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};
+  },[identity]);
+  const movingBack=balance?.movingBackUsdCents;
+  function edit(next:NonNullable<typeof editing>){
+    setEditing(editing===next?null:next);setAmount('');setMessage('');setError('');
+  }
+  async function change(moveBack:boolean){
+    if(running.current||navigator.onLine===false)return;
+    running.current=true;setBusy(true);setError('');setMessage('');
+    try{
+      const wallet=await identity.fundedWallet!();
+      if(moveBack){
+        const result=await wallet.moveBack(movingBack??bankOperationDollars(amount));
+        setMessage(result.status==='published'?'Funds moved back.':'Move back is pending.');
+      }else{
+        await wallet.prepareOffline(bankOperationDollars(amount));
+        setMessage('Funds set aside.');
+      }
+      setEditing(null);setAmount('');
+      setBalance(await wallet.offlineBalance());
+      onRefresh();
+    }catch(cause){
+      setError(walletError(cause));
+      const wallet=await identity.fundedWallet!().catch(()=>null);
+      if(wallet)setBalance(await wallet.offlineBalance().catch(()=>balance));
+    }finally{running.current=false;setBusy(false);}
+  }
+  return <section className="detail-list wallet-offline-balance" aria-label="Offline balance">
+    <div>
+      <span>Available offline</span>
+      <div className="wallet-offline-balance-controls">
+        <strong aria-live="polite">{balance?formatMoney(balance.availableUsdCents):'—'}</strong>
+        <button type="button" className="icon-button" aria-label="Set aside" title="Set aside"
+          aria-expanded={editing==='add'} aria-controls={editing==='add'?formId:undefined}
+          disabled={!balance||busy||!online||!!movingBack} onClick={()=>edit('add')}><Plus size={18} aria-hidden="true"/></button>
+        <button type="button" className="icon-button" aria-label="Move back" title="Move back"
+          aria-expanded={editing==='moveBack'} aria-controls={editing==='moveBack'?formId:undefined}
+          disabled={!balance||balance.availableUsdCents==='0'||busy||!online||!!movingBack} onClick={()=>edit('moveBack')}><Minus size={18} aria-hidden="true"/></button>
+      </div>
+    </div>
+    {movingBack?<button type="button" className="secondary-button" disabled={busy||!online}
+      onClick={()=>void change(true)}>Finish moving back {formatMoney(movingBack)}</button>:
+      editing&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
+        <AmountInput label={editing==='add'?'Amount to set aside':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
+        <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Set aside funds':'Move back funds'}</button>
+      </form>}
+    {!online&&<p className="body-copy small-copy">Connect to set aside or move funds back.</p>}
+    {message&&<p role="status" className="body-copy">{message}</p>}
+    {error&&<p role="alert" className="error-message">{error}</p>}
+  </section>;
+}
+
+export function FundedWalletSend({identity,request,onRefresh,onNext,initialReview,onEdit,children}:{
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
-  onRefresh:()=>void;onNext:()=>void;children:ReactNode;
+  onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;children:ReactNode;
 }){
-  const [review,setReview]=useState<FundedWalletReview|null>(null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
-  const [pairing,setPairing]=useState<{offer:WalletPairOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
+  const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
+  const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
+  const [pendingBundle,setPendingBundle]=useState<string|null>(null);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[approved,setApproved]=useState(false);
   const running=useRef(false);
   useEffect(()=>{
     let current=true;
-    void identity.fundedWallet!().then(wallet=>wallet.outgoing()).then(saved=>{if(current&&saved)setResult(saved);}).catch(cause=>{if(current)setError(walletError(cause));});
+    void identity.fundedWallet!().then(async wallet=>{
+      const saved=await wallet.outgoing();
+      const pending=saved?null:await wallet.pendingBundle?.();
+      if(current){if(saved)setResult(saved);setPendingBundle(pending??null);}
+    }).catch(cause=>{if(current)setError(walletError(cause));});
     return()=>{current=false;};
   },[identity]);
   async function act(work:()=>Promise<void>){
@@ -42,7 +126,7 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
     try{
       const pending=pairReader.current.push(bytes);if(!pending)return false;
       const reply=readWalletPairing((await pending).bytes);
-      if(reply?.schema!=='bankeiz.wallet.answer.v1'||JSON.stringify(reply.offer)!==JSON.stringify(pairing.offer))throw Error('BANK_WALLET_PAIRING_INVALID');
+      if((reply?.schema!=='bankeiz.wallet.answer.v1'&&reply?.schema!=='bankeiz.wallet.answer.v2')||JSON.stringify(reply.offer)!==JSON.stringify(pairing.offer))throw Error('BANK_WALLET_PAIRING_INVALID');
       await act(async()=>{const wallet=await identity.fundedWallet!();setReview(await wallet.review({...pairing.input,paired:reply}));setPairing(null);});
     }catch(cause){setError(walletError(cause));}
     pairReader.current=readOpticalNoteFrames('wallet');return true;
@@ -53,12 +137,21 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
       <p className="body-copy">Wallet will deliver the signed payment when this device reconnects.</p>}
     <button className="secondary-button" disabled={busy} onClick={()=>void act(async()=>{
       const wallet=await identity.fundedWallet!();await wallet.completeOutgoing(result.operationId);
-      setResult(null);setReview(null);setApproved(false);onNext();
+      setResult(null);setPendingBundle(null);setReview(null);setApproved(false);onNext();
     })}>Send another payment</button>
     {errors}
   </section>;
+  if(pendingBundle&&!review)return <section className="native-operation-result">
+    <h1 className="sheet-hero">Continue payment.</h1>
+    <p className="body-copy">{formatMoney(pendingBundle)} is saved for this recipient.</p>
+    <button type="button" className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
+      const wallet=await identity.fundedWallet!();
+      try{setResult(await wallet.resumeBundle());onRefresh();}
+      finally{setPendingBundle(await wallet.pendingBundle());}
+    })}>Continue payment</button>{errors}
+  </section>;
   if(review)return <WalletPaymentReview offline review={review} busy={busy} approved={approved} onApprove={setApproved}
-    onEdit={()=>{setReview(null);setApproved(false);}}
+    onEdit={()=>{setReview(null);setApproved(false);onEdit?.();}}
     onSend={()=>{if(approved)void act(async()=>{const wallet=await identity.fundedWallet!();setResult(await wallet.confirm(review));onRefresh();});}}>
     {errors}
   </WalletPaymentReview>;
@@ -89,7 +182,7 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
   const [reply,setReply]=useState<OpticalFrames|null>(null);
   const [receiptProof,setReceiptProof]=useState<{frames:OpticalFrames;index:number}|null>(null);
   const [receiptCount,setReceiptCount]=useState(0);
-  const [offer,setOffer]=useState<WalletPairOffer|null>(null);
+  const [offer,setOffer]=useState<WalletOffer|null>(null);
   const [busy,setBusy]=useState(false);
   const active=useRef(true);
   useEffect(()=>{
@@ -112,7 +205,7 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       if(!active.current)return true;
       const pair=readWalletPairing(proof.bytes);
       if(pair){
-        if(pair.schema!=='bankeiz.wallet.offer.v1')throw Error('BANK_WALLET_PAIRING_INVALID');
+        if(pair.schema!=='bankeiz.wallet.offer.v1'&&pair.schema!=='bankeiz.wallet.offer.v2')throw Error('BANK_WALLET_PAIRING_INVALID');
         if(active.current){setOffer(pair);reader.current=readOpticalNoteFrames('wallet');setError('');}
         return true;
       }
@@ -136,7 +229,7 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
           const spendable=BigInt(payment.wallet.availableUsdCents)>0n;
           setReceiptCount(count=>Math.max(1,count));
           void wallet.receiptProofCount?.().then(count=>{if(active.current)setReceiptCount(count);}).catch(()=>{});
-          setReceived(spendable?payment:null);
+          setReceived(spendable&&(!('bundle' in payment)||!payment.bundle)?payment:null);
           setStatus(spendable?`${formatMoney(payment.wallet.availableUsdCents)} available to send from this device.`:'Wallet has already recorded this payment.');
         }
         onRefresh();

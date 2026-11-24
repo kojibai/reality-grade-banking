@@ -1,4 +1,4 @@
-import {readReceizAccountFinancialSourceCustody,readReceizScannedWalletRecipient,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {readReceizAccountFinancialSourceCustody,readReceizWalletDestination,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {bankNativeWalletDebit,bankNativeWalletDebitAvailable,bankNativeWalletTransferRate,bankNativeWalletValue,type BankNativeWalletFundingParts} from './nativeWalletEconomics.js';
 import {deriveMarketShareAccounting,marketNotionalPhiMicroFromUsdCents,marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid,type AccountExecutionMarketFlow,type AccountExecutionWalletAmounts,type AccountExecutionWalletLedger,type AccountExecutionPositionAmounts}from './accountFinancialMath.generated.js';
 
@@ -10,7 +10,7 @@ type Term=Capacity&Readonly<{sourceArtifactSha256:string;bidPriceUsdCents:string
 export type ReceizAccountOrderEscrow=Readonly<{orderId:string;marketItemId:string;reservedShareQuantityMicro:string;fundingSourceSha256:string}>;
 export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];reserveBackingPhiMicro?:string;marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
 type Recipient=Readonly<{recipientUserId:string;recipientOwnerReceizId:string;conversationId:string;sourceAccountArtifactSha256:string}>;
-export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown}>;
+export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown;moveBack?:true}>;
 export type ReceizAccountMarketAction=Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
 const MAX=(1n<<63n)-1n;
 const min=(a:bigint,b:bigint)=>a<b?a:b;
@@ -30,19 +30,25 @@ const indexed=new WeakMap<ReceizAccountFinancialSource,ReadonlyMap<string,Term>>
  * candidate only. It neither admits a supplied successor state nor commits a
  * trade; accepted ancestry, signatures and durable CAS are required separately. */
 export function projectReceizAccountFinancialAction(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,action:ReceizAccountMarketAction|ReceizAccountSendAction,atKaiUPulse:string){
- const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all';walletPartialPayments?:true};
+ const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all';walletPartialPayments?:true;walletFunding?:'set-aside'};
  if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==source.allocationId||state.accountUserId!==source.accountUserId)fail('STATE');
  const at=uint(atKaiUPulse,true);if(at<uint(program.validFromKaiUPulse,true)||at>uint(program.expiresAtKaiUPulse,true)||at<=uint(state.lastKaiUPulse))fail('CAUSAL_PULSE');
  if(action?.kind==='send'){
-  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby','scannedRecipient'].includes(k))
+  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby','scannedRecipient','moveBack'].includes(k))
    ||Object.hasOwn(action,'nearby')&&action.nearby!==true)fail('ACTION');
-  const scanned=Object.hasOwn(action,'scannedRecipient')?readReceizScannedWalletRecipient(source,action,atKaiUPulse):null;
+  const moveBack=Object.hasOwn(action,'moveBack');
+  if(moveBack&&(action.moveBack!==true||source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+   ||program.walletFunding!=='set-aside'||action.recipientUserId!==source.accountUserId
+   ||Object.hasOwn(action,'nearby')||Object.hasOwn(action,'scannedRecipient')||Object.hasOwn(action,'note')
+   ||!(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu.test(action.conversationId))))fail('ACTION');
+  const scanned=Object.hasOwn(action,'scannedRecipient')?readReceizWalletDestination(source,action,atKaiUPulse):null;
   if(Object.hasOwn(action,'scannedRecipient')&&!scanned)fail('RECIPIENT_REQUIRED');
-  const recipient=scanned?{recipientUserId:scanned.userId,recipientOwnerReceizId:scanned.ownerReceizId,conversationId:action.conversationId}:
+  const recipient=moveBack?{recipientUserId:source.accountUserId,recipientOwnerReceizId:source.ownerReceizId,conversationId:action.conversationId}:
+   scanned?{recipientUserId:scanned.userId,recipientOwnerReceizId:scanned.ownerReceizId,conversationId:action.conversationId}:
    program.recipientBindings?.find(r=>r.recipientUserId===action.recipientUserId&&r.conversationId===action.conversationId);
   if(!recipient)fail('RECIPIENT_REQUIRED');
   const cents=uint(action.amountUsdCents,true);
-  if(custody.receivedWallet&&action.nearby!==true)fail('WALLET_PEER_CUSTODY');
+  if(!moveBack&&custody.receivedWallet&&action.nearby!==true&&(!program.walletPartialPayments||!scanned))fail('WALLET_PEER_CUSTODY');
   if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
    ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
    ||!program.walletPartialPayments&&(state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents)))fail('WALLET_PEER_CUSTODY');

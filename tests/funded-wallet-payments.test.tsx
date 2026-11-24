@@ -6,7 +6,7 @@ import { LiveReceive, LiveSend } from '../src/features/account/LivePayments';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 
 function click(host: HTMLElement, text: string) {
-  const button = [...host.querySelectorAll('button')].find(el => el.textContent?.trim() === text);
+  const button = [...host.querySelectorAll('button')].find(el => (el.getAttribute('aria-label') ?? el.textContent?.trim()) === text);
   expect(button, text).toBeDefined();
   return act(async () => button!.click());
 }
@@ -41,6 +41,69 @@ test('regular Send reviews and confirms the local funded Wallet while offline', 
     host.remove();
     if (prior) Object.defineProperty(navigator, 'onLine', prior);
     else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
+test('regular Send keeps a funded review across a connection drop and skips the hosted transfer', async () => {
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+  const setOnline = (online: boolean) => Object.defineProperty(navigator, 'onLine', { configurable: true, value: online });
+  setOnline(true);
+  const host = document.createElement('div'), root = createRoot(host);
+  const review = {
+    recipientLabel: 'recipient.receiz.id', amountUsdCents: '100',
+    quote: { amountPhiMicro: '500000', settledUsdCents: '70', ecosystemUsdCents: '30' },
+  };
+  const wallet = { warm: vi.fn(), outgoing: async () => null, review: vi.fn(async () => review),
+    confirm: vi.fn(async () => ({ qr: null, operationId: 'retained' })) };
+  const hosted = { status: async () => null, prepare: vi.fn(async () => { throw Error('Hosted transfer requested'); }) };
+  const identity = { binding: { artifactSha256: 'a'.repeat(64) }, fundedWallet: async () => wallet,
+    walletSend: async () => hosted } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveSend identity={identity} wallet={null}
+      initialRequest={{ recipient: 'recipient', amount: '1.00' }} onClose={() => {}} />));
+    await click(host, 'Review payment');
+    expect(wallet.review).toHaveBeenCalledOnce();
+    expect(hosted.prepare).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('Composite balance');
+    await act(async () => {
+      setOnline(false);
+      window.dispatchEvent(new Event('offline'));
+    });
+    await act(async () => host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+    await click(host, 'Send payment');
+    expect(wallet.confirm).toHaveBeenCalledExactlyOnceWith(review);
+    expect(hosted.prepare).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    if (prior) Object.defineProperty(navigator, 'onLine', prior);
+    else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
+test('an online payment without a matching funded recipient uses the existing hosted review', async () => {
+  const host = document.createElement('div'), root = createRoot(host);
+  const review = {
+    recipientLabel: '@recipient', amountUsdCents: '100',
+    quote: { amountPhiMicro: '500000', settledUsdCents: '100', ecosystemUsdCents: '0' },
+  };
+  const wallet = { warm: vi.fn(), outgoing: async () => null,
+    review: vi.fn(async () => { throw Error('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'); }) };
+  const hosted = { status: async () => null, prepare: vi.fn(async () => review), discard: vi.fn() };
+  const identity = { binding: { artifactSha256: 'a'.repeat(64) }, fundedWallet: async () => wallet,
+    walletSend: async () => hosted } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveSend identity={identity} wallet={null}
+      initialRequest={{ recipient: 'recipient', amount: '1.00' }} onClose={() => {}} />));
+    await click(host, 'Review payment');
+    expect(wallet.review).toHaveBeenCalledOnce();
+    expect(hosted.prepare).toHaveBeenCalledExactlyOnceWith({ recipient: 'recipient', amountUsdCents: '100', note: '' });
+    expect(host.textContent).toContain('@recipient');
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
   }
 });
 
@@ -80,5 +143,45 @@ test('regular Receive displays its held signed address on cold open offline', as
     host.remove();
     if (prior) Object.defineProperty(navigator, 'onLine', prior);
     else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
+test('the balance controls add and move back chosen amounts while leaving the rest offline', async () => {
+  const { FundedWalletBalance } = await import('../src/features/account/FundedWalletPayments');
+  const host = document.createElement('div'), root = createRoot(host);
+  let cents = 2000n;
+  const wallet = {
+    offlineBalance: async () => ({ availableUsdCents: String(cents), movingBackUsdCents: null }),
+    prepareOffline: vi.fn(async (amount: string) => { cents += BigInt(amount); }),
+    moveBack: vi.fn(async (amount: string) => { cents -= BigInt(amount); return { status: 'published' }; }),
+  };
+  const identity = { fundedWallet: async () => wallet } as unknown as OpenIdentity;
+  const refresh = vi.fn();
+  const setAmount = async (label: string, value: string) => {
+    const input = host.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={refresh}/>));
+    expect(host.textContent).toContain('$20.00');
+    await click(host, 'Set aside');
+    await setAmount('Amount to set aside', '10.00');
+    await click(host, 'Set aside funds');
+    expect(wallet.prepareOffline).toHaveBeenCalledExactlyOnceWith('1000');
+    expect(host.textContent).toContain('$30.00');
+    await click(host, 'Move back');
+    await setAmount('Amount to move back', '5.00');
+    await click(host, 'Move back funds');
+    expect(wallet.moveBack).toHaveBeenCalledExactlyOnceWith('500');
+    expect(host.textContent).toContain('$25.00');
+    expect(host.textContent).toContain('Funds moved back.');
+    expect(refresh).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
   }
 });

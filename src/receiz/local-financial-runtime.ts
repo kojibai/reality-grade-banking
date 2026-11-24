@@ -1,8 +1,9 @@
 import type {ReceizAdmissionStore,ReceizIdentityLoginProof} from '@receiz/sdk';
+import type {WalletPaymentOpening} from './wallet-payment-bundle';
 /** Transport types for the separately built, matching SDK module. These are
  * inspection data; only that module's actual private custody grants authority. */
 export type FinancialSource=Readonly<{artifactSha256:string;allocationId:string;accountUserId:string;ownerReceizId:string;sourceFamily:string}>;
-export type FinancialAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown}>|Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
+export type FinancialAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown;moveBack?:true}>|Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
 export type FinancialState=Readonly<{sequence:string;lastKaiUPulse:string;walletLedger:Readonly<Record<string,string>>;wallet:Readonly<{balancePhiMicro:string;availableUsdCents:string;settledUsdCents:string}>;positions:readonly Readonly<{marketItemId:string;shareQuantityMicro:string;costBasisUsdCents:string;costBasisPhiMicro:string}>[]}>;
 export type FinancialOperation=Readonly<{artifactSha256:string;allocationId:string;operationId:string;sequence:string;atKaiUPulse:string;action:FinancialAction;effect:Readonly<Record<string,unknown>>;nextState:FinancialState}>;
 export type FinancialCommit=Readonly<{status:'committed';publication:'pending';operation:FinancialOperation}>;
@@ -33,12 +34,15 @@ export type WalletPairingRuntime=Readonly<{
 }>;
 export type WalletRecipient = Readonly<{accountUid:string;ownerReceizId:string;conversationId:string;nearby:boolean}>;
 export type WalletDevice = Readonly<{
- keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;partialPayments?:boolean;sharedWalletCounter?:boolean;
+ keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;partialPayments?:boolean;sharedWalletCounter?:boolean;connectedPayments?:boolean;setAside?:boolean;
+ paymentOpening?:WalletPaymentOpening;
  verifyAssertion?(request:FinancialWalletCustodyChallenge,assertion:unknown):Promise<FinancialWalletCustodyAssertion>;
  recipients:readonly WalletRecipient[];
 }>;
 export type FinancialRelease=Readonly<{artifactSha256:string}>;
+export type WalletPaymentStage=Readonly<{proofBytes:number}>;
 export type FinancialExecutor=Readonly<{
+ stageWalletPayment?(input:{operationId:string;action:FinancialAction}):Promise<WalletPaymentStage>;
  execute(input:{operationId:string;action:FinancialAction}):Promise<FinancialCommit|Readonly<{status:'not-committed';operationId:string}>>;
  recoverWalletProof?(proof:Uint8Array):Promise<number|null>;
  current():Promise<{sourceArtifactSha256:string;headArtifactSha256:string|null;state:FinancialState;release?:FinancialRelease}>;
@@ -57,6 +61,7 @@ export type LocalFinancialRuntime=Readonly<{
  exportReceizAccountFinancialWalletProof(source:FinancialSource,commit:FinancialCommit):Uint8Array;
  exportReceizAccountFinancialRelease(release:FinancialRelease):Uint8Array;
  createReceizAccountFinancialExecutor(input:FinancialExecutorOptions):Promise<FinancialExecutor>;
+ commitReceizAccountFinancialWalletPaymentBatch?(stages:readonly WalletPaymentStage[]):Promise<readonly FinancialCommit[]>;
  createReceizAccountFinancialPublisher(input:{source:FinancialSource;executor:FinancialExecutor;store:ReceizAdmissionStore;originals:FinancialOriginalStore;publish(batch:FinancialPublication):Promise<unknown>;batchSize?:number}):Promise<{flush():Promise<Readonly<{status:'published'|'pending'}>>;received(operationId:string):Promise<FinancialReceivedReceipt|null>;dispose():void}>;
  projectReceizAccountFinancialAction(source:FinancialSource,state:FinancialState,action:FinancialAction,atKaiUPulse:string):{effect:Readonly<Record<string,unknown>>;next:FinancialState};
  prepareReceizScannedWalletRecipient?(source:FinancialSource,action:Extract<FinancialAction,{kind:'send'}>,atKaiUPulse:string):Promise<void>;

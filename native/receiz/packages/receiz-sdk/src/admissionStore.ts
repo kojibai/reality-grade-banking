@@ -63,6 +63,8 @@ export type ReceizAdmissionStore = Readonly<{
   readAggregate(aggregateId: string): Promise<ReceizAdmissionAggregate | null>;
   readIdempotency(idempotencyKey: string): Promise<Readonly<{ commandDigest: string; receipt: ReceizConstitutionJson }> | null>;
   commit(unit: ReceizAdmissionUnitOfWork): Promise<ReceizAdmissionCommitResult>;
+  /** All exact heads and outbox records are admitted in the same transaction. */
+  commitBatch?(units: readonly ReceizAdmissionUnitOfWork[]): Promise<readonly ReceizAdmissionCommitResult[]>;
   seedAggregate(input: ReceizAdmissionAggregateSeed): Promise<void>;
   inspect(): Promise<ReceizAdmissionStoreInspection>;
 }>;
@@ -106,46 +108,46 @@ export function createReceizInMemoryAdmissionStore(options: {
   let outboxIntents: ReceizConstitutionJson[] = [];
   let auditReferences: ReceizConstitutionJson[] = [];
 
-  return {
-    async readAggregate(aggregateId) {
-      const aggregate = aggregates.get(aggregateId);
-      return aggregate ? clone(aggregate) : null;
-    },
-    async readIdempotency(idempotencyKey) {
-      const entry = idempotency.get(idempotencyKey);
-      return entry ? clone(entry) : null;
-    },
-    async commit(unit) {
-      if (!validReceizAdmissionUnit(unit)) return { status: "rejected", code: "UNIT_OF_WORK_INVALID" };
-      unit = clone(unit);
-      if (receizAdmissionTransactionRecordCount(unit) > maxRecords) return { status: "rejected", code: "TRANSACTION_LIMIT_EXCEEDED" };
-      const duplicate = idempotency.get(unit.idempotencyKey);
-      if (duplicate) return duplicate.commandDigest === unit.commandDigest
-        ? { status: "idempotent", receipt: clone(duplicate.receipt) }
-        : { status: "conflict", code: "IDEMPOTENCY_CONFLICT" };
+  async function commitUnits(units: readonly ReceizAdmissionUnitOfWork[]): Promise<readonly ReceizAdmissionCommitResult[]> {
+    if (!units.length || units.some(unit => !validReceizAdmissionUnit(unit))
+      || new Set(units.map(unit => unit.aggregateId)).size !== units.length)
+      return [{ status: "rejected", code: "UNIT_OF_WORK_INVALID" }];
+    units = clone(units);
+    if (units.reduce((total, unit) => total + receizAdmissionTransactionRecordCount(unit), 0) > maxRecords)
+      return [{ status: "rejected", code: "TRANSACTION_LIMIT_EXCEEDED" }];
+    const results: ReceizAdmissionCommitResult[] = [];
+    const nextAggregates = new Map(aggregates);
+    const nextIdempotency = new Map(idempotency);
+    const nextAcceptedCommands = clone(acceptedCommands);
+    const nextEvents = clone(events);
+    const nextResourceLedgers = clone(resourceLedgers);
+    const nextReceipts = clone(receipts);
+    const nextOutboxIntents = clone(outboxIntents);
+    const nextAuditReferences = clone(auditReferences);
+    for (const unit of units) {
+      const duplicate = nextIdempotency.get(unit.idempotencyKey);
+      if (duplicate) {
+        if (duplicate.commandDigest !== unit.commandDigest) return [{ status: "conflict", code: "IDEMPOTENCY_CONFLICT" }];
+        if (results.some(result => result.status === "committed")) return [{ status: "conflict", code: "IDEMPOTENCY_CONFLICT" }];
+        results.push({ status: "idempotent", receipt: clone(duplicate.receipt) });
+        continue;
+      }
+      if (results.some(result => result.status === "idempotent")) return [{ status: "conflict", code: "IDEMPOTENCY_CONFLICT" }];
       for (const receiptDigest of unit.consumedPbiReceiptDigests ?? []) {
-        if (resourceLedgers.some((ledger) => ledger !== null && typeof ledger === "object" && !Array.isArray(ledger)
+        if (nextResourceLedgers.some((ledger) => ledger !== null && typeof ledger === "object" && !Array.isArray(ledger)
           && ledger.pbiReceiptDigest === receiptDigest)) {
-          return { status: "conflict", code: "PBI_RECEIPT_REPLAYED" };
+          return [{ status: "conflict", code: "PBI_RECEIPT_REPLAYED" }];
         }
       }
       for (const dependency of unit.readDependencies ?? []) {
-        if (aggregates.get(dependency.aggregateId)?.headDigest !== dependency.expectedHeadDigest) {
-          return { status: "conflict", code: "READ_DEPENDENCY_MISMATCH" };
+        if (nextAggregates.get(dependency.aggregateId)?.headDigest !== dependency.expectedHeadDigest) {
+          return [{ status: "conflict", code: "READ_DEPENDENCY_MISMATCH" }];
         }
       }
-      const current = aggregates.get(unit.aggregateId) ?? { revision: 0, headDigest: null, state: {} };
-      if (current.revision !== unit.expectedRevision) return { status: "conflict", code: "EXPECTED_REVISION_MISMATCH", expectedRevision: current.revision };
-      if (current.headDigest !== unit.expectedHeadDigest) return { status: "conflict", code: "CAUSAL_PARENT_MISMATCH", expectedHead: current.headDigest };
+      const current = nextAggregates.get(unit.aggregateId) ?? { revision: 0, headDigest: null, state: {} };
+      if (current.revision !== unit.expectedRevision) return [{ status: "conflict", code: "EXPECTED_REVISION_MISMATCH", expectedRevision: current.revision }];
+      if (current.headDigest !== unit.expectedHeadDigest) return [{ status: "conflict", code: "CAUSAL_PARENT_MISMATCH", expectedHead: current.headDigest }];
 
-      const nextAggregates = new Map(aggregates);
-      const nextIdempotency = new Map(idempotency);
-      const nextAcceptedCommands = clone(acceptedCommands);
-      const nextEvents = clone(events);
-      const nextResourceLedgers = clone(resourceLedgers);
-      const nextReceipts = clone(receipts);
-      const nextOutboxIntents = clone(outboxIntents);
-      const nextAuditReferences = clone(auditReferences);
       nextAggregates.set(unit.aggregateId, { revision: unit.nextHead.revision, headDigest: unit.nextHead.digest, state: clone(unit.nextHead.state) });
       nextIdempotency.set(unit.idempotencyKey, { commandDigest: unit.commandDigest, receipt: clone(unit.receipt) });
       nextAcceptedCommands.push(clone(unit.acceptedCommand));
@@ -157,18 +159,32 @@ export function createReceizInMemoryAdmissionStore(options: {
       nextReceipts.push(clone(unit.receipt));
       nextOutboxIntents.push(...clone(unit.outboxIntents));
       nextAuditReferences.push(clone(unit.auditReference));
-      if (options.failBeforeSwap?.(unit)) return { status: "failed", code: "ATOMIC_COMMIT_FAILED" };
+      if (options.failBeforeSwap?.(unit)) return [{ status: "failed", code: "ATOMIC_COMMIT_FAILED" }];
 
-      aggregates = nextAggregates;
-      idempotency = nextIdempotency;
-      acceptedCommands = nextAcceptedCommands;
-      events = nextEvents;
-      resourceLedgers = nextResourceLedgers;
-      receipts = nextReceipts;
-      outboxIntents = nextOutboxIntents;
-      auditReferences = nextAuditReferences;
-      return { status: "committed", receipt: clone(unit.receipt) };
+      results.push({ status: "committed", receipt: clone(unit.receipt) });
+    }
+    aggregates = nextAggregates;
+    idempotency = nextIdempotency;
+    acceptedCommands = nextAcceptedCommands;
+    events = nextEvents;
+    resourceLedgers = nextResourceLedgers;
+    receipts = nextReceipts;
+    outboxIntents = nextOutboxIntents;
+    auditReferences = nextAuditReferences;
+    return results;
+  }
+
+  return {
+    async readAggregate(aggregateId) {
+      const aggregate = aggregates.get(aggregateId);
+      return aggregate ? clone(aggregate) : null;
     },
+    async readIdempotency(idempotencyKey) {
+      const entry = idempotency.get(idempotencyKey);
+      return entry ? clone(entry) : null;
+    },
+    async commit(unit) { return (await commitUnits([unit]))[0]!; },
+    commitBatch: commitUnits,
     async seedAggregate(input) {
       validateReceizAdmissionAggregateSeed(input);
       if (aggregates.has(input.aggregateId)) {

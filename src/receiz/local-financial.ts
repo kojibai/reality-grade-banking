@@ -1,4 +1,4 @@
-import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion} from './local-financial-runtime';
+import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage} from './local-financial-runtime';
 import {loadReceiz} from './client';
 import {createOpticalNoteFrames} from './optical-note-frames';
 export type {LocalFinancialRuntime} from './local-financial-runtime';
@@ -20,7 +20,7 @@ export type LocalFinancialSessionOptions=Readonly<{
  publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
  publishSentWalletProof?(proof:Uint8Array):Promise<unknown>;
  publishPeerPayment?(input:Readonly<{walletProof:Uint8Array;receivingAllocationId:string}>):Promise<unknown>;
- assertOpen():void;online():boolean;
+ assertOpen():void;online():boolean;deferPublication?:boolean;
  /** Optional host lifecycle in place of the browser's connection events. */
  subscribeReconnect?(listener:()=>void):()=>void;
  onCommitted?(commit:FinancialCommit):void|Promise<void>;
@@ -79,6 +79,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const kai=input.kai??runtime.financialKaiNow;
  const device=input.bindWalletDevice&&runtime.bankFinancialWalletDevice?.(source);
  const partialPayments=!!(device&&device.partialPayments);
+ const publishExactPayments=!!(device&&(device.connectedPayments||device.setAside));
  let assertWalletCustody=input.assertWalletCustody;
  if(input.bindWalletDevice){
   if(!device||!runtime.assertBankFinancialWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
@@ -91,12 +92,12 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   });
  }
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
- const publisher=incoming?null:await runtime.createReceizAccountFinancialPublisher({
+ const publisher=incoming&&!publishExactPayments?null:await runtime.createReceizAccountFinancialPublisher({
   source,executor,store,originals:input.originals,...(protectedWallet?{batchSize:1}:{}),
   async publish(batch){
    input.assertOpen();
    if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');
-   if(protectedWallet){
+   if(protectedWallet&&!publishExactPayments){
     const operation=await executor.resolve(batch.originals[0]!.operationId);
     input.assertOpen();
     if(!operation)throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
@@ -141,6 +142,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    }
    const {release,state}=await executor.current();
    open();
+   if(publisher&&(!peerSynced||(await publisher.flush()).status!=='published'))return {status:'pending'};
    if(!release)return {status:peerSynced?'published':'pending'};
    // Moving balance out of device custody still requires its signed handback.
    if(!deliverPeer||(!partialPayments&&state.sequence!=='0')||!input.online())return {status:'pending'};
@@ -157,11 +159,11 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   }catch{return {status:'pending'};}
  }
  async function flushOwner(){
-  const result=partialPayments?{status:'published' as const}:await publisher!.flush();
+  const result=partialPayments&&!publishExactPayments?{status:'published' as const}:await publisher!.flush();
   if(result.status!=='published'||ownerPublished)return result;
-  if(!input.publishOwnerRelease||!input.online())return partialPayments?{status:'pending' as const}:result;
+  if(!input.publishOwnerRelease||!input.online())return partialPayments&&!publishExactPayments?{status:'pending' as const}:result;
   try{
-   const {release,state}=await executor.current();open();if(!release)return partialPayments?{status:'pending' as const}:result;
+   const {release,state}=await executor.current();open();if(!release)return partialPayments&&!publishExactPayments?{status:'pending' as const}:result;
    const ack=await input.publishOwnerRelease({allocationId:source.allocationId,original:runtime.exportReceizAccountFinancialRelease(release),
     ...await releaseContinuity(state.sequence)}) as {status?:string;artifactSha256?:string};
    if(ack?.status!=='released'||ack.artifactSha256!==release.artifactSha256)return {status:'pending' as const};
@@ -171,7 +173,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  function flushPublication(){
   if(publication)return publication;
   scheduled=false;
-  publication=(publisher?flushOwner():flushPeer()).finally(()=>{
+  publication=(incoming?flushPeer():flushOwner()).finally(()=>{
    publication=undefined;
    runScheduledPublication();
   });
@@ -210,8 +212,14 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   if(!canPublish||closed||scheduled||!input.online())return;
   scheduled=true;queueMicrotask(runScheduledPublication);
  }
- const unsubscribe=canPublish||syncSent?(input.subscribeReconnect??subscribeBrowserReconnect)(nudge):undefined;
- nudge();
+ let unsubscribe:(()=>void)|undefined, publicationStarted=false;
+ function startPublication(){
+  if(publicationStarted||closed)return;
+  publicationStarted=true;
+  if(canPublish||syncSent)unsubscribe=(input.subscribeReconnect??subscribeBrowserReconnect)(nudge);
+  nudge();
+ }
+ if(!input.deferPublication)startPublication();
  return Object.freeze({
   async preview(action:FinancialAction){
    open();const current=await executor.current(),at=kai();open();
@@ -246,6 +254,21 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
   resolve(operationId:string){open();return executor.resolve(operationId);},
   async received(operationId:string){open();const proof=await publisher?.received(operationId);open();return proof??null;},
+  async stageWalletPayment(request:Parameters<typeof executor.execute>[0]){
+   open();
+   if(!executor.stageWalletPayment||!runtime.commitReceizAccountFinancialWalletPaymentBatch)throw Error('BANK_WALLET_BATCH_UNAVAILABLE');
+   return executor.stageWalletPayment(request);
+  },
+  async commitWalletPaymentBatch(stages:readonly WalletPaymentStage[]){
+   open();
+   if(!runtime.commitReceizAccountFinancialWalletPaymentBatch)throw Error('BANK_WALLET_BATCH_UNAVAILABLE');
+   return runtime.commitReceizAccountFinancialWalletPaymentBatch(stages);
+  },
+  refreshPublication(){open();nudge();},
+  async walletPaymentBytes(operationId:string){
+   open();const commit=await executor.resolve(operationId);open();
+   return commit?runtime.exportReceizAccountFinancialWalletProof(source,commit):null;
+  },
   async walletQr(operationId:string){
    open();const commit=await executor.resolve(operationId);open();
    return commit?createOpticalNoteFrames('wallet',runtime.exportReceizAccountFinancialWalletProof(source,commit)):null;
@@ -256,6 +279,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    nudge();
    return original;
   },
+  startPublication,
   flush(){open();return flushPublication();},
   dispose(){if(closed)return;closed=true;unsubscribe?.();publisher?.dispose();},
  });

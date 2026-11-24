@@ -1,7 +1,7 @@
 const marker = 0x424f4e31;
 const headerBytes = 59;
 const partBytes = 792;
-const maxBytes = 8 * 1024 * 1024;
+export const opticalNotePayloadLimit = 8 * 1024 * 1024;
 const sessionBytes = 16;
 const kindCode = { request: 1, payment: 2, wallet: 3 } as const;
 type Kind = keyof typeof kindCode;
@@ -14,7 +14,7 @@ export function isOpticalNoteFrame(bytes: Uint8Array) {
 }
 
 export async function createOpticalNoteFrames(kind: Kind, bytes: Uint8Array, receiver?: Uint8Array) {
-  if (!bytes.length || bytes.length > maxBytes) throw Error('BANK_OPTICAL_FRAME_INVALID');
+  if (!bytes.length || bytes.length > opticalNotePayloadLimit) throw Error('BANK_OPTICAL_FRAME_INVALID');
   if (kind === 'payment' && receiver?.length !== sessionBytes) throw Error('BANK_OPTICAL_FRAME_MISMATCH');
   const exact = bytes.slice(), hash = await digest(exact);
   const session = kind === 'payment' ? receiver!.slice() : hash.slice(0, sessionBytes);
@@ -45,7 +45,7 @@ export function readOpticalNoteFrames(kind: Kind, receiver?: Uint8Array) {
       const header = new DataView(frame.buffer, frame.byteOffset, frame.byteLength);
       const length = header.getUint32(5), index = header.getUint16(9), offset = index * partBytes;
       const session = frame.subarray(11, 27), hash = frame.subarray(27, headerBytes), part = frame.subarray(headerBytes);
-      if (!length || length > maxBytes || offset >= length || part.length !== Math.min(partBytes, length - offset)) throw Error('BANK_OPTICAL_FRAME_INVALID');
+      if (!length || length > opticalNotePayloadLimit || offset >= length || part.length !== Math.min(partBytes, length - offset)) throw Error('BANK_OPTICAL_FRAME_INVALID');
       if (header.getUint8(4) !== kindCode[kind] || expected && !equal(session, expected) || kind !== 'payment' && !equal(session, hash.subarray(0, sessionBytes))) throw Error('BANK_OPTICAL_FRAME_MISMATCH');
       const transfer = current ??= { bytes: new Uint8Array(length), covered: new Set(), session: session.slice(), hash: hash.slice(), count: Math.ceil(length / partBytes) };
       if (length !== transfer.bytes.length || !equal(hash, transfer.hash) || !equal(session, transfer.session)) throw Error('BANK_OPTICAL_FRAME_MISMATCH');

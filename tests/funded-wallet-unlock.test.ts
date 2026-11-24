@@ -147,3 +147,160 @@ test('a stale payment draft leaves a different verified Wallet source usable aft
     expect(outside).not.toHaveBeenCalled();
   }finally{current.dispose();}
 });
+
+test('an online Wallet open retains the full-balance Source once and recovers it offline', async () => {
+  const fixture = await createLocalFinancialFixtureFactory();
+  const { options } = await fixture();
+  let online = true, checkpoint: unknown = null;
+  const retained = new Map<string, Uint8Array>();
+  const findSource = vi.fn(async () => null);
+  const prepareFullBalance = vi.fn(async () => options.sourceBytes);
+  const setupReceiving = vi.fn(async () => {});
+  const reopen = async (digest: string) => {
+    const bytes = retained.get(digest);
+    if (!bytes) throw Error('Missing Wallet Original');
+    return bytes.slice();
+  };
+  const open = () => createFundedWallet({
+    ...options, ownerKeyId: 'a'.repeat(64), lock: work => work(), online: () => online,
+    read: async () => checkpoint,
+    async save(next, previous) { expect(previous).toBe(checkpoint); checkpoint = next; },
+    async retain(bytes) { const digest = 'ac'.repeat(32); retained.set(digest, bytes.slice()); return digest; },
+    reopen, findSource, setupReceiving, prepareFullBalance,
+    publish: (_allocationId, batch) => options.publish(batch),
+    publishPeerRelease: async () => { throw Error('Unexpected peer release'); },
+  });
+  const wallet = open();
+  await Promise.all([wallet.warm(), wallet.warm()]);
+  expect(prepareFullBalance).toHaveBeenCalledOnce();
+  expect(await wallet.availableFunding()).toBeDefined();
+  wallet.dispose();
+  online = false;
+  const cold = open();
+  try {
+    await cold.warm();
+    expect(await cold.availableFunding()).toBeDefined();
+    expect(prepareFullBalance).toHaveBeenCalledOnce();
+    expect(findSource).toHaveBeenCalledOnce();
+  } finally {
+    cold.dispose();
+  }
+});
+
+test('move back splits across allocations and retries only unpublished Originals after a cold reopen', async () => {
+  const { options, runtime } = await (await createLocalFinancialFixtureFactory())();
+  const original = await runtime.admitReceizAccountFinancialSource(options.sourceBytes);
+  const sources = [
+    { ...original, allocationId: 'a1'.repeat(32), artifactSha256: 'a2'.repeat(32) },
+    { ...original, allocationId: 'b1'.repeat(32), artifactSha256: 'b2'.repeat(32) },
+  ];
+  const remaining = new Map([[sources[0].allocationId, 2000n], [sources[1].allocationId, 1000n]]);
+  const retained = new Map<string, { status: 'committed' }>();
+  const credits = new Set<string>();
+  let connected = true, writerAvailable = false;
+  const commit = vi.fn();
+  const fixtureRuntime = {
+    ...runtime,
+    async admitReceizAccountFinancialSource(bytes: Uint8Array) { return sources[bytes[0]]; },
+    financialSourceApplicationId: () => options.applicationId,
+    bankFinancialWalletDevice: () => ({ keyId:'key', signerPublicKey:'signer', origin:'https://bank.test', rpId:'bank.test',
+      credentialIdB64u:'fixture', received:false, setAside:true, partialPayments:true, recipients:[] }),
+    assertBankFinancialWalletDevice: async () => { throw Error('Unexpected direct device call'); },
+    async createReceizAccountFinancialExecutor({ source }: import('../src/receiz/local-financial-runtime').FinancialExecutorOptions) {
+      return {
+        async current() { return { state: { wallet: { availableUsdCents: String(remaining.get(source.allocationId)) } } }; },
+        async resolve(id: string) { return retained.get(id) ?? null; },
+        async execute({operationId,action}: {operationId:string;action:import('../src/receiz/local-financial-runtime').FinancialAction}) {
+          expect(action).toMatchObject({ kind:'send', moveBack:true, recipientUserId:options.accountUid });
+          const cents=BigInt(action.amountUsdCents!);
+          remaining.set(source.allocationId,remaining.get(source.allocationId)!-cents);
+          commit(source.allocationId, cents);
+          const result = { status:'committed' as const };
+          retained.set(operationId,result);
+          return result;
+        },
+      };
+    },
+    async createReceizAccountFinancialPublisher({source}: {source:typeof original}){
+      return {
+        dispose(){},
+        async flush(){
+          if(!writerAvailable)return { status:'pending' };
+          credits.add(source.allocationId);
+          return { status:'published' };
+        },
+      };
+    },
+  } as unknown as typeof runtime;
+  let checkpoint: unknown = { entries:sources.map(source => ({
+    kind:'source', digest:source.artifactSha256, allocationId:source.allocationId,
+  })), send:null };
+  const open = () => createFundedWallet({
+    ...options, runtime:fixtureRuntime, ownerKeyId:'a'.repeat(64), online:()=>connected,
+    lock:work=>work(), read:async()=>checkpoint,
+    async save(next,previous){expect(previous).toBe(checkpoint);checkpoint=next;},
+    reopen:async digest=>Uint8Array.of(sources.findIndex(source=>source.artifactSha256===digest)),
+    bindWalletDevice:()=>async()=>{throw Error('Unexpected device call');},
+    async retain(){throw Error('Unexpected new Original');},
+    async findSource(){return null;},
+    async publish(){throw Error('Publisher fixture operates in process');},
+    async publishPeerRelease(){throw Error('Unexpected peer release');},
+  });
+  const wallet = open();
+  expect(await wallet.offlineBalance()).toEqual({ availableUsdCents:'3000', movingBackUsdCents:null });
+  await expect(wallet.moveBack('3001')).rejects.toThrow('BANK_WALLET_MOVE_BACK_AMOUNT');
+  expect(await wallet.moveBack('1500')).toEqual({ status:'pending' });
+  expect(commit.mock.calls).toEqual([[sources[1].allocationId,1000n],[sources[0].allocationId,500n]]);
+  wallet.dispose();
+  connected = false;
+  const cold = open();
+  try {
+    expect(await cold.offlineBalance()).toEqual({ availableUsdCents:'1500', movingBackUsdCents:'1500' });
+    await expect(cold.moveBack('1500')).rejects.toThrow('BANK_LOCAL_FINANCIAL_OFFLINE');
+    connected = writerAvailable = true;
+    expect(await cold.moveBack('1500')).toEqual({ status:'published' });
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(credits.size).toBe(2);
+    expect(await cold.offlineBalance()).toEqual({ availableUsdCents:'1500', movingBackUsdCents:null });
+  } finally { cold.dispose(); }
+});
+
+test('one nearby offer covers the exact amount across two verified top-ups', async () => {
+  const { options, runtime } = await (await createLocalFinancialFixtureFactory())();
+  const original = await runtime.admitReceizAccountFinancialSource(options.sourceBytes);
+  const sources = [
+    { ...original, allocationId:'a1'.repeat(32), artifactSha256:'a2'.repeat(32), cents:'2000' },
+    { ...original, allocationId:'b1'.repeat(32), artifactSha256:'b2'.repeat(32), cents:'1000' },
+  ];
+  const fixtureRuntime = {
+    ...runtime,
+    async admitReceizAccountFinancialSource(bytes: Uint8Array){return sources[bytes[0]];},
+    financialSourceApplicationId:()=>options.applicationId,
+    bankFinancialWalletDevice:()=>({
+      keyId:'key',signerPublicKey:'signer',origin:'https://bank.test',rpId:'bank.test',credentialIdB64u:'fixture',
+      received:false,scanTime:true,partialPayments:true,sharedWalletCounter:true,setAside:true,recipients:[],
+    }),
+    assertBankFinancialWalletDevice:async()=>{throw Error('unexpected device call');},
+    async createReceizAccountFinancialExecutor({source}:import('../src/receiz/local-financial-runtime').FinancialExecutorOptions){
+      return {async current(){return {headArtifactSha256:source.artifactSha256,state:{sequence:'0',wallet:{availableUsdCents:(source as typeof sources[number]).cents}}};}};
+    },
+    async createReceizAccountFinancialPublisher(){return {dispose(){}};},
+  } as unknown as typeof runtime;
+  const wallet=createFundedWallet({...options,runtime:fixtureRuntime,ownerKeyId:'a'.repeat(64),online:()=>false,lock:work=>work(),
+    read:async()=>({entries:sources.map(source=>({kind:'source',digest:source.artifactSha256,allocationId:source.allocationId})),send:null}),
+    reopen:async digest=>Uint8Array.of(sources.findIndex(source=>source.artifactSha256===digest)),
+    bindWalletDevice:()=>async()=>{throw Error('unexpected device call');},
+    async save(){throw Error('unexpected checkpoint write');},
+    async retain(){throw Error('unexpected new Original');},
+    async findSource(){throw Error('unexpected network read');},
+    async publish(){throw Error('unexpected publication');},
+    async publishPeerRelease(){throw Error('unexpected peer release');},
+  });
+  try{
+    expect(await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3001'})).toBeNull();
+    expect(await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3000'})).toMatchObject({
+      schema:'bankeiz.wallet.offer.v2',amountUsdCents:'3000',
+      parts:[{allocationId:sources[1].allocationId,amountUsdCents:'1000'},{allocationId:sources[0].allocationId,amountUsdCents:'2000'}],
+    });
+  }finally{wallet.dispose();}
+});

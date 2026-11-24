@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {ArrowLeft,ArrowRight,Check,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {WalletSend,WalletSendOutcome,WalletSendReview} from '../../receiz/wallet-send';
+import type {FundedWalletReview} from '../../receiz/funded-wallet';
 import {bankOperationError,bankOperationFailureDetails} from '../../receiz/bank-operations';
 import {BANK_WALLET_SEND_CONSENT} from '../../receiz/config';
 import {identityRecordCopy} from '../../content/identity-record-copy.mjs';
@@ -29,7 +30,11 @@ export function WalletSendRecovery({identity,onRefresh=()=>{},pendingActions=tru
  </details>;
 }
 
-export function WalletSendOperation({identity,input,inputKey,onRefresh,children,secondaryAction}:{identity?:OpenIdentity;input():{recipient:string;amountUsdCents:string;note?:string};inputKey:string;onRefresh():void;children:ReactNode;secondaryAction?:ReactNode}){
+type SendFields={recipient:string;amountUsdCents:string;note?:string};
+
+export function WalletSendOperation({identity,input,inputKey,onRefresh,children,secondaryAction,fundedReview}:{identity?:OpenIdentity;input():SendFields;inputKey:string;onRefresh():void;children:ReactNode;secondaryAction?:ReactNode;
+ fundedReview?:{prepare(value:SendFields):Promise<FundedWalletReview|null>;show(review:FundedWalletReview):void};
+}){
  const [review,setReview]=useState<WalletSendReview|null>(null),[outcome,setOutcome]=useState<WalletSendOutcome|null>(null),[approved,setApproved]=useState(false),[busy,setBusy]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState('');
  const [failure,setFailure]=useState<ReturnType<typeof bankOperationFailureDetails>|null>(null),api=useRef<WalletSend|null>(null),held=useRef<WalletSendReview|null>(null),running=useRef(false),generation=useRef(0);
  useEffect(()=>{const ticket=++generation.current;running.current=false;setReady(false);setBusy(false);setReview(null);setOutcome(null);setApproved(false);setError('');setFailure(null);
@@ -39,7 +44,18 @@ export function WalletSendOperation({identity,input,inputKey,onRefresh,children,
  },[identity,inputKey]);
  const report=(cause:unknown)=>{setError(bankOperationError(cause));setFailure(bankOperationFailureDetails(cause));};
  async function prepare(){if(running.current||!ready)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');setFailure(null);
-  try{if(!api.current)throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');const next=await api.current.prepare(input());if(ticket!==generation.current){api.current?.discard(next);return;}held.current=next;setReview(next);setApproved(false);}
+  try{
+   const value=input();
+   if(fundedReview){
+    const funded=await fundedReview.prepare(value);
+    if(ticket!==generation.current)return;
+    if(funded){fundedReview.show(funded);return;}
+   }
+   if(!api.current)throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+   const next=await api.current.prepare(value);
+   if(ticket!==generation.current){api.current?.discard(next);return;}
+   held.current=next;setReview(next);setApproved(false);
+  }
   catch(cause){if(ticket===generation.current)report(cause);}finally{if(ticket===generation.current){running.current=false;setBusy(false);}}
  }
  async function send(){if(running.current||!approved||!review||!api.current)return;const ticket=generation.current;running.current=true;setBusy(true);setError('');setFailure(null);

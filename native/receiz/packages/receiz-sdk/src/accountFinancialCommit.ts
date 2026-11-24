@@ -4,9 +4,9 @@ import {sha256ReceizBytes}from './artifacts.js';
 import {receizBase64UrlDecode as dec,receizBase64UrlEncode as enc,verifyReceizIdentityPublicKeyProjectionSignature,type ReceizIdentityLoginProof}from './identity.js';
 import {canonicalizeReceizV122 as canonical,digestReceizCanonicalV122 as digest}from './v122Canonical.js';
 import {receizKaiNow}from './v124Kai.js';
-import type{ReceizAdmissionStore,ReceizAdmissionAggregate}from './admissionStore.js';
+import type{ReceizAdmissionStore,ReceizAdmissionAggregate,ReceizAdmissionUnitOfWork}from './admissionStore.js';
 import type{ReceizConstitutionJson}from './constitution.js';
-import {assertReceizAccountFinancialWalletProofCapacity,prepareReceizScannedWalletRecipient,readReceizAccountFinancialSourceCustody,walletRecoveryOriginals,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {assertReceizAccountFinancialWalletProofCapacity,measureReceizAccountFinancialWalletProof,prepareReceizScannedWalletRecipient,readReceizAccountFinancialSourceCustody,walletRecoveryOriginals,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {projectReceizAccountFinancialAction,type ReceizAccountFinancialState,type ReceizAccountSendAction,type ReceizAccountMarketAction}from './accountFinancialExecution.js';
 import {admitReceizAccountMarketOrderRequest,exportReceizAccountMarketOrderRequest,type ReceizVerifiedAccountMarketOrderRequest}from './accountMarketOrder.js';
 import {projectReceizAccountMarketOrderFunding}from './accountMarketOrderFunding.js';
@@ -158,6 +158,40 @@ type ExecutorOptions=Readonly<{originals:ReceizAccountFinancialOriginalStore;sou
  readWalletCounterEvents?(request:Readonly<{credentialIdB64u:string;lastSignCount:string}>):
   Promise<readonly ReceizFinancialWalletCounterEvent[]>|readonly ReceizFinancialWalletCounterEvent[];
  /** Trusted host/test clock; never a payment request field. */kai?:()=>string}>;
+export type ReceizStagedWalletPayment=Readonly<{proofBytes:number}>;
+const walletPaymentStages=new WeakMap<ReceizStagedWalletPayment,Readonly<{
+ store:ReceizAdmissionStore;
+ operation:ReceizVerifiedAccountFinancialOperation;
+ unit:ReceizAdmissionUnitOfWork|null;
+ resolve():Promise<ReceizAccountFinancialCommit|null>;
+}>>();
+
+/** Commit the exact staged Wallet Originals and their outbox entries together. */
+export async function commitReceizAccountFinancialWalletPaymentBatch(stages:readonly ReceizStagedWalletPayment[]){
+ if(!Array.isArray(stages)||stages.length<2)fail('WALLET_BATCH');
+ const held=stages.map(stage=>{
+  const entry=walletPaymentStages.get(stage);if(!entry)fail('WALLET_BATCH');return entry;
+ });
+ const first=held[0]!,store=first.store,effect=first.operation.effect;
+ if(effect.kind!=='send'||!store.commitBatch||new Set(held.map(entry=>entry.operation.allocationId)).size!==held.length
+  ||held.some(({store:memberStore,operation:{action,effect:member}})=>memberStore!==store||action.kind!=='send'||action.nearby!==true
+   ||member.kind!=='send'||member.senderUserId!==effect.senderUserId||member.recipientUserId!==effect.recipientUserId
+   ||member.conversationId!==effect.conversationId))fail('WALLET_BATCH');
+ const pending=held.flatMap(entry=>entry.unit?[entry.unit]:[]);
+ if(pending.length&&pending.length!==held.length)fail('WALLET_BATCH_INCONSISTENT');
+ let result;
+ if(pending.length){
+  try{result=await store.commitBatch(pending);}catch{/* Resolve the exact outcome after an ambiguous acknowledgement. */}
+ }
+ const accepted=await Promise.all(held.map(entry=>entry.resolve()));
+ if(accepted.every((entry,index)=>entry?.operation.artifactSha256===held[index]!.operation.artifactSha256))
+  return accepted as ReceizAccountFinancialCommit[];
+ if(accepted.some(Boolean))fail('WALLET_BATCH_INCONSISTENT');
+ const refusal=result?.[0];
+ if(refusal&&(refusal.status==='conflict'||refusal.status==='rejected'))fail(refusal.code);
+ fail('WALLET_BATCH_PENDING');
+}
+
 /** Normal admitted Identity signing + the existing SDK record signer. No
  * enrollment, network, PBI, or hardware ceremony occurs in this path. */
 export async function createReceizAccountFinancialExecutor(options:ExecutorOptions){
@@ -327,6 +361,10 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
   },parent,action.kind==='send'&&action.nearby?precedingOperationOriginals(parent):[]);
   const candidate=await admitReceizAccountFinancialOperation(utf8.encode(canonical(body)),{source,predecessor:parent});same(requireOperation(candidate).body,body);return candidate;
  }
+ function operationUnit(op:ReceizVerifiedAccountFinancialOperation,current:Awaited<ReturnType<typeof head>>):ReceizAdmissionUnitOfWork{
+  const c=requireOperation(op);
+  return {schema:'receiz.admission.unit-of-work.v1',aggregateId:headId,commandDigest:c.commandDigest,idempotencyKey:idem(op.operationId),expectedRevision:current.row.revision,expectedHeadDigest:op.predecessorArtifactSha256,readDependencies:[{aggregateId:stageId(op.operationId),expectedHeadDigest:op.artifactSha256}],acceptedCommand:json({operationId:op.operationId,requestDigest:op.requestDigest,originalReference:stageId(op.operationId),artifactSha256:op.artifactSha256}),events:[json(receipt(op))],nextHead:{revision:Number(op.sequence),digest:op.artifactSha256,state:json({operationId:op.operationId})},resourceEffects:{},receipt:json(receipt(op)),outboxIntents:[json({kind:'account-financial-original',allocationId:source.allocationId,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,predecessorOperationId:op.predecessorOperationId})],auditReference:json({sourceArtifactSha256:source.artifactSha256,atKaiUPulse:op.atKaiUPulse})};
+ }
  async function commitOperation(op:ReceizVerifiedAccountFinancialOperation,current:Awaited<ReturnType<typeof head>>){
    if(current.release)fail('SOURCE_RELEASED');
    if(current.row.headDigest!==op.predecessorArtifactSha256){
@@ -337,26 +375,83 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
    // Actual committed originals recover forever. A never-accepted candidate
    // must still be eligible after asynchronous preparation/head reads finish.
    const now=BigInt(clock()),program=object(custody.body.program);if(now<BigInt(op.atKaiUPulse)||!custody.walletCustody&&(now>BigInt(text(program.expiresAtKaiUPulse))||now/1000000n>BigInt(op.atKaiUPulse)/1000000n+1n))return{status:'not-committed'as const,operationId:op.operationId};
-   const c=requireOperation(op);let result:Awaited<ReturnType<ReceizAdmissionStore['commit']>>|undefined;
-   try{result=await store.commit({schema:'receiz.admission.unit-of-work.v1',aggregateId:headId,commandDigest:c.commandDigest,idempotencyKey:idem(op.operationId),expectedRevision:current.row.revision,expectedHeadDigest:op.predecessorArtifactSha256,readDependencies:[{aggregateId:stageId(op.operationId),expectedHeadDigest:op.artifactSha256}],acceptedCommand:json({operationId:op.operationId,requestDigest:op.requestDigest,originalReference:stageId(op.operationId),artifactSha256:op.artifactSha256}),events:[json(receipt(op))],nextHead:{revision:Number(op.sequence),digest:op.artifactSha256,state:json({operationId:op.operationId})},resourceEffects:{},receipt:json(receipt(op)),outboxIntents:[json({kind:'account-financial-original',allocationId:source.allocationId,operationId:op.operationId,artifactSha256:op.artifactSha256,sequence:op.sequence,predecessorOperationId:op.predecessorOperationId})],auditReference:json({sourceArtifactSha256:source.artifactSha256,atKaiUPulse:op.atKaiUPulse})});}catch{/* Reopen actual retained acceptance after acknowledgement loss. */}
+   let result:Awaited<ReturnType<ReceizAdmissionStore['commit']>>|undefined;
+   try{result=await store.commit(operationUnit(op,current));}catch{/* Reopen actual retained acceptance after acknowledgement loss. */}
    const accepted=await recorded(op.operationId);if(accepted)return accepted;
    if(result?.status==='conflict')fail(result.code);return{status:'not-committed'as const,operationId:op.operationId};
  }
- const execute=async(input:Readonly<{operationId:string;action:ReceizAccountFinancialAction}>)=>{exact(input,['operationId','action']);const request={operationId:text(input.operationId),action:actionSnapshot(input.action),atKaiUPulse:input.action.kind==='reserve-market-order'?text(object(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(b64(input.action.requestOriginalB64u)))).orderKaiUPulse):clock()};if(!UUID.test(request.operationId))fail('OPERATION_ID');return serial(async()=>{
-   const action=request.action,wanted=await requestDigest(source,request.operationId,action),prior=await recorded(request.operationId);if(prior){if(prior.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return prior;}
-   let current=await head();if(current.release){const raced=await recorded(request.operationId,current);if(raced){if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return raced;}fail('SOURCE_RELEASED');}let saved=await stage(request.operationId),op:ReceizVerifiedAccountFinancialOperation;
-   if(saved){op=await open(request.operationId);if(op.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');}
-   else{op=await build(request.operationId,action,current.operation,current.state,request.atKaiUPulse);const c=requireOperation(op);await retainExact(op.artifactSha256,c.bytes);await seed(stageId(request.operationId),op.artifactSha256,{requestDigest:wanted});memo.set(op.artifactSha256,op);saved=await stage(request.operationId);if(!saved)fail('RETAINED_ORIGINAL_REQUIRED');if(saved.row.headDigest!==op.artifactSha256){op=await open(request.operationId);if(op.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');}}
-   current=await head();if(current.release){const raced=await recorded(request.operationId,current);if(raced){if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return raced;}fail('SOURCE_RELEASED');}
-   // A competing tab may have accepted the same review while signatures were
-   // being prepared. Return its first receipt, never execute a second act.
-   if(current.row.headDigest!==op.predecessorArtifactSha256){
-    const raced=await recorded(op.operationId,current);if(raced){if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');return raced;}
+ type OperationRequest=Readonly<{operationId:string;action:ReceizAccountFinancialAction}>;
+ function operationRequest(input:OperationRequest){
+  exact(input,['operationId','action']);
+  const request={operationId:text(input.operationId),action:actionSnapshot(input.action),
+   atKaiUPulse:input.action.kind==='reserve-market-order'?text(object(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(b64(input.action.requestOriginalB64u)))).orderKaiUPulse):clock()};
+  if(!UUID.test(request.operationId))fail('OPERATION_ID');
+  return request;
+ }
+ async function prepareOperation(request:ReturnType<typeof operationRequest>){
+  const action=request.action,wanted=await requestDigest(source,request.operationId,action),prior=await recorded(request.operationId);
+  if(prior){
+   if(prior.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');
+   return {accepted:prior,operation:prior.operation} as const;
+  }
+  let current=await head();
+  if(current.release){
+   const raced=await recorded(request.operationId,current);
+   if(raced){
+    if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');
+    return {accepted:raced,operation:raced.operation} as const;
    }
-   return commitOperation(op,current);
-  });};
+   fail('SOURCE_RELEASED');
+  }
+  const saved=await stage(request.operationId);
+  let operation:ReceizVerifiedAccountFinancialOperation;
+  if(saved){
+   operation=await open(request.operationId);
+   if(operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');
+  }else{
+   operation=await build(request.operationId,action,current.operation,current.state,request.atKaiUPulse);
+   await retainExact(operation.artifactSha256,requireOperation(operation).bytes);
+   const staged=await seed(stageId(request.operationId),operation.artifactSha256,{requestDigest:wanted});
+   memo.set(operation.artifactSha256,operation);
+   if(staged.headDigest!==operation.artifactSha256){
+    operation=await open(request.operationId);
+    if(operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');
+   }
+  }
+  current=await head();
+  if(current.release||current.row.headDigest!==operation.predecessorArtifactSha256){
+   const raced=await recorded(operation.operationId,current);
+   if(raced){
+    if(raced.operation.requestDigest!==wanted)fail('IDEMPOTENCY_CONFLICT');
+    return {accepted:raced,operation:raced.operation} as const;
+   }
+   if(current.release)fail('SOURCE_RELEASED');
+  }
+  return {operation,current} as const;
+ }
+ const execute=async(input:OperationRequest)=>{
+  const request=operationRequest(input);
+  return serial(async()=>{
+   const prepared=await prepareOperation(request);
+   return prepared.accepted??commitOperation(prepared.operation,prepared.current!);
+  });
+ };
  return Object.freeze({
   execute,
+  async stageWalletPayment(input:OperationRequest){
+   const request=operationRequest(input);
+   if(!custody.walletCustody||!custody.sharedWalletCounter||!store.commitBatch||request.action.kind!=='send'||request.action.nearby!==true)
+    fail('WALLET_BATCH');
+   return serial(async()=>{
+    const {accepted,operation,current}=await prepareOperation(request);
+    if(!accepted&&(current?.row.headDigest!==operation.predecessorArtifactSha256||BigInt(clock())<BigInt(operation.atKaiUPulse)))
+     fail('CAUSAL_PARENT_CONFLICT');
+    const staged=Object.freeze({proofBytes:measureReceizAccountFinancialWalletProof(source,operation)});
+    walletPaymentStages.set(staged,{store,operation,unit:accepted?null:operationUnit(operation,current!),
+     resolve:()=>serial(()=>recorded(operation.operationId))});
+    return staged;
+   });
+  },
   recoverWalletProof(input:Uint8Array){
    const proof=input.slice();
    return serial(async()=>{

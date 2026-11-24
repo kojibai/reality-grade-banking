@@ -214,63 +214,48 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
     return cached;
   };
 
-  const store: ReceizAdmissionStore = {
-    async readAggregate(aggregateId) {
+  async function commitUnits(units: readonly ReceizAdmissionUnitOfWork[]): Promise<readonly ReceizAdmissionCommitResult[]> {
+    const invalid = (unit: ReceizAdmissionUnitOfWork) => !isReceizAdmissionPersistenceValueSafe(unit) || !validReceizAdmissionUnit(unit);
+    if (!Array.isArray(units) || units.some(invalid)) return [{ status: "rejected", code: "UNIT_OF_WORK_INVALID" }];
+    try { units = clone(units); } catch { return [{ status: "rejected", code: "UNIT_OF_WORK_INVALID" }]; }
+    if (!units.length || units.some(invalid)
+      || new Set(units.map(unit => unit.aggregateId)).size !== units.length)
+      return [{ status: "rejected", code: "UNIT_OF_WORK_INVALID" }];
+    if (units.reduce((total, unit) => total + receizAdmissionTransactionRecordCount(unit), 0) > maxRecords)
+      return [{ status: "rejected", code: "TRANSACTION_LIMIT_EXCEEDED" }];
+    const failed: ReceizAdmissionCommitResult = { status: "failed", code: "ATOMIC_COMMIT_FAILED" };
+    try {
       const database = await openDatabase();
-      const record = await completedRead(
-        database,
-        STORES.aggregates,
-        (transaction) => transaction.objectStore(STORES.aggregates).get([namespace, aggregateId]),
-      ) as AggregateRecord | undefined;
-      return record
-        ? clone({ revision: record.revision, headDigest: record.headDigest, state: record.state })
-        : null;
-    },
-
-    async readIdempotency(idempotencyKey) {
-      const database = await openDatabase();
-      const record = await completedRead(
-        database,
-        STORES.idempotency,
-        (transaction) => transaction.objectStore(STORES.idempotency).get([namespace, idempotencyKey]),
-      ) as IdempotencyRecord | undefined;
-      return record ? clone({ commandDigest: record.commandDigest, receipt: record.receipt }) : null;
-    },
-
-    commit(unit) {
-      if (!isReceizAdmissionPersistenceValueSafe(unit) || !validReceizAdmissionUnit(unit)) {
-        return Promise.resolve({ status: "rejected", code: "UNIT_OF_WORK_INVALID" });
-      }
-      try {
-        unit = clone(unit);
-      } catch {
-        return Promise.resolve({ status: "rejected", code: "UNIT_OF_WORK_INVALID" });
-      }
-      if (!isReceizAdmissionPersistenceValueSafe(unit) || !validReceizAdmissionUnit(unit)) {
-        return Promise.resolve({ status: "rejected", code: "UNIT_OF_WORK_INVALID" });
-      }
-      if (receizAdmissionTransactionRecordCount(unit) > maxRecords) {
-        return Promise.resolve({ status: "rejected", code: "TRANSACTION_LIMIT_EXCEEDED" });
-      }
-      return openDatabase().then((database) => new Promise<ReceizAdmissionCommitResult>((resolve) => {
-        let result: ReceizAdmissionCommitResult = { status: "failed", code: "ATOMIC_COMMIT_FAILED" };
-        let settled = false;
-        let transaction: IDBTransaction;
-        const finish = (value: ReceizAdmissionCommitResult): void => {
-          if (settled) return;
-          settled = true;
-          resolve(value);
-        };
-        try {
-          transaction = database.transaction(ALL_STORES, "readwrite", writeOptions);
+      return await new Promise<readonly ReceizAdmissionCommitResult[]>(resolve => {
+        const transaction = database.transaction(ALL_STORES, "readwrite", writeOptions);
+        const results: ReceizAdmissionCommitResult[] = [];
+        let failure: ReceizAdmissionCommitResult = failed;
+        transaction.oncomplete = () => resolve(results);
+        transaction.onabort = () => resolve([failure]);
+        transaction.onerror = () => undefined;
+        function finishUnit(result: ReceizAdmissionCommitResult) {
+          if (result.status !== "committed" && result.status !== "idempotent") {
+            failure = result;
+            abortQuietly(transaction);
+            return;
+          }
+          if (results.length && results[0]!.status !== result.status) {
+            failure = { status: "conflict", code: "IDEMPOTENCY_CONFLICT" };
+            abortQuietly(transaction);
+            return;
+          }
+          results.push(result);
+          if (results.length < units.length) append(units[results.length]!);
+        }
+        function append(unit: ReceizAdmissionUnitOfWork) {
           const idempotencyStore = transaction.objectStore(STORES.idempotency);
           const duplicateRequest = idempotencyStore.get([namespace, unit.idempotencyKey]);
           duplicateRequest.onsuccess = () => {
             const duplicate = duplicateRequest.result as IdempotencyRecord | undefined;
             if (duplicate) {
-              result = duplicate.commandDigest === unit.commandDigest
+              finishUnit(duplicate.commandDigest === unit.commandDigest
                 ? { status: "idempotent", receipt: clone(duplicate.receipt) }
-                : { status: "conflict", code: "IDEMPOTENCY_CONFLICT" };
+                : { status: "conflict", code: "IDEMPOTENCY_CONFLICT" });
               return;
             }
             const aggregateStore = transaction.objectStore(STORES.aggregates);
@@ -282,11 +267,11 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
                 ? { revision: aggregate.revision, headDigest: aggregate.headDigest, state: aggregate.state }
                 : { revision: 0, headDigest: null, state: {} };
               if (current.revision !== unit.expectedRevision) {
-                result = { status: "conflict", code: "EXPECTED_REVISION_MISMATCH", expectedRevision: current.revision };
+                finishUnit({ status: "conflict", code: "EXPECTED_REVISION_MISMATCH", expectedRevision: current.revision });
                 return;
               }
               if (current.headDigest !== unit.expectedHeadDigest) {
-                result = { status: "conflict", code: "CAUSAL_PARENT_MISMATCH", expectedHead: current.headDigest };
+                finishUnit({ status: "conflict", code: "CAUSAL_PARENT_MISMATCH", expectedHead: current.headDigest });
                 return;
               }
               try {
@@ -327,8 +312,8 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
                   transaction.objectStore(STORES.outboxIntents).add({ namespace, commandDigest: unit.commandDigest, index, value: clone(intent) }, [namespace, unit.commandDigest, index]);
                 }
                 transaction.objectStore(STORES.auditReferences).add({ namespace, commandDigest: unit.commandDigest, value: clone(unit.auditReference) }, [namespace, unit.commandDigest]);
-                result = { status: "committed", receipt: clone(unit.receipt) };
                 if (failBeforeCommit?.(unit)) abortQuietly(transaction);
+                else finishUnit({ status: "committed", receipt: clone(unit.receipt) });
               } catch {
                 abortQuietly(transaction);
               }
@@ -344,8 +329,8 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
             let replayed = false;
             const finishChecks = (): void => {
               if (pending !== 0) return;
-              if (conflict) result = { status: "conflict", code: "READ_DEPENDENCY_MISMATCH" };
-              else if (replayed) result = { status: "conflict", code: "PBI_RECEIPT_REPLAYED" };
+              if (conflict) finishUnit({ status: "conflict", code: "READ_DEPENDENCY_MISMATCH" });
+              else if (replayed) finishUnit({ status: "conflict", code: "PBI_RECEIPT_REPLAYED" });
               else checkTargetAndCommit();
             };
             finishChecks();
@@ -366,15 +351,37 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
             }
           };
           duplicateRequest.onerror = () => abortQuietly(transaction);
-        } catch {
-          finish({ status: "failed", code: "ATOMIC_COMMIT_FAILED" });
-          return;
         }
-        transaction.oncomplete = () => finish(result);
-        transaction.onabort = () => finish({ status: "failed", code: "ATOMIC_COMMIT_FAILED" });
-        transaction.onerror = () => undefined;
-      })).catch(() => ({ status: "failed", code: "ATOMIC_COMMIT_FAILED" }));
+        append(units[0]!);
+      });
+    } catch { return [failed]; }
+  }
+
+  const store: ReceizAdmissionStore = {
+    async readAggregate(aggregateId) {
+      const database = await openDatabase();
+      const record = await completedRead(
+        database,
+        STORES.aggregates,
+        (transaction) => transaction.objectStore(STORES.aggregates).get([namespace, aggregateId]),
+      ) as AggregateRecord | undefined;
+      return record
+        ? clone({ revision: record.revision, headDigest: record.headDigest, state: record.state })
+        : null;
     },
+
+    async readIdempotency(idempotencyKey) {
+      const database = await openDatabase();
+      const record = await completedRead(
+        database,
+        STORES.idempotency,
+        (transaction) => transaction.objectStore(STORES.idempotency).get([namespace, idempotencyKey]),
+      ) as IdempotencyRecord | undefined;
+      return record ? clone({ commandDigest: record.commandDigest, receipt: record.receipt }) : null;
+    },
+
+    async commit(unit) { return (await commitUnits([unit]))[0]!; },
+    commitBatch: commitUnits,
 
     seedAggregate(input) {
       try {
