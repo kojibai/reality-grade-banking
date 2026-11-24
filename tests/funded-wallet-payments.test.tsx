@@ -139,6 +139,61 @@ test('an unfunded offline attempt keeps its details and returns to regular Send 
   }
 });
 
+test.each([
+  { entry: 'typed' },
+  { entry: 'scanned' },
+])('creates a nearby payment QR offline for a $entry recipient', async ({ entry }) => {
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+  const host = document.createElement('div'), root = createRoot(host);
+  const accountUid = '10000000-0000-4000-8000-000000000001';
+  const recipientUserId = '10000000-0000-4000-8000-000000000002';
+  const wallet = {
+    warm: vi.fn(), outgoing: async () => null, offer: async () => null,
+    review: async () => { throw Error('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'); },
+  };
+  const review = { recipientLabel: 'coffee.receiz.id', amountUsdCents: '100', confirmationDigest: 'review', nearby: true };
+  const deferred = {
+    prepare: vi.fn(async () => review),
+    approve: vi.fn(async () => ({ payment: { recipientUserId, amountUsdCents: '100' } })),
+    resume: vi.fn(async () => {}),
+  };
+  const canvas = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    fillRect: vi.fn(),
+  } as unknown as CanvasRenderingContext2D);
+  const identity = {
+    binding: { artifactSha256: 'a'.repeat(64) },
+    fundedWallet: async () => wallet, deferredWalletSend: async () => deferred,
+    knownMessagingDisplay: () => ({
+      accountUid, inbox: [{
+        updatedAt: '2026-11-24T12:00:00Z',
+        members: [{ kind: 'user', userId: recipientUserId, username: 'coffee' }],
+      }],
+    }),
+  } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveSend identity={identity} wallet={null} onClose={() => {}}
+      initialRequest={{ recipient: 'coffee.receiz.id', amount: '1.00', ...(entry === 'scanned' ? { nearbyRecipient: recipientUserId } : {}) }} />));
+    await click(host, 'Create a payment QR');
+    expect(deferred.prepare).toHaveBeenCalledExactlyOnceWith(
+      { recipient: recipientUserId, amountUsdCents: '100', note: '', nearby: true },
+      'coffee.receiz.id', true,
+    );
+    await act(async () => host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+    await click(host, 'Send payment');
+    expect(deferred.approve).toHaveBeenCalledExactlyOnceWith(review, 'review');
+    await act(async () => vi.waitFor(() => expect(deferred.resume).toHaveBeenCalledOnce()));
+    expect(host.querySelector('canvas[aria-label="Wallet payment QR"]')?.getAttribute('data-frame')).toBe('0');
+  } finally {
+    await act(async () => root.unmount());
+    canvas.mockRestore();
+    host.remove();
+    if (prior) Object.defineProperty(navigator, 'onLine', prior);
+    else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
 test('the regular Send screen keeps an approved distant payment while offline', async () => {
   const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
@@ -154,7 +209,7 @@ test('the regular Send screen keeps an approved distant payment while offline', 
   try {
     await act(async () => root.render(<LiveSend identity={identity} wallet={null}
       initialRequest={{ recipient: userId, amount: '1.00' }} onClose={() => {}} />));
-    await click(host, 'Review payment');
+    await click(host, 'Send when I reconnect');
     expect(deferred.prepare).toHaveBeenCalledExactlyOnceWith({ recipient: userId, amountUsdCents: '100', note: '', nearby: false }, userId);
     expect(host.textContent).toContain('Wallet will use your balance when you reconnect.');
     await act(async () => host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
@@ -162,7 +217,7 @@ test('the regular Send screen keeps an approved distant payment while offline', 
     expect(deferred.approve).toHaveBeenCalledExactlyOnceWith(review, 'review');
     expect(host.textContent).toContain('Payment saved.');
     await click(host, 'Send another payment');
-    expect(host.textContent).toContain('Review payment');
+    expect(host.textContent).toContain('Create a payment QR');
   } finally {
     await act(async () => root.unmount());
     host.remove();

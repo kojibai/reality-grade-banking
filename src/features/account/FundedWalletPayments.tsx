@@ -147,16 +147,16 @@ export function DeferredWalletPayments({identity}:{identity:OpenIdentity}){
   </details>;
 }
 
-export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNext,initialReview,onEdit,children}:{
+export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNext,initialReview,onEdit,preferNearby=false,children}:{
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
-  recipientLabel?:string;onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;children:ReactNode;
+  recipientLabel?:string;onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;preferNearby?:boolean;children:ReactNode;
 }){
   const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
   const [deferredReview,setDeferredReview]=useState<DeferredWalletSendReview|null>(null);
   const [deferredAmount,setDeferredAmount]=useState<string|null>(null);
   const [nearbyCode,setNearbyCode]=useState<OpticalFrames|null>(null);
   const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
-  const [connectionNeeded,setConnectionNeeded]=useState(false);
+  const [connectionNotice,setConnectionNotice]=useState('');
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
   const [pendingBundle,setPendingBundle]=useState<string|null>(null);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[approved,setApproved]=useState(false);
@@ -251,10 +251,11 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
     <PaymentScanner compact onBytes={scanReply}/>
     <button type="button" className="text-button" onClick={()=>{setPairing(null);onEdit?.();}}>Edit payment</button>{errors}
   </section>;
-  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>
-    <button className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
-      setConnectionNeeded(false);
-      const input=request();
+  function preparePayment(nearbyOverride?:boolean){
+    return act(async()=>{
+      setConnectionNotice('');
+      const draft=request();
+      const input={...draft,nearby:nearbyOverride??draft.nearby};
       try{
         const wallet=await identity.fundedWallet!();
         try{
@@ -278,13 +279,22 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
           return;
         }catch(cause){
           if(!(cause instanceof Error)||!['BANK_WALLET_QUEUE_RECIPIENT_REQUIRED','BANK_WALLET_QUEUE_BALANCE_REQUIRED'].includes(cause.message))throw cause;
+          setConnectionNotice(cause.message==='BANK_WALLET_QUEUE_RECIPIENT_REQUIRED'
+            ? 'Scan the recipient’s Receive QR to find them offline.'
+            : 'Open your balance while connected once to prepare this device for offline payments.');
+          return;
         }
       }
-      setConnectionNeeded(true);
+      setConnectionNotice('Connect to pay from your balance.');
       onEdit?.();
-    })}>
-      {busy?'Checking payment…':'Review payment'}
-    </button>{connectionNeeded&&<p className="body-copy small-copy" role="status">Connect to pay from your balance.</p>}{errors}</>;
+    });
+  }
+  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>
+    <button type="button" className="primary-button" disabled={busy} onClick={()=>void preparePayment(preferNearby?true:undefined)}>
+      {busy?'Checking payment…':preferNearby?'Create a payment QR':'Review payment'}
+    </button>
+    {preferNearby&&<button type="button" className="text-button" disabled={busy} onClick={()=>void preparePayment(false)}>Send when I reconnect</button>}
+    {connectionNotice&&<p className="body-copy small-copy" role="status">{connectionNotice}</p>}{errors}</>;
 }
 
 export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenIdentity;offline:boolean;onRefresh:()=>void}){
