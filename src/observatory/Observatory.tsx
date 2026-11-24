@@ -232,8 +232,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
     const next=anchor+direction*(plot.end-plot.start+1);
     setPaused(next>=asOf?null:next);setPicked(null);setLimit(8);
   };
-  const following=paused===null, live=state.status==='live' && online;
-  const status=index.counts[source]>0?'Showing public records'
+  const following=paused===null, showingRecords=index.counts[source]>0;
+  const status=showingRecords?'Showing public records'
     :!online?'Offline'
     :state.error?'Public records couldn’t load'
     :network.bootstrap?'Opening public history'
@@ -243,7 +243,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   const hasHistory=historyTotal>0;
   return <div className="observatory"><ObservatoryHeader active={active}/>
     <main><section className="obs-engine"><div className="obs-inner">
-      <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(live?' connected':'')}><i/><span className="obs-status-full">{status}</span><span className="obs-status-small">{status}</span></span></div>
+      <div className="obs-title"><h1>Analytics</h1><span className={'obs-status'+(showingRecords?' has-records':'')}><i aria-hidden="true"/><span className="obs-status-full">{status}</span><span className="obs-status-small">{status}</span></span></div>
       <div className="obs-readings"><MarketReadings source={pricing} onOpen={setHeadline}/><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('hours')}><span>Witnessed hours <ArrowUpRight/></span><strong>{overview?.seconds.value!=null?new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(overview.seconds.value/3600):'—'}</strong></button><button type="button" className="obs-reading" aria-haspopup="dialog" onClick={()=>setHeadline('ledger')}><span>Public records <ArrowUpRight/></span><strong>{covered?num.format(total):'—'}</strong></button></div>
       {active&&headline&&<HeadlineHistory key={headline} metric={headline} detail={headline==='cap'
         ? (pricing?.shareCapitalization ? num.format(pricing.shareCapitalization.covered)+' of '+num.format(pricing.shareCapitalization.listed)+' assets included'+(valuation.status==='live'?'':' · retained pricing') : 'Pricing unavailable')
