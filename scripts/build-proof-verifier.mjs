@@ -14,7 +14,9 @@ export async function buildProofVerifier(directory='public/proof-verifier/v129')
  const root=resolve('.'),out=resolve(directory);await mkdir(out,{recursive:true});
  const result=await build({entryPoints:['institution/proof-verifier/verifier.entry.ts'],bundle:true,format:'iife',globalName:'ReceizOfflineVerifier',platform:'browser',target:'es2022',minify:true,write:false,metafile:true,sourcemap:'external',sourcesContent:true,external:['node:*'],outfile:resolve(out,'verifier.js'),legalComments:'inline',footer:{js:'globalThis.ReceizOfflineVerifier = ReceizOfflineVerifier;'}});
  const files={};for(const file of result.outputFiles){const name=file.path.endsWith('.map')?'verifier.js.map':'verifier.js';let bytes=file.contents;if(name.endsWith('.map')){const map=JSON.parse(new TextDecoder().decode(bytes));map.sources=map.sources.map(path=>relative(root,resolve(out,path)));bytes=Buffer.from(JSON.stringify(map));}files[name]=bytes;}
- for(const name of ['verify.mjs','verify.html','README.txt'])files[name]=await readFile(`institution/proof-verifier/${name}`);
+ for(const name of ['verify.mjs','verify.html'])files[name]=await readFile(`institution/proof-verifier/${name}`);
+ const readme=await readFile('institution/proof-verifier/README.txt','utf8');
+ files['README.txt']=Buffer.from(readme.replace('\n',' — RECEIZ SDK '+sdkPackage.version+'\n'));
  // One local HTML file carries the exact runtime inline: opening it requires
  // neither a module server nor browser access to adjacent file URLs.
  files['verify.html']=Buffer.from(new TextDecoder().decode(files['verify.html']).replace('<!--BANK_MARK-->',bankMarkSvg).replace('<script src="verifier.js"></script>',()=>'<script>'+new TextDecoder().decode(files['verifier.js']).replaceAll('</script','<\\/script')+'</script>'));

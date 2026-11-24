@@ -15,6 +15,9 @@
 .site-footer-base>span{color:var(--bank-link,#3c536f);font-weight:600;flex:0 0 auto;max-width:100%}
 .site-footer-base nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:3px 18px}
 .site-footer-base a{display:inline-flex;align-items:center;min-height:28px}
+.site-footer-theme{display:none}
+.site-footer-project{display:contents}
+.site-footer-base .site-footer-release{display:none}
 .public-explorer .site-footer{width:100%;margin-top:60px}
 @media(min-width:801px) and (max-width:1100px){
  .site-footer-main{grid-template-columns:repeat(3,minmax(0,1fr));gap:32px 28px}

@@ -1,4 +1,4 @@
-INDEPENDENT OFFLINE INSPECTION — RECEIZ SDK 129.0.0
+INDEPENDENT OFFLINE INSPECTION
 
 This archive is evidence, not permission to move value.
 

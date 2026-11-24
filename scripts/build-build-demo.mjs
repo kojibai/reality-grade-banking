@@ -17,7 +17,9 @@ export async function buildBuildDemo(directory='public/build-demo/v129'){
   files[name]=bytes;
  }
  files['verifier.mjs.map.bin']=files['verifier.mjs.map'];
- for(const name of ['verify.mjs','worker.mjs','README.txt'])files[name]=await readFile('institution/build-demo/'+name);
+ for(const name of ['verify.mjs','worker.mjs'])files[name]=await readFile('institution/build-demo/'+name);
+ const readme=await readFile('institution/build-demo/README.txt','utf8');
+ files['README.txt']=Buffer.from(readme.replace('\n',' — RECEIZ SDK '+sdkPackage.version+'\n'));
  const metadata=JSON.parse(await readFile('tests/fixtures/connected-note-delivery/metadata.json','utf8'));
  if(metadata.synthetic!==true||metadata.authority!=='actual-native-writer-with-ephemeral-test-roots')throw Error('SYNTHETIC_DEMO_FIXTURE_POLICY_REQUIRED');
  for(const name of ['note.png','wrong-note-authority.png']){

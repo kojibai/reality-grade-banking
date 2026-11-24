@@ -3,12 +3,15 @@ export const APP_APPEARANCE_CHANGE = 'bankeiz:appearance';
 export const APP_APPEARANCE_COLORS = Object.freeze({light:'#fcfbf8',dark:'#131e2c'});
 
 /** Also runs as inline entry code before the first frame. Keep browser reads local. */
-export function installAppAppearance(browser, key=APP_APPEARANCE_KEY, eventName=APP_APPEARANCE_CHANGE, colors=APP_APPEARANCE_COLORS){
+export function installAppAppearance(browser, key=APP_APPEARANCE_KEY, eventName=APP_APPEARANCE_CHANGE, colors=APP_APPEARANCE_COLORS, setAppearance=setAppAppearance){
  const root=browser.document.documentElement;
  const preference=browser.matchMedia('(prefers-color-scheme: dark)');
- function update(){
+ function activeMode(){
   const selected=root.dataset.bankAppearance;
-  const mode=selected==='dark'||(!selected&&preference.matches)?'dark':'light';
+  return selected==='dark'||(!selected&&preference.matches)?'dark':'light';
+ }
+ function update(){
+  const mode=activeMode();
   for(const meta of browser.document.querySelectorAll('meta[name="theme-color"]'))meta.content=colors[mode];
  }
  function restore(){
@@ -21,6 +24,10 @@ export function installAppAppearance(browser, key=APP_APPEARANCE_KEY, eventName=
  restore();
  if(browser.__bankeizAppearanceInstalled)return;
  browser.__bankeizAppearanceInstalled=true;
+ browser.document.addEventListener('click',event=>{
+  if(event.target?.closest?.('[data-bank-theme-toggle]'))setAppearance(activeMode()==='dark'?'light':'dark',browser,key,eventName);
+ });
+ root.dataset.bankAppearanceControl='';
  preference.addEventListener('change',update);
  browser.addEventListener(eventName,update);
  browser.addEventListener('storage',event=>{
@@ -36,16 +43,16 @@ export function readAppAppearance(){
  return appearance==='light'||appearance==='dark'?appearance:'system';
 }
 
-export function setAppAppearance(mode){
+export function setAppAppearance(mode,browser=window,key=APP_APPEARANCE_KEY,eventName=APP_APPEARANCE_CHANGE){
  if(mode!=='system'&&mode!=='light'&&mode!=='dark')return;
- const root=document.documentElement;
+ const root=browser.document.documentElement;
  if(mode==='system')delete root.dataset.bankAppearance;
  else root.dataset.bankAppearance=mode;
  try{
-  if(mode==='system')localStorage.removeItem(APP_APPEARANCE_KEY);
-  else localStorage.setItem(APP_APPEARANCE_KEY,mode);
+  if(mode==='system')browser.localStorage.removeItem(key);
+  else browser.localStorage.setItem(key,mode);
  }catch{ /* The current document can still use the selected mode. */ }
- window.dispatchEvent(new Event(APP_APPEARANCE_CHANGE));
+ browser.dispatchEvent(new browser.Event(eventName));
 }
 
 export function subscribeAppAppearance(subscriber){

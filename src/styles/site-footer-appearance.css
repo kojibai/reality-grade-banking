@@ -1,0 +1,70 @@
+:root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library) .site-footer-theme {
+ display: grid;
+ place-items: center;
+ flex: none;
+ order: 1;
+ position: relative;
+ width: 44px;
+ height: 44px;
+ padding: 0;
+ padding-inline-start: 10px;
+ border: 0;
+ border-radius: 50%;
+ background: transparent;
+ color: var(--bank-text,#172b45);
+ cursor: pointer;
+}
+:root[data-bank-appearance-control] .site-footer-theme::before {
+ content: "";
+ box-sizing: border-box;
+ position: absolute;
+ inset-block: 5px;
+ inset-inline: 10px 0;
+ border: 1px solid var(--bank-line-subtle,#dfe5ed);
+ border-radius: 50%;
+}
+:root[data-bank-appearance-control] .site-footer-theme:hover::before {
+ background: var(--bank-surface-subtle,#eef2f7);
+}
+:root[data-bank-appearance-control] .site-footer-theme:hover {
+ color: var(--bank-link,#244cdb);
+}
+.site-footer-theme:focus-visible {
+ outline: 2px solid var(--bank-info-line,#244cdb);
+ outline-offset: 3px;
+}
+.site-footer-theme svg { position: relative; }
+.site-footer-theme .site-footer-theme-sun { display: var(--bank-theme-sun,none); }
+.site-footer-theme .site-footer-theme-moon { display: var(--bank-theme-moon,block); }
+:is(body[data-bank-surface="learn"],body.client-library) .site-footer-base .site-footer-release {
+ display: inline-flex;
+ color: var(--bank-text-muted,#61748a);
+ font-variant-numeric: tabular-nums;
+}
+@media(max-width:800px) {
+ :root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library) .site-footer-base {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 0 16px;
+ }
+ .site-footer-base .site-footer-theme { grid-column: 2; grid-row: 1; }
+ .site-footer-base nav { grid-column: 1/-1; }
+ :is(body[data-bank-surface="learn"],body.client-library) .site-footer-project {
+  display: flex;
+  flex: 0 0 100%;
+  justify-content: space-between;
+  gap: 16px;
+ }
+}
+
+:root[data-bank-appearance="dark"] {
+ --bank-theme-sun: block;
+ --bank-theme-moon: none;
+}
+@media(prefers-color-scheme:dark) {
+ :root:not([data-bank-appearance]) {
+  --bank-theme-sun: block;
+  --bank-theme-moon: none;
+ }
+}

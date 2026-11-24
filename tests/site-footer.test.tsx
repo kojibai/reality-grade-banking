@@ -2,11 +2,20 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it} from 'vitest';
+import packageMetadata from '../package.json';
 import {footerGroups,footerNotices} from '../branding/site-footer.mjs';
 import {siteFooterHtml} from '../scripts/site-footer.mjs';
 import {SiteFooter} from '../src/components/SiteFooter';
 import {canonicalPublicPath,publicRouteAliases} from '../src/content/public-routes.mjs';
 const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
+
+it('links the visible build version to the corresponding GitHub release beside Open source',()=>{
+ const project=parse(siteFooterHtml('/learn/')).querySelector('.site-footer-project')!;
+ const [source,release]=project.querySelectorAll('a');
+ expect(source.textContent).toBe('Open source');
+ expect(release.textContent).toBe('v'+packageMetadata.version);
+ expect(release.getAttribute('href')).toBe(source.getAttribute('href')+'/releases/tag/v'+packageMetadata.version);
+});
 
 it('keeps existing asset destinations plus personal origination and Digital Matter',()=>{
  const doc=parse(siteFooterHtml('/protect/')),footer=doc.querySelector('.site-footer')!;

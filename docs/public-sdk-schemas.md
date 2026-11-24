@@ -2,8 +2,9 @@
 
 `writePublicSdkSchemas(directory = 'dist')` in
 [`scripts/build-public-schemas.mjs`](../scripts/build-public-schemas.mjs) copies
-the complete installed `@receiz/sdk@129.0.0/schemas/` tree to
-`/schemas/sdk/v129/`, without parsing/reserializing the published bytes or
+the complete installed `@receiz/sdk` schema tree for the coordinated release to
+its versioned distribution path. For `129.5.0`, it publishes to
+`/schemas/sdk/v129/` without parsing or reserializing the published bytes or
 rewriting `$id`, `$schema`, `$ref`, filenames or generation directories. The
 installed package currently retains 47 schemas in v120, v122, v125, v126 and
 v127. SDK package v129 is distinct from those schema generations.

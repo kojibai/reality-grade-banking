@@ -1,4 +1,4 @@
-SYNTHETIC RECEIVING DEMONSTRATION — RECEIZ SDK 129.0.0
+SYNTHETIC RECEIVING DEMONSTRATION
 
 These two existing synthetic PNG fixtures use an ephemeral test issuer root.
 No account private keys, actual funds or production credit are supplied.

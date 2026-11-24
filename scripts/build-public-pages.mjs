@@ -80,6 +80,8 @@ await buildReceivingRuntime({entryPoints:['src/adoption/receiving-public.ts'],bu
 await buildClientWorkRuntime();
 const governanceGuideCss=await readFile('public/learn/governance-guide.css','utf8');
 const receivingCss=await readFile('public/learn/receiving.css','utf8');
+const footerAppearanceCss=await readFile('src/styles/site-footer-appearance.css','utf8');
+const footerAppearanceStyle=`<style data-public-page-style="footer-appearance">${footerAppearanceCss}</style>`;
 const { css: publicCss, js:publicJs, cssUrl, jsUrl } = await learnAssets();
 await writePublicSdkSchemas('dist');
 const originalsAssets=await writeOriginalsQualificationAssets('dist');
@@ -184,7 +186,7 @@ for (const page of pages) {
   const receivingOutput=page.receiving||page.invitation?output.replace('</head>',`<style data-public-page-style="receiving">${receivingCss}</style></head>`):output;
   const styledOutput=page.slug==='governance'?output.replace('</head>',`<style data-public-page-style="governance-guide">${governanceGuideCss}</style></head>`):page.institutionScorecard?output.replace('</head>',`<style data-public-page-style="institution-scorecard">${institutionScorecardCss}</style></head>`):receivingOutput;
   const metadata=publicPage(path),document=applyPublicMetadata(styledOutput,metadata,socialImages.images[path]);
-  publicPages[path] = { title: metadata.title, content, head: document.match(/<head>([\s\S]+)<\/head>/)[1] };
+  publicPages[path] = { title: metadata.title, content, head: document.match(/<head>([\s\S]+)<\/head>/)[1]+(content.includes('class="site-footer"')?footerAppearanceStyle:'') };
 }
 const bankEntry = bankHtml.match(/<script type="module"[^>]*src="([^"]+)"/)[1];
 // The reference catalog is public build output too. Carry its exact markup and
@@ -194,7 +196,7 @@ const schemasCss = await readFile('dist/schemas/schemas.css','utf8');
 const schemasHead = schemasHtml.match(/<head>([\s\S]+?)<\/head>/)[1].replace('<link rel="stylesheet" href="/schemas/schemas.css">','');
 publicPages['/schemas/'] = {
   title: publicPage('/schemas/').title,
-  head: `${schemasHead}<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueBoot}<style data-public-page-style="schemas">${schemasCss}</style>`,
+  head: `${schemasHead}<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueBoot}<style data-public-page-style="schemas">${schemasCss}</style>${footerAppearanceStyle}`,
   content: withPageFooter(schemasHtml.match(/<body[^>]*>([\s\S]+?)<\/body>/)[1],'/schemas/'),
 };
 // Each public workspace keeps its own runtime and React root. Carry its
@@ -323,7 +325,7 @@ await mkdir('dist/observatory',{recursive:true});
 await writeFile('dist/observatory/index.html','<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Analytics | Bankeiz</title><link rel="canonical" href="https://bankeiz.com/analytics/"><meta http-equiv="refresh" content="0;url=/analytics/"></head><body><a href="/analytics/">Analytics</a></body></html>');
 // Independent editorial documents carry complete text and inline styling.
 // They stay outside the app/catalog navigation carrier and PWA installation.
-const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWorkPages,footer:siteFooterHtml,footerCss:await readFile('src/styles/site-footer.css','utf8'),head:page=>{
+const libraryResult=await writeClientWorkLibrary({outdir:'dist',pages:clientWorkPages,footer:siteFooterHtml,footerCss:(await readFile('src/styles/site-footer.css','utf8'))+'\n'+footerAppearanceCss,head:page=>{
  const metadata=publicPage(page.path),image=socialImages.images[page.path];
  if(!metadata||!image)throw Error('RESOURCE_METADATA_REQUIRED');
  return socialMetadata(metadata,image)+`<script type="application/ld+json">${JSON.stringify(structuredMetadata(metadata,image)).replaceAll('<','\\u003c')}</script>`;
