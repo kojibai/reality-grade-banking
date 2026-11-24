@@ -1,4 +1,4 @@
-import {compatibleShareInventory,mergeShareInventory,publicShareCapitalization} from '../receiz/market-share-inventory';
+import {compatibleShareInventory,marketCapitalizationQuantity,mergeShareInventory,publicCapitalizationAssets,shareCapitalizationUsdCents} from '../receiz/market-share-inventory';
 import type {PublicNetworkCache} from '../receiz/public-network-cache';
 import type {ObservatoryDirectory} from '../receiz/public-ledger-document-seed';
 import {readPublicProofPresentation, type PublicMarketCatalog, type PublicMarketItem} from '../receiz/public-market';
@@ -25,27 +25,58 @@ export function documentCatalog(snapshot?:PublicNetworkCache, directory?:Observa
   documentCatalogs.set(snapshot,{directory,catalog});return catalog;
 }
 
-export interface RankedProfile {
-  username:string; name:string; createdAt:string|null; stats:PublicProfile['stats']; capitalization:string|null; capitalizationPartial?:true;
+type CollectionCapitalization={capitalization:string|null;capitalizationPartial?:true};
+export interface RankedProfile extends CollectionCapitalization {
+  username:string; name:string; createdAt:string|null; stats:PublicProfile['stats'];
+  capitalizationAtPrices?:(assets:readonly PublicMarketItem[])=>CollectionCapitalization;
+}
+
+function samePricedOriginal(item:PublicMarketItem,other:PublicMarketItem|undefined) {
+  return !!other && (item===other || item.id===other.id && !!item.originalDigest && item.originalDigest===other.originalDigest
+    && item.assetId===other.assetId && item.pulse===other.pulse && !!item.ownerIdentity
+    && item.ownerIdentity.userId===other.ownerIdentity?.userId && item.ownerUsername===other.ownerUsername);
 }
 
 export function observeCatalog(catalog:PublicMarketCatalog,audience?:ObservatoryDirectory['audience'],carried?:PublicMarketCatalog) {
-  // A thinner live collection can still use the first frame's exact pricing
-  // operands for surviving Originals. Missing supply contributes no amount.
   const heldPrices=carried&&carried!==catalog?new Map(carried.items.map(item=>[item.id,item])):null;
-  const capitalization=(items:PublicMarketItem[])=>{
-    const priced=items.map(item=>{
+  const catalogIndexes=new Map(catalog.items.map((item,index)=>[item.id,index]));
+  const capitalization=(profile:PublicProfile)=>{
+    if(!profile.items.length)return {capitalization:null};
+    const priced=profile.items.map(item=>{
       const prior=heldPrices?.get(item.id);
-      const matches=!!prior&&!!item.originalDigest&&prior.originalDigest===item.originalDigest&&prior.assetId===item.assetId&&prior.pulse===item.pulse
-        &&!!item.ownerIdentity&&prior.ownerIdentity?.userId===item.ownerIdentity.userId&&prior.ownerUsername===item.ownerUsername;
-      const carriedInventory=matches?compatibleShareInventory(item,prior.shareInventory):undefined;
+      const matches=samePricedOriginal(item,prior);
+      const carriedInventory=matches?compatibleShareInventory(item,prior?.shareInventory):undefined;
       const currentInventory=compatibleShareInventory(item,item.shareInventory);
       const shareInventory=carriedInventory===currentInventory?currentInventory:mergeShareInventory(carriedInventory,currentInventory??null);
-      const priceUsd=item.priceUsd??(matches?prior.priceUsd:null);
-      return priceUsd===item.priceUsd&&shareInventory===item.shareInventory?item:{...item,priceUsd,shareInventory};
+      const priceUsd=item.priceUsd??(matches?prior?.priceUsd??null:null);
+      const index=catalogIndexes.get(item.id);
+      const quoteIndex=index!==undefined&&samePricedOriginal(item,catalog.items[index])?index:undefined;
+      return {...item,priceUsd,shareInventory,quoteIndex};
     });
-    const result=publicShareCapitalization({...catalog,items:priced});
-    return {capitalization:result.covered?result.usdCents:null,...(result.covered&&!result.complete?{capitalizationPartial:true as const}:{})};
+    const {items,listed}=publicCapitalizationAssets({...catalog,items:priced},{requirePrice:false});
+    // Select and bind inventory once per catalog. The asset directory already
+    // evaluates the same ordered catalog at the live Kai pulse.
+    const terms=items.map(item=>({
+      id:item.id,index:item.quoteIndex,priceUsd:item.priceUsd,quantity:marketCapitalizationQuantity(item.shareInventory!)!,
+    }));
+    const calculate=(assets?:readonly PublicMarketItem[]):CollectionCapitalization=>{
+      let total=0n,covered=0;
+      for(const {id,index,priceUsd,quantity} of terms){
+        const quote=index===undefined?undefined:assets?.[index];
+        const price=(quote?.id===id?quote.priceUsd:null)??priceUsd;
+        if(price===null||price<0)continue;
+        const cents=Math.round(price*100);
+        if(!Number.isSafeInteger(cents))continue;
+        total+=BigInt(shareCapitalizationUsdCents(String(cents),quantity));
+        covered++;
+      }
+      return {capitalization:covered?total.toString():null,
+        ...(listed&&(!catalog.complete||profile.nextCursor||covered!==listed)?{capitalizationPartial:true as const}:{})};
+    };
+    const observed=calculate();
+    return {...observed,...(terms.length?{
+      capitalizationAtPrices:(assets:readonly PublicMarketItem[])=>assets===catalog.items?observed:calculate(assets),
+    }:{})};
   };
   const bound=publicProfileDirectoryBindings(catalog);
   const cards=new Map(catalog.publicProfileHeads?.map(head=>[String(head.profile.username),head]));
@@ -92,7 +123,7 @@ export function observeCatalog(catalog:PublicMarketCatalog,audience?:Observatory
     }
     const profile=selectHeldPublicProfile(username,family,{artwork:false});
     if(!profile||!bound(profile))continue;
-    profiles.push({username:profile.username,name:profile.displayName,createdAt:profile.createdAt,stats:statsFor(profile.userId,username,profile.stats),...capitalization(profile.items)});
+    profiles.push({username:profile.username,name:profile.displayName,createdAt:profile.createdAt,stats:statsFor(profile.userId,username,profile.stats),...capitalization(profile)});
   }
   const sum=(key:'views'|'plays'|'seconds')=>{
     let total=0, covered=0;

@@ -1,6 +1,7 @@
 import {describe,it,expect,vi} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
+import {NetworkAtlas} from '../src/observatory/NetworkAtlas';
 import {CollectibleActivity} from '../src/observatory/CollectibleActivity';
 import {observeCatalog,growthSeries} from '../src/observatory/catalog';
 import {collectibleActivity} from '../src/observatory/collectible-transfers';
@@ -49,9 +50,21 @@ describe('Observatory directory, audience and wallet coverage',()=>{
     const inventory=(id:string)=>({schema:'receiz.market.share-inventory.v1',marketItemId:id,assetId:id,family:'generic',quantityScope:'canonical-asset',observedAtKaiUPulse:'15000000000000',outstandingShareQuantityMicro:'1000000',availableShareQuantityMicro:'0',positionsMicro:'1000000',certificatesMicro:'0',reservedBuyMicro:'0',availability:'quote-capacity'});
     const pricedCatalog=(rows:ReturnType<typeof priced>[])=>({...parsePublicMarket({ok:true,transport:{publicOriginals:rows}},{ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:rows.map(entry=>({itemId:entry.id,visibility:'public',priceUsd:entry.valueUsd,shareInventory:inventory(entry.id)}))}}),complete:true});
     const held=pricedCatalog([priced('existing',priceUsd)]);
+    const renderRankings=(catalog:typeof held,carried?:typeof held,livePrice?:number)=>{
+      const directoryAssets=catalog.items.map(item=>livePrice===undefined?item:{...item,priceUsd:livePrice,localValuationPulse:15000001});
+      return renderToStaticMarkup(createElement(NetworkAtlas,{active:false,catalog,directoryAssets,
+        data:observeCatalog(catalog,undefined,carried),audienceSeries:{views:[],plays:[],seconds:[]},
+        records:[],actions:[],executions:[],actionsAsOf:null,onInspectAction:()=>{}})).split('id="obs-assets"')[0].split('id="obs-profiles"')[1];
+    };
     expect(observeCatalog(held).profiles[0].capitalization).toBe('1200');
+    expect(renderRankings(held)).toMatch(/<td>\$12\.00<\/td>/);
+    expect(renderRankings(held,undefined,23)).toMatch(/<td>\$23\.00<\/td>/);
     const thin=catalog([existing,added]);
     expect(observeCatalog(thin,undefined,held).profiles[0]).toMatchObject({capitalization:'1200',capitalizationPartial:true});
+    expect(renderRankings(thin,held,23)).toContain('title="Share pricing is incomplete">—</td>');
+    expect(renderRankings(thin,held,23)).not.toContain('$23.00');
+    expect(renderRankings(catalog([existing]),held,23)).toMatch(/<td>\$23\.00<\/td>/);
+    expect(renderRankings(pricedCatalog([priced('existing',priceUsd),priced('added',3)]),held,23)).toMatch(/<td>\$46\.00<\/td>/);
     expect(observeCatalog(pricedCatalog([priced('existing',priceUsd),priced('added',3)]),undefined,held).profiles[0].capitalization).toBe('1500');
     expect(observeCatalog(catalog([added]),undefined,held).profiles[0].capitalization).toBeNull();
     expect(observeCatalog(catalog([row('existing','d'.repeat(64))]),undefined,held).profiles[0].capitalization).toBeNull();

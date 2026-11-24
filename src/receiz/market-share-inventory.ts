@@ -64,14 +64,14 @@ export function shareQuantityAtPulse(inventory:PublicShareInventory,pulse:number
  for(const point of history){if(BigInt(point.kaiUPulse)>at)break;if(inventory.family==='native'||inventory.historyBasis==='recorded-transactions'||BigInt(point.kaiUPulse)===at)quantity=point.outstandingShareQuantityMicro;}return quantity;
 }
 /** Select one current, compatible observation for each canonical asset. */
-export function publicCapitalizationAssets<T extends PublicMarketPricingItem>(catalog:(Omit<PublicMarketPricingCatalog,'items'>&{items:T[]})|null){
+export function publicCapitalizationAssets<T extends PublicMarketPricingItem>(catalog:(Omit<PublicMarketPricingCatalog,'items'>&{items:T[]})|null,{requirePrice=true}:{requirePrice?:boolean}={}){
  const groups=new Map<string,T[]>();
  for(const item of catalog?.items??[]){const key=item.nativeAsset?'native:'+item.nativeAsset.id:'asset:'+item.assetId;const values=groups.get(key)??[];values.push(item);groups.set(key,values);}
  const selected:T[]=[];
  for(const items of groups.values()){
   const sports=items.find(item=>item.category==='sports');if(sports){selected.push(sports);continue;}
   const candidates=items.filter(item=>item.shareInventory&&item.shareInventory.assetId===item.assetId&&item.shareInventory.marketItemId===item.id).sort((a,b)=>BigInt(a.shareInventory!.observedAtKaiUPulse)>BigInt(b.shareInventory!.observedAtKaiUPulse)?-1:1),item=candidates[0];
-  if(!item||item.priceUsd===null||!Number.isSafeInteger(Math.round(item.priceUsd*100))||item.priceUsd<0)continue;
+  if(!item||requirePrice&&(item.priceUsd===null||!Number.isSafeInteger(Math.round(item.priceUsd*100))||item.priceUsd<0))continue;
   if(candidates.some(other=>other.shareInventory!.observedAtKaiUPulse===item.shareInventory!.observedAtKaiUPulse&&(other.shareInventory!.outstandingShareQuantityMicro!==item.shareInventory!.outstandingShareQuantityMicro||other.shareInventory!.availableShareQuantityMicro!==item.shareInventory!.availableShareQuantityMicro)))continue;
   if(marketCapitalizationQuantity(item.shareInventory!)!==null)selected.push(item);
  }

@@ -16,7 +16,7 @@ import {CollectibleActivity} from './CollectibleActivity';
 import {TradingActivity} from './TradingActivity';
 import {WalletGrowth} from './WalletGrowth';
 import {walletActivity} from './wallet';
-import {growthSeries, type observeCatalog, type RankedProfile} from './catalog';
+import {growthSeries, type observeCatalog} from './catalog';
 
 const number=new Intl.NumberFormat('en-US',{maximumFractionDigits:1});
 const date=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'});
@@ -49,19 +49,27 @@ function Growth({series,label,unit}:{series:ReturnType<typeof growthSeries>;labe
     </details></div>;
 }
 
-function comparison(a:RankedProfile,b:RankedProfile,key:Rank){
-  const x=key==='capitalization'?a.capitalization===null?null:BigInt(a.capitalization):a.stats[key]??null;
-  const y=key==='capitalization'?b.capitalization===null?null:BigInt(b.capitalization):b.stats[key]??null;
-  if(x===y)return a.username.localeCompare(b.username);
-  if(x===null)return 1;
-  if(y===null)return -1;
-  return x>y?-1:1;
+function compare(a:bigint|number|null,b:bigint|number|null) {
+  return a===b?0:a===null?1:b===null?-1:a>b?-1:1;
 }
 
 export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,directoryAssets,data,audienceSeries,records,actions,executions,actionsAsOf,onInspectAction}:{active:boolean;executions:readonly MarketExecution[];audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;directoryAssets:PublicMarketCatalog['items'];data:Overview|null;records:readonly PublicRecord[]}){
   const [rank,setRank]=useState<Rank>('seconds'),[person,setPerson]=useState(''),[profilePage,setProfilePage]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[assetPage,setAssetPage]=useState(0),[order,setOrder]=useState('recent');
-  const profiles=useMemo(()=>data?.profiles.filter(p=>(p.name+' '+p.username).toLowerCase().includes(person.trim().replace(/^@/,'').toLowerCase())).sort((a,b)=>comparison(a,b,rank))??[],[data,person,rank]);
+  const matchingProfiles=useMemo(()=>{
+    const query=person.trim().replace(/^@/,'').toLowerCase();
+    return data?.profiles.filter(p=>(p.name+' '+p.username).toLowerCase().includes(query))??[];
+  },[data,person]);
+  const rankedByStats=useMemo(()=>[...matchingProfiles].sort((a,b)=>
+    (rank==='capitalization'?0:compare(a.stats[rank]??null,b.stats[rank]??null))||a.username.localeCompare(b.username)),[matchingProfiles,rank]);
+  const rankedByCap=useMemo(()=>{
+    if(rank!=='capitalization')return null;
+    return rankedByStats.map(profile=>{
+      const cap=profile.capitalizationAtPrices?.(directoryAssets)??profile;
+      return {profile,cap,amount:cap.capitalization===null||cap.capitalizationPartial?null:BigInt(cap.capitalization)};
+    }).sort((a,b)=>compare(a.amount,b.amount))
+      .map(({profile,cap})=>({profile,cap}));
+  },[rank,rankedByStats,directoryAssets]);
   const types=useMemo(()=>[...new Set(catalog?.items.map(marketContentLabel))].sort(),[catalog]);
   const assets=useMemo(()=>{
     const search=query.trim().replace(/^@/,'').toLowerCase();
@@ -75,7 +83,12 @@ export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,directoryAs
   const profileSeries=useMemo(()=>profileGrowth?.points.map(p=>({at:p.at,value:p.count}))??[],[profileGrowth]);
   const trends=[profileSeries,audienceSeries.views,audienceSeries.plays,audienceSeries.seconds];
   const sealGrowth=useMemo(()=>growthSeries(catalog?.items.filter(item=>item.category==='proof').map(item=>item.sealedAt)??[]),[catalog]);
-  const pp=Math.min(profilePage,Math.max(0,Math.ceil(profiles.length/profileSize)-1)),ap=Math.min(assetPage,Math.max(0,Math.ceil(assets.length/pageSize)-1));
+  const pp=Math.min(profilePage,Math.max(0,Math.ceil(rankedByStats.length/profileSize)-1));
+  const start=pp*profileSize,end=start+profileSize;
+  const visibleProfiles=rankedByCap?.slice(start,end)??rankedByStats.slice(start,end).map(profile=>({
+    profile,cap:profile.capitalizationAtPrices?.(directoryAssets)??profile,
+  }));
+  const ap=Math.min(assetPage,Math.max(0,Math.ceil(assets.length/pageSize)-1));
   return <div className="obs-atlas obs-inner">
     <nav className="obs-sections" aria-label="Analytics sections"><a href="#obs-audience">Audience</a><a href="#obs-growth">Growth</a><a href="#obs-profiles">Profiles</a><a href="#obs-assets">Assets</a><a href="#obs-trading">Trading</a><a href="#obs-wallets">Wallets</a><a href="#obs-economy">Economy</a><a href="#observatory-records">Records</a></nav>
     <section id="obs-audience"><div className="obs-section-head"><div><p className="obs-label">Public Showcase</p><h2>Audience</h2></div></div>
@@ -93,8 +106,8 @@ export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,directoryAs
     <section id="obs-profiles"><div className="obs-section-head"><div><p className="obs-label">Public identities</p><h2>Profile rankings</h2></div><a href="/discover/">Discover <ArrowUpRight/></a></div>
       <div className="obs-filters"><input type="search" aria-label="Search public profiles" placeholder="Find a name or handle" value={person} onChange={e=>{setPerson(e.target.value);setProfilePage(0);}}/><label>Rank by <select value={rank} onChange={e=>{setRank(e.target.value as Rank);setProfilePage(0);}}>{Object.entries(rankLabels).map(([key,value])=><option key={key} value={key}>{value}</option>)}</select></label></div>
       <div className="obs-table-scroll" tabIndex={0} aria-label="Scrollable profile rankings"><table><thead><tr>{['Rank','Profile','Original views','Stream plays','Witnessed hours','Completion','Followers','Following','Originals','Signed Originals','Collection cap'].map(s=><th key={s} scope="col">{s}</th>)}</tr></thead><tbody>
-        {profiles.slice(pp*profileSize,(pp+1)*profileSize).map((p,i)=><tr key={p.username}><td>{pp*profileSize+i+1}</td><th scope="row"><a href={profilePagePath(p.username)}><span className="obs-profile-name">{p.name}</span><small>@{p.username}</small></a></th><td>{show(p.stats.views)}</td><td>{show(p.stats.plays)}</td><td>{hours(p.stats.seconds)}</td><td>{p.stats.completion===null?'—':number.format(p.stats.completion)+'%'}</td><td>{show(p.stats.followers??null)}</td><td>{show(p.stats.following??null)}</td><td>{show(p.stats.originals)}</td><td>{show(p.stats.signedOriginals??null)}</td><td title={p.capitalizationPartial?'Includes assets with public share pricing':undefined}>{p.capitalization===null?'—':formatMoney(p.capitalization)}</td></tr>)}</tbody></table></div>
-      <div className="obs-page-options"><label>Profiles per page <select value={profileSize} onChange={e=>{setProfileSize(Number(e.target.value));setProfilePage(0);}}>{[8,25,50,100].map(n=><option key={n}>{n}</option>)}</select></label><Pager count={profiles.length} page={pp} onPage={setProfilePage} size={profileSize}/></div></section>
+        {visibleProfiles.map(({profile:p,cap},i)=><tr key={p.username}><td>{pp*profileSize+i+1}</td><th scope="row"><a href={profilePagePath(p.username)}><span className="obs-profile-name">{p.name}</span><small>@{p.username}</small></a></th><td>{show(p.stats.views)}</td><td>{show(p.stats.plays)}</td><td>{hours(p.stats.seconds)}</td><td>{p.stats.completion===null?'—':number.format(p.stats.completion)+'%'}</td><td>{show(p.stats.followers??null)}</td><td>{show(p.stats.following??null)}</td><td>{show(p.stats.originals)}</td><td>{show(p.stats.signedOriginals??null)}</td><td title={cap.capitalizationPartial?'Share pricing is incomplete':undefined}>{cap.capitalization===null||cap.capitalizationPartial?'—':formatMoney(cap.capitalization)}</td></tr>)}</tbody></table></div>
+      <div className="obs-page-options"><label>Profiles per page <select value={profileSize} onChange={e=>{setProfileSize(Number(e.target.value));setProfilePage(0);}}>{[8,25,50,100].map(n=><option key={n}>{n}</option>)}</select></label><Pager count={rankedByStats.length} page={pp} onPage={setProfilePage} size={profileSize}/></div></section>
     <section id="obs-assets"><div className="obs-section-head"><div><p className="obs-label">Public inventory</p><h2>Asset directory</h2></div><div className="obs-asset-links"><a href="#obs-collectibles">Collectible activity</a><a href="/explore/">Explore <ArrowUpRight/></a></div></div>
       <div className="obs-filters"><input type="search" value={query} aria-label="Search public assets" placeholder="Search title, owner or asset ID" onChange={e=>{setQuery(e.target.value);setAssetPage(0);}}/><label>Type <select value={filter} onChange={e=>{setFilter(e.target.value);setAssetPage(0);}}><option>All</option>{types.map(type=><option key={type}>{type}</option>)}</select></label><label>Order <select value={order} onChange={e=>{setOrder(e.target.value);setAssetPage(0);}}><option value="recent">Latest seal</option><option value="value">Highest price</option></select></label></div>
       <div className="obs-table-scroll" tabIndex={0} aria-label="Scrollable asset directory"><table><thead><tr>{['Asset','Type','Owner','Seal date (UTC)','Public price','History'].map(s=><th key={s} scope="col">{s}</th>)}</tr></thead><tbody>{assets.slice(ap*pageSize,(ap+1)*pageSize).map(item=><Fragment key={item.id}><tr><th scope="row"><a href={assetPagePath(item.id)} onClick={()=>retainPublicAsset(item)}>{item.title}</a></th><td>{marketContentLabel(item)}</td><td>{item.ownerUsername&&profileUsername(item.ownerUsername)?<a href={profilePagePath(item.ownerUsername)}>@{item.ownerUsername}</a>:'—'}</td><td>{Number.isFinite(Date.parse(item.sealedAt??''))?date.format(Date.parse(item.sealedAt!)):'—'}</td><td>{item.priceUsd===null?'—':usd.format(item.priceUsd)}</td><td><button className="obs-link-button" aria-label={'Inspect history for '+item.title} aria-expanded={inspected===item.id} aria-controls={inspected===item.id?'obs-asset-details':undefined} onClick={()=>setInspected(inspected===item.id?null:item.id)}>{inspected===item.id?'Close':'Inspect'}</button></td></tr>
