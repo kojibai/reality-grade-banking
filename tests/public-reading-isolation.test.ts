@@ -23,5 +23,13 @@ it('uses new subpaths without taking over a profile handle or another app route'
  const deployment=JSON.parse(readFileSync('vercel.json','utf8'));
  expect(profilePagePath('read')).toBe('/read/');expect(deployment.rewrites.some((route:{source:string})=>route.source==='/read/')).toBe(false);
  expect(deployment.rewrites.find((route:{source:string})=>route.source==='/read/assets/:asset/')?.destination).toBe('/api/read?kind=asset&id=:asset');
- for(const header of deployment.headers)expect(header.source).toMatch(/^\/read\/(?:pages|public|catalog|ledger)\//);
+ const androidLaunch='/app/android-launch';
+ expect(deployment.rewrites.find((route:{source:string})=>route.source===androidLaunch)?.destination).toBe('/__bank_static_entry/bank/index.html');
+ expect(deployment.headers.find((rule:{source:string})=>rule.source===androidLaunch)?.headers).toEqual([
+  {key:'Cache-Control',value:'no-store'},
+  {key:'X-Robots-Tag',value:'noindex'},
+ ]);
+ for(const rule of deployment.headers.filter((header:{source:string})=>header.source!==androidLaunch)){
+  expect(rule.source).toMatch(/^\/read\/(?:pages|public|catalog|ledger)\//);
+ }
 });

@@ -6,22 +6,22 @@
   "receizVersion": "129.5.0",
   "registryDigest": "8d0b5b839d02d9efbd4306cc99410595a183705c2670b76d2567eaaaade99065",
   "operationMatrixDigest": "c4e0cff348b62f31db2bb2ffdeec533a92ca3a6d476757bb9b559ac58a7875e1",
-  "verifierModuleSha256": "ba6dd3f814aab9047e4b25d0431bf77e32f54eb25f315582cb4d8ea8606f6eb8",
-  "suiteSourceSha256": "e4f8788590ec55309c2f2df883b358b184a5f11e3b8a3f75fbfac81795c3255c",
-  "startedAt": "2026-11-23T22:48:51.403Z",
-  "completedAt": "2026-11-23T22:48:51.799Z",
+  "verifierModuleSha256": "953fb281babfe60cf0ecbf6c3e8b2ce6657436e9313b9d8655074f48b66a2d3b",
+  "suiteSourceSha256": "5f676fb1e81de4c193ab1c12aae4f05d03e520da2114ef8067e67d34098170eb",
+  "startedAt": "2026-11-24T23:27:28.306Z",
+  "completedAt": "2026-11-24T23:27:28.649Z",
   "checks": [
     {
       "id": "money",
       "passed": true,
       "evidence": null,
-      "durationMs": 62
+      "durationMs": 60
     },
     {
       "id": "ownership",
       "passed": true,
       "evidence": null,
-      "durationMs": 28
+      "durationMs": 25
     },
     {
       "id": "atomic",
@@ -51,7 +51,7 @@
       "id": "integrity",
       "passed": true,
       "evidence": null,
-      "durationMs": 56
+      "durationMs": 53
     },
     {
       "id": "source",
@@ -75,7 +75,7 @@
       "id": "temporal",
       "passed": true,
       "evidence": null,
-      "durationMs": 233
+      "durationMs": 193
     },
     {
       "id": "edges",
@@ -92,6 +92,6 @@
   "scope": "nonfinancial-browser-reference",
   "referenceEnvironment": {
     "origin": "http://127.0.0.1:5173",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36"
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
   }
 }
