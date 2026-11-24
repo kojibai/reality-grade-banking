@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kojibai.bankeiz",
+      "sha256_cert_fingerprints": [
+        "CA:CD:85:81:6D:A7:AA:1A:23:D3:69:AD:C2:CE:86:F4:BE:4F:61:D7:9F:52:55:98:51:D6:CE:9D:69:8B:F7:B6"
+      ]
+    }
+  }
+]
