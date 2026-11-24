@@ -51,3 +51,31 @@ it('keeps unique large destination styles within delivery capacity by sharing th
  expect(decode(packed.bank.head)).toBe(original.bank.head);expect(decode(packed.bank.content)).toBe(original.bank.content);expect(original).toEqual(before);expect(packed.styles.every(value=>typeof value==='string')).toBe(true);
  expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.8);
 });
+
+it('installs the carried Learn stylesheet once before revealing a guide from Bank',async()=>{
+ history.replaceState({},'','/');
+ document.head.innerHTML='<title>Bankeiz</title><link rel="canonical" href="https://bankeiz.com/">';
+ document.body.innerHTML='<div id="root"><main><a href="/guide/">Open guide</a></main></div>';
+ const learnCss='html.learn-surface .learn-header{position:fixed}';
+ const data=document.createElement('script');
+ data.id='receiz-navigation';
+ data.textContent=JSON.stringify({...source(),learnCss});
+ document.body.append(data);
+ const scroll=vi.spyOn(window,'scrollTo').mockImplementation(()=>{}),fetcher=vi.fn();
+ try{
+  const runRouter=new Function('window','document','location','history','scrollTo','Event','URL','fetch','DOMParser','// All public guides'+readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1]);
+  runRouter(window,document,location,history,scroll,Event,URL,fetcher,DOMParser);
+  const {navigate}=data as HTMLScriptElement & {navigate:(destination:string)=>void};
+  const styles=()=>[...document.head.querySelectorAll('style[data-learn-stylesheet]')];
+  expect(styles()).toHaveLength(0);
+  await act(async()=>navigate('/guide/'));
+  expect(location.pathname).toBe('/guide/');
+  const [stylesheet]=styles(),pageStyle=document.querySelector('style[data-public-page-style]');
+  expect(stylesheet?.textContent).toBe(learnCss);
+  expect(stylesheet?.nextElementSibling).toBe(pageStyle);
+  await act(async()=>navigate('/'));
+  await act(async()=>navigate('/guide/'));
+  expect(styles()).toEqual([stylesheet]);
+  expect(fetcher).not.toHaveBeenCalled();
+ }finally{scroll.mockRestore();document.body.innerHTML='';history.replaceState({},'','/');}
+});

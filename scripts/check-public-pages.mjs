@@ -74,7 +74,9 @@ for (const [path, name] of [["/learn/earn-from-originals/", "originals-qualifica
  assert.ok(!html.includes(css), `The Bank entrance does not inline the ${name} guide stylesheet.`);
 }
 const {css:coldBankCss,...bankRuntime}=navigation.bank;
-assert.deepEqual(bankNavigation,{...navigation,bank:bankRuntime},'The Bank entry carries every exact public destination and reuses its own embedded styles.');
+const learnCss=await readFile('dist/learn/learn.css','utf8');
+assert.deepEqual(bankNavigation,{...navigation,bank:bankRuntime,learnCss},'The Bank entry carries every exact public destination and the exact scoped Learn stylesheet.');
+assert.ok(!html.includes(learnCss),'The Bank entrance leaves its carried Learn stylesheet inside the navigation envelope.');
 assert.equal(openedBank.shared,openedNavigation.shared,'The Bank entry retains the same complete shared examples.');
 for(const [url,css] of Object.entries(coldBankCss)){
  assert.equal(css,await readFile('dist'+url,'utf8'),'Cold Bank navigation carries the exact emitted CSS');

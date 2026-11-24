@@ -25,7 +25,7 @@ const privateBankStyles=bankOwnedStyles(bankStyles,{host:{name:'PublicAssetTrade
 
 it('carries the existing small Discover body beside Bank while Feed stays lightweight',()=>{
  const builderStatements=['navigationPages=','bankRuntime=','navigation=','bundle=','bankBundle='].map(statement).join('\n');
- const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''});
+ const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''},'html.learn-surface{color:navy}');
  const value=read(bundle),discover=value.pages['/discover/'];
  expect(discover).toMatchObject({runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz'});
  expect(expand(discover.head,value.styles)).toBe(discoverHead);
@@ -33,6 +33,7 @@ it('carries the existing small Discover body beside Bank while Feed stays lightw
  expect(expand(value.bank.content,value.styles)).toBe('Frozen Bank content');expect(expand(value.pages['/learn/guide/'].content,value.styles)).toBe('<main>Unvisited static guide</main>');
  expect(value.bank.styles).toEqual(['/assets/bank.css']);expect(Object.keys(value.bank.css)).toEqual(bankStyles);
  const home=read(bankBundle);
+ expect(home.learnCss).toBe('html.learn-surface{color:navy}');expect(value.learnCss).toBeUndefined();
  expect(home.bank.css).toBeUndefined();expect(home.bank.styles).toEqual(value.bank.styles);
  expect(expand(home.pages['/discover/'].content,home.styles)).toBe(pages['/discover/'].content);
  expect(expand(home.pages['/vote/'].content,home.styles)).toBe(vote.content);

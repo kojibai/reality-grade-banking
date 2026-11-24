@@ -75,6 +75,7 @@
   const openedNavigation=typeof __bankNavigationEnvelope!=='undefined'?__bankNavigationEnvelope.decodeNavigationEnvelope(element.textContent):{navigation:JSON.parse(element.textContent),shared:''};
   if(openedNavigation.shared&&!document.querySelector('template[data-shared-example-views]')){const template=document.createElement('template');template.innerHTML=openedNavigation.shared;document.body.append(template.content);}
   const { pages, bank, aliases={}, styles:sharedStyleBlocks=[], reserved=['api','asset','assets','auth','docs','market','native','offline','source'] } = openedNavigation.navigation;
+  let {learnCss} = openedNavigation.navigation;
   // The parsed catalog is retained below; do not retain a second multi-megabyte
   // serialized copy in the document throughout every public workspace.
   // Keep the empty router marker: receipt return uses it to retain this root.
@@ -240,6 +241,13 @@
     if(page?.needsRuntime){
       const opening=loadRuntime(page,ensurePublicRuntime(page));
       if(opening){await opening;if(pathname(location.pathname)!==path)return;}
+    }
+    if (learn && learnCss) {
+      const stylesheet = document.createElement('style');
+      stylesheet.dataset.learnStylesheet = '';
+      stylesheet.textContent = learnCss;
+      document.head.insertBefore(stylesheet, document.head.querySelector('style[data-public-page-style]'));
+      learnCss = '';
     }
     document.documentElement.classList.toggle('learn-surface', learn);
     document.body.dataset.bankSurface = page?.runtime || (learn ? 'learn' : 'bank');

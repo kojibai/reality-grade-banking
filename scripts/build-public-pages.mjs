@@ -270,10 +270,12 @@ const navigation={reserved:feedState.profileNames,pages:navigationPages,aliases:
 const bundle=navigationScript(compactNavigation({...navigation,bank:{...bankRuntime,css:bankCss}}),exampleBanks.shared);
 // The home document already embeds every exact Bank sheet below. The router
 // toggles those nodes on return; only cold public entrances need carried copies.
-const bankBundle=navigationScript(compactNavigation({...navigation,bank:bankRuntime}),exampleBanks.shared);
+// Learn's scoped styles enter with the held guide, so keep them in the same
+// compressed navigation payload instead of parsing them on the Bank entrance.
+const bankBundle=navigationScript(compactNavigation({...navigation,bank:bankRuntime,learnCss:publicCss}),exampleBanks.shared);
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
-let entryHtml = bankHtml.replace('</head>', `<link rel="stylesheet" href="${cssUrl}"><script src="${jsUrl}" defer></script>${valueBoot}</head>`).replace('</body>', () => `${bankBundle}</body>`);
+let entryHtml = bankHtml.replace('</head>', `<script src="${jsUrl}" defer></script>${valueBoot}</head>`).replace('</body>', () => `${bankBundle}</body>`);
 // The initial entrance must paint even while a deployment's CSS URLs are slow.
 // Embed the exact emitted styles, so the settled account also has its styles
 // before React can publish it. Navigation still retains the original CSS URLs.
