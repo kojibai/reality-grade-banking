@@ -118,7 +118,7 @@ it.each(['/discover/','/bjklock/'])('reuses a complete held account on return fr
 it('does not retry a failed optional read on navigation or erase its legitimate failure',async()=>{
  const identity=held();identity.refreshLocalValuation=vi.fn(async()=>null);vi.mocked(identity.readWallet).mockRejectedValue(Error('SOURCE_503'));
  const {read}=await mount(identity);await act(async()=>read().refresh());const failure=read().error;
- expect(failure).toContain('balance could not be updated');expect(identity.readWallet).toHaveBeenCalledTimes(1);
+ expect(failure).toContain('Couldn’t refresh');expect(identity.readWallet).toHaveBeenCalledTimes(1);
  for(const path of ['/discover/','/bjklock/']){history.replaceState(null,'',path);await act(async()=>wake('receiz-bank:surface'));history.replaceState(null,'','/');await act(async()=>{wake('popstate');wake('receiz-bank:surface');});}
  expect(identity.readWallet).toHaveBeenCalledTimes(1);expect(read().error).toBe(failure);expect(read().syncPending).toBe(true);expect(read().wallet?.totalUsdCents).toBe('100');
 });
@@ -147,7 +147,26 @@ it('paints a supported local valuation before the network starts and retains it 
   expect(order).toEqual(['local', 'network']);
   expect(read().wallet?.totalUsdCents).toBe('300'); expect(read().identity).toBe(identity); expect(read().opening).toBe(false); expect(read().busy).toBe(false);
   await act(async () => fail(Error('WALLET_UNAVAILABLE')));
-  expect(read().wallet?.totalUsdCents).toBe('300'); expect(read().syncPending).toBe(true); expect(read().error).toContain('balance could not be updated');
+  expect(read().wallet?.totalUsdCents).toBe('300'); expect(read().syncPending).toBe(true); expect(read().error).toBeNull();
+  await act(async()=>{wake('focus');wake('visibilitychange');});
+  expect(identity.readWallet).toHaveBeenCalledTimes(1);
+  vi.mocked(identity.readWallet).mockResolvedValueOnce(identity.knownWallet()!.wallet);
+  await act(async()=>wake('online'));
+  expect(identity.readWallet).toHaveBeenCalledTimes(2);expect(read().syncPending).toBe(false);
+});
+
+it('reports the result of an explicit refresh queued behind a background read',async()=>{
+  const identity=held();
+  let fail!:(reason:Error)=>void;
+  vi.mocked(identity.readWallet).mockImplementationOnce(()=>new Promise((_resolve,reject)=>{fail=reject;}))
+    .mockRejectedValueOnce(Error('EXPLICIT_SOURCE_503'));
+  const {read}=await mount(identity);
+  await act(async()=>wake('focus'));
+  await act(async()=>read().refresh());
+  await act(async()=>fail(Error('BACKGROUND_SOURCE_503')));
+  expect(identity.readWallet).toHaveBeenCalledTimes(2);
+  expect(read().error).toContain('Couldn’t refresh');
+  expect(read().wallet?.totalUsdCents).toBe('100');
 });
 
 it('still refreshes the network when optional local valuation is unavailable', async () => {

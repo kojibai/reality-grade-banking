@@ -8,7 +8,7 @@ import type { WalletObservation } from './wallet-observation';
 import { preloadPrivateHistory } from './private-history-restore';
 function walletReadMessage(cause: unknown, refreshing = false): string {
   if (cause instanceof Error && cause.message === 'proof_replay_guard_unavailable') return 'Secure account access is temporarily unavailable. Your Identity Record is unchanged. Refresh your balance to try again.';
-  return refreshing ? 'Your balance could not be updated. Your Identity Record stays on this device. Try again when the source is available.' : 'Your balance could not be opened. Your Identity Record stays on this device. Refresh your balance to try again.';
+  return refreshing ? 'Couldn’t refresh. Your last saved balance is still shown.' : 'Your balance could not be opened. Your Identity Record stays on this device. Refresh your balance to try again.';
 }
 const nativeCustody = { createNativeIdentity, importNativeIdentity, restoreNativeIdentity, forgetDeviceIdentity };
 export function useNativeAccount(custody = nativeCustody) {
@@ -53,15 +53,18 @@ export function useNativeAccount(custody = nativeCustody) {
     // Automatic returns reuse a healthy head's deadline. Explicit Refresh and
     // recorded actions still enter the same request/revision choreography.
     const age=lastRead.current?Date.now()-lastRead.current.at:60_000;
-    if(background&&hasSettledAccountView(current.knownWallet?.()??null)&&lastRead.current&&!lastRead.current.failed&&age>=0&&age<60_000)return;
+    if(background&&hasSettledAccountView(current.knownWallet?.()??null)&&lastRead.current&&age>=0&&age<60_000)return;
     if(pending.current){if(!background){refreshQueued.current=true;setBusy(true);}return;}
     pending.current = true; if (!background) setBusy(true);
+    let automatic=background;
     try {
       do{
         refreshQueued.current=false;
         const attempt={at:Date.now(),failed:false},revision=observationRevision.current;lastRead.current=attempt;
         try{const value=await current.readWallet();if(ticket===generation.current&&!refreshQueued.current&&revision===observationRevision.current){const observed=current.knownWallet?.();hasObservation.current=true;setWallet(value);setObservedAt(observed?.observedAt??new Date().toISOString());setWalletHistory(observed?.history??[]);setHistoryComplete(hasSettledAccountView(observed??null));setError(null);setSyncPending(false);}}
-        catch(cause){attempt.failed=true;if(ticket===generation.current&&!refreshQueued.current&&revision===observationRevision.current){setSyncPending(true);if(current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
+        catch(cause){attempt.failed=true;if(ticket===generation.current&&!refreshQueued.current&&revision===observationRevision.current){setSyncPending(true);if((!automatic||!hasObservation.current)&&current.knownWallet?.()?.source!=='account-genesis')setError(walletReadMessage(cause,hasObservation.current));}}
+        // Only an explicit request is queued behind an in-flight read.
+        automatic=false;
       }while(ticket===generation.current&&held.current===current&&refreshQueued.current);
     }
     finally { if (ticket === generation.current) { pending.current = false; setBusy(false); } }
@@ -134,12 +137,14 @@ export function useNativeAccount(custody = nativeCustody) {
     const paymentRecorded=(event:Event)=>{const current=held.current,detail=(event as CustomEvent).detail;if(current&&detail?.identityDigest===current.binding.artifactSha256)void refresh();};
     addEventListener('bankeiz:wallet-send-recorded',paymentRecorded);
     addEventListener('bankeiz:account-observation', repaint);
-    const wakeEvents = ['online', 'focus', 'pageshow'] as const;
+    const reconnect=()=>{if(lastRead.current?.failed)lastRead.current=null;wake();};
+    addEventListener('online',reconnect);
+    const wakeEvents = ['focus', 'pageshow'] as const;
     for (const event of wakeEvents) addEventListener(event, wake);
     const navigationEvents=['popstate','receiz-bank:surface'] as const;
     for(const event of navigationEvents)addEventListener(event,returnToBank);
     document.addEventListener('visibilitychange', wake);
-    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearTimeout(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); for (const event of wakeEvents) removeEventListener(event, wake);for(const event of navigationEvents)removeEventListener(event,returnToBank); document.removeEventListener('visibilitychange', wake); };
+    return () => { alive = false; entering.current?.dispose(); held.current?.dispose(); held.current = null; generation.current++; clearTimeout(timer); clearInterval(localTimer);removeEventListener('bankeiz:wallet-send-recorded',paymentRecorded); removeEventListener('bankeiz:account-observation', repaint); removeEventListener('online',reconnect); for (const event of wakeEvents) removeEventListener(event, wake);for(const event of navigationEvents)removeEventListener(event,returnToBank); document.removeEventListener('visibilitychange', wake); };
   }, [accept, refresh, refreshLocal, publishObservation, custody]);
   const open = async (operation: (identityPrepared:()=>void) => Promise<OpenIdentity>, reusePrepared = false) => {
     if (openingOperation.current) return;

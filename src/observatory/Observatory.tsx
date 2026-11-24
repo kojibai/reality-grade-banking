@@ -10,6 +10,8 @@ import {ledgerRecordTitle} from '../receiz/ledger-payment-records';
 import {shippedMarketHistory, useMarketCapitalization} from '../receiz/market-projection/useMarketCapitalization';
 import type {MarketHistorySnapshot} from '../receiz/market-projection/history';
 import {usePublicMarket} from '../receiz/usePublicMarket';
+import {useMarketDisplaySource} from '../receiz/market-projection/display-source';
+import {publicCatalogAtPulse} from '../receiz/market-projection/catalog-prices';
 import {activityTime, activityWindow, carriedActivityHistory, indexActivity, ledgerLink, periods, recentActivityRecord, sourceNames, type Period, type TimedRecord} from './activity';
 import type {ChartPeriod} from '../core/chart-history';
 import {HeadlineHistory, type Headline, type HistoryPoint} from './HeadlineHistory';
@@ -142,6 +144,9 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   // Use Market's existing valuation clock and accepted pricing coverage.
   // An independently refreshing collectible feed cannot suspend held pricing.
   const valuation=useMarketCapitalization(capPeriod,active,liveCatalog,active,initialMarketHistory);
+  const displaySource=useMarketDisplaySource();
+  const directoryAssets=useMemo(()=>hydrating?catalog.items:publicCatalogAtPulse(catalog,displaySource,valuation.pulse).items,
+    [catalog,displaySource,hydrating,valuation.pulse]);
   const carriedHistory=initialMarketHistory??shippedMarketHistory();
   const pricing=useSyncExternalStore(noSubscription,()=>valuation.source,()=>carriedHistory.summary);
   const points=useSyncExternalStore(noSubscription,()=>valuation.points,()=>carriedHistory.series[capPeriod]);
@@ -256,7 +261,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
       <a href="#observatory-records">Inspect records <ArrowDown/></a></div>
       <div><p className="obs-label">Continuity</p><h3>Carried history</h3><p>{hasHistory?'Inspect the records and evidence carried in this '+(historyBucket===null?'range.':'interval.'):'Choose an interval with recorded activity.'}</p>{hasHistory?<button type="button" className="obs-detail-action" aria-expanded={historyOpen} aria-controls="obs-history" onClick={()=>setHistoryOpen(open=>!open)}>{historyOpen?'Close history':'Open history'} <ArrowDown/></button>:<a href="/ledger/">Open Ledger <ArrowUpRight/></a>}</div></section>
     {historyOpen&&hasHistory&&<CarriedActivityHistory key={source+':'+filter+':'+period+':'+(picked??'range')+':'+(paused??'live')} buckets={historyBucket===null?plot.buckets:[selected]} total={historyTotal} actions={index.streams.actions}/>}
-    <NetworkAtlas active={active} audienceSeries={audienceSeries} catalog={catalog} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
+    <NetworkAtlas active={active} audienceSeries={audienceSeries} catalog={catalog} directoryAssets={directoryAssets} data={overview} records={network.records} executions={index.executions} actions={index.streams.actions}
       actionsAsOf={network.sources.actions.observedAt??(Number.isFinite(capture)?capture:null)} onInspectAction={inspectAction}/>
     <CapitalHistory points={points} period={capPeriod} onPeriod={setCapPeriod}/>
     <section className="obs-composition obs-inner" aria-label="Public source coverage"><div className="obs-section-head"><div><p className="obs-label">Public Ledger</p><h2>Network health</h2></div><a href="/ledger/">Explore Ledger <ArrowUpRight/></a></div>

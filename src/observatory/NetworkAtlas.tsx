@@ -58,16 +58,16 @@ function comparison(a:RankedProfile,b:RankedProfile,key:Rank){
   return x>y?-1:1;
 }
 
-export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,data,audienceSeries,records,actions,executions,actionsAsOf,onInspectAction}:{active:boolean;executions:readonly MarketExecution[];audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;data:Overview|null;records:readonly PublicRecord[]}){
+export const NetworkAtlas=memo(function NetworkAtlas({active,catalog,directoryAssets,data,audienceSeries,records,actions,executions,actionsAsOf,onInspectAction}:{active:boolean;executions:readonly MarketExecution[];audienceSeries:ReturnType<typeof useAudienceSeries>;actions:readonly TimedRecord[];actionsAsOf:number|null;onInspectAction:(kind:string,period:Period)=>void;catalog:PublicMarketCatalog|null;directoryAssets:PublicMarketCatalog['items'];data:Overview|null;records:readonly PublicRecord[]}){
   const [rank,setRank]=useState<Rank>('seconds'),[person,setPerson]=useState(''),[profilePage,setProfilePage]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('All'),[assetPage,setAssetPage]=useState(0),[order,setOrder]=useState('recent');
   const profiles=useMemo(()=>data?.profiles.filter(p=>(p.name+' '+p.username).toLowerCase().includes(person.trim().replace(/^@/,'').toLowerCase())).sort((a,b)=>comparison(a,b,rank))??[],[data,person,rank]);
   const types=useMemo(()=>[...new Set(catalog?.items.map(marketContentLabel))].sort(),[catalog]);
   const assets=useMemo(()=>{
     const search=query.trim().replace(/^@/,'').toLowerCase();
-    const rows=(catalog?.items??[]).filter(item=>(filter==='All'||marketContentLabel(item)===filter)&&(!search||[item.title,item.assetId,item.id,item.ownerUsername].some(value=>value?.toLowerCase().includes(search))));
+    const rows=directoryAssets.filter(item=>(filter==='All'||marketContentLabel(item)===filter)&&(!search||[item.title,item.assetId,item.id,item.ownerUsername].some(value=>value?.toLowerCase().includes(search))));
     return rows.sort((a,b)=>order==='value'?(b.priceUsd??-1)-(a.priceUsd??-1)||a.id.localeCompare(b.id):(Date.parse(b.sealedAt??'')||0)-(Date.parse(a.sealedAt??'')||0)||a.id.localeCompare(b.id));
-  },[catalog,filter,query,order]);
+  },[directoryAssets,filter,query,order]);
   const [inspected,setInspected]=useState<string|null>(null);
   const wallets=useMemo(()=>walletActivity(records),[records]);
   const [profileSize,setProfileSize]=useState(pageSize);

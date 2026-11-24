@@ -14,7 +14,7 @@ import {LedgerValue} from './LedgerValue';
 import {ledgerRelatedRecords,ledgerValuationContext,type indexLedgerRelations} from '../../receiz/ledger-economy';
 import {ProofMedia} from '../media/ProofMedia';
 import {ProofCaption} from '../media/ProofCaption';
-import {safeReceizPublicUrl} from '../../receiz/public-market';
+import {publicAssetImagePreviewUrl,readPublicProofPresentation,safeReceizPublicUrl} from '../../receiz/public-market';
 import {LedgerProofDetails} from './LedgerProofDetails';
 import {LedgerFundingTrace} from './LedgerFundingTrace';
 import {LedgerValueChange} from './LedgerValueChange';
@@ -56,6 +56,10 @@ export function LedgerInspector({sourceReader,record,value,currentValue,valuatio
  const exactJson=()=>JSON.stringify(document,null,2),link=useMemo(()=>receiptMode?null:receiptRecord===record&&preparedReceipt!==undefined?preparedReceipt:receiptLink(receiptRecord,value,valuation),[receiptMode,receiptRecord,record,preparedReceipt,value,valuation]);
  const related=relations?ledgerRelatedRecords(record,relations):[];
  const details=document.details,original=typeof details.originalUrl==='string'?details.originalUrl:null,reading=typeof details.readingUrl==='string'?details.readingUrl:null;
+ const carriedAsset=record.source==='proofs'?readPublicProofPresentation(details.publicAsset):null;
+ const imageProof=carriedAsset&&carriedAsset.id===record.sourceId&&carriedAsset.originalUrl===original
+   &&carriedAsset.originalDigest===record.evidence.artifactDigest?carriedAsset:undefined;
+ const renderImageProof=record.source==='proofs'?()=> <LedgerProofDetails record={record} sourceReader={sourceReader}/>:undefined;
  const participants=Object.fromEntries(Object.entries(details).filter(([key])=>['actor','subject','sender','recipient','fromActor','toActor','owner','previousOwner','newOwner','creator','actorUserId','subjectUserId'].includes(key)));
  const context=Object.fromEntries(Object.entries(details).filter(([key])=>!Object.hasOwn(participants,key)&&key!=='originalUrl'&&key!=='proofBundle'&&key!=='publicNote'&&key!=='causalLineage'));
  const copy=async()=>{try{await navigator.clipboard.writeText(exactJson());confirm();setNotice('');}catch{clear();setNotice('Open Exact selected record · JSON to copy these display details.');}};
@@ -69,7 +73,7 @@ export function LedgerInspector({sourceReader,record,value,currentValue,valuatio
   <LedgerTradeDetails trade={ledgerAssetTrade(record)}/>
   {!receiptMode&&<LedgerFundingTrace record={record} relations={relations} initiallyExpanded={initiallyExpanded}/>}
   {typeof details.publicNote==='string'&&<section className="ledger-public-note"><h4>Payment memo</h4><p>{details.publicNote}</p></section>}
-  {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
+  {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} imageProof={imageProof} renderImageProof={renderImageProof} publicImageUrl={imageProof?publicAssetImagePreviewUrl(imageProof):undefined} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
   {value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
   <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(recordedAt?{recordedAt}:{}),...(scheduledFor?{scheduledFor}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
   {Object.keys(participants).length>0&&<section><h4>People &amp; ownership</h4><LedgerFieldsView fields={participants}/></section>}

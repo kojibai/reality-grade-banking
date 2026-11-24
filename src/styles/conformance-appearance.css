@@ -1,0 +1,37 @@
+/* The institutional assessment hashes its own styles as corresponding source.
+   Apply appearance to its chrome from the app's presentation layer. */
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-mark,h2,.conformance-identity-holder h2,.device-evidence h3,.published-conformance-credential h3,.workspace-records h4,.receiving-preparation header h3) {
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-hero>div>p,.conformance-product,.conformance-actions small,.conformance-summary p,.section-description,.table-title p,.qualification-note,.note-standard-eyebrow,.note-standard-intro,.receiving-preparation-eyebrow,.receiving-preparation header>p,.receiving-preparation-steps p,.receiving-preparation-boundary,.device-evidence>p,.institution-workspace>p,.workspace-eyebrow,.published-conformance-credential p,.workspace-records p,.audit-intro,.audit-callout p,.assessment-verdict p) {
+ color: var(--bank-text-muted);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.secondary,.account-proof-picker,.check-table-head,.check-scope,.check-result,.check-detail,.qualification-table-head,.qualification-group,.qualification-row>span,.inspection-explainer summary,.note-standard-details>summary,.assessment-inputs label,.contract-transcript-picker,.receiving-preparation-fields label) {
+ color: var(--bank-text-secondary);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-hero h1 span,.conformance-text-link,.conformance-tabs button[aria-selected=true],.note-standard-links a,.note-standard-details dd a,.audit-links a,.receiving-preparation a) {
+ color: var(--bank-link);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-evidence-object,.original-file-zone,.recorded-evidence,.note-standard-availability,.audit-callout,.audit-status,.contract-testbench,.assessment-verdict,pre,.qualification-table-head,.qualification-group,.conformance-seal-consent,.conformance-identity,.institution-workspace,.published-conformance-credential,.workspace-holder,.workspace-records>div,.receiving-preparation,.receiving-preparation-choices button,.receiving-preparation-fields input,.receiving-preparation-fields select) {
+ background: var(--bank-surface);
+ border-color: var(--bank-line-subtle);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(pre,.workspace-holder code,.receiving-preparation-choices button,.receiving-preparation-fields input,.receiving-preparation-fields select) {
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.primary,.receiving-preparation-choices button[aria-pressed=true]) {
+ background: var(--bank-action);
+ color: var(--bank-action-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root .proof-refusal {
+ background: var(--bank-danger-surface);
+ border-color: var(--bank-danger-line);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.proof-refusal h3,.proof-refusal p,.proof-refusal code,.check-failed .check-result,.assessment-result [data-status=FAIL]) {
+ color: var(--bank-danger);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.verified-note-result,.workspace-verified) {
+ background: var(--bank-positive-surface);
+ border-color: var(--bank-positive-line);
+ color: var(--bank-positive);
+}

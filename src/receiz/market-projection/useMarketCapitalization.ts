@@ -134,5 +134,5 @@ export function useMarketCapitalization(period: ChartPeriod, active: boolean,cat
     restartWorker.current?.();dispatch();
   }, [fullSource, active,catalog,pulse,dispatch,display?.seed]);
   // Period selection is always a synchronous lookup, with no network or job.
-  return { source:visibleHistory?.summary??null, points: visibleHistory?.series[period]??[], allTimePoints:visibleHistory?.series.ALL??[], pendingPrepared, status:packet?(preparedState.phase==='ready'&&packet.receipt.state==='current'?'live' as const:'cached' as const):status,calculation:visibleHistory&&marketCalculationMatches(calculation,visibleHistory.summary,visibleHistory.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };
+  return { pulse, source:visibleHistory?.summary??null, points: visibleHistory?.series[period]??[], allTimePoints:visibleHistory?.series.ALL??[], pendingPrepared, status:packet?(preparedState.phase==='ready'&&packet.receipt.state==='current'?'live' as const:'cached' as const):status,calculation:visibleHistory&&marketCalculationMatches(calculation,visibleHistory.summary,visibleHistory.basisSha256)?calculation:null,inspectCalculation,get historyUpdating(){return busy.current;} };
 }

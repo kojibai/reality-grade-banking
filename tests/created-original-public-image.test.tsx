@@ -6,6 +6,9 @@ import captured from './fixtures/created-original-public.json';
 import {publicAssetImagePreviewUrl} from '../src/receiz/public-market';
 import {forgetPublicProfile,parsePublicProfile,retainPublicProfile} from '../src/receiz/public-profile';
 import {PublicAssetDetail} from '../src/features/market/PublicAssetDetail';
+import {LedgerInspector} from '../src/features/ledger/LedgerInspector';
+import {publicMarketRecord} from '../src/receiz/public-network';
+import {ledgerValueForRecord} from '../src/receiz/ledger-value';
 
 // Hold the slow canonical read at its existing boundary. Public image
 // presentation must remain usable while artifact verification is pending.
@@ -85,5 +88,30 @@ it('keeps a standalone image visible and expands it without opening its artifact
   expect(host.querySelector('.proof-object-artwork img')).toBe(image);
   expect(document.querySelector('dialog[open] img')?.getAttribute('src')).toBe(cover);
   expect(open).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());host.remove();}
+});
+
+
+it('flips and zooms the same carried Original from the Ledger Proof row without reopening its source',async()=>{
+ const item=profile().items[0],record=publicMarketRecord(item),expected='https://receiz.com'+captured.original.media.src;
+ const fetcher=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('Source unavailable'));
+ vi.spyOn(HTMLDialogElement.prototype,'showModal').mockImplementation(function(this:HTMLDialogElement){this.open=true;});
+ vi.spyOn(HTMLDialogElement.prototype,'close').mockImplementation(function(this:HTMLDialogElement){this.open=false;});
+ const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+ try{
+  await act(async()=>root.render(<LedgerInspector record={record} value={ledgerValueForRecord(record)}/>));
+  const opener=host.querySelector<HTMLButtonElement>('[aria-label="Open full image"]')!;
+  expect(opener.querySelector('img')?.getAttribute('src')).toBe(expected);
+  act(()=>opener.click());
+  const dialog=host.querySelector('dialog[open]')!;
+  expect(dialog.classList.contains('proof-media-dialog--image-object')).toBe(true);
+  act(()=>dialog.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')!.click());
+  expect(dialog.querySelector('.proof-image-zoom')?.textContent).toBe('150%');
+  await act(async()=>dialog.querySelector<HTMLButtonElement>('[aria-label="Show proof material"]')!.click());
+  await vi.waitFor(()=>expect(dialog.querySelector('.asset-proof-back-body')?.textContent).toContain(item.title));
+  act(()=>dialog.querySelector<HTMLButtonElement>('[aria-label="Show front"]')!.click());
+  expect(dialog.querySelector('img')?.getAttribute('src')).toBe(expected);
+  expect(open).not.toHaveBeenCalled();
+  expect(fetcher).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());host.remove();}
 });

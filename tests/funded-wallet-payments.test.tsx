@@ -114,8 +114,16 @@ test('regular Receive includes the Wallet QR scanner and keeps the existing Note
   document.body.append(host);
   try {
     await act(async () => root.render(<LiveReceive identity={identity}/>));
-    expect(host.querySelector('[aria-label="Scan QR"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="Your payment QR"]')).not.toBeNull();
+    const paymentQr=host.querySelector('[aria-label="Your payment QR"]')!;
+    const nearby=host.querySelector('.receive-nearby')!;
+    const paymentLink=host.querySelector('.receive-payment-link')!;
+    expect(paymentQr.compareDocumentPosition(nearby)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(paymentLink.nextElementSibling).toBe(nearby);
+    expect(host.querySelector('[aria-label="Scan QR"]')).toBeNull();
+    await click(host,'Receive nearby');
+    expect(nearby.querySelector('[aria-label="Scan QR"]')).not.toBeNull();
+    expect(nearby.querySelector('[aria-label="Use QR image"]')).not.toBeNull();
+    expect(nearby.textContent).toContain('sender’s payment QR');
     expect(host.textContent).toContain('Deposit note');
     expect(wallet.warm).toHaveBeenCalledOnce();
   } finally {
@@ -137,6 +145,8 @@ test('regular Receive displays its held signed address on cold open offline', as
     await act(async () => root.render(<LiveReceive identity={identity}/>));
     expect(host.querySelector('[aria-label="Your payment QR"]')).not.toBeNull();
     expect(host.querySelector('.receiving-coordinate')?.textContent).toBe('receiver.receiz.id');
+    expect(host.querySelector('.receive-nearby-toggle')?.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('.receive-nearby [aria-label="Scan QR"]')).not.toBeNull();
     expect(prepareReceivingUsername).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
@@ -168,9 +178,9 @@ test('the balance controls add and move back chosen amounts while leaving the re
   try {
     await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={refresh}/>));
     expect(host.textContent).toContain('$20.00');
-    await click(host, 'Set aside');
-    await setAmount('Amount to set aside', '10.00');
-    await click(host, 'Set aside funds');
+    await click(host, 'Enable more funds offline');
+    await setAmount('Amount to enable offline', '10.00');
+    await click(host, 'Enable offline');
     expect(wallet.prepareOffline).toHaveBeenCalledExactlyOnceWith('1000');
     expect(host.textContent).toContain('$30.00');
     await click(host, 'Move back');

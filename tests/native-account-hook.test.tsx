@@ -64,7 +64,7 @@ it('refreshes explicitly while retaining the settled opening history',async()=>{
 });
 it('retains the settled frame if a later update fails',async()=>{
  const identity=held();vi.mocked(identity.readWallet).mockRejectedValue(Error('Source unavailable'));custody.restore.mockResolvedValue(identity);
- await observe(async read=>{await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toContain('balance could not be updated');expect(read().syncPending).toBe(true);});
+ await observe(async read=>{await act(async()=>{await read().refresh();});expect(read().wallet?.totalUsdCents).toBe('100');expect(read().error).toContain('Couldn’t refresh');expect(read().syncPending).toBe(true);});
 });
 it('preserves the current account if device removal is refused by held custody',async()=>{
  const identity=held();custody.restore.mockResolvedValue(identity);custody.forget.mockRejectedValue(Error('Notes remain in custody'));

@@ -9,8 +9,10 @@ const AssetProofBack=lazy(()=>import('./AssetProofBack').then(module=>({default:
 
 /** Present the selected Original's existing image and proof in one modal.
  * Flipping opens its carried manifest. Verification remains an explicit action. */
-export function ImageObjectDialog({item,title,url,label='Original image',resolved=false,onClose,children}:{
- item:PublicMarketItem;title:string;url:string;label?:string;resolved?:boolean;onClose:()=>void;children?:ReactNode;
+type ImageObjectProof={item:PublicMarketItem;renderBack?:never}|{item?:never;renderBack:()=>ReactNode};
+
+export function ImageObjectDialog({item,renderBack,title,url,label='Original image',resolved=false,onClose,children}:ImageObjectProof & {
+ title:string;url:string;label?:string;resolved?:boolean;onClose:()=>void;children?:ReactNode;
 }){
  const [ratio,setRatio]=useState(16/9);
  const [scale,setScale]=useState(1);
@@ -24,7 +26,7 @@ export function ImageObjectDialog({item,title,url,label='Original image',resolve
     onSideChange={side=>setFront(side==='front')}
     toolbarControls={<div className="asset-object-zoom" ref={setZoomHost}/>}
     front={<ProofImageCanvas url={url} label={title} resolved={resolved} expanded zoomControlsHost={zoomHost} objectZoom={{stage,object,front,onScale:setScale}} onAspect={setRatio} onExpand={()=>{}}/>}
-    renderBack={()=> <Suspense fallback={null}><AssetProofBack item={item} showVerification/></Suspense>}/>
+    renderBack={item?()=> <Suspense fallback={null}><AssetProofBack item={item} showVerification/></Suspense>:renderBack}/>
   </div>
   {children}
  </ExpandedMedia>;

@@ -40,7 +40,7 @@ test.each([false,true])('regular Wallet components carry scan-time approval into
   const send=()=> <FundedWalletSend identity={identity} request={()=>({recipient:offer.recipient,amountUsdCents:'100',nearby:true})}
     onRefresh={()=>{}} onNext={()=>{}}>Payment fields</FundedWalletSend>;
   try{
-    await act(async()=>root.render(<FundedWalletReceive identity={identity} onRefresh={()=>{}}/>));
+    await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={()=>{}}/>));
     await scan(paymentOffer);
     expect(receiver).not.toHaveBeenCalled();
     await click(host,'Approve receiving');
@@ -65,7 +65,7 @@ test('Wallet opens the recipient’s retained proof and scans the same proof for
     receive:async()=>{throw Error('ACCOUNT_FINANCIAL_SOURCE_WALLET_RECIPIENT');}};
   const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
   try{
-    await act(async()=>root.render(<FundedWalletReceive identity={identity} onRefresh={onRefresh}/>));
+    await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
     await click(host,'Show payment proof');
     expect(host.textContent).toContain('Wallet payment proof QR');
     await click(host,'Older payment');
@@ -88,7 +88,7 @@ test('Receive asks for a rescan and waits for a readable recovery copy before re
   const proof=await createOpticalNoteFrames('wallet',Uint8Array.of(8,21,34));
   const scanProof=()=>act(async()=>{for(let i=0;i<proof.count;i++)await scanner.read!(proof.frame(i));});
   try{
-    await act(async()=>root.render(<FundedWalletReceive identity={identity} onRefresh={onRefresh}/>));
+    await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
     await scanProof();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('Scan the payment again');
     expect(host.textContent).not.toContain('available to send from this device');

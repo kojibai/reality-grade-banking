@@ -149,6 +149,21 @@
 .receive-link-modes{padding:3px;margin:6px 0 0}.receive-link-modes button{min-height:28px;padding:6px;font-size:11px}
 .receive-payment-card{padding:10px 12px;gap:8px;margin-top:8px}.receive-hint{font-size:11px;line-height:1.45;margin:10px 0 0}
 .receive-payment-link{margin:22px 0 16px;padding-top:15px;border-top:1px solid var(--line);min-width:0}.receive-payment-link>span{display:block;font-size:10px;color:var(--muted);letter-spacing:.02em}.receive-payment-link>div{display:flex;align-items:center;gap:12px;min-width:0}.receive-payment-link .payment-link{display:block;flex:1;min-width:0;margin:9px 0;color:var(--navy);font-size:12px;line-height:1.6;text-decoration:none}.receive-payment-link .icon-button{width:32px;height:32px;flex-shrink:0;color:var(--bank-text-secondary,#748195);background:transparent}.receive-payment-link .payment-link:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.receive-nearby { border-top: 1px solid var(--line); }
+.receive-nearby-toggle { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 8px 0; border: 0; background: transparent; color: var(--bank-link,#244dcb); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.receive-nearby-toggle span { flex: 1; }
+.receive-nearby-toggle[aria-expanded=true] > svg:last-child { transform: rotate(180deg); }
+.receive-nearby-panel { padding-bottom: 15px; }
+.receive-nearby-panel > .small-copy { margin: 0; }
+.receive-nearby-panel .payment-scanner { margin: 10px 0 0; }
+.receive-nearby-panel .scanner-actions :is(button,label) { min-height: 44px; margin: 0; padding: 7px 6px; font-size: 12px; }
+.receive-nearby-panel .qr-upload { position: relative; }
+.receive-nearby-panel .qr-upload input { display: block; position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.receive-nearby-panel .qr-upload:focus-within { outline: 2px solid var(--bank-link,#244dcb); outline-offset: 2px; }
+.balance-freshness { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px; margin-top: 10px; border-top: 1px solid var(--line); }
+.balance-freshness .small-copy { margin: 0; font-size: 11px; }
+.balance-freshness .balance-refresh-note { flex-basis: 100%; padding-bottom: 8px; }
+.balance-freshness .balance-refresh { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 0 auto; padding: 8px 0 8px 8px; min-height: 44px; color: var(--bank-link,#244dcb); font-size: 12px; }
 .payment-camera { width: 100%; border-radius: 12px; margin-top: 15px; }
 .receive-payment-link .receive-link-copy { transition: color 160ms ease; }
 .receive-link-copy[data-copied="true"] { color: var(--green); }

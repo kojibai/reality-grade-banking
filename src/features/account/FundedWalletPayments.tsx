@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { ChevronDown, Minus, Plus, QrCode } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletOffer } from '../../receiz/funded-wallet';
 import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
@@ -60,7 +60,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
         setMessage(result.status==='published'?'Funds moved back.':'Move back is pending.');
       }else{
         await wallet.prepareOffline(bankOperationDollars(amount));
-        setMessage('Funds set aside.');
+        setMessage('Ready to send offline.');
       }
       setEditing(null);setAmount('');
       setBalance(await wallet.offlineBalance());
@@ -76,7 +76,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       <span>Available offline</span>
       <div className="wallet-offline-balance-controls">
         <strong aria-live="polite">{balance?formatMoney(balance.availableUsdCents):'—'}</strong>
-        <button type="button" className="icon-button" aria-label="Set aside" title="Set aside"
+        <button type="button" className="icon-button" aria-label="Enable more funds offline" title="Enable offline"
           aria-expanded={editing==='add'} aria-controls={editing==='add'?formId:undefined}
           disabled={!balance||busy||!online||!!movingBack} onClick={()=>edit('add')}><Plus size={18} aria-hidden="true"/></button>
         <button type="button" className="icon-button" aria-label="Move back" title="Move back"
@@ -87,10 +87,11 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
     {movingBack?<button type="button" className="secondary-button" disabled={busy||!online}
       onClick={()=>void change(true)}>Finish moving back {formatMoney(movingBack)}</button>:
       editing&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
-        <AmountInput label={editing==='add'?'Amount to set aside':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
-        <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Set aside funds':'Move back funds'}</button>
+        <AmountInput label={editing==='add'?'Amount to enable offline':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
+        {editing==='add'&&<p className="body-copy small-copy">Send this amount offline from this device.</p>}
+        <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Enable offline':'Move back funds'}</button>
       </form>}
-    {!online&&<p className="body-copy small-copy">Connect to set aside or move funds back.</p>}
+    {!online&&<p className="body-copy small-copy">Connect to enable offline funds or move them back.</p>}
     {message&&<p role="status" className="body-copy">{message}</p>}
     {error&&<p role="alert" className="error-message">{error}</p>}
   </section>;
@@ -175,7 +176,10 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
     </button>{errors}</>;
 }
 
-export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;onRefresh:()=>void}){
+export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenIdentity;offline:boolean;onRefresh:()=>void}){
+  const panelId=useId();
+  const [expanded,setExpanded]=useState(offline);
+  useEffect(()=>{if(offline)setExpanded(true);},[offline]);
   const reader=useRef(readOpticalNoteFrames('wallet'));
   const [status,setStatus]=useState(''),[error,setError]=useState('');
   const [received,setReceived]=useState<{allocationId:string}|null>(null);
@@ -266,7 +270,15 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       if(active.current&&frames)setReceiptProof({frames,index});
     }catch(cause){if(active.current)setError(walletError(cause));}
   }
-  return <>{!offer&&!receiptProof&&<PaymentScanner compact onBytes={scan}/>}
+  return <section className="receive-nearby">
+    <button type="button" className="receive-nearby-toggle" aria-controls={panelId} aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>
+      <QrCode size={16} aria-hidden="true"/><span>Receive nearby</span><ChevronDown size={16} aria-hidden="true"/>
+    </button>
+    <div id={panelId} className="receive-nearby-panel" hidden={!expanded}>{expanded&&<>
+      {!offer&&!receiptProof&&<>
+        <p className="body-copy small-copy">Scan the sender’s payment QR. Works offline.</p>
+        <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
+      </>}
     {offer&&<><p className="body-copy">Approve receiving {formatMoney(offer.amountUsdCents)} on this device.</p>
       <button type="button" className="primary-button" disabled={busy} onClick={()=>void approveOffer()}>Approve receiving</button>
       <button type="button" className="text-button" disabled={busy} onClick={()=>setOffer(null)}>Cancel</button></>}
@@ -279,5 +291,7 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       {receiptProof.index+1<receiptCount&&<button type="button" className="text-button" onClick={()=>void showReceipt(receiptProof.index+1)}>Older payment</button>}
       {receiptProof.index>0&&<button type="button" className="text-button" onClick={()=>void showReceipt(receiptProof.index-1)}>Newer payment</button>}
       <button type="button" className="text-button" onClick={()=>setReceiptProof(null)}>Done</button></>}
-    {received&&<button className="text-button" onClick={()=>void release()} disabled={busy}>Sync to account</button>}</>;
+    {received&&<button className="text-button" onClick={()=>void release()} disabled={busy}>Sync to account</button>}
+    </>}</div>
+  </section>;
 }
