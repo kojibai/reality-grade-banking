@@ -1,0 +1,146 @@
+:root[data-bank-appearance="dark"] {
+ color-scheme: dark;
+ --bank-page: #131e2c;
+ --bank-desktop: #0c131d;
+ --bank-dock: #192739;
+ --bank-surface: #192739;
+ --bank-surface-raised: #1e2d41;
+ --bank-surface-subtle: #233149;
+ --bank-field: #152233;
+ --bank-line: #3b4f68;
+ --bank-line-subtle: #314158;
+ --bank-field-line: #65809e;
+ --bank-text: #eaf0f9;
+ --bank-text-secondary: #c5d3e5;
+ --bank-text-muted: #a9bdd3;
+ --bank-link: #a9c1ff;
+ --bank-action: #365bd1;
+ --bank-action-hover: #2e51be;
+ --bank-action-text: #ffffff;
+ --bank-info-surface: #263a58;
+ --bank-info-line: #5b79a4;
+ --bank-positive: #83d9b2;
+ --bank-positive-surface: #213f3c;
+ --bank-positive-line: #4a8e76;
+ --bank-danger: #ffb4bc;
+ --bank-danger-surface: #442b3a;
+ --bank-danger-line: #a25f6e;
+ --bank-warning: #f1cf8a;
+ --bank-warning-surface: #423829;
+ --bank-warning-line: #937849;
+ --bank-purple: #d6bffa;
+ --bank-purple-surface: #372e4e;
+ --bank-purple-line: #856d9e;
+ --bank-backdrop: #070d17a8;
+ background: var(--bank-page);
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] :is(a,button,input,select,textarea,summary):focus-visible {
+ outline-color: var(--bank-link);
+}
+:root[data-bank-appearance="dark"] :is(input,textarea)::placeholder {
+ color: var(--bank-text-muted);
+ opacity: 1;
+}
+:root[data-bank-appearance="dark"] :is(input,textarea,select):is(:disabled,[readonly]) {
+ color: var(--bank-text-secondary);
+}
+:root[data-bank-appearance="dark"] :is(.sheet,.checkout-card,.meeting-lobby-card,.proof-media-expanded) {
+ box-shadow: 0 24px 80px #060b1480;
+}
+:root[data-bank-appearance="dark"] :is(.sheet,.checkout-card,.proof-media-expanded)::backdrop {
+ background: var(--bank-backdrop);
+}
+:root[data-bank-appearance="dark"] :is(.offline-note-payment-code,.wallet-payment-code) canvas {
+ color-scheme: light;
+}
+:root[data-bank-appearance="dark"] .sheet {
+ --bg: var(--bank-surface-raised);
+}
+:root[data-bank-appearance="dark"] .kai-header-coordinate>strong {
+ color: var(--bank-positive);
+}
+:root[data-bank-appearance="dark"] .kai-header-button .kai-date-day {
+ color: var(--bank-purple);
+}
+:root[data-bank-appearance="dark"] :is(.kai-header-button .kai-date-month,.kai-header-meta) {
+ color: var(--bank-text-muted);
+}
+:root[data-bank-appearance="dark"] :is(.native-operation-review,.payment-tools,.identity-profile,.ledger-inspector) code {
+ color: var(--bank-text);
+}
+/* The institutional assessment hashes its own styles as corresponding source.
+   Apply appearance to its chrome from the app's presentation layer. */
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-mark,h2,.conformance-identity-holder h2,.device-evidence h3,.published-conformance-credential h3,.workspace-records h4,.receiving-preparation header h3) {
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-hero>div>p,.conformance-product,.conformance-actions small,.conformance-summary p,.section-description,.table-title p,.qualification-note,.note-standard-eyebrow,.note-standard-intro,.receiving-preparation-eyebrow,.receiving-preparation header>p,.receiving-preparation-steps p,.receiving-preparation-boundary,.device-evidence>p,.institution-workspace>p,.workspace-eyebrow,.published-conformance-credential p,.workspace-records p,.audit-intro,.audit-callout p,.assessment-verdict p) {
+ color: var(--bank-text-muted);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.secondary,.account-proof-picker,.check-table-head,.check-scope,.check-result,.check-detail,.qualification-table-head,.qualification-group,.qualification-row>span,.inspection-explainer summary,.note-standard-details>summary,.assessment-inputs label,.contract-transcript-picker,.receiving-preparation-fields label) {
+ color: var(--bank-text-secondary);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-hero h1 span,.conformance-text-link,.conformance-tabs button[aria-selected=true],.note-standard-links a,.note-standard-details dd a,.audit-links a,.receiving-preparation a) {
+ color: var(--bank-link);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-evidence-object,.original-file-zone,.recorded-evidence,.note-standard-availability,.audit-callout,.audit-status,.contract-testbench,.assessment-verdict,pre,.qualification-table-head,.qualification-group,.conformance-seal-consent,.conformance-identity,.institution-workspace,.published-conformance-credential,.workspace-holder,.workspace-records>div,.receiving-preparation,.receiving-preparation-choices button,.receiving-preparation-fields input,.receiving-preparation-fields select) {
+ background: var(--bank-surface);
+ border-color: var(--bank-line-subtle);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(pre,.workspace-holder code,.receiving-preparation-choices button,.receiving-preparation-fields input,.receiving-preparation-fields select) {
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.primary,.receiving-preparation-choices button[aria-pressed=true]) {
+ background: var(--bank-action);
+ color: var(--bank-action-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root .proof-refusal {
+ background: var(--bank-danger-surface);
+ border-color: var(--bank-danger-line);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.proof-refusal h3,.proof-refusal p,.proof-refusal code,.check-failed .check-result,.assessment-result [data-status=FAIL]) {
+ color: var(--bank-danger);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.verified-note-result,.workspace-verified) {
+ background: var(--bank-positive-surface);
+ border-color: var(--bank-positive-line);
+ color: var(--bank-positive);
+}
+@media print {
+ :root[data-bank-appearance="dark"] {
+  color-scheme: light;
+  --bank-page: initial;
+  --bank-desktop: initial;
+  --bank-dock: initial;
+  --bank-surface: initial;
+  --bank-surface-raised: initial;
+  --bank-surface-subtle: initial;
+  --bank-field: initial;
+  --bank-line: initial;
+  --bank-line-subtle: initial;
+  --bank-field-line: initial;
+  --bank-text: initial;
+  --bank-text-secondary: initial;
+  --bank-text-muted: initial;
+  --bank-link: initial;
+  --bank-action: initial;
+  --bank-action-hover: initial;
+  --bank-info-surface: initial;
+  --bank-info-line: initial;
+  --bank-positive: initial;
+  --bank-positive-surface: initial;
+  --bank-positive-line: initial;
+  --bank-danger: initial;
+  --bank-danger-surface: initial;
+  --bank-danger-line: initial;
+  --bank-warning: initial;
+  --bank-warning-surface: initial;
+  --bank-warning-line: initial;
+  --bank-purple: initial;
+  --bank-purple-surface: initial;
+  --bank-purple-line: initial;
+  --bank-backdrop: initial;
+  background: #fff;
+  color: #172b45;
+ }
+}

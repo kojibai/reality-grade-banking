@@ -1,5 +1,5 @@
-.account-opening-screen{position:fixed;z-index:100;inset:0;isolation:isolate;overflow:hidden;margin:0;border:0;padding:0;min-height:100svh;background:#FCFBF8;color:#172B45;contain:layout paint}
-.account-opening-screen::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 42%,#d9e6f35c 0,transparent 47%),linear-gradient(180deg,#fff9 0,#edf1f340 100%)}
+.account-opening-screen{position:fixed;z-index:100;inset:0;isolation:isolate;overflow:hidden;margin:0;border:0;padding:0;min-height:100svh;background:var(--bank-page,#FCFBF8);color:var(--bank-text,#172B45);contain:layout paint}
+.account-opening-screen::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 42%,#d9e6f35c 0,transparent 47%),linear-gradient(180deg,var(--bank-page,#fff9) 0,#edf1f340 100%)}
 .account-opening-portal{position:absolute;inset:0;display:grid;place-items:center;perspective:1100px;overflow:hidden}
 .account-opening-horizon{position:absolute;width:180vmax;height:105vmax;left:50%;top:50%;transform:translate(-50%,-35%) rotateX(75deg);border-radius:50%;border:1px solid #5279aa24;box-shadow:0 -1px 28px #5b7ca611;background:radial-gradient(ellipse at center,#799ac41a,transparent 55%);pointer-events:none}
 .account-opening-field{position:absolute;inset:0;opacity:.55;mask-image:radial-gradient(ellipse at center,#000 10%,transparent 72%);pointer-events:none}

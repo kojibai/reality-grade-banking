@@ -1,2 +1,2 @@
-.sheet-header.sheet-header--back{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:12px}.sheet-header--back h2{text-align:center}.sheet-header--back .icon-button{background:transparent;color:var(--muted,#8494a8)}
+.sheet-header.sheet-header--back{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:12px}.sheet-header--back h2{text-align:center}.sheet-header--back .icon-button{background:transparent;color:var(--muted,var(--bank-text-muted,#8494a8))}
 .sheet.sheet-embedded{display:block;width:100%;max-height:none;margin:0;box-shadow:none;position:relative}.sheet-embedded .sheet-body{overflow:visible}

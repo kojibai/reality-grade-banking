@@ -1,6 +1,6 @@
 .asset-original-purchase {
-  background: var(--surface, #fff);
-  border: 1px solid var(--line, #dbe3ee);
+  background: var(--surface, var(--bank-surface,#fff));
+  border: 1px solid var(--line, var(--bank-line-subtle,#dbe3ee));
   border-radius: 18px;
   overflow: hidden;
 }
@@ -43,5 +43,5 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--line, #dbe3ee);
+  border-bottom: 1px solid var(--line, var(--bank-line-subtle,#dbe3ee));
 }

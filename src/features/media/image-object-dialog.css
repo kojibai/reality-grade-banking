@@ -2,9 +2,9 @@
   width:min(730px,calc(100vw - 20px));
   height:min(880px,calc(100dvh - 24px));
   border-radius:24px;
-  background:#f4f6fa;
+  background:var(--bank-surface-raised,#f4f6fa);
 }
-.proof-media-dialog--image-object>header {background:#fbfcff}
+.proof-media-dialog--image-object>header {background:var(--bank-surface-raised,#fbfcff)}
 .proof-image-object-body {
   flex:1;
   min-height:0;
@@ -32,7 +32,7 @@
   container-type:inline-size;
   padding:clamp(20px,5vw,50px) clamp(12px,5vw,42px) clamp(24px,5vw,52px);
   transition:none;
-  background:radial-gradient(ellipse at 50% 35%,#fbfcff,#f4f6fa 76%);
+  background:radial-gradient(ellipse at 50% 35%,var(--bank-surface,#fbfcff),var(--bank-surface-subtle,#f4f6fa) 76%);
 }
 .asset-object--image .asset-object-float {
   --image-object-fit:max(min(100cqw,210px),min(100cqw,calc((100dvh - 268px) * var(--image-object-ratio))));
@@ -65,17 +65,17 @@
   position:absolute;
   inset:0;
   border-radius:clamp(8px,1.5vw,14px);
-  border:1px solid #dbe3ef;
+  border:1px solid var(--bank-line-subtle,#dbe3ef);
   overflow:hidden;
 }
 .asset-object--image .asset-object-front {
   transform:translateZ(var(--image-object-depth));
-  background:#f4f6fa;
+  background:var(--bank-surface-subtle,#f4f6fa);
 }
 .asset-object--image .asset-object-back {
   transform:rotateY(180deg) translateZ(4px);
   box-shadow:none;
-  background:#fbfcff;
+  background:var(--bank-surface,#fbfcff);
   overflow:auto;
   overscroll-behavior:contain;
   padding:clamp(10px,3vw,22px);
@@ -97,8 +97,8 @@
   flex-shrink:0;
   gap:8px;
   padding:8px clamp(8px,3vw,16px);
-  border-top:1px solid #dbe3ef;
-  background:#fbfcff;
+  border-top:1px solid var(--bank-line-subtle,#dbe3ef);
+  background:var(--bank-surface,#fbfcff);
 }
 .asset-object--image .asset-proof-back-body {max-height:none;overflow:visible}
 @media(max-height:580px) {

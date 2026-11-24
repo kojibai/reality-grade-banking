@@ -1,15 +1,15 @@
 @import '../components/form-controls.css';
 .console { background: var(--bg); max-width: 1160px; min-height: 100dvh; margin: 0 auto; position: relative; }
 .app-header { height: 64px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; }
-.bank-home-mark { width: 35px; height: 35px; padding: 0; display: grid; place-items: center; border-radius: 7px; color: #30445d; }
+.bank-home-mark { width: 35px; height: 35px; padding: 0; display: grid; place-items: center; border-radius: 7px; color: var(--bank-text,#30445d); }
 .bank-home-mark svg { display: block; width: 88%; height: 88%; }
 .header-tools { display: flex; align-items: center; gap: 12px; }
-.demo-label { background: #eef0f3; padding: 7px 11px; border-radius: 22px; font-size: 12px; font-weight: 550; }
-.avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--navy); color: white; font-size: 12px; font-weight: 600; padding: 0; }
+.demo-label { background: var(--bank-surface-subtle,#eef0f3); padding: 7px 11px; border-radius: 22px; font-size: 12px; font-weight: 550; }
+.avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--bank-info-surface,var(--navy)); color: white; font-size: 12px; font-weight: 600; padding: 0; }
 .main-panel { padding: 0 21px 112px; animation: reveal .2s ease-out; }
 html.public-navigation-instant .main-panel { animation: none; }
 .balance-display { display: flex; padding: 0; text-align: left; flex-direction: column; width: 100%; }
-.balance-label { font-size: 15px; color: #778499; margin: 6px 0 6px; }
+.balance-label { font-size: 15px; color: var(--bank-text-muted,#778499); margin: 6px 0 6px; }
 .balance-amount { font-size: clamp(34px, 10.5vw, 44px); font-weight: 750; letter-spacing: -1.8px; font-variant-numeric: tabular-nums; line-height: 1.18; white-space: nowrap; }
 .balance-change { color: var(--green); font-size: 16px; font-weight: 600; margin-top: 9px; letter-spacing: -.3px; }
 .balance-change span { font-weight: 450; }
@@ -18,47 +18,47 @@ html.public-navigation-instant .main-panel { animation: none; }
 .value-chart.green { color: var(--green); }
 .value-chart.compact { width: 126px; margin: 0; }
 .periods { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin: 8px 0 16px; }
-.periods button { height: 32px; font-size: 12px; color: #9099a7; font-weight: 600; border-radius: 7px; }
-.periods button.active { background: #edf3fe; color: var(--blue); }
+.periods button { height: 32px; font-size: 12px; color: var(--bank-text-muted,#9099a7); font-weight: 600; border-radius: 7px; }
+.periods button.active { background: var(--bank-info-surface,#edf3fe); color: var(--blue); }
 .money-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-.money-actions button { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px; height: 70px; border-radius: 12px; background: #f0f1f3; font-size: 15px; font-weight: 600; }
-.money-actions .send-action { background: var(--blue); color: white; }
-.growth-panel { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: white; text-align: left; margin-top: 14px; }
+.money-actions button { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px; height: 70px; border-radius: 12px; background: var(--bank-surface-subtle,#f0f1f3); font-size: 15px; font-weight: 600; }
+.money-actions .send-action { background: var(--bank-action,var(--blue)); color: white; }
+.growth-panel { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bank-surface,white); text-align: left; margin-top: 14px; }
 .growth-panel .muted { font-size: 12px; display: block; }
 .growth-panel > div > strong { font-size: 25px; color: var(--green); display: block; margin-top: 6px; letter-spacing: -.9px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 10px; }
 .section-heading button { color: var(--blue); font-size: 12px; padding: 7px 0 7px 9px; }
-.rows-surface { border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
+.rows-surface { border: 1px solid var(--line); border-radius: 12px; background: var(--bank-surface,#fff); overflow: hidden; }
 .asset-row { width: 100%; display: flex; align-items: center; gap: 11px; text-align: left; padding: 12px 11px; min-height: 66px; }
 .asset-row + .asset-row { border-top: 1px solid var(--line); }
-.asset-row:hover { background: #fafbfe; }
-.asset-mark { width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; flex-shrink: 0; background: #e4edf9; color: #365781; }
-.asset-mark.proof { background: #e7eafa; color: #344a84; }
-.asset-mark.physical { background: #fff0cf; color: #ab8528; }
-.asset-mark.currency { background: #e0f3e9; color: #2b8367; }
-.asset-mark.property { background: #e5edfa; color: #365781; }
-.asset-mark.stock { background: #e8edfe; color: #3556b5; }
-.asset-mark.send, .asset-mark.rule { background: #f0edf9; color: #766794; }
-.asset-mark.deposit { background: #e4f3ec; color: #238565; }
+.asset-row:hover { background: var(--bank-surface,#fafbfe); }
+.asset-mark { width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; flex-shrink: 0; background: var(--bank-info-surface,#e4edf9); color: var(--bank-link,#365781); }
+.asset-mark.proof { background: var(--bank-info-surface,#e7eafa); color: var(--bank-link,#344a84); }
+.asset-mark.physical { background: var(--bank-warning-surface,#fff0cf); color: var(--bank-warning,#ab8528); }
+.asset-mark.currency { background: var(--bank-positive-surface,#e0f3e9); color: var(--bank-positive,#2b8367); }
+.asset-mark.property { background: var(--bank-info-surface,#e5edfa); color: var(--bank-link,#365781); }
+.asset-mark.stock { background: var(--bank-info-surface,#e8edfe); color: var(--bank-link,#3556b5); }
+.asset-mark.send, .asset-mark.rule { background: var(--bank-purple-surface,#f0edf9); color: var(--bank-purple,#766794); }
+.asset-mark.deposit { background: var(--bank-positive-surface,#e4f3ec); color: var(--bank-positive,#238565); }
 .asset-mark.small { width: 36px; height: 36px; border-radius: 50%; }
 .row-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .row-copy strong { font-size: 13px; font-weight: 650; }
-.row-copy > span { font-size: 11px; color: #8a93a3; line-height: 1.35; }
+.row-copy > span { font-size: 11px; color: var(--bank-text-muted,#8a93a3); line-height: 1.35; }
 .row-value { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.row-chevron { color: #a2aaba; }
+.row-chevron { color: var(--bank-text-muted,#a2aaba); }
 .sheet { border: 1px solid var(--line); border-radius: 23px; width: min(540px, calc(100% - 22px)); max-height: calc(100dvh - 108px); padding: 0; margin: auto auto 87px; color: var(--navy); background: var(--bg); box-shadow: 0 24px 100px #172b4533; }
 .sheet::backdrop { background: #172b454b; backdrop-filter: blur(3px); }
 .sheet-header { display: flex; justify-content: space-between; align-items: center; padding: 19px 21px 13px; position: sticky; top: 0; background: var(--bg); z-index: 2; border-bottom: 1px solid #e9eaf070; }
 .sheet-header h2 { font-size: 17px; }
-.icon-button { height: 34px; width: 34px; display: inline-grid; place-items: center; background: #eeeff2; border-radius: 50%; padding: 0; }
+.icon-button { height: 34px; width: 34px; display: inline-grid; place-items: center; background: var(--bank-surface-subtle,#eeeff2); border-radius: 50%; padding: 0; }
 .sheet-body { padding: 21px; }
 @media (max-width: 719px) { .account-primary > .value-chart svg { height: 112px; } .account-secondary .asset-row { min-height: 58px; padding-top: 9px; padding-bottom: 9px; } .account-secondary .asset-mark { width: 36px; height: 36px; } }
 @keyframes reveal { from { opacity: .5; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (min-width: 720px) { .console { min-height: calc(100dvh - 32px); margin: 16px auto; border-radius: 22px 22px 0 0; box-shadow: 0 15px 70px #24354e09; } .app-header { height: 101px; padding: 28px 40px; } .bank-home-mark { width: 42px; height: 42px; } .avatar { width: 42px; height: 42px; font-size: 14px; } .main-panel { padding: 22px 40px 125px; } .account-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 65px; } .balance-amount { font-size: 60px; } .balance-label { font-size: 19px; } .balance-change { font-size: 18px; } .account-secondary .section-heading:first-child { margin-top: 6px; } .account-secondary section + section { margin-top: 38px; } .asset-row { padding: 17px 16px; min-height: 83px; } .row-copy strong, .row-value { font-size: 15px; } .row-copy > span { font-size: 12px; } .asset-mark { width: 47px; height: 47px; } .growth-panel { margin-top: 24px; padding: 22px; } .value-chart { margin-top: 25px; } .periods { margin-bottom: 26px; } .money-actions button { height: 83px; font-size: 17px; } .sheet { margin: auto; max-height: calc(100dvh - 48px); } }
 @media (max-width: 350px) { .main-panel { padding-left: 16px; padding-right: 16px; } .app-header { padding-left: 16px; padding-right: 16px; } .header-tools { gap: 8px; } .row-copy strong, .row-value { font-size: 12px; } .asset-row { gap: 8px; } .row-chevron { display: none; } }
 
-.bank-signature{margin:30px 0 0;text-align:center;color:#7d899d;font-size:11px;font-weight:450;letter-spacing:.045em;line-height:1.5}
+.bank-signature{margin:30px 0 0;text-align:center;color:var(--bank-text-muted,#7d899d);font-size:11px;font-weight:450;letter-spacing:.045em;line-height:1.5}
 
 .bank-signature a{color:inherit;text-decoration:none}.bank-signature a:hover{text-decoration:underline;text-underline-offset:4px}
 
-.message-entry{width:30px;height:35px;display:grid;place-items:center;color:#53647a;padding:0;flex-shrink:0}.header-tools:has(.message-entry){gap:9px}.app-header:has(.message-entry){gap:10px}.app-header:has(.message-entry) .kai-header-trigger{flex-shrink:1}@media(max-width:360px){.header-tools:has(.message-entry){gap:5px}.message-entry{width:27px}}
+.message-entry{width:30px;height:35px;display:grid;place-items:center;color:var(--bank-text-secondary,#53647a);padding:0;flex-shrink:0}.header-tools:has(.message-entry){gap:9px}.app-header:has(.message-entry){gap:10px}.app-header:has(.message-entry) .kai-header-trigger{flex-shrink:1}@media(max-width:360px){.header-tools:has(.message-entry){gap:5px}.message-entry{width:27px}}

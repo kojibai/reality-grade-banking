@@ -1,7 +1,7 @@
 .account-availability{display:flex;align-items:center;gap:5px;margin:0 0 10px;padding:2px 0;min-height:30px;max-width:100%;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;line-height:1.6;text-align:left}
 .account-availability>span{min-width:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .account-availability>svg{flex:none}
-.account-availability-body{margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border,#e4e8ef);color:var(--muted)}
+.account-availability-body{margin:0 0 16px;padding:0 0 12px;border-bottom:1px solid var(--border,var(--bank-line-subtle,#e4e8ef));color:var(--muted)}
 .account-availability-body p{margin:0 0 10px;font-size:12px;line-height:1.65}
 .account-availability-body dl{margin:10px 0;font-size:12px}
 .account-availability-body dl>div{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin:7px 0}

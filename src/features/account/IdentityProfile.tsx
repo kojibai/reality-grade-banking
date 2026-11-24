@@ -7,6 +7,7 @@ import {QuickProfileEditor} from './QuickProfileEditor';
 import { BankConnection } from './BankConnection';
 import { ProofPortabilityPanel } from './ProofPortabilityPanel';
 import {AccountEmail} from './AccountEmail';
+import {AppearanceSettings} from './AppearanceSettings';
 import {ProfileAvatar} from '../../components/ProfileAvatar';
 import {identityProfileAvatar,identityProfileName,identityProfileUsername} from '../../receiz/profile-avatar';
 import {receivingUsernameForIdentity} from '../../../native/receiz/app/lib/profile/receivingUsername.js';
@@ -105,6 +106,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
       <code className="profile-public-id">{publicId}</code>
       <p>Your verified identity, secured on this device.</p>
     </div>
+    <AppearanceSettings/>
     {identity.profile&&<QuickProfileEditor identity={identity} username={knownName??publicId}/>}
     {profileName?<a className="identity-public-profile-link" href={profilePagePath(profileName)}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></a>:identity.prepareReceivingUsername&&<button type="button" className="identity-public-profile-link" disabled={profileOpening===identity} aria-busy={profileOpening===identity} onClick={()=>void openPublicProfile()}><span><strong>Your public profile</strong><small>View, share &amp; edit</small></span><ArrowUpRight size={18}/></button>}
     {profileError?.owner===identity&&<p className="error-message" role="alert">{profileError.message}</p>}

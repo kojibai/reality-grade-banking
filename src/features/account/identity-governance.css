@@ -3,5 +3,5 @@
   border-top: 0;
 }
 .identity-governance-entry small {
-  color: #597286;
+  color: var(--bank-text-secondary,#597286);
 }

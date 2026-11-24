@@ -1,9 +1,9 @@
 .bank-message-create{position:relative;flex:none}
 .bank-message-create .bank-message-proposal{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;min-width:38px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--navy);font:inherit;font-size:12px;font-weight:500;padding:9px}
 .bank-message-create .bank-message-create-labelled{width:auto;min-width:0;padding:9px 11px;white-space:nowrap}
-.bank-message-create .bank-message-proposal:hover,.bank-message-create .bank-message-proposal[aria-expanded=true]{background:#f0f3f8;border-color:#d8e0ec}
-.bank-message-create-menu{position:absolute;left:-6px;bottom:46px;z-index:12;width:226px;max-width:calc(100vw - 52px);padding:5px;background:var(--surface);border:1px solid #e1e6ee;border-radius:14px;box-shadow:0 12px 36px #172b451a,0 2px 6px #172b4508}
+.bank-message-create .bank-message-proposal:hover,.bank-message-create .bank-message-proposal[aria-expanded=true]{background:var(--bank-surface-subtle,#f0f3f8);border-color:var(--bank-line-subtle,#d8e0ec)}
+.bank-message-create-menu{position:absolute;left:-6px;bottom:46px;z-index:12;width:226px;max-width:calc(100vw - 52px);padding:5px;background:var(--surface);border:1px solid var(--bank-line-subtle,#e1e6ee);border-radius:14px;box-shadow:0 12px 36px #172b451a,0 2px 6px #172b4508}
 .bank-message-create .bank-message-create-menu button,.bank-message-composer .bank-message-create-menu button{width:100%;height:auto;min-width:0;min-height:43px;display:flex;align-items:center;gap:11px;justify-content:flex-start;border:0;border-radius:9px;padding:10px 12px;background:transparent;color:var(--navy);font:inherit;font-size:12px;font-weight:450;line-height:1.45;text-align:left}
-.bank-message-create-menu button svg{color:#6b7d96}
+.bank-message-create-menu button svg{color:var(--bank-text-secondary,#6b7d96)}
 .bank-message-create-menu button span{min-width:0}
-.bank-message-create .bank-message-create-menu button:hover,.bank-message-create .bank-message-create-menu button:focus-visible{background:#f0f3f8;outline:0}
+.bank-message-create .bank-message-create-menu button:hover,.bank-message-create .bank-message-create-menu button:focus-visible{background:var(--bank-surface-subtle,#f0f3f8);outline:0}

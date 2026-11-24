@@ -1,0 +1,11 @@
+.account-appearance{margin:17px 0 0;padding:10px 0;border-block:1px solid var(--line)}
+.account-appearance summary{display:flex;align-items:center;gap:11px;min-height:44px;cursor:pointer;list-style:none}
+.account-appearance summary::-webkit-details-marker{display:none}
+.account-appearance summary>strong{flex:1;color:var(--navy);font-size:13px;font-weight:650}
+.account-appearance summary>span:not(.account-appearance-icon){color:var(--bank-text-muted,#52667e);font-size:12px}
+.account-appearance summary>svg{color:var(--bank-text-muted,#52667e)}
+.account-appearance[open] summary>svg{transform:rotate(180deg)}
+.account-appearance-icon{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:10px;background:var(--bank-info-surface,#eaf0fc);color:var(--bank-link,#3159bd)}
+.account-appearance-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:9px;padding:4px;border-radius:10px;background:var(--bank-surface-subtle,#edf1f6)}
+.account-appearance-choices button{min-height:38px;border-radius:7px;color:var(--bank-text-secondary,#344d6b);font-size:12px;font-weight:550}
+.account-appearance-choices button[aria-pressed=true]{background:var(--bank-info-surface,#fff);color:var(--bank-link,#244dcb);box-shadow:0 1px 5px #132e4b1a;font-weight:650}

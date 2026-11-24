@@ -1,3 +1,4 @@
+import {appAppearancePlugin} from './scripts/app-appearance.mjs';
 import {governancePreviewPlugin} from './server/governance-preview-plugin';
 import {bankMarkSvg} from './branding/bank-mark.mjs';
 import {emailGuideDevPlugin} from './scripts/email-guide-dev.mjs';
@@ -41,7 +42,7 @@ import {publicRuntimeExportsPlugin} from './scripts/public-runtime-exports.mjs';
 export default defineConfig({
   // Real SDK proof and seal suites use the same bounded worker budget in CI and locally.
   test: { maxWorkers:2, globalSetup:['./tests/setup/server-asset-runtime.mjs'], include: ['tests/**/*.test.{ts,tsx}'], environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } } },
-  plugins: [governancePreviewPlugin(),{name:'bankeiz-voting-mark',transformIndexHtml(html){return html.replace('<!-- voting-home-mark -->',bankMarkSvg);}},{name:'bankeiz-observatory-dev-entry',configureServer(server){
+  plugins: [appAppearancePlugin(),governancePreviewPlugin(),{name:'bankeiz-voting-mark',transformIndexHtml(html){return html.replace('<!-- voting-home-mark -->',bankMarkSvg);}},{name:'bankeiz-observatory-dev-entry',configureServer(server){
     server.middlewares.use((request,_response,next)=>{
       if(/^\/vote\/(?:charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)\/[a-f0-9]{64}\/?(?:\?|$)/.test(request.url??''))request.url='/vote/record.html';
       if(/^\/vote\/?(?:\?|$)/.test(request.url??''))request.url='/vote/index.html';

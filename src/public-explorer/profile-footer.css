@@ -1,7 +1,7 @@
-.profile-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 24px;border-top:1px solid var(--line,#e5e8ee);margin:48px 0 0;padding:22px 0 8px;color:var(--profile-footer-text,#52697f);font-size:12px;line-height:1.5}
+.profile-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 24px;border-top:1px solid var(--line,var(--bank-line-subtle,#e5e8ee));margin:48px 0 0;padding:22px 0 8px;color:var(--profile-footer-text,var(--bank-text-secondary,#52697f));font-size:12px;line-height:1.5}
 .profile-footer a{color:inherit;text-decoration:none}
-.profile-footer a:hover{color:var(--accent,#254bd8);text-decoration:underline;text-underline-offset:4px}
-.profile-footer a:focus-visible{outline:2px solid var(--accent,#254bd8);outline-offset:4px;border-radius:3px}
+.profile-footer a:hover{color:var(--accent,var(--bank-link,#254bd8));text-decoration:underline;text-underline-offset:4px}
+.profile-footer a:focus-visible{outline:2px solid var(--accent,var(--bank-info-line,#254bd8));outline-offset:4px;border-radius:3px}
 .profile-footer-signature{display:inline-flex;align-items:center;gap:10px;min-height:40px;font-weight:580}
 .profile-footer-signature svg{width:18px;height:18px;flex:none}
 .profile-footer nav{display:flex;flex-wrap:wrap;gap:0 18px;align-items:center}

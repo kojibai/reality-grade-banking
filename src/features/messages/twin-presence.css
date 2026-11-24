@@ -1,7 +1,7 @@
-.bank-twin-presence{display:flex;align-items:center;gap:13px;padding:25px 0;color:#647994;font-size:12px;line-height:1.5}
+.bank-twin-presence{display:flex;align-items:center;gap:13px;padding:25px 0;color:var(--bank-text-secondary,#647994);font-size:12px;line-height:1.5}
 .bank-twin-presence>span:last-child{display:grid;gap:4px}
 .bank-twin-presence small{font-size:10px;color:var(--muted)}
-.bank-twin-presence-mark{display:grid;place-items:center;position:relative;isolation:isolate;width:46px;height:46px;border-radius:15px;color:#59749d;background:#f0f3f9;border:1px solid #e0e7f2;flex-shrink:0}
+.bank-twin-presence-mark{display:grid;place-items:center;position:relative;isolation:isolate;width:46px;height:46px;border-radius:15px;color:var(--bank-link,#59749d);background:var(--bank-surface-subtle,#f0f3f9);border:1px solid var(--bank-line-subtle,#e0e7f2);flex-shrink:0}
 .bank-twin-presence-mark>svg{width:21px;height:21px;position:relative;z-index:1}
 .bank-twin-presence-light{position:absolute!important;inset:0;width:100%!important;height:100%!important;pointer-events:none;overflow:visible;fill:none;stroke:#829cc6;stroke-width:1;stroke-linecap:round;stroke-dasharray:12 88;opacity:.65;animation:bank-twin-presence-trace 3.6s linear infinite}
 .bank-twin-presence[data-active=false] .bank-twin-presence-light,[hidden] .bank-twin-presence-light{animation-play-state:paused}
@@ -13,16 +13,16 @@
 .bank-relationship-header~.bank-relationship-twin .bank-twin-suggestions button{min-height:45px;font-size:12px}
 @keyframes bank-twin-presence-trace{to{stroke-dashoffset:-100}}
 @media(prefers-reduced-motion:reduce){.bank-twin-presence-light{animation:none;opacity:.35}}
-.bank-relationship-history-retry{font:inherit;font-size:11px;min-height:36px;color:#617da8;text-align:left;padding:8px 20px}
+.bank-relationship-history-retry{font:inherit;font-size:11px;min-height:36px;color:var(--bank-link,#617da8);text-align:left;padding:8px 20px}
 
 .bank-relationship-header~.bank-relationship-twin .bank-twin-welcome{display:grid;grid-template-columns:36px minmax(0,1fr);gap:0 13px;padding:23px 22px 18px}
-.bank-relationship-header~.bank-relationship-twin .bank-twin-mark{grid-column:1;align-self:center;display:grid;place-items:center;box-sizing:border-box;width:36px;height:36px;padding:6px;margin:0;color:#5b7396;background:#f0f3f9;border:1px solid #e2e8f2;border-radius:12px}
+.bank-relationship-header~.bank-relationship-twin .bank-twin-mark{grid-column:1;align-self:center;display:grid;place-items:center;box-sizing:border-box;width:36px;height:36px;padding:6px;margin:0;color:var(--bank-link,#5b7396);background:var(--bank-surface-subtle,#f0f3f9);border:1px solid var(--bank-line-subtle,#e2e8f2);border-radius:12px}
 .bank-relationship-header~.bank-relationship-twin .bank-twin-welcome h3{grid-column:2;align-self:center;font-size:22px;max-width:none;line-height:1.25;letter-spacing:-.7px}
 .bank-relationship-header~.bank-relationship-twin .bank-twin-welcome>p,.bank-relationship-header~.bank-relationship-twin .bank-twin-suggestions{grid-column:1/-1;max-width:none}
 .bank-relationship-header~.bank-relationship-twin .bank-twin-welcome>p{margin-top:14px}
 .bank-relationship-header~.bank-relationship-twin .bank-twin-suggestions{margin-top:17px}
-.bank-relationship-header~.bank-relationship-twin .bank-message-composer:focus-within{border-color:#a6b6df;box-shadow:0 0 0 3px #244dcb08}
+.bank-relationship-header~.bank-relationship-twin .bank-message-composer:focus-within{border-color:var(--bank-info-line,#a6b6df);box-shadow:0 0 0 3px #244dcb08}
 .bank-relationship-header~.bank-relationship-twin .bank-message-composer input:focus-visible{outline:none}
-.bank-relationship-header~.bank-relationship-twin .bank-message-composer:has(input:focus-visible){outline:2px solid #a6b6df;outline-offset:2px}
+.bank-relationship-header~.bank-relationship-twin .bank-message-composer:has(input:focus-visible){outline:2px solid var(--bank-info-line,#a6b6df);outline-offset:2px}
 
 .bank-relationship-header~.bank-relationship-twin .bank-twin-mark>.bank-twin-presence-light{border-radius:inherit}
