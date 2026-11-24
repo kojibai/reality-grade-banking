@@ -13,3 +13,33 @@
   status.textContent=query?found.size+' matching '+(found.size===1?'topic':'topics'):'';
  });
 })();
+
+(()=>{
+ const button=document.querySelector('[data-doc-theme-toggle]');
+ if(!button)return;
+ const root=document.documentElement, preference=matchMedia('(prefers-color-scheme: dark)');
+ const key='bankeiz.docs.theme';
+ try{
+  const saved=localStorage.getItem(key);
+  if(saved==='light'||saved==='dark')root.dataset.docTheme=saved;
+ }catch{/* The current page can still switch themes. */}
+ function update(){
+  const theme=root.dataset.docTheme??(preference.matches?'dark':'light');
+  const target=theme==='dark'?'light':'dark';
+  button.dataset.target=target;
+  const label='Switch to '+target+' mode';
+  button.setAttribute('aria-label',label);
+  button.title=label;
+  for(const meta of document.querySelectorAll('meta[name="theme-color"]'))
+   meta.content=theme==='dark'?'#101722':'#fbfcfe';
+ }
+ button.addEventListener('click',()=>{
+  const next=button.dataset.target;
+  root.dataset.docTheme=next;
+  try{localStorage.setItem(key,next);}catch{/* Keep the page choice when storage is unavailable. */}
+  update();
+ });
+ preference.addEventListener('change',update);
+ update();
+ button.hidden=false;
+})();
