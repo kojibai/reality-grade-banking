@@ -1,0 +1,15 @@
+.wallet-balance-notice {
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--bank-line-subtle,#dfe5ed);
+  border-radius: 12px;
+  background: var(--bank-surface-subtle,#f3f6fa);
+  color: var(--bank-text,#172b45);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.wallet-balance-notice strong { display: block; max-width: none; color: inherit; text-align: start; }
+.wallet-balance-notice p { margin: 5px 0 0; color: var(--bank-text-secondary,#51677e); }
+.wallet-balance-notice details, .wallet-balance-notice > a { display: block; margin-top: 9px; }
+.wallet-balance-notice summary { cursor: pointer; color: var(--bank-link,#244cdb); }
+.wallet-balance-notice code { overflow-wrap: anywhere; }

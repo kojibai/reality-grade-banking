@@ -9,6 +9,8 @@ import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
 import { WalletPaymentReview } from './WalletSendOperation';
 import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
+import { walletBalanceNotice, type WalletBalanceNotice } from './wallet-balance-notice';
+import './wallet-balance-notice.css';
 
 const walletError=(cause:unknown)=>{
   if(cause instanceof Error){
@@ -29,7 +31,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
   const [balance,setBalance]=useState<OfflineBalance|null>(null);
   const [online,setOnline]=useState(()=>navigator.onLine!==false);
   const [editing,setEditing]=useState<'add'|'moveBack'|null>(null),[amount,setAmount]=useState('');
-  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
+  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[notice,setNotice]=useState<WalletBalanceNotice|null>(null);
   const running=useRef(false),formId=useId();
   useEffect(()=>{
     let active=true;
@@ -39,7 +41,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
         const wallet=await identity.fundedWallet!();
         const current=await wallet.offlineBalance();
         if(active)setBalance(current);
-      }catch(cause){if(active)setError(walletError(cause));}
+      }catch(cause){if(active&&!running.current)setNotice(walletBalanceNotice(cause,'read'));}
     };
     void refresh();
     window.addEventListener('online',refresh);
@@ -48,11 +50,11 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
   },[identity]);
   const movingBack=balance?.movingBackUsdCents;
   function edit(next:NonNullable<typeof editing>){
-    setEditing(editing===next?null:next);setAmount('');setMessage('');setError('');
+    setEditing(editing===next?null:next);setAmount('');setMessage('');setNotice(null);
   }
   async function change(moveBack:boolean){
     if(running.current||navigator.onLine===false)return;
-    running.current=true;setBusy(true);setError('');setMessage('');
+    running.current=true;setBusy(true);setNotice(null);setMessage('');
     try{
       const wallet=await identity.fundedWallet!();
       if(moveBack){
@@ -66,14 +68,14 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       setBalance(await wallet.offlineBalance());
       onRefresh();
     }catch(cause){
-      setError(walletError(cause));
+      setNotice(walletBalanceNotice(cause,moveBack?'moveBack':'enable'));
       const wallet=await identity.fundedWallet!().catch(()=>null);
       if(wallet)setBalance(await wallet.offlineBalance().catch(()=>balance));
     }finally{running.current=false;setBusy(false);}
   }
   return <section className="detail-list wallet-offline-balance" aria-label="Offline balance">
     <div>
-      <span>Available offline</span>
+      <span>Available to send offline</span>
       <div className="wallet-offline-balance-controls">
         <strong aria-live="polite">{balance?formatMoney(balance.availableUsdCents):'—'}</strong>
         <button type="button" className="icon-button" aria-label="Enable more funds offline" title="Enable offline"
@@ -88,12 +90,21 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       onClick={()=>void change(true)}>Finish moving back {formatMoney(movingBack)}</button>:
       editing&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
         <AmountInput label={editing==='add'?'Amount to enable offline':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
-        {editing==='add'&&<p className="body-copy small-copy">Send this amount offline from this device.</p>}
+        {editing==='add'&&<p className="body-copy small-copy">Send this amount offline from this device. Your device may prompt you to approve secure Wallet setup.</p>}
         <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Enable offline':'Move back funds'}</button>
       </form>}
     {!online&&<p className="body-copy small-copy">Connect to enable offline funds or move them back.</p>}
     {message&&<p role="status" className="body-copy">{message}</p>}
-    {error&&<p role="alert" className="error-message">{error}</p>}
+    {notice&&<aside className="wallet-balance-notice">
+      <header role="status"><strong>{notice.title}</strong><p>{notice.message}</p>
+        {notice.support&&<p>You can keep using online Send and Receive.</p>}
+      </header>
+      {notice.support&&<details><summary>Device requirements and support</summary>
+        <p>Ask your browser or device provider whether your model and software support {notice.support.requirement}.</p>
+        <p className="small-copy">Reference code <code>{notice.support.code}</code></p>
+      </details>}
+      {notice.bankeizHelp&&<a href="/help/">Bankeiz help</a>}
+    </aside>}
   </section>;
 }
 

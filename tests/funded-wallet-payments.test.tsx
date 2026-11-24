@@ -177,6 +177,7 @@ test('the balance controls add and move back chosen amounts while leaving the re
   document.body.append(host);
   try {
     await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={refresh}/>));
+    expect(host.textContent).toContain('Available to send offline');
     expect(host.textContent).toContain('$20.00');
     await click(host, 'Enable more funds offline');
     await setAmount('Amount to enable offline', '10.00');
@@ -190,6 +191,41 @@ test('the balance controls add and move back chosen amounts while leaving the re
     expect(host.textContent).toContain('$25.00');
     expect(host.textContent).toContain('Funds moved back.');
     expect(refresh).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+test('offline setup explains a specific device refusal and keeps service issues distinct', async () => {
+  const { FundedWalletBalance } = await import('../src/features/account/FundedWalletPayments');
+  const host = document.createElement('div'), root = createRoot(host);
+  const prepareOffline = vi.fn()
+    .mockRejectedValueOnce({ payload: { error: 'OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED' } })
+    .mockRejectedValueOnce(Error('BANK_WALLET_FUNDED_TRANSPORT_UNAVAILABLE'));
+  const wallet = {
+    offlineBalance: async () => ({ availableUsdCents: '0', movingBackUsdCents: null }),
+    prepareOffline,
+  };
+  const identity = { fundedWallet: async () => wallet } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={() => {}}/>));
+    await click(host, 'Enable more funds offline');
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="Amount to enable offline"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, '100');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await click(host, 'Enable offline');
+    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('Device attestation was missing');
+    expect(host.querySelector('.wallet-balance-notice details')?.textContent).toContain('Direct WebAuthn attestation');
+    expect(host.querySelector('.wallet-balance-notice code')?.textContent).toBe('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');
+    expect(host.querySelector('.error-message')).toBeNull();
+    await click(host, 'Enable offline');
+    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('account service');
+    expect(host.querySelector('.wallet-balance-notice details')).toBeNull();
+    expect(host.querySelector('.wallet-balance-notice a')?.getAttribute('href')).toBe('/help/');
   } finally {
     await act(async () => root.unmount());
     host.remove();
