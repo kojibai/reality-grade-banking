@@ -4,6 +4,27 @@ Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 8.0.0 — Value that keeps moving
+
+[Full release notes](docs/releases/8.0.0.md) ·
+[Qualification](docs/releases/8.0.0-qualification.md) ·
+[Complete committed inventory](docs/releases/8.0.0-commit-inventory.json).
+
+- Fund Wallet for offline use in increments, pay nearby by QR, and spend
+  the received proof again while disconnected. Wallet supports Reserve,
+  Settlement, and mixed backing. Distant payments retain their proof for
+  automatic publication on reconnect.
+- Save the exact PBI receipt as soon as a held Original is signed. Recover
+  interrupted delivery with the same receipt, and carry the accepted signed
+  update into the public asset page and current valuation.
+- Use live Kai prices in the Analytics Asset directory, see the last available
+  balance during interrupted refreshes, and open Ledger Proof images with
+  the same zoom and proof view as Assets and Market.
+- Follow system appearance or choose Light or Dark in the account popover.
+  The documentation has its own appearance control and a streamlined footer.
+- The self-serve Receiver Profile, assessment, and registry checks align with
+  the coordinated Receiz 129.5.0 contracts.
+
 ## 7.0.0 — An economy you can inspect
 
 [Full release notes](docs/releases/7.0.0.md) ·

@@ -7,6 +7,7 @@ MCP and AI Skills versions it uses.
 
 | Version | State | Receiz | Release record |
 | --- | --- | --- | --- |
+| 8.0.0 | [Qualification and publication status](8.0.0-qualification.md) | 129.5.0 | [Full release notes](8.0.0.md) · [committed inventory](8.0.0-commit-inventory.json) |
 | 7.0.0 | [Qualification and publication status](7.0.0-qualification.md) | 129.5.0 | [Full release notes](7.0.0.md) · [committed inventory](7.0.0-commit-inventory.json) |
 | 6.0.0 | [Published November 17, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v6.0.0) · `b72fdcce` | 129.5.0 | [Full release notes](6.0.0.md) · [qualification record](6.0.0-qualification.md) · [committed recap inventory](6.0.0-commit-inventory.json) |
 | 5.0.0 | [Published November 6, 2026](https://github.com/kojibai/reality-grade-banking/releases/tag/v5.0.0) · `10b5fd1` | 129.0.0 | [Full recap](5.0.0.md) · [qualification record](5.0.0-qualification.md) |

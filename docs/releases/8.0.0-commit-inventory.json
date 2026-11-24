@@ -1,0 +1,1735 @@
+{
+  "schema": "bankeiz.release-source-inventory.v1",
+  "scope": "Exact committed changes from the published v7.0.0 tag through the v8 implementation checkpoint. The following release commit adds version metadata and release records.",
+  "baseline": {
+    "tag": "v7.0.0",
+    "commit": "2e4d518c1b3409a9ecce975e3babfd7cec8b62e6",
+    "tree": "9a6559058786d3bd82ec5a159d1a421612bdd77d"
+  },
+  "head": {
+    "commit": "ad9067df31c14e60f654e9c49c6b9206470e92fe",
+    "tree": "106474508ec5b032a7bafaf279a72e4805be73e6"
+  },
+  "counts": {
+    "reachableCommits": 56,
+    "netChangedFileRecords": 302
+  },
+  "commitsOldestFirst": [
+    {
+      "sha": "0f69a42c5338daef9bf1f64a8b1db12ef3923c52",
+      "tree": "eb62f03bf4a3474175e8656d5a9fc679a12b8c86",
+      "parents": [
+        "2e4d518c1b3409a9ecce975e3babfd7cec8b62e6"
+      ],
+      "authoredAt": "2026-11-21T13:10:36-05:00",
+      "subject": "Reuse acknowledged Original blocks for PBI delivery"
+    },
+    {
+      "sha": "0a39ea758a79b9338dcf686fb0ddfe51d7bbed40",
+      "tree": "81492640939218a6c15194535417c56074987df9",
+      "parents": [
+        "0f69a42c5338daef9bf1f64a8b1db12ef3923c52"
+      ],
+      "authoredAt": "2026-11-21T13:11:44-05:00",
+      "subject": "Derive replay guide frequency from the Original pulse"
+    },
+    {
+      "sha": "4edd8801e2dec5d69aaf1aa9b48da7339c6bc4af",
+      "tree": "a535004c9de29b2e91b224b42ae3e98748e71c38",
+      "parents": [
+        "0a39ea758a79b9338dcf686fb0ddfe51d7bbed40"
+      ],
+      "authoredAt": "2026-11-21T15:54:34-05:00",
+      "subject": "Overlay the shutter on the full-screen Original camera"
+    },
+    {
+      "sha": "9bf5a6196b0ae6538ac0905f38c1a034caa54cad",
+      "tree": "4cc274d8f09b1f33c8a9bea63c8953fdc626c9a9",
+      "parents": [
+        "4edd8801e2dec5d69aaf1aa9b48da7339c6bc4af"
+      ],
+      "authoredAt": "2026-11-21T15:57:07-05:00",
+      "subject": "Resume saved PBI independently of Original delivery"
+    },
+    {
+      "sha": "c668eb9035c5773bf9213cfdb81e4f9147fa4052",
+      "tree": "83b2fd694187595512e75376bd7cf69d39d20166",
+      "parents": [
+        "9bf5a6196b0ae6538ac0905f38c1a034caa54cad"
+      ],
+      "authoredAt": "2026-11-21T16:40:26-05:00",
+      "subject": "Rebuild product preview for the full-screen camera"
+    },
+    {
+      "sha": "42bcbe363d1991d87f0119809dc659f46c503461",
+      "tree": "e8e9e7fd6b079e6f40a2bd155a7478eaa398f663",
+      "parents": [
+        "c668eb9035c5773bf9213cfdb81e4f9147fa4052"
+      ],
+      "authoredAt": "2026-11-21T17:04:05-05:00",
+      "subject": "Resume saved PBI across profile handle changes"
+    },
+    {
+      "sha": "2490c816f4294173db592002d0fdb411fe1de30f",
+      "tree": "07fa2e310885c11c2e85f09d6e27e4708869c9d5",
+      "parents": [
+        "42bcbe363d1991d87f0119809dc659f46c503461"
+      ],
+      "authoredAt": "2026-11-21T17:25:39-05:00",
+      "subject": "Reuse the loaded vault for share certificate guards"
+    },
+    {
+      "sha": "e8df1867ff333dfb7e2dea49d15c7a05d0b01d5b",
+      "tree": "93281df04255d0351defe8b6e6d30594ecadda3d",
+      "parents": [
+        "2490c816f4294173db592002d0fdb411fe1de30f"
+      ],
+      "authoredAt": "2026-11-21T17:34:06-05:00",
+      "subject": "Recover pending PBI from the retained Original checkpoint"
+    },
+    {
+      "sha": "e1d2b41193914172ce3d1c92e192e65f263d95e4",
+      "tree": "c5939a587f21260133ab4d716407c2ac4a778829",
+      "parents": [
+        "e8df1867ff333dfb7e2dea49d15c7a05d0b01d5b"
+      ],
+      "authoredAt": "2026-11-21T18:17:52-05:00",
+      "subject": "Recover account authorization from Receiz Kai on clock skew"
+    },
+    {
+      "sha": "d960da84fd15514b8f7675b028b12e7bdeefe40a",
+      "tree": "99e93b1b3396a18c0951b9d82722422b50a1230b",
+      "parents": [
+        "e1d2b41193914172ce3d1c92e192e65f263d95e4"
+      ],
+      "authoredAt": "2026-11-21T20:41:35-05:00",
+      "subject": "Retry the saved PBI signature when its Original opens"
+    },
+    {
+      "sha": "0112d6aa9f4f6e1660bad00e7f773387d88c46f9",
+      "tree": "f3be62db1640fb5b561d43b0a454bfc024dfd16c",
+      "parents": [
+        "d960da84fd15514b8f7675b028b12e7bdeefe40a"
+      ],
+      "authoredAt": "2026-11-21T22:15:58-05:00",
+      "subject": "Verify public Moment receipts and limit deep-scroll artwork work"
+    },
+    {
+      "sha": "9180861e33b008a74179d338fe50ee5ed53fbbfa",
+      "tree": "803e3120a3416bf73a321f14ae24140755daa5d9",
+      "parents": [
+        "0112d6aa9f4f6e1660bad00e7f773387d88c46f9"
+      ],
+      "authoredAt": "2026-11-21T23:32:55-05:00",
+      "subject": "Release Original image popovers, pinch zoom and content purchases"
+    },
+    {
+      "sha": "640f2556f34f2863ed3bd9240fe72ed5777e30fa",
+      "tree": "8521a5aea3f6b3916f703dd5ce69dbd8881b672f",
+      "parents": [
+        "9180861e33b008a74179d338fe50ee5ed53fbbfa"
+      ],
+      "authoredAt": "2026-11-21T23:43:13-05:00",
+      "subject": "Exercise the retained Market rows in PDF deep-scroll checks"
+    },
+    {
+      "sha": "921ed3aab7469793105e8cb7e556af95e8a607e8",
+      "tree": "d37e3cac910e16df32f942e130434e9ec512548b",
+      "parents": [
+        "640f2556f34f2863ed3bd9240fe72ed5777e30fa"
+      ],
+      "authoredAt": "2026-11-22T00:04:27-05:00",
+      "subject": "Center Original artwork and keep zoom inside the media reader"
+    },
+    {
+      "sha": "75dd9afc12f5108e9f1e5bd134389a9b993033ad",
+      "tree": "6938ebad82c75dcaff7f0541bfe88f0d0cc45a4d",
+      "parents": [
+        "921ed3aab7469793105e8cb7e556af95e8a607e8"
+      ],
+      "authoredAt": "2026-11-22T00:27:40-05:00",
+      "subject": "Reuse the admitted Identity Record on same-account passkey entry"
+    },
+    {
+      "sha": "f23461e2ce2e1ae63ca0ec3081a2cb3eb3fc27e6",
+      "tree": "c3b33c1659e808b89aa5da292685767476970910",
+      "parents": [
+        "75dd9afc12f5108e9f1e5bd134389a9b993033ad"
+      ],
+      "authoredAt": "2026-11-22T01:07:12-05:00",
+      "subject": "Recover Original signing by account and refine artwork zoom"
+    },
+    {
+      "sha": "9158767af408b03238c3957e3821246ce563d19e",
+      "tree": "9bc0aaa8e6230f46a91955caeec7881ea74b02cc",
+      "parents": [
+        "f23461e2ce2e1ae63ca0ec3081a2cb3eb3fc27e6"
+      ],
+      "authoredAt": "2026-11-22T01:45:28-05:00",
+      "subject": "Restore retained account custody after Bankeiz passkey sign-in"
+    },
+    {
+      "sha": "cd46f0590aec255650c0d9405f81c3058d029306",
+      "tree": "a862713d6780872e4ac39e703ec9ec35610da361",
+      "parents": [
+        "9158767af408b03238c3957e3821246ce563d19e"
+      ],
+      "authoredAt": "2026-11-22T01:50:21-05:00",
+      "subject": "Keep Bankeiz passkey sign-in on the existing account"
+    },
+    {
+      "sha": "71542a34d05b265ac6c344c3a0a017d069b2a215",
+      "tree": "cd26f48e1966ac1775f012ab4e48d16ef7c8cfea",
+      "parents": [
+        "cd46f0590aec255650c0d9405f81c3058d029306"
+      ],
+      "authoredAt": "2026-11-22T02:24:00-05:00",
+      "subject": "Sign accepted Originals from held proof and scale the artwork object"
+    },
+    {
+      "sha": "3b8096d967d9cfaa1cef69c6d4a94d413ffbb055",
+      "tree": "5bc6c1e8b199575b731a4f7bf9dde5a7fc36bcc4",
+      "parents": [
+        "71542a34d05b265ac6c344c3a0a017d069b2a215"
+      ],
+      "authoredAt": "2026-11-22T02:28:31-05:00",
+      "subject": "Regenerate read-only product preview for whole-object zoom"
+    },
+    {
+      "sha": "15d74ddc6c938d75529552f91a5ac299f48347f3",
+      "tree": "69888ea96bd28d9d1dfcb6acf30d4c6ab6f8ac31",
+      "parents": [
+        "3b8096d967d9cfaa1cef69c6d4a94d413ffbb055"
+      ],
+      "authoredAt": "2026-11-22T02:32:02-05:00",
+      "subject": "Ship the rebuilt Bankeiz PBI signing runtime and matching source"
+    },
+    {
+      "sha": "fe5240f48ca64dcdd0fa7569dbcd0f17764c2b2e",
+      "tree": "9b2964ee93ea5411a19bc3cc941e150a3d614986",
+      "parents": [
+        "15d74ddc6c938d75529552f91a5ac299f48347f3"
+      ],
+      "authoredAt": "2026-11-22T02:42:39-05:00",
+      "subject": "Verify whole-object zoom keeps the carried image visible"
+    },
+    {
+      "sha": "04caff8db371c5186b53157adb7c73c06d5fbc6f",
+      "tree": "f667045d345d3b0a450f1031dfd76d8b254fd7d5",
+      "parents": [
+        "fe5240f48ca64dcdd0fa7569dbcd0f17764c2b2e"
+      ],
+      "authoredAt": "2026-11-22T03:00:06-05:00",
+      "subject": "Keep passkey sign-in on the original Identity Record"
+    },
+    {
+      "sha": "17a4ff9a5bbf8d79d21d8696b500e8113ef6bdea",
+      "tree": "7485e878964110844102698042e6077180197444",
+      "parents": [
+        "04caff8db371c5186b53157adb7c73c06d5fbc6f"
+      ],
+      "authoredAt": "2026-11-22T03:27:39-05:00",
+      "subject": "Restore the original signer with the existing passkey"
+    },
+    {
+      "sha": "ef558cbdd04105a8705dd5bf56642f63546750cc",
+      "tree": "d64331d7740f4e237903c88f1a122e42a8a19bd2",
+      "parents": [
+        "17a4ff9a5bbf8d79d21d8696b500e8113ef6bdea"
+      ],
+      "authoredAt": "2026-11-22T03:49:32-05:00",
+      "subject": "Keep the original signer when PBI switches a checkout account"
+    },
+    {
+      "sha": "9b28f2f9f6d2ed2c324984fdf8531b816dc1fb57",
+      "tree": "73d6bd2d425661e8553ccdc96615052fadcb72f2",
+      "parents": [
+        "ef558cbdd04105a8705dd5bf56642f63546750cc"
+      ],
+      "authoredAt": "2026-11-22T03:59:54-05:00",
+      "subject": "Keep optional signer recovery outside the account access requirement"
+    },
+    {
+      "sha": "b2a8a08481b9494cffe56d828fa4c80652ab14c6",
+      "tree": "1e507e8f575ff9054c26f22da1cff06013ed1f02",
+      "parents": [
+        "9b28f2f9f6d2ed2c324984fdf8531b816dc1fb57"
+      ],
+      "authoredAt": "2026-11-22T08:14:09-05:00",
+      "subject": "Use one fingerprint action for Bankeiz passkey entry"
+    },
+    {
+      "sha": "37a9e3bd2d11b1a1b27da4c567e53e4fb4bd9775",
+      "tree": "ae17817fc0c0f19695980352fdb54ca0e78cc676",
+      "parents": [
+        "b2a8a08481b9494cffe56d828fa4c80652ab14c6"
+      ],
+      "authoredAt": "2026-11-22T08:27:46-05:00",
+      "subject": "Qualify the unified fingerprint entry in account CI"
+    },
+    {
+      "sha": "d251a7f7d96f681fd781e1ec2a24316908665ea3",
+      "tree": "a59fe9064c7d877e42ba5b4c94408d1e30c877e3",
+      "parents": [
+        "37a9e3bd2d11b1a1b27da4c567e53e4fb4bd9775"
+      ],
+      "authoredAt": "2026-11-22T08:34:41-05:00",
+      "subject": "Replay retained PBI on the selected Showcase Original"
+    },
+    {
+      "sha": "4fa99bda330d6c592b9ade700bdbf15ca32399ba",
+      "tree": "6a08f5f439ecbf17b0b6c04fc8e7565786e33aec",
+      "parents": [
+        "d251a7f7d96f681fd781e1ec2a24316908665ea3"
+      ],
+      "authoredAt": "2026-11-22T09:09:55-05:00",
+      "subject": "Restore reproducible Bankeiz production builds"
+    },
+    {
+      "sha": "f4ed26c88e693849f00456b0a280d6a97747f019",
+      "tree": "c05dac3a51cb52dfa04f9b3455549d72d051c0aa",
+      "parents": [
+        "4fa99bda330d6c592b9ade700bdbf15ca32399ba"
+      ],
+      "authoredAt": "2026-11-23T13:54:53-05:00",
+      "subject": "Keep offline Send publication scheduled across reconnect"
+    },
+    {
+      "sha": "7b52de714db7a9078edcaf415d828ddbde73a2cd",
+      "tree": "279b5fba671d044c8f99f6fdcce9cacb82bac9cc",
+      "parents": [
+        "f4ed26c88e693849f00456b0a280d6a97747f019"
+      ],
+      "authoredAt": "2026-11-23T13:54:58-05:00",
+      "subject": "Verify exact retained Send on reconnect overlap"
+    },
+    {
+      "sha": "05a1c4305d248ecbcce190e9257affe33f00be65",
+      "tree": "51d57340367058b6c83ecbc9ba17608d773451f0",
+      "parents": [
+        "7b52de714db7a9078edcaf415d828ddbde73a2cd"
+      ],
+      "authoredAt": "2026-11-23T13:55:02-05:00",
+      "subject": "Record offline Wallet reconnect scope"
+    },
+    {
+      "sha": "3058ff5b1f3d9da049cf1c483b2a5ade529da9b9",
+      "tree": "b6ae5292202e5c0e9e616568f71672bce2fe552a",
+      "parents": [
+        "05a1c4305d248ecbcce190e9257affe33f00be65"
+      ],
+      "authoredAt": "2026-11-23T14:25:36-05:00",
+      "subject": "Preserve offline Wallet Send across browser restarts"
+    },
+    {
+      "sha": "ab5f07a3a86f68f3d258e74ddd5d9ffefc041f22",
+      "tree": "42c0cb2564b3fb0e43a05568d5a75bdfd115fbcb",
+      "parents": [
+        "3058ff5b1f3d9da049cf1c483b2a5ade529da9b9"
+      ],
+      "authoredAt": "2026-11-23T14:29:35-05:00",
+      "subject": "Resume retained Wallet publication when the app returns online"
+    },
+    {
+      "sha": "ab2cb10d19777fba1a2287ca5eb053416209994c",
+      "tree": "3cf7a66abde4831db466109e8e89513cb24b666f",
+      "parents": [
+        "4fa99bda330d6c592b9ade700bdbf15ca32399ba"
+      ],
+      "authoredAt": "2026-11-23T14:56:30-05:00",
+      "subject": "Align the self-serve assessment kit with Receiz 129.5.0"
+    },
+    {
+      "sha": "2eb5c9fe6dad5f5bf6bf2c0e98144ddad92baff2",
+      "tree": "d26a468f55ea1abfa984d39da7538821ad1c029d",
+      "parents": [
+        "ab2cb10d19777fba1a2287ca5eb053416209994c"
+      ],
+      "authoredAt": "2026-11-23T15:01:14-05:00",
+      "subject": "Align current receiver assessment formats with the SDK registry"
+    },
+    {
+      "sha": "72435236768355c2d75c180aa67cba66722c74f4",
+      "tree": "f62b2896a9f24af209fb185e857f8e7a5ca0c485",
+      "parents": [
+        "2eb5c9fe6dad5f5bf6bf2c0e98144ddad92baff2",
+        "ab5f07a3a86f68f3d258e74ddd5d9ffefc041f22"
+      ],
+      "authoredAt": "2026-11-23T16:31:18-05:00",
+      "subject": "Merge pull request #6 from kojibai/kojib/offline-wallet-reconnect-ci"
+    },
+    {
+      "sha": "fc4b8768fe8edf7bbf7d7dd25105f087601c46fa",
+      "tree": "d20273e7c6cd34d0e38e3f90ff525ddf072cd13d",
+      "parents": [
+        "72435236768355c2d75c180aa67cba66722c74f4"
+      ],
+      "authoredAt": "2026-11-23T16:41:09-05:00",
+      "subject": "Recover saved Original signatures when public delivery is pending"
+    },
+    {
+      "sha": "08782f139731c106be09628c40594b672f31ed6f",
+      "tree": "d20273e7c6cd34d0e38e3f90ff525ddf072cd13d",
+      "parents": [
+        "72435236768355c2d75c180aa67cba66722c74f4",
+        "fc4b8768fe8edf7bbf7d7dd25105f087601c46fa"
+      ],
+      "authoredAt": "2026-11-23T16:52:03-05:00",
+      "subject": "Merge pull request #7 from kojibai/kojib/pbi-original-recovery"
+    },
+    {
+      "sha": "92f79a076668cc89490d776b24602b3fb0ce915f",
+      "tree": "839a8a1dde25db7d73646f1fcba19a66961b0be3",
+      "parents": [
+        "08782f139731c106be09628c40594b672f31ed6f"
+      ],
+      "authoredAt": "2026-11-23T17:41:47-05:00",
+      "subject": "Compose Wallet peer custody with Bankeiz QR and reconnect"
+    },
+    {
+      "sha": "0a75410e0a9872cbe004e308594c2478824b0e4a",
+      "tree": "25a88aa55d9a5eea393413ae0cee92e26e1cc9ee",
+      "parents": [
+        "92f79a076668cc89490d776b24602b3fb0ce915f"
+      ],
+      "authoredAt": "2026-11-23T17:52:47-05:00",
+      "subject": "Record browser conformance for the Wallet verifier build"
+    },
+    {
+      "sha": "d8f63555fe8b4b733d946fa7507c535144181d35",
+      "tree": "05fa7121d5627d1579fa4fa6c4f77f32047d7304",
+      "parents": [
+        "0a75410e0a9872cbe004e308594c2478824b0e4a"
+      ],
+      "authoredAt": "2026-11-23T18:14:51-05:00",
+      "subject": "Wire held Wallet custody into regular Send and Receive"
+    },
+    {
+      "sha": "55f39768088196ad418604da9d7ec6b52660a465",
+      "tree": "77656732fafeb36627b359f4de93916307cb8a70",
+      "parents": [
+        "d8f63555fe8b4b733d946fa7507c535144181d35"
+      ],
+      "authoredAt": "2026-11-23T19:01:49-05:00",
+      "subject": "Pair regular Wallet payments by QR while both devices are offline"
+    },
+    {
+      "sha": "5ae3d7261ca537eeaf74c774547c6e51b47d5ed8",
+      "tree": "dca9d5bcb47ac670564a3bb48034253c91be4535",
+      "parents": [
+        "55f39768088196ad418604da9d7ec6b52660a465"
+      ],
+      "authoredAt": "2026-11-23T19:09:33-05:00",
+      "subject": "Remove manual offline preparation from regular Wallet payments"
+    },
+    {
+      "sha": "7b95ae171ade8599743561ccbe6e5a1af520b6e6",
+      "tree": "1d471d3bcd4e758d289867f39c962e1a76091a7c",
+      "parents": [
+        "5ae3d7261ca537eeaf74c774547c6e51b47d5ed8"
+      ],
+      "authoredAt": "2026-11-23T22:09:26-05:00",
+      "subject": "Recover offline Wallet balances from retained payment proofs"
+    },
+    {
+      "sha": "3b8d552381b27a74f6dc494d6fcbc5dec9f64f14",
+      "tree": "8e4afb1f9c356f1c19adc316abde16b7e0e03ce6",
+      "parents": [
+        "7b95ae171ade8599743561ccbe6e5a1af520b6e6"
+      ],
+      "authoredAt": "2026-11-24T04:13:37-05:00",
+      "subject": "Send the offline Wallet balance across funded top-ups"
+    },
+    {
+      "sha": "60e996d0f5441a8431c85ad33cdd6352c95db71d",
+      "tree": "d161eb80eb71459b9395012969fd0548ae18e03b",
+      "parents": [
+        "3b8d552381b27a74f6dc494d6fcbc5dec9f64f14"
+      ],
+      "authoredAt": "2026-11-24T04:22:07-05:00",
+      "subject": "Keep connected Send available while a nearby payment is pending"
+    },
+    {
+      "sha": "e98bc11e1972b66d6ed075705ef998386380e458",
+      "tree": "6b381115f2dd729d26137b7e6a55d4646bda0d50",
+      "parents": [
+        "60e996d0f5441a8431c85ad33cdd6352c95db71d"
+      ],
+      "authoredAt": "2026-11-24T04:22:07-05:00",
+      "subject": "Polish Bankeiz footers and add documentation appearance"
+    },
+    {
+      "sha": "29f336494cfe91d89f613f874207a541f9167901",
+      "tree": "9d71b0f3168df9b7a6279254b03453d4354b846d",
+      "parents": [
+        "e98bc11e1972b66d6ed075705ef998386380e458"
+      ],
+      "authoredAt": "2026-11-24T04:25:36-05:00",
+      "subject": "Simplify the documentation footer and group its resources"
+    },
+    {
+      "sha": "94b921670111e408a2b30c0d5d07eb1d5315d9fb",
+      "tree": "69ec8d2318e4f4c357c14fefa57fe3db1cd55c8f",
+      "parents": [
+        "29f336494cfe91d89f613f874207a541f9167901"
+      ],
+      "authoredAt": "2026-11-24T04:46:25-05:00",
+      "subject": "Add system-aware app appearance and color-aware navigation"
+    },
+    {
+      "sha": "f7c77a43e7df17eb05194bc2bd88b53761f8fdd1",
+      "tree": "57014b594b9c7beca40ccf98d6a8e436738c12f6",
+      "parents": [
+        "94b921670111e408a2b30c0d5d07eb1d5315d9fb"
+      ],
+      "authoredAt": "2026-11-24T05:27:42-05:00",
+      "subject": "Keep Bank entrance within its HTML budget"
+    },
+    {
+      "sha": "691ad3afdbc5b2789fc93e04ed7f6d2518fcc9d9",
+      "tree": "9d5696e29b2001ea849e8aa0d5b0aa7c5945ae4d",
+      "parents": [
+        "f7c77a43e7df17eb05194bc2bd88b53761f8fdd1"
+      ],
+      "authoredAt": "2026-11-24T06:19:13-05:00",
+      "subject": "Refine dark mode, Wallet receiving, Ledger media, and live Analytics"
+    },
+    {
+      "sha": "f275bf335d9c9ed37b967f29f461561bd1842f52",
+      "tree": "e93a0cc0f52e7d2215d9f1805c0e9427ce98567a",
+      "parents": [
+        "691ad3afdbc5b2789fc93e04ed7f6d2518fcc9d9"
+      ],
+      "authoredAt": "2026-11-24T07:01:45-05:00",
+      "subject": "Keep Original signing independent of public delivery"
+    },
+    {
+      "sha": "8de32a85812db661f45252db5a8691fde4cd4a46",
+      "tree": "b94247aac9c1c5d3f128a1e378dc6e707bf322a7",
+      "parents": [
+        "f275bf335d9c9ed37b967f29f461561bd1842f52"
+      ],
+      "authoredAt": "2026-11-24T07:03:02-05:00",
+      "subject": "Keep the Analytics public records indicator green"
+    },
+    {
+      "sha": "ad9067df31c14e60f654e9c49c6b9206470e92fe",
+      "tree": "106474508ec5b032a7bafaf279a72e4805be73e6",
+      "parents": [
+        "8de32a85812db661f45252db5a8691fde4cd4a46"
+      ],
+      "authoredAt": "2026-11-24T07:33:16-05:00",
+      "subject": "Carry Bankeiz appearance through Learn and Analytics"
+    }
+  ],
+  "netChangedFiles": [
+    {
+      "status": "M",
+      "path": "docs-app/renderer.mjs"
+    },
+    {
+      "status": "M",
+      "path": "docs-app/search.js"
+    },
+    {
+      "status": "M",
+      "path": "docs-app/styles.css"
+    },
+    {
+      "status": "M",
+      "path": "docs/verification/2026-10-26-local-financial-composition.md"
+    },
+    {
+      "status": "M",
+      "path": "institution/README.md"
+    },
+    {
+      "status": "M",
+      "path": "institution/accept-payments.md"
+    },
+    {
+      "status": "M",
+      "path": "institution/conformance-independent-assessment.schema.json"
+    },
+    {
+      "status": "M",
+      "path": "institution/conformance-independent-assessment.template.json"
+    },
+    {
+      "status": "M",
+      "path": "institution/conformance-protocol.json"
+    },
+    {
+      "status": "M",
+      "path": "institution/conformance-report.template.json"
+    },
+    {
+      "status": "M",
+      "path": "institution/digital-payments.md"
+    },
+    {
+      "status": "M",
+      "path": "institution/note-qualification-report.template.json"
+    },
+    {
+      "status": "M",
+      "path": "native/manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/appendTransportAdmission.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/completeSourceTransport.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/connectedAssetPublication.client.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/importedSource.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/importedSourceCustody.client.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/incrementalAssetPublication.client.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/browser.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNoteBrowserPwaCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialCommit.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialExecution.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialSource.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/admissionStore.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/browserAdmissionStore.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/index.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/nativeWalletEconomics.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/accept-money.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/book.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/business.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/cooperatives.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/economy.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/email.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/governance-guide.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/guide-directory.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/identity-continuity.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/independent-bank.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/institution-scorecard.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/learn.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/learn.js"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/matter.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/meet.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/merchant.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/moments.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/outcome-pages.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/pay.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/portability.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/product-walkthrough.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/proposal-pages.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/reality-grade-standard.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/receiving.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/standard-pages.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/together.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/twin-pages.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/vault-protection.css"
+    },
+    {
+      "status": "M",
+      "path": "public/native/asset-publication.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/asset-publication.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/business-seal.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/business-seal.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/offline-notes.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/offline-notes.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.mjs.map"
+    },
+    {
+      "status": "A",
+      "path": "scripts/app-appearance.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "scripts/app-appearance.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-license-notices.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-registry-runtime.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-asset-composer-browser.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/observatory-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/opening-shell.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/originals-qualification-assets.d.mts"
+    },
+    {
+      "status": "M",
+      "path": "scripts/originals-qualification-assets.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-sdk-schemas-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/user-guide-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "server/pbi-account-transport.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/public-market.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/checkout/checkout.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/UnfinishedCheckouts.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/form-controls.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/inline-opening.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/profile-avatar.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/sheet-navigation.css"
+    },
+    {
+      "status": "M",
+      "path": "src/content/client-work-demo.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/conformance-reference-status.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/meeting-ui.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/product-ui.generated.json"
+    },
+    {
+      "status": "A",
+      "path": "src/core/app-appearance.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "src/core/app-appearance.mjs"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/AppearanceSettings.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/FundedWalletPayments.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/IdentityProfile.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LiveAccount.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LiveActions.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LivePayments.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/PaymentScanner.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/WalletPaymentCode.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/WalletSendOperation.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/account-availability.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/account-email.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/account-investment-value.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/appearance-settings.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/counter/counter-register.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/identity-governance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/merchant-counter.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/payment-tools.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/recipient-input.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/adoption/receiving-help.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/AssetComposer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/AssetsRowArtwork.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/ComposerCollectionOptions.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/LiveAssets.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/OriginalSigning.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/asset-composer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/asset-creation-studio.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/asset-delivery-progress.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/asset-studio.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/investments.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/moment-composer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/original-signing.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/booking/booking.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/certificates/certificates.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/collectibles/collectible-card-view.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/collectibles/collection-entry.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/collectibles/collection.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/deposit/deposit.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/identity/account-opening.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/invoices/invoice-composer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/LedgerInspector.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/LedgerProofDetails.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/ledger-inspector.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/ledger-search.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/ledger-trade.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/ledger-value.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/Market.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/market/OriginalPurchase.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicAssetDetail.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicObjectRow.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/market-calculation.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/market.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/market/original-purchase.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/public-asset-chart.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/share-inventory.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/AssetObject.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/AssetProofBack.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ExpandedMedia.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/media/ImageObjectDialog.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofImageCanvas.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofMedia.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/ProofPdfReader.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/asset-object.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/asset-proof-back.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/media/image-object-dialog.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/moment-card.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-audio-player.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-book-reader.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-caption.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-media.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/media/proof-pdf-reader.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/media/useMediaPinch.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/meeting/meeting.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/calls.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/documents/documents.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/message-create-menu.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/messages.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/organizer/calendar-record.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/organizer/organizer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/proposals/proposal-card.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/proposals/proposal-composer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/relationship-workspace.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/twin-conversations.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/twin-mind/twin-mind.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/twin-presence.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/twin-workspace.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/workspace-header.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/qualification/qualification.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/receipts/receipt.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/vault/vault.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/voting.css"
+    },
+    {
+      "status": "M",
+      "path": "src/invoice/invoice.css"
+    },
+    {
+      "status": "M",
+      "path": "src/observatory/NetworkAtlas.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/observatory/Observatory.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/observatory/observatory.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-discover/discover.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/ProfileCollection.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicAssetEvidence.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicAssetPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicExplorer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/asset-page.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/explorer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/profile-footer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/profile-insights.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/profile.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/public-asset-trade.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/feed.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-feed/music-mini-player.css"
+    },
+    {
+      "status": "M",
+      "path": "src/public-ledger/public-ledger.css"
+    },
+    {
+      "status": "M",
+      "path": "src/qualification/learn.css"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/asset-composer.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/asset-publication-adoption.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/asset-publication-runtime.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/asset-publication.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/collection-preview.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/created-asset-file.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/deposit-source.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/funded-wallet.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/identity-vault.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-offline-proof.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/local-financial-runtime.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/local-financial.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/build-history.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/history-additions.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/pricing-inputs.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/useMarketCapitalization.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-identity.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/offline-proof-build.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/optical-note-frames.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/payment-decoder.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/payment-qr.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/pbi-account-connect.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/pbi-account-inline.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/pbi-account.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/pbi-identity-recovery.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-asset-page.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market-held-catalog.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/public-original-purchase.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-original.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/useNativeAccount.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-device-journal.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-payment-bundle.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/account-proof.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/app.css"
+    },
+    {
+      "status": "A",
+      "path": "src/styles/appearance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/bottom-nav.css"
+    },
+    {
+      "status": "A",
+      "path": "src/styles/conformance-appearance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/features.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/site-footer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/source-links.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/tokens.css"
+    },
+    {
+      "status": "M",
+      "path": "src/value-explainer/model.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/value-explainer/value-explainer.css"
+    },
+    {
+      "status": "M",
+      "path": "src/vendor/jsqr/index.d.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/verification/verify.css"
+    },
+    {
+      "status": "A",
+      "path": "tests/app-appearance.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-adoption.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-multiple.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-private-overlap.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-signing-overlap.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/asset-publication-source-authority.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/assets-row-artwork.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/compact-navigation-styles.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/conformance-assessment.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/created-asset-private-download.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/created-original-public-image.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/discover-navigation-metadata.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/docs-app.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/entrance-pbi.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/feed-purchase-style-ownership.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/fixtures/asset-publication-freeze.json"
+    },
+    {
+      "status": "A",
+      "path": "tests/funded-wallet-pairing.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/funded-wallet-payments.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/funded-wallet-unlock.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/held-asset-media.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/helpers/local-financial-fixture.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/identity-passkey.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/imported-source-pbi.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/learn-css-scope.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-native-record.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-original-access.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-market.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/local-financial-integration.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-deep-scroll-pressure.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-account-hook.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-account-pbi.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-account-wake.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-identity-wallet-entry.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/native-wallet-runtime.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/optical-note-frames.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/original-signing.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/paid-original-previews.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/pbi-account-inline.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/pbi-account.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/pbi-identity-recovery.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/proof-pdf-reader.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-asset-cold-chart.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-asset-entrance-state.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-asset-metadata-update.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-asset-page.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-market-seed-history-continuity.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/showcase-signature-replay.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/signing-scoped-durable-restart.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/value-explainer-ui.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "vite.config.ts"
+    }
+  ]
+}
