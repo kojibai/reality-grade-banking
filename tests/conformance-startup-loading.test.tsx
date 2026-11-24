@@ -2,6 +2,7 @@
 import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {expect,it,vi} from 'vitest';
+import {APP_APPEARANCE_KEY,installAppAppearance,readAppAppearance,setAppAppearance} from '../src/core/app-appearance.mjs';
 import type {InstitutionCheckResult,InstitutionReferenceReport} from '../src/conformance/reference';
 type ReferenceProps=Parameters<typeof import('../src/conformance/ReferenceChecks').ReferenceChecks>[0];
 const trace=vi.hoisted(()=>({referenceLoads:0,referenceMounts:0,runnerLoads:0,run:vi.fn()}));
@@ -22,7 +23,6 @@ vi.mock('../src/conformance/ProofInspector',()=>({ProofInspector:()=>null}));
 vi.mock('../src/conformance/QualificationMatrix',()=>({QualificationMatrix:()=>null}));
 vi.mock('../src/conformance/DeviceEvidence',()=>({DeviceEvidence:()=>null}));
 vi.mock('../src/conformance/NoteContinuityStandard',()=>({NoteContinuityStandard:()=>null}));
-vi.mock('../src/components/SiteFooter',()=>({SiteFooter:()=>null}));
 import ConformanceApp from '../src/conformance/ConformanceApp';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 function mount(hash=''){
@@ -81,4 +81,22 @@ it('loads the runner only for Run verification and preserves its progress, resul
   expect(view.host.querySelector('[data-reference-state]')?.getAttribute('data-reference-state')).toBe(JSON.stringify({results:1,reported:true,busy:false}));
   expect(trace.run).toHaveBeenCalledTimes(1);
  }finally{view.close();}
+});
+
+it('toggles the shared Learn color mode from the Conformance footer',()=>{
+ const previous=readAppAppearance();
+ installAppAppearance(window);
+ setAppAppearance('light');
+ const view=mount();
+ try{
+  const buttons=view.host.querySelectorAll<HTMLButtonElement>('footer button[data-bank-theme-toggle]');
+  expect(buttons).toHaveLength(1);
+  expect(buttons[0].getAttribute('aria-label')).toBe('Change color mode');
+  act(()=>buttons[0].click());
+  expect(readAppAppearance()).toBe('dark');
+  expect(localStorage.getItem(APP_APPEARANCE_KEY)).toBe('dark');
+  act(()=>buttons[0].click());
+  expect(readAppAppearance()).toBe('light');
+  expect(localStorage.getItem(APP_APPEARANCE_KEY)).toBe('light');
+ }finally{view.close();setAppAppearance(previous);}
 });
