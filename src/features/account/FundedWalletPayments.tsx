@@ -73,9 +73,9 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       if(wallet)setBalance(await wallet.offlineBalance().catch(()=>balance));
     }finally{running.current=false;setBusy(false);}
   }
-  return <section className="detail-list wallet-offline-balance" aria-label="Offline balance">
+  return <section className="detail-list wallet-offline-balance" aria-label="Offline cash">
     <div>
-      <span>Available to send offline</span>
+      <span>Offline cash</span>
       <div className="wallet-offline-balance-controls">
         <strong aria-live="polite">{balance?formatMoney(balance.availableUsdCents):'—'}</strong>
         <button type="button" className="icon-button" aria-label="Enable more funds offline" title="Enable offline"
@@ -90,7 +90,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       onClick={()=>void change(true)}>Finish moving back {formatMoney(movingBack)}</button>:
       editing&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
         <AmountInput label={editing==='add'?'Amount to enable offline':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
-        {editing==='add'&&<p className="body-copy small-copy">Send this amount offline from this device. Your device may prompt you to approve secure Wallet setup.</p>}
+        {editing==='add'&&<p className="body-copy small-copy">Use this amount to pay nearby without internet. Your device may ask you to approve setup.</p>}
         <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Enable offline':'Move back funds'}</button>
       </form>}
     {!online&&<p className="body-copy small-copy">Connect to enable offline funds or move them back.</p>}
@@ -114,6 +114,7 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
 }){
   const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
   const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
+  const [connectionNeeded,setConnectionNeeded]=useState(false);
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
   const [pendingBundle,setPendingBundle]=useState<string|null>(null);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[approved,setApproved]=useState(false);
@@ -172,19 +173,25 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
     <p className="body-copy">Show this QR to the recipient, then scan their reply.</p>
     <WalletPaymentCode frames={pairing.frames} label="Wallet pairing QR" onError={cause=>setError(walletError(cause))}/>
     <PaymentScanner compact onBytes={scanReply}/>
-    <button type="button" className="text-button" onClick={()=>setPairing(null)}>Edit payment</button>{errors}
+    <button type="button" className="text-button" onClick={()=>{setPairing(null);onEdit?.();}}>Edit payment</button>{errors}
   </section>;
   return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>
     <button className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
+      setConnectionNeeded(false);
       const wallet=await identity.fundedWallet!(),input=request();
       try{setReview(await wallet.review(input));}catch(cause){
         if(!(cause instanceof Error)||cause.message!=='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')throw cause;
-        const offer=await wallet.offer(input);if(!offer)throw cause;
+        const offer=await wallet.offer(input);
+        if(!offer){
+          setConnectionNeeded(true);
+          onEdit?.();
+          return;
+        }
         setPairing({offer,input,frames:await pairFrames(offer)});
       }
     })}>
       {busy?'Checking payment…':'Review payment'}
-    </button>{errors}</>;
+    </button>{connectionNeeded&&<p className="body-copy small-copy" role="status">Connect to pay from your balance.</p>}{errors}</>;
 }
 
 export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenIdentity;offline:boolean;onRefresh:()=>void}){
@@ -257,12 +264,19 @@ export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenI
   }
   async function approveOffer(){
     if(!offer||busy)return;
-    setBusy(true);setError('');
+    setBusy(true);setStatus('');setError('');
     try{
       const wallet=await identity.fundedWallet!();
       const frames=await pairFrames(await wallet.answer(offer));
       if(active.current){setReply(frames);setOffer(null);}
-    }catch(cause){if(active.current)setError(walletError(cause));}
+    }catch(cause){
+      if(!active.current)return;
+      if(cause instanceof Error&&cause.message==='BANK_WALLET_DEVICE_REQUIRED'){
+        setOffer(null);
+        setReply(null);
+        setStatus('Offline cash is unavailable for this payment. The sender can complete the payment when they’re online.');
+      }else setError(walletError(cause));
+    }
     finally{if(active.current)setBusy(false);}
   }
   async function release(){

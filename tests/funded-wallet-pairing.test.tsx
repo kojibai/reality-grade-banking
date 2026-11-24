@@ -56,6 +56,24 @@ test.each([false,true])('regular Wallet components carry scan-time approval into
   }finally{await act(async()=>root.unmount());host.remove();}
 });
 
+test('nearby Receive presents a custody limitation without reporting a received payment',async()=>{
+  const host=document.createElement('div'),root=createRoot(host);
+  document.body.append(host);
+  const onRefresh=vi.fn();
+  const wallet={availableReceipt:async()=>null,answer:async()=>{throw Error('BANK_WALLET_DEVICE_REQUIRED');}};
+  const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
+  try{
+    await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
+    await scan(offer);
+    await click(host,'Approve receiving');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Offline cash is unavailable for this payment');
+    expect(host.textContent).toContain('The sender can complete the payment when they’re online.');
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.textContent).not.toContain('Wallet recipient reply QR');
+    expect(onRefresh).not.toHaveBeenCalled();
+  }finally{await act(async()=>root.unmount());host.remove();}
+});
+
 test('Wallet opens the recipient’s retained proof and scans the same proof for recovery',async()=>{
   const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
   const exact=Uint8Array.of(8,21,34);

@@ -107,6 +107,38 @@ test('an online payment without a matching funded recipient uses the existing ho
   }
 });
 
+test('an unfunded offline attempt keeps its details and returns to regular Send on reconnect', async () => {
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+  const setOnline = (online: boolean) => Object.defineProperty(navigator, 'onLine', { configurable: true, value: online });
+  setOnline(false);
+  const host = document.createElement('div'), root = createRoot(host);
+  const wallet = { warm: vi.fn(), outgoing: async () => null, offer: async () => null,
+    review: async () => { throw Error('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'); } };
+  const hosted = { status: async () => null, discard: vi.fn(), prepare: vi.fn(async () => ({
+    recipientLabel: '@recipient', amountUsdCents: '100',
+    quote: { amountPhiMicro: '500000', settledUsdCents: '100', ecosystemUsdCents: '0' },
+  })) };
+  const identity = { binding: { artifactSha256: 'a'.repeat(64) }, fundedWallet: async () => wallet,
+    walletSend: async () => hosted } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveSend identity={identity} wallet={null}
+      initialRequest={{ recipient: 'recipient', amount: '1.00' }} onClose={() => {}} />));
+    await click(host, 'Review payment');
+    expect(host.querySelector('[role="status"]')?.textContent ?? '').toContain('Connect to pay from your balance.');
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(hosted.prepare).not.toHaveBeenCalled();
+    await act(async () => { setOnline(true); window.dispatchEvent(new Event('online')); });
+    await click(host, 'Review payment');
+    expect(hosted.prepare).toHaveBeenCalledExactlyOnceWith({ recipient: 'recipient', amountUsdCents: '100', note: '' });
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    if (prior) Object.defineProperty(navigator, 'onLine', prior);
+    else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
 test('regular Receive includes the Wallet QR scanner and keeps the existing Note action', async () => {
   const wallet = { warm: vi.fn(), availableReceipt: async () => null };
   const identity = { username: 'recipient', binding: { artifactSha256: 'b'.repeat(64) }, fundedWallet: async () => wallet } as unknown as OpenIdentity;
@@ -177,7 +209,7 @@ test('the balance controls add and move back chosen amounts while leaving the re
   document.body.append(host);
   try {
     await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={refresh}/>));
-    expect(host.textContent).toContain('Available to send offline');
+    expect(host.querySelector('[aria-label="Offline cash"]')?.textContent).toContain('Offline cash');
     expect(host.textContent).toContain('$20.00');
     await click(host, 'Enable more funds offline');
     await setAmount('Amount to enable offline', '10.00');
