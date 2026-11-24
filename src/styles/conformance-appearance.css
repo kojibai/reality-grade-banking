@@ -35,3 +35,54 @@
  border-color: var(--bank-positive-line);
  color: var(--bank-positive);
 }
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.secondary,.account-proof-picker,.contract-transcript-picker,.audit-resource-links>a,.audit-resource-links>button) {
+ background: var(--bank-surface-raised);
+ border-color: var(--bank-line);
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-button.secondary,.account-proof-picker,.contract-transcript-picker,.audit-resource-links>a,.audit-resource-links>button):hover:not(:disabled) {
+ background: var(--bank-surface-subtle);
+ border-color: var(--bank-field-line);
+}
+:root[data-bank-appearance="dark"] .conformance-root .conformance-button.primary:hover:not(:disabled) {
+ background: var(--bank-action-hover);
+ border-color: var(--bank-action-hover);
+}
+:root[data-bank-appearance="dark"] .conformance-root .conformance-button:disabled {
+ background: var(--bank-surface);
+ border-color: var(--bank-line-subtle);
+ color: var(--bank-text-muted);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.device-evidence,.audit-resource-icon,.note-standard-details blockquote,.check-row summary:hover) {
+ background: var(--bank-surface);
+ border-color: var(--bank-line-subtle);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.device-evidence-result,.device-evidence-result dl>div,.note-standard-paths article,.note-standard-details,.note-standard-subdetails,.note-standard-links,.reference-table,.qualification-table,.implementation-baseline,.assessment-scope fieldset,.workspace-credential,.conformance-evidence-object img,.published-conformance-credential img) {
+ border-color: var(--bank-line-subtle);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.device-evidence-result h4,.device-evidence-result dd,.note-standard h3,.note-standard-details dt,.capability-detail h4,.audit-links h4,.execution-profile-list dt,.conformance-summary strong,.conformance-summary>div:nth-child(2) strong,.conformance-evidence-object h5,.evidence-object-digest code,.conformance-identity-holder code,.institution-workspace h3,.workspace-metrics strong,.published-conformance-credential dd) {
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.device-evidence-result>p,.device-evidence-result dt,.device-evidence-result code,.note-standard header>p,.note-standard-paths p,.note-standard-details p,.note-standard-details dd,.note-standard-availability p,.note-standard-details>summary>span,.note-standard-law,.qualification-row>span:nth-child(2),.qualification-row .assessment-unset,.conformance-summary svg,.check-detail .result-duration,.recorded-evidence summary>small,.recorded-evidence summary>svg,.run-summary,.original-file-zone>svg,.original-file-zone p,.inspection-explainer details>p,.standard-overview header>p,.standard-scope span,.capability-list small,.capability-result small,.capability-detail p,.capability-detail li,.rail-definition-list p,.execution-profile-list dd,.audit-requirement code,.audit-resource-label small,.audit-resource-links>a>svg,.audit-resource-links>button>svg,.reference-vector>p,.assessment-inputs>p,.assessment-result>summary strong,.assessment-result p,.contract-testbench>p,.contract-verdict>p,.implementation-baseline header>p,.implementation-baseline>p,.implementation-baseline .reference-vector li,.implementation-baseline .assessment-result>summary strong,.conformance-evidence-object p,.conformance-seal-consent p,.conformance-identity-holder dt,.conformance-identity-holder p,.workspace-holder span,.workspace-metrics span,.published-conformance-credential dt,.receiving-preparation-steps article>span,.receiving-preparation .audit-disclosure>p) {
+ color: var(--bank-text-muted);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.note-standard-subdetails>summary,.note-standard-details blockquote,.audit-disclosure,.reference-vector>summary strong,.conformance-seal-consent label,.conformance-identity-unlock label,.receiving-preparation-steps details,.conformance-tabs button) {
+ color: var(--bank-text-secondary);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-tabs button[aria-selected=true],.conformance-tabs button:hover,.conformance-header nav a:hover,.implementation-baseline .reference-vector a) {
+ color: var(--bank-link);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-seal-consent input:not([type=checkbox]),.conformance-identity-unlock input) {
+ background: var(--bank-field);
+ border-color: var(--bank-field-line);
+ color: var(--bank-text);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.device-evidence-consent,.conformance-seal-consent) input[type=checkbox] {
+ accent-color: var(--bank-action);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.check-passed .check-result,.verified-note-result>h3,.verified-note-result dt,.verified-note-result summary,.account-proof-inspector .account-proof-heading,.assessment-result [data-status=PASS],.conformance-proof-save>p) {
+ color: var(--bank-positive);
+}
+:root[data-bank-appearance="dark"] .conformance-root :is(.conformance-identity-error,.conformance-proof-save .proof-refusal) {
+ color: var(--bank-danger);
+}
