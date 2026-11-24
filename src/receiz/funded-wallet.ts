@@ -592,7 +592,7 @@ export function createFundedWallet(input:Options) {
     },
     async review(send:SendInput):Promise<FundedWalletReview>{
       const state=await current();
-      if(state.bundle)throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
+      if(state.bundle)throw Error(send.nearby?'BANK_WALLET_PREVIOUS_SEND_PENDING':'BANK_WALLET_FUNDED_RECIPIENT_REQUIRED');
       if(send.paired?.schema==='bankeiz.wallet.answer.v2')return reviewBundle(state,send,send.paired);
       const paired=send.paired;
       let refusal:unknown;

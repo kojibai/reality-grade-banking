@@ -286,8 +286,9 @@ test('one nearby offer covers the exact amount across two verified top-ups', asy
     },
     async createReceizAccountFinancialPublisher(){return {dispose(){}};},
   } as unknown as typeof runtime;
+  let bundle: unknown;
   const wallet=createFundedWallet({...options,runtime:fixtureRuntime,ownerKeyId:'a'.repeat(64),online:()=>false,lock:work=>work(),
-    read:async()=>({entries:sources.map(source=>({kind:'source',digest:source.artifactSha256,allocationId:source.allocationId})),send:null}),
+    read:async()=>({entries:sources.map(source=>({kind:'source',digest:source.artifactSha256,allocationId:source.allocationId})),send:null,...(bundle?{bundle}:{})}),
     reopen:async digest=>Uint8Array.of(sources.findIndex(source=>source.artifactSha256===digest)),
     bindWalletDevice:()=>async()=>{throw Error('unexpected device call');},
     async save(){throw Error('unexpected checkpoint write');},
@@ -298,9 +299,18 @@ test('one nearby offer covers the exact amount across two verified top-ups', asy
   });
   try{
     expect(await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3001'})).toBeNull();
-    expect(await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3000'})).toMatchObject({
+    const offer=await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3000'});
+    expect(offer).toMatchObject({
       schema:'bankeiz.wallet.offer.v2',amountUsdCents:'3000',
       parts:[{allocationId:sources[1].allocationId,amountUsdCents:'1000'},{allocationId:sources[0].allocationId,amountUsdCents:'2000'}],
     });
+    if(offer?.schema!=='bankeiz.wallet.offer.v2')throw Error('Expected a multi-balance offer');
+    bundle={offer,items:offer.parts.map(part=>({id:crypto.randomUUID(),allocationId:part.allocationId,
+      action:{kind:'send',nearby:true,conversationId:offer.conversationId,amountUsdCents:part.amountUsdCents,
+        recipientUserId:'33333333-3333-4333-8333-333333333333'}}))};
+    await expect(wallet.review({recipient:offer.recipient,amountUsdCents:'100',nearby:true}))
+      .rejects.toThrow('BANK_WALLET_PREVIOUS_SEND_PENDING');
+    await expect(wallet.review({recipient:offer.recipient,amountUsdCents:'100',nearby:false}))
+      .rejects.toThrow('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED');
   }finally{wallet.dispose();}
 });
