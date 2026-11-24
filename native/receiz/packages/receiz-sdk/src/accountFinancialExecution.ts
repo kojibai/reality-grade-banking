@@ -1,4 +1,4 @@
-import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {readReceizAccountFinancialSourceCustody,readReceizScannedWalletRecipient,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {bankNativeWalletDebit,bankNativeWalletDebitAvailable,bankNativeWalletTransferRate,bankNativeWalletValue,type BankNativeWalletFundingParts} from './nativeWalletEconomics.js';
 import {deriveMarketShareAccounting,marketNotionalPhiMicroFromUsdCents,marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid,type AccountExecutionMarketFlow,type AccountExecutionWalletAmounts,type AccountExecutionWalletLedger,type AccountExecutionPositionAmounts}from './accountFinancialMath.generated.js';
 
@@ -10,7 +10,7 @@ type Term=Capacity&Readonly<{sourceArtifactSha256:string;bidPriceUsdCents:string
 export type ReceizAccountOrderEscrow=Readonly<{orderId:string;marketItemId:string;reservedShareQuantityMicro:string;fundingSourceSha256:string}>;
 export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];reserveBackingPhiMicro?:string;marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
 type Recipient=Readonly<{recipientUserId:string;recipientOwnerReceizId:string;conversationId:string;sourceAccountArtifactSha256:string}>;
-export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true}>;
+export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown}>;
 export type ReceizAccountMarketAction=Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
 const MAX=(1n<<63n)-1n;
 const min=(a:bigint,b:bigint)=>a<b?a:b;
@@ -34,13 +34,17 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
  if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==source.allocationId||state.accountUserId!==source.accountUserId)fail('STATE');
  const at=uint(atKaiUPulse,true);if(at<uint(program.validFromKaiUPulse,true)||at>uint(program.expiresAtKaiUPulse,true)||at<=uint(state.lastKaiUPulse))fail('CAUSAL_PULSE');
  if(action?.kind==='send'){
-  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby'].includes(k))
+  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby','scannedRecipient'].includes(k))
    ||Object.hasOwn(action,'nearby')&&action.nearby!==true)fail('ACTION');
-  const recipient=program.recipientBindings?.find(r=>r.recipientUserId===action.recipientUserId&&r.conversationId===action.conversationId);if(!recipient)fail('RECIPIENT_REQUIRED');
+  const scanned=Object.hasOwn(action,'scannedRecipient')?readReceizScannedWalletRecipient(source,action,atKaiUPulse):null;
+  if(Object.hasOwn(action,'scannedRecipient')&&!scanned)fail('RECIPIENT_REQUIRED');
+  const recipient=scanned?{recipientUserId:scanned.userId,recipientOwnerReceizId:scanned.ownerReceizId,conversationId:action.conversationId}:
+   program.recipientBindings?.find(r=>r.recipientUserId===action.recipientUserId&&r.conversationId===action.conversationId);
+  if(!recipient)fail('RECIPIENT_REQUIRED');
   const cents=uint(action.amountUsdCents,true);
   if(custody.receivedWallet&&action.nearby!==true)fail('WALLET_PEER_CUSTODY');
   if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
-   ||!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
+   ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
    ||state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents))fail('WALLET_PEER_CUSTODY');
   let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;
   let nativeWalletMovement:Readonly<{rail:'reserve'|'settlement'|'composite';fundingParts:BankNativeWalletFundingParts}>|undefined;

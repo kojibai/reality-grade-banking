@@ -1,5 +1,7 @@
 import { digestReceizAuthority } from './authorityEncoding.js';
-import { receizBase64UrlDecode, receizBase64UrlEncode } from './identity.js';
+import { deriveReceizIdentityKeyIdFromPublicKeyRawB64u, receizBase64UrlDecode, receizBase64UrlEncode,
+  verifyReceizIdentityPublicKeyProjectionSignature, type ReceizIdentityLoginProof } from './identity.js';
+import { canonicalizeReceizV122 } from './v122Canonical.js';
 import { verifyReceizWalletPlatformAttestationAtIssuance } from './offlineNotePlatformAttestation.js';
 import { verifyReceizOfflineNoteRollbackConformanceEvidence, type ReceizOfflineNoteRollbackConformanceEvidenceV1, type ReceizOfflineNoteRollbackAssertion } from './offlineNoteRollbackConformance.js';
 import { verifyReceizOfflineNoteWebAuthnAssertion } from './offlineNoteWebAuthnCustody.js';
@@ -25,11 +27,39 @@ export type ReceizFinancialWalletCustodyBinding = Readonly<{
   rpId: string;
   initialSignCount: string;
 }>;
+const freshlyVerifiedBindings = new WeakSet<ReceizFinancialWalletCustodyBinding>();
 export type ReceizFinancialWalletCustodyChallenge = Readonly<{
   credentialIdB64u: string;
   challengeB64u: string;
   expectedSignCount: string;
 }>;
+export type ReceizFinancialWalletReceiveOffer = Readonly<{
+  applicationId: string;
+  sourceArtifactSha256: string;
+  allocationId: string;
+  recipientUserId: string;
+  conversationId: string;
+  recipientKeyId: string;
+  recipientCredentialCertificateDigest: string;
+  recipientRecordSignerPublicKey: string;
+  amountUsdCents: string;
+}>;
+
+export function receizFinancialWalletReceiveConsent(offer: ReceizFinancialWalletReceiveOffer): string {
+  exact(offer, ['applicationId', 'sourceArtifactSha256', 'allocationId', 'recipientUserId', 'conversationId', 'recipientKeyId',
+    'recipientCredentialCertificateDigest', 'recipientRecordSignerPublicKey', 'amountUsdCents']);
+  const hash = /^[a-f0-9]{64}$/u;
+  if (![offer.sourceArtifactSha256, offer.allocationId, offer.recipientKeyId, offer.recipientCredentialCertificateDigest]
+    .every(value => typeof value === 'string' && hash.test(value))
+    || typeof offer.recipientRecordSignerPublicKey !== 'string' || !/^[A-Za-z0-9_-]{43}$/u.test(offer.recipientRecordSignerPublicKey)
+    || receizBase64UrlEncode(receizBase64UrlDecode(offer.recipientRecordSignerPublicKey)) !== offer.recipientRecordSignerPublicKey
+    || typeof offer.applicationId !== 'string' || !/^[a-zA-Z0-9_.:-]{3,240}$/u.test(offer.applicationId)
+    || ![offer.recipientUserId, offer.conversationId].every(value => typeof value === 'string'
+      && /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u.test(value))
+    || typeof offer.amountUsdCents !== 'string' || !/^[1-9][0-9]{0,18}$/u.test(offer.amountUsdCents)
+    || BigInt(offer.amountUsdCents) > (1n << 63n) - 1n) fail();
+  return 'receiz.account-financial.wallet-receive-consent.v1\0' + canonicalizeReceizV122(offer);
+}
 
 /** The custody provider may report this only when the attempt ended without
  * issuing an assertion or advancing the credential counter. A lost reply,
@@ -74,21 +104,23 @@ export async function verifyReceizFinancialWalletCustodyBinding(input: unknown, 
     credential: { credentialIdB64u, custodyPublicKeyRawB64u, origin, rpId }, registrationCounter,
   });
   if (BigInt(evidence.conformedStateSequence) >= MAX_COUNTER) fail();
-  return Object.freeze({ certificateDigest, credentialIdB64u, custodyPublicKeyRawB64u, origin, rpId, initialSignCount: evidence.conformedStateSequence });
+  const binding = Object.freeze({ certificateDigest, credentialIdB64u, custodyPublicKeyRawB64u, origin, rpId, initialSignCount: evidence.conformedStateSequence });
+  freshlyVerifiedBindings.add(binding);
+  return binding;
 }
 
 /** The challenge commits to the exact successor command and owner consent.
  * The command includes the allocation, predecessor, movement and signed Kai. */
 export async function prepareReceizFinancialWalletCustodyChallenge(input: Readonly<{
   binding: ReceizFinancialWalletCustodyBinding;
-  kind: 'spend' | 'release';
+  kind: 'spend' | 'release' | 'receive';
   sequence: string;
   command: unknown;
   ownerConsent: unknown;
 }>): Promise<ReceizFinancialWalletCustodyChallenge> {
   const { binding, kind, sequence, command, ownerConsent } = input;
-  if (!DECIMAL.test(sequence) || kind === 'spend' && sequence === '0') fail();
-  const next = BigInt(binding.initialSignCount) + BigInt(sequence) + (kind === 'release' ? 1n : 0n);
+  if (!DECIMAL.test(sequence) || kind === 'spend' && sequence === '0' || kind === 'receive' && sequence !== '0') fail();
+  const next = BigInt(binding.initialSignCount) + BigInt(sequence) + (kind === 'spend' ? 0n : 1n);
   if (next > MAX_COUNTER) fail();
   const expectedSignCount = next.toString();
   const digest = await digestReceizAuthority('transition', PROOF_DOMAIN, { kind, certificateDigest: binding.certificateDigest, expectedSignCount, command, ownerConsent });
@@ -109,4 +141,30 @@ export async function verifyReceizFinancialWalletCustodyAssertion(
       origin: binding.origin, rpId: binding.rpId, challengeB64u: challenge.challengeB64u, expectedSignCount: challenge.expectedSignCount });
   } catch { fail(); }
   return Object.freeze(structuredClone(verifiedAssertion));
+}
+
+/** The first assertion reserves a fresh recipient credential for one exact
+ * predecessor. Subsequent spending starts from the signed receive counter. The
+ * caller supplies the recipient's already-admitted account and device binding. */
+export async function verifyReceizFinancialWalletRecipientAcceptance(input: Readonly<{
+  binding: ReceizFinancialWalletCustodyBinding;
+  offer: ReceizFinancialWalletReceiveOffer;
+  identity: Readonly<{ keyId: string; alg: 'Ed25519' | 'P-256'; publicKeyRawB64u: string }>;
+  ownerConsent: ReceizIdentityLoginProof;
+  assertion: unknown;
+}>): Promise<ReceizFinancialWalletCustodyBinding> {
+  if (!freshlyVerifiedBindings.has(input.binding)) fail();
+  const { binding, offer, identity, ownerConsent, assertion } = structuredClone(input);
+  const challengeText = receizFinancialWalletReceiveConsent(offer);
+  const challengeB64Url = receizBase64UrlEncode(new TextEncoder().encode(challengeText));
+  exact(ownerConsent, ['schema', 'keyId', 'alg', 'challengeB64Url', 'signatureB64Url']);
+  if (identity.keyId !== offer.recipientKeyId || binding.certificateDigest !== offer.recipientCredentialCertificateDigest
+    || ownerConsent.schema !== 'receiz.identity.login_proof.v1'
+    || ownerConsent.keyId !== identity.keyId || ownerConsent.alg !== identity.alg || ownerConsent.challengeB64Url !== challengeB64Url
+    || await deriveReceizIdentityKeyIdFromPublicKeyRawB64u(identity.publicKeyRawB64u, identity.alg) !== identity.keyId
+    || !await verifyReceizIdentityPublicKeyProjectionSignature({ ...identity, challengeB64Url, signatureB64Url: ownerConsent.signatureB64Url })) fail();
+  const challenge = await prepareReceizFinancialWalletCustodyChallenge({ binding, kind: 'receive', sequence: '0', command: offer, ownerConsent });
+  if (BigInt(challenge.expectedSignCount) >= MAX_COUNTER) fail();
+  await verifyReceizFinancialWalletCustodyAssertion(binding, challenge, assertion);
+  return Object.freeze({ ...binding, initialSignCount: challenge.expectedSignCount });
 }

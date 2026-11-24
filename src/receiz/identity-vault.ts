@@ -788,6 +788,8 @@ export const loadFundedWalletAssertion=async(binding:{artifactSha256:string},dig
 export const saveFundedWalletAssertion=(binding:{artifactSha256:string},digest:string,assertion:import('./local-financial-runtime').FinancialWalletCustodyAssertion)=>
   saveNoteState(binding,'wallet-assertion:'+digest,assertion,null);
 export const saveFundedWalletState=(binding:{artifactSha256:string},state:unknown,prior:unknown)=>saveNoteState(binding,'funded-wallet',state,prior);
+export const loadWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding')=>loadNoteState(binding,`funded-wallet-${role}`);
+export const saveWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding',state:unknown,prior:unknown)=>saveNoteState(binding,`funded-wallet-${role}`,state,prior);
 
 /** Exact composer blocks use the same owner-encrypted byte servant. This
  * separate role grants no proof admission, Note custody or financial input. */

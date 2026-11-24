@@ -1,4 +1,7 @@
 import { readReceizAccountFinancialSourceCustody, type ReceizAccountFinancialSource } from '../../../../packages/receiz-sdk/src/accountFinancialSource';
+export { prepareReceizScannedWalletRecipient } from '../../../../packages/receiz-sdk/src/accountFinancialSource';
+export { receizFinancialWalletReceiveConsent, prepareReceizFinancialWalletCustodyChallenge, verifyReceizFinancialWalletCustodyBinding } from '../../../../packages/receiz-sdk/src/accountFinancialWalletCustody';
+import { runReceizOfflineNoteRollbackConformance } from '../../../../packages/receiz-sdk/src/offlineNoteRollbackConformance';
 import {createBankPreparedCashStorage} from "./preparedCashStorage";
 export {createBankNoteAccountReceivingRequest,verifyBankNoteAccountReceivingRequest} from './accountReceiving';
 export {openBankNoteAccountDeposit,readBankNoteAccountDeposit,exportBankNoteAccountDepositImage,verifyBankNoteAccountDepositCredit,prepareBankNoteAccountDepositSubmission,isBankNoteAccountDeposit} from './accountDeposit';
@@ -386,11 +389,13 @@ export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) 
   const program = held.body.program as {
     identity: { keyId: string };
     custodian: { publicKeyRawB64u: string };
+    walletRecipientMode?: string;
     recipientBindings?: readonly { recipientUserId: string; recipientOwnerReceizId: string; conversationId: string }[];
   };
   return {
     keyId: program.identity.keyId, signerPublicKey: program.custodian.publicKeyRawB64u,
     origin: binding.origin, rpId: binding.rpId, credentialIdB64u: binding.credentialIdB64u, received: held.receivedWallet,
+    scanTime: program.walletRecipientMode === 'scan-time',
     recipients: (program.recipientBindings ?? []).map(row => ({
       accountUid: row.recipientUserId, ownerReceizId: row.recipientOwnerReceizId, conversationId: row.conversationId,
       nearby: held.hasWalletRecipient(row.recipientUserId, row.conversationId),
@@ -403,4 +408,32 @@ export function assertBankFinancialWalletDevice(input: Readonly<{
 }>) {
   return createKairosNoteBrowserWebAuthnClient({ origin: input.origin, rpId: input.rpId })
     .assert({ credentialIdB64u: input.credentialIdB64u, challengeB64u: input.challengeB64u });
+}
+
+export async function enrollBankFinancialWalletDevice(input:Readonly<{origin:string;rpId:string;fetchImpl:typeof fetch}>) {
+  const webAuthn = createKairosNoteBrowserWebAuthnClient(input);
+  const credential = await webAuthn.enroll();
+  const platformAttestationCertificate = credential.platformAttestationCertificate;
+  if (!platformAttestationCertificate) throw Error('BANK_WALLET_DEVICE_REQUIRED');
+  const rollbackConformanceEvidence = await runReceizOfflineNoteRollbackConformance({ credential, webAuthn,
+    registrationCounter: platformAttestationCertificate.registrationCounter });
+  return { platformAttestationCertificate, rollbackConformanceEvidence };
+}
+
+export async function approveBankFinancialWalletOffer(input:Readonly<{
+  walletWebAuthn:unknown;fundedAtKaiUPulse:string;
+  offer:Omit<import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody').ReceizFinancialWalletReceiveOffer,'recipientCredentialCertificateDigest'>;
+  signOwner(challenge:string):Promise<import('../../../../packages/receiz-sdk/src/identity').ReceizIdentityLoginProof>;
+  assert(request:import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody').ReceizFinancialWalletCustodyChallenge):Promise<unknown>;
+}>) {
+  const [{ verifyReceizFinancialWalletCustodyBinding, receizFinancialWalletReceiveConsent, prepareReceizFinancialWalletCustodyChallenge },
+    { receizCurrentPinnedSignatureV4Roots }] = await Promise.all([import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody'),import('../../../../packages/receiz-sdk/src/verifier/roots')]);
+  const binding=await verifyReceizFinancialWalletCustodyBinding(input.walletWebAuthn,{roots:receizCurrentPinnedSignatureV4Roots(),fundedAtKaiUPulse:input.fundedAtKaiUPulse});
+  const offer={...input.offer,recipientCredentialCertificateDigest:binding.certificateDigest};
+  const ownerConsent=await input.signOwner(receizFinancialWalletReceiveConsent(offer));
+  const challenge=await prepareReceizFinancialWalletCustodyChallenge({binding,kind:'receive',sequence:'0',command:offer,ownerConsent});
+  const {authenticatorDataB64u,clientDataJSONB64u,signatureB64u}=await input.assert(challenge) as {
+    authenticatorDataB64u:string;clientDataJSONB64u:string;signatureB64u:string;
+  };
+  return {ownerConsent,assertion:{authenticatorDataB64u,clientDataJSONB64u,signatureB64u}};
 }

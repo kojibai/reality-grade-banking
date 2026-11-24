@@ -3,13 +3,32 @@ import type { FinancialAction, WalletRecipient } from './local-financial-runtime
 
 type Session = Awaited<ReturnType<typeof createLocalFinancialSession>>;
 type Entry = Readonly<{ kind:'source'|'peer'; digest:string; allocationId:string }>;
-type SendInput = Readonly<{ recipient:string; amountUsdCents:string; note?:string; nearby:boolean }>;
+export type WalletPairOffer=Readonly<{schema:'bankeiz.wallet.offer.v1';applicationId:string;sourceArtifactSha256:string;allocationId:string;
+  conversationId:string;amountUsdCents:string;recipient:string}>;
+export type WalletPairReply=Readonly<{schema:'bankeiz.wallet.answer.v1';offer:WalletPairOffer;recipientUserId:string;scannedRecipient:unknown}>;
+type SendInput = Readonly<{ recipient:string; amountUsdCents:string; note?:string; nearby:boolean; paired?:WalletPairReply }>;
 type HeldSend = Readonly<{ id:string; allocationId:string; action:Extract<FinancialAction,{kind:'send'}> }>;
 type Checkpoint = Readonly<{ entries:readonly Entry[]; send:HeldSend|null }>;
 const empty:Checkpoint={entries:[],send:null};
 const digestPattern=/^[a-f0-9]{64}$/u;
 const handle=(value:string)=>value.trim().toLowerCase().replace(/^@/u,'').replace(/\.receiz\.id$/u,'');
-const actionKey=(action:HeldSend['action'])=>JSON.stringify([action.recipientUserId,action.conversationId,action.amountUsdCents,action.note??'',!!action.nearby]);
+const actionKey=(action:HeldSend['action'])=>JSON.stringify([action.recipientUserId,action.conversationId,action.amountUsdCents,action.note??'',!!action.nearby,action.scannedRecipient??null]);
+
+export function readWalletPairing(bytes:Uint8Array):WalletPairOffer|WalletPairReply|null{
+  if(bytes[0]!==123)return null;
+  const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+  const offer=value?.schema==='bankeiz.wallet.answer.v1'?value.offer:value;
+  const uuid=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/u;
+  if(!offer||Object.keys(offer).length!==7||offer.schema!=='bankeiz.wallet.offer.v1'
+    ||typeof offer.applicationId!=='string'||!/^rc_[A-Za-z0-9_-]{1,128}$/u.test(offer.applicationId)
+    ||typeof offer.sourceArtifactSha256!=='string'||!digestPattern.test(offer.sourceArtifactSha256)
+    ||typeof offer.allocationId!=='string'||!digestPattern.test(offer.allocationId)||!uuid.test(offer.conversationId)
+    ||typeof offer.amountUsdCents!=='string'||!/^[1-9][0-9]{0,17}$/u.test(offer.amountUsdCents)
+    ||typeof offer.recipient!=='string'||!offer.recipient||offer.recipient.length>120)throw Error('BANK_WALLET_PAIRING_INVALID');
+  if(value.schema==='bankeiz.wallet.offer.v1')return offer;
+  if(value.schema==='bankeiz.wallet.answer.v1'&&Object.keys(value).length===4&&uuid.test(value.recipientUserId)&&value.scannedRecipient)return value;
+  throw Error('BANK_WALLET_PAIRING_INVALID');
+}
 
 type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'publish'|'publishPeerRelease'>&{
   ownerKeyId:string;
@@ -21,6 +40,8 @@ type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'p
   findSource():Promise<Uint8Array|null>;
   publish(allocationId:string,batch:Parameters<LocalFinancialSessionOptions['publish']>[0]):Promise<unknown>;
   publishPeerRelease:NonNullable<LocalFinancialSessionOptions['publishPeerRelease']>;
+  prepareOffline?(amountUsdCents?:string):Promise<Uint8Array|null>;
+  answerOffer?(offer:WalletPairOffer):Promise<WalletPairReply>;
 };
 export type FundedWalletReview=Readonly<{
   recipientLabel:string; amountUsdCents:string; note?:string;
@@ -93,6 +114,36 @@ export function createFundedWallet(input:Options) {
   return Object.freeze({
     warm,
     resume,
+    async prepareOffline(amountUsdCents?:string){
+      if(!input.prepareOffline)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+      const original=await input.prepareOffline(amountUsdCents);
+      if(original)await input.lock(()=>remember('source',original));
+    },
+    async offer(send:SendInput):Promise<WalletPairOffer|null>{
+      if(!send.nearby)return null;
+      const state=await current();
+      for(const entry of [...state.entries].reverse()){
+        if(state.send&&entry.allocationId!==state.send.allocationId)continue;
+        const session=await restore(entry);
+        if(!session.walletDevice()?.scanTime)continue;
+        const head=await session.current();
+        if(head.release||head.state.sequence!=='0'||head.state.wallet.availableUsdCents!==send.amountUsdCents)continue;
+        const sourceArtifactSha256=session.sourceReference().artifactSha256;
+        const pairingKey=new TextEncoder().encode(JSON.stringify([input.applicationId,sourceArtifactSha256,entry.allocationId,send.recipient,send.amountUsdCents]));
+        const id=new Uint8Array(await crypto.subtle.digest('SHA-256',pairingKey)).slice(0,16);
+        id[6]=(id[6]!&15)|0x80;id[8]=(id[8]!&63)|0x80;
+        const hex=Array.from(id,byte=>byte.toString(16).padStart(2,'0')).join('');
+        const conversationId=[hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
+        return {schema:'bankeiz.wallet.offer.v1',applicationId:input.applicationId,sourceArtifactSha256,
+          allocationId:entry.allocationId,conversationId,amountUsdCents:send.amountUsdCents,recipient:send.recipient};
+      }
+      return null;
+    },
+    async answer(offer:WalletPairOffer){
+      if(!input.answerOffer||offer.applicationId!==input.applicationId
+        ||offer.recipient!==input.accountUid&&handle(offer.recipient)!==handle(input.ownerReceizId))throw Error('BANK_WALLET_PAIRING_INVALID');
+      return input.lock(()=>input.answerOffer!(offer));
+    },
     async receive(bytes:Uint8Array) {
       return input.lock(async()=>{
         const session=await remember('peer',bytes.slice());
@@ -127,6 +178,14 @@ export function createFundedWallet(input:Options) {
       }
       return null;
     },
+    async availableFunding(){
+      for(const entry of [...(await current()).entries].reverse()){
+        if(entry.kind!=='source')continue;
+        const state=await (await restore(entry)).current();
+        if(!state.release&&BigInt(state.state.wallet.availableUsdCents)>0n)return {allocationId:entry.allocationId};
+      }
+      return null;
+    },
     async review(send:SendInput):Promise<FundedWalletReview>{
       const state=await current();
       let refusal:unknown;
@@ -135,18 +194,23 @@ export function createFundedWallet(input:Options) {
         const session=await restore(entry),device=session.walletDevice();
         const nearby=send.nearby||entry.kind==='peer';
         if(!device)continue;
-        const recipient=boundRecipient(device.recipients,send.recipient,nearby);
+        const paired=send.paired;
+        if(paired&&(!device.scanTime||paired.offer.allocationId!==entry.allocationId||paired.offer.sourceArtifactSha256!==session.sourceReference().artifactSha256
+          ||paired.offer.amountUsdCents!==send.amountUsdCents||paired.offer.recipient!==send.recipient||paired.offer.applicationId!==input.applicationId))continue;
+        const recipient=paired?{accountUid:paired.recipientUserId,conversationId:paired.offer.conversationId}:boundRecipient(device.recipients,send.recipient,nearby);
         if(!recipient)continue;
         const note=send.note?.replace(/\s+/gu,' ').trim();
         const action={kind:'send' as const,recipientUserId:recipient.accountUid,conversationId:recipient.conversationId,
-          amountUsdCents:send.amountUsdCents,...(note?{note}:{}),...(nearby?{nearby:true as const}:{})};
+          amountUsdCents:send.amountUsdCents,...(note?{note}:{}),...(nearby?{nearby:true as const}:{}),...(paired?{scannedRecipient:paired.scannedRecipient}:{})};
         if(state.send&&actionKey(state.send.action)!==actionKey(action))throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
         try{
           const {effect}=await session.preview(action);
-          if(effect.kind!=='send'||effect.recipientOwnerReceizId!==recipient.ownerReceizId)throw Error('BANK_WALLET_RECIPIENT_MISMATCH');
+          if(effect.kind!=='send'||typeof effect.recipientOwnerReceizId!=='string'||(paired
+            ?paired.recipientUserId!==send.recipient&&handle(effect.recipientOwnerReceizId)!==handle(send.recipient)
+            :effect.recipientOwnerReceizId!==('ownerReceizId' in recipient?recipient.ownerReceizId:null)))throw Error('BANK_WALLET_RECIPIENT_MISMATCH');
           const {amountPhiMicro,settledUsdCents,ecosystemUsdCents}=effect;
           if(typeof amountPhiMicro!=='string'||typeof settledUsdCents!=='string'||typeof ecosystemUsdCents!=='string')throw Error('BANK_WALLET_QUOTE_INVALID');
-          const review=Object.freeze({recipientLabel:recipient.ownerReceizId,amountUsdCents:send.amountUsdCents,note,quote:Object.freeze({amountPhiMicro,settledUsdCents,ecosystemUsdCents})});
+          const review=Object.freeze({recipientLabel:effect.recipientOwnerReceizId,amountUsdCents:send.amountUsdCents,note,quote:Object.freeze({amountPhiMicro,settledUsdCents,ecosystemUsdCents})});
           reviews.set(review,{session,action});
           return review;
         }catch(error){refusal=error;}
@@ -182,10 +246,10 @@ export function createFundedWallet(input:Options) {
     },
     async release(allocationId:string) {
       const session=await input.lock(async()=>{
-        const entry=(await current()).entries.find(row=>row.allocationId===allocationId&&row.kind==='peer');
+        const entry=(await current()).entries.find(row=>row.allocationId===allocationId);
         if(!entry)throw Error('BANK_WALLET_CUSTODY_REQUIRED');
         const session=await restore(entry),state=await session.current();
-        if(state.state.sequence!=='0')throw Error('BANK_WALLET_ALREADY_FORWARDED');
+        if(entry.kind==='peer'&&state.state.sequence!=='0'||BigInt(state.state.wallet.availableUsdCents)===0n)throw Error('BANK_WALLET_ALREADY_FORWARDED');
         await session.releaseOriginal();
         return session;
       });

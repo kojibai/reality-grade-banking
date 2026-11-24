@@ -15,6 +15,7 @@ export type LocalFinancialSessionOptions=Readonly<{
  assertWalletCustody?:ExecutorOptions['assertWalletCustody'];
  bindWalletDevice?(device: WalletDevice, assert: (request:FinancialWalletCustodyChallenge)=>Promise<FinancialWalletCustodyAssertion>):NonNullable<ExecutorOptions['assertWalletCustody']>;
  publish(batch:FinancialPublication):Promise<unknown>;
+ publishOwnerRelease?(input:Readonly<{allocationId:string;original:Uint8Array}>):Promise<unknown>;
  publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array}>):Promise<unknown>;
  assertOpen():void;online():boolean;
  /** Optional host lifecycle in place of the browser's connection events. */
@@ -47,7 +48,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const incoming=input.receivedWallet;
  const heldPeerProof=incoming?.proofBytes.slice();
  let peerRoot:Awaited<ReturnType<FinancialRuntime['admitReceizAccountFinancialSource']>>|undefined;
- let source;
+ let source:Awaited<ReturnType<FinancialRuntime['admitReceizAccountFinancialSource']>>;
  if(incoming){
   const proof=runtime.readReceizAccountFinancialWalletProof(heldPeerProof!);
   const root=await runtime.admitReceizAccountFinancialSource(proof.sourceOriginal);
@@ -100,7 +101,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   },
  });
  try{input.assertOpen();}catch(error){publisher?.dispose();throw error;}
- let closed=false,scheduled=false,peerPublished=false,publication:ReturnType<NonNullable<typeof publisher>['flush']>|undefined;
+ let closed=false,scheduled=false,peerPublished=false,ownerPublished=false,publication:ReturnType<NonNullable<typeof publisher>['flush']>|undefined;
  const deliverPeer=input.publishPeerRelease;
  const canPublish=!!publisher||!!(heldPeerProof&&deliverPeer);
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
@@ -124,10 +125,20 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    return {status:'published'};
   }catch{return {status:'pending'};}
  }
+ async function flushOwner(){
+  const result=await publisher!.flush();
+  if(result.status!=='published'||!input.publishOwnerRelease||!input.online()||ownerPublished)return result;
+  try{
+   const {release}=await executor.current();open();if(!release)return result;
+   const ack=await input.publishOwnerRelease({allocationId:source.allocationId,original:runtime.exportReceizAccountFinancialRelease(release)}) as {status?:string;artifactSha256?:string};
+   if(ack?.status!=='released'||ack.artifactSha256!==release.artifactSha256)return {status:'pending' as const};
+   ownerPublished=true;return result;
+  }catch{return {status:'pending' as const};}
+ }
  function flushPublication(){
   if(publication)return publication;
   scheduled=false;
-  publication=(publisher?.flush()??flushPeer()).finally(()=>{
+  publication=(publisher?flushOwner():flushPeer()).finally(()=>{
    publication=undefined;
    runScheduledPublication();
   });
@@ -147,7 +158,11 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  const unsubscribe=canPublish?(input.subscribeReconnect??subscribeBrowserReconnect)(nudge):undefined;
  nudge();
  return Object.freeze({
-  async preview(action:FinancialAction){open();const current=await executor.current();open();return runtime.projectReceizAccountFinancialAction(source,current.state,action,kai());},
+  async preview(action:FinancialAction){
+   open();const current=await executor.current(),at=kai();open();
+   if(action.kind==='send'&&action.scannedRecipient)await runtime.prepareReceizScannedWalletRecipient?.(source,action,at);
+   open();return runtime.projectReceizAccountFinancialAction(source,current.state,action,at);
+  },
   async execute(request:Parameters<typeof executor.execute>[0]){
    open();const result=await executor.execute(request);
    if(result.status==='committed'){

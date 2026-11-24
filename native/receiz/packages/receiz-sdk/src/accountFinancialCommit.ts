@@ -6,7 +6,7 @@ import {canonicalizeReceizV122 as canonical,digestReceizCanonicalV122 as digest}
 import {receizKaiNow}from './v124Kai.js';
 import type{ReceizAdmissionStore,ReceizAdmissionAggregate}from './admissionStore.js';
 import type{ReceizConstitutionJson}from './constitution.js';
-import {assertReceizAccountFinancialWalletProofCapacity,readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {assertReceizAccountFinancialWalletProofCapacity,prepareReceizScannedWalletRecipient,readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
 import {projectReceizAccountFinancialAction,type ReceizAccountFinancialState,type ReceizAccountSendAction,type ReceizAccountMarketAction}from './accountFinancialExecution.js';
 import {admitReceizAccountMarketOrderRequest,exportReceizAccountMarketOrderRequest,type ReceizVerifiedAccountMarketOrderRequest}from './accountMarketOrder.js';
 import {projectReceizAccountMarketOrderFunding}from './accountMarketOrderFunding.js';
@@ -76,6 +76,7 @@ async function admitFinancialEnvelope(envelope:Awaited<ReturnType<typeof financi
  const action=actionSnapshot(body.action as ReceizAccountFinancialAction);if(action.kind==='reserve-market-order')fail('CAUSAL_ORIGINAL');same(action,body.action);
  if(action.kind==='send'&&action.nearby===true)assertReceizAccountFinancialWalletProofCapacity(source,original.byteLength);
  if(body.requestDigest!==await requestDigest(source,text(body.operationId),action))fail('REQUEST_DIGEST');
+ if(action.kind==='send'&&Object.hasOwn(action,'scannedRecipient'))await prepareReceizScannedWalletRecipient(source,action,text(body.atKaiUPulse));
  const state=parent?.nextState??custody.body.initialState as ReceizAccountFinancialState,projected=projectReceizAccountFinancialAction(source,state,action,text(body.atKaiUPulse));
  same(projected.effect,body.effect);same(projected.next,body.nextState);if(body.sequence!==projected.next.sequence)fail('SEQUENCE');
  const command=Object.fromEntries(Object.entries(body).filter(([k])=>k!=='ownerConsent'&&k!=='custodianSignature'&&k!=='walletCustodyAssertion'));
@@ -84,7 +85,7 @@ async function admitFinancialEnvelope(envelope:Awaited<ReturnType<typeof financi
   const binding=custody.walletCustody,challenge=await prepareReceizFinancialWalletCustodyChallenge({binding,kind:'spend',sequence:text(body.sequence),command,ownerConsent:proof});
   await verifyReceizFinancialWalletCustodyAssertion(binding,challenge,body.walletCustodyAssertion);
  }
- freeze(body);const accepted=Object.freeze({status:'verified-account-financial-operation'as const,artifactSha256:await sha256ReceizBytes(original),allocationId:source.allocationId,operationId:text(body.operationId),requestDigest:text(body.requestDigest),predecessorArtifactSha256:text(body.predecessorArtifactSha256),predecessorOperationId:body.predecessorOperationId as string|null,sequence:text(body.sequence),atKaiUPulse:text(body.atKaiUPulse),action:body.action as ReceizAccountFinancialAction,effect:body.effect as Effect,nextState:body.nextState as ReceizAccountFinancialState});
+ freeze(body);const accepted=Object.freeze({status:'verified-account-financial-operation'as const,artifactSha256:await sha256ReceizBytes(original),allocationId:source.allocationId,operationId:text(body.operationId),requestDigest:text(body.requestDigest),predecessorArtifactSha256:text(body.predecessorArtifactSha256),predecessorOperationId:body.predecessorOperationId as string|null,sequence:text(body.sequence),atKaiUPulse:text(body.atKaiUPulse),action:freeze(action),effect:body.effect as Effect,nextState:body.nextState as ReceizAccountFinancialState});
  operations.set(accepted,{sourceSha256:source.artifactSha256,bytes:original,body,command,commandDigest:await digest(command),parent});return accepted;
 }
 
@@ -274,6 +275,7 @@ export async function createReceizAccountFinancialExecutor(options:ExecutorOptio
   }
   const predecessorArtifactSha256=parent?.artifactSha256??source.artifactSha256,wanted=await requestDigest(source,id,action);
   const body=await prepareWalletCommand('spend',predecessorArtifactSha256,wanted,async()=>{
+   if(action.kind==='send'&&Object.hasOwn(action,'scannedRecipient'))await prepareReceizScannedWalletRecipient(source,action,at);
    const projection=projectReceizAccountFinancialAction(source,state,action,at);
    return {schema:'receiz.account-financial-operation.v1',allocationId:source.allocationId,sourceArtifactSha256:source.artifactSha256,operationId:id,requestDigest:wanted,predecessorArtifactSha256,predecessorOperationId:parent?.operationId??null,sequence:projection.next.sequence,atKaiUPulse:at,action,effect:projection.effect,nextState:projection.next};
   });

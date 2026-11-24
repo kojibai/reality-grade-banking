@@ -2,7 +2,7 @@ import type {ReceizAdmissionStore,ReceizIdentityLoginProof} from '@receiz/sdk';
 /** Transport types for the separately built, matching SDK module. These are
  * inspection data; only that module's actual private custody grants authority. */
 export type FinancialSource=Readonly<{artifactSha256:string;allocationId:string;accountUserId:string;ownerReceizId:string;sourceFamily:string}>;
-export type FinancialAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true}>|Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
+export type FinancialAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown}>|Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
 export type FinancialState=Readonly<{sequence:string;lastKaiUPulse:string;walletLedger:Readonly<Record<string,string>>;wallet:Readonly<{balancePhiMicro:string;availableUsdCents:string;settledUsdCents:string}>;positions:readonly Readonly<{marketItemId:string;shareQuantityMicro:string;costBasisUsdCents:string;costBasisPhiMicro:string}>[]}>;
 export type FinancialOperation=Readonly<{artifactSha256:string;allocationId:string;operationId:string;sequence:string;atKaiUPulse:string;action:FinancialAction;effect:Readonly<Record<string,unknown>>;nextState:FinancialState}>;
 export type FinancialCommit=Readonly<{status:'committed';publication:'pending';operation:FinancialOperation}>;
@@ -14,9 +14,19 @@ export type FinancialWalletCustodyChallenge=Readonly<{credentialIdB64u:string;ch
 export type FinancialWalletCustodyAssertion=Readonly<{
  credentialIdB64u:string;authenticatorDataB64u:string;clientDataJSONB64u:string;signatureB64u:string;
 }>;
+type WalletEnrollment=Readonly<{platformAttestationCertificate:Readonly<{origin:string;rpId:string}>;rollbackConformanceEvidence:unknown}>;
+export type WalletPairingRuntime=Readonly<{
+ enrollBankFinancialWalletDevice(input:{origin:string;rpId:string;fetchImpl:typeof fetch}):Promise<WalletEnrollment>;
+ assertBankFinancialWalletDevice(input:FinancialWalletCustodyChallenge&{origin:string;rpId:string}):Promise<Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>>;
+ approveBankFinancialWalletOffer(input:{walletWebAuthn:WalletEnrollment;fundedAtKaiUPulse:string;
+  offer:{applicationId:string;sourceArtifactSha256:string;allocationId:string;conversationId:string;recipientUserId:string;
+    recipientKeyId:string;recipientRecordSignerPublicKey:string;amountUsdCents:string};
+  signOwner(challenge:string):Promise<ReceizIdentityLoginProof>;assert(request:FinancialWalletCustodyChallenge):Promise<unknown>;
+ }):Promise<Readonly<{ownerConsent:ReceizIdentityLoginProof;assertion:Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>}>>;
+}>;
 export type WalletRecipient = Readonly<{accountUid:string;ownerReceizId:string;conversationId:string;nearby:boolean}>;
 export type WalletDevice = Readonly<{
- keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;
+ keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;
  recipients:readonly WalletRecipient[];
 }>;
 export type FinancialRelease=Readonly<{artifactSha256:string}>;
@@ -38,6 +48,7 @@ export type LocalFinancialRuntime=Readonly<{
  createReceizAccountFinancialExecutor(input:FinancialExecutorOptions):Promise<FinancialExecutor>;
  createReceizAccountFinancialPublisher(input:{source:FinancialSource;executor:FinancialExecutor;store:ReceizAdmissionStore;originals:FinancialOriginalStore;publish(batch:FinancialPublication):Promise<unknown>;batchSize?:number}):Promise<{flush():Promise<Readonly<{status:'published'|'pending'}>>;received(operationId:string):Promise<FinancialReceivedReceipt|null>;dispose():void}>;
  projectReceizAccountFinancialAction(source:FinancialSource,state:FinancialState,action:FinancialAction,atKaiUPulse:string):{effect:Readonly<Record<string,unknown>>;next:FinancialState};
+ prepareReceizScannedWalletRecipient?(source:FinancialSource,action:Extract<FinancialAction,{kind:'send'}>,atKaiUPulse:string):Promise<void>;
  financialSourceApplicationId(source:FinancialSource):string;
  bankFinancialWalletDevice?(source:FinancialSource):WalletDevice;
  assertBankFinancialWalletDevice?(input:FinancialWalletCustodyChallenge&{origin:string;rpId:string}):Promise<FinancialWalletCustodyAssertion>;

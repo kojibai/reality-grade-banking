@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import type { FundedWalletReview } from '../../receiz/funded-wallet';
-import { isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
+import { readWalletPairing, type FundedWalletReview, type WalletPairOffer } from '../../receiz/funded-wallet';
+import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
 import { PaymentScanner } from './PaymentScanner';
 import { WalletPaymentReview } from './WalletSendOperation';
@@ -10,12 +10,39 @@ import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
 const walletError=(cause:unknown)=>cause instanceof Error&&cause.message==='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'
  ?'No funded offline payment is available for this recipient on this device.'
  :'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
+const pairFrames=(value:unknown)=>createOpticalNoteFrames('wallet',new TextEncoder().encode(JSON.stringify(value)));
+
+export function WalletOfflinePreparation({identity,amount}:{identity:OpenIdentity;amount?:()=>string}){
+  const [working,setWorking]=useState(false),[status,setStatus]=useState('');
+  return <details><summary>Prepare for offline payments</summary>
+    <button type="button" className="text-button" disabled={working} onClick={async()=>{
+      setWorking(true);setStatus('');
+      try{
+        const cents=amount?.();
+        if(amount&&(!cents||!/^\d+$/.test(cents)||BigInt(cents)<=0n)){setStatus('Enter the amount to keep available offline.');return;}
+        await (await identity.fundedWallet!()).prepareOffline(cents);
+        setStatus(cents?`${formatMoney(cents)} is available to send offline.`:'This device is ready to receive one offline payment.');
+      }catch(cause){setStatus(walletError(cause));}finally{setWorking(false);}
+    }}>{working?'Preparing…':amount?'Prepare entered amount':'Prepare this device to receive'}</button>
+    {amount&&<button type="button" className="text-button" disabled={working} onClick={async()=>{
+      setWorking(true);setStatus('');
+      try{const wallet=await identity.fundedWallet!(),hold=await wallet.availableFunding();
+        if(!hold){setStatus('There are no unused offline funds on this device.');return;}
+        const result=await wallet.release(hold.allocationId);
+        setStatus(result.status==='published'?'Unused funds returned to your Wallet.':'Wallet will return these funds on reconnect.');
+      }catch(cause){setStatus(walletError(cause));}finally{setWorking(false);}
+    }}>Return unused offline funds</button>}
+    {status&&<p role="status" className="body-copy small-copy">{status}</p>}
+  </details>;
+}
 
 export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
   onRefresh:()=>void;onNext:()=>void;children:ReactNode;
 }){
   const [review,setReview]=useState<FundedWalletReview|null>(null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
+  const [pairing,setPairing]=useState<{offer:WalletPairOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
+  const pairReader=useRef(readOpticalNoteFrames('wallet'));
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[approved,setApproved]=useState(false);
   const running=useRef(false);
   useEffect(()=>{
@@ -29,6 +56,16 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
     try{await work();}catch(error){setError(walletError(error));}finally{running.current=false;setBusy(false);}
   }
   const errors=error&&<p className="error-message" role="alert">{error}</p>;
+  async function scanReply(bytes:Uint8Array){
+    if(!pairing||!isOpticalNoteFrame(bytes))return false;
+    try{
+      const pending=pairReader.current.push(bytes);if(!pending)return false;
+      const reply=readWalletPairing((await pending).bytes);
+      if(reply?.schema!=='bankeiz.wallet.answer.v1'||JSON.stringify(reply.offer)!==JSON.stringify(pairing.offer))throw Error('BANK_WALLET_PAIRING_INVALID');
+      await act(async()=>{const wallet=await identity.fundedWallet!();setReview(await wallet.review({...pairing.input,paired:reply}));setPairing(null);});
+    }catch(cause){setError(walletError(cause));}
+    pairReader.current=readOpticalNoteFrames('wallet');return true;
+  }
   if(result)return <section className="native-operation-result" aria-live="polite">
     <h1 className="sheet-hero">{result.qr?'Show payment QR.':'Payment kept on this device.'}</h1>
     {result.qr?<WalletPaymentCode frames={result.qr} label="Wallet payment QR" onError={cause=>setError(walletError(cause))}/>:
@@ -44,8 +81,22 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
     onSend={()=>{if(approved)void act(async()=>{const wallet=await identity.fundedWallet!();setResult(await wallet.confirm(review));onRefresh();});}}>
     {errors}
   </WalletPaymentReview>;
+  if(pairing)return <section className="native-operation-result">
+    <h1 className="sheet-hero">Pair with the recipient.</h1>
+    <p className="body-copy">Show this QR to the recipient, then scan their reply.</p>
+    <WalletPaymentCode frames={pairing.frames} label="Wallet pairing QR" onError={cause=>setError(walletError(cause))}/>
+    <PaymentScanner compact onBytes={scanReply}/>
+    <button type="button" className="text-button" onClick={()=>setPairing(null)}>Edit payment</button>{errors}
+  </section>;
   return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>
-    <button className="primary-button" disabled={busy} onClick={()=>void act(async()=>{const wallet=await identity.fundedWallet!(); setReview(await wallet.review(request()));})}>
+    <button className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
+      const wallet=await identity.fundedWallet!(),input=request();
+      try{setReview(await wallet.review(input));}catch(cause){
+        if(!(cause instanceof Error)||cause.message!=='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')throw cause;
+        const offer=await wallet.offer(input);if(!offer)throw cause;
+        setPairing({offer,input,frames:await pairFrames(offer)});
+      }
+    })}>
       {busy?'Checking payment…':'Review payment'}
     </button>{errors}</>;
 }
@@ -54,6 +105,8 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
   const reader=useRef(readOpticalNoteFrames('wallet'));
   const [status,setStatus]=useState(''),[error,setError]=useState('');
   const [received,setReceived]=useState<{allocationId:string}|null>(null);
+  const [reply,setReply]=useState<OpticalFrames|null>(null);
+  const [offer,setOffer]=useState<WalletPairOffer|null>(null);
   const [busy,setBusy]=useState(false);
   const active=useRef(true);
   useEffect(()=>{
@@ -71,10 +124,17 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       if(!active.current)return true;
       const wallet=await identity.fundedWallet!();
       if(!active.current)return true;
+      const pair=readWalletPairing(proof.bytes);
+      if(pair){
+        if(pair.schema!=='bankeiz.wallet.offer.v1')throw Error('BANK_WALLET_PAIRING_INVALID');
+        if(active.current){setOffer(pair);reader.current=readOpticalNoteFrames('wallet');setError('');}
+        return true;
+      }
       const payment=await wallet.receive(proof.bytes);
       if(active.current){
         reader.current=readOpticalNoteFrames('wallet');
         setError('');
+        setReply(null);
         const spendable=BigInt(payment.wallet.availableUsdCents)>0n;
         setReceived(spendable?payment:null);
         setStatus(spendable?`${formatMoney(payment.wallet.availableUsdCents)} available to send from this device.`:'Wallet has already recorded this payment.');
@@ -86,6 +146,16 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       return true;
     }
   }
+  async function approveOffer(){
+    if(!offer||busy)return;
+    setBusy(true);setError('');
+    try{
+      const wallet=await identity.fundedWallet!();
+      const frames=await pairFrames(await wallet.answer(offer));
+      if(active.current){setReply(frames);setOffer(null);}
+    }catch(cause){if(active.current)setError(walletError(cause));}
+    finally{if(active.current)setBusy(false);}
+  }
   async function release(){
     if(!received||busy)return;
     setBusy(true);setError('');
@@ -95,7 +165,12 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
     }catch(cause){if(active.current)setError(walletError(cause));}
     finally{if(active.current)setBusy(false);}
   }
-  return <><PaymentScanner compact onBytes={scan}/>
+  return <>{!offer&&<PaymentScanner compact onBytes={scan}/>}
+    {offer&&<><p className="body-copy">Approve receiving {formatMoney(offer.amountUsdCents)} on this device.</p>
+      <button type="button" className="primary-button" disabled={busy} onClick={()=>void approveOffer()}>Approve receiving</button>
+      <button type="button" className="text-button" disabled={busy} onClick={()=>setOffer(null)}>Cancel</button></>}
+    {reply&&<><p className="body-copy">Show this reply to the sender, then scan their payment QR.</p>
+      <WalletPaymentCode frames={reply} label="Wallet recipient reply QR" onError={cause=>setError(walletError(cause))}/></>}
     {status&&<p className="body-copy small-copy" role="status">{status}</p>}
     {error&&<p className="error-message" role="alert">{error}</p>}
     {received&&<button className="text-button" onClick={()=>void release()} disabled={busy}>Sync to account</button>}</>;
