@@ -3,6 +3,7 @@ import {buildMembershipOnlyPublicMarketState} from '../server/public-market-prep
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {buildMarketHistory} from '../src/receiz/market-projection/build-history';
 import {parseMarketHistory} from '../src/receiz/market-projection/history';
+import type {MarketPulseSeed} from '../src/receiz/market-projection/source';
 import {fixture,pulse} from './helpers/market-history-original-addition-fixture';
 
 async function input(){
@@ -88,4 +89,34 @@ it('appends an intervening share quantity observation with the new membership', 
    if (heldPoints.has(point.pulse)) expect(point.usdCents).toBe(heldPoints.get(point.pulse));
   }
  }
+});
+
+it('keeps the prior chart samples and adopts the verified valuation when an exact public Original is signed',async()=>{
+ const values=await input(),digest='a'.repeat(64),receipt='b'.repeat(64);
+ const priorRow=values.previous.transport.publicOriginals[0] as Record<string,unknown>&{livePulseSeed:MarketPulseSeed};
+ const owner={ownerUserId:'artist-account',ownerUsername:'artist',ownerCreatedAt:'2026-11-21T15:06:34Z'};
+ const unsigned={...priorRow,...owner,livePulseSeed:{...priorRow.livePulseSeed!,creatorVerified:false},
+  profileOriginal:{hasPbiSignature:false,media:{originalDownloadSha256Hex:digest}}};
+ const signed={...unsigned,livePulseSeed:{...unsigned.livePulseSeed,creatorVerified:true},
+  profileOriginal:{...unsigned.profileOriginal,hasPbiSignature:true,pbiReceiptHash:receipt}};
+ const previous={...values.previous,transport:{...values.previous.transport,publicOriginals:[unsigned]}};
+ const membership={...previous,transport:{...previous.transport,publicOriginals:[signed]}};
+ const before=parsePublicMarket(previous,previous.snapshot),source=values.capitalization.marketCapProjection;
+ const history=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse}))!;
+ const shareHistory=(await buildMarketHistory(source,null,undefined,undefined,{catalog:before,pulse,capitalization:true}))!;
+ const request={...values,previous,membership,snapshot:previous.snapshot,history,shareHistory};
+ const result=await buildMembershipOnlyPublicMarketState(request);
+ const catalog=parsePublicMarket(result.source,result.source.snapshot);
+ expect(catalog.items[0]).toMatchObject({originalDigest:digest,hasPbiSignature:true,pbiReceiptHash:receipt});
+ for(const [held,raw,capitalization] of [[history,result.history,false],[shareHistory,result.shareHistory,true]] as const){
+  const next=parseMarketHistory(raw);
+  const current=(await buildMarketHistory(source,null,undefined,undefined,{catalog,pulse:next.summary.serverPulse,capitalization}))!;
+  expect(next.basisSha256).not.toBe(held.basisSha256);
+  expect(next.series.ALL.at(-1)).toEqual(current.series.ALL.at(-1));
+  for(const key of Object.keys(held.series) as Array<keyof typeof held.series>){
+   for(const point of held.series[key].slice(0,-1))expect(next.series[key]).toContainEqual(point);
+  }
+ }
+ await expect(buildMembershipOnlyPublicMarketState({...request,membership:{...membership,transport:{...membership.transport,
+  publicOriginals:[{...signed,profileOriginal:{...signed.profileOriginal,pbiReceiptHash:undefined}}]}}})).rejects.toThrow('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
 });

@@ -10,7 +10,7 @@ import {sameSportsPricingOperands}from'./sports-observations';
 import {marketCapChartUsdAtPulse,prepareMarketChartProjection} from './interpolated-history';
 import {prepareGlobalShareCapitalization,globalMarketCapitalizationInputs} from './global-share-capitalization';
 import type {GlobalMarketCalculation} from './calculation';
-import {marketHistoryOriginalAdditions,marketHistoryOriginalUnitAdditions} from './history-additions';
+import {marketHistoryOriginalAdditions,marketHistoryOriginalUnitAdditions,priorOriginalAuthorshipPricing} from './history-additions';
 import {marketRowsUsdAtPulse} from './project';
 function significantEventPulses(source:MarketCapSource):{ranked:number[];observed:number[]}{
  const events=new Map<number,number>(),observed=new Set<number>(),add=(pulse:number,value:number)=>events.set(pulse,(events.get(pulse)??0)+Math.abs(value));
@@ -37,6 +37,7 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
 export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketPricingCatalog|null;pulse:number;capitalization?:boolean;requireRetained?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}}): Promise<MarketHistorySnapshot | null> {
   if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
+  const sourceInput=source;
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
   const mergedCopies=mergeMarketCopyObservations(source,previous?.copyObservations);source=mergedCopies.source;
   const shares=current?.capitalization&&current.catalog?prepareGlobalShareCapitalization(source,current.catalog,!!current.onCalculation):null;
@@ -48,14 +49,24 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const [basisSha256,membershipSha256] = await Promise.all([marketHistoryBasis(source,shares?.basis),marketHistoryMembership(source)]);
   if (!continuing()) return null;
   const closingQuoteChange=!!shares&&previous?.historyPolicy===policy&&previous.membershipSha256===membershipSha256&&previous.summary.serverPulse===source.serverPulse&&previous.basisSha256!==basisSha256;
-  let addedAt:((pulse:number)=>string)|null=null,sameClosingUpdate=false;
+  let addedAt:((pulse:number)=>string)|null=null,sameClosingUpdate=false,authorshipChanged=false;
   if(previous?.historyPolicy===policy&&(previous.membershipSha256!==membershipSha256||!!shares&&shares.coverage.covered>(previous.summary.shareCapitalization?.covered??0)||closingQuoteChange)&&current?.catalog&&current.priorInput&&previous.summary.serverPulse<=source.serverPulse){
     const prior=current.priorInput,scoped=shares?globalMarketCapitalizationInputs(prior.source,prior.catalog):prior;
     const model=currentMarketDisplayModel(scoped.source,scoped.catalog,previous.summary.serverPulse,previous.copyObservations);
     const priorSource=mergeMarketCopyObservations(model,previous.copyObservations).source,priorShares=shares?prepareGlobalShareCapitalization(priorSource,prior.catalog):null;
     // Reuse only inputs that reproduce the exact completed publication basis.
     if(await marketHistoryBasis(priorSource,priorShares?.basis)===previous.basisSha256){
-      if(shares){
+      const unsigned=priorOriginalAuthorshipPricing(prior.catalog,current.catalog);
+      if(unsigned){
+        const model=currentMarketDisplayModel(sourceInput,unsigned,source.serverPulse,previous.copyObservations);
+        const prefix=mergeMarketCopyObservations(model,previous.copyObservations).source;
+        // Prove membership, other pricing models and quantities through the
+        // held closing pulse with the existing continuation operators.
+        authorshipChanged=shares
+          ? marketHistoryOriginalAdditions(priorSource,prefix,prior.catalog,unsigned,previous.summary.serverPulse)?.items.length===0
+          : marketHistoryOriginalUnitAdditions(priorSource,prefix,prior.catalog,unsigned)?.length===0;
+      }
+      if(!authorshipChanged&&shares){
         const added=marketHistoryOriginalAdditions(priorSource,source,prior.catalog,current.catalog,previous.summary.serverPulse);
         // A quote can update the current whole-pulse closing observation after
         // that pulse already entered the append. Prove all earlier quantities
@@ -63,7 +74,7 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
         if(!added&&closingQuoteChange)
           sameClosingUpdate=!!marketHistoryOriginalAdditions(priorSource,source,prior.catalog,current.catalog,source.serverPulse-1);
         if(added)addedAt=prepareGlobalShareCapitalization({...source,valueRows:source.valueRows.filter(row=>row.source!=='sports-economy-card'),unpricedSealedBirths:undefined,sportsHistorySnapshot:undefined,sportsHistoryEvaluationPulse:undefined,sourceEvaluation:undefined,undatedHistory:undefined},added).at;
-      }else{
+      }else if(!authorshipChanged){
         const rows=marketHistoryOriginalUnitAdditions(priorSource,source,prior.catalog,current.catalog);
         if(rows)addedAt=pulse=>String(Math.round(marketRowsUsdAtPulse(rows,pulse,true)*100));
       }
@@ -84,11 +95,14 @@ export async function buildMarketHistory(source: MarketCapSource, previous: Mark
   const eventPulses=[...events.ranked].sort((a,b)=>a-b),protectedPulses=new Set(eventPulses);
   if(eventPulses.length>100000)throw Error('Public market event coverage exceeds capacity.');
   const knownEvents=new Set(previous?.eventPulses??[]),knownObservations=new Set(previous?.observationPulses??[]),newObservations=new Set(events.observed.filter(pulse=>!knownObservations.has(pulse)));
-  const sameMembership=matchingMembership&&(previous.summary.serverPulse<source.serverPulse||newObservations.size>0||sameClosingUpdate);
+  const sameMembership=!!previous&&(authorshipChanged||matchingMembership&&(previous.summary.serverPulse<source.serverPulse||newObservations.size>0||sameClosingUpdate));
   if(current?.requireRetained&&(!previous||!(sameBasis||sameMembership||addedAt)))throw Error('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
   // A dated feed can arrive behind the locally projected head. Keep earlier
   // records, then replay projections from the newly supplied observation.
-  const replaceFrom=sameMembership&&!sameBasis&&newObservations.size?Math.min(...newObservations):sameClosingUpdate?source.serverPulse:Infinity;
+  // An accepted authorship observation changes current valuation. Earlier
+  // completed observations keep their actual historical model.
+  const replaceFrom=authorshipChanged?Math.min(source.serverPulse,previous!.summary.serverPulse+1)
+    :sameMembership&&!sameBasis&&newObservations.size?Math.min(...newObservations):sameClosingUpdate?source.serverPulse:Infinity;
   // One index for all ranges; avoid repeated flattening and sorting per point.
   const heldPoints=previous&&(sameMembership&&!sameBasis||!!addedAt)?[...new Map(Object.values(previous.series).flat().map(point=>[point.pulse,point])).values()].sort((a,b)=>a.pulse-b.pulse):[];
   const heldByPulse=new Map(heldPoints.map(point=>[point.pulse,point]));

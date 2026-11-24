@@ -6,17 +6,17 @@
 .kai-header-coordinate > strong { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
 .kai-header-button .kai-date { grid-column: 2; grid-row: 1; justify-self: end; }
 .kai-header-meta { grid-column: 2; grid-row: 2; align-self: center; }
-.kai-header-coordinate > strong { color: color-mix(in srgb, var(--kai-phase) 80%, var(--bank-text,#172b45)); font-size: 17px; line-height: 1; font-weight: 650; letter-spacing: .07em; font-variant-numeric: tabular-nums; -webkit-text-stroke: .25px #172b456b; paint-order: stroke fill; }
+.kai-header-coordinate > strong { color: color-mix(in srgb, var(--kai-phase) 80%, #172b45); color: color-mix(in srgb, var(--kai-phase) 80%, var(--bank-text,#172b45)); font-size: 17px; line-height: 1; font-weight: 650; letter-spacing: .07em; font-variant-numeric: tabular-nums; -webkit-text-stroke: .25px #172b456b; paint-order: stroke fill; }
 .kai-date { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .kai-date i { color: var(--bank-text-secondary,#6e8095); font-style: normal; font-weight: 400; }
 .kai-header-button .kai-date { font-weight: 500; }
 .kai-header-button .kai-date i { color: var(--bank-text-secondary,#526277); }
-.kai-header-button .kai-date-day { color: color-mix(in srgb, var(--kai-day) 80%, var(--bank-text,#172b45)); }
-.kai-header-button .kai-date-month { color: color-mix(in srgb, var(--kai-month) 80%, var(--bank-text,#172b45)); }
+.kai-header-button .kai-date-day { color: color-mix(in srgb, var(--kai-day) 80%, #172b45); color: color-mix(in srgb, var(--kai-day) 80%, var(--bank-text,#172b45)); }
+.kai-header-button .kai-date-month { color: color-mix(in srgb, var(--kai-month) 80%, #172b45); color: color-mix(in srgb, var(--kai-month) 80%, var(--bank-text,#172b45)); }
 .kai-header-meta { justify-content: flex-end; color: var(--bank-link,#344b66); font-size: 8.5px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: .065em; line-height: 1; }
 .kai-header-meta > .kai-header-pulse { display: inline-flex; align-items: center; gap: 7px; font-size: inherit; letter-spacing: inherit; }
 .kai-living-dot { display: inline-block; flex-shrink: 0; width: 3px; height: 3px; border-radius: 50%; background: var(--kai-phase); box-shadow: 0 0 0 2px color-mix(in srgb, var(--kai-phase) 7%, transparent); }
-.kai-popover { position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 110px); overflow: auto; overscroll-behavior: contain; padding: 26px; border: 1px solid var(--bank-line-subtle,#dce0e6); border-radius: 18px; background: var(--bank-surface-raised,#fcfbf8); color: var(--navy); box-shadow: 0 22px 75px #172b452d, 0 2px 8px #172b4509; text-align: left; animation: kai-arrive .16s ease-out; }
+.kai-popover { position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 110px); overflow: auto; overscroll-behavior: contain; padding: 26px; border: 1px solid var(--bank-line-subtle,#dce0e6); border-radius: 18px; background: #fcfbf8; background: var(--bank-surface-raised,#fcfbf8); color: var(--navy); box-shadow: 0 22px 75px #172b452d, 0 2px 8px #172b4509; text-align: left; animation: kai-arrive .16s ease-out; }
 .kai-popover-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .kai-eyebrow { display: block; color: var(--bank-text-muted,#7b8795); font-size: 9px; line-height: 1.2; letter-spacing: .15em; font-weight: 650; }
 .kai-popover h2 { margin-top: 7px; font-family: Georgia, 'Times New Roman', serif; font-size: 27px; font-weight: 500; letter-spacing: -.8px; }

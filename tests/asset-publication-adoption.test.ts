@@ -101,7 +101,7 @@ it('displays a canonically admitted local Original before Showcase delivery with
  expect(adoption.admittedAssetPublicationDelivery(reference.artifactSha256,'artist')).toEqual({status:'published',showcaseArtifactDigest:'f'.repeat(64)});
 });
 
-it('retains only this account’s unacknowledged signed additions for exact-proof resume',()=>{
+it('retains only this account’s unacknowledged signed additions for exact-proof resume',async()=>{
  const request=vi.spyOn(globalThis,'fetch'),digest=reference.artifactSha256;
  adoption.retainAssetPublicationAdmission(admission,owner);
  adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'c'.repeat(64),operationCount:1,visibleChildCount:1});
@@ -113,10 +113,18 @@ it('retains only this account’s unacknowledged signed additions for exact-proo
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'another')).toEqual([]);
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid)).toEqual([digest]);
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,'another')).toEqual([]);
+ const selectedUrl=new URL(source,'https://receiz.com').href;
+ expect(adoption.retainedAssetSignatureOriginalUrl(owner.identityDigest,owner.accountUid,digest)).toBe(selectedUrl);
+ expect(adoption.retainedAssetSignatureOriginalUrl(owner.identityDigest,'another',digest)).toBeNull();
+ expect(adoption.retainedAssetSignatureOriginalUrl('f'.repeat(64),owner.accountUid,digest)).toBeNull();
+ vi.resetModules();
+ const reopened=await import('../src/receiz/asset-publication-adoption');
+ expect(reopened.retainedAssetSignatureOriginalUrl(owner.identityDigest,owner.accountUid,digest)).toBe(selectedUrl);
  adoption.acknowledgeAssetPublication(digest,{status:'pending',code:'DELIVERY_PENDING'},'e'.repeat(64));
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([digest]);
  adoption.acknowledgeAssetPublication(digest,{status:'published',artifactDigest:'f'.repeat(64),operationCount:2,visibleChildCount:1},'e'.repeat(64));
  expect(adoption.pendingAssetPublicationSignatures(owner.identityDigest,owner.accountUid,'artist')).toEqual([]);
+ expect(adoption.retainedAssetSignatureOriginalUrl(owner.identityDigest,owner.accountUid,digest)).toBeNull();
  expect(request).not.toHaveBeenCalled();
 });
 

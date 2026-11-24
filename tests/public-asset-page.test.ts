@@ -21,3 +21,15 @@ it('retains the carried source description for an Original with no summary',()=>
  try{retainPublicAsset({id:'profile:artist:metadata-empty',assetId:'metadata-empty',title:'Same Original',summary:'',category:'proof',mediaKind:'image'} as PublicMarketItem);expect(seen[0].description).toBe('Inspect this asset, its media, ownership, valuation and original evidence.');}
  finally{ready.mockRestore();removeEventListener('bankeiz:asset-metadata',listen);}
 });
+
+it('displays a newer exact PBI receipt even while the rest of the Market view is retained',async()=>{
+ const {selectPublicAsset}=await import('../src/receiz/public-asset-page');
+ const original={id:'profile:artist:authored',assetId:'authored',category:'proof',originalDigest:'a'.repeat(64),ownerUsername:'artist',
+  ownerIdentity:{userId:'one-owner',username:'artist',createdAt:'2026-11-21T15:06:34Z'},hasPbiSignature:false} as PublicMarketItem;
+ const signed={...original,hasPbiSignature:true,pbiReceiptHash:'b'.repeat(64)};
+ expect(selectPublicAsset(original,signed,false)).toBe(signed);
+ expect(selectPublicAsset(signed,original,true)).toBe(signed);
+ expect(selectPublicAsset(original,{...signed,originalDigest:'c'.repeat(64)},false)).toBe(original);
+ expect(selectPublicAsset(original,{...signed,ownerIdentity:{...signed.ownerIdentity!,userId:'other-owner'}},false)).toBe(original);
+ expect(selectPublicAsset(original,{...signed,pbiReceiptHash:undefined},false)).toBe(original);
+});

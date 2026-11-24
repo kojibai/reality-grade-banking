@@ -1821,16 +1821,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     assertCurrent();
     const uid=accountUid??knownWallet?.wallet.userId;
     if(!uid)throw Error('PBI_ACCOUNT_MISMATCH');
-    const runtime=await openComposedPublisher(undefined,true);assertCurrent();
+    const [runtime,{readAssetPbiCredential},{signAssetMarketPublication}]=await Promise.all([
+      openComposedPublisher(undefined,true),import('./asset-pbi-credential'),import('./asset-market-pbi'),
+    ]);assertCurrent();
     const {receipt,pbiReceiptHash}=await runtime.signExistingOriginal(reference,async input=>{
-      const [{readAssetPbiCredential},{signAssetMarketPublication}]=await Promise.all([import('./asset-pbi-credential'),import('./asset-market-pbi')]);assertCurrent();
+      assertCurrent();
       let credential=readAssetPbiCredential(binding.keyId,uid);
       if(!credential){const {connectPbiToAccount}=await import('./pbi-account-connect');assertCurrent();await connectPbiToAccount({binding,backup:()=>({bytes:new Uint8Array(bytes),filename,phrase}),knownWallet:()=>knownWallet,readWallet},assertCurrent);credential=readAssetPbiCredential(binding.keyId,uid);}
       if(!credential)throw Error('PBI_ACCOUNT_CREDENTIAL_REQUIRED');
       return signAssetMarketPublication(input,credential,assertCurrent);
-    });assertCurrent();
+    });noteOpen();
     if(receipt.status==='rejected')return false;
-    const adoption=await import('./asset-publication-adoption');assertCurrent();
+    const adoption=await import('./asset-publication-adoption');noteOpen();
+    if((accountUid??knownWallet?.wallet.userId)!==uid)throw Error('PBI_ACCOUNT_MISMATCH');
     adoption.acknowledgeAssetPublication(digest,receipt,pbiReceiptHash);
     void adoption.refreshAssetPublicationCatalog(digest);
     return true;
@@ -1846,7 +1849,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   }
   const openedAssetSignatureRetries=new Map<string,Promise<void>>();
   function retryAssetSignatureOnOpen(digest:string,source?:HeldDeposit,originalUrl?:string|null){
-    if(lifetime.signal.aborted||navigator.onLine===false||!/^[a-f0-9]{64}$/.test(digest)||assetSigningFlights.has(digest)||openedAssetSignatureRetries.has(digest))return;
+    if(lifetime.signal.aborted||navigator.onLine===false||!/^[a-f0-9]{64}$/.test(digest)||assetSigningFlights.has(digest))return;
+    const existing=openedAssetSignatureRetries.get(digest);if(existing)return existing;
     const uid=accountUid??knownWallet?.wallet.userId;
     if(!uid)return;
     const attempt=(async()=>{
@@ -1855,8 +1859,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if(projected&&adoption.hasObservedAssetPublicationSignature(binding.artifactSha256,uid,digest,projected))return;
       // An accepted Original from another install can have a local receipt
       // without a held deposit. Recover only the selected exact reference.
-      if(originalUrl){
-        const {safeImportedSourceUrl}=await import('./imported-source-url'),coordinate=safeImportedSourceUrl(originalUrl,'artifact');
+      const selectedUrl=originalUrl??adoption.retainedAssetSignatureOriginalUrl(binding.artifactSha256,uid,digest);
+      if(selectedUrl){
+        const {safeImportedSourceUrl}=await import('./imported-source-url'),coordinate=safeImportedSourceUrl(selectedUrl,'artifact');
         if(coordinate){
           const reference=JSON.parse(new URL(coordinate).searchParams.get('reference')!) as import('../../native/receiz/app/lib/profile/showcase/importedSourceReference').ImportedProofSourceReference;
           if(reference.artifactSha256===digest){
@@ -1865,10 +1870,16 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
             if(proof){
               if(!confirmedUsername){await prepareReceivingUsername();noteOpen();}
               const runtime=await openComposedPublisher(undefined,true);
-              const {receipt,pbiReceiptHash}=await runtime.resumeExistingOriginalSignature(reference,proof);noteOpen();
-              adoption.acknowledgeAssetPublication(digest,receipt,pbiReceiptHash);
-              if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(digest);
-              return;
+              try{
+                const {receipt,pbiReceiptHash}=await runtime.resumeExistingOriginalSignature(reference,proof);noteOpen();
+                adoption.acknowledgeAssetPublication(digest,receipt,pbiReceiptHash);
+                if(receipt.status!=='rejected')void adoption.refreshAssetPublicationCatalog(digest);
+                return;
+              }catch(error){
+                // A locally created signed Original can still need its first
+                // public placement. The held composer retry owns that path.
+                if(!(error instanceof Error)||!['PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED','PROFILE_SHOWCASE_SIGNING_CURRENT_HEAD_REQUIRED'].includes(error.message))throw error;
+              }
             }
           }
         }
@@ -1891,6 +1902,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     })();
     openedAssetSignatureRetries.set(digest,attempt);
     void attempt.finally(()=>openedAssetSignatureRetries.delete(digest)).catch(()=>{});
+    return attempt;
   }
   let assetSignatureSync:Promise<void>|undefined;
   function startAssetSignatureSync(eventOrSource?:Event|string){
@@ -1940,7 +1952,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       }
       if(signatures.size&&!confirmedUsername){await prepareReceivingUsername();noteOpen();}
       for(const digest of signatures){
-        noteOpen();try{await publishAssetSignature(digest,true);}catch{noteOpen();}
+        noteOpen();
+        try{
+          const originalUrl=adoption.retainedAssetSignatureOriginalUrl(binding.artifactSha256,uid,digest);
+          if(originalUrl)await retryAssetSignatureOnOpen(digest,undefined,originalUrl);
+          else await publishAssetSignature(digest,true);
+        }catch{noteOpen();}
       }
     })();assetSignatureSync=attempt;
     void attempt.finally(()=>{if(assetSignatureSync===attempt)assetSignatureSync=undefined;}).catch(()=>{});

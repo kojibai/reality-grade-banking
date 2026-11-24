@@ -244,12 +244,16 @@ export function createImportedProofSourceCustody() {
       });
       return retain(opened);
     },
-    async readHeld(value: ImportedProofSourceReference, options: ImportedProofSourceOptions = {}) {
+    async readHeld(value: ImportedProofSourceReference, options: ImportedProofSourceOptions & {exactRetainedReference?: boolean} = {}) {
       const reference = parseImportedProofSourceReference(value);
       const key = sourceKey(reference);
       const known = admitted.get(key);
-      if (known) return known;
+      if (known && !options.exactRetainedReference) return known;
       const record = await readRecord("sources", key) as CompleteSource | undefined;
+      if (options.exactRetainedReference) {
+        if (!record || jcsCanonicalize(record.reference) !== jcsCanonicalize(reference)) return null;
+        if (known) return known;
+      }
       if (!record) {
         // A transport label is not Source identity. Its carried exact root can
         // reopen already held blocks through the existing canonical importer.

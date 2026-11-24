@@ -144,9 +144,19 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
  }
  async function appendExistingOriginalAuthorship(reference:ImportedProofSourceReference,authorship:{authorize:AuthorizeMarket}|{saved:unknown}){
    input.assertCurrent();
-   const selected=await publication();
-   await selected.requireExistingOriginal(reference);
-   const source=await custody.openForAuthorship(reference,selected.resolveAcceptedSourceBlock);
+   // A held, account-bound Original can be signed before opening its public
+   // predecessor. The public append still checks the exact visible placement.
+   let source=await custody.readHeld(reference,{exactRetainedReference:true}).catch(error=>{
+    if(error instanceof Error&&error.message==='IMPORTED_SOURCE_CUSTODY_SEGMENT_MISSING')return null;
+    throw error;
+   });
+   let selected:Awaited<ReturnType<typeof publication>>|undefined;
+   const heldAccount=source?.projection.bankAsset?.composer?.protectedOriginal?.profileIdentity;
+   if(!source||(heldAccount===undefined?source.verification.assetContinuity?.genesisOwnerReceizId!==identityAdmission.ownerReceizId:heldAccount!==input.account.uid)){
+    selected=await publication();
+    await selected.requireExistingOriginal(reference);
+    source??=await custody.openForAuthorship(reference,selected.resolveAcceptedSourceBlock);
+   }
    const digest=reference.artifactSha256;
    input.assertCurrent();
    const continuity=source.verification.assetContinuity;
@@ -155,7 +165,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    // A different sealing device must carry the account in the sealed Source.
    if(source.descriptor.artifactSha256!==digest||continuity?.state!=='verified'||!continuity.genesisOwnerReceizId
     ||continuity.genesisOwnerReceizId!==source.projection.ownerReceizId||continuity.ownerReceizId!==continuity.genesisOwnerReceizId
-    ||(originalAccount===undefined?continuity.genesisOwnerReceizId!==selected.owner:originalAccount!==input.account.uid)){
+    ||(originalAccount===undefined?continuity.genesisOwnerReceizId!==(selected?.owner??identityAdmission.ownerReceizId):originalAccount!==input.account.uid)){
     throw TypeError('PROFILE_SHOWCASE_SIGNING_ACCOUNT_REQUIRED');
    }
    const base=projectImportedSourceOriginal(source,reference),opened={source,reference,original:base};
@@ -177,6 +187,7 @@ export async function createConnectedAssetPublicationRuntime(input:ConnectedAsse
    retainImportedProfileOriginalMaterial(original,username,source);
    await input.onLocalAdmission?.(Object.freeze({username,original:sourceDisplay(original,source,username,input.account.uid,source.projection.ownerReceizId??undefined),sourceReference:reference,firstPaint:null,artwork:sourceArtwork(source)}),{signing:true});
    input.assertCurrent();
+   selected??=await publication();input.assertCurrent();
    const result=await selected.publishOpened({...opened,original},authorshipProof,false,true);input.assertCurrent();
    return {receipt:result,pbiReceiptHash:authorshipProof.pbiReceiptHash};
  }

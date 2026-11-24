@@ -210,7 +210,7 @@ it.each(['quota','available','receipt-quota','ack-quota'] as const)('publishes t
  expect(await reopened.readSignedSource(prepared.artifact)).toEqual({pbiReceiptHash:expectedPbi});expect(forbidden).not.toHaveBeenCalled();expect(sealDocument).toHaveBeenCalledTimes(sealsBeforeCold);expect(ceremonies).toBe(1);
 },60000);
 
-it.each(['creating', 'recovering', 'missing its display row', 'continuing after a checkpoint read fails'] as const)('resumes retained PBI even when the same Source is %s', async phase => {
+it.each(['creating', 'recovering', 'missing its display row', 'continuing after a checkpoint read fails', 'waiting for an existing Original to publish'] as const)('resumes retained PBI even when the same Source is %s', async phase => {
  const path = new URL('../src/receiz/native-identity.ts', import.meta.url);
  const file = ts.createSourceFile(path.pathname, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, true);
  let statement = '';
@@ -224,6 +224,9 @@ it.each(['creating', 'recovering', 'missing its display row', 'continuing after 
  const compiled = ts.transpileModule(statement, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
  const digest = 'a'.repeat(64), owner = 'artist.receiz.id', account = 'account-id';
  const preparedUsername = vi.fn(async () => 'artist');
+ const imported=phase==='waiting for an existing Original to publish';
+ const selectedUrl='https://receiz.com/api/profile/showcase/imported-source?reference=exact-fixture';
+ const resumeSelected=vi.fn(async()=>{expect(preparedUsername).toHaveBeenCalledOnce();});
  const resumeSignature = vi.fn(async () => {
   if (phase !== 'creating') expect(preparedUsername).toHaveBeenCalledOnce();
   return null;
@@ -234,6 +237,7 @@ it.each(['creating', 'recovering', 'missing its display row', 'continuing after 
   './asset-publication-adoption': {
    retainedAssetPublicationDigests: () => [],
    pendingAssetPublicationSignatures: pendingSignatures,
+   retainedAssetSignatureOriginalUrl: () => imported?selectedUrl:null,
    hasObservedAssetPublicationSignature: () => false,
   },
   './asset-publication': {
@@ -246,19 +250,25 @@ it.each(['creating', 'recovering', 'missing its display row', 'continuing after 
    return phase === 'missing its display row' ? { sourceDigest: digest } : null;
   } }),
  };
- const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'confirmedUsername', 'prepareReceivingUsername', 'createAsset', 'publishAssetSignature', `
+ const run = new Function('modules', 'lifetime', 'binding', 'accountUid', 'presentationUsername', 'confirmedUsername', 'prepareReceivingUsername', 'createAsset', 'publishAssetSignature', 'retryAssetSignatureOnOpen', `
   let assetSignatureSync;
   const navigator = { onLine: true }, publicAccountUsername = value => value, noteOpen = () => {};
   ${compiled}
   return source => { startAssetSignatureSync(source); return assetSignatureSync; };
  `)(modules, new AbortController(), { artifactOwnerReceizId: owner, artifactSha256: digest }, account,
   phase === 'creating' ? 'artist' : 'receiz_saved_device_name', phase === 'creating' ? 'artist' : null,
-  preparedUsername, resumeSource, resumeSignature);
+  preparedUsername, resumeSource, resumeSignature,resumeSelected);
  await run(phase === 'creating' ? digest : undefined);
  expect(resumeSource).toHaveBeenCalledTimes(phase === 'creating' || phase === 'continuing after a checkpoint read fails' ? 0 : 1);
  expect(preparedUsername).toHaveBeenCalledTimes(phase === 'creating' ? 0 : 1);
  expect(pendingSignatures).toHaveBeenCalledExactlyOnceWith(digest, account);
- expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest, true);
+ if(imported){
+  expect(resumeSelected).toHaveBeenCalledExactlyOnceWith(digest,undefined,selectedUrl);
+  expect(resumeSignature).not.toHaveBeenCalled();
+ }else{
+  expect(resumeSignature).toHaveBeenCalledExactlyOnceWith(digest,true);
+  expect(resumeSelected).not.toHaveBeenCalled();
+ }
 });
 
 it('retries only the opened pending signature, joins overlapping opens, and stops after the exact acknowledgment',async()=>{

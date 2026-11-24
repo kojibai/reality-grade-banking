@@ -59,6 +59,16 @@ export function admittedAssetPublicationSignatureDelivery(sourceDigest:string,us
 export function pendingAssetPublicationSignatures(identityDigest:string,accountUid:string,username?:string):readonly string[]{
  restore();return [...additions.values()].filter(entry=>entry.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&(username===undefined||entry.username===username)&&entry.item.hasPbiSignature&&hex(entry.item.pbiReceiptHash)&&entry.receipt?.status!=='published'&&!entry.profileSeen&&!entry.marketSeen).map(entry=>entry.sourceDigest);
 }
+/** Recover only this account’s pending Source coordinate. Native custody still
+ * reopens and verifies the saved proof before the existing public append. */
+export function retainedAssetSignatureOriginalUrl(identityDigest:string,accountUid:string,sourceDigest:string):string|null{
+ restore();const entry=additions.get(sourceDigest);
+ if(!entry||entry.owner.identityDigest!==identityDigest||entry.owner.accountUid!==accountUid||!entry.item.hasPbiSignature
+  ||!hex(entry.item.pbiReceiptHash)||entry.signatureDeliveryHash===entry.item.pbiReceiptHash)return null;
+ const reference=object(object(object(entry.row.profileOriginal).importedSource).reference);
+ if(reference.artifactSha256!==sourceDigest)return null;
+ return safeImportedSourceUrl('/api/profile/showcase/imported-source?'+new URLSearchParams({reference:JSON.stringify(reference)}),'artifact');
+}
 export function hasObservedAssetPublicationSignature(identityDigest:string,accountUid:string,sourceDigest:string,pbiReceiptHash:string){
  restore();const entry=additions.get(sourceDigest);
  return entry?.owner.identityDigest===identityDigest&&entry.owner.accountUid===accountUid&&entry.signatureDeliveryHash===pbiReceiptHash;

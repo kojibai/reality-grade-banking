@@ -7,7 +7,7 @@ export type PublicMarketPricingItem=Pick<PublicMarketItem,
  'circulationCount'|'capitalizationUsdCents'|'sportsValuation'|'sealedBirths'> &
  // An ordinary full catalog can still name calculation explanations. Pricing
  // checkpoints omit this optional presentation field entirely.
- Pick<Partial<PublicMarketItem>,'title'>;
+ Pick<Partial<PublicMarketItem>,'title'|'hasPbiSignature'|'pbiReceiptHash'|'ownerIdentity'|'ownerUsername'>;
 export type PublicMarketPricingCatalog=Omit<PublicMarketCatalog,'items'|'publicProfileHeads'|'publicProfileHeadRefusals'|'publicProfileHeadsRevision'|'selection'>&{items:PublicMarketPricingItem[]};
 
 /** Existing producer checkpoint fields. Selection carries display operands; it

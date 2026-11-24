@@ -157,6 +157,31 @@ ${Buffer.from(spki).toString('base64')}
  };
  await expect(signer.signExistingOriginal({...prepared.reference,filename:'substituted.receizbundle'},authorize)).rejects.toThrow('PROFILE_SHOWCASE_SIGNING_ORIGINAL_REQUIRED');
  expect(ceremonies).toBe(0);
+
+ // Cold browser custody has the exact carried Original, and no accepted
+ // Showcase route material. Its local ceremony and receipt must survive an
+ // unavailable publisher and a complete reload, then use the same receipt.
+ values.clear();vi.stubGlobal('indexedDB',new IDBFactory());
+ const heldCustody=cold.createImportedProofSourceCustody();
+ expect(await heldCustody.hold(signSource)).toEqual(prepared.reference);
+ let publishingUnavailable=true;
+ const observedSignatures:string[]=[];
+ const signingRuntime=async(module:typeof cold)=>module.connectedComposer.createConnectedAssetPublicationRuntime({
+  identity:freshIdentity.bytes,passphrase:freshIdentity.phrase,account:{uid,username},assertCurrent(){},sealDocument:seal,
+  fetchImpl:async(...args:Parameters<typeof fetch>)=>{
+   if(publishingUnavailable)throw Error('PUBLIC_DELIVERY_UNAVAILABLE');
+   return request(...args);
+  },
+  onLocalAdmission:(admission:{original:{pbiReceiptHash?:string}})=>{if(admission.original.pbiReceiptHash)observedSignatures.push(admission.original.pbiReceiptHash);},
+ });
+ const heldSigner=await signingRuntime(cold);
+ await expect(heldSigner.signExistingOriginal(prepared.reference,authorize)).rejects.toThrow('PUBLIC_DELIVERY_UNAVAILABLE');
+ expect(ceremonies).toBe(1);
+ const heldProof=await heldCustody.readAuthorship(prepared.reference);
+ expect(heldProof).toMatchObject({pbiReceiptHash:observedSignatures[0]});
+ expect(observedSignatures).toHaveLength(1);
+ publishingUnavailable=false;
+ const resumedSigner=await signingRuntime(await f.reloadRuntime());
  // Once the accepted Original blocks are available for reading, a failure
  // restaging its media cannot prevent the receipt ceremony.
  const selectedBlockWrites: string[] = [];
@@ -169,16 +194,16 @@ ${Buffer.from(spki).toString('base64')}
   }
   return put.call(this,value,key);
  });
- const signed=await signer.signExistingOriginal(prepared.reference,authorize).finally(()=>write.mockRestore());
+ const signed=await resumedSigner.resumeExistingOriginalSignature(prepared.reference,heldProof).finally(()=>write.mockRestore());
  expect(selectedBlockWrites).toEqual([]);
  expect(signed.receipt).toMatchObject({status:'published'});
  const signedChild=(await acceptedHead!.readCompleteSource()).children.at(-1);
  const signedSource=await cold.openImportedProofSource(new File([signedChild.exactSealedArtifactBytes],'profile-original.receizbundle',{type:'application/vnd.receiz.bundle+json'}),{resolveSourceBlock:async(ref:{sha256:string})=>publicBlocks.get(ref.sha256)});
  expect(signedSource.projection.carriedOriginal).toMatchObject({hasPbiSignature:true,pbiReceiptHash:signed.pbiReceiptHash});
  const deliveries=finalizations;
- expect(await signer.signExistingOriginal(prepared.reference,authorize)).toEqual(signed);
+ expect(await resumedSigner.signExistingOriginal(prepared.reference,authorize)).toEqual(signed);
  expect(ceremonies).toBe(1);expect(finalizations).toBe(deliveries);
- const ordinarySignature=await signer.signExistingOriginal(baseline.reference,authorize).catch((error:Error)=>{throw Error(error.message);});
+ const ordinarySignature=await resumedSigner.signExistingOriginal(baseline.reference,authorize).catch((error:Error)=>{throw Error(error.message);});
  expect(ordinarySignature.receipt).toMatchObject({status:'published'});
  expect(ceremonies).toBe(2);
  expect(initializations).toBe(2);expect(completions).toBe(2);

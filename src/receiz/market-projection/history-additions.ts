@@ -8,6 +8,26 @@ const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 // projection may change it without changing any retained numeric operand.
 const pricingSeed=(seed:MarketPulseSeed|null|undefined)=>{if(!seed)return seed;const {userPhiKey:_creator,...operands}=seed;return operands;};
 const pricingRow=(row:MarketCapSource['valueRows'][number]|undefined)=>row?.marketItem?.livePulseSeed?{...row,marketItem:{...row.marketItem,livePulseSeed:pricingSeed(row.marketItem.livePulseSeed)}}:row;
+/** Construct the pricing inputs used to compare the signed publication with
+ * its completed unsigned prefix. The selected public catalog owns authorship;
+ * this comparison never grants proof or financial authority. */
+export function priorOriginalAuthorshipPricing(before:PublicMarketPricingCatalog,selected:PublicMarketPricingCatalog):PublicMarketPricingCatalog|null{
+ if(!before.complete||!selected.complete||before.items.length!==selected.items.length)return null;
+ const known=new Map(before.items.map(item=>[item.id,item]));
+ const restores=new Map<string,MarketPulseSeed>();
+ for(const item of selected.items){
+  const prior=known.get(item.id),seed=item.livePulseSeed,old=prior?.livePulseSeed;
+  if(!old||!seed||old.creatorVerified!==false||seed.creatorVerified!==true)continue;
+  const owner=prior?.ownerIdentity?.userId;
+  if(!prior||item.category!=='proof'||prior.category!=='proof'||prior.assetId!==item.assetId
+   ||!prior.originalDigest||prior.originalDigest!==item.originalDigest||!owner||owner!==item.ownerIdentity?.userId
+   ||prior.ownerUsername!==item.ownerUsername||prior.hasPbiSignature!==false||item.hasPbiSignature!==true
+   ||!(/^[a-f0-9]{64}$/.test(item.pbiReceiptHash??''))||!same(pricingSeed(old),pricingSeed({...seed,creatorVerified:false})))return null;
+  restores.set(item.id,old);
+ }
+ return restores.size?{...selected,items:selected.items.map(item=>restores.has(item.id)?{...item,livePulseSeed:restores.get(item.id)}:item)}:null;
+}
+
 /** Whole-pulse quantity intervals and exact-price anchors of the existing share
  * reader, bounded to the completed history. Later observations do not rewrite
  * that prefix; any changed past quantity or price refuses reuse. */
