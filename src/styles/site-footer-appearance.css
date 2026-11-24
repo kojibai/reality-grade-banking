@@ -1,4 +1,4 @@
-:root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library) .site-footer-theme {
+:root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library,.conformance-root) .site-footer-theme {
  display: grid;
  place-items: center;
  flex: none;
@@ -42,7 +42,7 @@
  font-variant-numeric: tabular-nums;
 }
 @media(max-width:800px) {
- :root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library) .site-footer-base {
+ :root[data-bank-appearance-control] :is(body[data-bank-surface="learn"],body.client-library,.conformance-root) .site-footer-base {
   display: grid;
   grid-template-columns: minmax(0,1fr) auto;
   align-items: center;

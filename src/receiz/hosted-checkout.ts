@@ -6,7 +6,7 @@ import type {WalletSend,WalletSendOutcome,WalletSendReview} from './wallet-send'
 import {createFixedSale,fixedSalePaymentNote,type FixedSaleFields,type FixedSale} from './fixed-checkout';
 export interface HostedCheckoutDependencies {identityDigest:string;assertCurrent():void;checkFixedSale?(sale:FixedSale):Promise<'open'|'paid'|'cancelled'|'legacy'>;walletSend():Promise<WalletSend>;notes:CheckoutNotes;readWallet():Promise<SharedWallet>;store:CheckoutStateStore;lock<T>(work:()=>Promise<T>):Promise<T>;}
 const centsToDollars=(n:bigint)=>`${n/100n}.${String(n%100n).padStart(2,'0')}`;
-function message(cause:unknown){const code=cause instanceof Error?cause.message:'';if(code==='merchant_counter_closed')return 'This checkout was cancelled. No payment was sent. Any funding already completed stays in your balance.';if(code==='merchant_counter_paid')return 'This checkout has already been paid. Ask for a new checkout.';if(/ALREADY_DEPOSITED|already_claimed/.test(code))return 'This Note has already been deposited.';if(/NOTE_IDENTITY_BINDING|NOTE_RECEIVING_CUSTODY/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';if(/IDENTITY|identity|closed/.test(code))return 'Your identity changed. Reopen this checkout.';if(/APPROVAL|CONFIRMATION/.test(code))return 'Review this payment before approving it.';if(/PENDING|pending/.test(code))return 'Your original payment is pending. Check its saved result before starting another.';if(/INSUFFICIENT|funding_changed/.test(code))return 'Your available balance changed. Review the payment again.';if(/RECEIVING_CUSTODY|BINDING|EXACT_HEAD/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';return 'This payment needs attention. Your original request is saved; check its result to continue.';}
+function message(cause:unknown){const code=cause instanceof Error?cause.message:'';if(code==='original_purchase_mismatch')return 'The Original offer changed. Refresh it before reviewing another payment.';if(code==='original_purchase_already_paid')return 'This Original is already paid. Refresh it to download the file.';if(code==='original_purchase_limit_reached')return 'This Original is sold out. Any completed card funding stays in your Wallet.';if(code==='merchant_counter_closed')return 'This checkout was cancelled. No payment was sent. Any funding already completed stays in your balance.';if(code==='merchant_counter_paid')return 'This checkout has already been paid. Ask for a new checkout.';if(/ALREADY_DEPOSITED|already_claimed/.test(code))return 'This Note has already been deposited.';if(/NOTE_IDENTITY_BINDING|NOTE_RECEIVING_CUSTODY/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';if(/IDENTITY|identity|closed/.test(code))return 'Your identity changed. Reopen this checkout.';if(/APPROVAL|CONFIRMATION/.test(code))return 'Review this payment before approving it.';if(/PENDING|pending/.test(code))return 'Your original payment is pending. Check its saved result before starting another.';if(/INSUFFICIENT|funding_changed/.test(code))return 'Your available balance changed. Review the payment again.';if(/RECEIVING_CUSTODY|BINDING|EXACT_HEAD/.test(code))return 'Use the Identity Record that owns this Note, or ask its holder to address it to your identity.';return 'This payment needs attention. Your original request is saved; check its result to continue.';}
 export function createHostedCheckout(input:HostedCheckoutDependencies){
  let closed=false,stored:HostedCheckoutState|null=null,view=emptyCheckoutSnapshot(),prepared:WalletSendReview|null=null,preparedApi:WalletSend|null=null;
  const listeners=new Set<()=>void>();
@@ -82,6 +82,14 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
  return{
   ready,snapshot:()=>view,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},
   inspectFixedSale(fields:FixedSaleFields){return run(()=>paidFixedSale(fields));},
+  inspectOriginal(originalId:string,username:string){return run(async()=>{
+   const current=view.approval?.fixedSale;
+   const matches=(sale?:FixedSale)=>sale?.originalId===originalId&&sale.username===username;
+   const row=[view,...(stored?.history??[])].find(row=>row.phase==='paid'&&matches(row.approval?.fixedSale));
+   if(row){const receipt=await admittedReceipt(row.walletOutcome!,row);return{sale:receipt.fixedSale!,receipt};}
+   if(matches(current)&&view.phase!=='not-sent')return{sale:current!,receipt:null};
+   return null;
+  });},
   retainBookingPreparation(value:PaidBookingPreparation){return run(async()=>{
    const {readPaidBookingPreparation}=await import('./paid-booking');const next=await readPaidBookingPreparation(value);assert();const prior=view.bookingPreparation;
    if(prior?.operationId===next.operationId){if(await checkoutApprovalDigest(prior as never)!==await checkoutApprovalDigest({...next,review:prior.review} as never))throw Error('BOOKING_PREPARATION_CONFLICT');return prior;}
@@ -104,6 +112,7 @@ export function createHostedCheckout(input:HostedCheckoutDependencies){
    if(!checkoutInteger(value.amountUsdCents,true)||!['card','balance','note'].includes(value.method))throw Error('Enter an amount greater than zero.');
    const booking=value.booking===undefined?undefined:readBookingCheckoutContext(value.booking);if((value.checkoutId!==undefined)!==(booking!==undefined)||booking&&(!checkoutUuid(value.checkoutId)||value.checkoutId!==booking.operationId||value.method==='note'))throw Error('BOOKING_CHECKOUT_CONTEXT_INVALID');
    const fixedSale=value.fixedSale?await createFixedSale(value.fixedSale):undefined;
+   if(fixedSale?.originalId&&(value.method!=='balance'||booking||value.counter))throw Error('ORIGINAL_PURCHASE_WALLET_REQUIRED');
    if(fixedSale&&(fixedSale.username!==value.recipient||fixedSale.amountUsdCents!==value.amountUsdCents))throw Error('This checkout has a fixed recipient and total. Open the original payment link.');
    if(booking&&(!fixedSale||fixedSale.saleId!==booking.reservationId))throw Error('BOOKING_CHECKOUT_CONTEXT_INVALID');
    if(!booking&&view.bookingPreparation&&['confirmed-paid','cancelled-paid','cancelled-unpaid'].includes(view.bookingPreparation.review?.phase??'')){

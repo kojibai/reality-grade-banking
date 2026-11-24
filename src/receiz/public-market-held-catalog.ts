@@ -1,4 +1,4 @@
-import {publicOriginalCheckoutUrl,readPublicOriginalOffer} from './public-original-purchase.js';
+import {publicOriginalSourceSeller,readPublicOriginalOffer} from './public-original-purchase.js';
 import {inspectPublicMarketCatalog} from './public-market-catalog-inspection.js';
 import {publicOriginalCreator,publicOriginalProvenance,readPublicMarketSelection,safeReceizArtworkUrl,safeReceizPublicUrl,type PublicMarketCatalog,type PublicMarketItem} from './public-market.js';
 import {readPublicProfileHeads,readPublicProfileHeadRefusals} from './public-profile-header.js';
@@ -73,7 +73,7 @@ function validItem(item:PublicMarketItem):boolean{
  if(item.ownerReceivingUsername!==undefined&&(!item.ownerUsername||publicProfileUsername(item.ownerUsername,item.ownerReceivingUsername)!==item.ownerReceivingUsername))return false;
  if(item.valuationBinding!==undefined&&!samePublicValue(item.valuationBinding,{itemId:item.id,assetId:item.assetId}))return false;
  if(!optionalPublic(item.originalCreator,publicOriginalCreator)||!optionalPublic(item.sourceProvenance,publicOriginalProvenance)||!optionalPublic(item.nativeAsset,publicNativeAssetBinding)||!optionalPublic(item.carriedText,value=>value===null?null:publicCarriedText(value))||!optionalPublic(item.livePulseSeed,value=>publicMarketPulseSeed(value,item.pulse))||!optionalPublic(item.shareInventory,value=>readPublicShareInventory(value,item)))return false;
- if(item.originalOffer!==undefined&&(!optionalPublic(item.originalOffer,readPublicOriginalOffer)||!publicOriginalCheckoutUrl(item.sourceUrl,item.assetId)))return false;
+ if(item.originalOffer!==undefined&&(!optionalPublic(item.originalOffer,readPublicOriginalOffer)||!publicOriginalSourceSeller(item.sourceUrl,item.assetId)))return false;
  if(item.sourceProvenance&&item.sourceProvenance.sourceArtifactSha256!==item.originalDigest)return false;
  if(!optionalPublic(item.proofManifestSource,readPublicAssetManifestSource)||item.proofManifestSource?.verifyPath&&!publicManifestLink(item.proofManifestSource.verifyPath))return false;
  if(item.proofManifest!==undefined&&(!Array.isArray(item.proofManifest)||!plainArray(item.proofManifest)||item.proofManifest.length>1000||item.proofManifest.some(row=>!samePublicValue(row,{label:row.label,value:row.value,...(row.href!==undefined?{href:row.href}:{}),...(row.downloadName!==undefined?{downloadName:row.downloadName}:{})})||!text(row.label,4096)||!text(row.value,8192)||row.href!==undefined&&!publicManifestLink(row.href)||row.downloadName!==undefined&&!text(row.downloadName,240))))return false;

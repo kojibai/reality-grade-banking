@@ -1,3 +1,4 @@
+import {isOriginalPurchasePath,ORIGINAL_TRANSFER_ROUTE} from './original-checkout-path.js';
 import {governanceCursorKey} from './governance-cursor.js';
 import {isPeopleSearchQuery} from './people-search.js';
 import {permittedOrganizerPath} from './organizer-paths.js';
@@ -20,6 +21,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
   '/api/connect/market/shares/trade/cancel': 'POST',
   '/api/connect/transfers': 'POST',
   '/api/connect/transfers/public-note': 'POST',
+  [ORIGINAL_TRANSFER_ROUTE]: 'POST',
   '/api/connect/transfers/cancel': 'POST',
   '/api/chat/conversations': 'POST',
   '/api/connect/payments/checkout': 'POST',
@@ -34,6 +36,7 @@ export const NATIVE_PATHS: Readonly<Record<string, string>> = {
 export function permittedNativePath(path: string, method: string): boolean {
   let url: URL; try { url = new URL(path, 'https://receiz.com'); } catch { return false; }
   if (url.origin !== 'https://receiz.com' || url.username || url.password || url.hash) return false;
+  if(isOriginalPurchasePath(url,method.toUpperCase()))return true;
   if(/^\/api\/public-proof\/bankeiz-voting-[a-f0-9]{64}$/.test(url.pathname))return method.toUpperCase()==='GET'&&!url.search;
   if(url.pathname==='/api/public-proof/registry/feed')return method.toUpperCase()==='POST'&&!url.search;
   if(url.pathname==='/api/public-proof/namespace/bankeiz-voting')return method.toUpperCase()==='GET'&&url.searchParams.getAll('limit').length===1&&url.searchParams.get('limit')==='12'&&[...url.searchParams.keys()].every(k=>k==='limit'||k==='after')&&url.searchParams.getAll('after').length<=1&&(!url.searchParams.has('after')||Boolean(governanceCursorKey(url.searchParams.get('after'))));

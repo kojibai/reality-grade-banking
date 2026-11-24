@@ -1,3 +1,5 @@
+import {RECEIZ_V113_PROTOCOL_LIMITS} from '../native/receiz/packages/receiz-sdk/src/verificationLimits.js';
+import {ORIGINAL_DOWNLOAD_ROUTE,isOriginalPurchasePath} from '../src/receiz/original-checkout-path.js';
 import {relayTwinWorkspace} from './twin-workspace.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
@@ -22,7 +24,7 @@ async function bytes(stream: ReadableStream<Uint8Array> | null, max = LIMIT, sig
   finally { signal?.removeEventListener('abort',stop); await reader.cancel().catch(() => {}); }
   return Buffer.concat(parts);
 }
-function streamingBody(body: ReadableStream<Uint8Array>, signal: AbortSignal, abort: AbortController) {
+function streamingBody(body: ReadableStream<Uint8Array>, signal: AbortSignal, abort: AbortController, limit = LIMIT) {
   const reader = body.getReader(); let size = 0, stopped = false, pending: Uint8Array | undefined, offset = 0;
   let target: ReadableStreamDefaultController<Uint8Array>;
   const cleanup = () => signal.removeEventListener('abort', onAbort);
@@ -35,7 +37,7 @@ function streamingBody(body: ReadableStream<Uint8Array>, signal: AbortSignal, ab
         if (!pending) {
           const next = await reader.read(); if (stopped) return;
           if (next.done) { stopped = true; cleanup(); controller.close(); return; }
-          size += next.value.length; if (size > LIMIT) throw Error('Source exceeds supported transport capacity.');
+          size += next.value.length; if (size > limit) throw Error('Source exceeds supported transport capacity.');
           pending = next.value; offset = 0;
         }
         const end = Math.min(offset + 64 * 1024, pending.length);
@@ -71,8 +73,10 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
   const abort = new AbortController(), streamPath = isNativeChatStreamPath(new URL(path,'https://receiz.com').pathname);
   const signal = AbortSignal.any([request.signal,abort.signal,AbortSignal.timeout(nativeRequestTimeout(path,request.method))]);
   try {
+    const nativeUrl=new URL(path,'https://receiz.com');
+    const paidDownload=nativeUrl.pathname===ORIGINAL_DOWNLOAD_ROUTE&&isOriginalPurchasePath(nativeUrl,request.method)&&nativeUrl.searchParams.get('bankeiz')==='download';
     const attachmentUpload=path==='/api/receiz/attachments/upload',attachmentDownload=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/attachment(?:\?inline=1)?$/i.test(path);
-    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',originalPath=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/original$/i.test(path),artifactPath=path==='/api/receiz/ownership/bearer-claim'||certificateExport||originalPath||attachmentDownload,multipartPath=artifactPath&&!certificateExport&&!attachmentDownload||certificateImport||attachmentUpload||path==='/api/document-verify'||path==='/api/profile/me/media';
+    const certificateExport=path==='/api/connect/market/shares/export'||/^\/api\/connect\/market\/share-certificates\/[^/]+\/download$/.test(path),certificateImport=path==='/api/connect/market/shares/import',originalPath=/^\/api\/chat\/messages\/[a-f0-9-]{36}\/original$/i.test(path),artifactPath=paidDownload||path==='/api/receiz/ownership/bearer-claim'||certificateExport||originalPath||attachmentDownload,multipartPath=artifactPath&&!certificateExport&&!attachmentDownload||certificateImport||attachmentUpload||path==='/api/document-verify'||path==='/api/profile/me/media';
     const headers: Record<string, string> = { Accept: streamPath?'text/event-stream':originalPath?'message/rfc822, image/png':artifactPath?'application/vnd.receiz.bundle+json, application/octet-stream':'application/json' };
     let multipart=false;
     const authorization = request.headers.get('authorization'); if (authorization) headers.Authorization = authorization;
@@ -108,6 +112,14 @@ export async function relayNativeAccount(request: Request): Promise<Response> {
     }
     if(originalPath&&response.ok&&(!['message/rfc822','image/png'].includes(type??'')||type==='message/rfc822'&&!/^attachment;\s*filename="[A-Za-z0-9._ -]{1,150}\.eml"$/i.test(response.headers.get('content-disposition')??''))){await response.body?.cancel();return fail(503);}
     if(attachmentDownload&&response.ok&&(!type||! /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(type)||! /^(?:attachment|inline);\s*filename="[A-Za-z0-9._-]{1,160}"$/.test(response.headers.get('content-disposition')??''))){await response.body?.cancel();return fail(503);}
+    if(paidDownload&&response.ok){
+      const disposition=response.headers.get('content-disposition'),length=Number(response.headers.get('content-length')),sha256=response.headers.get('x-receiz-original-sha256');
+      if(!disposition?.startsWith('attachment;')||!type||!response.body||!sha256||! /^[a-f0-9]{64}$/.test(sha256)||!Number.isSafeInteger(length)||length<1||length>RECEIZ_V113_PROTOCOL_LIMITS.exactArtifactBytes){
+        await response.body?.cancel();return fail(503);
+      }
+      return new Response(streamingBody(response.body,signal,abort,length),{status:response.status,headers:{...base,
+        'Content-Type':'application/octet-stream','Content-Disposition':disposition,'Content-Length':String(length),'X-Receiz-Original-Sha256':sha256}});
+    }
     let output = await bytes(response.body,originalPath||attachmentDownload?25*1024*1024:certificateExport?26*1024*1024:LIMIT,signal);
     // Older certificate projections can omit an Original's pricing operands.
     // Reuse the exact public source already shipped for that same artifact;

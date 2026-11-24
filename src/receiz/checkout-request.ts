@@ -1,8 +1,9 @@
 import {parseReceivingUsername,publicProfileUsername} from '../../native/receiz/app/lib/profile/receivingUsername.js';
 import {readFixedSaleFields,type FixedSaleFields} from './fixed-checkout';
 import {BANK_PUBLIC_ORIGIN,BANK_PAYMENT_ORIGINS} from './config';
+import {isPurchasableOriginalId} from './public-original-purchase';
 import {publicReceizId} from './public-receiz-id';
-export interface CheckoutRequest {username:string;amount?:string;fixedSale?:FixedSaleFields;counter?:true;}
+export interface CheckoutRequest {username:string;amount?:string;fixedSale?:FixedSaleFields;counter?:true;originalId?:string;}
 export interface CheckoutReturn {username:string;checkoutId:string;sessionId:string;}
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const tracking=/^(?:utm_[a-z0-9_]{1,64}|fbclid|igsh|igshid|mibextid|gclid|dclid|gbraid|wbraid|msclkid|ttclid|twclid|li_fat_id|srsltid|mc_cid|mc_eid)$/;
@@ -14,7 +15,12 @@ export function buildCheckoutRequest(coordinate:string,amount?:string){const url
 export function parseCheckoutRequest(input:string,origin?:string):CheckoutRequest|null{
  const initial=new URL(input,origin??BANK_PUBLIC_ORIGIN);if(!initial.pathname.startsWith('/pay/'))return null;
  const url=checked(input,origin),match=/^\/pay\/([a-z0-9_]{3,24})\/?$/.exec(url.pathname);if(!match)throw Error('This checkout address could not be read.');
- for(const [key,value]of url.searchParams)if(url.searchParams.getAll(key).length!==1||!['amount','sale','recipient','fixed','counter'].includes(key)&&(!tracking.test(key)||value.length>2048))throw Error('This checkout request could not be read.');
+ for(const [key,value]of url.searchParams)if(url.searchParams.getAll(key).length!==1||!['amount','sale','recipient','fixed','counter','original'].includes(key)&&(!tracking.test(key)||value.length>2048))throw Error('This checkout request could not be read.');
+ if(url.searchParams.has('original')){
+  const originalId=url.searchParams.get('original');
+  if(!isPurchasableOriginalId(originalId)||[...url.searchParams.keys()].some(key=>key!=='original'&&!tracking.test(key)))throw Error('This Original checkout could not be read.');
+  return{username:match[1],originalId};
+ }
  const amount=url.searchParams.has('amount')?dollars(url.searchParams.get('amount')!):undefined;
  if(['sale','recipient','fixed'].some(key=>url.searchParams.has(key))){
   if(!amount||url.searchParams.get('fixed')!=='1'||!url.searchParams.has('sale')||!url.searchParams.has('recipient'))throw Error('This fixed checkout request is incomplete.');

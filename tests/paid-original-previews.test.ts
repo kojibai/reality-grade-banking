@@ -40,7 +40,7 @@ it('keeps a selected purchase offer across repeated curation and cold held catal
  expect(item.originalOffer).toEqual({amountCents:125,locked:true});
  const held=createHeldPublicMarketInput(catalog);expect(held).not.toBeNull();
  expect(parsePublicMarket(JSON.parse(JSON.stringify(held))).items[0]?.originalOffer).toEqual(item.originalOffer);
- expect(publicOriginalCheckoutUrl(item.sourceUrl,item.assetId)).toBe(sourceUrl+'#purchase-original');
+ expect(publicOriginalCheckoutUrl(item.sourceUrl,item.assetId)).toBe('/pay/artist/?original='+assetId);
  expect(publicOriginalCheckoutUrl('https://example.com/artist/verified/'+assetId,assetId)).toBeNull();
  expect(publicOriginalCheckoutUrl(sourceUrl,'another-asset')).toBeNull();
  fixture.transport.publicOriginals[0]!.profileOriginal.media.src='/preview.webp';

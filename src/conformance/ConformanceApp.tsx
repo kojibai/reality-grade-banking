@@ -5,6 +5,7 @@ import type {ContractReport} from './contract';
 import type {AssessmentReport} from './assessment';
 import {BankMark} from '../components/BankMark';
 import {SiteFooter} from '../components/SiteFooter';
+import '../styles/site-footer-appearance.css';
 import {RECEIZ_VERSION} from '../receiz/client';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Download, LaptopMinimal, FileText, Landmark, LoaderCircle } from 'lucide-react';
@@ -57,5 +58,5 @@ export default function ConformanceApp({activeSurface=true}:{activeSurface?:bool
     <section role="tabpanel" id="panel-assess" aria-labelledby="tab-assess" hidden={tab!=='assess'}><ImplementationAssessment institution={institution} onEvidence={setAssessment} onSaveIdentity={async holder=>{const identity=credentialIdentity.current;if(!identity||identity.binding.artifactOwnerReceizId!==holder)throw Error('CONFORMANCE_HOLDER_MISMATCH');const {saveIdentityRecord}=await import('../checkout/CheckoutIdentity');if(credentialIdentity.current!==identity)throw Error('CONFORMANCE_IDENTITY_CHANGED');saveIdentityRecord(identity);}}/></section>
     <section role="tabpanel" id="panel-reference" aria-labelledby="tab-reference" hidden={tab !== 'reference'}><div className="conformance-summary"><div><LaptopMinimal size={36} strokeWidth={1.5} /><p><span>Local verification</span><strong className={report && !report.localChecksPassed ? 'failed' : ''}>{busy ? `${results.length} / ${checks.length} complete` : report ? `${passed} / ${checks.length} passed` : 'Not run'}</strong></p></div><div><FileText size={36} strokeWidth={1.5} /><p><span>Protocol</span><strong>v{RECEIZ_VERSION}</strong></p></div><div><Landmark size={36} strokeWidth={1.5} /><p><span>Scope</span><strong>Public integration</strong></p></div></div>{(referenceVisited||tab==='reference')&&<Suspense fallback={<p role="status">Loading verification evidence…</p>}><ReferenceChecks results={results} active={active} report={report} busy={busy} /></Suspense>}</section>
     <section role="tabpanel" id="panel-inspector" aria-labelledby="tab-inspector" hidden={tab !== 'inspector'}><ProofInspector onState={setInspection} /></section><section role="tabpanel" id="panel-qualification" aria-labelledby="tab-qualification" hidden={tab !== 'qualification'}><NoteContinuityStandard/>{tab==='qualification'&&activeSurface&&<DeviceEvidence onEvidence={setDeviceEvidence}/>}<QualificationMatrix /></section>
-    </main><SiteFooter/></div>;
+    </main><SiteFooter themeControl/></div>;
 }
