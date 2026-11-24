@@ -715,8 +715,9 @@ async function saveNoteState(binding: { artifactSha256: string; keyId?: string }
       const walletBytes=await crypto.subtle.encrypt({name:'AES-GCM',iv:walletIv,additionalData:new TextEncoder().encode(`receiz.bank.wallet|${binding.keyId}|${binding.artifactSha256}`)},saved.wrappingKey,new TextEncoder().encode(JSON.stringify(record)));
       walletObservation={iv:walletIv,bytes:walletBytes,localHeadDigest:observation.localHeadDigest,binding:{keyId:binding.keyId,artifactSha256:binding.artifactSha256}};
     }
+    const wallet = family === 'funded-wallet' || family.startsWith('funded-wallet-') || family.startsWith('wallet-assertion:');
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['identity', 'operations'], 'readwrite'), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
+      const tx = db.transaction(['identity', 'operations'], 'readwrite', wallet ? { durability: 'strict' } : undefined), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
       read.onsuccess = () => {
         const current = read.result as SavedIdentity | undefined;
         if (!current || !equal(current.bytes, saved.bytes) || !equal(current.iv, saved.iv)) { tx.abort(); return; }
@@ -758,7 +759,7 @@ async function savePrivateByteBlob(family: PrivateByteFamily, binding: { artifac
   const key = `${family}|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}|${digest}`, iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(key) }, saved.wrappingKey, bytes), db = await database();
   try { await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(['identity', 'operations'], 'readwrite'), read = tx.objectStore('identity').get('current'), sources = tx.objectStore('operations');
+    const tx = db.transaction(['identity', 'operations'], 'readwrite', family === 'wallet-financial-original' ? { durability: 'strict' } : undefined), read = tx.objectStore('identity').get('current'), sources = tx.objectStore('operations');
     read.onsuccess = () => { const current = read.result as SavedIdentity | undefined; if (!current || current.bytes.byteLength !== saved.bytes.byteLength || !new Uint8Array(current.bytes).every((v, i) => v === new Uint8Array(saved.bytes)[i]) || !new Uint8Array(current.iv).every((v, i) => v === new Uint8Array(saved.iv)[i])) { tx.abort(); return; } const existing = sources.get(key); existing.onsuccess = () => { if (!existing.result) sources.put({ key, iv, bytes: encrypted }, key); }; };
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(new Error('BANK_NOTE_IDENTITY_CHANGED'));
   }); } finally { db.close(); } return digest;
@@ -788,6 +789,13 @@ export const loadFundedWalletAssertion=async(binding:{artifactSha256:string},dig
 export const saveFundedWalletAssertion=(binding:{artifactSha256:string},digest:string,assertion:import('./local-financial-runtime').FinancialWalletCustodyAssertion)=>
   saveNoteState(binding,'wallet-assertion:'+digest,assertion,null);
 export const saveFundedWalletState=(binding:{artifactSha256:string},state:unknown,prior:unknown)=>saveNoteState(binding,'funded-wallet',state,prior);
+export const loadFundedWalletCounterJournal=async(binding:{artifactSha256:string},credentialId:string)=>
+  await loadNoteState(binding,'funded-wallet-counter:'+credentialId) as import('./wallet-device-journal').WalletDeviceJournalState|null;
+export const saveFundedWalletCounterJournal=(binding:{artifactSha256:string},credentialId:string,state:unknown,prior:unknown)=>
+  saveNoteState(binding,'funded-wallet-counter:'+credentialId,state,prior);
+export const loadWalletReceiveOffer=(binding:{artifactSha256:string},digest:string)=>loadNoteState(binding,'funded-wallet-offer:'+digest);
+export const saveWalletReceiveOffer=(binding:{artifactSha256:string},digest:string,state:unknown)=>
+  saveNoteState(binding,'funded-wallet-offer:'+digest,state,null);
 export const loadWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding')=>loadNoteState(binding,`funded-wallet-${role}`);
 export const saveWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding',state:unknown,prior:unknown)=>saveNoteState(binding,`funded-wallet-${role}`,state,prior);
 

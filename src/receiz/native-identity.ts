@@ -2076,8 +2076,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     noteOpen();
     const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;
     if(!uid)throw Error('BANK_WALLET_ACCOUNT_REQUIRED');
-    const [{createFundedWallet},storage,{createReceizIndexedDbSealStore}]=await Promise.all([
-      import('./funded-wallet'),import('./identity-vault'),import('@receiz/sdk/offline'),
+    const [{createFundedWallet},storage,{createReceizIndexedDbSealStore},{createWalletDeviceJournal}]=await Promise.all([
+      import('./funded-wallet'),import('./identity-vault'),import('@receiz/sdk/offline'),import('./wallet-device-journal'),
     ]);
     const enrollment=await createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
     noteOpen();if(!enrollment)throw Error('BANK_WALLET_DEVICE_REQUIRED');
@@ -2100,9 +2100,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const recordSignerPublicKey=enrollment.cert.subjectPublicKeyRawB64u;
     const signOwner=(challengeText:string)=>sdk.signReceizIdentityLoginProof({keyFile,passphrase:phrase,challengeText});
     type WalletDeviceSetup={walletWebAuthn:Awaited<ReturnType<typeof walletBrowser.enrollBankFinancialWalletDevice>>;
-      account?:{payload:{issuedAtKaiUPulse:string}};claim?:import('./funded-wallet').WalletPairOffer;
+      account?:{payload:{issuedAtKaiUPulse:string}};claim?:import('./funded-wallet').WalletPairOffer;walletCounterMode?:'device';
       receiveConsent?:Awaited<ReturnType<typeof signOwner>>;
       pending?:{amountUsdCents:string;request:{opening:{funding:Record<string,unknown>;ownerConsent?:unknown}}}};
+    const counterJournal=(credentialId:string)=>createWalletDeviceJournal({
+      read:()=>storage.loadFundedWalletCounterJournal(binding,credentialId),
+      save:(next,prior)=>storage.saveFundedWalletCounterJournal(binding,credentialId,next,prior),
+    });
     const loadDevice=(role:'receiving'|'funding')=>storage.loadWalletPairingState(binding,role) as Promise<WalletDeviceSetup|null>;
     const saveDevice=(role:'receiving'|'funding',next:WalletDeviceSetup,previous:WalletDeviceSetup|null)=>storage.saveWalletPairingState(binding,role,next,previous);
     async function enrolled(role:'receiving'|'funding'):Promise<WalletDeviceSetup>{
@@ -2117,18 +2121,23 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const walletWebAuthn=await walletBrowser.enrollBankFinancialWalletDevice({origin,rpId,fetchImpl});
       const next={walletWebAuthn};await saveDevice(role,next,saved);return next;
     }
+    async function setupReceiving(mode:'unlock'|'resume'){
+      if(!navigator.locks||!navigator.onLine)return;
+      await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:receiving`,{signal:lifetime.signal},async()=>{
+        if(!navigator.onLine)return;
+        const saved=await loadDevice('receiving');
+        if(saved?.account||saved?.claim||(!saved&&mode==='resume'))return;
+        const device=saved??await enrolled('receiving');
+        const account=await send(endpoint,{operation:'receiver',recordSignerPublicKey,walletWebAuthn:device.walletWebAuthn},true) as WalletDeviceSetup['account'];
+        if(!account?.payload.issuedAtKaiUPulse)throw Error('BANK_WALLET_PAIRING_INVALID');
+        await saveDevice('receiving',{...device,account},device);
+      });
+    }
     async function prepareOffline(amountUsdCents?:string){
-      const role=amountUsdCents?'funding':'receiving';if(!navigator.locks||!navigator.onLine)throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');
+      if(!amountUsdCents){await setupReceiving('unlock');return null;}
+      const role='funding';if(!navigator.locks||!navigator.onLine)throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');
       return await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:${role}`,{signal:lifetime.signal},async()=>{
         const device=await enrolled(role);
-        if(!amountUsdCents){
-          if(!device.account){
-            const account=await send(endpoint,{operation:'receiver',recordSignerPublicKey,walletWebAuthn:device.walletWebAuthn},true) as WalletDeviceSetup['account'];
-            if(!account?.payload.issuedAtKaiUPulse)throw Error('BANK_WALLET_PAIRING_INVALID');
-            await saveDevice(role,{...device,account},device);
-          }
-          return null;
-        }
         let pending=device.pending;
         if(pending&&pending.amountUsdCents!==amountUsdCents)throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
         if(!pending){
@@ -2162,24 +2171,50 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       },
       read:()=>storage.loadFundedWalletState(binding),save:(next,prior)=>storage.saveFundedWalletState(binding,next,prior),
       lock:async<T>(work:()=>Promise<T>)=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`bankeiz-funded-wallet:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await work());},
-      signOwner,prepareOffline,
+      signOwner,prepareOffline,setupReceiving,
+      readWalletCounterEvents:({credentialIdB64u,lastSignCount})=>counterJournal(credentialIdB64u).eventsAfter(lastSignCount),
       async answerOffer(offer){
         if(!navigator.locks)throw Error('BANK_WALLET_DEVICE_REQUIRED');
         return await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:receiving`,{signal:lifetime.signal},async()=>{
         const saved=await loadDevice('receiving');
-        if(!saved?.account||saved.claim&&JSON.stringify(saved.claim)!==JSON.stringify(offer))throw Error('BANK_WALLET_DEVICE_REQUIRED');
+        const shared=offer.walletCounterMode==='device';
+        // A legacy claim has already used a different assertion contract.
+        if(!saved?.account||saved.walletCounterMode&&!shared||saved.claim&&(shared||JSON.stringify(saved.claim)!==JSON.stringify(offer)))throw Error('BANK_WALLET_DEVICE_REQUIRED');
         let device=saved;
+        if(shared&&!saved.walletCounterMode){
+          device={...saved,walletCounterMode:'device'};
+          await saveDevice('receiving',device,saved);
+        }
         const account=saved.account,{platformAttestationCertificate:cert}=device.walletWebAuthn;
+        const offerRef=shared?await sdk.sha256ReceizBytes(new TextEncoder().encode(sdk.canonicalizeReceizV122(offer))):null;
+        type ReceiveOffer=Readonly<{consent:Awaited<ReturnType<typeof signOwner>>;signCount:string}>;
+        let storedOffer=offerRef?await storage.loadWalletReceiveOffer(binding,offerRef) as ReceiveOffer|null:null;
         const approval=await walletBrowser.approveBankFinancialWalletOffer({walletWebAuthn:device.walletWebAuthn,
-          fundedAtKaiUPulse:account.payload.issuedAtKaiUPulse,async signOwner(challenge){
+          fundedAtKaiUPulse:account.payload.issuedAtKaiUPulse,
+          ...(offerRef?{async readNextSignCount({credentialIdB64u,lastSignCount}){
+            return storedOffer?.signCount??counterJournal(credentialIdB64u).nextSignCount(lastSignCount);
+          }}:{}),
+          async signOwner(challenge,signCount){
+            if(offerRef){
+              if(storedOffer)return storedOffer.consent;
+              if(!signCount)throw Error('BANK_WALLET_PAIRING_INVALID');
+              const consent=await signOwner(challenge);
+              storedOffer={consent,signCount};
+              await storage.saveWalletReceiveOffer(binding,offerRef,storedOffer);
+              return consent;
+            }
             if(device.receiveConsent)return device.receiveConsent;
-            const receiveConsent=await sdk.signReceizIdentityLoginProof({keyFile,passphrase:phrase,challengeText:challenge});
+            const receiveConsent=await signOwner(challenge);
             const next={...device,claim:offer,receiveConsent};await saveDevice('receiving',next,device);device=next;
             return receiveConsent;
           },
           offer:{applicationId:offer.applicationId,sourceArtifactSha256:offer.sourceArtifactSha256,allocationId:offer.allocationId,
             conversationId:offer.conversationId,recipientUserId:uid,recipientKeyId:binding.keyId,recipientRecordSignerPublicKey:recordSignerPublicKey,amountUsdCents:offer.amountUsdCents},
-          async assert(request){
+          async assert(request,header,verify){
+            if(header&&verify)return counterJournal(request.credentialIdB64u).assert(request,header,async()=>({
+              ...await verify(await walletBrowser.assertBankFinancialWalletDevice({...request,origin:cert.origin,rpId:cert.rpId})),
+              credentialIdB64u:request.credentialIdB64u,
+            }));
             const ref=await sdk.sha256ReceizBytes(new TextEncoder().encode(request.challengeB64u));
             const saved=await storage.loadFundedWalletAssertion(binding,ref);if(saved)return saved;
             const assertion={...await walletBrowser.assertBankFinancialWalletDevice({...request,origin:cert.origin,rpId:cert.rpId}),credentialIdB64u:request.credentialIdB64u};
@@ -2194,8 +2229,16 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       bindWalletDevice(device,assert){
         if(device.keyId!==binding.keyId||device.signerPublicKey!==enrollment.cert.subjectPublicKeyRawB64u||device.origin!==location.origin)
           throw Error('BANK_WALLET_DEVICE_MISMATCH');
-        return async request=>{
-          noteOpen();const ref=await sdk.sha256ReceizBytes(new TextEncoder().encode(request.challengeB64u));
+        return async (request,header)=>{
+          noteOpen();
+          if(header){
+            if(!device.sharedWalletCounter||device.credentialIdB64u!==request.credentialIdB64u)throw Error('BANK_WALLET_DEVICE_MISMATCH');
+            const {credentialIdB64u:_credential,...assertion}=await counterJournal(request.credentialIdB64u).assert(request,header,async()=>({
+              ...await assert(request),credentialIdB64u:request.credentialIdB64u,
+            }));
+            return assertion;
+          }
+          const ref=await sdk.sha256ReceizBytes(new TextEncoder().encode(request.challengeB64u));
           const cached=(await storage.loadFundedWalletAssertion(binding,ref));
           if(cached)return cached;
           const assertion=await assert(request);
@@ -2208,8 +2251,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         return result?readFundedPacket(result):null;
       },
       publish:(allocationId,payload)=>send(endpoint,{operation:'publish',allocationId,payload},true),
-      async publishOwnerRelease({allocationId,original}){
-        const result=await send(endpoint,{operation:'release',allocationId,payload:{artifactBytesB64u:sdk.receizBase64UrlEncode(original)}},true) as {status?:string;artifactSha256?:string};
+      async publishOwnerRelease({allocationId,original,financialOriginals}){
+        const result=await send(endpoint,{operation:'release',allocationId,payload:{artifactBytesB64u:sdk.receizBase64UrlEncode(original),
+          ...(financialOriginals?{financialOriginalsB64u:financialOriginals.map(sdk.receizBase64UrlEncode)}:{})}},true) as {status?:string;artifactSha256?:string};
         if(result?.status==='released'&&result.artifactSha256===await sdk.sha256ReceizBytes(original)&&navigator.locks){
           await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:funding`,{signal:lifetime.signal},async()=>{
             const saved=await loadDevice('funding');
@@ -2219,7 +2263,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         }
         return result;
       },
-      publishPeerRelease:({walletProof,releaseOriginal})=>send(endpoint+'/peer-release',{walletProofB64u:sdk.receizBase64UrlEncode(walletProof),releaseOriginalB64u:sdk.receizBase64UrlEncode(releaseOriginal)},true),
+      publishPeerRelease:({walletProof,releaseOriginal,financialOriginals})=>send(endpoint+'/peer-release',{walletProofB64u:sdk.receizBase64UrlEncode(walletProof),releaseOriginalB64u:sdk.receizBase64UrlEncode(releaseOriginal),
+        ...(financialOriginals?{financialOriginalsB64u:financialOriginals.map(sdk.receizBase64UrlEncode)}:{})},true),
+      async findWalletRecovery(reference){
+        const response=await send(endpoint+'/peer-release',{operation:'history',...reference},false) as Record<string,unknown>|null;
+        if(response?.schema!=='receiz.bank.wallet-history.v1'||response.sourceArtifactSha256!==reference.sourceArtifactSha256)return null;
+        return typeof response.walletProofB64u==='string'?sdk.receizBase64UrlDecode(response.walletProofB64u):null;
+      },
+      publishSentWalletProof:proof=>send(endpoint+'/peer-release',{
+        operation:'sync-sent',walletProofB64u:sdk.receizBase64UrlEncode(proof),
+      },true),
+      publishPeerPayment:({walletProof,receivingAllocationId})=>send(endpoint+'/peer-release',{
+        operation:'sync',walletProofB64u:sdk.receizBase64UrlEncode(walletProof),receivingAllocationId,
+      },true),
     });
     return fundedWalletSession;
   })().catch(error=>{fundedWalletPromise=undefined;throw error;});

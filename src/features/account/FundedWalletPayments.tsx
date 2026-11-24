@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { readWalletPairing, type FundedWalletReview, type WalletPairOffer } from '../../receiz/funded-wallet';
+import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletPairOffer } from '../../receiz/funded-wallet';
 import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
 import { PaymentScanner } from './PaymentScanner';
 import { WalletPaymentReview } from './WalletSendOperation';
 import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
 
-const walletError=(cause:unknown)=>cause instanceof Error&&cause.message==='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'
- ?'No funded offline payment is available for this recipient on this device.'
- :'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
+const walletError=(cause:unknown)=>{
+  if(cause instanceof Error){
+    if(cause.message===WALLET_RECEIPT_RETENTION_REQUIRED)return 'Wallet couldn’t save the payment proof. Scan the payment again.';
+    if(cause.message===WALLET_STALE_ALLOCATION)return 'This balance has older payment history. Use another available balance or scan a newer payment proof.';
+    if(cause.message==='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')return 'No funded offline payment is available for this recipient on this device.';
+  }
+  return 'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
+};
 const pairFrames=(value:unknown)=>createOpticalNoteFrames('wallet',new TextEncoder().encode(JSON.stringify(value)));
 
 export function FundedWalletSend({identity,request,onRefresh,onNext,children}:{
@@ -82,13 +87,18 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
   const [status,setStatus]=useState(''),[error,setError]=useState('');
   const [received,setReceived]=useState<{allocationId:string}|null>(null);
   const [reply,setReply]=useState<OpticalFrames|null>(null);
+  const [receiptProof,setReceiptProof]=useState<{frames:OpticalFrames;index:number}|null>(null);
+  const [receiptCount,setReceiptCount]=useState(0);
   const [offer,setOffer]=useState<WalletPairOffer|null>(null);
   const [busy,setBusy]=useState(false);
   const active=useRef(true);
   useEffect(()=>{
     let current=true;
     active.current=true;
-    void identity.fundedWallet!().then(wallet=>wallet.availableReceipt()).then(value=>{if(current&&value)setReceived(value);}).catch(()=>{});
+    void identity.fundedWallet!().then(async wallet=>{
+      const [value,count]=await Promise.all([wallet.availableReceipt(),wallet.receiptProofCount?.()]);
+      if(current){setReceived(value);setReceiptCount(count??0);}
+    }).catch(()=>{});
     return()=>{current=false;active.current=false;reader.current=readOpticalNoteFrames('wallet');};
   },[identity]);
   async function scan(bytes:Uint8Array){
@@ -106,14 +116,29 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
         if(active.current){setOffer(pair);reader.current=readOpticalNoteFrames('wallet');setError('');}
         return true;
       }
-      const payment=await wallet.receive(proof.bytes);
+      const outcome=await wallet.receive(proof.bytes).then(
+        payment=>({kind:'received',payment} as const),
+        async cause=>{
+          if(!(cause instanceof Error)||cause.message!=='ACCOUNT_FINANCIAL_SOURCE_WALLET_RECIPIENT')throw cause;
+          const recovered=await wallet.recoverWalletProof(proof.bytes);
+          if(recovered===null)throw cause;
+          return {kind:'recovered',recovered} as const;
+        },
+      );
       if(active.current){
         reader.current=readOpticalNoteFrames('wallet');
         setError('');
         setReply(null);
-        const spendable=BigInt(payment.wallet.availableUsdCents)>0n;
-        setReceived(spendable?payment:null);
-        setStatus(spendable?`${formatMoney(payment.wallet.availableUsdCents)} available to send from this device.`:'Wallet has already recorded this payment.');
+        if(outcome.kind==='recovered'){
+          setStatus(outcome.recovered>0?'Wallet history recovered.':'Wallet already holds this payment proof.');
+        }else{
+          const {payment}=outcome;
+          const spendable=BigInt(payment.wallet.availableUsdCents)>0n;
+          setReceiptCount(count=>Math.max(1,count));
+          void wallet.receiptProofCount?.().then(count=>{if(active.current)setReceiptCount(count);}).catch(()=>{});
+          setReceived(spendable?payment:null);
+          setStatus(spendable?`${formatMoney(payment.wallet.availableUsdCents)} available to send from this device.`:'Wallet has already recorded this payment.');
+        }
         onRefresh();
       }
       return true;
@@ -141,7 +166,14 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
     }catch(cause){if(active.current)setError(walletError(cause));}
     finally{if(active.current)setBusy(false);}
   }
-  return <>{!offer&&<PaymentScanner compact onBytes={scan}/>}
+  async function showReceipt(index=0){
+    setError('');
+    try{
+      const wallet=await identity.fundedWallet!(),frames=await wallet.receiptQr(index);
+      if(active.current&&frames)setReceiptProof({frames,index});
+    }catch(cause){if(active.current)setError(walletError(cause));}
+  }
+  return <>{!offer&&!receiptProof&&<PaymentScanner compact onBytes={scan}/>}
     {offer&&<><p className="body-copy">Approve receiving {formatMoney(offer.amountUsdCents)} on this device.</p>
       <button type="button" className="primary-button" disabled={busy} onClick={()=>void approveOffer()}>Approve receiving</button>
       <button type="button" className="text-button" disabled={busy} onClick={()=>setOffer(null)}>Cancel</button></>}
@@ -149,5 +181,10 @@ export function FundedWalletReceive({identity,onRefresh}:{identity:OpenIdentity;
       <WalletPaymentCode frames={reply} label="Wallet recipient reply QR" onError={cause=>setError(walletError(cause))}/></>}
     {status&&<p className="body-copy small-copy" role="status">{status}</p>}
     {error&&<p className="error-message" role="alert">{error}</p>}
+    {receiptCount>0&&!receiptProof&&<button type="button" className="text-button" onClick={()=>void showReceipt()}>Show payment proof</button>}
+    {receiptProof&&<><WalletPaymentCode frames={receiptProof.frames} label="Wallet payment proof QR" onError={cause=>setError(walletError(cause))}/>
+      {receiptProof.index+1<receiptCount&&<button type="button" className="text-button" onClick={()=>void showReceipt(receiptProof.index+1)}>Older payment</button>}
+      {receiptProof.index>0&&<button type="button" className="text-button" onClick={()=>void showReceipt(receiptProof.index-1)}>Newer payment</button>}
+      <button type="button" className="text-button" onClick={()=>setReceiptProof(null)}>Done</button></>}
     {received&&<button className="text-button" onClick={()=>void release()} disabled={busy}>Sync to account</button>}</>;
 }

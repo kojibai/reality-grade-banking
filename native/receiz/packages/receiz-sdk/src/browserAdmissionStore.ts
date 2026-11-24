@@ -29,6 +29,7 @@ const ALL_STORES = Object.values(STORES);
 export type ReceizBrowserAdmissionStoreOptions = Readonly<{
   databaseName: string;
   namespace: string;
+  writeDurability?: "strict";
 }>;
 
 type InternalOptions = ReceizBrowserAdmissionStoreOptions & Readonly<{
@@ -72,7 +73,9 @@ function validateOptions(options: ReceizBrowserAdmissionStoreOptions): ReceizBro
   if (!validIdentifier(namespace)) {
     throw new TypeError("RECEIZ_ADMISSION_NAMESPACE_INVALID");
   }
-  return Object.freeze({ databaseName, namespace });
+  const writeDurability = options.writeDurability;
+  if (writeDurability !== undefined && writeDurability !== "strict") throw new TypeError("RECEIZ_ADMISSION_DURABILITY_INVALID");
+  return Object.freeze({ databaseName, namespace, ...(writeDurability ? { writeDurability } : {}) });
 }
 
 function databaseFactory(): IDBFactory {
@@ -190,6 +193,7 @@ function completedRead<T>(
 export function createReceizBrowserAdmissionStoreInternal(options: InternalOptions): ReceizAdmissionStore {
   const validated = validateOptions(options);
   const namespace = validated.namespace;
+  const writeOptions = validated.writeDurability ? { durability: validated.writeDurability } : undefined;
   const maxRecords = options.maxRecordsPerTransaction ?? 256;
   const failBeforeCommit = options.failBeforeCommit;
   let openPromise: Promise<IDBDatabase> | null = null;
@@ -258,7 +262,7 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
           resolve(value);
         };
         try {
-          transaction = database.transaction(ALL_STORES, "readwrite");
+          transaction = database.transaction(ALL_STORES, "readwrite", writeOptions);
           const idempotencyStore = transaction.objectStore(STORES.idempotency);
           const duplicateRequest = idempotencyStore.get([namespace, unit.idempotencyKey]);
           duplicateRequest.onsuccess = () => {
@@ -384,7 +388,7 @@ export function createReceizBrowserAdmissionStoreInternal(options: InternalOptio
         let transaction: IDBTransaction;
         let duplicate = false;
         try {
-          transaction = database.transaction(STORES.aggregates, "readwrite");
+          transaction = database.transaction(STORES.aggregates, "readwrite", writeOptions);
           const aggregateStore = transaction.objectStore(STORES.aggregates);
           const request = aggregateStore.get([namespace, input.aggregateId]);
           request.onsuccess = () => {

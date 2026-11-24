@@ -30,7 +30,7 @@ const indexed=new WeakMap<ReceizAccountFinancialSource,ReadonlyMap<string,Term>>
  * candidate only. It neither admits a supplied successor state nor commits a
  * trade; accepted ancestry, signatures and durable CAS are required separately. */
 export function projectReceizAccountFinancialAction(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,action:ReceizAccountMarketAction|ReceizAccountSendAction,atKaiUPulse:string){
- const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all'};
+ const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all';walletPartialPayments?:true};
  if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==source.allocationId||state.accountUserId!==source.accountUserId)fail('STATE');
  const at=uint(atKaiUPulse,true);if(at<uint(program.validFromKaiUPulse,true)||at>uint(program.expiresAtKaiUPulse,true)||at<=uint(state.lastKaiUPulse))fail('CAUSAL_PULSE');
  if(action?.kind==='send'){
@@ -45,7 +45,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
   if(custody.receivedWallet&&action.nearby!==true)fail('WALLET_PEER_CUSTODY');
   if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
    ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
-   ||state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents))fail('WALLET_PEER_CUSTODY');
+   ||!program.walletPartialPayments&&(state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents)))fail('WALLET_PEER_CUSTODY');
   let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;
   let nativeWalletMovement:Readonly<{rail:'reserve'|'settlement'|'composite';fundingParts:BankNativeWalletFundingParts}>|undefined;
   let reserveBackingPhiMicro:string|undefined;
@@ -54,7 +54,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
    const debit=bankNativeWalletDebitAvailable({
     balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:String(uint(state.reserveBackingPhiMicro)),
    },String(cents),program.usdPerPhiMicrocents);
-   if(action.nearby===true&&debit.after.balancePhiMicro!=='0')fail('WALLET_PEER_CUSTODY');
+   if(action.nearby===true&&!program.walletPartialPayments&&debit.after.balancePhiMicro!=='0')fail('WALLET_PEER_CUSTODY');
    phi=BigInt(debit.amountPhiMicro);
    settled=BigInt(debit.fundingParts.reserve.amountUsdCents);
    balanceAfter=debit.after.balancePhiMicro;

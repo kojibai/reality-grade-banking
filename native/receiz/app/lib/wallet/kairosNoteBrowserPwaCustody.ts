@@ -124,6 +124,7 @@ export function createKairosNoteBrowserWebAuthnClient(input: Readonly<{
   rpId: string;
   origin: string;
   fetchImpl?: typeof fetch;
+  purpose?: "wallet";
 }>): KairosNotePwaWebAuthnClient {
   const rpId = input.rpId.trim();
   const origin = input.origin.trim();
@@ -152,16 +153,17 @@ export function createKairosNoteBrowserWebAuthnClient(input: Readonly<{
         throw new Error("OFFLINE_NOTE_CUSTODY_CEREMONY_NOT_STARTED");
       }
       const userId = crypto.getRandomValues(new Uint8Array(32));
+      const wallet = input.purpose === "wallet";
       let credential: Credential | null;
       try {
         credential = await navigator.credentials.create({
           publicKey: {
           challenge: strictArrayBuffer(receizBase64UrlDecode(challengeB64u)),
-          rp: { id: rpId, name: "Receiz Offline Note Custody" },
+          rp: { id: rpId, name: wallet ? "Bankeiz Wallet" : "Receiz Offline Note Custody" },
           user: {
             id: userId,
-            name: `offline-note-${crypto.randomUUID()}`,
-            displayName: "Offline Note Custody",
+            name: `${wallet ? "wallet" : "offline-note"}-${crypto.randomUUID()}`,
+            displayName: wallet ? "Wallet custody" : "Offline Note Custody",
           },
           pubKeyCredParams: [{ type: "public-key", alg: -7 }],
           authenticatorSelection: {

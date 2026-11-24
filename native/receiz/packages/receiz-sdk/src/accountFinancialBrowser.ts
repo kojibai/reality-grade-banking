@@ -5,8 +5,12 @@ export {createReceizAccountFinancialExecutor} from './accountFinancialCommit.js'
 export {ReceizFinancialWalletCustodyCancelledBeforeAssertion, type ReceizFinancialWalletCustodyChallenge} from './accountFinancialWalletCustody.js';
 export {createReceizAccountFinancialPublisher} from './accountFinancialPublication.js';
 export {projectReceizAccountFinancialAction} from './accountFinancialExecution.js';
+import {createReceizBrowserAdmissionStore,type ReceizBrowserAdmissionStoreOptions} from './browserAdmissionStore.js';
 import {readReceizAccountFinancialSourceCustody,type ReceizAccountFinancialSource} from './accountFinancialSource.js';
 import {receizKaiNow} from './v124Kai.js';
+export function createWalletAdmissionStore(options:Pick<ReceizBrowserAdmissionStoreOptions,'databaseName'|'namespace'>){
+ return createReceizBrowserAdmissionStore({...options,writeDurability:'strict'});
+}
 /** Read-only scope inspection after genuine enclosing Source admission. */
 export function financialSourceApplicationId(source:ReceizAccountFinancialSource):string{
  return (readReceizAccountFinancialSourceCustody(source).body.funding as {applicationId:string}).applicationId;

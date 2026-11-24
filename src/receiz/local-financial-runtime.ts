@@ -12,8 +12,13 @@ export type FinancialOriginalStore=Readonly<{retain(sha256:string,bytes:Uint8Arr
 export type FinancialWalletProof=Readonly<{sourceOriginal:Uint8Array;paymentOriginals:readonly Uint8Array[]}>;
 export type FinancialWalletCustodyChallenge=Readonly<{credentialIdB64u:string;challengeB64u:string;expectedSignCount:string}>;
 export type FinancialWalletCustodyAssertion=Readonly<{
- credentialIdB64u:string;authenticatorDataB64u:string;clientDataJSONB64u:string;signatureB64u:string;
+ credentialIdB64u?:string;authenticatorDataB64u:string;clientDataJSONB64u:string;signatureB64u:string;
 }>;
+export type FinancialWalletCounterHeader=Readonly<{kind:'receive'|'spend'|'release';allocationId:string;commandSha256:string;ownerConsentSha256:string}>;
+export type FinancialWalletCounterEvent=Readonly<{
+ header:FinancialWalletCounterHeader;assertion:Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>;
+}>;
+type WalletCounterCursor=Readonly<{credentialIdB64u:string;lastSignCount:string}>;
 type WalletEnrollment=Readonly<{platformAttestationCertificate:Readonly<{origin:string;rpId:string}>;rollbackConformanceEvidence:unknown}>;
 export type WalletPairingRuntime=Readonly<{
  enrollBankFinancialWalletDevice(input:{origin:string;rpId:string;fetchImpl:typeof fetch}):Promise<WalletEnrollment>;
@@ -21,25 +26,31 @@ export type WalletPairingRuntime=Readonly<{
  approveBankFinancialWalletOffer(input:{walletWebAuthn:WalletEnrollment;fundedAtKaiUPulse:string;
   offer:{applicationId:string;sourceArtifactSha256:string;allocationId:string;conversationId:string;recipientUserId:string;
     recipientKeyId:string;recipientRecordSignerPublicKey:string;amountUsdCents:string};
-  signOwner(challenge:string):Promise<ReceizIdentityLoginProof>;assert(request:FinancialWalletCustodyChallenge):Promise<unknown>;
- }):Promise<Readonly<{ownerConsent:ReceizIdentityLoginProof;assertion:Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>}>>;
+  signOwner(challenge:string,signCount?:string):Promise<ReceizIdentityLoginProof>;
+  assert(request:FinancialWalletCustodyChallenge,header?:FinancialWalletCounterHeader,verify?:(assertion:unknown)=>Promise<FinancialWalletCustodyAssertion>):Promise<unknown>;
+  readNextSignCount?(cursor:WalletCounterCursor):Promise<string>;
+ }):Promise<Readonly<{ownerConsent:ReceizIdentityLoginProof;assertion:Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>;signCount?:string}>>;
 }>;
 export type WalletRecipient = Readonly<{accountUid:string;ownerReceizId:string;conversationId:string;nearby:boolean}>;
 export type WalletDevice = Readonly<{
- keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;
+ keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;partialPayments?:boolean;sharedWalletCounter?:boolean;
+ verifyAssertion?(request:FinancialWalletCustodyChallenge,assertion:unknown):Promise<FinancialWalletCustodyAssertion>;
  recipients:readonly WalletRecipient[];
 }>;
 export type FinancialRelease=Readonly<{artifactSha256:string}>;
 export type FinancialExecutor=Readonly<{
  execute(input:{operationId:string;action:FinancialAction}):Promise<FinancialCommit|Readonly<{status:'not-committed';operationId:string}>>;
+ recoverWalletProof?(proof:Uint8Array):Promise<number|null>;
  current():Promise<{sourceArtifactSha256:string;headArtifactSha256:string|null;state:FinancialState;release?:FinancialRelease}>;
  resolve(operationId:string):Promise<FinancialCommit|null>;
  pending(afterSequence?:string,limit?:number):Promise<FinancialCommit[]>;
  release():Promise<FinancialRelease>;
 }>;
 export type FinancialExecutorOptions=Readonly<{source:FinancialSource;originals:FinancialOriginalStore;store:ReceizAdmissionStore;signOwner(challengeText:string):Promise<ReceizIdentityLoginProof>;signRecord(bytes:Uint8Array):Promise<Uint8Array>;
- assertWalletCustody?(request:FinancialWalletCustodyChallenge):Promise<FinancialWalletCustodyAssertion>;kai?:()=>string}>;
+ assertWalletCustody?(request:FinancialWalletCustodyChallenge,header?:FinancialWalletCounterHeader):Promise<FinancialWalletCustodyAssertion>;
+ readWalletCounterEvents?(cursor:WalletCounterCursor):Promise<readonly FinancialWalletCounterEvent[]>;kai?:()=>string}>;
 export type LocalFinancialRuntime=Readonly<{
+ createWalletAdmissionStore?(input:{databaseName:string;namespace:string}):ReceizAdmissionStore;
  admitReceizAccountFinancialSource(bytes:Uint8Array):Promise<FinancialSource>;
  readReceizAccountFinancialWalletProof(bytes:Uint8Array):FinancialWalletProof;
  receiveReceizAccountFinancialWalletProof(input:FinancialWalletProof&{accountUserId:string;ownerKeyId:string},options:{originals:FinancialOriginalStore}):Promise<FinancialSource>;

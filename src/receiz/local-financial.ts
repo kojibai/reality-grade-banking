@@ -13,10 +13,13 @@ export type LocalFinancialSessionOptions=Readonly<{
  originals:ExecutorOptions['originals'];store?:ExecutorOptions['store'];
  signOwner:ExecutorOptions['signOwner'];signRecord:ExecutorOptions['signRecord'];
  assertWalletCustody?:ExecutorOptions['assertWalletCustody'];
+ readWalletCounterEvents?:ExecutorOptions['readWalletCounterEvents'];
  bindWalletDevice?(device: WalletDevice, assert: (request:FinancialWalletCustodyChallenge)=>Promise<FinancialWalletCustodyAssertion>):NonNullable<ExecutorOptions['assertWalletCustody']>;
  publish(batch:FinancialPublication):Promise<unknown>;
- publishOwnerRelease?(input:Readonly<{allocationId:string;original:Uint8Array}>):Promise<unknown>;
- publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array}>):Promise<unknown>;
+ publishOwnerRelease?(input:Readonly<{allocationId:string;original:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
+ publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
+ publishSentWalletProof?(proof:Uint8Array):Promise<unknown>;
+ publishPeerPayment?(input:Readonly<{walletProof:Uint8Array;receivingAllocationId:string}>):Promise<unknown>;
  assertOpen():void;online():boolean;
  /** Optional host lifecycle in place of the browser's connection events. */
  subscribeReconnect?(listener:()=>void):()=>void;
@@ -26,7 +29,7 @@ export type LocalFinancialSessionOptions=Readonly<{
  Readonly<{sourceBytes:Uint8Array;receivedWallet?:never}>
  |Readonly<{sourceBytes?:never;receivedWallet:Readonly<{proofBytes:Uint8Array;ownerKeyId:string}>}>
 );
-function subscribeBrowserReconnect(listener:()=>void){
+export function subscribeBrowserReconnect(listener:()=>void){
  const page=globalThis.window;
  if(!page)return;
  const resumed=()=>{if(page.document.visibilityState==='visible')listener();};
@@ -67,23 +70,27 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  // Persist only SDK admission coordinates here. Complete Originals remain in
  // the existing private custody port, and financial truth still comes from them.
  const protectedWallet=source.sourceFamily==='native-wallet-reserve';
- const store=input.store??(await loadReceiz()).createReceizBrowserAdmissionStore({
+ const storeScope={
   databaseName:'receiz-bankeiz-wallet-admission',namespace:protectedWallet?'wallet:protected':`wallet:${source.artifactSha256}`,
- });
+ };
+ const store=input.store??(protectedWallet&&runtime.createWalletAdmissionStore
+  ?runtime.createWalletAdmissionStore(storeScope):(await loadReceiz()).createReceizBrowserAdmissionStore(storeScope));
  input.assertOpen();
  const kai=input.kai??runtime.financialKaiNow;
  const device=input.bindWalletDevice&&runtime.bankFinancialWalletDevice?.(source);
+ const partialPayments=!!(device&&device.partialPayments);
  let assertWalletCustody=input.assertWalletCustody;
  if(input.bindWalletDevice){
   if(!device||!runtime.assertBankFinancialWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
   const assert=runtime.assertBankFinancialWalletDevice;
-  assertWalletCustody=input.bindWalletDevice(device,request=>{
+  assertWalletCustody=input.bindWalletDevice(device,async request=>{
    open();
    if(request.credentialIdB64u!==device.credentialIdB64u)throw Error('BANK_WALLET_DEVICE_MISMATCH');
-   return assert({...request,origin:device.origin,rpId:device.rpId});
+   const assertion=await assert({...request,origin:device.origin,rpId:device.rpId});
+   return device.verifyAssertion?device.verifyAssertion(request,assertion):assertion;
   });
  }
- const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,kai});
+ const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
  const publisher=incoming?null:await runtime.createReceizAccountFinancialPublisher({
   source,executor,store,originals:input.originals,...(protectedWallet?{batchSize:1}:{}),
   async publish(batch){
@@ -101,20 +108,44 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   },
  });
  try{input.assertOpen();}catch(error){publisher?.dispose();throw error;}
- let closed=false,scheduled=false,peerPublished=false,ownerPublished=false,publication:ReturnType<NonNullable<typeof publisher>['flush']>|undefined;
- const deliverPeer=input.publishPeerRelease;
- const canPublish=!!publisher||!!(heldPeerProof&&deliverPeer);
+ let closed=false,scheduled=false,peerSynced=false,peerPublished=false,ownerPublished=false,publication:ReturnType<NonNullable<typeof publisher>['flush']>|undefined;
+ const deliverPeer=input.publishPeerRelease,syncPeer=partialPayments?input.publishPeerPayment:undefined;
+ const syncSent=partialPayments?input.publishSentWalletProof:undefined;
+ let lastSentSync:string|undefined,sentSyncRunning=false,sentSyncQueued=false;
+ const canPublish=!!publisher||!!(heldPeerProof&&(deliverPeer||syncPeer));
  function open(){input.assertOpen();if(closed)throw Error('BANK_LOCAL_FINANCIAL_CLOSED');}
+ async function releaseContinuity(sequence:string){
+  if(!partialPayments)return {};
+  const commits=await executor.pending('0',64);
+  if(BigInt(sequence)!==BigInt(commits.length))throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
+  const financialOriginals=await Promise.all(commits.map(async ({operation})=>{
+   const original=await input.originals.read(operation.artifactSha256);
+   if(!original)throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
+   return original;
+  }));
+  open();
+  return {financialOriginals};
+ }
  async function flushPeer():ReturnType<NonNullable<typeof publisher>['flush']>{
   if(peerPublished)return {status:'published'};
-  if(!peerRoot||!heldPeerProof||!deliverPeer||!input.online())return {status:'pending'};
+  if(!peerRoot||!heldPeerProof||!input.online())return {status:'pending'};
   try{
+   if(syncPeer&&!peerSynced){
+    const response=await syncPeer({walletProof:heldPeerProof.slice(),receivingAllocationId:source.allocationId});
+    open();
+    const ack=response as Record<string,unknown>|null;
+    if(ack?.schema!=='receiz.bank.wallet-peer-sync-ack.v1'||ack.receivingAllocationId!==source.allocationId
+     ||ack.paymentArtifactSha256!==source.artifactSha256||typeof ack.adoptionArtifactSha256!=='string'
+     ||!/^[a-f0-9]{64}$/u.test(ack.adoptionArtifactSha256))return {status:'pending'};
+    peerSynced=true;
+   }
    const {release,state}=await executor.current();
    open();
-   // Terminal custody must already be released locally. A reconnect never
-   // requests a signature or credits a hop that has already spent onward.
-   if(!release||state.sequence!=='0'||!input.online())return {status:'pending'};
-   const ack=await deliverPeer({walletProof:heldPeerProof.slice(),releaseOriginal:runtime.exportReceizAccountFinancialRelease(release)});
+   if(!release)return {status:peerSynced?'published':'pending'};
+   // Moving balance out of device custody still requires its signed handback.
+   if(!deliverPeer||(!partialPayments&&state.sequence!=='0')||!input.online())return {status:'pending'};
+   const ack=await deliverPeer({walletProof:heldPeerProof.slice(),releaseOriginal:runtime.exportReceizAccountFinancialRelease(release),
+    ...await releaseContinuity(state.sequence)});
    open();
    if(!ack||typeof ack!=='object')return {status:'pending'};
    const facts=ack as Record<string,unknown>;
@@ -126,11 +157,13 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   }catch{return {status:'pending'};}
  }
  async function flushOwner(){
-  const result=await publisher!.flush();
-  if(result.status!=='published'||!input.publishOwnerRelease||!input.online()||ownerPublished)return result;
+  const result=partialPayments?{status:'published' as const}:await publisher!.flush();
+  if(result.status!=='published'||ownerPublished)return result;
+  if(!input.publishOwnerRelease||!input.online())return partialPayments?{status:'pending' as const}:result;
   try{
-   const {release}=await executor.current();open();if(!release)return result;
-   const ack=await input.publishOwnerRelease({allocationId:source.allocationId,original:runtime.exportReceizAccountFinancialRelease(release)}) as {status?:string;artifactSha256?:string};
+   const {release,state}=await executor.current();open();if(!release)return partialPayments?{status:'pending' as const}:result;
+   const ack=await input.publishOwnerRelease({allocationId:source.allocationId,original:runtime.exportReceizAccountFinancialRelease(release),
+    ...await releaseContinuity(state.sequence)}) as {status?:string;artifactSha256?:string};
    if(ack?.status!=='released'||ack.artifactSha256!==release.artifactSha256)return {status:'pending' as const};
    ownerPublished=true;return result;
   }catch{return {status:'pending' as const};}
@@ -151,11 +184,33 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   scheduled=false;
   if(input.online())void flushPublication();
  }
+ function syncSentProof(){
+  if(!syncSent||closed||!input.online())return;
+  if(sentSyncRunning){sentSyncQueued=true;return;}
+  sentSyncRunning=true;
+  void (async()=>{
+   const commits=await executor.pending('0',64);
+   const latest=[...commits].reverse().find(({operation})=>operation.action.kind==='send'&&operation.action.nearby===true);
+   if(!latest||latest.operation.artifactSha256===lastSentSync)return;
+   open();
+   if(!input.online())return;
+   const proof=runtime.exportReceizAccountFinancialWalletProof(source,latest);
+   const ack=await syncSent(proof) as Record<string,unknown>|null;
+   open();
+   if(ack?.schema==='receiz.bank.wallet-peer-sync-ack.v1'&&ack.paymentArtifactSha256===latest.operation.artifactSha256
+    &&typeof ack.adoptionArtifactSha256==='string'&&/^[a-f0-9]{64}$/u.test(ack.adoptionArtifactSha256))
+    lastSentSync=latest.operation.artifactSha256;
+  })().catch(()=>{}).finally(()=>{
+   sentSyncRunning=false;
+   if(sentSyncQueued){sentSyncQueued=false;syncSentProof();}
+  });
+ }
  function nudge(){
+  syncSentProof();
   if(!canPublish||closed||scheduled||!input.online())return;
   scheduled=true;queueMicrotask(runScheduledPublication);
  }
- const unsubscribe=canPublish?(input.subscribeReconnect??subscribeBrowserReconnect)(nudge):undefined;
+ const unsubscribe=canPublish||syncSent?(input.subscribeReconnect??subscribeBrowserReconnect)(nudge):undefined;
  nudge();
  return Object.freeze({
   async preview(action:FinancialAction){
@@ -173,7 +228,19 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    }
    return result;
   },
+  async recoverWalletProof(proof:Uint8Array){
+   open();
+   if(!protectedWallet||!executor.recoverWalletProof)return null;
+   const recovered=await executor.recoverWalletProof(proof);
+   open();
+   if(recovered)nudge();
+   return recovered;
+  },
   sourceReference(){open();return {allocationId:source.allocationId,artifactSha256:source.artifactSha256};},
+  recoveryReference(){
+   open();
+   return partialPayments?{rootAllocationId:(peerRoot??source).allocationId,sourceArtifactSha256:source.artifactSha256}:null;
+  },
   walletDevice(){open();return device||null;},
   current(){open();return executor.current();},
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
