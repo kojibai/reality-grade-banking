@@ -1,5 +1,4 @@
 import {dailyMoneyKeys} from '../src/content/daily-money-stories.mjs';
-import {relative,resolve} from 'node:path';
 import {readFile,writeFile} from 'node:fs/promises';
 import {createServer} from 'vite';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -10,7 +9,7 @@ import {moneyExamples} from '../src/content/money-examples.mjs';
 import {transform} from 'esbuild';
 const styles=['src/styles/tokens.css','src/components/form-controls.css','src/styles/app.css','src/styles/features.css','src/components/kai-klok.css','src/features/messages/messages.css','src/features/ledger/ledger-inspector.css','src/features/ledger/ledger-value.css','src/features/vault/vault.css','src/features/deposit/deposit.css','src/features/account/payment-tools.css','src/features/account/merchant-counter.css','src/features/market/market.css'];
 export {scopeProductCss} from './scope-product-css.mjs';
-import {bundleCssFiles,scopeProductCss} from './scope-product-css.mjs';
+import {bundleCssFiles,scopeProductCss,previewStylesheets} from './scope-product-css.mjs';
 if(process.argv[1]?.endsWith('build-product-previews.mjs')){
  // Fixed reference examples must render identically on developer machines and CI.
  // This build-only process never changes the running app's local-time display.
@@ -21,8 +20,7 @@ if(process.argv[1]?.endsWith('build-product-previews.mjs')){
   const {prepareProposalExamplePdf}=await server.ssrLoadModule('/src/presentation/ProposalWorkflowExample.tsx'),proposalSamplePdf=await prepareProposalExamplePdf(),samplePdfBytes=Buffer.from(await proposalSamplePdf.arrayBuffer()),samplePdfPath='public/learn/proposal-example.pdf';
   if(process.argv.includes('--check')){if(!(await readFile(samplePdfPath)).equals(samplePdfBytes))throw Error('PROPOSAL_EXAMPLE_PDF_OUT_OF_DATE');}else await writeFile(samplePdfPath,samplePdfBytes);
   const {InlineOpening}=await server.ssrLoadModule('/src/components/InlineOpening.tsx'),signingIndicator=renderToStaticMarkup(createElement(InlineOpening,{compact:true,label:'Signing Original'}));
-  const importedStyles=[...server.environments.ssr.moduleGraph.idToModuleMap.values()].map(module=>module.file).filter(file=>file?.endsWith('.css')&&file.startsWith(resolve('src')+'/')).map(file=>relative(process.cwd(),file)).filter(file=>!styles.includes(file)).sort();
-  const previewStyles=[...styles,...new Set(importedStyles)];
+  const previewStyles=previewStylesheets(server,styles);
   const {paymentQr,paymentQrPath}=await server.ssrLoadModule('/src/receiz/payment-qr.ts');
   const screens={};const now=Date.now;Date.now=()=>Date.parse('2026-10-20T12:00:00Z');
   try{for(const [name,example,financialStage] of [...productScreenNames.map(name=>[name,undefined]),...Object.keys(moneyExamples).map(key=>['messages',key]),...['account','receive','record'].map(name=>[name,'action-followthrough']),...dailyMoneyKeys.flatMap(key=>[['account',key,'before'],['account',key,'after']])]){let html=renderToStaticMarkup(createElement(ProductScreen,{screen:name,example,financialStage,proposalSamplePdf}));

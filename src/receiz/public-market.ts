@@ -265,19 +265,7 @@ export function readPublicProofPresentation(input:unknown):PublicMarketItem|null
  // Only this module's immutable result qualifies; a claimed digest does not.
  const freeze=(value:object)=>{for(const child of Object.values(value))if(child&&typeof child==='object'&&!Object.isFrozen(child))freeze(child);Object.freeze(value);};freeze(item);publicProofPresentations.add(item);return item;
 }
-/** Reuse separately selected Sports rows without reopening their operands. */
-export function retainPublicMarketSports(catalog:PublicMarketCatalog,held?:PublicMarketCatalog|null):PublicMarketCatalog{
-  // A Showcase membership response carries Originals only. Collectibles are
-  // selected independently and remain available while that operand refreshes.
-  const heldSports = held?.items.filter(item => item.category === 'sports');
-  if (held && heldSports?.length) {
-    const selected = new Set(catalog.items.map(item => item.assetId.toLowerCase()));
-    catalog = { ...catalog, items: [...catalog.items, ...heldSports.filter(item => !selected.has(item.assetId.toLowerCase()))],
-      sportsCoverage: held.sportsCoverage, sportsObservedAt: held.sportsObservedAt,
-      sportsSealedBirthsObservedAt: held.sportsSealedBirthsObservedAt, sportsHistorySnapshot: held.sportsHistorySnapshot };
-  }
-  return catalog;
-}
+export {retainPublicMarketSports} from './market-projection/catalog-sports.js';
 /** A thinner public refresh cannot erase metadata already held for the same
  * still-public account. An absent/rebound owner never inherits another head. */
 export function retainPublicProfileHeaders(catalog:PublicMarketCatalog,previous:PublicMarketCatalog|null|undefined):PublicMarketCatalog{
@@ -478,7 +466,7 @@ export async function fetchPublicQuotes(signal?:AbortSignal,afterTrade?:string,a
  if(afterPublication)pendingPublication=afterPublication;
  const publication=afterPublication??(nonce?undefined:pendingPublication),trade=nonce??pendingTrade,key=publication?'publication:'+publication:trade??'';let read=quoteReads.get(key);
  if(!read||read.controller.signal.aborted||read.epoch!==quoteEpoch){
-  const controller=new AbortController(),epoch=++quoteEpoch;
+  const controller=new AbortController(),epoch=++quoteEpoch,acceptedBefore=retainedQuotes;
   const query=publication?'?afterPublication='+publication:trade?'?afterTrade='+trade:'';
   const pending=fetch('/api/bank/public-market/quotes'+query,{signal:controller.signal,credentials:'omit'}).then(async response=>{
    if(!response.ok)throw new Error('Public quotes could not be refreshed.');
@@ -491,6 +479,11 @@ export async function fetchPublicQuotes(signal?:AbortSignal,afterTrade?:string,a
      for(const listener of quoteListeners)listener();
     }
    }return retainedQuotes&&(epoch!==quoteEpoch||olderQuoteSnapshot(value,retainedQuotes.snapshot))?retainedQuotes.snapshot:value;
+  }).catch(error=>{
+   // A normal observation can settle from a newer response this document
+   // already accepted. Exact trade and publication checks keep their result.
+   if(!trade&&!publication&&!controller.signal.aborted&&epoch!==quoteEpoch&&retainedQuotes&&retainedQuotes!==acceptedBefore)return retainedQuotes.snapshot;
+   throw error;
   }).finally(()=>{if(quoteReads.get(key)?.epoch===epoch)quoteReads.delete(key);});
   read={controller,epoch,pending,consumers:new Set()};quoteReads.set(key,read);
  }

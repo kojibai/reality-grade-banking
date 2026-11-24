@@ -1,5 +1,17 @@
+import {relative,resolve} from 'node:path';
 import postcss from 'postcss';
 import {build} from 'esbuild';
+
+/** Include real component imports with the build-only base styles. */
+export function previewStylesheets(server,base){
+ const sourceRoot=resolve('src')+'/';
+ const imported=[...server.environments.ssr.moduleGraph.idToModuleMap.values()]
+  .map(module=>module.file)
+  .filter(file=>file?.endsWith('.css')&&file.startsWith(sourceRoot))
+  .map(file=>relative(process.cwd(),file))
+  .sort();
+ return [...new Set([...base,...imported])];
+}
 
 /** Resolve the actual local stylesheet closure before scoping preview rules.
  * Assets remain ordinary URLs; this build-only pass never loads their bytes. */
