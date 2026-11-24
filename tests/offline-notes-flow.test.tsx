@@ -337,3 +337,18 @@ test('an outstanding review keeps its selected account when an already visible s
   expect(create).toHaveBeenCalledExactlyOnceWith('10000',undefined,chosen.userId);
  }finally{act(()=>root.unmount());host.remove();}
 });
+
+test('starts Bankeiz connected Note creation with an addressed recipient and offers protected open creation explicitly', async () => {
+ const review=vi.fn(),create=vi.fn();
+ const identity={offlineNotes:async()=>({addressedCreationByDefault:true,savedNotes:async()=>[],pending:async()=>null,review,create})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try {
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(host.querySelector<HTMLInputElement>('input[name="note-recipient"]:checked')?.parentElement?.textContent).toContain('Specific person');
+  await act(async()=>click(host,'Review note'));
+  expect(review).not.toHaveBeenCalled();
+  expect(create).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('Choose an existing Receiz username');
+  expect(host.textContent).toContain('Open Note (qualified device)');
+ } finally {act(()=>root.unmount());}
+});

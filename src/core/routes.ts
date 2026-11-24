@@ -7,6 +7,7 @@ export function routeHash(panel: Panel, action: UIAction | null = null): string 
   if(action?.kind==='profile'&&action.vaults==='create')return '#account/profile/vaults/create';
   if(action?.kind==='balance'&&action.focus==='settlement')return `#${panel}/balance/settlement`;
   if (!action) return `#${panel}`;
+  if(action.kind==='send'&&action.nearbyGuide)return `#${panel}/send/nearby`;
   if(action.kind==='send'&&action.recipient)return `#${panel}/send/to/${encodeURIComponent(action.recipient.userId)}/${encodeURIComponent(action.recipient.username)}`;
   if(action.kind==='market-trade')return `#${panel}/market-trade/${encodeURIComponent(action.marketItemId)}/${action.side}`;
   const id = 'assetId' in action ? action.assetId : 'depositId' in action ? action.depositId : undefined;
@@ -21,6 +22,7 @@ export function parseRoute(hash: string): ConsoleRoute {
     if(kind==='market-trade'&&id&&['buy','sell'].includes(mode))return{panel,sheet:{kind:'market-trade',marketItemId:id,side:mode as 'buy'|'sell'}};
     if (kind === 'trade' && id && ['buy', 'sell'].includes(mode)) return { panel, sheet: { kind: 'trade', assetId: id, mode: mode as 'buy' | 'sell' } };
     if (kind === 'pending' && id) return { panel, sheet: { kind: 'pending', depositId: id } };
+    if(kind==='send'&&id==='nearby')return {panel,sheet:{kind:'send',nearbyGuide:{}}};
     if(kind==='send'&&id==='to')return {panel,sheet:{kind:'send',...(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(mode??'')&&/^[a-z0-9_]{3,24}$/.test(recipientUsername??'')?{recipient:{userId:mode,username:recipientUsername}}:{})}};
     if(kind==='messages')return {panel,sheet:{kind:'messages',...(id==='business'?{business:true as const}:{})}};
     if(kind==='profile')return {panel,sheet:{kind:'profile',...(id==='vaults'&&mode==='create'?{vaults:'create' as const}:{})}};

@@ -25,13 +25,13 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
     case 'OFFLINE_NOTE_CUSTODY_BACKED_UP':
     case 'OFFLINE_NOTE_CUSTODY_BACKUP_STATE':
       return device('This credential can sync across devices',
-        'Offline Wallet needs a credential that stays on one device. Choose a device-bound credential if your device offers one.',
+        'Offline Cash needs a credential that stays on one device. Choose a device-bound credential if your device offers one.',
         'A built-in WebAuthn credential with backup eligibility and backup state both disabled');
     case 'OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED':
     case 'OFFLINE_NOTE_CUSTODY_ATTESTATION_CHAIN_REQUIRED':
     case 'OFFLINE_NOTE_CUSTODY_ATTESTED_CREDENTIAL_REQUIRED':
       return device('Device attestation was missing',
-        'Wallet didn’t receive the device evidence needed to protect offline funds. Try in your regular browser window with the browser and operating system up to date.',
+        'Wallet didn’t receive the device evidence needed to protect Offline Cash. Try in your regular browser window with the browser and operating system up to date.',
         'Direct WebAuthn attestation with a verifiable device certificate chain');
     case 'OFFLINE_NOTE_CUSTODY_ATTESTATION_FORMAT_UNSUPPORTED':
     case 'OFFLINE_NOTE_CUSTODY_P256_PUBLIC_KEY_REQUIRED':
@@ -47,7 +47,7 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
         'Try again and complete every device prompt. If the check still stops, ask about the counter this device supplies.',
         'A WebAuthn signing counter that advances by one for each approved assertion');
     case 'BANK_EXECUTION_DEVICE_LOCK_REQUIRED':
-      return device('Offline Wallet needs browser locking',
+      return device('Offline Cash needs browser locking',
         'This browser session couldn’t lock the shared Wallet state while setting up offline funds. Open Bankeiz in an up-to-date browser and try again.',
         'Web Locks API support for websites');
     case 'OFFLINE_NOTE_CUSTODY_INDEXEDDB_UNAVAILABLE':

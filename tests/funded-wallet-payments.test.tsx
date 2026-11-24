@@ -271,10 +271,11 @@ test('offline setup explains a specific device refusal and keeps service issues 
     offlineBalance: async () => ({ availableUsdCents: '0', movingBackUsdCents: null }),
     prepareOffline,
   };
-  const identity = { fundedWallet: async () => wallet } as unknown as OpenIdentity;
+  const identity = { fundedWallet: async () => wallet, nearbyWalletReceive:vi.fn() } as unknown as OpenIdentity;
+  const onSendNearby=vi.fn();
   document.body.append(host);
   try {
-    await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={() => {}}/>));
+    await act(async () => root.render(<FundedWalletBalance identity={identity} onRefresh={() => {}} onSendNearby={onSendNearby}/>));
     await click(host, 'Enable more funds offline');
     const input = host.querySelector<HTMLInputElement>('input[aria-label="Amount to enable offline"]')!;
     await act(async () => {
@@ -282,7 +283,11 @@ test('offline setup explains a specific device refusal and keeps service issues 
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await click(host, 'Enable offline');
-    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('Device attestation was missing');
+    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('Pay nearby with your balance');
+    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('connect to confirm');
+    await click(host,'Send nearby');
+    expect(onSendNearby).toHaveBeenCalledOnce();
+    expect(host.querySelector('.wallet-balance-notice details a')?.getAttribute('href')).toBe('/conformance/#device-evidence');
     expect(host.querySelector('.wallet-balance-notice details')?.textContent).toContain('Direct WebAuthn attestation');
     expect(host.querySelector('.wallet-balance-notice code')?.textContent).toBe('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');
     expect(host.querySelector('.error-message')).toBeNull();

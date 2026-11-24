@@ -7,6 +7,7 @@ export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'
 export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';depositError?:string;noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
 export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
 export interface BankOfflineNotes {
+  addressedCreationByDefault?: true;
   exportNote?(id:string):Promise<BankNoteImage>;
   exportImage?(image:Uint8Array,noteId:string):Promise<Uint8Array>;
   receivedNotes?():Promise<BankNoteDepositResult[]>;

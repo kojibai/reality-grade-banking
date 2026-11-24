@@ -177,3 +177,23 @@ it('Receive displays and copies the complete held name while the old public loca
   expect(identity.username).toBe('receiz_'+full);expect(identity.accountUsername?.()).toBe(legacy);
  }finally{act(()=>root.unmount());}
 });
+it('returns an unprepared offline Note attempt to Send with nearby payment instructions',async()=>{
+ vi.stubGlobal('navigator',{onLine:false});
+ const identity={nearbyWalletReceive:vi.fn(),offlineNotes:async()=>({
+   addressedCreationByDefault:true,
+   savedNotes:async()=>[],
+   pending:async()=>null,
+   review:async()=>{throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');}
+ })} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ const button=(text:string)=>[...host.querySelectorAll('button')].find(element=>element.textContent?.trim()===text)!;
+ try{
+  await act(async()=>root.render(<LiveSend identity={identity} wallet={null} onClose={()=>{}}/>));
+  await act(async()=>button('Create note').click());
+  await act(async()=>button('Review note').click());
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Amount to send"]')?.value).toBe('100');
+  expect(host.querySelector('[role="status"]')?.textContent).toContain('Scan the recipient’s QR');
+  expect(host.textContent).toContain('they connect to confirm');
+  expect(host.textContent).not.toContain('Create a note.');
+ }finally{act(()=>root.unmount());}
+});

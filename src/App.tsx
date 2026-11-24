@@ -119,7 +119,7 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
       void account.identity.fundedWallet().then(wallet=>wallet.unlock()).catch(()=>{});
   };
   const open = (action: UIAction) => {
-    if(action.kind==='send'||action.kind==='receive')unlockWallet();
+    if(action.kind==='receive'||(action.kind==='send'&&!action.nearbyGuide))unlockWallet();
     history.pushState({ panel, sheet: action, overlayEntry: true }, '', routeHash(panel, action)); setSheet(action);
   };
   const consumeVaultsEntry=useCallback(()=>{const route=parseRoute(location.hash);if(location.pathname!=='/'||route.sheet?.kind!=='profile'||route.sheet.vaults!=='create')return;const action:UIAction={kind:'profile'};history.replaceState({...history.state,panel:route.panel,sheet:action},'',location.search+routeHash(route.panel,action));setSheet(action);},[]);

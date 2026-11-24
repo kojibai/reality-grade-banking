@@ -16,7 +16,7 @@ import {ProfileVotingSheet} from '../voting/ProfileVotingSheet';
 import './identity-governance.css';
 const PrivateVaults=lazy(()=>import('../vault/VaultExperience').then(module=>({default:module.VaultExperience})));
 
-export function IdentityProfile({ identity, onForget, onRefresh, active=true, accountUid, vaultsEntry, onVaultsEntryConsumed }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; accountUid?:string|null; vaultsEntry?:'create'; onVaultsEntryConsumed?():void }) {
+export function IdentityProfile({ identity, onForget, onRefresh, active=true, accountUid, vaultsEntry, onVaultsEntryConsumed, onUseSendNearby }: { identity: OpenIdentity; onForget: () => Promise<void>; onRefresh: () => void; active?:boolean; accountUid?:string|null; vaultsEntry?:'create'; onVaultsEntryConsumed?():void; onUseSendNearby?(amount:string):void }) {
   const [backup, setBackup] = useState(false), [removalError, setRemovalError] = useState('');
   const [backupBusy,setBackupBusy]=useState<OpenIdentity|null>(null),[backupError,setBackupError]=useState<{owner:OpenIdentity;message:string}|null>(null);
   const backupPending=useRef<OpenIdentity|null>(null);
@@ -132,7 +132,7 @@ export function IdentityProfile({ identity, onForget, onRefresh, active=true, ac
       onClose={()=>setGovernanceOpen(null)}
       profile={{uid:governanceUid,name:identityProfileName(identity),username:knownName??undefined,publicName:profileName??undefined,ownerIdentity:identity}}
     />}
-    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&childSheetActive} initialMode={vaultsOpen.mode} identity={identity} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
+    {vaultsOpen?.owner===identity&&<Suspense fallback={<p className="body-copy small-copy" role="status"><InlineOpening label="Preparing your vaults"/></p>}><PrivateVaults active={active&&childSheetActive} initialMode={vaultsOpen.mode} identity={identity} onUseSendNearby={onUseSendNearby} onRefresh={onRefresh} onClose={()=>setVaultsOpen(null)}/></Suspense>}
     <AccountEmail identity={identity}/>
     <ProofPortabilityPanel identity={identity} />
     <BankConnection identity={identity} onRefresh={onRefresh} />

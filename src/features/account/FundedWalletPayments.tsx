@@ -12,7 +12,7 @@ import { WalletPaymentReview } from './WalletSendOperation';
 import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
 import { encodeNearbyWalletPayment, isNearbyWalletPayment, type NearbyWalletPayment } from '../../receiz/wallet-nearby-consent';
 import { walletBalanceNotice, type WalletBalanceNotice } from './wallet-balance-notice';
-import './wallet-balance-notice.css';
+import {OfflineCashOptions} from './OfflineCashOptions';
 
 const walletError=(cause:unknown)=>{
   if(cause instanceof Error){
@@ -45,7 +45,7 @@ const fundedWalletUnavailable=(cause:unknown)=>cause instanceof Error
 
 type OfflineBalance = Awaited<ReturnType<Awaited<ReturnType<NonNullable<OpenIdentity['fundedWallet']>>>['offlineBalance']>>;
 
-export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;onRefresh:()=>void}){
+export function FundedWalletBalance({identity,onRefresh,onSendNearby}:{identity:OpenIdentity;onRefresh:()=>void;onSendNearby?:()=>void}){
   const [balance,setBalance]=useState<OfflineBalance|null>(null);
   const [online,setOnline]=useState(()=>navigator.onLine!==false);
   const [editing,setEditing]=useState<'add'|'moveBack'|null>(null),[amount,setAmount]=useState('');
@@ -67,6 +67,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
     return()=>{active=false;window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};
   },[identity]);
   const movingBack=balance?.movingBackUsdCents;
+  const canSendNearby=!!identity.nearbyWalletReceive;
   function edit(next:NonNullable<typeof editing>){
     setEditing(editing===next?null:next);setAmount('');setMessage('');setNotice(null);
   }
@@ -113,18 +114,7 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
       </form>}
     {!online&&<p className="body-copy small-copy">Connect to enable offline funds or move them back.</p>}
     {message&&<p role="status" className="body-copy">{message}</p>}
-    {notice&&<aside className="wallet-balance-notice">
-      <header role="status"><strong>{notice.title}</strong><p>{notice.message}</p>
-        {notice.support&&<p>{identity.deferredWalletSend
-          ?'You can still use regular Send and Receive. If you’re offline, save a payment to a known account and Wallet will send it when you reconnect.'
-          :'You can keep using online Send and Receive.'}</p>}
-      </header>
-      {notice.support&&<details><summary>Device requirements and support</summary>
-        <p>Ask your browser or device provider whether your model and software support {notice.support.requirement}.</p>
-        <p className="small-copy">Reference code <code>{notice.support.code}</code></p>
-      </details>}
-      {notice.bankeizHelp&&<a href="/help/">Bankeiz help</a>}
-    </aside>}
+    {notice&&<OfflineCashOptions notice={notice} canSendNearby={canSendNearby} onSendNearby={onSendNearby}/>}
   </section>;
 }
 

@@ -15,6 +15,7 @@ export function noteError(cause:unknown):string{
  if(stage?.stage==='note-image-export')return 'The Note image could not be completed. Your original proof is preserved. Reopen the Note to try again.';
  if(code==='BANK_NOTE_ALREADY_DEPOSITED'||code==='wallet_note_already_claimed')return 'This Note has already been deposited.';
  if(code==='BANK_NOTE_COMPATIBILITY_SCHEMA_REQUIRED')return 'Note creation is not yet enabled on the account service. Your saved Notes and any pending attempt remain preserved.';
+ if(code==='BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL')return 'Choose a recipient for this Note because it uses both Reserve and Settlement.';
  if(code==='BANK_NOTE_RECIPIENT_REQUIRED'||code==='BANK_NOTE_RECIPIENT_UNAVAILABLE')return 'Choose an existing Receiz username for this Note.';
  if(code==='BANK_NOTE_RECIPIENT_MISMATCH'||code==='BANK_CONNECTED_NOTE_RECIPIENT_MISMATCH')return 'This Note is addressed to a different account. Open that account to deposit it.';
  if(code==='BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE')return 'This saved Note uses its original deposit terms. Keep its exact recovery path.';

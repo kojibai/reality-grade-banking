@@ -19,3 +19,9 @@ it('roundtrips an explicit nested Create Vault entry without changing ordinary i
 it('round-trips a direct Settlement dropdown target inside the existing balance sheet',()=>{
  const action={kind:'balance' as const,focus:'settlement' as const};expect(routeHash('account',action)).toBe('#account/balance/settlement');expect(parseRoute('#account/balance/settlement')).toEqual({panel:'account',sheet:action});expect(routeHash('account',{kind:'balance'})).toBe('#account/balance');expect(parseRoute('#account/balance')).toEqual({panel:'account',sheet:{kind:'balance'}});
 });
+
+it('restores the nearby payment guide through navigation without storing payment details',()=>{
+ const sheet={kind:'send' as const,nearbyGuide:{}};
+ expect(routeHash('account',sheet)).toBe('#account/send/nearby');
+ expect(parseRoute('#account/send/nearby')).toEqual({panel:'account',sheet});
+});

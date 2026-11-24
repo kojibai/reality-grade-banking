@@ -49,6 +49,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
   review,
   async prepare(amountUsdCents,requested,recipientUserId){
    if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+   if(!recipientUserId)throw Error('BANK_NOTE_RECIPIENT_REQUIRED');
    if(!heldReview||heldReview.amount!==amountUsdCents||requested!==undefined&&heldReview.funding.rail!==requested)await review(amountUsdCents,requested);
    const {quote,funding}=heldReview!,rail=funding.rail,rate=quote.usdPerPhiMicrocents;
    if(Date.now()>quote.expiresAtMs)throw Error('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');

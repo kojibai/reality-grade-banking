@@ -4,7 +4,7 @@ import {NoteVaultExperience} from './NoteVaultExperience';
 import {isNoteVaultImage} from '../../receiz/vault/export';
 
 /** Format hints only route input. Both readers independently admit its proofs. */
-export function VaultExperience(props:ComponentProps<typeof LegacyVaultExperience>){
+export function VaultExperience(props:ComponentProps<typeof LegacyVaultExperience>&{onUseSendNearby?(amount:string):void}){
  const [earlier,setEarlier]=useState<Uint8Array|null>(null);
  const [earlierSaved,setEarlierSaved]=useState(false);
  const modern=props.initialBytes?isNoteVaultImage(props.initialBytes):Boolean(props.identity?.noteVaults);

@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {createConnectedNoteApplication,type ConnectedNoteModule} from '../src/receiz/connected-note-application';
 import type {ReceizKeyFile} from '@receiz/sdk';
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});
+const recipient='33333333-3333-4333-8333-333333333333';
 function fixture(quoteOverrides:Record<string,string>={},loadModule?:()=>Promise<void>){
  vi.stubGlobal('navigator',{onLine:true});vi.stubGlobal('location',{origin:'https://bankeiz.com'});
  const uid='11111111-1111-4111-8111-111111111111',keyId='a'.repeat(64),noteId='22222222-2222-4222-8222-222222222222',op='b'.repeat(64),key={keyId}as ReceizKeyFile;
@@ -19,8 +20,8 @@ function fixture(quoteOverrides:Record<string,string>={},loadModule?:()=>Promise
 }
 it('seals the exported PNG before retaining it, so image failure resumes the funded Note without another debit',async()=>{
  const f=fixture(),seal=f.sealImage.mockRejectedValueOnce(Error('local seal interrupted')).mockResolvedValue(new Uint8Array([8,9]));
- await expect(f.runtime.create('200')).rejects.toThrow('local seal interrupted');
- const resumed=await f.runtime.create('200');expect([...resumed.image]).toEqual([8,9]);
+ await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('local seal interrupted');
+ const resumed=await f.runtime.create('200',undefined,recipient);expect([...resumed.image]).toEqual([8,9]);
  expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET','POST']);expect(f.createKey).toHaveBeenCalledOnce();expect(seal).toHaveBeenCalledTimes(2);
 });
 it.each([
@@ -29,23 +30,23 @@ it.each([
 ] as const)('reviews and issues automatic %s funding with the same one quote and no early debit',async(overrides,rail)=>{
  const f=fixture(overrides);
  const review=await f.runtime.review('200');expect(review.rail).toBe(rail);expect(await f.runtime.pending()).toBeNull();expect(f.createKey).not.toHaveBeenCalled();
- const note=await f.runtime.create('200');expect(note.rail).toBe(rail);expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET','POST']);
+ const note=await f.runtime.create('200',undefined,recipient);expect(note.rail).toBe(rail);expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET','POST']);
  if(rail==='composite')expect(note.fundingParts).toEqual({reserve:{amountUsdCents:'100',amountPhiMicro:'1000000'},settlement:{amountUsdCents:'100',amountPhiMicro:'1000000'}});
 });
 it('creates a connected Reserve Note with one account read and one write without device attestation, preserving original Reserve backing',async()=>{
- const f=fixture(),note=await f.runtime.create('200');expect(note.amountUsdCents).toBe('200');expect(f.wallet).not.toHaveBeenCalled();expect(f.request).toHaveBeenCalledTimes(2);expect(f.request.mock.calls[1][1].body).toMatchObject({action:'issue'});expect(JSON.stringify(f.request.mock.calls)).not.toContain('privateKey');expect(f.createKey).toHaveBeenCalledOnce();
+ const f=fixture(),note=await f.runtime.create('200',undefined,recipient);expect(note.amountUsdCents).toBe('200');expect(f.wallet).not.toHaveBeenCalled();expect(f.request).toHaveBeenCalledTimes(2);expect(f.request.mock.calls[1][1].body).toMatchObject({action:'issue'});expect(JSON.stringify(f.request.mock.calls)).not.toContain('privateKey');expect(f.createKey).toHaveBeenCalledOnce();
 });
 it('recovers the original issue before retrying after a lost response and never requotes or regenerates the Note key',async()=>{
  const f=fixture();const original=f.request.getMockImplementation()!;f.request.mockImplementationOnce(original).mockRejectedValueOnce(Error('lost'));
- await expect(f.runtime.create('200')).rejects.toThrow('lost');await f.runtime.create('200');
+ await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('lost');await f.runtime.create('200',undefined,recipient);
  expect(f.wallet).not.toHaveBeenCalled();expect(f.createKey).toHaveBeenCalledOnce();expect(f.request.mock.calls.map(c=>c[1].method)).toEqual(['GET','POST','GET','POST']);expect(f.request.mock.calls[3][1].body).toEqual(f.request.mock.calls[1][1].body);
 });
 it('refuses a changed signed funding response and retains the exact pending authorization',async()=>{
  const f=fixture();vi.mocked(f.module.verifyBankConnectedNoteFunding).mockResolvedValueOnce({kind:'funding',noteId:'foreign',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1',funding:{}}as any);
- await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_EXACT_RESUME_REQUIRED');expect(await f.runtime.pending()).not.toBeNull();expect(f.module.exportBankConnectedNoteImage).not.toHaveBeenCalled();
+ await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('BANK_NOTE_EXACT_RESUME_REQUIRED');expect(await f.runtime.pending()).not.toBeNull();expect(f.module.exportBankConnectedNoteImage).not.toHaveBeenCalled();
 });
 it('does not enter account transport or prepare a key for offline creation without prepared custody',async()=>{
- const f=fixture();vi.stubGlobal('navigator',{onLine:false});await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');expect(f.wallet).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();expect(f.request).not.toHaveBeenCalled();
+ const f=fixture();vi.stubGlobal('navigator',{onLine:false});await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');expect(f.wallet).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();expect(f.request).not.toHaveBeenCalled();
 });
 it('opens the exact raw connected handover retained by the receiving queue, as well as its PNG',async()=>{
  const {openConnectedAccountNote}=await import('../src/receiz/connected-note-application');
@@ -60,7 +61,7 @@ it.each(['before','during'] as const)('refuses an expired review %s prerequisite
  let now=Date.now();vi.spyOn(Date,'now').mockImplementation(()=>now);
  const f=fixture({},when==='during'?async()=>{now+=300001;}:undefined);
  await f.runtime.review('200');if(when==='before')now+=300001;
- await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
+ await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
  expect(f.createKey).not.toHaveBeenCalled();expect(await f.runtime.pending()).toBeNull();expect(f.request).toHaveBeenCalledOnce();
 });
 
@@ -71,12 +72,18 @@ it('refuses offline review before transport or custody work, without treating co
  expect(await f.runtime.pending()).toBeNull();
 });
 it('the self-deposit producer admits actual handover receiver binding and never invokes PNG/sealing',async()=>{
- const f=fixture();await f.runtime.create('200');const raw=new Uint8Array([7,8]);
+ const f=fixture();await f.runtime.create('200',undefined,'11111111-1111-4111-8111-111111111111');const raw=new Uint8Array([7,8]);
  (f.module as any).createBankConnectedNoteHandover=vi.fn(async()=>raw);
  vi.mocked(f.module.readBankConnectedNoteSource).mockResolvedValue({kind:'handover',noteId:'22222222-2222-4222-8222-222222222222',rail:'reserve',amountUsdCents:'200',amountPhiMicro:'1000000',receiverUserId:'11111111-1111-4111-8111-111111111111',receiverKeyId:'a'.repeat(64),redemptionDigest:'c'.repeat(64),terminalArtifactSha256:createHash('sha256').update(raw).digest('hex'),terminalSourceBytes:raw} as any);
  const result=await f.runtime.prepareSelfDeposit('22222222-2222-4222-8222-222222222222',new Uint8Array([4]));expect(result.sourceBytes).toEqual(raw);expect(f.module.exportBankConnectedNoteImage).toHaveBeenCalledOnce();expect(f.sealImage).toHaveBeenCalledOnce();
 });
 
+it('requires a recipient before quoting, generating a key or retaining a new connected Note',async()=>{
+ const f=fixture();
+ await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_RECIPIENT_REQUIRED');
+ expect(f.request).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();
+ expect(await f.runtime.pending()).toBeNull();
+});
 it('carries the chosen stable recipient in the existing signed issue and refuses a different recovered target',async()=>{
  const f=fixture(),recipient='33333333-3333-4333-8333-333333333333';
  const reviewed=await f.runtime.review('200',recipient);expect(reviewed.recipientUserId).toBe(recipient);

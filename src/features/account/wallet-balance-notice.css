@@ -13,3 +13,6 @@
 .wallet-balance-notice details, .wallet-balance-notice > a { display: block; margin-top: 9px; }
 .wallet-balance-notice summary { cursor: pointer; color: var(--bank-link,#244cdb); }
 .wallet-balance-notice code { overflow-wrap: anywhere; }
+.wallet-balance-notice > button { margin-top: 12px; }
+.wallet-balance-notice details ul { margin: 9px 0; padding-inline-start: 18px; color: var(--bank-text-secondary,#51677e); }
+.wallet-balance-notice details li + li { margin-top: 6px; }

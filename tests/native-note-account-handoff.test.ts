@@ -612,10 +612,29 @@ it('does not freeze an empty startup receiving queue to a fresh local genesis UI
  }finally{identity.dispose();vi.unstubAllGlobals();}
 });
 
-it('routes new online Note creation through connected composition without qualified custody registration',async()=>{
+const connectedNoteRecipient='33333333-3333-4333-8333-333333333333';
+
+it('routes new addressed online Note creation through connected composition without qualified custody registration',async()=>{
  fixture.connectedEnabled=true;noteEnrollment.mockRejectedValue(Error('ATTESTATION_MUST_NOT_RUN'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
- try{const notes=await identity.offlineNotes!();const result=await notes.create('100');expect(result).toMatchObject({noteId:'connected-note',consumption:'connection-required'});expect(fixture.connectedCreate).toHaveBeenCalledWith('100',undefined);expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(fixture.save).toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+ try{const notes=await identity.offlineNotes!();const result=await notes.create('100',undefined,connectedNoteRecipient);expect(result).toMatchObject({noteId:'connected-note',consumption:'connection-required'});expect(fixture.connectedCreate).toHaveBeenCalledWith('100',undefined,connectedNoteRecipient);expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(fixture.save).toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+});
+
+it('uses qualified custody for open Notes and refuses addressed creation while disconnected',async()=>{
+ fixture.connectedEnabled=true;
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{
+  const notes=await identity.offlineNotes!();
+  const locks={request:async(_name:string,_options:unknown,run:()=>Promise<unknown>)=>run()};
+  vi.stubGlobal('navigator',{onLine:false,locks});
+  await expect(notes.create('100',undefined,connectedNoteRecipient)).rejects.toThrow('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+  expect(fixture.connectedCreate).not.toHaveBeenCalled();
+  vi.stubGlobal('navigator',{onLine:true,locks});
+  await notes.create('100','reserve');
+  expect(noteEnrollment).toHaveBeenCalled();
+  expect(fixture.create).toHaveBeenCalledOnce();
+  expect(fixture.connectedCreate).not.toHaveBeenCalled();
+ }finally{identity.dispose();vi.unstubAllGlobals();}
 });
 
 it('locally cancels a retained unfunded registration attempt before connected creation without repeating enrollment',async()=>{
@@ -623,7 +642,7 @@ it('locally cancels a retained unfunded registration attempt before connected cr
  let state:Record<string,unknown>={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase:'preparing',intent:{noteId:'old-unfunded'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};
  vi.mocked(loadOfflineNoteState).mockImplementation(async()=>state);fixture.cancel.mockImplementation(async()=>{state={...state,create:null};});
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
- try{const result=await(await identity.offlineNotes!()).create('100');expect(result).toMatchObject({noteId:'connected-note',consumption:'connection-required'});expect(state.create).toBeNull();expect(fixture.cancel).toHaveBeenCalledOnce();expect(fixture.connectedCreate).toHaveBeenCalledOnce();expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+ try{const result=await(await identity.offlineNotes!()).create('100',undefined,connectedNoteRecipient);expect(result).toMatchObject({noteId:'connected-note',consumption:'connection-required'});expect(state.create).toBeNull();expect(fixture.cancel).toHaveBeenCalledOnce();expect(fixture.connectedCreate).toHaveBeenCalledOnce();expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
 });
 
 it('preserves a retained registration attempt when its canonical local cancellation refuses',async()=>{
@@ -631,7 +650,7 @@ it('preserves a retained registration attempt when its canonical local cancellat
  const state={schema:'receiz.bank.offline-notes-device.v1',keyId:(fixture.keyFile as sdk.ReceizKeyFile).keyId,uid:'connected-account',create:{phase:'preparing',intent:{noteId:'old-unfunded'},rail:'reserve',amountUsdCents:'100'},notes:{},deposits:{}};
  vi.mocked(loadOfflineNoteState).mockResolvedValue(state);fixture.cancel.mockRejectedValue(Error('BANK_NOTE_FUNDING_PENDING'));
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
- try{await expect((await identity.offlineNotes!()).create('100')).rejects.toThrow('BANK_NOTE_FUNDING_PENDING');expect(await loadOfflineNoteState(identity.binding)).toBe(state);expect(fixture.connectedCreate).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
+ try{await expect((await identity.offlineNotes!()).create('100',undefined,connectedNoteRecipient)).rejects.toThrow('BANK_NOTE_FUNDING_PENDING');expect(await loadOfflineNoteState(identity.binding)).toBe(state);expect(fixture.connectedCreate).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
 });
 
 it('recovers a persisted connected self-handover into the native receiving queue after interruption without requesting another receiver',async()=>{

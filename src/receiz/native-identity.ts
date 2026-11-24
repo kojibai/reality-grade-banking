@@ -1204,7 +1204,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={exportImage:noteImages.exportImage,exportNote:id=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
+    localNotes={addressedCreationByDefault:true,exportImage:noteImages.exportImage,exportNote:id=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
       if(await localConnectedNotes().hasNote(id))return localConnectedNotes().exportNote(id);
       const note=(await inventory.savedNotes()).find(note=>note.noteId===id);if(!note)throw Error('BANK_NOTE_SOURCE_REQUIRED');
       return{...note,image:await noteImages.exportImage(note.image,id)};
@@ -1255,13 +1255,18 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         if(pending){if(pending.amountUsdCents!==amount||pending.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
         if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
         if(!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
-        await connectedContext();return noteLock(()=>localConnectedNotes().review(amount,recipientUserId));
+        await connectedContext();
+        return noteLock(async()=>{
+          const reviewed=await localConnectedNotes().review(amount,recipientUserId);
+          if(!recipientUserId&&reviewed.rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');
+          return reviewed;
+        });
       })),
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
       create:(amount,rail,recipientUserId)=>action(()=>withAccountExecutionLock(async()=>{
         await assertNoteCreateState();
         const connected=await localConnectedNotes().pending();let legacy=await inventory.pending();
-        if(!connected&&BANK_CONNECTED_NOTE_ISSUANCE_ENABLED&&legacy&&navigator.onLine!==false){
+        if(!connected&&recipientUserId&&BANK_CONNECTED_NOTE_ISSUANCE_ENABLED&&legacy&&navigator.onLine!==false){
           // A pre-upgrade registration attempt has no allocation while it is
           // still preparing. Retire it through the existing local cancellation
           // checks before selecting connected creation. Funded, unknown and
@@ -1269,11 +1274,14 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           await noteLock(async()=>{const held=await loadOfflineNoteState(binding) as {create?:{phase?:string}}|null;if(held?.create?.phase==='preparing')await cancelUnsentNotesLocked();});
           legacy=await inventory.pending();
         }
-        if(connected||BANK_CONNECTED_NOTE_ISSUANCE_ENABLED&&!legacy&&navigator.onLine!==false){
+        if(connected||recipientUserId&&!legacy){
+          if(!connected&&navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+          if(!connected&&!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
           if(!connected)await connectedContext();
-          return noteLock(async()=>{await assertNoteCreateState();const runtime=localConnectedNotes(),result=recipientUserId===undefined?await runtime.create(amount,rail):await runtime.create(amount,rail,recipientUserId);return{...result,consumption:'connection-required' as const};});
+          return noteLock(async()=>{await assertNoteCreateState();const result=await localConnectedNotes().create(amount,rail,recipientUserId);return{...result,consumption:'connection-required' as const};});
         }
         if(recipientUserId)throw Error('BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE');
+        if(rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');
         if(!legacy&&navigator.onLine===false&&!BANK_PREPARED_NOTE_CREDIT_ENABLED)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
         try{return await(await openNotesExecution()).create(amount,rail??legacy?.rail);}
         catch(cause){await cancelRejectedNotePreparation(cause);throw cause;}

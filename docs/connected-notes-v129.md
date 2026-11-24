@@ -19,7 +19,7 @@ antirollback requirements of qualified continuous offline sending.
    protected financial-root signature, then its private account opening. Both
    remain retained before packaging. The PNG carries the complete public funding source and its scoped per-Note delivery authority under the canonical image seal. It contains no account signing key or private account balance opening.
 5. The holder saves and sends the original PNG. On import, the receiving account locally composes its existing signed receiving request and the Note handover from that complete image. No receiving-request file exchange is needed for a new connected Note. The exact terminal is retained before credit submission; reimport reuses it.
-   Anyone holding the Note may deposit it by default. An optional selected person's stable account UID is included in the signed issue and financial funding source, so only that account can form an accepted handover or claim even after a username change. A missing or changed signed target is refused before submission.
+   New connected Notes from Bankeiz require a recipient. Their stable account UID is included in the signed issue and financial funding source, so only that account can form an accepted handover or claim even after a username change. Previously issued open Notes retain their original redemption rules. New open Notes use qualified Note custody.
 
 6. The receiver verifies the complete source and destination offline. **Received
    Notes** holds it separately from available account credit. This is verified

@@ -34,21 +34,21 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
       <div className="success-amount navy-text balance-sheet-amount">{wallet?formatMoney(wallet.totalUsdCents):'—'}</div>
       <p className="body-copy small-copy">{wallet?difference!==null?'Your Settlement calculation is below.':'Ready to send, receive or keep with you.':'Your verified account balance appears here.'}</p>
       <p className="balance-local-time">{new Date().toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})} · Local time</p>
-      {showOfflineBalance&&<FundedWalletBalance key={identity.binding.artifactSha256} identity={identity} onRefresh={onRefresh}/>}
+      {showOfflineBalance&&<FundedWalletBalance key={identity.binding.artifactSha256} identity={identity} onRefresh={onRefresh} onSendNearby={onOpen?()=>onOpen({kind:'send',nearbyGuide:{}}):undefined}/>}
       <BalanceDetails wallet={wallet} observation={observation} focusSettlement={action.kind==='balance'&&action.focus==='settlement'}/>
     </>;
   }
   else if(action.kind==='earn-originals') body=<EarnFromOriginals key={`${identity.binding?.artifactSha256}:${wallet?.userId??identity.walletReceivingAddress?.()??''}`} identity={identity} accountUid={wallet?.userId??identity.walletReceivingAddress?.()??null} onOpen={onOpen}/>;
   else if (action.kind === 'account-proof') body = <AccountProofPanel identity={identity}/>;
   else if (action.kind === 'business') body = <BusinessUpgradePanel identity={identity} onOpenAssistant={onOpenAssistant} active={active}/>;
-  else if (action.kind === 'profile') body = <IdentityProfile active={active} accountUid={wallet?.userId} vaultsEntry={action.vaults} onVaultsEntryConsumed={onVaultsEntryConsumed} identity={identity} onForget={onForget} onRefresh={onRefresh} />;
+  else if (action.kind === 'profile') body = <IdentityProfile active={active} accountUid={wallet?.userId} vaultsEntry={action.vaults} onUseSendNearby={onOpen?amount=>onOpen({kind:'send',nearbyGuide:{amount}}):undefined} onVaultsEntryConsumed={onVaultsEntryConsumed} identity={identity} onForget={onForget} onRefresh={onRefresh} />;
   else if (action.kind === 'currency') body = <CreateAsset marketItems={marketItems} active={active} identity={identity} onRefresh={onRefresh} onClose={onClose} />;
   else if(action.kind==='market-trade') body=<MarketTradeFlow key={`${identity.binding?.artifactSha256}:${action.marketItemId}:${action.side}`} identity={identity} wallet={wallet} intent={{itemId:action.marketItemId,side:action.side,title:marketItems.find(item=>item.id===action.marketItemId)?.title??'Proof object'}} onRefresh={onRefresh}/>;
   else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
   else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} active={active}/>;
   else if (action.kind === 'deposit') body = <LiveDeposit identity={identity} onClose={onClose} onRefresh={onRefresh} resumeSessionId={cardResumeSessionId} onResumeConsumed={onCardResumeConsumed} onCreateAsset={onOpen?()=>onOpen({kind:'currency'}):undefined} />;
-  else if (action.kind === 'send') body = <LiveSend active={active} identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={action.paymentRequest??(action.recipient?null:paymentRequest)} initialRecipient={action.recipient} onClose={onClose} />;
+  else if (action.kind === 'send') body = <LiveSend active={active} identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={action.nearbyGuide?null:action.paymentRequest??(action.recipient?null:paymentRequest)} initialRecipient={action.recipient} initialNearbyGuide={action.nearbyGuide} onClose={onClose} />;
   else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} active={active} onRefresh={onRefresh} marketItems={marketItems} onTrade={onOpen?(side,marketItemId)=>onOpen({kind:'market-trade',side,marketItemId}):undefined} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;
   else if (action.kind === 'bridge') body = <LiveOwnership identity={identity} mode="send" initialDigest={action.assetId} onRefresh={onRefresh} />;
   else body = <div className="empty-state"><h3>Automatic transfers are not available yet.</h3><p>You can review and approve each transfer from Send.</p></div>;
