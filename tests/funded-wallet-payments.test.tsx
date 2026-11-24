@@ -139,6 +139,38 @@ test('an unfunded offline attempt keeps its details and returns to regular Send 
   }
 });
 
+test('the regular Send screen keeps an approved distant payment while offline', async () => {
+  const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+  const host = document.createElement('div'), root = createRoot(host);
+  const userId = '10000000-0000-4000-8000-000000000002';
+  const wallet = { warm: vi.fn(), outgoing: async () => null, offer: async () => null,
+    review: async () => { throw Error('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED'); } };
+  const review = { recipientLabel: 'Merchant', amountUsdCents: '100', confirmationDigest: 'review' };
+  const deferred = { prepare: vi.fn(async () => review), approve: vi.fn(), resume: vi.fn(async () => {}) };
+  const identity = { binding: { artifactSha256: 'a'.repeat(64) }, fundedWallet: async () => wallet,
+    deferredWalletSend: async () => deferred } as unknown as OpenIdentity;
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveSend identity={identity} wallet={null}
+      initialRequest={{ recipient: userId, amount: '1.00' }} onClose={() => {}} />));
+    await click(host, 'Review payment');
+    expect(deferred.prepare).toHaveBeenCalledExactlyOnceWith({ recipient: userId, amountUsdCents: '100', note: '', nearby: false }, userId);
+    expect(host.textContent).toContain('Wallet will use your balance when you reconnect.');
+    await act(async () => host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+    await click(host, 'Send payment');
+    expect(deferred.approve).toHaveBeenCalledExactlyOnceWith(review, 'review');
+    expect(host.textContent).toContain('Payment saved.');
+    await click(host, 'Send another payment');
+    expect(host.textContent).toContain('Review payment');
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    if (prior) Object.defineProperty(navigator, 'onLine', prior);
+    else Reflect.deleteProperty(navigator, 'onLine');
+  }
+});
+
 test('regular Receive includes the Wallet QR scanner and keeps the existing Note action', async () => {
   const wallet = { warm: vi.fn(), availableReceipt: async () => null };
   const identity = { username: 'recipient', binding: { artifactSha256: 'b'.repeat(64) }, fundedWallet: async () => wallet } as unknown as OpenIdentity;

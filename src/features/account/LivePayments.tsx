@@ -17,7 +17,7 @@ import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
 import {RecipientInput} from './RecipientInput';
 import {PaymentTools} from './PaymentTools';
-import {FundedWalletReceive,FundedWalletSend} from './FundedWalletPayments';
+import {DeferredWalletPayments,FundedWalletReceive,FundedWalletSend} from './FundedWalletPayments';
 import type {FundedWalletReview} from '../../receiz/funded-wallet';
 const subscribeConnection=(listener:()=>void)=>{
   window.addEventListener('online',listener);window.addEventListener('offline',listener);
@@ -116,7 +116,8 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
     <div className="send-recipient"><RecipientInput allowEmail identity={identity} value={recipient} onChange={value=>{setNearby(false);setSelectedRecipient(undefined);setRecipient(value);}} onSelect={person=>{setNearby(false);setSelectedRecipient(person);setRecipient(person.username);}}/><PaymentScanner compact onRequest={request=>applyPaymentRequest(request,false)} onCameraRequest={request=>applyPaymentRequest(request,true)}/></div>
     <details className="send-note-field"><summary>Add a memo <span>Optional</span></summary><label className="form-field"><span>Payment memo</span><textarea aria-label="Payment memo" aria-describedby={noteHint} value={sendNote} onChange={event=>setSendNote(event.target.value)} maxLength={280} rows={2} placeholder="What is this payment for?"/><small id={noteHint}>This memo is included with your payment in the public Ledger.</small></label></details>
   </>;
-  return <>{choices}{useFunded?<FundedWalletSend key={identity!.binding.artifactSha256} identity={identity!} request={()=>{setKeepOffline(true);return {...request(),nearby};}} onRefresh={onRefresh} initialReview={initialReview} onEdit={returnToSend} onNext={returnToSend}>{fields}</FundedWalletSend>:
+  return <>{choices}{useFunded?<FundedWalletSend key={identity!.binding.artifactSha256} identity={identity!} request={()=>{setKeepOffline(true);return {...request(),nearby};}} recipientLabel={selectedRecipient?.displayName??recipient} onRefresh={onRefresh} initialReview={initialReview} onEdit={returnToSend} onNext={returnToSend}>{fields}</FundedWalletSend>:
   <WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate,amount,sendNote])} input={request} fundedReview={checkFunded} onRefresh={onRefresh} secondaryAction={identity&&<details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">For receiving through another application or institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details>}>{fields}</WalletSendOperation>}
+  {active&&identity?.deferredWalletSend&&<DeferredWalletPayments key={identity.binding.artifactSha256} identity={identity}/> }
   {identity&&receivingHelp&&<ReceivingHelp active={active} key={identity.binding.artifactSha256} identity={identity} initial={{recipient,amount,purpose:sendNote,...(selectedRecipient?{recipientUserId:selectedRecipient.userId,recipientUsername:selectedRecipient.username,recipientName:selectedRecipient.displayName}:{})} satisfies ReceivingHelpInput} onClose={()=>setReceivingHelp(false)} onPay={input=>{const label=input.recipientUserId?input.recipientUsername||input.recipient:input.recipient;if(label!==recipient||input.amount!==amount)setSendNote('');setSelectedRecipient(input.recipientUserId?{userId:input.recipientUserId,username:label}:undefined);setRecipient(label);setAmount(input.amount);}}/>}</>;
 }

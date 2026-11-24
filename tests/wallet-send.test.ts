@@ -16,6 +16,21 @@ function fixture(){
  return{options,request,sdkTransfer,writes,calls,get state(){return state;},get record(){return record;},set record(value:any){record=value;}};
 }
 const cancellation=(body:any)=>({ok:true,found:false,submission:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_transfer_cancelled'},cancellation:{senderUserId:sender,recipientUserId:body.recipientUserId,conversationId:body.conversationId,amountUsdCents:'1000',clientNonce:body.clientNonce}});
+it.each([false,true])('deferred Send keeps one nonce when a response is lost (committed %s)',async committed=>{
+ const f=fixture();
+ f.sdkTransfer.mockImplementationOnce(async body=>{
+  if(committed)f.record=syntheticWalletRecord(body,sender);
+  throw Error('connection interrupted');
+ });
+ const api=createWalletSend(f.options),review=await api.prepare({recipient,amountUsdCents:'1000'});
+ const first=await api.execute(review,review.digest);
+ expect(first.status).toBe(committed?'recorded':'unknown');
+ const reopened=createWalletSend(f.options);
+ expect((await reopened.resumeDeferred(review.clientNonce))?.status).toBe('recorded');
+ expect((await reopened.resumeDeferred(review.clientNonce))?.status).toBe('recorded');
+ expect(f.sdkTransfer).toHaveBeenCalledTimes(committed?1:2);
+ expect(f.sdkTransfer.mock.calls.every(([body])=>body.clientNonce===review.clientNonce)).toBe(true);
+});
 it('closes the exact unknown request only after durable cancellation and permits another reviewed payment',async()=>{
  const f=fixture();f.sdkTransfer.mockImplementation(async()=>{throw Error('server failed');});
  const api=createWalletSend(f.options),review=await api.prepare({recipient:'receiver',amountUsdCents:'1000'});await api.execute(review,review.digest);

@@ -4,6 +4,7 @@ import type { OpenIdentity } from '../../receiz/native-identity';
 import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletOffer } from '../../receiz/funded-wallet';
 import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
+import type { DeferredWalletSendEntry, DeferredWalletSendReview } from '../../receiz/wallet-send-deferred';
 import { AmountInput } from '../../components/AmountInput';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
@@ -20,10 +21,13 @@ const walletError=(cause:unknown)=>{
     if(cause.message==='BANK_WALLET_DEVICE_REQUIRED')return 'This device couldn’t open secure offline Wallet custody.';
     if(cause.message==='BANK_WALLET_MOVE_BACK_AMOUNT')return 'Enter an amount within your available offline balance.';
     if(cause.message==='BANK_WALLET_MOVE_BACK_PENDING')return 'Finish moving back the previous amount first.';
+    if(cause.message==='BANK_WALLET_QUEUE_AMOUNT_UNAVAILABLE')return 'Choose an amount within your last available balance, after pending payments.';
   }
   return 'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
 };
 const pairFrames=(value:unknown)=>createOpticalNoteFrames('wallet',new TextEncoder().encode(JSON.stringify(value)));
+const fundedWalletUnavailable=(cause:unknown)=>cause instanceof Error
+  && ['BANK_WALLET_ACCOUNT_REQUIRED','BANK_WALLET_DEVICE_REQUIRED'].includes(cause.message);
 
 type OfflineBalance = Awaited<ReturnType<Awaited<ReturnType<NonNullable<OpenIdentity['fundedWallet']>>>['offlineBalance']>>;
 
@@ -97,7 +101,9 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
     {message&&<p role="status" className="body-copy">{message}</p>}
     {notice&&<aside className="wallet-balance-notice">
       <header role="status"><strong>{notice.title}</strong><p>{notice.message}</p>
-        {notice.support&&<p>You can keep using online Send and Receive.</p>}
+        {notice.support&&<p>{identity.deferredWalletSend
+          ?'You can still use regular Send and Receive. If you’re offline, save a payment to a known account and Wallet will send it when you reconnect.'
+          :'You can keep using online Send and Receive.'}</p>}
       </header>
       {notice.support&&<details><summary>Device requirements and support</summary>
         <p>Ask your browser or device provider whether your model and software support {notice.support.requirement}.</p>
@@ -108,11 +114,36 @@ export function FundedWalletBalance({identity,onRefresh}:{identity:OpenIdentity;
   </section>;
 }
 
-export function FundedWalletSend({identity,request,onRefresh,onNext,initialReview,onEdit,children}:{
+export function DeferredWalletPayments({identity}:{identity:OpenIdentity}){
+  const [entries,setEntries]=useState<readonly DeferredWalletSendEntry[]>([]);
+  useEffect(()=>{
+    let active=true,unsubscribe:(()=>void)|undefined;
+    setEntries([]);
+    void identity.deferredWalletSend?.().then(wallet=>{
+      if(!active||!wallet.list||!wallet.subscribe)return;
+      const refresh=()=>{void wallet.list().then(value=>{if(active)setEntries(value);}).catch(()=>{});};
+      unsubscribe=wallet.subscribe(refresh);refresh();
+    }).catch(()=>{});
+    return()=>{active=false;unsubscribe?.();};
+  },[identity]);
+  const outstanding=entries.filter(entry=>entry.status!=='recorded');
+  if(!outstanding.length)return null;
+  return <details className="transaction-proof-details">
+    <summary>Saved payments</summary>
+    <div className="detail-list">{outstanding.map(entry=><div key={entry.clientNonce}>
+      <span>{entry.recipientLabel}<br/><small>{entry.status==='pending'?'Waiting for confirmation':'Not sent'}</small></span>
+      <strong>{formatMoney(entry.amountUsdCents)}</strong>
+    </div>)}</div>
+  </details>;
+}
+
+export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNext,initialReview,onEdit,children}:{
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
-  onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;children:ReactNode;
+  recipientLabel?:string;onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;children:ReactNode;
 }){
   const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
+  const [deferredReview,setDeferredReview]=useState<DeferredWalletSendReview|null>(null);
+  const [deferredAmount,setDeferredAmount]=useState<string|null>(null);
   const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
   const [connectionNeeded,setConnectionNeeded]=useState(false);
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
@@ -125,7 +156,7 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
       const saved=await wallet.outgoing();
       const pending=saved?null:await wallet.pendingBundle?.();
       if(current){if(saved)setResult(saved);setPendingBundle(pending??null);}
-    }).catch(cause=>{if(current)setError(walletError(cause));});
+    }).catch(cause=>{if(current&&!fundedWalletUnavailable(cause))setError(walletError(cause));});
     return()=>{current=false;};
   },[identity]);
   async function act(work:()=>Promise<void>){
@@ -163,6 +194,19 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
       finally{setPendingBundle(await wallet.pendingBundle());}
     })}>Continue payment</button>{errors}
   </section>;
+  if(deferredAmount)return <section className="native-operation-result" aria-live="polite">
+    <h1 className="sheet-hero">Payment saved.</h1>
+    <p className="body-copy">Wallet will send {formatMoney(deferredAmount)} when you reconnect and the balance is available.</p>
+    <button className="secondary-button" onClick={()=>{setDeferredAmount(null);onNext();}}>Send another payment</button>
+  </section>;
+  if(deferredReview)return <WalletPaymentReview deferred review={deferredReview} approved={approved} busy={busy} onApprove={setApproved}
+    onEdit={()=>{setDeferredReview(null);setApproved(false);onEdit?.();}}
+    onSend={()=>{if(approved)void act(async()=>{
+      const wallet=await identity.deferredWalletSend!();
+      await wallet.approve(deferredReview,deferredReview.confirmationDigest);
+      setDeferredAmount(deferredReview.amountUsdCents);setDeferredReview(null);setApproved(false);
+      void wallet.resume().catch(()=>{});
+    });}}>{errors}</WalletPaymentReview>;
   if(review)return <WalletPaymentReview offline review={review} busy={busy} approved={approved} onApprove={setApproved}
     onEdit={()=>{setReview(null);setApproved(false);onEdit?.();}}
     onSend={()=>{if(approved)void act(async()=>{const wallet=await identity.fundedWallet!();setResult(await wallet.confirm(review));onRefresh();});}}>
@@ -178,17 +222,34 @@ export function FundedWalletSend({identity,request,onRefresh,onNext,initialRevie
   return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>
     <button className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
       setConnectionNeeded(false);
-      const wallet=await identity.fundedWallet!(),input=request();
-      try{setReview(await wallet.review(input));}catch(cause){
-        if(!(cause instanceof Error)||cause.message!=='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')throw cause;
+      const input=request();
+      try{
+        const wallet=await identity.fundedWallet!();
+        try{
+          setReview(await wallet.review(input));
+          return;
+        }catch(cause){
+          if(!(cause instanceof Error)||cause.message!=='BANK_WALLET_FUNDED_RECIPIENT_REQUIRED')throw cause;
+        }
         const offer=await wallet.offer(input);
-        if(!offer){
-          setConnectionNeeded(true);
-          onEdit?.();
+        if(offer){
+          setPairing({offer,input,frames:await pairFrames(offer)});
           return;
         }
-        setPairing({offer,input,frames:await pairFrames(offer)});
+      }catch(cause){
+        if(!fundedWalletUnavailable(cause))throw cause;
       }
+      if(!input.nearby&&identity.deferredWalletSend){
+        try{
+          const deferred=await identity.deferredWalletSend();
+          setDeferredReview(await deferred.prepare(input,recipientLabel));
+          return;
+        }catch(cause){
+          if(!(cause instanceof Error)||!['BANK_WALLET_QUEUE_RECIPIENT_REQUIRED','BANK_WALLET_QUEUE_BALANCE_REQUIRED'].includes(cause.message))throw cause;
+        }
+      }
+      setConnectionNeeded(true);
+      onEdit?.();
     })}>
       {busy?'Checking payment…':'Review payment'}
     </button>{connectionNeeded&&<p className="body-copy small-copy" role="status">Connect to pay from your balance.</p>}{errors}</>;

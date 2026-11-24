@@ -972,7 +972,15 @@ export const saveNativePaymentState=(binding:{artifactSha256:string},value:impor
 export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-assets');
 export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);
 
-export const loadWalletSendState=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-sends');
+const walletSendFamily=(nonce?:string)=>{
+  if(nonce===undefined)return 'wallet-sends';
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(nonce))throw Error('BANK_WALLET_NONCE_INVALID');
+  return 'wallet-deferred-send:'+nonce;
+};
+export const loadWalletSendState=(binding:{artifactSha256:string},nonce?:string)=>loadNoteState(binding,walletSendFamily(nonce));
+export const loadDeferredWalletSends=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-deferred-sends');
+export const saveDeferredWalletSends=(binding:{artifactSha256:string},next:readonly import('./wallet-send-deferred').DeferredWalletSendEntry[],previous:unknown)=>
+  saveNoteState(binding,'wallet-deferred-sends',next,previous);
 const walletOriginalFamily=(id:string)=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id))throw Error('TRANSFER_ORIGINAL_ID_INVALID');return 'wallet-original:'+id;};
 export const loadWalletOriginal=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,walletOriginalFamily(id));
 export const saveWalletOriginal=(binding:{artifactSha256:string},id:string,source:unknown,expected:unknown)=>saveNoteState(binding,walletOriginalFamily(id),source,expected);
@@ -983,7 +991,8 @@ export const saveMerchantCounterState=(binding:{artifactSha256:string},next:impo
 export async function saveHostedCheckoutState(binding:{artifactSha256:string},next:import('./checkout-state').HostedCheckoutState,expected:unknown){
  await(await import('./checkout-state')).readHostedCheckoutState(next,binding.artifactSha256);await saveNoteState(binding,'hosted-checkouts',next,expected);
 }
-export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown)=>saveNoteState(binding,'wallet-sends',value,expected);
+export const saveWalletSendState=(binding:{artifactSha256:string},value:import('./wallet-send').WalletSendState,expected:unknown,nonce?:string)=>
+  saveNoteState(binding,walletSendFamily(nonce),value,expected);
 
 export const loadMarketTradeState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-trades');
 export const loadMarketPortfolioState=(binding:{artifactSha256:string})=>loadNoteState(binding,'market-portfolio');

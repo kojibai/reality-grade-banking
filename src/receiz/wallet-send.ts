@@ -140,7 +140,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    const next:WalletSendState={...s,current:{...s.current,funding:{...s.current.funding!,stage:'ready',checkout}}};await input.store.write(next,s);return outcome(next.current);
   }catch{input.assertOpen();return outcome(s.current);}
  }
- async function submit(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,allowFunding=true):Promise<WalletSendOutcome>{
+ async function submit(s:WalletSendState,context:Awaited<ReturnType<typeof input.connect>>,allowFunding=true,retrying=false):Promise<WalletSendOutcome>{
   const {body,review}=s.current;let acknowledgement:unknown;
   try{acknowledgement=review.note?await context.client.request('/api/connect/transfers/public-note',{method:'POST',body}):await context.client.connect.transfer(body);}catch(error){
    input.assertOpen();const e=error as {status?:number;payload?:Json},p=e.payload;
@@ -149,7 +149,7 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
    const refused=['wallet_insufficient_funds','wallet_funding_changed'].includes(p?.error)&&p?.submission?.status==='not-submitted'&&p?.submission?.clientNonce===body.clientNonce;
    const denied=[401,403].includes(e.status??0)&&['invalid_token','insufficient_scope','access_denied'].includes(p?.error);
    const unavailable=!!review.note&&[404,405].includes(e.status??0);
-   if(refused||denied||unavailable||bookingClosed||counterRefused){
+   if(refused||!retrying&&(denied||unavailable)||bookingClosed||counterRefused){
     if(refused&&p!.error==='wallet_insufficient_funds'&&input.funding&&!s.current.funding&&allowFunding){
      const next:WalletSendState={...s,current:{...s.current,status:'funding',funding:{stage:'reviewing',amountUsdCents:review.amountUsdCents,refusal:{status:'not-submitted',clientNonce:body.clientNonce,error:'wallet_insufficient_funds'}}}};
      await input.store.write(next,s);input.assertOpen();return openFunding(next,context);
@@ -225,6 +225,19 @@ export function createWalletSend(input:{ownerReceizId:string;assertOpen():void;a
   });},
   async cancelFunding(clientNonce?:string):Promise<void>{return input.lock(async()=>{const s=await read();if(!s||s.current.status!=='funding'||clientNonce!==undefined&&s.current.body.clientNonce!==clientNonce)throw Error('BANK_WALLET_FUNDING_NOT_PENDING');await input.store.write({...s,current:{...s.current,status:'not-sent',reason:'card_cancelled'}},s);});},
   async resolve(approved=false,clientNonce?:string):Promise<WalletSendOutcome|null>{return input.lock(async()=>{const s=await read();if(clientNonce!==undefined&&(!s||s.current.body.clientNonce!==clientNonce))throw Error('BANK_WALLET_ATTEMPT_CHANGED');if(!s)return null;if(s.current.status!=='unknown')return outcome(s.current);if(!approved)throw Error('BANK_WALLET_RECOVERY_CONSENT_REQUIRED');return lookup(s,await input.connect(true));});},
+  async resumeDeferred(clientNonce:string):Promise<WalletSendOutcome|null>{
+   return input.lock(async()=>{
+    const s=await read();
+    if(!s)return null;
+    if(input.funding||s.current.body.clientNonce!==clientNonce||s.current.review.fundingPreference||s.current.review.booking||s.current.review.checkoutContext)
+     throw Error('BANK_WALLET_ATTEMPT_CHANGED');
+    if(s.current.status!=='unknown')return outcome(s.current);
+    await input.assertNoOtherPending();
+    const context=await input.connect();
+    const result=await lookup(s,context);
+    return result.status==='unknown'?submit(s,context,false,true):result;
+   });
+  },
   async cancel(approved=false,clientNonce?:string):Promise<WalletSendOutcome|null>{return input.lock(async()=>{
    const s=await read();if(clientNonce!==undefined&&(!s||s.current.body.clientNonce!==clientNonce))throw Error('BANK_WALLET_ATTEMPT_CHANGED');
    if(!s)return null;if(s.current.status!=='unknown')return outcome(s.current);
