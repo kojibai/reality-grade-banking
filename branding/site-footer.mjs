@@ -21,16 +21,16 @@ function footerThemeControl(){
   h('svg',{...themeIcon,className:'site-footer-theme-moon',strokeLinejoin:'round'},h('path',{d:'M20.95 13.35A9 9 0 0 1 10.65 3.05a9 9 0 1 0 10.3 10.3Z'})));
 }
 /** One static semantic footer shared by built pages and React surfaces. */
-export function siteFooter(currentPath){
+export function siteFooter(currentPath,{learningControls=false}={}){
  const path=canonicalPublicPath(currentPath??''),same=url=>!!currentPath&&url.startsWith('/')&&canonicalPublicPath(url)===(path==='/explorer/'?'/explore/':path);
  const link=([label,url])=>h('a',{key:url,href:url},label);
  return h('footer',{className:'site-footer'},
   h('div',{className:'site-footer-main'},
    h('div',{className:'site-footer-identity'},h(same('/')?'span':'a',{className:'site-footer-brand',...(same('/')?{}:{href:'/'}), 'aria-label':branding.applicationName+' home'},h('img',{src:'/icon.svg',width:30,height:30,alt:'',loading:'lazy'}),branding.wordmark),h('p',null,'Proof-native economy.',h('br'),'Reality-grade banking.',h('br'),'Reality-grade infrastructure.')),
    ...footerGroups.map(group=>h('nav',{key:group.title,className:group.title==='For you'?'site-footer-audiences':undefined,'aria-label':group.title+' footer links'},h('h2',null,group.title),h('ul',null,...group.links.filter(([,url])=>!same(url)).map(([label,url])=>h('li',{key:url},h('a',{href:url},label))))))),
-  h('div',{className:'site-footer-base'},h('span',null,'Bankeiz · ',same('/learn/reality-grade-banking/')?'Reality-Grade Banking':h('a',{href:'/learn/reality-grade-banking/'},'Reality-Grade Banking')),footerThemeControl(),
+  h('div',{className:'site-footer-base'},h('span',null,'Bankeiz · ',same('/learn/reality-grade-banking/')?'Reality-Grade Banking':h('a',{href:'/learn/reality-grade-banking/'},'Reality-Grade Banking')),learningControls?footerThemeControl():null,
    h('nav',{'aria-label':'Policies and source'},
     ...footerNotices.filter(([,url])=>url!==source&&!same(url)).map(link),
-    h('span',{className:'site-footer-project'},link(sourceLink),
-     h('a',{className:'site-footer-release',href:source+'/releases/tag/'+releaseTag,'aria-label':'Bankeiz '+releaseTag+' release on GitHub'},releaseTag)))));
+    learningControls?h('span',{className:'site-footer-project'},link(sourceLink),
+     h('a',{className:'site-footer-release',href:source+'/releases/tag/'+releaseTag,'aria-label':'Bankeiz '+releaseTag+' release on GitHub'},releaseTag)):link(sourceLink))));
 }

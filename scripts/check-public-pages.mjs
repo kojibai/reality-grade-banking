@@ -125,11 +125,12 @@ assert.ok(navigation.pages['/explore/'].head.includes('.ledger-proof-details')&&
 assert.ok(navigation.bank.content.includes('class="account-opening-geometry"'),'Cold Bank navigation carries its actual opening artwork');
 for(const url of navigation.bank.styles)assert.ok(coldBankCss[url],'Every Bank-owned sheet stays available on a cold public return.');
 assert.deepEqual(navigation.aliases,publicRouteAliases,'Retained navigation carries the public document aliases');
+const expectedFooter=(path,head)=>siteFooterHtml(path,{learningControls:head.includes('data-public-page-style="footer-appearance"')});
 for(const [alias,path] of Object.entries(publicRouteAliases)){
  const legacy=await readFile(`dist${alias}index.html`,'utf8'),canonical=await readFile(`dist${path}index.html`,'utf8');
  assert.equal(legacy,canonical,`Legacy ${alias} must carry the same complete canonical document`);
  assert.ok(!sitemap.includes(`<loc>${publicOrigin}${alias}</loc>`),'Legacy URLs must not duplicate the canonical sitemap');
- assert.ok(canonical.includes(siteFooterHtml(path)),'The static footer omits its canonical current destination');
+ assert.ok(canonical.includes(expectedFooter(path,navigation.pages[path].head)),'The static footer omits its canonical current destination');
 }
 const vote=navigation.pages['/vote/'],voteDocument=await readFile('dist/vote/index.html','utf8');
 assert.equal(vote.runtime,'vote','Public Vote uses the retained workspace router.');
@@ -159,7 +160,7 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
   if(path==='/feed/'||path==='/discover/')continue;
   const routeHtml=await readFile(`dist${path}index.html`,'utf8');
   const output = await readFile(`dist${path}index.html`, 'utf8');
-  if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(siteFooterHtml(path)),`Carried footer differs at ${path}`);
+  if(entry.content.includes('class="site-footer"'))assert.ok(entry.content.includes(expectedFooter(path,entry.head)),`Carried footer differs at ${path}`);
   if(directMarketingPaths.has(path)){
     directMarketingSizes.push({path,bytes:assertDirectMarketingEntry(path,output)});
     const directHead=output.match(/<head>([\s\S]*?)<\/head>/)[1].replace(/<link\b[^>]*\bdata-public-reading="(?:html|text)"[^>]*>/g,'');

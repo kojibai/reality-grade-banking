@@ -9,8 +9,13 @@ import {SiteFooter} from '../src/components/SiteFooter';
 import {canonicalPublicPath,publicRouteAliases} from '../src/content/public-routes.mjs';
 const parse=(html:string)=>new DOMParser().parseFromString(html,'text/html');
 
-it('links the visible build version to the corresponding GitHub release beside Open source',()=>{
- const project=parse(siteFooterHtml('/learn/')).querySelector('.site-footer-project')!;
+it('adds the theme button and the matching GitHub version link only when the page enables them',()=>{
+ const defaultFooter=parse(siteFooterHtml('/verify/'));
+ expect(defaultFooter.querySelector('button,[href*="/releases/tag/"]')).toBeNull();
+ expect(defaultFooter.querySelector('.site-footer-base a[href="https://github.com/kojibai/reality-grade-banking"]')?.textContent).toBe('Open source');
+ const learnFooter=parse(siteFooterHtml('/learn/',{learningControls:true}));
+ expect(learnFooter.querySelectorAll('button[data-bank-theme-toggle]')).toHaveLength(1);
+ const project=learnFooter.querySelector('.site-footer-project')!;
  const [source,release]=project.querySelectorAll('a');
  expect(source.textContent).toBe('Open source');
  expect(release.textContent).toBe('v'+packageMetadata.version);
