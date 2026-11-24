@@ -154,7 +154,7 @@ it('labels retained quote projections as cached instead of live', () => {
 });
 it('keeps local Kai valuation live while reporting an unavailable collection refresh',()=>{
  const held=catalog(1);held.items[0].localValuationPulse=14710100;
- source.value={catalog:held,status:'stale',quoteStatus:'stale',error:'Public prices and charts could not be refreshed.',refresh:vi.fn()};
+ source.value={catalog:held,status:'stale',quoteStatus:'stale',error:'The public Market could not be refreshed.',refresh:vi.fn()};
  const {host}=mount();expect(host.textContent).toContain('Live valuation · retained collection');expect(host.textContent).toContain('Retained pricing inputs continue at the live Kai pulse.');expect(host.textContent).not.toContain('Showing cached quotes');
 });
 it('shows each carried current owner and sealed time directly in the public list',()=>{

@@ -27,19 +27,41 @@ it('clears only the failed quote notice after successful same-operand retry and 
  const failedQuote=deferred<Response>();let quoteReads=0,membershipReads=0;
  const fetcher=vi.fn(async(input:RequestInfo|URL)=>{const path=String(input);if(path==='/api/bank/public-market/membership'){membershipReads++;return Response.json(membership());}if(path==='/api/bank/public-market/quotes'){quoteReads++;return quoteReads===1?failedQuote.promise:Response.json(quotes());}return new Response(null,{status:404});});
  const p=await marketProbe(fetcher);expect(p.read().catalog?.items[0].localValuationPulse).toBeTypeOf('number');expect(p.read().historyCatalog?.items[0].chart).toEqual([9,10]);
- await act(()=>{void p.read().refresh();});expect(membershipReads).toBe(1);await act(()=>failedQuote.resolve(new Response(null,{status:503})));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('Public prices and charts could not be refreshed');expect(p.host.textContent).toContain('Collection refresh is unavailable. Retained pricing inputs continue at the live Kai pulse.');
+ await act(()=>{void p.read().refresh();});expect(membershipReads).toBe(1);await act(()=>failedQuote.resolve(new Response(null,{status:503})));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('New share and market observations are unavailable');expect(p.host.textContent).not.toContain('Collection refresh is unavailable');expect(p.host.textContent).toContain('New share and market observations are unavailable');
  await act(()=>{history.replaceState(null,'','/discover/');p.root.render(<p.Probe active={false}/>);});await act(()=>{history.replaceState(null,'','/#market');p.root.render(<p.Probe active/>);});expect(membershipReads).toBe(1);expect(quoteReads).toBe(1);
  await act(()=>dispatchEvent(new Event('online')));expect(quoteReads).toBe(2);expect(membershipReads).toBe(1);expect(p.read().quoteStatus).toBe('fresh');expect(p.read().error).toBeNull();expect(p.host.querySelector('.market-error')).toBeNull();expect(p.read().historyCatalog?.items[0].chart).toEqual([9,10]);
 });
 it('preserves an independent quote failure when membership succeeds later',async()=>{
  const nextMembership=deferred<Response>();const fetcher=vi.fn(async(input:RequestInfo|URL)=>{const path=String(input);if(path==='/api/bank/public-market/membership')return nextMembership.promise;if(path==='/api/bank/public-market/quotes')return new Response(null,{status:503});return new Response(null,{status:404});});
- const p=await marketProbe(fetcher);await act(()=>{void p.read().refresh();});expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('Public prices and charts could not be refreshed');await act(()=>nextMembership.resolve(Response.json(membership())));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('Public prices and charts could not be refreshed');expect(p.host.querySelector('.market-error')).not.toBeNull();
+ const p=await marketProbe(fetcher);await act(()=>{void p.read().refresh();});expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('New share and market observations are unavailable');await act(()=>nextMembership.resolve(Response.json(membership())));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('New share and market observations are unavailable');expect(p.host.querySelector('.market-error')).not.toBeNull();
 });
 it('actual quote-only success must not be treated as collection recovery after a separate membership failure',async()=>{
  let quotesRead=0,membershipRead=0;const fetcher=vi.fn(async(input:RequestInfo|URL)=>{const path=String(input);if(path==='/api/bank/public-market/membership'){membershipRead++;return new Response(null,{status:503});}if(path==='/api/bank/public-market/quotes')return ++quotesRead===1?new Response(null,{status:503}):Response.json(quotes());return new Response(null,{status:404});});
- const p=await marketProbe(fetcher);await act(()=>p.read().refresh());expect(p.read().error).toContain('The public Market could not be refreshed.');await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('fresh');expect(membershipRead).toBe(1);expect(p.read().error).toContain('The public Market could not be refreshed.');expect(p.read().historyCatalog?.items[0].chart).toEqual([9,10]);
+ const p=await marketProbe(fetcher);await act(()=>p.read().refresh());expect(p.read().error).toContain('The public Market could not be refreshed.');await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('fresh');expect(membershipRead).toBe(1);expect(p.read().error).toContain('The public Market could not be refreshed.');expect(p.host.querySelector('.market-error')?.textContent).toContain('The public Market could not be refreshed.');expect(p.read().historyCatalog?.items[0].chart).toEqual([9,10]);
 });
 it('keeps the quote notice through a rejected retry shape and clears it only after validated success',async()=>{
  let quoteReads=0,membershipReads=0;const fetcher=vi.fn(async(input:RequestInfo|URL)=>{const path=String(input);if(path==='/api/bank/public-market/membership'){membershipReads++;return Response.json(membership());}if(path==='/api/bank/public-market/quotes'){quoteReads++;return quoteReads===1?new Response(null,{status:503}):Response.json(quoteReads===2?{ok:true,data:{}}:quotes());}return new Response(null,{status:404});});
- const p=await marketProbe(fetcher);await act(()=>p.read().refresh());expect(p.read().error).toContain('Public prices and charts could not be refreshed');await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('Public prices and charts could not be refreshed');expect(p.read().error?.match(/Public prices and charts could not be refreshed/g)).toHaveLength(1);await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('fresh');expect(p.read().error).toBeNull();expect(membershipReads).toBe(1);expect(quoteReads).toBe(3);
+ const p=await marketProbe(fetcher);await act(()=>p.read().refresh());expect(p.read().error).toContain('New share and market observations are unavailable');await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('stale');expect(p.read().error).toContain('New share and market observations are unavailable');expect(p.read().error?.match(/New share and market observations are unavailable/g)).toHaveLength(1);await act(()=>p.read().refresh(true));expect(p.read().quoteStatus).toBe('fresh');expect(p.read().error).toBeNull();expect(membershipReads).toBe(1);expect(quoteReads).toBe(3);
+});
+
+it('leaves Market healthy when an older observation fails after an existing publication refresh succeeds',async()=>{
+ const older=deferred<Response>();
+ let oldReads=0,publicationReads=0;
+ const fetcher=vi.fn(async(input:RequestInfo|URL)=>{
+  const path=String(input);
+  if(path==='/api/bank/public-market/membership')return Response.json(membership());
+  if(path==='/api/bank/public-market/quotes'){oldReads++;return older.promise;}
+  if(path.startsWith('/api/bank/public-market/quotes?afterPublication=')){publicationReads++;return Response.json(quotes());}
+  return new Response(null,{status:404});
+ });
+ const p=await marketProbe(fetcher);
+ const {fetchPublicQuotes}=await import('../src/receiz/public-market');
+ await act(()=>{void p.read().refresh();});
+ await act(()=>fetchPublicQuotes(undefined,undefined,'a'.repeat(64)));
+ await act(()=>older.resolve(new Response(null,{status:503})));
+ expect(p.read().error).toBeNull();
+ expect(p.read().quoteStatus).toBe('fresh');
+ expect(p.host.querySelector('.market-error')).toBeNull();
+ expect(oldReads).toBe(1);
+ expect(publicationReads).toBe(1);
 });

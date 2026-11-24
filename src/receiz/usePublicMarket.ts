@@ -169,7 +169,7 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
       if(!current())return;latestQuotes.current=value;quoteFailed.current=false;
       if(pendingMarketChange.current===afterTrade)pendingMarketChange.current=undefined;
       const before=readPublicCatalog(),selected=setCatalog(catalog=>catalog?mergePublicQuotes(catalog,value):catalog);if(before&&selected&&selected!==before)retainPublicMarket(before,value,selected);setQuoteStatus('fresh');updateRefreshError({quotes:null});
-    },()=>{if(current()){quoteFailed.current=true;setQuoteStatus('stale');updateRefreshError({quotes:'Public prices and charts could not be refreshed. Showing cached quotes.'});}}).finally(()=>{
+    },()=>{if(current()){quoteFailed.current=true;setQuoteStatus('stale');updateRefreshError({quotes:'New share and market observations are unavailable. Showing the last recorded inputs.'});}}).finally(()=>{
       if(quoteRead.current?.controller===controller)quoteRead.current=null;
     });
     quoteRead.current={controller,nonce:afterTrade,pending};return pending;

@@ -50,3 +50,23 @@ it('retains the prepared share-cap publication while membership has not arrived 
  await host.onmessage!({data:{id:1,source:{ok:true,marketCapProjection:source},catalog:null,pulse:14720000,shareCapitalization:true}});
  expect(replies).toEqual([{id:1,retained:true}]);
 });
+
+it('keeps the full count and deterministic pulse when a live membership refresh omits the held Sports rows',async()=>{
+ const {fixture,pulse}=await import('./helpers/market-history-original-addition-fixture');
+ const {source,before,after}=fixture(),input={...source,cardsInCirculation:1};
+ const card={...before.items[0],id:'sports:retained',assetId:'retained-sports',category:'sports' as const,
+  shareInventory:undefined,livePulseSeed:undefined,priceUsd:10,capitalizationUsdCents:'1000',circulationCount:1};
+ const full={...before,sportsCoverage:'complete' as const,items:[...before.items,card]};
+ await host.onmessage!({data:{id:1,source:{ok:true,marketCapProjection:input},catalog:full,pulse,shareCapitalization:true}});
+ const held=parseMarketHistory(replies.at(-1)!.history);
+ expect(held.summary.shareCapitalization).toMatchObject({listed:2,covered:2});
+ const proofOnly={...after,sportsCoverage:'missing' as const};
+ await host.onmessage!({data:{id:2,source:{ok:true,marketCapProjection:input},history:held,catalog:proofOnly,pulse:pulse+1,shareCapitalization:true}});
+ const continued=parseMarketHistory(replies.at(-1)!.history);
+ expect(continued.summary.shareCapitalization).toMatchObject({listed:3,covered:3});
+ expect(continued.summary.serverPulse).toBe(pulse+1);
+ await host.onmessage!({data:{id:3,marketTick:true,pulse:pulse+2}});
+ const tick=parseMarketHistory(replies.at(-1)!.history);
+ expect(tick.summary.shareCapitalization).toMatchObject({listed:3,covered:3});
+ expect(tick.summary.serverPulse).toBe(pulse+2);
+});

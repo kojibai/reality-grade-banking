@@ -19,3 +19,19 @@ it('the genuine worker publishes a new Original and then its next live Kai point
   expect(messages.every(message=>message.history&&!message.error)).toBe(true);
  }finally{vi.unstubAllGlobals();}
 },10000);
+
+it('does not replace held share coverage with a proof-only membership capture',async()=>{
+ const {source,before,after}=fixture();
+ const card={...before.items[0],id:'sports:retained',assetId:'retained-sports',category:'sports' as const,
+  shareInventory:undefined,livePulseSeed:undefined,priceUsd:10,capitalizationUsdCents:'1000',circulationCount:1};
+ const full={...before,sportsCoverage:'complete' as const,items:[...before.items,card]};
+ const input={...source,cardsInCirculation:1};
+ const {buildMarketHistory}=await import('../src/receiz/market-projection/build-history');
+ const held=await buildMarketHistory(input,null,undefined,undefined,{catalog:full,pulse,capitalization:true});
+ expect(held?.summary.shareCapitalization).toMatchObject({listed:2,covered:2});
+ const interim=await buildMarketHistory(input,held,undefined,undefined,{catalog:{...before,sportsCoverage:'missing'},pulse:pulse+1,capitalization:true});
+ expect(interim).toBeNull();
+ const successor={...after,sportsCoverage:'complete' as const,items:[...after.items,card]};
+ const next=await buildMarketHistory(input,held,undefined,undefined,{catalog:successor,pulse:pulse+2,capitalization:true});
+ expect(next?.summary.shareCapitalization).toMatchObject({listed:3,covered:3});
+},10000);

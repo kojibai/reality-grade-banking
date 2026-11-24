@@ -1,3 +1,4 @@
+import {retainPublicMarketSports} from './catalog-sports';
 import {buildInvestmentHistory,type InvestmentHistoryRow,type InvestmentHistory} from './investment-history';
 import { parseMarketCapSource,type MarketCapSource } from './source';
 import { parseMarketHistory, type MarketHistorySnapshot } from './history';
@@ -24,7 +25,15 @@ self.onmessage = async (event: MessageEvent<{ id: number; source?: unknown; hist
     if(event.data.profileRows||event.data.profileTick){if(event.data.profileRows){profileRows=event.data.profileRows;profileHistory=event.data.profileHistory??null;}if(!profileRows)return;let samples=0;const growth=await buildProfileGrowth(profileRows,event.data.pulse!,profileHistory,()=>latest===id,async()=>{if(++samples%8===0)await new Promise(resolve=>setTimeout(resolve,0));});if(latest===id&&growth){profileHistory=growth;self.postMessage({id,growth});}return;}
     if(event.data.source)marketSource=null;
     if (event.data.history) retained = parseMarketHistory(event.data.history);
-    if(event.data.source){marketSource=parseMarketCapSource(event.data.source);marketCatalog=event.data.catalog??null;shareCapitalization=event.data.shareCapitalization===true;}
+    if(event.data.source){
+      marketSource=parseMarketCapSource(event.data.source);
+      marketCatalog=event.data.catalog??null;
+      shareCapitalization=event.data.shareCapitalization===true;
+      // Showcase discovery can arrive before its independent Sports operand.
+      // Reuse the exact rows already completed by this worker for live ticks.
+      if(shareCapitalization&&completedMarketInput&&marketCatalog&&marketCatalog.sportsCoverage!=='complete'&&
+        !marketCatalog.items.some(item=>item.category==='sports'))marketCatalog=retainPublicMarketSports(marketCatalog,completedMarketInput.catalog);
+    }
     else if(!event.data.marketTick)return;
     if(!marketSource)throw Error('Market inputs are unavailable.');
     if(shareCapitalization&&!marketCatalog){self.postMessage({id,retained:true});return;}

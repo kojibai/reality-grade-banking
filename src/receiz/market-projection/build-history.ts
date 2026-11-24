@@ -36,6 +36,13 @@ function significantEventPulses(source:MarketCapSource):{ranked:number[];observe
 }
 /** Run at build time or in the worker; never calculate these curves on the UI thread. */
 export async function buildMarketHistory(source: MarketCapSource, previous: MarketHistorySnapshot | null = null, continuing: () => boolean = () => true, yieldSample: () => Promise<void> = async () => {},current?:{catalog:PublicMarketPricingCatalog|null;pulse:number;capitalization?:boolean;requireRetained?:boolean;onCalculation?:(value:GlobalMarketCalculation)=>void;priorInput?:{source:MarketCapSource;catalog:PublicMarketPricingCatalog}}): Promise<MarketHistorySnapshot | null> {
+  // A restarted worker can still hold the completed history before the
+  // separate Sports rows arrive. A proof-only observation cannot erase it.
+  const priorSummary=previous?.historyPolicy===SHARE_MARKET_HISTORY_POLICY?previous.summary:undefined;
+  const catalog=current?.catalog;
+  if(current?.capitalization&&catalog&&priorSummary?.shareCapitalization&&priorSummary.cardsInCirculation>0&&
+    catalog.items.length<priorSummary.shareCapitalization.listed&&catalog.sportsCoverage!=='complete'&&
+    !catalog.items.some(item=>item.category==='sports'))return null;
   if(current?.capitalization&&current.catalog){const scoped=globalMarketCapitalizationInputs(source,current.catalog);source=scoped.source;current={...current,catalog:scoped.catalog};}
   const sourceInput=source;
   if(current)source=currentMarketDisplayModel(source,current.catalog,current.pulse,previous?.copyObservations);
