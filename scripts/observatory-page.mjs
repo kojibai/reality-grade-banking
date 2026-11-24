@@ -1,4 +1,5 @@
 import {socialMetadata} from './public-page-metadata.mjs';
+import {withAppAppearance} from './app-appearance.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 
 export const analyticsMetadata = {
@@ -18,5 +19,5 @@ export function observatoryPage(ledger, state) {
   const {revision,publicProfileHeadsRevision,observedAt}=directory;
   const page = {...ledger, title, head, content:state.content, analyticsSeed:{generation,locale,timeZone,revision,publicProfileHeadsRevision,observedAt}};
   const document = '<!doctype html><html lang="en"><head>'+head+'<script type="module" src="'+ledger.entry+'"></script></head><body><div id="public-ledger-root" data-public-runtime="ledger">'+state.content+'</div>'+state.seedScript+'</body></html>';
-  return {page, document};
+  return {page, document:withAppAppearance(document)};
 }

@@ -11,22 +11,22 @@
 .guide-search-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .guide-search label{font-size:13px;font-weight:600}
 .guide-search p{font-size:12px}
-.guide-search-field{display:flex;align-items:center;gap:12px;padding:5px 8px 5px 16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.guide-search-field{display:flex;align-items:center;gap:12px;padding:5px 8px 5px 16px;border:1px solid var(--line);border-radius:12px;background:var(--bank-surface,#fff)}
 .guide-search-field>svg{color:var(--muted)}
 .guide-search-field:focus-within{border-color:var(--cobalt);box-shadow:0 0 0 3px #244cdb0b}
 .guide-search input{flex:1;min-width:0;width:100%;height:44px;padding:0;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:16px}
 .guide-search input::placeholder{color:var(--muted);opacity:1}
-.guide-search button{display:flex;align-items:center;gap:10px;min-height:36px;padding:8px 12px;border:0;border-radius:7px;background:#f1f4f9;color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
+.guide-search button{display:flex;align-items:center;gap:10px;min-height:36px;padding:8px 12px;border:0;border-radius:7px;background:var(--bank-surface-raised,#f1f4f9);color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
 .guide-search button span{font-size:19px;line-height:1}
-.guide-search button:hover{color:var(--cobalt);background:#eaf0fd}
+.guide-search button:hover{color:var(--cobalt);background:var(--bank-surface-raised,#eaf0fd)}
 .guide-search :focus-visible{outline:2px solid var(--cobalt);outline-offset:4px}
 .learning-group-links{flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:24px 0 32px;padding-bottom:12px;scrollbar-width:thin}
-.learning-group-links a{white-space:nowrap;border:0;border-radius:7px;padding:10px 13px;background:#eef2f8;font-size:12px}
-.learning-group-links a:hover{background:#e4ebfb;color:var(--cobalt)}
+.learning-group-links a{white-space:nowrap;border:0;border-radius:7px;padding:10px 13px;background:var(--bank-surface-raised,#eef2f8);font-size:12px}
+.learning-group-links a:hover{background:var(--bank-surface-raised,#e4ebfb);color:var(--cobalt)}
 .learning-group{gap:40px;padding:32px 0;grid-template-columns:180px minmax(0,1fr)}
 .learning-group>h2{font-size:21px}
 .learning-group>div{gap:0 40px}
-.learning-group a{border-bottom:1px solid #e5eaf2;padding:20px 28px 22px 0}
+.learning-group a{border-bottom:1px solid var(--bank-line,#e5eaf2);padding:20px 28px 22px 0}
 .learning-group a h3{font-size:18px;line-height:1.35;margin-bottom:8px}
 .learning-group p{font-size:14px;line-height:1.6}
 .learning-group a>svg{top:24px;color:var(--cobalt)}

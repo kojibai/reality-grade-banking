@@ -58,6 +58,7 @@ import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
 import { learnAssets } from './learn-assets.mjs';
+import {withAppAppearance} from './app-appearance.mjs';
 import { learnHome, learnArticle,learnHeader,learningDirectoryPage } from './learn-template.mjs';
 import {realityGradeStandardContent} from './reality-grade-standard.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
@@ -313,7 +314,7 @@ for (const [path, page] of Object.entries(documents)) {
   const discoverBundle=page.runtime==='discover'?navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':publicPages['/feed/'],'/discover/':{...publicPages['/discover/'],content:''},...discoveryWorkspacePages},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})):null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${discoverBundle??feedBundle}</body>`):null;
   const directMarketing=directMarketingEntries.get(path);
-  const document=withReadingLink(directMarketing??feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : `<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`),path);
+  const document=withReadingLink(directMarketing ? withAppAppearance(directMarketing) : feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : withAppAppearance(`<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`)),path);
   if(directMarketing)assertDirectMarketingEntry(path,document);
   await writeFile(`dist${path}index.html`,document);
 }

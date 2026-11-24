@@ -24,6 +24,13 @@ export function bankAppearanceHead(){
  return '<style id="bankeiz-appearance">'+css+'</style><script>'+script+'</script>';
 }
 
+/** Attach the same local appearance before the first stylesheet can paint. */
+export function withAppAppearance(html){
+ const theme=/<meta name="theme-color"[^>]*>/;
+ if(theme.test(html))return html.replace(theme,tag=>tag+bankAppearanceHead());
+ return html.replace('<head>',()=>'<head><meta name="theme-color" content="'+APP_APPEARANCE_COLORS.light+'">'+bankAppearanceHead());
+}
+
 export function appAppearancePlugin(){
  return {
   name:'bankeiz-app-appearance',

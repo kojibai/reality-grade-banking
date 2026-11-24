@@ -183,7 +183,8 @@
     template.content.querySelectorAll(selector).forEach(next => {
       const current = retained.get(key(next))?.shift();
       if (!current) { document.head.append(next); return; }
-      if (current === bankViewport) return;
+      // The installed appearance owns the browser chrome across retained pages.
+      if (current === bankViewport || current.matches('meta[name="theme-color"]') && window.__bankeizAppearanceInstalled) return;
       for (const attribute of [...current.attributes]) if (!next.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
       for (const attribute of next.attributes) if (current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
       if (current.textContent !== next.textContent) current.textContent = next.textContent;

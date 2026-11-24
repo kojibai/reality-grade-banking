@@ -1,5 +1,5 @@
-.learn-header{--paper:#f8f6ef}
-.institution-scorecard{--isc-paper:#f8f6ef;--isc-ink:#10263d;--isc-muted:#526171;--isc-line:#d5d8d5;--isc-red:#aa261d;--isc-red-wash:#fff0eb;--isc-green:#13643c;--isc-green-wash:#e9f6ec;background:var(--isc-paper);color:var(--isc-ink);padding-top:1px;overflow-wrap:break-word}
+.learn-header{--paper:var(--bank-page,#f8f6ef)}
+.institution-scorecard{--isc-paper:var(--bank-surface,#f8f6ef);--isc-ink:var(--bank-text,#10263d);--isc-muted:var(--bank-text-secondary,#526171);--isc-line:var(--bank-line,#d5d8d5);--isc-red:var(--bank-danger,#aa261d);--isc-red-wash:var(--bank-danger-surface,#fff0eb);--isc-green:var(--bank-positive,#13643c);--isc-green-wash:var(--bank-positive-surface,#e9f6ec);background:var(--isc-paper);color:var(--isc-ink);padding-top:1px;overflow-wrap:break-word}
 .institution-scorecard [hidden]{display:none!important}
 .institution-scorecard .isc-shell{width:min(1280px,calc(100% - 112px));margin-inline:auto;min-width:0}
 .institution-scorecard section[id]{scroll-margin-top:145px}
@@ -16,13 +16,13 @@
 .institution-scorecard .isc-hero-moral{font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.4;color:var(--isc-ink);margin-top:24px}
 .institution-scorecard .isc-text-link{display:inline-block;font-size:12px;line-height:1.8;border-bottom:1px solid currentColor;text-decoration:none;padding-bottom:5px;margin-top:25px}
 .institution-scorecard .isc-gate{background:var(--isc-red-wash);border:1px solid #e7b9aa;border-top:4px solid var(--isc-red);padding:31px 30px}
-.institution-scorecard .isc-gate>.isc-eyebrow{color:#8c3c33}
+.institution-scorecard .isc-gate>.isc-eyebrow{color:var(--bank-danger,#8c3c33)}
 .institution-scorecard .isc-gate-word{display:block;white-space:nowrap;font-size:clamp(82px,8.2vw,116px);line-height:1;letter-spacing:-.065em;font-weight:650;color:var(--isc-red);margin-top:22px}
 .institution-scorecard .isc-gate h2{font-size:34px;line-height:1.11;letter-spacing:-.045em;margin-top:19px}
-.institution-scorecard .isc-gate>p{font-size:12px;line-height:1.8;color:#82443b;margin-top:17px}
+.institution-scorecard .isc-gate>p{font-size:12px;line-height:1.8;color:var(--bank-danger,#82443b);margin-top:17px}
 .institution-scorecard .isc-gate-line{display:flex;gap:11px;align-items:flex-start;border-top:1px solid #e7b9aa;padding-top:18px;margin-top:20px}
 .institution-scorecard .isc-gate-line>span{width:5px;height:5px;border-radius:50%;background:var(--isc-red);flex-shrink:0;margin-top:7px}
-.institution-scorecard .isc-gate-line p{font-size:10px;line-height:1.8;color:#82443b}
+.institution-scorecard .isc-gate-line p{font-size:10px;line-height:1.8;color:var(--bank-danger,#82443b)}
 .institution-scorecard .isc-gate>a{display:inline-block;font-size:11px;text-underline-offset:5px;margin-top:20px}
 .institution-scorecard .isc-local-nav{display:flex;flex-wrap:wrap;gap:12px 40px;padding-block:20px;border-top:1px solid var(--isc-line);border-bottom:1px solid var(--isc-line);font-size:11px;line-height:1.8}
 .institution-scorecard .isc-local-nav a{text-decoration:none}
@@ -39,31 +39,31 @@
 .institution-scorecard [data-register-count="evidence-required"]{color:var(--isc-red)}
 .institution-scorecard .isc-count-note{font-size:11px;line-height:1.8;max-width:970px;margin-top:14px}
 .institution-scorecard .isc-directory{margin-top:32px}
-.institution-scorecard .isc-directory-controls{padding:24px;background:#fffefa;border:1px solid var(--isc-line);border-top:2px solid var(--isc-ink)}
+.institution-scorecard .isc-directory-controls{padding:24px;background:var(--bank-surface,#fffefa);border:1px solid var(--isc-line);border-top:2px solid var(--isc-ink)}
 .institution-scorecard .isc-directory-controls label{display:block;font-size:10px;font-weight:600;line-height:1.5;margin-bottom:8px;color:var(--isc-ink)}
 .institution-scorecard .isc-query-field>label{font-size:13px;line-height:1.5;margin-bottom:12px}
-.institution-scorecard .isc-query-input{display:flex;align-items:center;gap:13px;min-height:50px;border:1px solid #aab3b9;background:#fff;transition:border-color .15s,box-shadow .15s}
+.institution-scorecard .isc-query-input{display:flex;align-items:center;gap:13px;min-height:50px;border:1px solid #aab3b9;background:var(--bank-surface,#fff);transition:border-color .15s,box-shadow .15s}
 .institution-scorecard .isc-query-input:focus-within{border-color:#244c7a;box-shadow:0 0 0 3px #e0e7ec}
-.institution-scorecard .isc-query-input>svg{display:block;flex:0 0 22px;width:22px;height:22px;margin-left:16px;color:#4b6071}
+.institution-scorecard .isc-query-input>svg{display:block;flex:0 0 22px;width:22px;height:22px;margin-left:16px;color:var(--bank-text-secondary,#4b6071)}
 .institution-scorecard .isc-query-input input{display:block;width:100%;min-width:0;min-height:50px;border:0;border-radius:0;background:transparent;color:var(--isc-ink);font:inherit;font-size:16px;line-height:1.5;padding:12px 14px 12px 0;box-sizing:border-box}
-.institution-scorecard .isc-query-input input::placeholder{color:#697782;opacity:1}
+.institution-scorecard .isc-query-input input::placeholder{color:var(--bank-text-secondary,#697782);opacity:1}
 .institution-scorecard .isc-query-input input:focus-visible{outline:0}
 .institution-scorecard .isc-directory-help{font-size:10px;line-height:1.6;margin-top:10px}
-.institution-scorecard .isc-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(160px,1.1fr) auto;align-items:end;gap:14px;padding-top:20px;margin-top:20px;border-top:1px solid #e1e4df}
+.institution-scorecard .isc-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(160px,1.1fr) auto;align-items:end;gap:14px;padding-top:20px;margin-top:20px;border-top:1px solid var(--bank-line,#e1e4df)}
 .institution-scorecard .isc-filter-row>div{min-width:0}
-.institution-scorecard .isc-filter-row select{display:block;width:100%;min-width:0;height:44px;border:1px solid #b6bec3;border-radius:0;background:#fffefa;color:var(--isc-ink);font:inherit;font-size:12px;line-height:1.4;padding:10px 27px 10px 11px;box-sizing:border-box}
+.institution-scorecard .isc-filter-row select{display:block;width:100%;min-width:0;height:44px;border:1px solid var(--bank-line,#b6bec3);border-radius:0;background:var(--bank-surface,#fffefa);color:var(--isc-ink);font:inherit;font-size:12px;line-height:1.4;padding:10px 27px 10px 11px;box-sizing:border-box}
 .institution-scorecard .isc-filter-row select:hover{border-color:#758591}
 .institution-scorecard .isc-directory-controls button{min-height:44px;padding:10px 17px;border:1px solid var(--isc-ink);border-radius:0;background:var(--isc-ink);color:var(--isc-paper);font:inherit;font-size:11px;line-height:1.5;cursor:pointer;white-space:nowrap}
 .institution-scorecard .isc-directory-controls button:hover{background:#274059}
-.institution-scorecard .isc-directory-results{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 24px;margin:0;background:#f0f0e9;border:1px solid var(--isc-line);border-top:0;font-size:11px;line-height:1.7}
+.institution-scorecard .isc-directory-results{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:17px 24px;margin:0;background:var(--bank-surface-raised,#f0f0e9);border:1px solid var(--isc-line);border-top:0;font-size:11px;line-height:1.7}
 .institution-scorecard .isc-directory-results>p{font-variant-numeric:tabular-nums;color:var(--isc-ink);font-weight:500}
 .institution-scorecard .isc-directory-results>a{font-size:10px;text-underline-offset:4px}
 .institution-scorecard .isc-institutions{display:grid;grid-template-columns:minmax(0,1fr);border-top:1px solid var(--isc-line)}
-.institution-scorecard .isc-institution{display:grid;grid-template-columns:minmax(260px,1fr) 68px minmax(270px,1.1fr);gap:5px 28px;padding:23px 24px 0;border:1px solid var(--isc-line);border-top:0;background:#fffefa;min-width:0}
-.institution-scorecard .isc-institution.isc-green{background:#f2f9f1;border-left:3px solid var(--isc-green);padding-left:22px}
+.institution-scorecard .isc-institution{display:grid;grid-template-columns:minmax(260px,1fr) 68px minmax(270px,1.1fr);gap:5px 28px;padding:23px 24px 0;border:1px solid var(--isc-line);border-top:0;background:var(--bank-surface,#fffefa);min-width:0}
+.institution-scorecard .isc-institution.isc-green{background:var(--bank-surface-raised,#f2f9f1);border-left:3px solid var(--isc-green);padding-left:22px}
 .institution-scorecard .isc-record-identity{display:flex;align-items:flex-start;gap:17px;min-width:0}
 .institution-scorecard .isc-record-identity>div{min-width:0}
-.institution-scorecard .isc-logo{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;margin-top:4px;background:#fff;border:1px solid #e3e5df;border-radius:4px;overflow:hidden}
+.institution-scorecard .isc-logo{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;margin-top:4px;background:var(--bank-surface,#fff);border:1px solid var(--bank-line,#e3e5df);border-radius:4px;overflow:hidden}
 .institution-scorecard .isc-logo img{display:block;width:40px;height:40px;padding:3px;box-sizing:border-box;object-fit:contain}
 .institution-scorecard .isc-register-number{font-size:8px;line-height:1.5;letter-spacing:.12em;color:var(--isc-muted);font-variant-numeric:tabular-nums}
 .institution-scorecard .isc-institution h3{font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;letter-spacing:-.035em;font-weight:400;margin:6px 0 0}
@@ -107,31 +107,31 @@
 .institution-scorecard .isc-controls code{font-size:10px;overflow-wrap:anywhere;min-width:0}
 .institution-scorecard .isc-controls strong{font-size:10px;flex-shrink:0;color:var(--isc-ink)}
 .institution-scorecard .isc-controls p{font-size:11px;margin-top:5px}
-.institution-scorecard .isc-directory-empty{padding:45px 30px;text-align:center;border:1px solid var(--isc-line);background:#fffefa}
+.institution-scorecard .isc-directory-empty{padding:45px 30px;text-align:center;border:1px solid var(--isc-line);background:var(--bank-surface,#fffefa)}
 .institution-scorecard .isc-directory-empty h3{font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:400;letter-spacing:-.03em}
 .institution-scorecard .isc-directory-empty p{font-size:13px;margin-top:10px}
 .institution-scorecard .isc-register-policy{display:flex;gap:35px;border-top:1px solid var(--isc-line);font-size:10px;line-height:1.9;margin-top:26px;padding-top:21px}
 .institution-scorecard .isc-register-policy span{min-width:175px;flex-shrink:0;color:var(--isc-ink)}
-.institution-scorecard .isc-recorded-pass{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:27px 45px;margin-top:32px;padding:28px 32px 0;background:var(--isc-green-wash);border:1px solid #9ac9ac;border-top:4px solid var(--isc-green);color:#113c27}
-.institution-scorecard .isc-recorded-pass .isc-eyebrow{color:#37604a}
+.institution-scorecard .isc-recorded-pass{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);gap:27px 45px;margin-top:32px;padding:28px 32px 0;background:var(--isc-green-wash);border:1px solid #9ac9ac;border-top:4px solid var(--isc-green);color:var(--bank-text,#113c27)}
+.institution-scorecard .isc-recorded-pass .isc-eyebrow{color:var(--bank-text,#37604a)}
 .institution-scorecard .isc-recorded-pass h3{font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.15;letter-spacing:-.04em;font-weight:400;margin-top:14px}
 .institution-scorecard .isc-recorded-status{display:block;font-size:14px;line-height:1.5;color:var(--isc-green);margin-top:11px}
-.institution-scorecard .isc-recorded-main>p:not(.isc-eyebrow){font-size:13px;line-height:1.65;color:#37604a;margin-top:8px}
+.institution-scorecard .isc-recorded-main>p:not(.isc-eyebrow){font-size:13px;line-height:1.65;color:var(--bank-text,#37604a);margin-top:8px}
 .institution-scorecard .isc-recorded-actions{display:flex;gap:14px 25px;flex-wrap:wrap;margin-top:20px}
 .institution-scorecard .isc-recorded-actions a,.institution-scorecard .isc-recorded-reference>a{font-size:11px;line-height:1.8;text-decoration:underline;text-underline-offset:4px}
-.institution-scorecard .isc-recorded-reference{border-left:1px solid #b3d1bb;padding-left:35px}
+.institution-scorecard .isc-recorded-reference{border-left:1px solid var(--bank-line,#b3d1bb);padding-left:35px}
 .institution-scorecard .isc-recorded-reference h4{font-size:15px;line-height:1.5;font-weight:600;margin:14px 0 8px}
 .institution-scorecard .isc-recorded-reference>strong{display:block;font-size:30px;line-height:1.1;letter-spacing:-.04em;color:var(--isc-green)}
-.institution-scorecard .isc-recorded-reference>p:not(.isc-eyebrow){font-size:10px;line-height:1.8;color:#37604a;margin-top:7px}
+.institution-scorecard .isc-recorded-reference>p:not(.isc-eyebrow){font-size:10px;line-height:1.8;color:var(--bank-text,#37604a);margin-top:7px}
 .institution-scorecard .isc-recorded-reference>a{display:inline-block;margin-top:10px}
-.institution-scorecard .isc-recorded-details{grid-column:1/-1;border-top:1px solid #b3d1bb}
+.institution-scorecard .isc-recorded-details{grid-column:1/-1;border-top:1px solid var(--bank-line,#b3d1bb)}
 .institution-scorecard .isc-recorded-details summary{cursor:pointer;padding:17px 0;font-size:11px;line-height:1.6;font-weight:600}
 .institution-scorecard .isc-recorded-details>.isc-original-evidence{padding-bottom:25px}
 .institution-scorecard .isc-original-evidence{grid-column:1/-1;min-width:0}
-.institution-scorecard .isc-original-evidence p{font-size:11px;line-height:1.8;color:#37604a;max-width:860px}
-.institution-scorecard .isc-original-evidence .isc-scope>div{grid-template-columns:220px minmax(0,1fr);border-color:#c3dbc9;padding-block:10px}
+.institution-scorecard .isc-original-evidence p{font-size:11px;line-height:1.8;color:var(--bank-text,#37604a);max-width:860px}
+.institution-scorecard .isc-original-evidence .isc-scope>div{grid-template-columns:220px minmax(0,1fr);border-color:var(--bank-line,#c3dbc9);padding-block:10px}
 .institution-scorecard .isc-original-evidence .isc-recorded-actions{margin:16px 0}
-.institution-scorecard .isc-original-evidence .isc-scope dt{color:#37604a}
+.institution-scorecard .isc-original-evidence .isc-scope dt{color:var(--bank-text,#37604a)}
 .institution-scorecard .isc-requirements{background:var(--isc-ink);color:var(--isc-paper);padding-block:78px}
 .institution-scorecard .isc-requirements .isc-eyebrow{color:#b7c4ce}
 .institution-scorecard .isc-requirements p{color:#c1ccd5}
@@ -150,11 +150,11 @@
 .institution-scorecard .isc-qualify-steps h3{font-size:19px;line-height:1.4;font-weight:600;letter-spacing:-.03em;margin-top:24px}
 .institution-scorecard .isc-qualify-steps p{font-size:13px;line-height:1.8;margin-top:13px;min-height:118px}
 .institution-scorecard .isc-qualify-steps a{display:inline-block;font-size:11px;line-height:1.7;text-decoration:underline;text-underline-offset:5px;margin-top:19px}
-.institution-scorecard .isc-correction{display:grid;grid-template-columns:185px minmax(0,1fr);gap:12px 40px;margin-top:45px;padding:28px 30px;background:#eeede5;border:1px solid var(--isc-line)}
+.institution-scorecard .isc-correction{display:grid;grid-template-columns:185px minmax(0,1fr);gap:12px 40px;margin-top:45px;padding:28px 30px;background:var(--bank-surface-raised,#eeede5);border:1px solid var(--isc-line)}
 .institution-scorecard .isc-correction h3{font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.15;letter-spacing:-.035em;font-weight:400}
 .institution-scorecard .isc-correction p{font-size:12px;line-height:1.8}
 .institution-scorecard .isc-correction a{grid-column:2;font-size:11px;line-height:1.7;text-decoration:underline;text-underline-offset:4px}
-.institution-scorecard .isc-same-standard{border-top:1px solid var(--isc-line);background:#efece2;padding-block:65px 73px}
+.institution-scorecard .isc-same-standard{border-top:1px solid var(--isc-line);background:var(--bank-surface-raised,#efece2);padding-block:65px 73px}
 .institution-scorecard .isc-same-inner{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10%;align-items:start}
 .institution-scorecard .isc-same-standard h2{font-size:clamp(39px,4.4vw,62px);line-height:1.08;margin-top:20px}
 .institution-scorecard .isc-same-inner>div>p{font-size:13px;margin-top:20px}
@@ -246,7 +246,7 @@
  .institution-scorecard .isc-recorded-main>p:not(.isc-eyebrow){font-size:12px}
  .institution-scorecard .isc-recorded-status{font-size:13px}
  .institution-scorecard .isc-recorded-actions{gap:11px;margin-top:18px;flex-direction:column;align-items:flex-start}
- .institution-scorecard .isc-recorded-reference{border-left:0;border-top:1px solid #b3d1bb;padding:19px 0 0}
+ .institution-scorecard .isc-recorded-reference{border-left:0;border-top:1px solid var(--bank-line,#b3d1bb);padding:19px 0 0}
  .institution-scorecard .isc-recorded-reference h4{margin-top:10px}
  .institution-scorecard .isc-recorded-reference>strong{font-size:28px}
  .institution-scorecard .isc-recorded-details summary{font-size:10px}
@@ -310,8 +310,8 @@
 .institution-scorecard .isc-proof-publisher p{margin:0;overflow-wrap:anywhere}
 .institution-scorecard .isc-proof-upload .isc-proof-publisher button{padding:0;min-height:32px;border:0;background:transparent;color:var(--isc-ink);text-decoration:underline;text-underline-offset:4px;font-size:11px;white-space:nowrap}
 .institution-scorecard .isc-proof-status:empty{display:none}
-.institution-scorecard .isc-proof-status[data-state="error"]{color:#ac231c}
-.institution-scorecard .isc-proof-status[data-state="success"]{color:#17623d}
+.institution-scorecard .isc-proof-status[data-state="error"]{color:var(--bank-danger,#ac231c)}
+.institution-scorecard .isc-proof-status[data-state="success"]{color:var(--bank-text,#17623d)}
 .institution-scorecard .isc-proof-history{margin:22px 0 0;padding-top:18px;border-top:1px solid var(--isc-line)}
 .institution-scorecard .isc-proof-history ol{padding-left:18px;margin-top:13px}
 .institution-scorecard .isc-proof-history li{font-size:11px;line-height:1.8;margin-top:9px;overflow-wrap:anywhere}

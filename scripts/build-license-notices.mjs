@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { learnHeader } from './learn-template.mjs';
 import { learnAssets } from './learn-assets.mjs';
+import {withAppAppearance} from './app-appearance.mjs';
 import {applyPublicMetadata,publicPage} from './public-page-metadata.mjs';
 import socialImages from '../public/social/manifest.json' with {type:'json'};
 
@@ -106,7 +107,7 @@ const patchLegal=({navigation,shared})=>{
  return writeNavigationScript(navigation,shared);
 };
 const bundle=patchLegal(publicEntry),homeBundle=patchLegal(home),navigation=publicEntry.navigation;
-await writeFile('dist/legal/index.html', publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`));
+await writeFile('dist/legal/index.html', withAppAppearance(publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`)));
 // Preserve the exact Bank stylesheet bytes in just their existing carrier.
 await writeFile('dist/index.html',(await readFile('dist/index.html','utf8')).replace(navigationPattern,()=>homeBundle));
 for (const path of [...Object.keys(navigation.pages),...Object.keys(navigation.aliases??{})]) {

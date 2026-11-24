@@ -1,4 +1,5 @@
 import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
+import {withAppAppearance} from './app-appearance.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import {siteFooterHtml} from './site-footer.mjs';
 import assert from 'node:assert/strict';
@@ -162,7 +163,8 @@ for (const [path, entry] of Object.entries(navigation.pages)) {
   if(directMarketingPaths.has(path)){
     directMarketingSizes.push({path,bytes:assertDirectMarketingEntry(path,output)});
     const directHead=output.match(/<head>([\s\S]*?)<\/head>/)[1].replace(/<link\b[^>]*\bdata-public-reading="(?:html|text)"[^>]*>/g,'');
-    assert.equal(directHead,entry.head,`Direct ${path} keeps the exact selected head, styles, metadata and runtime.`);
+    const expectedHead=withAppAppearance(`<head>${entry.head}</head>`).slice(6,-7);
+    assert.equal(directHead,expectedHead,`Direct ${path} keeps the selected head and installs appearance before paint.`);
     const directContent=output.match(/<div id="public-learn-root">([\s\S]*?)<\/div>(?:<template data-shared-example-views>[^<]*<\/template>)?<\/body>/)?.[1];
     assert.ok(directContent,`Direct ${path} carries the actual complete page.`);
     assert.equal(withoutExampleBanks(directContent),withoutExampleBanks(entry.content),`Direct ${path} retains the exact visible first frame and footer.`);
@@ -363,4 +365,5 @@ assert.ok(discoveryOpening.includes('data-public-runtime="discover"')&&discovery
 assert.ok(discoveryOpening.includes('<style data-public-page-style="discover">')&&!/<link rel="stylesheet"/.test(discoveryOpening),'Discovery does not wait for a stylesheet.');
 assert.ok(/<script type="module" async[^>]*src="\/assets\/discover-/.test(discoveryDocument),'Discovery hydrates before unrelated document payload.');
 assert.ok(!discoveryOpening.includes('site-footer')&&!discoveryOpening.includes('account-opening-screen'),'Discovery starts with works, without footer or account work.');
-assert.ok(discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)-carriedNavigationTextSize(discoveryDocument)<700000,'Discovery interface and non-text payload remain below 700 kB uncompressed.');
+const discoveryInterfaceSize=discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)-carriedNavigationTextSize(discoveryDocument);
+assert.ok(discoveryInterfaceSize<700000,`Discovery interface and non-text payload are ${discoveryInterfaceSize} bytes. The 700 kB uncompressed budget still applies.`);
