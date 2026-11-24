@@ -5,14 +5,25 @@ import { expect, test, vi } from 'vitest';
 import { FundedWalletReceive, FundedWalletSend } from '../src/features/account/FundedWalletPayments';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import type { WalletPairOffer } from '../src/receiz/funded-wallet';
+import { createReceizIdIdentity, signReceizIdentityLoginProof } from '@receiz/sdk';
+import { createDeferredWalletSend } from '../src/receiz/wallet-send-deferred';
+import { createNearbyWalletReceive } from '../src/receiz/wallet-nearby-receive';
+import { signNearbyWalletPayment } from '../src/receiz/wallet-nearby-consent';
+import type { OpticalFrames } from '../src/features/account/WalletPaymentCode';
 import { createOpticalNoteFrames } from '../src/receiz/optical-note-frames';
 
-const scanner = vi.hoisted(() => ({ read: undefined as undefined | ((bytes:Uint8Array)=>Promise<boolean>) }));
+const scanner = vi.hoisted(() => ({
+  read: undefined as undefined | ((bytes:Uint8Array)=>Promise<boolean>),
+  shown: undefined as OpticalFrames | undefined,
+}));
 vi.mock('../src/features/account/PaymentScanner',()=>({PaymentScanner({onBytes}:{onBytes:(bytes:Uint8Array)=>Promise<boolean>}){
   scanner.read=onBytes;
   return <p>QR scanner</p>;
 }}));
-vi.mock('../src/features/account/WalletPaymentCode',()=>({WalletPaymentCode:({label}:{label:string})=><output>{label}</output>}));
+vi.mock('../src/features/account/WalletPaymentCode',()=>({WalletPaymentCode:({label,frames}:{label:string;frames:OpticalFrames})=>{
+  scanner.shown=frames;
+  return <output>{label}</output>;
+}}));
 
 const offer:WalletPairOffer={schema:'bankeiz.wallet.offer.v1',applicationId:'rc_wallet',sourceArtifactSha256:'a'.repeat(64),
   allocationId:'b'.repeat(64),conversationId:'66666666-6666-4666-8666-666666666666',amountUsdCents:'100',recipient:'second.receiz.id'};
@@ -115,4 +126,54 @@ test('Receive asks for a rescan and waits for a readable recovery copy before re
     expect(host.textContent).toContain('available to send from this device');
     expect(onRefresh).toHaveBeenCalledOnce();
   }finally{await act(async()=>root.unmount());host.remove();}
+});
+
+test('two unqualified Wallets use regular review, one payment QR and a quiet connect-to-confirm status',async()=>{
+  const senderUid='11111111-1111-4111-8111-111111111111';
+  const passphrase='test-nearby-identity';
+  const {keyFile}=await createReceizIdIdentity({passphrase});
+  let sent:Awaited<ReturnType<ReturnType<typeof createDeferredWalletSend>['list']>>|null=null;
+  let incoming:Awaited<ReturnType<ReturnType<typeof createNearbyWalletReceive>['list']>>|null=null;
+  const refuseCustody=async()=>{throw Error('BANK_WALLET_DEVICE_REQUIRED');};
+  const approve=createDeferredWalletSend({
+    account:()=>({accountUid:senderUid,availableUsdCents:'1000'}),online:()=>false,lock:async work=>work(),
+    deliver:async()=>{throw Error('Sender is offline');},
+    store:{read:async()=>sent,write:async next=>{sent=structuredClone(next);}},
+    signNearby:review=>signNearbyWalletPayment({
+      applicationId:offer.applicationId,senderUserId:senderUid,recipientUserId:review.recipientUserId,
+      amountUsdCents:review.amountUsdCents,clientNonce:review.clientNonce,note:null,kaiUPulse:'1000000',
+      keyId:keyFile.keyId,alg:keyFile.alg,publicKeyRawB64u:keyFile.crypto.publicKeyRawB64u,
+    }, challengeB64Url=>signReceizIdentityLoginProof({keyFile,passphrase,challengeB64Url})),
+  });
+  const confirm=vi.fn();
+  const inbox=createNearbyWalletReceive({
+    applicationId:offer.applicationId,accountUid:()=>answer.recipientUserId,online:()=>false,lock:async work=>work(),
+    confirm,onRecorded:()=>{},
+    store:{read:async()=>incoming,write:async next=>{incoming=structuredClone(next);}},
+  });
+  const sender={fundedWallet:refuseCustody,deferredWalletSend:async()=>approve} as unknown as OpenIdentity;
+  const merchant={fundedWallet:refuseCustody,nearbyWalletReceive:async()=>inbox} as unknown as OpenIdentity;
+  const host=document.createElement('div'),root=createRoot(host);
+  document.body.append(host);
+  try{
+    await act(async()=>root.render(<FundedWalletSend identity={sender} recipientLabel="Coffee shop" request={()=>({
+      recipient:answer.recipientUserId,amountUsdCents:'100',nearby:true,
+    })} onRefresh={()=>{}} onNext={()=>{}}>Payment fields</FundedWalletSend>));
+    await click(host,'Review payment');
+    await vi.waitFor(()=>expect(host.textContent).toContain('After confirmation'));
+    await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+    await click(host,'Send payment');
+    await vi.waitFor(()=>expect(host.textContent).toContain('Wallet payment QR'));
+    const payment=scanner.shown!;
+    expect(payment.count).toBe(1);
+    await act(async()=>root.render(<FundedWalletReceive offline identity={merchant} onRefresh={()=>{}}/>));
+    await act(async()=>{expect(await scanner.read!(payment.frame(0))).toBe(true);});
+    await vi.waitFor(()=>expect(host.textContent).toContain('Connect to confirm'));
+    expect(host.textContent).toContain('$1.00');
+    expect(host.querySelector('[role=alert]')).toBeNull();
+    expect(confirm).not.toHaveBeenCalled();
+  }finally{
+    await act(async()=>root.unmount());
+    host.remove();
+  }
 });

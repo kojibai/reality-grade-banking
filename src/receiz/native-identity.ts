@@ -17,7 +17,7 @@ import {permittedNativeChatPath} from './native-chat-paths';
 import {loadReceivedProofState,saveReceivedProofState} from './identity-vault';
 import {loadMarketTradeState,saveMarketTradeState} from './identity-vault';
 import {BANK_MARKET_READ_SCOPES,BANK_MARKET_TRADE_SCOPES,BANK_MARKET_CONSENT,BANK_MARKET_READ_CONSENT} from './config';
-import {loadWalletSendState,saveWalletSendState,assertWalletSendCustody,loadDeferredWalletSends,saveDeferredWalletSends} from './identity-vault';
+import {loadWalletSendState,saveWalletSendState,assertWalletSendCustody,loadDeferredWalletSends,saveDeferredWalletSends,loadNearbyWalletReceipts,saveNearbyWalletReceipts} from './identity-vault';
 import {loadTwinCreditPurchaseState,saveTwinCreditPurchaseState} from './identity-vault';
 import {createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,type RecoveredTwinCreditPurchase} from './twin-credit-purchase-intent';
 import {BANK_WALLET_SEND_SCOPES,BANK_WALLET_SEND_CONSENT} from './config';
@@ -116,6 +116,7 @@ export interface OpenIdentity {
   knownMarketPortfolio?: () => MarketPortfolio|null;
   fundedWallet?: () => Promise<import('./funded-wallet').FundedWallet>;
   walletSend?: () => Promise<import('./wallet-send').WalletSend>;
+  nearbyWalletReceive?: () => Promise<import('./wallet-nearby-receive').NearbyWalletReceive>;
   deferredWalletSend?: () => Promise<import('./wallet-send-deferred').DeferredWalletSend>;
   operations?: () => Promise<import('./bank-operations').BankOperations>;
   accountProof?: () => Promise<import('./account-proof').VerifiedAccountProof>;
@@ -2192,6 +2193,21 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       read:()=>storage.loadFundedWalletState(binding),save:(next,prior)=>storage.saveFundedWalletState(binding,next,prior),
       lock:async<T>(work:()=>Promise<T>)=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`bankeiz-funded-wallet:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await work());},
       signOwner,prepareOffline,setupReceiving,
+      async approveRemainder(value){
+        const deferred=await deferredWalletSend();
+        const review=await deferred.prepare(value,value.recipientLabel,true,value.split);
+        const {payment}=await deferred.approve(review,review.confirmationDigest);
+        if(!payment)throw Error('BANK_WALLET_QUEUE_INVALID');
+        return payment;
+      },
+      async abandonRemainder(conversationId){
+        await (await deferredWalletSend()).abandonUnexposedSplit(conversationId);
+      },
+      async acceptRemainder(payment){
+        const inbox=await nearbyWalletReceive();
+        await inbox.receive(payment,'funded');
+        void inbox.resume().catch(()=>{});
+      },
       async onFundingRetained(allocationId){
         if(!navigator.locks)return;
         await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:funding`,{signal:lifetime.signal},async()=>{
@@ -2342,7 +2358,28 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
       return navigator.locks.request(`bankeiz-wallet-deferred:${binding.artifactSha256}`,{signal:lifetime.signal},work);
     },
+    async signNearby(review){
+      noteOpen();
+      const {signNearbyWalletPayment}=await import('./wallet-nearby-consent');
+      return signNearbyWalletPayment({applicationId:BANK_APPLICATION_ID,senderUserId:review.accountUid,
+        recipientUserId:review.recipientUserId,clientNonce:review.clientNonce,amountUsdCents:review.amountUsdCents,
+        ...(review.split?{split:review.split}:{}),note:review.note??null,kaiUPulse:String(sdk.receizKaiNow().uPulse),keyId:binding.keyId,
+        alg:keyFile.alg,publicKeyRawB64u:keyFile.crypto.publicKeyRawB64u},
+        challengeB64Url=>sdk.signReceizIdentityLoginProof({keyFile,passphrase:phrase,challengeB64Url}));
+    },
     async deliver(entry){
+      if(entry.payment){
+        const connected=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);
+        noteOpen();
+        if(clientAccounts.get(connected)?.accountUid!==entry.accountUid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
+        const raw=await connected.request('/api/connect/transfers?clientNonce='+encodeURIComponent(entry.clientNonce),{method:'GET'});
+        const {readNearbyWalletOriginal}=await import('./wallet-nearby-receive');
+        const record=await readNearbyWalletOriginal(entry.payment,raw);
+        const storage=await import('./identity-vault');
+        if(await storage.loadWalletOriginal(binding,record.transferId)==null)
+          await storage.saveWalletOriginal(binding,record.transferId,raw,null);
+        return 'recorded';
+      }
       const payment=await openWalletSend(entry.clientNonce);
       let result=await payment.resumeDeferred(entry.clientNonce);
       if(!result){
@@ -2353,6 +2390,36 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       return result.status==='recorded'||result.status==='not-sent'?result.status:'unknown';
     },
   })).catch(error=>{deferredWalletSendPromise=undefined;throw error;});
+  let nearbyWalletReceivePromise:Promise<import('./wallet-nearby-receive').NearbyWalletReceive>|undefined;
+  const nearbyWalletReceive=()=>nearbyWalletReceivePromise??=import('./wallet-nearby-receive').then(({createNearbyWalletReceive})=>createNearbyWalletReceive({
+    applicationId:BANK_APPLICATION_ID,
+    accountUid:()=>{noteOpen();return receivingUid();},
+    online:()=>!lifetime.signal.aborted&&navigator.onLine!==false,
+    store:{read:()=>loadNearbyWalletReceipts(binding),write:(next,previous)=>saveNearbyWalletReceipts(binding,next,previous)},
+    lock:async work=>{
+      noteOpen();
+      if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');
+      return await navigator.locks.request(`bankeiz-wallet-nearby-receive:${binding.artifactSha256}`,{signal:lifetime.signal},work);
+    },
+    async confirm(payment){
+      const connected=await connectClient(BANK_WALLET_SEND_SCOPES,BANK_WALLET_SEND_CONSENT);
+      noteOpen();
+      if(clientAccounts.get(connected)?.accountUid!==payment.recipientUserId)throw Error('BANK_WALLET_IDENTITY_CHANGED');
+      const conversation=await connected.request('/api/chat/conversations',{method:'POST',body:{
+        kind:'dm',participantUserIds:[payment.senderUserId],participantEmails:[],aiAgentIds:[],defaultAiId:null,title:null,
+      }}) as {ok?:boolean;conversation?:{id?:string}};
+      noteOpen();
+      if(conversation.ok!==true||!conversation.conversation?.id)throw Error('BANK_WALLET_NEARBY_CONFIRMATION_PENDING');
+      return connected.request('/api/connect/transfers',{method:'POST',body:{
+        conversationId:conversation.conversation.id,nearbyPayment:payment,
+      }});
+    },
+    onRecorded:()=>{
+      if(lifetime.signal.aborted)return;
+      walletRevision++;
+      announceConnectedWalletRecord(receivingUid());
+    },
+  })).catch(error=>{nearbyWalletReceivePromise=undefined;throw error;});
   let hostedCheckoutPromise:Promise<import('./hosted-checkout').HostedCheckoutController>|undefined,checkoutController:import('./hosted-checkout').HostedCheckoutController|undefined;
   const hostedCheckout=()=>hostedCheckoutPromise??=Promise.all([import('./hosted-checkout'),import('./checkout-notes')]).then(([{createHostedCheckout},{createCheckoutNotes}])=>{
     noteOpen();const notes=createCheckoutNotes({identity:{offlineNotes},storeSource:bytes=>saveOfflineNoteBlob(binding,bytes),restoreSource:digest=>loadOfflineNoteBlob(binding,digest),assertCurrent:noteOpen});
@@ -2803,7 +2870,11 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   readHeldLedgerOriginal.transferOriginal=async record=>{
     noteOpen();if(!transferOriginalReader){const [{createHeldTransferOriginalReader},storage]=await Promise.all([import('./held-transfer-original'),import('./identity-vault')]);noteOpen();
       transferOriginalReader??=createHeldTransferOriginalReader({assertOpen:noteOpen,accountUid:()=>accountUid??carriedAccountUid??knownWallet?.wallet.userId??null,
-        readSends:()=>storage.loadWalletSendState(binding),readSaved:id=>storage.loadWalletOriginal(binding,id),save:(id,source,previous)=>storage.saveWalletOriginal(binding,id,source,previous),readOriginal:input=>sealRecordExport(input,true),
+        readSends:()=>storage.loadWalletSendState(binding),readSaved:async id=>{
+          const saved=await storage.loadWalletOriginal(binding,id);
+          if(saved||!await storage.loadNearbyWalletReceipts(binding))return saved;
+          return (await nearbyWalletReceive()).original(id);
+        },save:(id,source,previous)=>storage.saveWalletOriginal(binding,id,source,previous),readOriginal:input=>sealRecordExport(input,true),
         readMissing:async id=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;if(!uid||clientAccounts.get(current)?.accountUid!==uid)throw Error('TRANSFER_ORIGINAL_ACCOUNT_MISMATCH');return current.request('/api/connect/transfers?transferId='+encodeURIComponent(id),{method:'GET'});},
       });
     }return transferOriginalReader(record);
@@ -2816,20 +2887,23 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   if(typeof window!=='undefined'){
     window.addEventListener('online',resumeHeldFundedWallet,{signal:lifetime.signal});
     queueMicrotask(resumeHeldFundedWallet);
-    const resumeDeferredWallet=()=>{
+    const resumeHeldWalletPayments=()=>{
       if(navigator.onLine===false)return;
       void loadDeferredWalletSends(binding).then(async held=>{
         if(Array.isArray(held)&&held.some(row=>row?.status==='pending'))await (await deferredWalletSend()).resume();
       }).catch(()=>{});
+      void Promise.resolve().then(()=>loadNearbyWalletReceipts(binding)).then(async held=>{
+        if(Array.isArray(held)&&held.some(row=>row?.original===undefined))await (await nearbyWalletReceive()).resume();
+      }).catch(()=>{});
     };
-    window.addEventListener('online',resumeDeferredWallet,{signal:lifetime.signal});
-    window.addEventListener('pageshow',resumeDeferredWallet,{signal:lifetime.signal});
+    window.addEventListener('online',resumeHeldWalletPayments,{signal:lifetime.signal});
+    window.addEventListener('pageshow',resumeHeldWalletPayments,{signal:lifetime.signal});
     document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible')resumeDeferredWallet();
+      if(document.visibilityState==='visible')resumeHeldWalletPayments();
     },{signal:lifetime.signal});
-    queueMicrotask(resumeDeferredWallet);
+    queueMicrotask(resumeHeldWalletPayments);
   }
-  const openedIdentity:OpenIdentity = { retryAssetSignatureOnOpen, governanceExecution, publishGovernanceOriginal, matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, originalPurchase:{quote:(id:string,username:string)=>getOriginalPurchase().then(api=>api.quote(id,username)),download:(id:string,sha256?:string)=>getOriginalPurchase().then(api=>api.download(id,sha256))}, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??knownWallet?.wallet.userId??null, deferredWalletSend,walletSend, fundedWallet, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, signPublishedOriginal, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { fundedWalletSession?.dispose();vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
+  const openedIdentity:OpenIdentity = { retryAssetSignatureOnOpen, governanceExecution, publishGovernanceOriginal, matchesAccountEmail, readHeldLedgerOriginal, sealRecordExport, readRecordExport, signDocumentConsent, knownDeposits:heldSourceView.known, calendarAccountProof, knownCalendarAccountProof:sourceDigest=>{noteOpen();const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;return uid?calendarStatements.file(sourceDigest,uid):null;},meetingArchive,profileInsights, originalsQualification, knownOriginalsQualification:()=>qualificationReader?.known()??null, shareCertificates, organizer,knownOrganizerDisplay,knownOrganizer,receizTools,moneyTools,businessSetup,twinWorkspace,knownTwinWorkspace,vaults,noteVaults, hostedCheckout, originalPurchase:{quote:(id:string,username:string)=>getOriginalPurchase().then(api=>api.quote(id,username)),download:(id:string,sha256?:string)=>getOriginalPurchase().then(api=>api.download(id,sha256))}, paidBooking, merchantCounter, profile, knownProfile:()=>profilePresentation, confirmedAccountUsername:()=>!lifetime.signal.aborted&&accountUid?confirmedUsername:null, messaging, knownMessagingDisplay, knownTwinAccess, retainTwinAccessQuestions, upgradeTwin, recoverTwinCreditPurchase, knownReceivedNotes:()=>receivedNoteDisplay, prepareAccountView, prepareReceivingUsername, cancelUnsentNotes, refreshLocalValuation, walletReceivingAddress:()=>accountUid??carriedAccountUid??knownWallet?.wallet.userId??null, nearbyWalletReceive, deferredWalletSend,walletSend, fundedWallet, marketTrade, marketPortfolio, knownMarketPortfolio, operations, accountProof, retainAccountArtifactSource, accountProofSharing, proofLibrary, executionRecovery: () => executionRecovery, offlineNotes, binding, needsPhrase: identityNeedsPhrase(keyFile), knownWallet: () => knownWallet, username: keyFile.owner.username, accountUsername: () => presentationUsername, localHistory, readWallet, readPrivateHistory, readNoteHistory, beginCardDeposit, checkCardDeposit, cancelCardDeposit:(checkout:CardCheckout)=>checkCardDeposit(checkout,undefined,true), pendingCardDeposit, pendingCardDeposits, startAssetIntake, holdProof, listDeposits, createAsset, publishAssetToMarket, signPublishedOriginal, backedAssetPublication, createComposedAsset:(definition,draft,onProgress)=>createAsset(definition,undefined,false,draft,onProgress), pendingAssetPublication:async()=>{try{return await createAsset(null,undefined,true);}catch(error){if(error instanceof Error&&error.message==='BANK_ASSET_PUBLICATION_NONE')return null;throw error;}},retryAssetPublication:sourceDigest=>createAsset(null,undefined,false,undefined,undefined,sourceDigest),dismissAssetCreation:async digest=>{const {dismissAssetCreation}=await import('./asset-publication');await dismissAssetCreation(assetCreationState(),digest);}, receivedProof, nativeReadiness, connectNativeAccount, persistDeviceCustody, exportIdentityRecord, dispose: () => { fundedWalletSession?.dispose();vaultManager?.dispose();noteVaultManager?.dispose();for(const paid of paidBookingControllers)paid.dispose();checkoutController?.dispose();merchantController?.dispose();if(!lifetime.signal.aborted){callCleanupUntil=Date.now()+90_000;for(const [path,leave] of callMembershipCleanup)void orderCallMembership(path,leave).catch(()=>{});} lifetime.abort(); publishOpenPortfolio(binding.artifactSha256,null); client = null; }, backup: () => ({ bytes: new Uint8Array(bytes), filename, phrase }) };
   return openedIdentity;
 }
 async function createFreshNativeIdentity(consentApproved: boolean): Promise<OpenIdentity> {

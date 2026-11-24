@@ -299,6 +299,9 @@ test('one nearby offer covers the exact amount across two verified top-ups', asy
   });
   try{
     expect(await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3001'})).toBeNull();
+    const mixed=await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'4000',connectRemainder:true});
+    expect(mixed).toMatchObject({schema:'bankeiz.wallet.offer.v2',amountUsdCents:'4000',connectUsdCents:'1000',
+      parts:[{amountUsdCents:'1000'},{amountUsdCents:'2000'}]});
     const offer=await wallet.offer({nearby:true,recipient:'receiver.receiz.id',amountUsdCents:'3000'});
     expect(offer).toMatchObject({
       schema:'bankeiz.wallet.offer.v2',amountUsdCents:'3000',
@@ -313,4 +316,117 @@ test('one nearby offer covers the exact amount across two verified top-ups', asy
     await expect(wallet.review({recipient:offer.recipient,amountUsdCents:'100',nearby:false}))
       .rejects.toThrow('BANK_WALLET_FUNDED_RECIPIENT_REQUIRED');
   }finally{wallet.dispose();}
+});
+
+test('a split Wallet QR retains the protected credit and recovers the signed remainder on cold reopen', async () => {
+  const { createReceizIdIdentity, signReceizIdentityLoginProof, sha256ReceizBytes } = await import('@receiz/sdk');
+  const { signNearbyWalletPayment } = await import('../src/receiz/wallet-nearby-consent');
+  const { readOpticalNoteFrames } = await import('../src/receiz/optical-note-frames');
+  const { readWalletPaymentBundle, encodeWalletPaymentBundle } = await import('../src/receiz/wallet-payment-bundle');
+  const { options, runtime } = await (await createLocalFinancialFixtureFactory())();
+  const original = await runtime.admitReceizAccountFinancialSource(options.sourceBytes);
+  const payer = options.accountUid, merchant = '33333333-3333-4333-8333-333333333333';
+  const passphrase = 'mixed-wallet-fixture';
+  const {keyFile} = await createReceizIdIdentity({passphrase});
+  let opening:import('../src/receiz/wallet-payment-bundle').WalletPaymentOpening|undefined;
+  const peer = {...original, accountUserId:merchant, ownerReceizId:'merchant.receiz.id',
+    allocationId:'76'.repeat(32),artifactSha256:'77'.repeat(32)};
+  let commit:import('../src/receiz/local-financial-runtime').FinancialCommit|null=null;
+  let sent=0;
+  const fixtureRuntime={
+    ...runtime,
+    admitReceizAccountFinancialSource:async()=>original,
+    readReceizAccountFinancialWalletProof(bytes:Uint8Array) {
+      expect(bytes).toEqual(Uint8Array.of(1,2,3));
+      return {sourceOriginal:options.sourceBytes,paymentOriginals:[]};
+    },
+    receiveReceizAccountFinancialWalletProof:async()=>peer,
+    exportReceizAccountFinancialWalletProof:()=>Uint8Array.of(1,2,3),
+    financialSourceApplicationId:()=>options.applicationId,
+    bankFinancialWalletDevice:(source:typeof original)=>({
+      keyId:'key',signerPublicKey:'signer',origin:'https://bank.test',rpId:'bank.test',credentialIdB64u:'fixture',
+      received:source===peer,scanTime:true,partialPayments:true,sharedWalletCounter:true,setAside:true,recipients:[],
+      ...(source===peer?{paymentOpening:opening}:{}),
+    }),
+    assertBankFinancialWalletDevice:async()=>{throw Error('unexpected device call');},
+    prepareReceizScannedWalletRecipient:async(_source:unknown, action:{scannedRecipient?:unknown})=>{
+      expect(action.scannedRecipient).toEqual({fixture:true});
+    },
+    projectReceizAccountFinancialAction:()=>({effect:{kind:'send',recipientUserId:merchant,recipientOwnerReceizId:peer.ownerReceizId,
+      amountPhiMicro:'100000',settledUsdCents:'10000',ecosystemUsdCents:'0'}}),
+    financialSourceWalletAt:(_source:unknown,state:{wallet:unknown})=>state.wallet,
+    async createReceizAccountFinancialExecutor({source}:import('../src/receiz/local-financial-runtime').FinancialExecutorOptions){
+      return {
+        async current(){return {headArtifactSha256:source.artifactSha256,state:{sequence:'0',wallet:{
+          availableUsdCents:source===peer||!commit?'10000':'0',balancePhiMicro:'100000',settledUsdCents:'10000',
+        }}};},
+        async stageWalletPayment(){return {proofBytes:3};},
+        async execute({operationId,action}:{operationId:string;action:Extract<import('../src/receiz/local-financial-runtime').FinancialAction,{kind:'send'}>}){
+          sent++;
+          opening={allocationId:original.allocationId,sourceArtifactSha256:original.artifactSha256,
+            conversationId:action.conversationId,amountUsdCents:action.amountUsdCents};
+          commit={status:'committed',publication:'pending',operation:{operationId,action}} as typeof commit;
+          return commit;
+        },
+        async resolve(id:string){return commit?.operation.operationId===id?commit:null;},
+      };
+    },
+    commitReceizAccountFinancialWalletPaymentBatch:async()=>{throw Error('A single protected source uses the existing single writer');},
+    async createReceizAccountFinancialPublisher(){return {dispose(){}};},
+  } as unknown as typeof runtime;
+  const originals = new Map<string,Uint8Array>([[original.artifactSha256,options.sourceBytes]]);
+  let out:unknown={entries:[{kind:'source',allocationId:original.allocationId,digest:original.artifactSha256}],send:null};
+  let inbound:unknown=null;
+  const network = vi.fn(async()=>{throw Error('The two Wallets are offline');});
+  const accept = vi.fn(async (_payment:import('../src/receiz/wallet-nearby-consent').NearbyWalletPayment)=>{});
+  const boundOptions={
+    ...options,runtime:fixtureRuntime,ownerKeyId:'a'.repeat(64),online:()=>false,lock:<T>(work:()=>Promise<T>)=>work(),
+    async reopen(id:string){return originals.get(id)!;},
+    async retain(bytes:Uint8Array){const id=await sha256ReceizBytes(bytes);originals.set(id,bytes);return id;},
+    bindWalletDevice:()=>network,findSource:network,publish:network,publishPeerRelease:network,
+  };
+  const openPayer=()=>createFundedWallet({...boundOptions,read:async()=>out,async save(next,prior){expect(out).toBe(prior);out=next;},
+    approveRemainder:terms=>signNearbyWalletPayment({
+      applicationId:options.applicationId,senderUserId:payer,recipientUserId:merchant,clientNonce:terms.split.conversationId,
+      amountUsdCents:terms.amountUsdCents,note:null,kaiUPulse:'1000000',split:terms.split,
+      keyId:keyFile.keyId,alg:keyFile.alg,publicKeyRawB64u:keyFile.crypto.publicKeyRawB64u,
+    },challengeB64Url=>signReceizIdentityLoginProof({keyFile,passphrase,challengeB64Url})),
+  });
+  const openMerchant=()=>createFundedWallet({...boundOptions,accountUid:merchant,ownerReceizId:peer.ownerReceizId,
+    read:async()=>inbound,async save(next,prior){expect(inbound).toBe(prior);inbound=next;},acceptRemainder:accept,
+    async answerOffer(offer){return {schema:'bankeiz.wallet.answer.v1',offer,recipientUserId:merchant,scannedRecipient:{fixture:true}};},
+  });
+  const sender=openPayer(), receiver=openMerchant();
+  try{
+    const request={nearby:true,recipient:merchant,amountUsdCents:'20000',connectRemainder:true};
+    const offer=await sender.offer(request);
+    if(!offer)throw Error('expected split offer');
+    const reply=await receiver.answer(offer);
+    const review=await sender.review({...request,paired:reply});
+    expect(review).toMatchObject({amountUsdCents:'20000',connectUsdCents:'10000'});
+    const result=await sender.confirm(review);
+    const frames=readOpticalNoteFrames('wallet');
+    let exact:Uint8Array|undefined;
+    for(let index=0;index<result.qr!.count;index++)exact=(await frames.push(result.qr!.frame(index)))?.bytes;
+    expect(exact).toBeDefined();
+    const bundle=readWalletPaymentBundle(exact!)!;
+    const modified=JSON.parse(new TextDecoder().decode(bundle.remainder));
+    modified.amountUsdCents='9999';
+    await expect(receiver.receive(encodeWalletPaymentBundle(bundle.nonce,bundle.proofs,new TextEncoder().encode(JSON.stringify(modified)))))
+      .rejects.toThrow('BANK_WALLET_NEARBY_CONSENT_INVALID');
+    expect(inbound).toBeNull();
+    accept.mockRejectedValueOnce(Error('The inbox closed while saving'));
+    await expect(receiver.receive(exact!)).rejects.toThrow('The inbox closed while saving');
+    const reopened=openMerchant();
+    try{
+      await reopened.resume();
+      expect(accept).toHaveBeenLastCalledWith(expect.objectContaining({amountUsdCents:'10000',split:{
+        conversationId:offer.conversationId,offlineUsdCents:'10000',
+      }}));
+      expect(await reopened.receive(exact!)).toMatchObject({wallet:{availableUsdCents:'10000'},connectUsdCents:'10000'});
+      expect(await reopened.receiptProofCount()).toBe(1);
+      expect(sent).toBe(1);
+      expect(network).not.toHaveBeenCalled();
+    }finally{reopened.dispose();}
+  }finally{sender.dispose();receiver.dispose();}
 });

@@ -250,6 +250,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    return partialPayments?{rootAllocationId:(peerRoot??source).allocationId,sourceArtifactSha256:source.artifactSha256}:null;
   },
   walletDevice(){open();return device||null;},
+  incomingWalletSender(){open();return peerRoot?.accountUserId??null;},
   current(){open();return executor.current();},
   async wallet(){open();const current=await executor.current();open();return runtime.financialSourceWalletAt(source,current.state,kai());},
   resolve(operationId:string){open();return executor.resolve(operationId);},

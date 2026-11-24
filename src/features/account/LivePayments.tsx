@@ -56,7 +56,8 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
   const receivingPending=!heldCoordinate&&!!identity.prepareReceivingUsername&&(receiving.identity!==identity||receiving.pending);
   const canonical = identity.prepareReceivingUsername?(receiving.identity===identity?receiving.username??'':''):(publicReceizId(identity.accountUsername?.()) ?? publicReceizId(identity.username) ?? '').replace(/\.receiz\.id$/, '');
   const coordinate = heldCoordinate??receivingUsernameForIdentity(canonical,identity.username??'');
-  const request = useMemo(() => { try { if(!coordinate)throw Error('Open your Wallet connection to obtain your public Receiz ID.');const link = linkMode==='checkout'?buildCheckoutRequest(canonical,amount):buildPaymentRequest(coordinate,amount); return { link,nfcUrl:link, path: paymentQrPath(paymentQr(link)), error: '' }; } catch (cause) { return { link: '',nfcUrl:'', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, canonical,amount,linkMode]);
+  const nearbyAccount = identity.nearbyWalletReceive ? identity.walletReceivingAddress?.() ?? undefined : undefined;
+  const request = useMemo(() => { try { if(!coordinate)throw Error('Open your Wallet connection to obtain your public Receiz ID.');const link = linkMode==='checkout'?buildCheckoutRequest(canonical,amount):buildPaymentRequest(coordinate,amount); return { link,nfcUrl:link, path: paymentQrPath(paymentQr(linkMode==='send'?buildPaymentRequest(coordinate,amount,nearbyAccount):link)), error: '' }; } catch (cause) { return { link: '',nfcUrl:'', path: '', error: cause instanceof Error ? cause.message : 'This request could not be created.' }; } }, [coordinate, canonical,amount,linkMode,nearbyAccount]);
   const receivingError=(!heldCoordinate&&receiving.identity===identity&&receiving.error)||request.error;
   const addressCopy=useCopyFeedback(amount?request.link:coordinate),linkCopy=useCopyFeedback(request.link),nfcCopy=useCopyFeedback(request.nfcUrl);
   const copy = async () => { try { await navigator.clipboard.writeText(amount?request.link:coordinate); setNotice('');addressCopy.confirm(); } catch { addressCopy.clear();setNotice('Select and copy your receiving ID below.'); } };
@@ -77,20 +78,23 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
 export function LiveSend({ identity, active = true, onRefresh = () => {}, initialRequest, initialRecipient, initialMemo='', onClose: _onClose }: { identity?: OpenIdentity; active?: boolean; onRefresh?: () => void; wallet: SharedWallet | null; initialRequest?: PaymentRequest | null;initialMemo?:string; initialRecipient?: {userId:string;username:string;displayName?:string}; onClose: () => void }) {
   useWalletCustody(identity,active);
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
-  const [nearby,setNearby]=useState(false),[keepOffline,setKeepOffline]=useState(false);
+  const [nearby,setNearby]=useState(!!initialRequest?.nearbyRecipient),[keepOffline,setKeepOffline]=useState(false);
   const [fundedReview,setFundedReview]=useState<{identity:OpenIdentity;review:FundedWalletReview}>();
   const [noteMode, setNoteMode] = useState<'create'|'deposit'|null>(null);
   const [recipient, setRecipient] = useState(initialRequest?.recipient ?? initialRecipient?.username ?? ''), [amount, setAmount] = useState(initialRequest?.amount ?? ''), [mode, setMode] = useState<'value' | 'asset'>('value'), [sendNote,setSendNote]=useState(initialMemo);
   // The displayed handle is presentation. A chat handoff keeps its selected
   // account ID for review even if that handle is renamed or reassigned.
   const [selectedRecipient,setSelectedRecipient]=useState(initialRequest?undefined:initialRecipient);
+  const [scannedAccount,setScannedAccount]=useState(initialRequest?.nearbyRecipient);
   function applyPaymentRequest(request:PaymentRequest,fromCamera:boolean){
-    setNearby(fromCamera);
+    setNearby(fromCamera||!!request.nearbyRecipient);
     setSelectedRecipient(undefined);
+    setScannedAccount(request.nearbyRecipient);
     setRecipient(request.recipient);
     setAmount(request.amount??'');
   }
-  const recipientCoordinate=selectedRecipient&&recipient===selectedRecipient.username?selectedRecipient.userId:recipient;
+  const recipientCoordinate=((offline||keepOffline)&&scannedAccount)
+    ||(selectedRecipient&&recipient===selectedRecipient.username?selectedRecipient.userId:recipient);
   const noteHint=useId();
   const [receivingHelp,setReceivingHelp]=useState(false);
   if (noteMode && identity) return <OfflineNotes identity={identity} mode={noteMode} onBack={() => setNoteMode(null)} backLabel="Back to payment" onRefresh={onRefresh} />;
@@ -113,11 +117,12 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
   const fields=<>
     <h1 className="sheet-hero">Move money.<br />Send it anywhere.</h1>
     <AmountInput label="Amount to send" value={amount} onChange={setAmount} dollars />
-    <div className="send-recipient"><RecipientInput allowEmail identity={identity} value={recipient} onChange={value=>{setNearby(false);setSelectedRecipient(undefined);setRecipient(value);}} onSelect={person=>{setNearby(false);setSelectedRecipient(person);setRecipient(person.username);}}/><PaymentScanner compact onRequest={request=>applyPaymentRequest(request,false)} onCameraRequest={request=>applyPaymentRequest(request,true)}/></div>
+    <div className="send-recipient"><RecipientInput allowEmail identity={identity} value={recipient} onChange={value=>{setNearby(false);setScannedAccount(undefined);setSelectedRecipient(undefined);setRecipient(value);}} onSelect={person=>{setNearby(false);setScannedAccount(undefined);setSelectedRecipient(person);setRecipient(person.username);}}/><PaymentScanner compact onRequest={request=>applyPaymentRequest(request,false)} onCameraRequest={request=>applyPaymentRequest(request,true)}/></div>
     <details className="send-note-field"><summary>Add a memo <span>Optional</span></summary><label className="form-field"><span>Payment memo</span><textarea aria-label="Payment memo" aria-describedby={noteHint} value={sendNote} onChange={event=>setSendNote(event.target.value)} maxLength={280} rows={2} placeholder="What is this payment for?"/><small id={noteHint}>This memo is included with your payment in the public Ledger.</small></label></details>
   </>;
   return <>{choices}{useFunded?<FundedWalletSend key={identity!.binding.artifactSha256} identity={identity!} request={()=>{setKeepOffline(true);return {...request(),nearby};}} recipientLabel={selectedRecipient?.displayName??recipient} onRefresh={onRefresh} initialReview={initialReview} onEdit={returnToSend} onNext={returnToSend}>{fields}</FundedWalletSend>:
-  <WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate,amount,sendNote])} input={request} fundedReview={checkFunded} onRefresh={onRefresh} secondaryAction={identity&&<details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">For receiving through another application or institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details>}>{fields}</WalletSendOperation>}
+  <WalletSendOperation identity={identity} inputKey={JSON.stringify([recipientCoordinate,amount,sendNote])} input={request} fundedReview={checkFunded} onRefresh={onRefresh} secondaryAction={identity&&<>{nearby&&scannedAccount&&identity.nearbyWalletReceive&&<button type="button" className="text-button" onClick={()=>setKeepOffline(true)}>Recipient offline? Create a payment QR</button>}
+    <details className="transaction-proof-details receiving-help-entrance"><summary>More receiving options</summary><p className="small-copy">For receiving through another application or institution.</p><button className="receiving-help-launch" type="button" onClick={()=>setReceivingHelp(true)}>Help someone receive</button></details></>}>{fields}</WalletSendOperation>}
   {active&&identity?.deferredWalletSend&&<DeferredWalletPayments key={identity.binding.artifactSha256} identity={identity}/> }
-  {identity&&receivingHelp&&<ReceivingHelp active={active} key={identity.binding.artifactSha256} identity={identity} initial={{recipient,amount,purpose:sendNote,...(selectedRecipient?{recipientUserId:selectedRecipient.userId,recipientUsername:selectedRecipient.username,recipientName:selectedRecipient.displayName}:{})} satisfies ReceivingHelpInput} onClose={()=>setReceivingHelp(false)} onPay={input=>{const label=input.recipientUserId?input.recipientUsername||input.recipient:input.recipient;if(label!==recipient||input.amount!==amount)setSendNote('');setSelectedRecipient(input.recipientUserId?{userId:input.recipientUserId,username:label}:undefined);setRecipient(label);setAmount(input.amount);}}/>}</>;
+  {identity&&receivingHelp&&<ReceivingHelp active={active} key={identity.binding.artifactSha256} identity={identity} initial={{recipient,amount,purpose:sendNote,...(selectedRecipient?{recipientUserId:selectedRecipient.userId,recipientUsername:selectedRecipient.username,recipientName:selectedRecipient.displayName}:{})} satisfies ReceivingHelpInput} onClose={()=>setReceivingHelp(false)} onPay={input=>{const label=input.recipientUserId?input.recipientUsername||input.recipient:input.recipient;if(label!==recipient||input.amount!==amount)setSendNote('');setScannedAccount(undefined);setNearby(false);setSelectedRecipient(input.recipientUserId?{userId:input.recipientUserId,username:label}:undefined);setRecipient(label);setAmount(input.amount);}}/>}</>;
 }

@@ -3,21 +3,23 @@ import { createOpticalNoteFrames } from './optical-note-frames';
 import type { FinancialAction, WalletRecipient, WalletPaymentStage } from './local-financial-runtime';
 import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart } from './wallet-payment-bundle';
 
+import { encodeNearbyWalletPayment, verifyNearbyWalletPayment, type NearbyWalletPayment, type NearbyWalletSplit } from './wallet-nearby-consent';
+
 type Session = Awaited<ReturnType<typeof createLocalFinancialSession>>;
-type Entry = Readonly<{ kind:'source'|'peer'; digest:string; allocationId:string; stalledSend?:HeldSend; receiptBundle?:string }>;
+type Entry = Readonly<{ kind:'source'|'peer'; digest:string; allocationId:string; stalledSend?:HeldSend; receiptBundle?:string; splitPayment?:NearbyWalletPayment }>;
 export type WalletPairOffer=Readonly<{schema:'bankeiz.wallet.offer.v1';applicationId:string;sourceArtifactSha256:string;allocationId:string;
   conversationId:string;amountUsdCents:string;recipient:string;walletCounterMode?:'device'}>;
 export type WalletPairReply=Readonly<{schema:'bankeiz.wallet.answer.v1';offer:WalletPairOffer;recipientUserId:string;scannedRecipient:unknown}>;
 type WalletBundleOffer = Readonly<{schema:'bankeiz.wallet.offer.v2';applicationId:string;conversationId:string;amountUsdCents:string;
-  recipient:string;nonce:string;parts:readonly WalletPaymentPart[]}>;
+  recipient:string;nonce:string;connectUsdCents?:string;parts:readonly WalletPaymentPart[]}>;
 type WalletBundleReply = Readonly<{schema:'bankeiz.wallet.answer.v2';offer:WalletBundleOffer;recipientUserId:string;scannedRecipients:readonly unknown[]}>;
 export type WalletOffer = WalletPairOffer|WalletBundleOffer;
 type WalletReply = WalletPairReply|WalletBundleReply;
-type SendInput = Readonly<{ recipient:string; amountUsdCents:string; note?:string; nearby:boolean; paired?:WalletReply }>;
+type SendInput = Readonly<{ recipient:string; amountUsdCents:string; note?:string; nearby:boolean; connectRemainder?:boolean; paired?:WalletReply }>;
 type HeldSend = Readonly<{ id:string; allocationId:string; action:Extract<FinancialAction,{kind:'send'}>; address?:string }>;
 export type WalletDestination = Readonly<{payload:Readonly<{accountUserId:string;ownerReceizId:string}>;signature:unknown}>;
 type MoveBack = Readonly<{ amountUsdCents:string; items:readonly Readonly<{id:string; allocationId:string; amountUsdCents:string}>[] }>;
-type HeldBundle = Readonly<{offer:WalletBundleOffer;items:readonly HeldSend[]}>;
+type HeldBundle = Readonly<{offer:WalletBundleOffer;items:readonly HeldSend[]; remainder?:NearbyWalletPayment}>;
 type Checkpoint = Readonly<{ entries:readonly Entry[]; send:HeldSend|null; moveBack?:MoveBack; bundle?:HeldBundle }>;
 type BundleReview = Readonly<{offer:WalletBundleOffer;actions:readonly HeldSend['action'][]}>;
 const empty:Checkpoint={entries:[],send:null};
@@ -35,12 +37,13 @@ const hasCents=(value:unknown):value is string=>typeof value==='string'&&positiv
 const validPeer=(recipient:unknown):recipient is string=>typeof recipient==='string'&&!!recipient&&recipient.length<=120;
 const validApp=(applicationId:unknown)=>typeof applicationId==='string'&&/^rc_[A-Za-z0-9_-]{1,128}$/u.test(applicationId);
 function validBundleOffer(offer:WalletBundleOffer):boolean{
-  return !!offer&&offer.schema==='bankeiz.wallet.offer.v2'&&Object.keys(offer).length===7&&validApp(offer.applicationId)
+  return !!offer&&offer.schema==='bankeiz.wallet.offer.v2'&&Object.keys(offer).length===(offer.connectUsdCents===undefined?7:8)&&validApp(offer.applicationId)
     &&validPeer(offer.recipient)&&uuidPattern.test(offer.conversationId)&&digestPattern.test(offer.nonce)&&hasCents(offer.amountUsdCents)
-    &&Array.isArray(offer.parts)&&offer.parts.length>=2&&offer.parts.every(part=>part&&Object.keys(part).length===3
+    && (offer.connectUsdCents===undefined||hasCents(offer.connectUsdCents))
+    &&Array.isArray(offer.parts)&&offer.parts.length>=(offer.connectUsdCents?1:2)&&offer.parts.every(part=>part&&Object.keys(part).length===3
       &&digestPattern.test(part.allocationId)&&digestPattern.test(part.sourceArtifactSha256)&&hasCents(part.amountUsdCents))
     &&new Set(offer.parts.map(part=>part.allocationId)).size===offer.parts.length
-    &&offer.parts.reduce((total,part)=>total+BigInt(part.amountUsdCents),0n)===BigInt(offer.amountUsdCents);
+    &&offer.parts.reduce((total,part)=>total+BigInt(part.amountUsdCents),0n)===BigInt(offer.amountUsdCents)-BigInt(offer.connectUsdCents??0);
 }
 export function readWalletPairing(bytes:Uint8Array):WalletOffer|WalletReply|null{
   if(bytes[0]!==123)return null;
@@ -87,9 +90,12 @@ type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'p
   prepareFullBalance?():Promise<Uint8Array|null>;
   setupReceiving?(mode:'unlock'|'resume'):Promise<void>;
   answerOffer?(offer:WalletPairOffer):Promise<WalletPairReply>;
+  approveRemainder?(value:{recipient:string;recipientLabel:string;amountUsdCents:string;note?:string;split:NearbyWalletSplit}):Promise<NearbyWalletPayment>;
+  acceptRemainder?(payment:NearbyWalletPayment):Promise<void>;
+  abandonRemainder?(conversationId:string):Promise<void>;
 };
 export type FundedWalletReview=Readonly<{
-  recipientLabel:string; amountUsdCents:string; note?:string;
+  recipientLabel:string; amountUsdCents:string; note?:string; connectUsdCents?:string;
   quote:Readonly<{amountPhiMicro:string;settledUsdCents:string;ecosystemUsdCents:string}>;
 }>;
 function exactCheckpoint(raw:unknown):Checkpoint {
@@ -97,6 +103,7 @@ function exactCheckpoint(raw:unknown):Checkpoint {
   const value=raw as Checkpoint;
   if(!Array.isArray(value.entries)||value.entries.some(entry=>!entry||!['peer','source'].includes(entry.kind)||!digestPattern.test(entry.digest)||!digestPattern.test(entry.allocationId)
     ||entry.receiptBundle&&(entry.kind!=='peer'||!digestPattern.test(entry.receiptBundle))
+    ||entry.splitPayment&&(!entry.receiptBundle||!entry.splitPayment.split)
     ||entry.stalledSend&&(entry.allocationId!==entry.stalledSend.allocationId||typeof entry.stalledSend.id!=='string'||entry.stalledSend.action?.kind!=='send'))
     ||new Set(value.entries.map(entry=>entry.allocationId)).size!==value.entries.length||value.send!==null&&(!value.send||!value.entries.some(entry=>entry.allocationId===value.send!.allocationId)))
     throw Error('BANK_WALLET_CUSTODY_INDEX_INVALID');
@@ -109,7 +116,7 @@ function exactCheckpoint(raw:unknown):Checkpoint {
     ||request.items.reduce((sum,item)=>sum+BigInt(item.amountUsdCents),0n)!==BigInt(request.amountUsdCents)))
     throw Error('BANK_WALLET_CUSTODY_INDEX_INVALID');
   const bundle=value.bundle;
-  if(bundle&&(!validBundleOffer(bundle.offer)||value.send||!Array.isArray(bundle.items)||bundle.items.length!==bundle.offer.parts.length
+  if(bundle&&(!validBundleOffer(bundle.offer)||!!bundle.remainder!==!!bundle.offer.connectUsdCents||value.send||!Array.isArray(bundle.items)||bundle.items.length!==bundle.offer.parts.length
     ||bundle.items.some((item,index)=>!item||!uuidPattern.test(item.id)||item.allocationId!==bundle.offer.parts[index]!.allocationId
       ||!value.entries.some(entry=>entry.allocationId===item.allocationId)||item.action?.kind!=='send'
       ||item.action.nearby!==true||item.action.conversationId!==bundle.offer.conversationId
@@ -212,6 +219,9 @@ export function createFundedWallet(input:Options) {
       const session=sessions.get(entry.allocationId);
       if(session)scheduleRecovery(session);
     }
+    if(input.acceptRemainder){
+      for(const entry of state.entries)if(entry.splitPayment)await input.acceptRemainder(entry.splitPayment).catch(()=>{});
+    }
     if(state.moveBack&&input.online())void finishMoveBack(state.moveBack).catch(()=>{});
     return state;
   }
@@ -285,9 +295,21 @@ export function createFundedWallet(input:Options) {
       actions.push(action);
     }
     const review=Object.freeze({recipientLabel:label!,amountUsdCents:offer.amountUsdCents,note,
+      ...(offer.connectUsdCents?{connectUsdCents:offer.connectUsdCents}:{}),
       quote:Object.freeze({amountPhiMicro:String(phi),settledUsdCents:String(settled),ecosystemUsdCents:String(ecosystem)})});
     bundleReviews.set(review,{offer,actions});
     return review;
+  }
+  async function checkedRemainder(bundle:HeldBundle){
+    if(!bundle.remainder)return undefined;
+    const payment=await verifyNearbyWalletPayment(bundle.remainder);
+    const {offer}=bundle;
+    if(payment.senderUserId!==input.accountUid||payment.recipientUserId!==bundle.items[0]!.action.recipientUserId
+      ||payment.applicationId!==input.applicationId||payment.amountUsdCents!==offer.connectUsdCents
+      ||payment.note!==(bundle.items[0]!.action.note??null)
+      ||payment.split?.conversationId!==offer.conversationId
+      ||payment.split.offlineUsdCents!==String(BigInt(offer.amountUsdCents)-BigInt(payment.amountUsdCents)))throw pairingError();
+    return encodeNearbyWalletPayment(payment);
   }
   async function bundleResult(state:Checkpoint,bundle:HeldBundle){
     const proofs:Uint8Array[]=[];
@@ -296,7 +318,7 @@ export function createFundedWallet(input:Options) {
       if(!proof)return null;
       proofs.push(proof);
     }
-    return {operationId:bundle.offer.conversationId,qr:await createOpticalNoteFrames('wallet',encodeWalletPaymentBundle(bundle.offer.nonce,proofs))};
+    return {operationId:bundle.offer.conversationId,qr:await createOpticalNoteFrames('wallet',encodeWalletPaymentBundle(bundle.offer.nonce,proofs,await checkedRemainder(bundle)))};
   }
   async function executeBundle(state:Checkpoint,bundle:HeldBundle){
     const stages:WalletPaymentStage[]=[], participants:Session[]=[];
@@ -315,12 +337,17 @@ export function createFundedWallet(input:Options) {
           const entries=error.message===WALLET_STALE_ALLOCATION
             ?checkpoint.entries.map(entry=>entry.allocationId===item.allocationId?{...entry,stalledSend:item}:entry):checkpoint.entries;
           await input.save({...checkpoint,entries},raw);
+          if(bundle.remainder)await input.abandonRemainder?.(bundle.offer.conversationId).catch(()=>{});
         }
         throw error;
       }
     }
-    if(!walletPaymentBundleFits(stages.map(stage=>stage.proofBytes)))throw Error('BANK_WALLET_BUNDLE_CAPACITY');
-    await participants[0]!.commitWalletPaymentBatch(stages);
+    if(!walletPaymentBundleFits(stages.map(stage=>stage.proofBytes),(await checkedRemainder(bundle))?.length))throw Error('BANK_WALLET_BUNDLE_CAPACITY');
+    if(stages.length===1){
+      const item=bundle.items[0]!;
+      const accepted=await participants[0]!.execute({operationId:item.id,action:item.action});
+      if(accepted.status!=='committed')throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
+    }else await participants[0]!.commitWalletPaymentBatch(stages);
     for(const session of participants)session.refreshPublication();
     const result=await bundleResult(state,bundle);
     if(!result)throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
@@ -336,18 +363,34 @@ export function createFundedWallet(input:Options) {
       const conversation=await walletPaymentConversation(input.applicationId,bundle.nonce,parts);
       if(parts.some(part=>part.conversationId!==conversation)||new Set(parts.map(part=>part.allocationId)).size!==parts.length)
         throw Error('BANK_WALLET_BUNDLE_INVALID');
+      const remainder=bundle.remainder
+        ?await verifyNearbyWalletPayment(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bundle.remainder))):undefined;
+      if(remainder&&(!input.acceptRemainder||remainder.applicationId!==input.applicationId
+        ||remainder.recipientUserId!==input.accountUid
+        ||staged.some(({session})=>session.incomingWalletSender()!==remainder.senderUserId)
+        ||remainder.split?.conversationId!==conversation
+        ||remainder.split.offlineUsdCents!==String(parts.reduce((sum,part)=>sum+BigInt(part.amountUsdCents),0n))))
+        throw Error('BANK_WALLET_BUNDLE_INVALID');
       const raw=await input.read(),state=exactCheckpoint(raw);
       const newEntries:Entry[]=[];
       const ids=staged.map(({session})=>session.sourceReference().allocationId);
       const receiptBundle=await retainExact('peer',exact);
+      const firstId=ids[0]!;
+      const priorSplit=state.entries.find(entry=>entry.allocationId===firstId)?.splitPayment;
+      if(priorSplit&&remainder&&priorSplit.signatureB64Url!==remainder.signatureB64Url)throw Error('BANK_WALLET_BUNDLE_INVALID');
       for(const {session,proof} of staged){
         const {allocationId}=session.sourceReference();
         if(!state.entries.some(entry=>entry.allocationId===allocationId))
-          newEntries.push({kind:'peer',allocationId,digest:await retainExact('peer',proof),receiptBundle});
+          newEntries.push({kind:'peer',allocationId,digest:await retainExact('peer',proof),receiptBundle,
+            ...(remainder&&allocationId===firstId?{splitPayment:remainder}:{})});
       }
       const receivedIds=new Set(ids);
-      if(newEntries.length||state.entries.some(entry=>receivedIds.has(entry.allocationId)&&!entry.receiptBundle)){
-        const retained=state.entries.map(entry=>receivedIds.has(entry.allocationId)&&!entry.receiptBundle?{...entry,receiptBundle}:entry);
+      const attachSplit=!!remainder&&!priorSplit;
+      if(newEntries.length||attachSplit||state.entries.some(entry=>receivedIds.has(entry.allocationId)&&!entry.receiptBundle)){
+        const retained=state.entries.map(entry=>{
+          if(attachSplit&&entry.allocationId===firstId)return {...entry,receiptBundle,splitPayment:remainder};
+          return receivedIds.has(entry.allocationId)&&!entry.receiptBundle?{...entry,receiptBundle}:entry;
+        });
         await input.save({...state,entries:[...retained,...newEntries]},raw);
       }
       let balance=0n,available=0n,settled=0n;
@@ -361,7 +404,9 @@ export function createFundedWallet(input:Options) {
         const wallet=await held.wallet();
         balance+=BigInt(wallet.balancePhiMicro);available+=BigInt(wallet.availableUsdCents);settled+=BigInt(wallet.settledUsdCents);
       }
+      if(remainder)await input.acceptRemainder!(remainder);
       return {allocationId:ids[0]!,bundle:true as const,
+        ...(remainder?{connectUsdCents:remainder.amountUsdCents}:{}),
         wallet:{balancePhiMicro:String(balance),availableUsdCents:String(available),settledUsdCents:String(settled)}};
     }finally{
       for(const {session} of staged)if(sessions.get(session.sourceReference().allocationId)!==session)session.dispose();
@@ -488,10 +533,13 @@ export function createFundedWallet(input:Options) {
           allocationId:entry.allocationId,conversationId,amountUsdCents:send.amountUsdCents,recipient:send.recipient,
           ...(device.sharedWalletCounter?{walletCounterMode:'device' as const}:{})};
       }
-      if(remaining!==0n||availableParts.length<2)return null;
-      const parts=availableParts.map(({part})=>part),nonce=await walletPaymentHash([send.recipient,...availableParts.map(({head})=>head)]);
+      if(remaining===0n?availableParts.length<2:!send.connectRemainder||!availableParts.length)return null;
+      const connectUsdCents=remaining>0n?String(remaining):undefined;
+      const parts=availableParts.map(({part})=>part);
+      const nonce=await walletPaymentHash([send.recipient,...availableParts.map(({head})=>head),
+        ...(connectUsdCents?[send.amountUsdCents,send.note?.replace(/\s+/gu,' ').trim()??'']:[])]);
       return {schema:'bankeiz.wallet.offer.v2',applicationId:input.applicationId,recipient:send.recipient,amountUsdCents:send.amountUsdCents,
-        conversationId:await walletPaymentConversation(input.applicationId,nonce,parts),nonce,parts};
+        ...(connectUsdCents?{connectUsdCents}:{}),conversationId:await walletPaymentConversation(input.applicationId,nonce,parts),nonce,parts};
     },
     async answer(offer:WalletOffer):Promise<WalletReply>{
       if(!input.answerOffer||offer.applicationId!==input.applicationId
@@ -667,7 +715,16 @@ export function createFundedWallet(input:Options) {
         }
         if(String(phi)!==review.quote.amountPhiMicro||String(settled)!==review.quote.settledUsdCents||String(ecosystem)!==review.quote.ecosystemUsdCents)
           throw Error('BANK_WALLET_REVIEW_STALE');
-        const bundle={offer:group.offer,items};
+        const {offer}=group;
+        let remainder:NearbyWalletPayment|undefined;
+        if(offer.connectUsdCents){
+          if(!input.approveRemainder)throw Error('BANK_WALLET_BUNDLE_INVALID');
+          remainder=await input.approveRemainder({recipient:items[0]!.action.recipientUserId,
+            recipientLabel:review.recipientLabel,amountUsdCents:offer.connectUsdCents,note:review.note,
+            split:{conversationId:offer.conversationId,offlineUsdCents:String(BigInt(offer.amountUsdCents)-BigInt(offer.connectUsdCents))}});
+        }
+        const bundle={offer,items,...(remainder?{remainder}:{})};
+        await checkedRemainder(bundle);
         await input.save({...state,bundle},raw);
         return executeBundle(state,bundle);
       });

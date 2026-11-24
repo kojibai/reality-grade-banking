@@ -981,6 +981,9 @@ export const loadWalletSendState=(binding:{artifactSha256:string},nonce?:string)
 export const loadDeferredWalletSends=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-deferred-sends');
 export const saveDeferredWalletSends=(binding:{artifactSha256:string},next:readonly import('./wallet-send-deferred').DeferredWalletSendEntry[],previous:unknown)=>
   saveNoteState(binding,'wallet-deferred-sends',next,previous);
+export const loadNearbyWalletReceipts=(binding:{artifactSha256:string})=>loadNoteState(binding,'wallet-nearby-receipts');
+export const saveNearbyWalletReceipts=(binding:{artifactSha256:string},next:unknown,previous:unknown)=>
+  saveNoteState(binding,'wallet-nearby-receipts',next,previous);
 const walletOriginalFamily=(id:string)=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id))throw Error('TRANSFER_ORIGINAL_ID_INVALID');return 'wallet-original:'+id;};
 export const loadWalletOriginal=(binding:{artifactSha256:string},id:string)=>loadNoteState(binding,walletOriginalFamily(id));
 export const saveWalletOriginal=(binding:{artifactSha256:string},id:string,source:unknown,expected:unknown)=>saveNoteState(binding,walletOriginalFamily(id),source,expected);
