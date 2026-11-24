@@ -3,6 +3,7 @@ import {bankNoteRpId} from '../receiz/config';
 import {loadReceiz} from '../receiz/client';
 import {RECEIZ_VERSION} from '../receiz/release-version';
 
+export type DeviceAuthenticator = 'platform' | 'cross-platform';
 type Stage='availability'|'registration'|'verifier'|'assertion';
 type Extensions=AuthenticationExtensionsClientInputs & {prf?:{eval?:{first:ArrayBuffer}};largeBlob?:{support?:'preferred';read?:boolean}};
 type PublicExtensions={prfEnabled:boolean|null;prfOutputProvided:boolean;largeBlobSupported:boolean|null;largeBlobReturned:boolean};
@@ -13,7 +14,7 @@ export interface DeviceCustodyEvidence {
  realm:{origin:string;rpId:string};context:'standalone'|'browser';
  platformAuthenticatorAdvertised:boolean|null;
  advertisedExtensions:{prf:boolean|null;largeBlob:boolean|null};
- registration:(NoteRegistrationEvidence & {attachment:'platform';extensions:PublicExtensions})|null;
+ registration:(NoteRegistrationEvidence & {attachment:DeviceAuthenticator;extensions:PublicExtensions})|null;
  assertions:AssertionObservation[];
  rollbackConformance:{status:'not-run'|'passed'|'refused';code?:'OFFLINE_NOTE_CUSTODY_ROLLBACK_CONFORMANCE_FAILED'};
  attestationVerification:'not-assessed';custodyQualified:false;financialActionsPerformed:0;
@@ -84,7 +85,8 @@ export async function deviceCustodyProbeReadiness(signal:AbortSignal):Promise<'r
 /** Explicit nonfinancial diagnostic only. A fresh test passkey is the sole
  * assertion target. No identity, Note slot, storage journal or host is opened.
  * Even a successful SDK counter test is never custody qualification. */
-export async function inspectDeviceCustodyEvidence(input:{signal:AbortSignal;onProgress?:(stage:Stage)=>void}):Promise<DeviceCustodyEvidence>{
+export async function inspectDeviceCustodyEvidence(input:{signal:AbortSignal;attachment?:DeviceAuthenticator;onProgress?:(stage:Stage)=>void}):Promise<DeviceCustodyEvidence>{
+ const attachment=input.attachment??'platform';
  const origin=location.origin,rpId=bankNoteRpId(origin)??location.hostname;
  const standalone=typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;
  const report:DeviceCustodyEvidence={schema:'bankeiz.device-custody-inspection.v1',authority:'diagnostics-only',receizVersion:RECEIZ_VERSION,secureContext:isSecureContext,webAuthnAvailable:typeof PublicKeyCredential!=='undefined'&&Boolean(navigator.credentials),realm:{origin,rpId},context:standalone?'standalone':'browser',platformAuthenticatorAdvertised:null,advertisedExtensions:{prf:null,largeBlob:null},registration:null,assertions:[],rollbackConformance:{status:'not-run'},attestationVerification:'not-assessed',custodyQualified:false,financialActionsPerformed:0};
@@ -96,14 +98,15 @@ export async function inspectDeviceCustodyEvidence(input:{signal:AbortSignal;onP
   stage='registration';input.onProgress?.(stage);
   // Start the modal directly from the user's click, before any awaited import
   // or passive capability read can discard its browser user activation.
-  const registered=await navigator.credentials.create({signal:input.signal,publicKey:{challenge:challenge.buffer,rp:{id:rpId,name:'Reality-grade banking'},user:{id:crypto.getRandomValues(new Uint8Array(32)).buffer,name:`bankeiz-device-evidence-test-${crypto.randomUUID()}`,displayName:'Reality-grade banking device test'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'required',userVerification:'required'},attestation:'direct',timeout:60000,extensions:{prf:{},largeBlob:{support:'preferred'}} as Extensions}}) as PublicKeyCredential|null;
+  const registered=await navigator.credentials.create({signal:input.signal,publicKey:{challenge:challenge.buffer,rp:{id:rpId,name:'Reality-grade banking'},user:{id:crypto.getRandomValues(new Uint8Array(32)).buffer,name:`bankeiz-device-evidence-test-${crypto.randomUUID()}`,displayName:'Reality-grade banking device test'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:attachment,residentKey:'required',userVerification:'required'},attestation:'direct',timeout:60000,extensions:{prf:{},largeBlob:{support:'preferred'}} as Extensions}}) as PublicKeyCredential|null;
   input.signal.throwIfAborted();
-  if(!registered||registered.type!=='public-key'||registered.authenticatorAttachment!=='platform')throw new DOMException('Platform credential required','DataError');
+  if(!registered||registered.type!=='public-key'||registered.authenticatorAttachment!==attachment)throw new DOMException('Requested credential required','DataError');
   const registration=registered.response as AuthenticatorAttestationResponse;
   requireClientBinding(registration.clientDataJSON,'webauthn.create',encoded(challenge),origin);
   const diagnostic=readNoteRegistrationEvidence({response:{attestationObject:encoded(registration.attestationObject)}});
   if(!diagnostic)throw new DOMException('Malformed registration','DataError');
-  report.registration={...diagnostic,attachment:'platform',extensions:extensionObservation(registered.getClientExtensionResults())};
+  report.registration={...diagnostic,attachment,extensions:extensionObservation(registered.getClientExtensionResults())};
+  const transports:AuthenticatorTransport[]=attachment==='platform'?['internal']:['nfc','usb'];
   const spki=registration.getPublicKey();
   if(!spki||registration.getPublicKeyAlgorithm()!==-7)throw new DOMException('P-256 key required','NotSupportedError');
   const publicKey=await crypto.subtle.importKey('spki',spki,{name:'ECDSA',namedCurve:'P-256'},true,[]);
@@ -117,9 +120,9 @@ export async function inspectDeviceCustodyEvidence(input:{signal:AbortSignal;onP
     try{
     input.signal.throwIfAborted();
     if(request.credentialIdB64u!==credentialIdB64u)throw new DOMException('Fresh test credential required','DataError');
-    const assertion=await navigator.credentials.get({signal:input.signal,publicKey:{challenge:decoded(request.challengeB64u),rpId,allowCredentials:[{id:credentialId.slice().buffer,type:'public-key',transports:['internal']}],userVerification:'required',timeout:60000,extensions:{prf:{eval:{first:prfSalt.buffer}},largeBlob:{read:true}} as Extensions}}) as PublicKeyCredential|null;
+    const assertion=await navigator.credentials.get({signal:input.signal,publicKey:{challenge:decoded(request.challengeB64u),rpId,allowCredentials:[{id:credentialId.slice().buffer,type:'public-key',transports}],userVerification:'required',timeout:60000,extensions:{prf:{eval:{first:prfSalt.buffer}},largeBlob:{read:true}} as Extensions}}) as PublicKeyCredential|null;
     input.signal.throwIfAborted();
-    if(!assertion||assertion.type!=='public-key'||assertion.id!==registered.id||encoded(assertion.rawId)!==credentialIdB64u||assertion.authenticatorAttachment!=='platform')throw new DOMException('Fresh test credential required','DataError');
+    if(!assertion||assertion.type!=='public-key'||assertion.id!==registered.id||encoded(assertion.rawId)!==credentialIdB64u||assertion.authenticatorAttachment!==attachment)throw new DOMException('Fresh test credential required','DataError');
     const response=assertion.response as AuthenticatorAssertionResponse;
     requireClientBinding(response.clientDataJSON,'webauthn.get',request.challengeB64u,origin);
     report.assertions.push({...authenticatorObservation(response.authenticatorData),extensions:extensionObservation(assertion.getClientExtensionResults())});

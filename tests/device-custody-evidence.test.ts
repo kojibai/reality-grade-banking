@@ -10,21 +10,21 @@ async function runProbe(){
  return module!.inspectDeviceCustodyEvidence;
 }
 const b64=(bytes:Uint8Array)=>Buffer.from(bytes).toString('base64url');
-async function device({flags=0x1d,counterStep=0,alterSignature=false,replyId='fresh-probe-only'}={}){
+async function device({flags=0x1d,counterStep=0,alterSignature=false,replyId='fresh-probe-only',attachment='platform'}={}){
  const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);
  const spki=await crypto.subtle.exportKey('spki',keys.publicKey);
  let count=0;const creates:CredentialCreationOptions[]=[],gets:CredentialRequestOptions[]=[];
  const create=vi.fn(async(options:CredentialCreationOptions)=>{
   creates.push(options);const source=Buffer.from(unattestedResponse(flags,0).response.attestationObject,'base64url');
   const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.create',challenge:b64(new Uint8Array(options.publicKey!.challenge as ArrayBuffer)),origin:'https://bankeiz.com',crossOrigin:false}));
-  return{type:'public-key',id:'fresh-probe-only',rawId:new TextEncoder().encode('fresh-probe-only').buffer,authenticatorAttachment:'platform',response:{attestationObject:new Uint8Array(source).buffer,getPublicKey:()=>spki,getPublicKeyAlgorithm:()=>-7,getTransports:()=>['internal'],clientDataJSON:client.buffer},getClientExtensionResults:()=>({prf:{enabled:true,results:{first:new Uint8Array(32).fill(89).buffer}},largeBlob:{supported:true},privateFixture:'never-export'})};
+  return{type:'public-key',id:'fresh-probe-only',rawId:new TextEncoder().encode('fresh-probe-only').buffer,authenticatorAttachment:attachment,response:{attestationObject:new Uint8Array(source).buffer,getPublicKey:()=>spki,getPublicKeyAlgorithm:()=>-7,getTransports:()=>attachment==='platform'?['internal']:['nfc','usb'],clientDataJSON:client.buffer},getClientExtensionResults:()=>({prf:{enabled:true,results:{first:new Uint8Array(32).fill(89).buffer}},largeBlob:{supported:true},privateFixture:'never-export'})};
  });
  const get=vi.fn(async(options:CredentialRequestOptions)=>{gets.push(options);count+=counterStep;
   const auth=new Uint8Array(37);auth.set(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('bankeiz.com'))));auth[32]=flags;new DataView(auth.buffer).setUint32(33,count);
   const client=new TextEncoder().encode(JSON.stringify({type:'webauthn.get',challenge:b64(new Uint8Array(options.publicKey!.challenge as ArrayBuffer)),origin:'https://bankeiz.com',crossOrigin:false}));
   const signed=new Uint8Array(69);signed.set(auth);signed.set(new Uint8Array(await crypto.subtle.digest('SHA-256',client)),37);
   const signature=new Uint8Array(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},keys.privateKey,signed));if(alterSignature)signature[0]^=1;
-  return{type:'public-key',id:replyId,rawId:new TextEncoder().encode(replyId).buffer,authenticatorAttachment:'platform',response:{authenticatorData:auth.buffer,clientDataJSON:client.buffer,signature:signature.buffer},getClientExtensionResults:()=>({prf:{results:{first:new Uint8Array(32).fill(89).buffer}},largeBlob:{blob:null},privateFixture:'never-export'})};
+  return{type:'public-key',id:replyId,rawId:new TextEncoder().encode(replyId).buffer,authenticatorAttachment:attachment,response:{authenticatorData:auth.buffer,clientDataJSON:client.buffer,signature:signature.buffer},getClientExtensionResults:()=>({prf:{results:{first:new Uint8Array(32).fill(89).buffer}},largeBlob:{blob:null},privateFixture:'never-export'})};
  });
  vi.stubGlobal('location',{origin:'https://bankeiz.com',hostname:'bankeiz.com',hash:''});vi.stubGlobal('isSecureContext',true);
  vi.stubGlobal('navigator',{credentials:{create,get}});
@@ -68,4 +68,24 @@ it('reads only local custody metadata and refuses a probe when any qualified slo
 it('does not create a custody database for an unused browser origin',async()=>{
  await device();const mod=await import('../src/conformance/device-evidence');expect(typeof mod.deviceCustodyProbeReadiness).toBe('function');
  const open=vi.fn();vi.stubGlobal('indexedDB',{databases:async()=>[],open});expect(await mod.deviceCustodyProbeReadiness(new AbortController().signal)).toBe('ready');expect(open).not.toHaveBeenCalled();
+});
+
+it('selects a fresh NFC or USB security-key credential while applying the same counter verifier',async()=>{
+ const d=await device({flags:5,counterStep:1,attachment:'cross-platform'});
+ const report=await(await runProbe())({attachment:'cross-platform',signal:new AbortController().signal});
+ expect(d.creates[0].publicKey?.authenticatorSelection?.authenticatorAttachment).toBe('cross-platform');
+ expect(d.creates[0].publicKey?.attestation).toBe('direct');
+ expect(d.gets.every(request=>request.publicKey?.allowCredentials?.[0]?.transports?.join(',')==='nfc,usb')).toBe(true);
+ expect(report.registration?.attachment).toBe('cross-platform');
+ expect(report.assertions.map(row=>row.counter)).toEqual(['1','2']);
+ expect(report.rollbackConformance.status).toBe('passed');
+ expect(report.custodyQualified).toBe(false);
+ expect(report.financialActionsPerformed).toBe(0);
+});
+
+it('does not use a built-in credential in the external-key check',async()=>{
+ const d=await device();
+ const report=await(await runProbe())({attachment:'cross-platform',signal:new AbortController().signal});
+ expect(report.failure).toMatchObject({stage:'registration',name:'DataError'});
+ expect(d.get).not.toHaveBeenCalled();
 });

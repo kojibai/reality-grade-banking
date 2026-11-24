@@ -86,3 +86,29 @@
 :root[data-bank-appearance="dark"] .conformance-root :is(.conformance-identity-error,.conformance-proof-save .proof-refusal) {
  color: var(--bank-danger);
 }
+
+.device-evidence-authenticator {
+ border: 0;
+ display: flex;
+ flex-wrap: wrap;
+ gap: 8px 20px;
+ margin: 18px 0 0;
+ padding: 0;
+ font-size: 14px;
+}
+.device-evidence-authenticator legend {
+ margin-bottom: 6px;
+ font-weight: 550;
+}
+.device-evidence-authenticator label {
+ display: inline-flex;
+ align-items: center;
+ gap: 8px;
+ min-height: 36px;
+}
+.device-evidence-authenticator input {
+ width: 17px;
+ height: 17px;
+ margin: 0;
+ accent-color: var(--bank-action,#254bd8);
+}
