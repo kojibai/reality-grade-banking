@@ -8,13 +8,15 @@ import {GovernanceProof} from './GovernanceProof';
 import type {GovernanceOriginal} from '../../receiz/governance-documents';
 import {receizKaiNow} from '@receiz/sdk';
 import {charterAdmitsMember,charterElectorate} from '../../receiz/governance-documents';
-import {useState,type ReactNode} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import {ArrowLeft,FileCheck2,Vote} from 'lucide-react';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import type {GovernanceTerms} from '../../receiz/governance-documents';
 import {ballotRegister,charterRatification,governanceTitle,ofKind,observedSeats} from '../../receiz/governance-view';
 
 import {GovernanceFileList} from './GovernanceFiles';
+
+import {GovernanceTime,votingTimeLeft} from './GovernanceTime';
 
 function ProposalText({text}:{text:string}){
   return <div className="gov-motion-text">{text.split(/\n\s*\n/).map((paragraph,i)=>
@@ -60,23 +62,33 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
   const offices=charter?.document.terms.rules.offices??[],candidateOffices=offices.filter(o=>o.selection==='Election'&&(o.eligibility==='Open'||authorized));
   const election=proposal&&offices.find(o=>o.name===proposal.document.terms.office);
   const seats=election&&register?observedSeats(register.counts,election.seats):null;
-  const closed=register?BigInt(receizKaiNow().pulse)>=register.closes:false;
+  const [now,setNow]=useState(()=>BigInt(receizKaiNow().pulse));
+  const deadline=register?.closes;
+  useEffect(()=>{
+    if(deadline===undefined)return;
+    const refresh=()=>setNow(BigInt(receizKaiNow().pulse));
+    refresh();
+    const interval=window.setInterval(refresh,15000);
+    document.addEventListener('visibilitychange',refresh);
+    return()=>{window.clearInterval(interval);document.removeEventListener('visibilitychange',refresh);};
+  },[deadline]);
+  const closed=deadline!==undefined&&now>=deadline;
   const member=(id:string)=>example?.member(id)??memberName?.(id)??id;
   const related=terms.kind==='charter'?rows.filter(r=>r.document.terms.kind!=='charter'&&r.document.terms.charter===row.digest):rows.filter(r=>'proposal' in r.document.terms&&r.document.terms.proposal===row.digest);
   const decisions=ofKind(related,'proposal');
   const history=terms.kind==='charter'?[]:related.filter(r=>r.document.terms.kind!=='challenge');
-  const recordLink=(item:GovernanceRow)=><button className="gov-row" key={item.digest} onClick={()=>go(item.digest)}><strong>{item.document.terms.kind==='ballot'?member(item.document.terms.choice):governanceTitle(item)}</strong><small>{item.document.terms.kind} · {member(item.document.author)}</small></button>;
+  const recordLink=(item:GovernanceRow)=><button className="gov-row" key={item.digest} onClick={()=>go(item.digest)}><strong>{item.document.terms.kind==='ballot'?member(item.document.terms.choice):governanceTitle(item)}</strong><small>{item.document.terms.kind} · {member(item.document.author)}</small><GovernanceTime pulse={item.pulse}/></button>;
   const mandateRows=ofKind(rows,'mandate').filter(r=>r.document.author===actor&&r.document.terms.charter===charter?.digest&&r.document.terms.scope===scope.trim());
   const priorMandates=new Set(mandateRows.map(r=>r.document.terms.previous)),mandateHeads=mandateRows.filter(r=>!priorMandates.has(r.digest));
   return <section className="gov-stack">
     <button className="gov-link" onClick={back}><ArrowLeft size={16}/>Back</button>
-    <div className="gov-record-heading"><small className="gov-kicker">{terms.kind}</small><div className="gov-detail-title"><h2>{terms.kind==='ballot'?member(terms.choice):governanceTitle(row)}</h2>{(published||example)&&<GovernanceLink row={row} path={example?.path(row)}/>}</div><small className="gov-meta">By {member(row.document.author)}</small></div>
+    <div className="gov-record-heading"><small className="gov-kicker">{terms.kind}</small><div className="gov-detail-title"><h2>{terms.kind==='ballot'?member(terms.choice):governanceTitle(row)}</h2>{(published||example)&&<GovernanceLink row={row} path={example?.path(row)}/>}</div><small className="gov-meta">By {member(row.document.author)}</small><GovernanceTime pulse={row.pulse} label={proposal?'Proposed':'Sealed'}/></div>
     {terms.kind==='charter'&&<>{terms.logo&&charterTab!=='Charter rules'&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}<p>{terms.rules.purpose}</p><nav className="gov-tabs" aria-label="Charter sections">{(['Decisions','People','Charter rules'] as const).map(name=><button key={name} aria-current={charterTab===name?'page':undefined} onClick={()=>setCharterTab(name)}>{name}</button>)}</nav></>}
     {terms.kind==='charter'&&practicePanel?.(charterTab)}
     {terms.kind==='charter'&&charterTab==='Decisions'&&<section className="gov-charter-decisions">
       {ratified?.complete&&(authorized||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}
       {(['Proposals','Polls'] as const).map(group=>{const list=decisions.filter(r=>(r.document.terms.decision==='Poll')===(group==='Polls'));return <section key={group}><div className="gov-section-heading"><h3>{group}</h3><small>{list.length}</small></div>
-        {list.length?list.map(item=><div className="gov-list-item" key={item.digest}><button className="gov-row" onClick={()=>go(item.digest)}><span className="gov-meta">{item.document.terms.decision}</span><strong>{governanceTitle(item)}</strong></button></div>):<p>No {group.toLowerCase()} held for this charter.</p>}</section>;})}
+        {list.length?list.map(item=><div className="gov-list-item" key={item.digest}><button className="gov-row" onClick={()=>go(item.digest)}><span className="gov-meta">{item.document.terms.decision}</span><strong>{governanceTitle(item)}</strong><GovernanceTime pulse={item.pulse} label="Proposed"/></button></div>):<p>No {group.toLowerCase()} held for this charter.</p>}</section>;})}
     </section>}
     {terms.kind==='charter'&&(charterTab==='Charter rules'||!ratified?.complete&&charterTab==='Decisions')&&charter&&ratified&&<section className="gov-box"><h3>Founding ratification</h3><p>{ratified.signed.size} of {charter.document.terms.rules.founders.length} named founders have ratified this exact Original.</p>
       {founder&&!ratified.signed.has(actor!)&&<button className="gov-primary" onClick={()=>review({kind:'ratification',charter:row.digest})}><FileCheck2/>Review ratification</button>}
@@ -95,13 +107,13 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     {terms.kind==='ballot'&&<div className="gov-actions"><button onClick={()=>go(terms.proposal)}>Open proposal and tally</button>{terms.previous&&<button onClick={()=>go(terms.previous!)}>Previous ballot</button>}</div>}
     {charter&&terms.kind!=='charter'&&<button className="gov-link" onClick={()=>go(charter.digest)}>Read governing charter · {charter.document.terms.rules.name}</button>}
     {proposal?.document.terms.nominations&&<details><summary>Candidates ({proposal.document.terms.nominations.length})</summary>{proposal.document.terms.nominations.map(id=>{const candidate=rows.find(r=>r.digest===id);return candidate?recordLink(candidate):<button key={id} onClick={()=>go(id)}>Open candidate Original</button>;})}</details>}
-    {proposal&&register&&<section className="gov-box"><h3>Observed public ballots</h3><ul className="gov-bars">{[...register.counts].map(([key,n])=><li key={key}><span>{member(key)}</span><strong>{n}</strong><meter aria-label={member(key)} min={0} max={Math.max(1,register.effective.size+register.represented.size)} value={n}/></li>)}</ul>
-      <p>{register.effective.size} direct · {register.represented.size} represented · {charter!.document.terms.rules.participation?'open participation':charterElectorate(charter!.document.terms.rules).length+' eligible'}. Voting closes at Kai pulse {register.closes.toString()}.</p>
+    {proposal&&register&&<section className="gov-box"><div className="gov-voting-period"><strong>{votingTimeLeft(now,register.closes)}</strong><GovernanceTime pulse={register.closes} label={closed?undefined:'Closes'}/></div><h3>Observed public ballots</h3><ul className="gov-bars">{[...register.counts].map(([key,n])=><li key={key}><span>{member(key)}</span><strong>{n}</strong><meter aria-label={member(key)} min={0} max={Math.max(1,register.effective.size+register.represented.size)} value={n}/></li>)}</ul>
+      <p>{register.effective.size} direct · {register.represented.size} represented · {charter!.document.terms.rules.participation?'open participation':charterElectorate(charter!.document.terms.rules).length+' eligible'}.</p>
       {!example&&<button disabled={checking} onClick={()=>void verifyTally()}><FileCheck2 size={16}/>{checking?'Recounting…':'Verify tally'}</button>}
       {audit&&<p role="status">{audit.message}{audit.at!==rows?' New records may be available.':''}</p>}
       {!register.admitted&&<p>The charter, ratification or candidate evidence required for this proposal is incomplete.</p>}
       {seats&&<div><h3>Seat count</h3><p>{election!.seats} available · {seats.leading.length?seats.leading.map(member).join(', ')+' currently leading':'No uncontested leads'}</p>{seats.tied.length>0&&<p>Tied at the seat boundary · {seats.tied.map(member).join(', ')}</p>}</div>}
-      {register.effective.size>0&&<details><summary>Counted direct ballots ({register.effective.size})</summary>{[...register.effective.values()].map(b=><button key={b.digest} className="gov-row" onClick={()=>go(b.digest)}><strong>{member(b.document.terms.choice)}</strong><small>{member(b.document.author)}</small></button>)}</details>}
+      {register.effective.size>0&&<details><summary>Counted direct ballots ({register.effective.size})</summary>{[...register.effective.values()].map(b=><button key={b.digest} className="gov-row" onClick={()=>go(b.digest)}><strong>{member(b.document.terms.choice)}</strong><small>{member(b.document.author)}</small><GovernanceTime pulse={b.pulse}/></button>)}</details>}
       {[...register.represented].map(([voter,via])=><p key={voter}>{member(voter)} · <button className="gov-link" onClick={()=>go(via.mandate.digest)}>Mandate</button><button className="gov-link" onClick={()=>go(via.ballot.digest)}>Representative ballot</button></p>)}
       <small>Observed totals from the Originals held here. Office appointments, binding decisions and spending require independent authority.</small>
       {register.disputed.size>0&&<p role="status">{register.disputed.size} conflicting or incomplete ballot histories await resolution.</p>}
@@ -111,10 +123,10 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
       </form>}
     </section>}
     {proposal&&['Policy','Treasury','Election'].includes(proposal.document.terms.decision)&&charter?.document.terms.rules.execution&&register&&<section className="gov-box gov-stack"><h3>Binding closure</h3>
-      <p>All {charterElectorate(charter.document.terms.rules).length} voters must attest to the same evidence. The challenge period ends at Kai pulse {closureOpens(proposal,charter).toString()}.</p>
+      <p>All {charterElectorate(charter.document.terms.rules).length} voters must attest to the same evidence.</p><GovernanceTime pulse={closureOpens(proposal,charter)} label="Challenge period ends"/>
       {ofKind(related,'closure').length>0&&<details><summary>Closure Originals</summary>{ofKind(related,'closure').map(recordLink)}</details>}
       {read&&<GovernanceCertification key={proposal.digest+actor} {...{proposal,charter,rows,read,identity}}/>}
-      {authorized&&!ofKind(related,'closure').some(r=>r.document.author===actor)&&BigInt(receizKaiNow().pulse)>=closureOpens(proposal,charter)&&<button onClick={()=>review({kind:'closure',charter:charter.digest,proposal:proposal.digest,evidence:proposalEvidence(proposal,rows)})}>Review evidence for closure</button>}
+      {authorized&&!ofKind(related,'closure').some(r=>r.document.author===actor)&&now>=closureOpens(proposal,charter)&&<button onClick={()=>review({kind:'closure',charter:charter.digest,proposal:proposal.digest,evidence:proposalEvidence(proposal,rows)})}>Review evidence for closure</button>}
     </section>}
     {proposal&&practicePanel?.('Proposal')}
     {proposal&&ofKind(related,'challenge').length>0&&<section><h3>Challenges</h3>{ofKind(related,'challenge').map(recordLink)}</section>}

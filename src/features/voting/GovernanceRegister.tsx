@@ -2,6 +2,7 @@ import {useMemo,useState,type ReactNode} from 'react';
 import {Search} from 'lucide-react';
 import {BankMark} from '../../components/BankMark';
 import type {GovernanceRow} from '../../receiz/governance-directory';
+import {GovernanceTime} from './GovernanceTime';
 import {governanceTitle} from '../../receiz/governance-view';
 
 export function GovernanceHeading({title,eyebrow='Reality-grade governance',mark=true,children}:{title:string;eyebrow?:string;mark?:boolean;children?:ReactNode}){
@@ -47,6 +48,7 @@ export function GovernanceRegister({rows,network,go,path,member,children,persona
         <span className="gov-row-title">{t.kind==='charter'&&t.logo&&<img className="gov-logo" alt="" src={t.logo}/>}<strong>{t.kind==='ballot'?(member?.(t.choice)??t.choice):governanceTitle(r)}</strong></span>
         {t.kind==='charter'&&<span className="gov-purpose">{t.rules.purpose}</span>}
         <small>{t.kind==='charter'?qty(count?.proposals??0,'proposal')+' · '+qty(count?.polls??0,'poll'):t.kind==='proposal'?qty(ballots.get(r.digest)??0,'ballot Original'):name}{!url?' · Held locally':''}</small>
+        <GovernanceTime pulse={r.pulse}/>
       </button></div>;})}
     {!filtered.length&&<div className="gov-empty"><p>{needle?'No matching records.':(activityView?'No matching activity in the records held here.':'No charters in the records held here.')}</p></div>}
     {filtered.length>limit&&<button onClick={()=>setLimit(n=>n+24)}>Show more records</button>}
