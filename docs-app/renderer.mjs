@@ -25,13 +25,31 @@ function themeControl(){
  </button>`;
 }
 function docsFooter(base){
- const links=`<nav aria-label="Documentation resources"><ul><li><a href="https://bankeiz.com/about/">About the standard</a></li><li><a href="https://bankeiz.com/standards/">Receiving standard</a></li><li><a href="https://bankeiz.com/legal/">License &amp; source</a></li><li><a href="${base}llms.txt">AI index</a></li></ul></nav>
-  <nav aria-label="Policies and support"><ul><li><a href="https://bankeiz.com/help/">Help</a></li><li><a href="https://bankeiz.com/privacy/">Privacy</a></li><li><a href="https://bankeiz.com/terms/">Terms</a></li></ul></nav>`;
  return `<footer class="docs-footer">
-  <a class="docs-footer-brand" href="${base}"><img src="${base}assets/icon.svg" width="25" height="25" alt="">Bankeiz <span>Documentation</span></a>
-  <div class="docs-footer-links">${links}</div>
-  <details class="docs-footer-menu"><summary>Links <span aria-hidden="true">⌄</span></summary><div>${links}</div></details>
-  <a class="docs-back-top" href="#docs-top">Back to top <span aria-hidden="true">↑</span></a>
+  <a class="docs-footer-brand" href="${base}" aria-label="Bankeiz documentation home"><img src="${base}assets/icon.svg" width="24" height="24" alt="">Bankeiz <span>Documentation</span></a>
+  <div class="docs-footer-utilities">
+   <a href="https://bankeiz.com/help/">Help</a>
+   <details class="docs-footer-menu"><summary>Resources<span class="docs-footer-caret" aria-hidden="true"></span></summary>
+    <div class="docs-footer-menu-panel">
+     <nav aria-label="Reference">
+      <h2>Reference</h2>
+      <ul>
+       <li><a href="https://bankeiz.com/standards/">Receiving standard</a></li>
+       <li><a href="https://bankeiz.com/legal/">License &amp; source</a></li>
+       <li><a href="${base}llms.txt">Machine-readable docs</a></li>
+      </ul>
+     </nav>
+     <nav aria-label="Policies">
+      <h2>Policies</h2>
+      <ul>
+       <li><a href="https://bankeiz.com/privacy/">Privacy</a></li>
+       <li><a href="https://bankeiz.com/terms/">Terms</a></li>
+      </ul>
+     </nav>
+    </div>
+   </details>
+   <a class="docs-back-top" href="#docs-top" aria-label="Back to top" title="Back to top"><span aria-hidden="true">↑</span></a>
+  </div>
  </footer>`;
 }
 export function docsDocument(page=null,{base='/'}={}){

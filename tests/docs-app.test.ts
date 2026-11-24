@@ -30,18 +30,23 @@ it('makes all three architecture terms direct links to distinct in-depth chapter
  }
 });
 
-it('gives every docs page an accessible footer with a reading shortcut and local links in either build',()=>{
+it('keeps the docs footer compact with resources and policies in one menu',()=>{
  for(const base of ['/','/docs/']){
   for(const page of [null,docsArticles.find(p=>p.slug==='funding')!]){
    const doc=parse(docsDocument(page,{base}));
    const footer=doc.querySelector('body>footer.docs-footer')!;
    expect(footer,base).not.toBeNull();
-   expect(footer.querySelector('.docs-footer-menu summary')?.textContent).toContain('Links');
-   const top=footer.querySelector<HTMLAnchorElement>('a[href="#docs-top"]')!;
-   expect(top.textContent).toContain('Back to top');
+   const utilities=footer.querySelector('.docs-footer-utilities')!;
+   expect([...utilities.children].map(item=>item.querySelector('summary')?.textContent?.trim()??item.getAttribute('aria-label')??item.textContent?.trim()))
+    .toEqual(['Help','Resources','Back to top']);
+   const top=utilities.querySelector<HTMLAnchorElement>('a[href="#docs-top"]')!;
    expect(doc.querySelector(top.getAttribute('href')!)).not.toBeNull();
-   expect(footer.querySelector('nav[aria-label="Documentation resources"] a[href="'+base+'llms.txt"]')).not.toBeNull();
-   expect(footer.querySelector('nav[aria-label="Policies and support"] a[href="https://bankeiz.com/terms/"]')).not.toBeNull();
+   const resources=utilities.querySelector('details')!;
+   expect(resources.open).toBe(false);
+   expect([...resources.querySelectorAll('nav')].map(nav=>nav.getAttribute('aria-label')))
+    .toEqual(['Reference','Policies']);
+   expect(resources.querySelector('nav[aria-label="Reference"] a[href="'+base+'llms.txt"]')).not.toBeNull();
+   expect(resources.querySelector('nav[aria-label="Policies"] a[href="https://bankeiz.com/terms/"]')).not.toBeNull();
   }
  }
 });

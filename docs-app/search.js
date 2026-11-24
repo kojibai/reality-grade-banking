@@ -43,3 +43,17 @@
  update();
  button.hidden=false;
 })();
+
+(()=>{
+ const menu=document.querySelector('.docs-footer-menu');
+ if(!menu)return;
+ menu.addEventListener('keydown',event=>{
+  if(!menu.open||event.key!=='Escape')return;
+  event.preventDefault();
+  menu.open=false;
+  menu.querySelector('summary').focus();
+ });
+ document.addEventListener('pointerdown',event=>{
+  if(menu.open&&!menu.contains(event.target))menu.open=false;
+ });
+})();
