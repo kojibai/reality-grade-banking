@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.5.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "ba6dd3f814aab9047e4b25d0431bf77e32f54eb25f315582cb4d8ea8606f6eb8",
-  "sourceMapSha256": "6371b48d2215d59ca451a9712e3a9f6506aa9006c3fb63342f79b84a46019dc3",
-  "sourceTreeSha256": "8f69dcf228034a6abde5cf1ab8ad9d9849775f057ff1f53fa18ba104b5c8190f",
-  "bytes": 2105448,
+  "moduleSha256": "953fb281babfe60cf0ecbf6c3e8b2ce6657436e9313b9d8655074f48b66a2d3b",
+  "sourceMapSha256": "7a2d8bdfc307aa5899bd40c14525618dbcee5f3902681134c817de1d45dc393d",
+  "sourceTreeSha256": "9bfaf16bee73890df877048b1199dead5e4a93091a063c0919338a42ae063b4e",
+  "bytes": 2118343,
   "inputs": [
     {
       "path": "receiz/packages/receiz-sdk/src/v124KaiBridge.generated.ts",
@@ -62,6 +62,18 @@
     {
       "path": "receiz/packages/receiz-sdk/src/authorityEncoding.ts",
       "sha256": "49e823d915a892fe33f6f8ce2e9eaa5c829319261a8065d66dddf36f9a869156"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/crypto.ts",
+      "sha256": "a6447a1b35c54d94f6e77a1cef2e25e2e9adc01c0c9f7c43602b56e704a8a211"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
+      "sha256": "061065511a79034ce84c10bff5e9f8244370ab2efd896a48334d598614dbdc52"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/verifier/roots.ts",
+      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v125Registry.generated.ts",
@@ -168,14 +180,6 @@
       "sha256": "830451a25beea82fd885abecb4e2155f190ea3748de899cc4da2a18b7572f70b"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/verifier/crypto.ts",
-      "sha256": "a6447a1b35c54d94f6e77a1cef2e25e2e9adc01c0c9f7c43602b56e704a8a211"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
-      "sha256": "061065511a79034ce84c10bff5e9f8244370ab2efd896a48334d598614dbdc52"
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/verifier/groth16.ts",
       "sha256": "a46dc3a0307df9e08ca1e26b0e0511837ce94f83ee08a38fc35015587de86524"
     },
@@ -248,10 +252,6 @@
       "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/verifier/roots.ts",
-      "sha256": "a2cdc6b8bee423641e079ee0ebc118b0289d6277bc3d52cc6369133bcb669a7f"
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/verifier/canonical.ts",
       "sha256": "631a1c0db6512f7ff92ae5344ccd4ca15e5cf3930fdbc16e119e543af6721fc3"
     },
@@ -316,24 +316,40 @@
       "sha256": "dc62be53555aa39b461be2d0407673ce8d47f6245d61adf5ec2a71bedf725991"
     },
     {
-      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
-      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591"
+      "path": "receiz/packages/receiz-sdk/src/offlineReserveAndroidCustody.ts",
+      "sha256": "2841f94574dd7008c04cee96b348a1f97883072e480d7f860240c34d66e53562"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/offlineNoteAndroidHandoff.ts",
+      "sha256": "631d42a6b5b9b247995731ddc0f2b9c6624b085bad9f8582914d3dfe27e47506"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineNoteIrreversibleCustody.ts",
-      "sha256": "53bed203b46a18ed303b644d9e0f250655431af12b66bc399971fdb463db6012"
+      "sha256": "630486dd8f66ecd9bb272196484f9b327c9285a61899a3fd1dda33648d916800"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts",
+      "sha256": "1454a8f6f303314308018bddc21528650f8fcda4614c248c1c45c1d50113e747"
+    },
+    {
+      "path": "receiz/packages/receiz-sdk/src/offlineReserveWebAuthnCustody.ts",
+      "sha256": "ea122e24f249a28cfe2451ee606690471f4e5782b2ee9568c89f33fcedb5722f"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineNoteWebAuthnCustody.ts",
       "sha256": "d19ffd128fbaebfc58e76632ea02568381bea9adb8fe9906d3331444c698eb47"
     },
     {
+      "path": "receiz/app/lib/wallet/bankNotes/cashAccountRebase.ts",
+      "sha256": "d51a34e8826de40af5996f013d595f1450c51c49b5823ef438e993e017fce591"
+    },
+    {
       "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
-      "sha256": "3f7685a2ac4af2064e27abe8a648056ac44381b704cc28624223fbe5ebd8be3c"
+      "sha256": "2b425e3474807b1b54540058644684938f655549e89fc5e87fb32b84126d6bc2"
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
-      "sha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3"
+      "sha256": "f47a58a87c5f3ea3e6851cb67be548e3842c2e752141e0dc117ccf99d09ff256"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/v122InitialSubject.ts",
@@ -672,20 +688,12 @@
       "sha256": "5db044df59b51c51ecb25c25b49a699f37542cd61c8185f8f2f8c4ba34242644"
     },
     {
-      "path": "receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts",
-      "sha256": "3d8cdbef95883d5888f61e00b6449530f422424a2c93d3da4b135e0559de2b90"
-    },
-    {
       "path": "receiz/packages/receiz-sdk/src/offlineNoteRollbackConformance.ts",
       "sha256": "67b4d17eafffb4da54b7561f82e8bc61440c58c7bbd567d4f7a0a00536f303af"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineNoteAttestedCustody.ts",
       "sha256": "f3d99608e95efecc85e5da66d0fcaecb53b3ffdc2f45403d7c01490fd47fc1f6"
-    },
-    {
-      "path": "receiz/packages/receiz-sdk/src/offlineReserveWebAuthnCustody.ts",
-      "sha256": "7b284a4e3a73743325f709007ef3ba8bd608d419f747cbce9dba3b7d3ab5ab9a"
     },
     {
       "path": "receiz/packages/receiz-sdk/src/offlineReserveFundingBinding.ts",
@@ -778,6 +786,10 @@
     {
       "path": "receiz/packages/receiz-sdk/src/capabilities.ts",
       "sha256": "6988ccde326869c149c46a132e2aed4161a0c3993e5801a9e760dcdf0c4cd285"
+    },
+    {
+      "path": "receiz/app/lib/wallet/kairosNoteCustodyVerification.ts",
+      "sha256": "adb03e108adb9ac336b8d56065a4e70bc1a6039b06e427c8318bff1a0e394222"
     },
     {
       "path": "receiz/app/lib/security/cspNonce.ts",
@@ -909,7 +921,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
-      "sha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25"
+      "sha256": "b51f7a4be42ccbdbf2934bc00e1874c95d5cc65f6f4a0f47499e786581e3bb6b"
     },
     {
       "path": "receiz/app/lib/wallet/kairosReserveFundingBinding.ts",
@@ -917,15 +929,11 @@
     },
     {
       "path": "receiz/app/lib/wallet/kairosNotePortableCarrier.ts",
-      "sha256": "859db2d59fad77db29ffbd35d28b43885b23771c79bbd5547c7bcfa4e1befd7e"
+      "sha256": "de191e1624ed1c38dd4543be002478ab6f1edf4b0551215864cee6bba236fc3f"
     },
     {
       "path": "receiz/app/lib/documentSeal/prepareNativeProofObjectSeal.ts",
       "sha256": "17b195ef1a1b4c4cdedb61abd9e4824efc42f46cceced35fc1a61d243ca0ee23"
-    },
-    {
-      "path": "receiz/app/lib/wallet/kairosNoteCustodyVerification.ts",
-      "sha256": "0ec13cd92b4f7f2669d17ba8d61f5367b6617196e25bff7500d23a2aba826add"
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/noteImage.ts",

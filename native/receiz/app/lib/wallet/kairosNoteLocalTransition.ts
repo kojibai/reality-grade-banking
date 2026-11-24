@@ -3,9 +3,8 @@ import type {
   ReceizOfflineNoteReceivingCustodyCommitmentV1,
 } from "../../../packages/receiz-sdk/src/offlineNoteIrreversibleCustody.ts";
 import type { ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2 } from "../../../packages/receiz-sdk/src/offlineNoteAttestedCustody.ts";
-import type {
-  ReceizOfflineNoteWebAuthnConsumptionReceiptV1,
-} from "../../../packages/receiz-sdk/src/offlineNoteWebAuthnCustody.ts";
+import type { KairosNoteConsumptionProof } from "./kairosNoteCustodyVerification";
+import type { ReceizAndroidNoteReceivingCustody } from "../../../packages/receiz-sdk/src/offlineNoteAndroidHandoff";
 import {
   verifyReceizOfflineNoteReceivingSeal,
   type ReceizOfflineNoteReceivingSealV2,
@@ -50,8 +49,9 @@ export type KairosNoteQualifiedCustodyPacket = KairosNotePacketBase & Readonly<{
   custodyMode: "qualified-anonymous";
   currentCustody:
     | ReceizOfflineNoteReceivingCustodyCommitmentV1
-    | ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2;
-  irreversibleConsumptionReceipt: ReceizOfflineNoteWebAuthnConsumptionReceiptV1 | null;
+    | ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2
+    | ReceizAndroidNoteReceivingCustody;
+  irreversibleConsumptionReceipt: KairosNoteConsumptionProof | null;
 }>;
 
 export type KairosNoteLocalPacket = KairosNoteIdentityBoundPacket | KairosNoteQualifiedCustodyPacket;
@@ -105,7 +105,8 @@ function assertPacket(packet: KairosNoteLocalPacket): void {
   }
   if (packet.custodyMode === "qualified-anonymous") {
     if ((packet.currentCustody.schema !== "receiz.offline-note.receiving-custody.v1"
-        && packet.currentCustody.schema !== "receiz.offline-note.attested-receiving-custody.v2")
+        && packet.currentCustody.schema !== "receiz.offline-note.attested-receiving-custody.v2"
+        && packet.currentCustody.schema !== "receiz.offline-note.android-receiving-custody.v1")
       || packet.currentCustody.receivingCustodyCommitmentDigest.length !== 64
       || (packet.predecessorArtifactSha256 === null) !== (packet.irreversibleConsumptionReceipt === null)) {
       throw new Error("KAIROS_NOTE_PACKET_INVALID");

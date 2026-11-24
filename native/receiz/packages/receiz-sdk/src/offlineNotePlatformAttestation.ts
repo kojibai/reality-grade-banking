@@ -208,32 +208,51 @@ async function verifyPlatformAttestationCertificate(
       basisOf(typed),
     );
     if (digest !== candidate.certificateDigest) fail();
-    const roots = options.roots ?? receizCurrentPinnedSignatureV4Roots();
-    const root = roots.get(candidate.issuerKid);
-    if (!root || root.alg !== "Ed25519") fail();
-    if (historicalRootAtIssuance) {
-      const issuedAt = BigInt(typed.issuedAtKai);
-      if ((root.status !== "active" && root.status !== "retired")
-        || (root.activeFromPulse && issuedAt < BigInt(root.activeFromPulse))
-        || (root.status === "retired" && !root.retiredAtPulse)
-        || (root.retiredAtPulse && issuedAt > BigInt(root.retiredAtPulse))) fail();
-    } else if (root.status !== "active") fail();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      strictBuffer(receizBase64UrlDecode(root.publicKeyRawB64u)),
-      { name: "Ed25519" },
-      false,
-      ["verify"],
-    );
-    const valid = await crypto.subtle.verify(
-      "Ed25519",
-      key,
-      strictBuffer(receizBase64UrlDecode(candidate.signatureB64u)),
-      strictBuffer(certificateBytes(candidate.certificateDigest)),
-    );
+    const valid = await verifyReceizPlatformAttestationIssuer({
+      issuerKid: candidate.issuerKid,
+      issuedAtKai: typed.issuedAtKai,
+      signature: receizBase64UrlDecode(candidate.signatureB64u),
+      signedBytes: certificateBytes(candidate.certificateDigest),
+      roots: options.roots,
+      historicalRootAtIssuance,
+    });
     if (!valid) fail();
     return Object.freeze(structuredClone(typed));
   } catch {
     fail();
   }
+}
+
+/** Internal custody verifier shared by carried platform attestation formats. */
+export async function verifyReceizPlatformAttestationIssuer(input: Readonly<{
+  issuerKid: string;
+  issuedAtKai: string;
+  signature: Uint8Array;
+  signedBytes: Uint8Array;
+  roots?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey> | undefined;
+  historicalRootAtIssuance: boolean;
+}>): Promise<boolean> {
+  const roots = input.roots ?? receizCurrentPinnedSignatureV4Roots();
+  const root = roots.get(input.issuerKid);
+  if (!root || root.alg !== "Ed25519") return false;
+  if (input.historicalRootAtIssuance) {
+    const issuedAt = BigInt(input.issuedAtKai);
+    if ((root.status !== "active" && root.status !== "retired")
+      || (root.activeFromPulse && issuedAt < BigInt(root.activeFromPulse))
+      || (root.status === "retired" && !root.retiredAtPulse)
+      || (root.retiredAtPulse && issuedAt > BigInt(root.retiredAtPulse))) return false;
+  } else if (root.status !== "active") return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    strictBuffer(receizBase64UrlDecode(root.publicKeyRawB64u)),
+    { name: "Ed25519" },
+    false,
+    ["verify"],
+  );
+  return crypto.subtle.verify(
+    "Ed25519",
+    key,
+    strictBuffer(input.signature),
+    strictBuffer(input.signedBytes),
+  );
 }

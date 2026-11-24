@@ -26,13 +26,14 @@ export function createLocalNoteInventory(input:{keyId:string;uid():string|null;r
     async pending(){const old=pending(await read('legacy'),'legacy'),prepared=pending(await read('prepared'),'prepared');if(old&&prepared)throw Error('BANK_NOTE_COMPETING_ATTEMPTS');return prepared??old;},
     async savedNotes():Promise<BankNoteImage[]> {
       const result:BankNoteImage[]=[];
-      for(const family of ['legacy','prepared'] as const){const state=await read(family);if(!state)continue;
+      const legacy=await read('legacy');
+      for(const family of ['legacy','prepared'] as const){const state=family==='legacy'?legacy:await read(family);if(!state)continue;
         for(const [id,value]of Object.entries(state.notes)){const saved=object(value);
-          if(family==='legacy'&&(!saved.imageRef||state.deposits[object(saved.intent).noteId]?.creditRef)||family==='prepared'&&state.journal?.deposits?.[id]?.phase==='complete')continue;
+          if(family==='legacy'&&(!saved.imageRef||state.deposits[object(saved.intent).noteId]?.creditRef)||family==='prepared'&&(state.journal?.deposits?.[id]?.phase==='complete'||legacy?.deposits[id]?.creditRef))continue;
           if(typeof saved.imageRef!=='string'||!saved.imageRef)throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
           const image=await input.restore(saved.imageRef),note=await input.inspect(image);input.assertOpen();
           if(note.noteId!==(family==='legacy'?object(saved.intent).noteId:id))throw Error('BANK_NOTE_PRIVATE_SOURCE_INVALID');
-          result.push({...note,image,transferred:saved.transferComplete===true,transferPending:Boolean(saved.transfer)&&saved.transferComplete!==true});
+          result.push({...note,image,...((family==='prepared'?state.androidReceivers?.[saved.slotId]:saved.android===true)?{nativeHandoff:true as const}:{}),transferred:saved.transferComplete===true,transferPending:Boolean(saved.transfer)&&saved.transferComplete!==true});
         }
       }
       return result;

@@ -317,7 +317,7 @@ export function createKairosReservePwaCustodyAdapter(input: Readonly<{
       if (head.packet.custodyMode !== "qualified-anonymous") throw Error("BANK_LOCAL_CREDIT_QUALIFIED_SUCCESSOR_REQUIRED");
       const receiving = head.packet.currentCustody;
       requireKairosNoteAttestedReceivingCustody(receiving);
-      if (head.packet.custodyMode !== "qualified-anonymous" || consumed.status !== "retired"
+      if (held.receipt.schema === "receiz.offline-note.android-handoff.v1" || consumed.status !== "retired"
         || consumed.code !== "OFFLINE_NOTE_CUSTODY_IRREVERSIBLY_CONSUMED"
         || consumed.consumptionReceipt?.receiptDigest !== held.receipt.receiptDigest
         || consumed.credential.custodyPublicKeyRawB64u !== evidence.qualification.custodyPublicKeyRawB64u

@@ -3,8 +3,9 @@ import type { KairosNoteReceivingCustodyCommitment } from "./kairosNoteArtifact"
 import {
   deriveKairosNoteCustodyOwnerId,
   verifyKairosNoteReceivingCustody,
+  verifyKairosNoteConsumptionProof,
+  type KairosNoteConsumptionProof,
 } from "./kairosNoteCustodyVerification";
-import { verifyReceizOfflineNoteWebAuthnConsumptionReceipt } from "../../../packages/receiz-sdk/src/offlineNoteWebAuthnCustody";
 import {
   createReceizProofHistoryNode,
   issueReceizVerifiedArtifactTransitionHistory,
@@ -17,7 +18,7 @@ import {
   type KairosNoteLocalSettlement,
   type KairosNoteQualifiedCustodyPacket,
 } from "./kairosNoteLocalTransition";
-import type { KairosNotePwaCustodyAdapter } from "./kairosNotePwaCustodyAdapter";
+import type { KairosNoteConsumeExactHeadInput } from "./kairosNotePwaCustodyAdapter";
 
 const DIGEST_RE = /^[0-9a-f]{64}$/;
 const KAI_RE = /^(0|[1-9][0-9]*)$/;
@@ -26,7 +27,7 @@ const SUCCESSOR_BASIS_SCHEMA = "receiz.offline-note.qualified-successor-basis.v1
 export async function settleKairosNoteQualifiedCustodyTransition(input: Readonly<{
   store: InMemoryKairosNoteSettlementStore;
   carrier: KairosNoteCanonicalCarrier;
-  senderCustody: Pick<KairosNotePwaCustodyAdapter, "consumeExactHead">;
+  senderCustody: Readonly<{ consumeExactHead(input: KairosNoteConsumeExactHeadInput): Promise<KairosNoteConsumptionProof> }>;
   predecessorArtifactBytes: Uint8Array;
   expectedPredecessorArtifactSha256: string;
   successorCustody: KairosNoteReceivingCustodyCommitment;
@@ -40,6 +41,10 @@ export async function settleKairosNoteQualifiedCustodyTransition(input: Readonly
     throw new Error("KAIROS_NOTE_QUALIFIED_TRANSITION_INVALID");
   }
   const nextCustody = await verifyKairosNoteReceivingCustody(input.successorCustody, { roots: input.admissionRootPublicKeys });
+  if (nextCustody.schema === "receiz.offline-note.android-receiving-custody.v1"
+    && (nextCustody.attestation.purpose !== "holding" || BigInt(input.acceptedAtKai) < BigInt(nextCustody.attestation.issuedAtKai))) {
+    throw new Error("KAIROS_NOTE_RECEIVING_CUSTODY_NOT_YET_BOUND");
+  }
   const predecessor = await input.carrier.open(input.predecessorArtifactBytes);
   if (predecessor.packet.custodyMode !== "qualified-anonymous") {
     throw new Error("KAIROS_NOTE_QUALIFIED_CUSTODY_REQUIRED");
@@ -85,7 +90,17 @@ export async function settleKairosNoteQualifiedCustodyTransition(input: Readonly
     acceptedAtKai: input.acceptedAtKai,
     successorBasisDigest,
   });
-  await verifyReceizOfflineNoteWebAuthnConsumptionReceipt(consumptionReceipt);
+  const receipt = await verifyKairosNoteConsumptionProof(consumptionReceipt, { roots: input.admissionRootPublicKeys });
+  if (receipt.currentCustodyCommitmentDigest !== currentCustody.receivingCustodyCommitmentDigest
+    || receipt.custodyPublicKeyRawB64u !== currentCustody.custodyPublicKeyRawB64u
+    || receipt.receiverCustodyCommitmentDigest !== nextCustody.receivingCustodyCommitmentDigest
+    || receipt.successorBasisDigest !== successorBasisDigest
+    || receipt.predecessorArtifactSha256 !== predecessor.artifactSha256
+    || receipt.acceptedAtKai !== input.acceptedAtKai
+    || receipt.noteId !== predecessorPacket.noteId
+    || receipt.wholeValuePhiMicro !== predecessorPacket.wholeValuePhiMicro) {
+    throw new Error("KAIROS_NOTE_CONSUMPTION_MISMATCH");
+  }
   const appendNode = await createReceizProofHistoryNode({
     artifactId: predecessorHistory.artifactId,
     registryDigest: predecessorHistory.registryDigest,

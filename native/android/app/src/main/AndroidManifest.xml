@@ -1,0 +1,51 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <queries>
+        <package android:name="com.android.chrome" />
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/bankeiz_launcher"
+        android:roundIcon="@mipmap/bankeiz_launcher"
+        android:label="@string/bankeiz_app_name"
+        android:usesCleartextTraffic="false">
+
+        <meta-data android:name="asset_statements" android:resource="@string/bankeiz_asset_statements" />
+
+        <service android:name="androidx.browser.customtabs.PostMessageService" android:exported="true" />
+        <activity
+            android:name=".BankeizLauncherActivity"
+            android:screenOrientation="portrait"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/bankeiz_shortcuts" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:autoVerify="@bool/bankeiz_verify_web_links">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="bankeiz.com" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".DeviceCheckActivity"
+            android:screenOrientation="portrait"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+        <activity
+            android:name="com.kojibai.bankeiz.custodyprobe.ProbeActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboardHidden|orientation|screenSize|uiMode"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+    </application>
+</manifest>

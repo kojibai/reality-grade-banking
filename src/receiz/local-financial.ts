@@ -14,7 +14,8 @@ export type LocalFinancialSessionOptions=Readonly<{
  signOwner:ExecutorOptions['signOwner'];signRecord:ExecutorOptions['signRecord'];
  assertWalletCustody?:ExecutorOptions['assertWalletCustody'];
  readWalletCounterEvents?:ExecutorOptions['readWalletCounterEvents'];
- bindWalletDevice?(device: WalletDevice, assert: (request:FinancialWalletCustodyChallenge)=>Promise<FinancialWalletCustodyAssertion>):NonNullable<ExecutorOptions['assertWalletCustody']>;
+ bindWalletDevice?(device: Exclude<WalletDevice,{android:true}>, assert: (request:FinancialWalletCustodyChallenge)=>Promise<FinancialWalletCustodyAssertion>):NonNullable<ExecutorOptions['assertWalletCustody']>;
+ bindAndroidWalletDevice?(device: Extract<WalletDevice,{android:true}>):NonNullable<ExecutorOptions['assertAndroidWalletCustody']>;
  publish(batch:FinancialPublication):Promise<unknown>;
  publishOwnerRelease?(input:Readonly<{allocationId:string;original:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
  publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
@@ -77,11 +78,15 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   ?runtime.createWalletAdmissionStore(storeScope):(await loadReceiz()).createReceizBrowserAdmissionStore(storeScope));
  input.assertOpen();
  const kai=input.kai??runtime.financialKaiNow;
- const device=input.bindWalletDevice&&runtime.bankFinancialWalletDevice?.(source);
+ const device=(input.bindWalletDevice||input.bindAndroidWalletDevice)&&runtime.bankFinancialWalletDevice?.(source);
  const partialPayments=!!(device&&device.partialPayments);
  const publishExactPayments=!!(device&&(device.connectedPayments||device.setAside));
  let assertWalletCustody=input.assertWalletCustody;
- if(input.bindWalletDevice){
+ let assertAndroidWalletCustody:ExecutorOptions['assertAndroidWalletCustody'];
+ if(device?.android){
+  if(!input.bindAndroidWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+  assertAndroidWalletCustody=input.bindAndroidWalletDevice(device);
+ }else if(input.bindWalletDevice){
   if(!device||!runtime.assertBankFinancialWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
   const assert=runtime.assertBankFinancialWalletDevice;
   assertWalletCustody=input.bindWalletDevice(device,async request=>{
@@ -91,7 +96,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    return device.verifyAssertion?device.verifyAssertion(request,assertion):assertion;
   });
  }
- const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
+ const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,assertAndroidWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
  const publisher=incoming&&!publishExactPayments?null:await runtime.createReceizAccountFinancialPublisher({
   source,executor,store,originals:input.originals,...(protectedWallet?{batchSize:1}:{}),
   async publish(batch){

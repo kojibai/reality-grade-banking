@@ -37,7 +37,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
   if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby','scannedRecipient','moveBack'].includes(k))
    ||Object.hasOwn(action,'nearby')&&action.nearby!==true)fail('ACTION');
   const moveBack=Object.hasOwn(action,'moveBack');
-  if(moveBack&&(action.moveBack!==true||source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+  if(moveBack&&(action.moveBack!==true||source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody&&!custody.androidWalletCustody
    ||program.walletFunding!=='set-aside'||action.recipientUserId!==source.accountUserId
    ||Object.hasOwn(action,'nearby')||Object.hasOwn(action,'scannedRecipient')||Object.hasOwn(action,'note')
    ||!(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu.test(action.conversationId))))fail('ACTION');
@@ -49,7 +49,7 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
   if(!recipient)fail('RECIPIENT_REQUIRED');
   const cents=uint(action.amountUsdCents,true);
   if(!moveBack&&custody.receivedWallet&&action.nearby!==true&&(!program.walletPartialPayments||!scanned))fail('WALLET_PEER_CUSTODY');
-  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody&&!custody.androidWalletCustody
    ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
    ||!program.walletPartialPayments&&(state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents)))fail('WALLET_PEER_CUSTODY');
   let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;
@@ -68,6 +68,10 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
    rate=program.usdPerPhiMicrocents;
    nativeWalletMovement={rail:debit.rail,fundingParts:debit.fundingParts};
    nativeWallet={balancePhiMicro:balanceAfter,availableUsdCents:bankNativeWalletValue(debit.after,rate).totalUsdCents,settledUsdCents:debit.after.reserveUsdCents};
+   // Preserve one valid operation on every live head with value to return.
+   if(custody.androidWalletCustody&&BigInt(state.sequence)+1n>=BigInt(custody.androidWalletCustody.spend.length)
+    &&(nativeWallet.balancePhiMicro!=='0'||nativeWallet.settledUsdCents!=='0'))fail('ANDROID_WALLET_SLOTS_EXHAUSTED');
+
   }else if(source.sourceFamily==='native-wallet-reserve'){
    const {accountBalancePhiMicro,settledUsdCents}=state.walletLedger;
    const debit=bankNativeWalletDebit({balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:accountBalancePhiMicro},'reserve',String(cents),program.usdPerPhiMicrocents);

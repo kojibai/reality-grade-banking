@@ -20,8 +20,20 @@ export type FinancialWalletCounterEvent=Readonly<{
  header:FinancialWalletCounterHeader;assertion:Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>;
 }>;
 type WalletCounterCursor=Readonly<{credentialIdB64u:string;lastSignCount:string}>;
+export type AndroidWalletAssertionChallenge=Readonly<{slotDigest:string;payload:string}>;
+export type AndroidWalletAssertion=Readonly<{signatureB64u:string}>;
+type AndroidWalletEnrollmentScope=Readonly<{applicationId:string;userId:string;recordSignerPublicKey:string;origin:string;challengeB64u:string}>;
+export type AndroidWalletEnrollment=Readonly<{scope:AndroidWalletEnrollmentScope;receive?:unknown;spend:readonly unknown[]}>;
+type AndroidWalletOffer=Readonly<{applicationId:string;sourceArtifactSha256:string;allocationId:string;conversationId:string;
+ recipientUserId:string;recipientKeyId:string;recipientRecordSignerPublicKey:string;amountUsdCents:string}>;
 type WalletEnrollment=Readonly<{platformAttestationCertificate:Readonly<{origin:string;rpId:string}>;rollbackConformanceEvidence:unknown}>;
 export type WalletPairingRuntime=Readonly<{
+ digestReceizAndroidWalletEnrollmentSlot?(input:AndroidWalletEnrollmentScope&{role:'receive'|'spend';index:number}):Promise<string>;
+ verifyBankAndroidWalletEnrollment?(input:Omit<AndroidWalletEnrollmentScope,'challengeB64u'>&{enrollment:unknown}):Promise<AndroidWalletEnrollment>;
+ approveBankAndroidWalletOffer?(input:{walletAndroid:AndroidWalletEnrollment;fundedAtKaiUPulse:string;offer:AndroidWalletOffer;
+  signOwner(challenge:string):Promise<ReceizIdentityLoginProof>;
+  assert(challenge:AndroidWalletAssertionChallenge):Promise<AndroidWalletAssertion>;
+ }):Promise<Readonly<{ownerConsent:ReceizIdentityLoginProof;assertion:AndroidWalletAssertion}>>;
  enrollBankFinancialWalletDevice(input:{origin:string;rpId:string;fetchImpl:typeof fetch}):Promise<WalletEnrollment>;
  assertBankFinancialWalletDevice(input:FinancialWalletCustodyChallenge&{origin:string;rpId:string}):Promise<Omit<FinancialWalletCustodyAssertion,'credentialIdB64u'>>;
  approveBankFinancialWalletOffer(input:{walletWebAuthn:WalletEnrollment;fundedAtKaiUPulse:string;
@@ -34,11 +46,14 @@ export type WalletPairingRuntime=Readonly<{
 }>;
 export type WalletRecipient = Readonly<{accountUid:string;ownerReceizId:string;conversationId:string;nearby:boolean}>;
 export type WalletDevice = Readonly<{
- keyId:string;signerPublicKey:string;origin:string;rpId:string;credentialIdB64u:string;received:boolean;scanTime?:boolean;partialPayments?:boolean;sharedWalletCounter?:boolean;connectedPayments?:boolean;setAside?:boolean;
+ keyId:string;signerPublicKey:string;origin:string;received:boolean;scanTime?:boolean;partialPayments?:boolean;sharedWalletCounter?:boolean;connectedPayments?:boolean;setAside?:boolean;
  paymentOpening?:WalletPaymentOpening;
  verifyAssertion?(request:FinancialWalletCustodyChallenge,assertion:unknown):Promise<FinancialWalletCustodyAssertion>;
  recipients:readonly WalletRecipient[];
-}>;
+}> & (
+ Readonly<{android:true;receivingCounterMode?:'device'}>
+ |Readonly<{android?:false;rpId:string;credentialIdB64u:string}>
+);
 export type FinancialRelease=Readonly<{artifactSha256:string}>;
 export type WalletPaymentStage=Readonly<{proofBytes:number}>;
 export type FinancialExecutor=Readonly<{
@@ -52,6 +67,7 @@ export type FinancialExecutor=Readonly<{
 }>;
 export type FinancialExecutorOptions=Readonly<{source:FinancialSource;originals:FinancialOriginalStore;store:ReceizAdmissionStore;signOwner(challengeText:string):Promise<ReceizIdentityLoginProof>;signRecord(bytes:Uint8Array):Promise<Uint8Array>;
  assertWalletCustody?(request:FinancialWalletCustodyChallenge,header?:FinancialWalletCounterHeader):Promise<FinancialWalletCustodyAssertion>;
+ assertAndroidWalletCustody?(request:AndroidWalletAssertionChallenge):Promise<AndroidWalletAssertion>;
  readWalletCounterEvents?(cursor:WalletCounterCursor):Promise<readonly FinancialWalletCounterEvent[]>;kai?:()=>string}>;
 export type LocalFinancialRuntime=Readonly<{
  createWalletAdmissionStore?(input:{databaseName:string;namespace:string}):ReceizAdmissionStore;

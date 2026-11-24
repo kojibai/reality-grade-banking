@@ -289,20 +289,12 @@ export async function deriveReceizOfflineNoteCustodyOwnerId(
   return `c_${commitment.receivingCustodyCommitmentDigest.slice(0, 22)}.receiz.id`;
 }
 
-export async function createReceizOfflineNoteIrreversibleConsumptionReceipt(input: Readonly<{
-  qualification: ReceizOfflineNoteCustodyQualificationV1;
-  privateKey: CryptoKey;
-  noteId: string;
-  predecessorArtifactSha256: string;
-  expectedStateCommitment: string;
-  consumedStateCommitment: string;
-  expectedStateSequence: string;
-  consumedStateSequence: string;
-  receiverCustodyCommitmentDigest: string;
-  wholeValuePhiMicro: string;
-  acceptedAtKai: string;
-  successorBasisDigest: string;
-}>): Promise<ReceizOfflineNoteIrreversibleConsumptionReceiptV1> {
+type IrreversibleConsumptionInput = Omit<
+  Parameters<typeof createReceizOfflineNoteIrreversibleConsumptionReceipt>[0],
+  "privateKey"
+>;
+
+async function prepareIrreversibleConsumptionReceipt(input: IrreversibleConsumptionInput) {
   const code = "RECEIZ_OFFLINE_NOTE_CONSUMPTION_RECEIPT_INVALID";
   const qualification = await verifyReceizOfflineNoteCustodyQualification(input.qualification);
   const noteId = input.noteId.trim();
@@ -340,6 +332,24 @@ export async function createReceizOfflineNoteIrreversibleConsumptionReceipt(inpu
     successorBasisDigest: input.successorBasisDigest,
   });
   const receiptDigest = await digestReceizAuthority("transition", RECEIZ_OFFLINE_NOTE_CONSUMPTION_SCHEMA, basis);
+  return { basis, receiptDigest };
+}
+
+export async function createReceizOfflineNoteIrreversibleConsumptionReceipt(input: Readonly<{
+  qualification: ReceizOfflineNoteCustodyQualificationV1;
+  privateKey: CryptoKey;
+  noteId: string;
+  predecessorArtifactSha256: string;
+  expectedStateCommitment: string;
+  consumedStateCommitment: string;
+  expectedStateSequence: string;
+  consumedStateSequence: string;
+  receiverCustodyCommitmentDigest: string;
+  wholeValuePhiMicro: string;
+  acceptedAtKai: string;
+  successorBasisDigest: string;
+}>): Promise<ReceizOfflineNoteIrreversibleConsumptionReceiptV1> {
+  const { basis, receiptDigest } = await prepareIrreversibleConsumptionReceipt(input);
   const signature = await crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     input.privateKey,
@@ -350,6 +360,39 @@ export async function createReceizOfflineNoteIrreversibleConsumptionReceipt(inpu
     receiptDigest,
     signatureB64u: receizBase64UrlEncode(new Uint8Array(signature)),
   });
+}
+
+/** Exact signing transport for an existing Android hardware custody binding.
+ * Platform and Note admission are enforced by the owning wallet adapter.
+ */
+export async function signReceizOfflineNoteAndroidConsumptionReceipt(
+  input: IrreversibleConsumptionInput & Readonly<{
+    sign(bytes: Uint8Array): Promise<Uint8Array>;
+  }>,
+): Promise<ReceizOfflineNoteIrreversibleConsumptionReceiptV1> {
+  const code = "RECEIZ_OFFLINE_NOTE_CONSUMPTION_RECEIPT_INVALID";
+  const { sign, ...request } = input;
+  if (typeof sign !== "function") fail(code);
+  const { basis, receiptDigest } = await prepareIrreversibleConsumptionReceipt(structuredClone(request));
+  if (basis.adapterKind !== "android-hardware") fail(code);
+  const signature = await sign(signatureBytes(RECEIZ_OFFLINE_NOTE_CONSUMPTION_SCHEMA, receiptDigest));
+  if (!(signature instanceof Uint8Array) || signature.byteLength !== 64) fail(code);
+  return verifyReceizOfflineNoteIrreversibleConsumptionReceipt({
+    ...basis,
+    receiptDigest,
+    signatureB64u: receizBase64UrlEncode(signature),
+  });
+}
+
+/** Matches verified receipt bytes against the exact owning Note transition. */
+export async function verifyReceizOfflineNoteExactConsumptionReceipt(
+  candidate: unknown,
+  expected: IrreversibleConsumptionInput,
+): Promise<ReceizOfflineNoteIrreversibleConsumptionReceiptV1> {
+  const { receiptDigest } = await prepareIrreversibleConsumptionReceipt(structuredClone(expected));
+  const receipt = await verifyReceizOfflineNoteIrreversibleConsumptionReceipt(candidate);
+  if (receipt.receiptDigest !== receiptDigest) fail("RECEIZ_OFFLINE_NOTE_CONSUMPTION_RECEIPT_INVALID");
+  return receipt;
 }
 
 export async function verifyReceizOfflineNoteIrreversibleConsumptionReceipt(

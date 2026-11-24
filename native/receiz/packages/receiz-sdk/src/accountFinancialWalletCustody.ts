@@ -271,18 +271,30 @@ export async function verifyReceizFinancialWalletRecipientAcceptance(input: Read
 }>): Promise<ReceizFinancialWalletCustodyBinding> {
   if (!freshlyVerifiedBindings.has(input.binding)) fail();
   const { binding, offer, identity, ownerConsent, assertion, signCount } = structuredClone(input);
-  const challengeText = receizFinancialWalletReceiveConsent(offer);
-  const challengeB64Url = receizBase64UrlEncode(new TextEncoder().encode(challengeText));
-  exact(ownerConsent, ['schema', 'keyId', 'alg', 'challengeB64Url', 'signatureB64Url']);
-  if (identity.keyId !== offer.recipientKeyId || binding.certificateDigest !== offer.recipientCredentialCertificateDigest
-    || ownerConsent.schema !== 'receiz.identity.login_proof.v1'
-    || ownerConsent.keyId !== identity.keyId || ownerConsent.alg !== identity.alg || ownerConsent.challengeB64Url !== challengeB64Url
-    || await deriveReceizIdentityKeyIdFromPublicKeyRawB64u(identity.publicKeyRawB64u, identity.alg) !== identity.keyId
-    || !await verifyReceizIdentityPublicKeyProjectionSignature({ ...identity, challengeB64Url, signatureB64Url: ownerConsent.signatureB64Url })) fail();
+  await verifyReceizFinancialWalletReceiveOwner({ certificateDigest: binding.certificateDigest, offer, identity, ownerConsent });
   const challenge = signCount === undefined
     ? await prepareReceizFinancialWalletCustodyChallenge({ binding, kind:'receive', sequence:'0', command:offer, ownerConsent })
     : (await prepareReceizSharedWalletReceiveChallenge({ binding, offer, ownerConsent, signCount })).challenge;
   if (BigInt(challenge.expectedSignCount) >= MAX_COUNTER) fail();
   await verifyReceizFinancialWalletCustodyAssertion(binding, challenge, assertion);
   return Object.freeze({ ...binding, initialSignCount: challenge.expectedSignCount });
+}
+
+
+/** Owner approval is shared by the available hardware custody providers. */
+export async function verifyReceizFinancialWalletReceiveOwner(input: Readonly<{
+  certificateDigest: string;
+  offer: ReceizFinancialWalletReceiveOffer;
+  identity: Readonly<{ keyId: string; alg: 'Ed25519' | 'P-256'; publicKeyRawB64u: string }>;
+  ownerConsent: ReceizIdentityLoginProof;
+}>) {
+  const { offer, identity, ownerConsent } = input;
+  const challengeText = receizFinancialWalletReceiveConsent(offer);
+  const challengeB64Url = receizBase64UrlEncode(new TextEncoder().encode(challengeText));
+  exact(ownerConsent, ['schema', 'keyId', 'alg', 'challengeB64Url', 'signatureB64Url']);
+  if (identity.keyId !== offer.recipientKeyId || input.certificateDigest !== offer.recipientCredentialCertificateDigest
+    || ownerConsent.schema !== 'receiz.identity.login_proof.v1'
+    || ownerConsent.keyId !== identity.keyId || ownerConsent.alg !== identity.alg || ownerConsent.challengeB64Url !== challengeB64Url
+    || await deriveReceizIdentityKeyIdFromPublicKeyRawB64u(identity.publicKeyRawB64u, identity.alg) !== identity.keyId
+    || !await verifyReceizIdentityPublicKeyProjectionSignature({ ...identity, challengeB64Url, signatureB64Url: ownerConsent.signatureB64Url })) fail();
 }

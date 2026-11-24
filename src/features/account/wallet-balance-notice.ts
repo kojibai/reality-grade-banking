@@ -14,6 +14,11 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
     ({ title, message, support: { code, requirement } });
 
   switch (code) {
+    case 'ANDROID_WALLET_ATTESTATION_HARDWARE':
+    case 'BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE':
+      return device('This setup needs device hardware support',
+        'Try the Bankeiz Android app on a supported phone. You can keep using nearby payments from your regular balance.',
+        'A hardware-backed signing key with a verified one-use limit');
     case 'OFFLINE_NOTE_CUSTODY_WEBAUTHN_UNAVAILABLE':
     case 'OFFLINE_NOTE_CUSTODY_PLATFORM_AUTHENTICATOR_UNAVAILABLE':
     case 'OFFLINE_NOTE_CUSTODY_CREDENTIAL_CREATION_FAILED':

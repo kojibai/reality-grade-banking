@@ -160,6 +160,7 @@ export async function verifyBankLocalAccountCreditSource(bytesInput: Uint8Array,
   const head = readBankFundedNoteHead(source.note);
   if (head.packet.custodyMode !== "qualified-anonymous") throw Error("BANK_LOCAL_CREDIT_SOURCE_REQUIRED");
   const receiving = head.packet.currentCustody, receipt = source.receipt;
+  if (receipt.schema === "receiz.offline-note.android-handoff.v1") throw Error("BANK_LOCAL_CREDIT_SOURCE_REQUIRED");
   const qualification = await createReceizOfflineNoteCustodyQualification({ profileId: receiving.profileId, profileEvidenceDigest: receiving.profileEvidenceDigest,
     adapterKind: receiving.adapterKind, custodyPublicKeyRawB64u: receiving.custodyPublicKeyRawB64u,
     stateCommitment: receipt.consumedStateCommitment, stateSequence: receipt.consumedStateSequence });

@@ -1,0 +1,121 @@
+import {readReceizAccountFinancialSourceCustody,readReceizWalletDestination,type ReceizAccountFinancialSource}from './accountFinancialSource.js';
+import {bankNativeWalletDebit,bankNativeWalletDebitAvailable,bankNativeWalletTransferRate,bankNativeWalletValue,type BankNativeWalletFundingParts} from './nativeWalletEconomics.js';
+import {deriveMarketShareAccounting,marketNotionalPhiMicroFromUsdCents,marketShareBuyPreviewFromBudgetUsdCentsAtAsk,marketShareSellPreviewFromBudgetUsdCentsAtBid,type AccountExecutionMarketFlow,type AccountExecutionWalletAmounts,type AccountExecutionWalletLedger,type AccountExecutionPositionAmounts}from './accountFinancialMath.generated.js';
+
+type Position=AccountExecutionPositionAmounts&Readonly<{marketItemId:string}>;
+type Capacity=Readonly<{marketItemId:string;buyCapacityUsdCents:string;backedSellLiquidityUsdCents:string;buyShareQuantityMicro?:string}>;
+type Term=Capacity&Readonly<{sourceArtifactSha256:string;bidPriceUsdCents:string;askPriceUsdCents:string;referenceMidUsdCents:string;maxSingleTradeUsdCents:string;targetBudgetUsdCents:string}>;
+/** References to actually admitted order-custody partitions. A typed entry
+ * alone conveys no funded rights; its exact Original must be admitted. */
+export type ReceizAccountOrderEscrow=Readonly<{orderId:string;marketItemId:string;reservedShareQuantityMicro:string;fundingSourceSha256:string}>;
+export type ReceizAccountFinancialState=Readonly<{schema:'receiz.account-financial-state.v1';allocationId:string;accountUserId:string;sequence:string;lastKaiUPulse:string;wallet:AccountExecutionWalletAmounts;walletLedger:AccountExecutionWalletLedger;positions:readonly Position[];reserveBackingPhiMicro?:string;marketCapacity:readonly Capacity[];orderEscrows?:readonly ReceizAccountOrderEscrow[];marketActivity?:readonly Readonly<{marketItemId:string;trades:readonly AccountExecutionMarketFlow[]}>[]}>;
+type Recipient=Readonly<{recipientUserId:string;recipientOwnerReceizId:string;conversationId:string;sourceAccountArtifactSha256:string}>;
+export type ReceizAccountSendAction=Readonly<{kind:'send';recipientUserId:string;conversationId:string;amountUsdCents:string;note?:string;nearby?:true;scannedRecipient?:unknown;moveBack?:true}>;
+export type ReceizAccountMarketAction=Readonly<{kind:'buy'|'sell';marketItemId:string;amountUsdCents?:string;shareQuantityMicro?:string}>;
+const MAX=(1n<<63n)-1n;
+const min=(a:bigint,b:bigint)=>a<b?a:b;
+function fail(code:string):never{throw new TypeError('ACCOUNT_FINANCIAL_'+code);}
+function uint(v:unknown,positive=false):bigint{if(typeof v!=='string'||!/^(0|[1-9][0-9]{0,18})$/u.test(v))fail('INTEGER');const n=BigInt(v);if(n>MAX||n<(positive?1n:0n))fail('INTEGER');return n;}
+function bounded(v:bigint):string{if(v<0n||v>MAX)fail('INTEGER');return String(v);}
+/** Owned shares keep contributing to market interest while a pending order
+ * holds them. Reservation changes spendability, never ownership or trade flow. */
+export function accountFinancialMarketPositionDelta(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,marketItemId:string){
+ const custody=readReceizAccountFinancialSourceCustody(source),opening=(custody.body.initialState as ReceizAccountFinancialState).positions.find(row=>row.marketItemId===marketItemId);
+ const free=uint(state.positions.find(row=>row.marketItemId===marketItemId)?.shareQuantityMicro??'0');
+ const reserved=(state.orderEscrows??[]).filter(row=>row.marketItemId===marketItemId).reduce((sum,row)=>sum+uint(row.reservedShareQuantityMicro),0n);
+ if(free+reserved>MAX)fail('INTEGER');return String(free+reserved-uint(opening?.shareQuantityMicro??'0'));
+}
+const indexed=new WeakMap<ReceizAccountFinancialSource,ReadonlyMap<string,Term>>();
+/** Mechanical reduction under genuine funded source custody. This returns a
+ * candidate only. It neither admits a supplied successor state nor commits a
+ * trade; accepted ancestry, signatures and durable CAS are required separately. */
+export function projectReceizAccountFinancialAction(source:ReceizAccountFinancialSource,state:ReceizAccountFinancialState,action:ReceizAccountMarketAction|ReceizAccountSendAction,atKaiUPulse:string){
+ const custody=readReceizAccountFinancialSourceCustody(source),program=custody.body.program as {validFromKaiUPulse:string;expiresAtKaiUPulse:string;marketTerms:Term[];recipientBindings?:Recipient[];usdPerPhiMicrocents:string;walletRails?:'all';walletPartialPayments?:true;walletFunding?:'set-aside'};
+ if(state.schema!=='receiz.account-financial-state.v1'||state.allocationId!==source.allocationId||state.accountUserId!==source.accountUserId)fail('STATE');
+ const at=uint(atKaiUPulse,true);if(at<uint(program.validFromKaiUPulse,true)||at>uint(program.expiresAtKaiUPulse,true)||at<=uint(state.lastKaiUPulse))fail('CAUSAL_PULSE');
+ if(action?.kind==='send'){
+  if(Object.keys(action).some(k=>!['kind','recipientUserId','conversationId','amountUsdCents','note','nearby','scannedRecipient','moveBack'].includes(k))
+   ||Object.hasOwn(action,'nearby')&&action.nearby!==true)fail('ACTION');
+  const moveBack=Object.hasOwn(action,'moveBack');
+  if(moveBack&&(action.moveBack!==true||source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+   ||program.walletFunding!=='set-aside'||action.recipientUserId!==source.accountUserId
+   ||Object.hasOwn(action,'nearby')||Object.hasOwn(action,'scannedRecipient')||Object.hasOwn(action,'note')
+   ||!(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu.test(action.conversationId))))fail('ACTION');
+  const scanned=Object.hasOwn(action,'scannedRecipient')?readReceizWalletDestination(source,action,atKaiUPulse):null;
+  if(Object.hasOwn(action,'scannedRecipient')&&!scanned)fail('RECIPIENT_REQUIRED');
+  const recipient=moveBack?{recipientUserId:source.accountUserId,recipientOwnerReceizId:source.ownerReceizId,conversationId:action.conversationId}:
+   scanned?{recipientUserId:scanned.userId,recipientOwnerReceizId:scanned.ownerReceizId,conversationId:action.conversationId}:
+   program.recipientBindings?.find(r=>r.recipientUserId===action.recipientUserId&&r.conversationId===action.conversationId);
+  if(!recipient)fail('RECIPIENT_REQUIRED');
+  const cents=uint(action.amountUsdCents,true);
+  if(!moveBack&&custody.receivedWallet&&action.nearby!==true&&(!program.walletPartialPayments||!scanned))fail('WALLET_PEER_CUSTODY');
+  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody
+   ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
+   ||!program.walletPartialPayments&&(state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents)))fail('WALLET_PEER_CUSTODY');
+  let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;
+  let nativeWalletMovement:Readonly<{rail:'reserve'|'settlement'|'composite';fundingParts:BankNativeWalletFundingParts}>|undefined;
+  let reserveBackingPhiMicro:string|undefined;
+  if(source.sourceFamily==='native-wallet-reserve'&&program.walletRails==='all'){
+   const {accountBalancePhiMicro,settledUsdCents}=state.walletLedger;
+   const debit=bankNativeWalletDebitAvailable({
+    balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:String(uint(state.reserveBackingPhiMicro)),
+   },String(cents),program.usdPerPhiMicrocents);
+   if(action.nearby===true&&!program.walletPartialPayments&&debit.after.balancePhiMicro!=='0')fail('WALLET_PEER_CUSTODY');
+   phi=BigInt(debit.amountPhiMicro);
+   settled=BigInt(debit.fundingParts.reserve.amountUsdCents);
+   balanceAfter=debit.after.balancePhiMicro;
+   reserveBackingPhiMicro=debit.after.reserveBackingPhiMicro;
+   rate=program.usdPerPhiMicrocents;
+   nativeWalletMovement={rail:debit.rail,fundingParts:debit.fundingParts};
+   nativeWallet={balancePhiMicro:balanceAfter,availableUsdCents:bankNativeWalletValue(debit.after,rate).totalUsdCents,settledUsdCents:debit.after.reserveUsdCents};
+  }else if(source.sourceFamily==='native-wallet-reserve'){
+   const {accountBalancePhiMicro,settledUsdCents}=state.walletLedger;
+   const debit=bankNativeWalletDebit({balancePhiMicro:accountBalancePhiMicro,reserveUsdCents:settledUsdCents,reserveBackingPhiMicro:accountBalancePhiMicro},'reserve',String(cents),program.usdPerPhiMicrocents);
+   phi=BigInt(debit.amountPhiMicro);
+   settled=cents;
+   balanceAfter=debit.after.balancePhiMicro;
+   rate=bankNativeWalletTransferRate(debit.amountPhiMicro,debit.amountUsdCents);
+   nativeWallet={balancePhiMicro:balanceAfter,availableUsdCents:debit.after.reserveUsdCents,settledUsdCents:debit.after.reserveUsdCents};
+  }else{
+   const value=custody.valuation.at(state.walletLedger,source.accountUserId,atKaiUPulse);
+   rate=value.usdPerPhiMicrocents;
+   phi=marketNotionalPhiMicroFromUsdCents(cents,uint(rate,true));
+   if(phi<=0n||cents>uint(value.wallet.availableUsdCents)||phi>uint(value.wallet.balancePhiMicro))fail('WALLET_INSUFFICIENT_BALANCE');
+   settled=min(cents,uint(value.wallet.settledUsdCents));
+   balanceAfter=bounded(uint(value.wallet.balancePhiMicro)-phi);
+  }
+  const ecosystem=cents-settled;
+  const note=action.note?.replace(/\s+/gu,' ').trim();if(action.note!==undefined&&(typeof action.note!=='string'||(note?.length??0)>280))fail('NOTE');
+  const ledger:AccountExecutionWalletLedger={...state.walletLedger,accountBalancePhiMicro:balanceAfter,totalDebitPhiMicro:bounded(uint(state.walletLedger.totalDebitPhiMicro)+phi),totalDebitUsdCents:bounded(uint(state.walletLedger.totalDebitUsdCents)+cents),settledUsdCents:bounded(uint(state.walletLedger.settledUsdCents)-settled)};
+  return{effect:{kind:'send'as const,senderUserId:source.accountUserId,recipientUserId:recipient.recipientUserId,recipientOwnerReceizId:recipient.recipientOwnerReceizId,conversationId:recipient.conversationId,amountUsdCents:String(cents),amountPhiMicro:String(phi),settlementUsdCents:String(cents),settlementPhiMicro:String(phi),usdPerPhiMicrocents:rate,settledUsdCents:String(settled),ecosystemUsdCents:String(ecosystem),fundingRule:'settled_first_then_phi'as const,settledFundingSource:settled>=cents?'stripe_origin':settled>0n?'mixed_stripe_ecosystem':'unsettled_ecosystem',...(note?{note}:{}),...(nativeWalletMovement?{nativeWalletMovement}:{})},next:{...state,...(reserveBackingPhiMicro===undefined?{}:{reserveBackingPhiMicro}),sequence:bounded(uint(state.sequence)+1n),lastKaiUPulse:atKaiUPulse,wallet:nativeWallet??custody.valuation.at(ledger,source.accountUserId,atKaiUPulse).wallet,walletLedger:ledger,positions:state.positions.map(p=>({...p})),marketCapacity:state.marketCapacity.map(c=>({...c}))}};
+ }
+ if(source.sourceFamily==='native-wallet-reserve')fail('NATIVE_RESERVE_SEND_ONLY');
+ if(!action||!['buy','sell'].includes(action.kind)||typeof action.marketItemId!=='string'||Object.keys(action).some(k=>!['kind','marketItemId','amountUsdCents','shareQuantityMicro'].includes(k))||(action.amountUsdCents===undefined)===(action.shareQuantityMicro===undefined)||action.kind==='buy'&&action.amountUsdCents===undefined)fail('ACTION');
+ let terms=indexed.get(source);if(!terms){terms=new Map(program.marketTerms.map(t=>[t.marketItemId,t]));indexed.set(source,terms);}
+ const term=terms.get(action.marketItemId),capacity=state.marketCapacity.find(c=>c.marketItemId===action.marketItemId);if(!term||!capacity)fail('TERMS_REQUIRED');
+ const value=custody.valuation.at(state.walletLedger,source.accountUserId,atKaiUPulse),position=state.positions.find(p=>p.marketItemId===action.marketItemId)??{marketItemId:action.marketItemId,shareQuantityMicro:'0',costBasisUsdCents:'0',costBasisPhiMicro:'0'};
+ const localFlow=state.marketActivity?.find(row=>row.marketItemId===action.marketItemId)?.trades??[];
+ const quote=custody.marketPricingAt(action.marketItemId,accountFinancialMarketPositionDelta(source,state,action.marketItemId),localFlow,atKaiUPulse);
+ const bid=quote?String(quote.bidPriceUsdCents):term.bidPriceUsdCents,ask=quote?String(quote.askPriceUsdCents):term.askPriceUsdCents,reference=quote?String(quote.referenceMidUsdCents):term.referenceMidUsdCents;
+
+ const budget=action.amountUsdCents===undefined?undefined:uint(action.amountUsdCents,true);
+ const preview=action.kind==='buy'?marketShareBuyPreviewFromBudgetUsdCentsAtAsk(budget!,uint(ask,true),uint(reference,true))
+  :budget!==undefined?marketShareSellPreviewFromBudgetUsdCentsAtBid(budget,uint(bid,true),uint(reference,true),uint(position.shareQuantityMicro))
+  :null;
+ const quantity=preview?.shareQuantityMicro??uint(action.shareQuantityMicro,true);
+ // Market's existing writer uses original raw backing, whereas Wallet Send
+ // uses its displayed settled cap. Keep these distinct without erasing either.
+ const executionWallet={...value.wallet,settledUsdCents:String(min(uint(state.walletLedger.settledUsdCents),uint(value.wallet.availableUsdCents)))};
+ const accounting=deriveMarketShareAccounting({side:action.kind,shareQuantityMicro:String(quantity),executionPriceUsdCents:action.kind==='buy'?ask:bid,usdPerPhiMicrocents:value.usdPerPhiMicrocents,feeBps:0,nativeValueEnabled:value.nativeValueEnabled,wallet:executionWallet,position,backedSellLiquidityUsdCents:capacity.backedSellLiquidityUsdCents});
+ const cents=uint(accounting.settlementUsdCents,true),phi=uint(accounting.settlementPhiMicro,true),settled=uint(accounting.settledUsdCents),buy=action.kind==='buy';
+ if(buy&&capacity.buyShareQuantityMicro!==undefined&&quantity>uint(capacity.buyShareQuantityMicro))fail('BUY_CAPACITY');
+ if(buy&&quote&&(!quote.allowBuys||cents>quote.pressure.softCapUsdCents/3n||quote.pressure.openInterestUsdCents+cents>quote.pressure.hardCapUsdCents))fail('BUY_CAPACITY');
+ if(buy&&(cents>uint(value.marketAvailableUsdCents)||cents>uint(term.maxSingleTradeUsdCents)||cents>uint(capacity.buyCapacityUsdCents)))fail('BUY_CAPACITY');
+ const ledger:AccountExecutionWalletLedger={accountBalancePhiMicro:accounting.wallet.balancePhiMicro,totalCreditPhiMicro:bounded(uint(state.walletLedger.totalCreditPhiMicro)+(buy?0n:phi)),totalDebitPhiMicro:bounded(uint(state.walletLedger.totalDebitPhiMicro)+(buy?phi:0n)),totalCreditUsdCents:bounded(uint(state.walletLedger.totalCreditUsdCents)+(buy?0n:cents)),totalDebitUsdCents:bounded(uint(state.walletLedger.totalDebitUsdCents)+(buy?cents:0n)),settledUsdCents:bounded(uint(state.walletLedger.settledUsdCents)+(buy?-settled:settled))};
+ const nextPosition={marketItemId:action.marketItemId,...accounting.position},positions=state.positions.filter(p=>p.marketItemId!==action.marketItemId).map(p=>({...p}));if(nextPosition.shareQuantityMicro!=='0')positions.push(nextPosition);positions.sort((a,b)=>a.marketItemId<b.marketItemId?-1:a.marketItemId>b.marketItemId?1:0);
+ const nextCapacity={marketItemId:action.marketItemId,buyCapacityUsdCents:bounded(buy?uint(capacity.buyCapacityUsdCents)-cents:min(uint(term.buyCapacityUsdCents),uint(capacity.buyCapacityUsdCents)+cents)),backedSellLiquidityUsdCents:bounded(uint(capacity.backedSellLiquidityUsdCents)+(buy?settled:-settled)),...(capacity.buyShareQuantityMicro!==undefined?{buyShareQuantityMicro:bounded(buy?uint(capacity.buyShareQuantityMicro)-quantity:min(uint(term.buyShareQuantityMicro),uint(capacity.buyShareQuantityMicro)+quantity))}:{})};
+ const next:ReceizAccountFinancialState={schema:state.schema,allocationId:state.allocationId,accountUserId:state.accountUserId,sequence:bounded(uint(state.sequence)+1n),lastKaiUPulse:atKaiUPulse,wallet:custody.valuation.at(ledger,source.accountUserId,atKaiUPulse).wallet,walletLedger:ledger,positions,marketCapacity:state.marketCapacity.map(c=>({...c,...(c.marketItemId===action.marketItemId?nextCapacity:{})})),
+ ...(state.orderEscrows?{orderEscrows:state.orderEscrows}:{}),
+ ...(quote?{marketActivity:[...(state.marketActivity??[]).filter(row=>row.marketItemId!==action.marketItemId),{marketItemId:action.marketItemId,trades:[...localFlow,{side:action.kind,notionalUsdCents:accounting.notionalUsdCents,atKaiUPulse}]}].sort((a,b)=>a.marketItemId<b.marketItemId?-1:a.marketItemId>b.marketItemId?1:0)}:{})};
+ return{effect:{kind:action.kind,marketItemId:action.marketItemId,shareQuantityMicro:String(quantity),executionPriceUsdCents:action.kind==='buy'?ask:bid,usdPerPhiMicrocents:value.usdPerPhiMicrocents,...(quote?{referenceMidUsdCents:reference,quoteMidUsdCents:String(quote.quoteMidUsdCents),bidPriceUsdCents:bid,askPriceUsdCents:ask,quoteModelVersion:quote.modelVersion}:{}),...accounting},next};
+}

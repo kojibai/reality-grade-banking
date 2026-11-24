@@ -76,6 +76,18 @@ it('opens the exact installed Bank entrance without a network wait while the con
   expect(old.forced()).toBe(false); expect(next.forced()).toBe(false);
   env.offline(); expect(await (await old.load('/', true))?.text()).toBe('<html>Bank A</html>');
 });
+it('opens the deployed Android home without replacing the held PWA build', async () => {
+  const env = environment(), worker = env.worker('A', resources('A')); await worker.install();
+  const launch = '/app/android-launch';
+  env.network.set(origin + launch, new Response('<html>Bank B</html>', { headers: { 'content-type': 'text/html' } }));
+  expect(await (await worker.load(launch, true))?.text()).toBe('<html>Bank B</html>');
+  expect(env.fetchRequests.at(-1)?.cache).toBe('no-store');
+  expect(await (await worker.load('/', true))?.text()).toBe('<html>Bank A</html>');
+  expect(await env.stores.get('receiz-bank-A')!.get(origin + '/index.html')!.clone().text()).toBe('<html>Bank A</html>');
+  env.offline();
+  expect(await (await worker.load(launch, true))?.text()).toBe('<html>Bank A</html>');
+});
+
 it('preserves the requested navigation path, query and credentials while bypassing the browser HTTP cache', async () => {
   const env = environment(), worker = env.worker('A', resources('A')); await worker.install();
   const requested = '/learn/?from=bank&mode=current'; env.network.set(origin + requested, '<html>Current guide</html>');

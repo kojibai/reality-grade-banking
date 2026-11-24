@@ -138,9 +138,48 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
     } finally { running.current = false; if (alive.current) setBusy(false); }
   };
   const inspect = (file?: File) => { if (!file || running.current) return; setImage(null); setInspection(null); setDeposited(null); void run(async () => { if (file.size > 32 * 1024 * 1024) throw new Error('This original exceeds the supported Note proof capacity.'); const prepared=notes().then(value=>({value}),error=>({error})),bytes = await readNoteProofImport(file),runtime=await prepared;if('error' in runtime)throw runtime.error;const result = await runtime.value.inspect(bytes); if (alive.current) { setImage(bytes); setInspection(result); } }); };
+  const downloadNativeRequest = () => run(async () => {
+    const runtime = await notes();
+    if (!runtime.nativeReceivingRequest) return;
+    const request = await runtime.nativeReceivingRequest();
+    if (alive.current) download(request, 'bankeiz-note-receiving-request.json', 'application/json');
+  });
+  const sendNativeNote = (file?: File) => {
+    if (!file || !created?.nativeHandoff) return;
+    const held = created;
+    void run(async () => {
+      if (file.size > 64 * 1024) throw Error('BANK_NOTE_RECEIVING_REQUEST_INVALID');
+      const result = await (await notes()).transfer(held.noteId, new Uint8Array(await file.arrayBuffer()));
+      if (alive.current) setCreated({ ...held, image: result.image, transferred: true });
+    });
+  };
+  const depositHeldNativeNote = () => {
+    if (!created?.nativeHandoff) return;
+    const held = created;
+    void run(async () => {
+      if (navigator.onLine === false) {
+        if (alive.current) setNotice('Connect to add this Note to your account. You can still send it offline.');
+        return;
+      }
+      const deposit = await (await notes()).deposit(held.image);
+      if (deposit.noteId !== held.noteId || deposit.amountUsdCents !== held.amountUsdCents || deposit.amountPhiMicro !== held.amountPhiMicro)
+        throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
+      if (alive.current) { setCreated(null); setDeposited(deposit); onRefresh(); }
+    });
+  };
   const depositReviewedNote = () => run(async () => {
     if (!image || !inspection) throw Error('BANK_NOTE_REVIEW_REQUIRED');
-    const result = await (await notes()).deposit(image);
+    const runtime = await notes();
+    if (inspection.nativeHandoff && runtime.acceptNativeNote) {
+      const held = await runtime.acceptNativeNote(image);
+      if (alive.current) {
+        setCreated({ ...held, nativeHandoff: true });
+        setImage(null);
+        setInspection(null);
+      }
+      return;
+    }
+    const result = await runtime.deposit(image);
     if (result.noteId !== inspection.noteId || (result.rail ?? 'reserve') !== (inspection.rail ?? 'reserve') || result.amountUsdCents !== inspection.amountUsdCents || result.amountPhiMicro !== inspection.amountPhiMicro || !sameNoteFundingParts(result.fundingParts,inspection.fundingParts)) throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
     if (alive.current) { setDeposited(result); onRefresh(); }
   });
@@ -182,11 +221,15 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       {created.accountUpdateWarning && <p className="body-copy small-copy" role="status">{created.accountUpdateWarning}</p>}
       {created.selfDeposit==='pending'&&<button className="secondary-button" disabled={busy} onClick={()=>void run(async()=>{const result=await(await notes()).recoverDeposit?.(created.image);if(result&&alive.current){setCreated(null);setDeposited(result);onRefresh();}})}>Check saved deposit</button>}
       {created.transferPending && <button className="primary-button" disabled={busy} onClick={() => void run(async () => { const result = await (await notes()).transfer(created.noteId); if (alive.current) { setCreated({ ...created, image: result.image, transferred: true, transferPending: false }); setNotice(created.consumption==='connection-required'?'Handover saved. Send this updated image to the recipient.':'Ownership transferred. Save and send this updated note image to the recipient.'); } })}>{busy ? 'Resuming transfer…' : 'Resume transfer'}</button>}
+      {created.nativeHandoff && !created.transferred && !created.transferPending &&
+        <label className="file-drop"><ArrowUpRight size={24} /><strong>Send this Note</strong><span>Choose the recipient’s receiving request</span><input type="file" accept="application/json,.json" disabled={busy} onChange={event => sendNativeNote(event.target.files?.[0])} /></label>}
+      {created.nativeHandoff && !created.transferred && !created.transferPending &&
+        <button className="secondary-button" disabled={busy} onClick={depositHeldNativeNote}><FileDown size={17} />Deposit to account</button>}
       {!created.selfDeposit&&!created.transferred&&!created.transferPending&&created.consumption==='connection-required'&&<p className="body-copy small-copy">Save and send the original PNG. {created.recipientUserId?'Only the chosen account can deposit it.':'Anyone holding it can deposit its value once.'} Its complete proof travels with it.</p>}
 
     </>}
-    {mode === 'deposit' && !deposited && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">Open the original Note image to add it to your account.</p><label className="file-drop"><Upload size={30} /><strong>{<>Choose note image{busy&&<InlineOpening compact label="Preparing your note"/>}</>}</strong><span>Original note PNG or deposit proof</span><input type="file" accept="image/png,.png,application/json,.json" disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
-      {inspection && <><div className="detail-list"><div><span>{inspection.rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(inspection.amountUsdCents)}</strong></div><div><span>Into</span><strong>Your account</strong></div></div><button className="primary-button" disabled={busy} onClick={() => void depositReviewedNote()}><FileDown size={17} />{busy ? 'Depositing your note…' : 'Deposit note'}</button><p className="body-copy small-copy">Deposit adds the Note’s exact funded value to your account once. Its complete proof stays with the receipt.</p><details className="note-value-details"><summary>Note details</summary><p>{noteTitle(inspection.rail)} · Exact funded units and complete source proof stay intact.</p>{inspection.rail==='settlement'&&<p>{exactPhi(inspection.amountPhiMicro)} Φ · Dollar reference at creation; deposit preserves these exact units.</p>}{inspection.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(inspection.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{exactPhi(inspection.fundingParts.settlement.amountPhiMicro)} Φ</strong></div></div>}</details></>}
+    {mode === 'deposit' && !deposited && !created && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">{api.current?.nativeReceivingRequest ? 'Open the original Note image to review it.' : 'Open the original Note image to add it to your account.'}</p>{api.current?.nativeReceivingRequest&&<button className="secondary-button" disabled={busy} onClick={() => void downloadNativeRequest()}><Download size={17} />Get a Note receiving request</button>}<label className="file-drop"><Upload size={30} /><strong>{<>Choose note image{busy&&<InlineOpening compact label="Preparing your note"/>}</>}</strong><span>Original note PNG or deposit proof</span><input type="file" accept="image/png,.png,application/json,.json" disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
+      {inspection && <><div className="detail-list"><div><span>{inspection.rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(inspection.amountUsdCents)}</strong></div><div><span>Into</span><strong>{inspection.nativeHandoff ? 'Your saved Notes' : 'Your account'}</strong></div></div><button className="primary-button" disabled={busy} onClick={() => void depositReviewedNote()}><FileDown size={17} />{inspection.nativeHandoff ? 'Accept Note' : busy ? 'Depositing your note…' : 'Deposit note'}</button><p className="body-copy small-copy">{inspection.nativeHandoff ? 'Your Note is ready to pass on offline once you accept it.' : 'Deposit adds the Note’s exact funded value to your account once. Its complete proof stays with the receipt.'}</p><details className="note-value-details"><summary>Note details</summary><p>{noteTitle(inspection.rail)} · Exact funded units and complete source proof stay intact.</p>{inspection.rail==='settlement'&&<p>{exactPhi(inspection.amountPhiMicro)} Φ · Dollar reference at creation; deposit preserves these exact units.</p>}{inspection.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(inspection.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{exactPhi(inspection.fundingParts.settlement.amountPhiMicro)} Φ</strong></div></div>}</details></>}
 
       {received.length>0&&<div className="retained-deposits"><p className="body-copy small-copy">Saved deposits</p>{received.map(note=><button className="asset-row" key={note.noteId} onClick={()=>setDeposited(note)}><span className="row-copy"><strong>{formatMoney(note.amountUsdCents)}</strong><span>{note.status==='received'?'Received · proof saved on this device':'Deposited · proof confirmed'}</span></span><Download size={18}/></button>)}</div>}
     </>}

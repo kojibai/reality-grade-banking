@@ -70,7 +70,7 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
   if (Object.keys(value).sort().join("\0") !== [...expected].sort().join("\0")) fail();
 }
 
-export async function prepareReceizOfflineReserveWebAuthnConsumptionChallenge(input: Readonly<{
+export type ReceizOfflineReserveConsumptionInput = Readonly<{
   qualification: ReceizOfflineNoteCustodyQualificationV1;
   predecessorAccountPortableStateDigest: string;
   successorReserveStateContentDigest: string;
@@ -88,14 +88,11 @@ export async function prepareReceizOfflineReserveWebAuthnConsumptionChallenge(in
   nextReserveStateCommitment: string;
   expectedReserveStateSequence: string;
   nextReserveStateSequence: string;
-  rpId: string;
-  origin: string;
-}>): Promise<ReceizOfflineReservePreparedWebAuthnConsumptionV1> {
+}>;
+
+export async function prepareReceizOfflineReserveConsumptionBasis(input: ReceizOfflineReserveConsumptionInput) {
   const qualification = await verifyReceizOfflineNoteCustodyQualification(input.qualification).catch(fail);
-  let origin: URL;
-  try { origin = new URL(input.origin); } catch { fail(); }
-  if (qualification.adapterKind !== "pwa-webauthn"
-    || !SHA256_RE.test(input.predecessorAccountPortableStateDigest)
+  if (!SHA256_RE.test(input.predecessorAccountPortableStateDigest)
     || !SHA256_RE.test(input.successorReserveStateContentDigest)
     || !SHA256_RE.test(input.noteArtifactSha256)
     || !SHA256_RE.test(input.expectedReserveStateCommitment)
@@ -118,10 +115,8 @@ export async function prepareReceizOfflineReserveWebAuthnConsumptionChallenge(in
     || !POSITIVE_UINT_RE.test(input.expectedReserveStateSequence)
     || !POSITIVE_UINT_RE.test(input.nextReserveStateSequence)
     || input.expectedReserveStateSequence !== qualification.stateSequence
-    || BigInt(input.nextReserveStateSequence) !== BigInt(input.expectedReserveStateSequence) + 1n
-    || !input.rpId.trim() || origin!.protocol !== "https:" || origin!.origin !== input.origin) fail();
-  const basis: ReceizOfflineReserveWebAuthnConsumptionBasisV1 = Object.freeze({
-    schema: RECEIZ_OFFLINE_RESERVE_WEBAUTHN_CONSUMPTION_SCHEMA,
+    || BigInt(input.nextReserveStateSequence) !== BigInt(input.expectedReserveStateSequence) + 1n) fail();
+  return Object.freeze({
     qualificationDigest: qualification.qualificationDigest,
     profileId: qualification.profileId,
     profileEvidenceDigest: qualification.profileEvidenceDigest,
@@ -143,6 +138,20 @@ export async function prepareReceizOfflineReserveWebAuthnConsumptionChallenge(in
     nextReserveStateCommitment: input.nextReserveStateCommitment,
     expectedReserveStateSequence: input.expectedReserveStateSequence,
     nextReserveStateSequence: input.nextReserveStateSequence,
+  });
+}
+
+export async function prepareReceizOfflineReserveWebAuthnConsumptionChallenge(input:
+  ReceizOfflineReserveConsumptionInput & Readonly<{ rpId: string; origin: string }>,
+): Promise<ReceizOfflineReservePreparedWebAuthnConsumptionV1> {
+  const qualification = await verifyReceizOfflineNoteCustodyQualification(input.qualification).catch(fail);
+  let origin: URL;
+  try { origin = new URL(input.origin); } catch { fail(); }
+  if (qualification.adapterKind !== "pwa-webauthn" || !input.rpId.trim()
+    || origin!.protocol !== "https:" || origin!.origin !== input.origin) fail();
+  const basis: ReceizOfflineReserveWebAuthnConsumptionBasisV1 = Object.freeze({
+    schema: RECEIZ_OFFLINE_RESERVE_WEBAUTHN_CONSUMPTION_SCHEMA,
+    ...await prepareReceizOfflineReserveConsumptionBasis({ ...input, qualification }),
     rpId: input.rpId,
     origin: input.origin,
   });

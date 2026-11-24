@@ -23,8 +23,8 @@ import type {
 import {
   deriveKairosNoteCustodyOwnerId,
   verifyKairosNoteReceivingCustody,
+  verifyKairosNoteConsumptionProof,
 } from "./kairosNoteCustodyVerification";
-import { verifyReceizOfflineNoteWebAuthnConsumptionReceipt } from "../../../packages/receiz-sdk/src/offlineNoteWebAuthnCustody";
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
 const KAI_RE = /^(0|[1-9][0-9]*)$/;
@@ -63,12 +63,14 @@ async function packetFromDocument(
     const custody = await verifyKairosNoteReceivingCustody(candidate.currentCustody, { roots });
     if (candidate.currentHolderReceizId !== await deriveKairosNoteCustodyOwnerId(custody, { roots })
       || document.settlement.holderCustodyCommitmentDigest !== custody.receivingCustodyCommitmentDigest
-      || document.settlement.holderInstallationCommitment !== custody.installationCommitment) {
+      || document.settlement.holderInstallationCommitment !== custody.installationCommitment
+      || custody.schema === "receiz.offline-note.android-receiving-custody.v1"
+        && (custody.attestation.purpose !== "holding" || BigInt(candidate.acceptedAtKai) < BigInt(custody.attestation.issuedAtKai))) {
       throw new Error("KAIROS_NOTE_PACKET_INVALID");
     }
     if (candidate.irreversibleConsumptionReceipt) {
-      const receipt = await verifyReceizOfflineNoteWebAuthnConsumptionReceipt(
-        candidate.irreversibleConsumptionReceipt,
+      const receipt = await verifyKairosNoteConsumptionProof(
+        candidate.irreversibleConsumptionReceipt, { roots },
       );
       if (receipt.receiverCustodyCommitmentDigest !== custody.receivingCustodyCommitmentDigest
         || receipt.predecessorArtifactSha256 !== candidate.predecessorArtifactSha256

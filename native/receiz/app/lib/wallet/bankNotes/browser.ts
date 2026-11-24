@@ -1,3 +1,10 @@
+import { createKairosNoteAndroidCustodyAdapter } from "../kairosNoteAndroidCustodyAdapter";
+import { createKairosReserveAndroidCustodyAdapter } from "../kairosReserveAndroidCustodyAdapter";
+import { createReceizAndroidNoteReceivingCustody, type ReceizAndroidNoteSign } from "../../../../packages/receiz-sdk/src/offlineNoteAndroidHandoff";
+import { financialKaiNow } from '../../../../packages/receiz-sdk/src/accountFinancialBrowser';
+import {prepareReceizAndroidWalletAssertion,verifyReceizAndroidWalletAssertion,verifyReceizAndroidWalletBinding} from '../../../../packages/receiz-sdk/src/accountFinancialAndroidWalletCustody';
+import {digestReceizAndroidWalletEnrollmentSlot} from '../../../../packages/receiz-sdk/src/androidWalletKeyCertificate';
+import {receizCurrentPinnedSignatureV4Roots} from '../../../../packages/receiz-sdk/src/verifier/roots';
 import { readReceizAccountFinancialSourceCustody, type ReceizAccountFinancialSource } from '../../../../packages/receiz-sdk/src/accountFinancialSource';
 export { prepareReceizScannedWalletRecipient } from '../../../../packages/receiz-sdk/src/accountFinancialSource';
 export { receizFinancialWalletReceiveConsent, prepareReceizFinancialWalletCustodyChallenge, verifyReceizFinancialWalletCustodyBinding } from '../../../../packages/receiz-sdk/src/accountFinancialWalletCustody';
@@ -25,11 +32,11 @@ import { verifyBankNoteAllocation, bankAllocationRail, bankAllocatedPhi, type Ba
 import { createBankSettlementNoteFundingAuthorization } from "./settlementFundingAuthorization";
 import { verifyBankFundedNoteSource, readBankFundedNoteHead, readBankFundedNoteSource, type BankFundedNoteSource } from "./fundedNote";
 import { exportBankNoteImage, openBankNoteImage } from "./noteImage";
-import { prepareBankNoteRedemption, readBankNoteRedemption, type BankNoteRedemptionIntent } from "./redemption";
+import { prepareBankNoteRedemption, readBankNoteRedemption, type BankNoteRedemptionIntent, type BankNoteRedemptionCustody } from "./redemption";
 import { verifyBankReserveCreditArtifact,exportBankNoteDepositReceipt } from "./credit";
 import { encodeBankFundedSource, decodeBankFundedSource } from "./sourceCodec";
 import { computeKaiLocally } from "../../../utils/kai_pulse";
-import { verifyKairosNoteReceivingCustody, requireKairosNoteAttestedReceivingCustody } from "../kairosNoteCustodyVerification";
+import { verifyKairosNoteReceivingCustody, requireKairosNoteAttestedReceivingCustody, requireKairosNoteHardwareReceivingCustody } from "../kairosNoteCustodyVerification";
 import { createKairosNotePortableCarrier } from "../kairosNotePortableCarrier";
 import { settleKairosNoteQualifiedCustodyTransition } from "../kairosNoteQualifiedCustodyTransition";
 import { InMemoryKairosNoteSettlementStore } from "../kairosNoteLocalTransition";
@@ -49,6 +56,7 @@ type IssueIntent = {
     transitionNonce: string;
 };
 type CreateAttempt = {
+    android?: true;
     rail?: BankNoteRail;
     id: string;
     phase: "preparing" | "funding" | "issuing" | "complete";
@@ -77,7 +85,9 @@ type DepositAttempt = {
     creditRef?: string;
     privateCash?: string;
 };
+type AndroidNoteSlot = NonNullable<Awaited<ReturnType<ReturnType<typeof createKairosNoteAndroidCustodyAdapter>["read"]>>>;
 type State = {
+    androidSlots?: Record<string, AndroidNoteSlot>;
     schema: "receiz.bank.offline-notes-device.v1";
     keyId: string;
     uid: string;
@@ -97,6 +107,11 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
     origin: string;
     passphrase: string;
     fetchImpl: typeof fetch;
+    android?: Readonly<{
+        available(): boolean;
+        enroll(purpose: "holding" | "reserve"): Promise<unknown>;
+        sign: ReceizAndroidNoteSign;
+    }>;
     request: JsonRequest;
     sealDocument: typeof receizeDocumentBytesClient;
     read(): Promise<unknown>;
@@ -121,14 +136,29 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
         throw Error("BANK_NOTE_IDENTITY_CHANGED"); return structuredClone(value); }
     async function save(state: State, previous: State | null) { input.assertOpen(); await input.write(state, previous); input.assertOpen(); }
     async function change(state: State, mutate: (next: State) => void) { const next = structuredClone(state); mutate(next); await save(next, state); return next; }
-    async function imageFor(source: BankFundedNoteSource) { const admitted = await verifyBankFundedNoteSource(source), head = readBankFundedNoteHead(admitted); const verification = await verifyReceizArtifact(head.artifactBytes), a = await createReceizArtifactAdmissionEngine()(verification, { profile: "portable-state" }); if (a.verdict === "profile-denied" || "code" in a || a.profile !== "portable-state")
+    function nativeNoteSlot(noteId: string) {
+        const hardware = input.android;
+        if (!hardware) throw Error("BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE");
+        return createKairosNoteAndroidCustodyAdapter({
+            sign: hardware.sign,
+            enroll: () => hardware.enroll("holding"),
+            read: async () => (await load()).androidSlots?.[noteId] ?? null,
+            write: async (next, expected) => {
+                const state = await load();
+                const prior = state.androidSlots?.[noteId] ?? null;
+                if (JSON.stringify(prior) !== JSON.stringify(expected)) throw Error("BANK_NOTE_RECEIVER_CHANGED");
+                await change(state, current => { (current.androidSlots ??= {})[noteId] = next; });
+            },
+        });
+    }
+    async function imageFor(source: BankFundedNoteSource, original?: Uint8Array) { const admitted = await verifyBankFundedNoteSource(source); if(original)return exportBankNoteImage(admitted,original);const head = readBankFundedNoteHead(admitted); const verification = await verifyReceizArtifact(head.artifactBytes), a = await createReceizArtifactAdmissionEngine()(verification, { profile: "portable-state" }); if (a.verdict === "profile-denied" || "code" in a || a.profile !== "portable-state")
         throw Error("BANK_NOTE_SOURCE_REQUIRED"); const document = await parseReceizPortableAssetDocument(a.recoveredState), payload = await extractReceizPortableAssetPayload(document); return exportBankNoteImage(admitted, input.artwork ? await input.artwork(admitted.amountUsdCents, admitted.noteId, false, admitted.rail) : payload.bytes); }
     return Object.freeze({
         async savedNotes() { const state = await load(), result = []; for (const saved of Object.values(state.notes)) {
             if (!saved.imageRef || state.deposits[saved.intent.noteId]?.creditRef)
                 continue;
             const image = await input.restore(saved.imageRef), note = isBankNoteAccountDeposit(image)?await readBankNoteAccountDeposit(image):await openBankNoteImage(image);
-            result.push({ rail: note.rail, amountPhiMicro: note.amountPhiMicro, noteId: note.noteId, amountUsdCents: note.amountUsdCents, image, transferred: saved.transferComplete === true, transferPending: Boolean(saved.transfer) && saved.transferComplete !== true });
+            result.push({ rail: note.rail, amountPhiMicro: note.amountPhiMicro, noteId: note.noteId, amountUsdCents: note.amountUsdCents, image, ...(saved.android ? {nativeHandoff:true as const}:{}), transferred: saved.transferComplete === true, transferPending: Boolean(saved.transfer) && saved.transferComplete !== true });
         } return result; },
         async pending() { const state = await load(); return state.create && state.create.phase !== "complete" ? { rail: state.create.rail ?? "reserve", amountUsdCents: state.create.amountUsdCents, noteId: state.create.intent.noteId, canCancel: state.create.phase === "preparing" || state.create.phase === "funding" } : null; },
         async cancelUnfunded() {
@@ -156,7 +186,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 if (accountProof.keyId !== input.keyId || accountProof.crypto.privateKeyPkcs8B64u)
                     throw Error("BANK_NOTE_PROTECTED_IDENTITY_REQUIRED");
                 const at = new Date();
-                attempt = { rail, id: crypto.randomUUID(), phase: "preparing", amountUsdCents, accountProofRef:await input.retain(new TextEncoder().encode(JSON.stringify(accountProof))), intent: { preparationId: crypto.randomUUID(), noteId: crypto.randomUUID(), noteToken: crypto.randomUUID().replace(/-/g, ""), mintedAt: at.toISOString(), acceptedAtKai: nowKai(), transitionNonce: crypto.randomUUID() } };
+                attempt = { rail, ...(input.android?.available() ? {android:true as const} : {}), id: crypto.randomUUID(), phase: "preparing", amountUsdCents, accountProofRef:await input.retain(new TextEncoder().encode(JSON.stringify(accountProof))), intent: { preparationId: crypto.randomUUID(), noteId: crypto.randomUUID(), noteToken: crypto.randomUUID().replace(/-/g, ""), mintedAt: at.toISOString(), acceptedAtKai: nowKai(), transitionNonce: crypto.randomUUID() } };
                 const prior = await input.read();
                 const next = { ...state, create: attempt };
                 await input.write(next, prior);
@@ -168,29 +198,44 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
         const accountProofSource=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(await input.restore(attempt.accountProofRef))) as ReceizKeyFileV1;
             const webAuthn = createKairosNoteBrowserWebAuthnClient({ origin: input.origin, rpId, fetchImpl: input.fetchImpl }), qualStorage = createKairosNoteIndexedDbPwaCustodyStorage(`bank-reserve:${input.keyId}:${attempt.id}`);
             const qualifier = createKairosNotePwaCustodyAdapter({ webAuthn, storage: qualStorage, profiles: [] }), reserve = createKairosReservePwaCustodyAdapter({ webAuthn, storage: createKairosReserveIndexedDbPwaCustodyStorage(`bank:${input.keyId}:${attempt.id}`) });
-            const noteCustody = noteAdapter(`wallet-note:${attempt.intent.noteId}`);
+            const noteCustody = attempt.android ? nativeNoteSlot(attempt.intent.noteId) : noteAdapter(`wallet-note:${attempt.intent.noteId}`);
             if (attempt.phase === "preparing") {
                 // Qualify both slots before a cash allocation can be requested.
                 const noteQ = await noteCustody.qualifyInstallation();
                 if (noteQ.status !== "qualified")
                     throw Error(`OFFLINE_NOTE_CUSTODY_UNSUPPORTED:${noteQ.code}`);
-                const q = await qualifier.qualifyInstallation();
-                if (q.status !== "qualified")
-                    throw Error(`OFFLINE_NOTE_CUSTODY_UNSUPPORTED:${q.code}`);
-                const receivingCustody = await qualifier.createReceivingCommitment(q);
-                requireKairosNoteAttestedReceivingCustody(receivingCustody);
-                const prepared = await reserve.inspectFundingPrepared();
-                const commitment = prepared?.receivingCustody ?? receivingCustody;
+                const prior = attempt.android ? null : await reserve.inspectFundingPrepared();
+                let commitment: BankFundedNoteSource["fundingCustody"] | undefined;
+                if (attempt.android) {
+                    const hardware = input.android;
+                    if (!hardware) throw Error("BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE");
+                    const receiving = await createReceizAndroidNoteReceivingCustody(await hardware.enroll("reserve"));
+                    if (receiving.attestation.purpose !== "reserve" || receiving.attestation.origin !== input.origin)
+                        throw Error("BANK_NOTE_FUNDING_CUSTODY_MISMATCH");
+                    commitment = receiving;
+                }
+                let q: Awaited<ReturnType<typeof qualifier.qualifyInstallation>> | undefined;
+                if (!attempt.android) {
+                    q = await qualifier.qualifyInstallation();
+                    if (q.status !== "qualified") throw Error(`OFFLINE_NOTE_CUSTODY_UNSUPPORTED:${q.code}`);
+                    const receiving = await qualifier.createReceivingCommitment(q);
+                    requireKairosNoteAttestedReceivingCustody(receiving);
+                    commitment = prior?.receivingCustody ?? receiving;
+                }
+                if (!commitment) throw Error("BANK_NOTE_FUNDING_CUSTODY_MISMATCH");
                 const common = {keyFile:accountProofSource,passphrase:input.passphrase,accountUserId:input.uid,amountUsdCents,qualificationDigest:commitment.qualificationDigest,installationCommitment:commitment.installationCommitment,receivingCustodyCommitmentDigest:commitment.receivingCustodyCommitmentDigest};
                 const summary=(accountProofSource.portableState!.snapshot as {wallet:{routeSummary:{quote:{usdPerPhiMicrocents:string}}}}).wallet.routeSummary;
                 const rate=BigInt(summary.quote.usdPerPhiMicrocents);
                 if(rate<=0n)throw Error("BANK_NOTE_ALLOCATION_QUOTE_MISMATCH");
                 const auth = rail === "settlement" ? await createBankSettlementNoteFundingAuthorization({...common,amountPhiMicro:((BigInt(amountUsdCents)*1000000000000n+rate/2n)/rate).toString(),usdPerPhiMicrocents:rate.toString()})
-                  : prepared?.fundingAuthorization ?? await createKairosOfflineCashFundingAuthorization({...common,predecessorAccountPortableStateDigest:accountProofSource.portableState!.proof!.digestSha256Hex});
-                const qualified = (await qualStorage.read())!;
-                if (!await reserve.inspectFundingPrepared())
-                    await reserve.prepareFundingCustody({ credential: qualified.credential, qualification: q, receivingCustody, predecessorAccountProof: accountProofSource, ...(rail === "reserve" ? {fundingAuthorization: auth as import("../kairosOfflineCashFundingAuthorization").KairosOfflineCashFundingAuthorizationV1} : {}) });
-                state = await change(state, next => { next.create = { ...heldAttempt, phase: "funding", authorization: auth, receivingCustody: prepared?.receivingCustody ?? receivingCustody }; });
+                  : prior?.fundingAuthorization ?? await createKairosOfflineCashFundingAuthorization({...common,predecessorAccountPortableStateDigest:accountProofSource.portableState!.proof!.digestSha256Hex});
+                if (!attempt.android && !prior) {
+                    const qualified = await qualStorage.read();
+                    requireKairosNoteAttestedReceivingCustody(commitment);
+                    if (qualified?.status !== "active" || q?.status !== "qualified") throw Error("BANK_NOTE_QUALIFIED_CUSTODY_REQUIRED");
+                    await reserve.prepareFundingCustody({credential:qualified.credential,qualification:q,receivingCustody:commitment,predecessorAccountProof:accountProofSource, ...(rail==="reserve"?{fundingAuthorization:auth as import("../kairosOfflineCashFundingAuthorization").KairosOfflineCashFundingAuthorizationV1}:{})});
+                }
+                state = await change(await load(), next => { next.create = { ...heldAttempt, phase: "funding", authorization: auth, receivingCustody: commitment }; });
                 attempt = state.create!;
             }
             if (attempt.phase === "funding") {
@@ -201,8 +246,10 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                     throw Error("BANK_NOTE_FUNDING_PENDING");
                 const evidence = await verifyBankNoteAllocation(decode(result.artifactBytes));
                 if(bankAllocationRail(evidence.funding) !== rail)throw Error("BANK_NOTE_FUNDING_RAIL_MISMATCH");
-                if("fundedSettlementPhiMicro" in evidence.funding)await reserve.activateBankAllocatedSettlement({evidence: evidence as import("./settlementAllocation").BankSettlementAllocationEvidence,privateCashSnapshot:decode(result.privateCashSnapshot)});
-                else await reserve.activateBankAllocatedReserve({ evidence: evidence as import("./allocation").BankReserveAllocationEvidence, privateCashSnapshot: decode(result.privateCashSnapshot) });
+                if (!attempt.android) {
+                    if("fundedSettlementPhiMicro" in evidence.funding)await reserve.activateBankAllocatedSettlement({evidence: evidence as import("./settlementAllocation").BankSettlementAllocationEvidence,privateCashSnapshot:decode(result.privateCashSnapshot)});
+                    else await reserve.activateBankAllocatedReserve({ evidence: evidence as import("./allocation").BankReserveAllocationEvidence, privateCashSnapshot: decode(result.privateCashSnapshot) });
+                }
                 state = await change(state, next => { next.create = { ...next.create!, phase: "issuing", fundingBytes: result.artifactBytes as string, privateCash: result.privateCashSnapshot as string }; });
                 attempt = state.create!;
             }
@@ -215,13 +262,21 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 attempt = state.create!;
             }
             input.assertOpen();
-            const issued = await issueKairosOfflineNoteLocally({ preparationId: attempt.intent.preparationId, accountProof: accountProofSource, identityPassphrase: input.passphrase, deviceIdentity: { localUid: input.localUid, keyId: input.keyId }, accountBinding: { accountUserId: input.uid, receizKeyId: input.keyId }, fundingRail: rail, amountPhiMicro: BigInt(bankAllocatedPhi(evidence.funding)), amountUsdCents: BigInt(evidence.funding.amountUsdCents), usdPerPhiMicrocents: BigInt(evidence.funding.usdPerPhiMicrocents), acceptedAtKai: attempt.intent.acceptedAtKai, transitionNonce: attempt.intent.transitionNonce, note: { noteId: attempt.intent.noteId, noteToken: attempt.intent.noteToken, mintedAt: attempt.intent.mintedAt, mintClientNonce: attempt.intent.transitionNonce }, reserveCustody: reserve, noteCustody, stageStore: stages, proofCustody: proofs, admissionStore: createReceizBrowserAdmissionStore({ databaseName: "receiz-bank-offline-note-admission-v129", namespace: `${input.uid}:allocation:${evidence.funding.allocationId}` }), assertSelectedPredecessor: input.assertOpen }, { sealDocument: input.sealDocument, ...(input.artwork ? { rasterizeSvg: () => input.artwork!(evidence.funding.amountUsdCents, attempt!.intent.noteId, true, rail) } : {}) });
+            if (attempt.android && !input.android) throw Error("BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE");
+            const reserveCustody = attempt.android
+                ? await createKairosReserveAndroidCustodyAdapter({
+                    artifactBytes: evidence.artifactBytes, privateCashSnapshot: decode(attempt.privateCash!),
+                    accountProof: accountProofSource, custody: attempt.receivingCustody, origin: input.origin,
+                    sign: input.android!.sign,
+                })
+                : reserve;
+            const issued = await issueKairosOfflineNoteLocally({ preparationId: attempt.intent.preparationId, accountProof: accountProofSource, identityPassphrase: input.passphrase, deviceIdentity: { localUid: input.localUid, keyId: input.keyId }, accountBinding: { accountUserId: input.uid, receizKeyId: input.keyId }, fundingRail: rail, amountPhiMicro: BigInt(bankAllocatedPhi(evidence.funding)), amountUsdCents: BigInt(evidence.funding.amountUsdCents), usdPerPhiMicrocents: BigInt(evidence.funding.usdPerPhiMicrocents), acceptedAtKai: attempt.intent.acceptedAtKai, transitionNonce: attempt.intent.transitionNonce, note: { noteId: attempt.intent.noteId, noteToken: attempt.intent.noteToken, mintedAt: attempt.intent.mintedAt, mintClientNonce: attempt.intent.transitionNonce }, reserveCustody, noteCustody, stageStore: stages, proofCustody: proofs, admissionStore: createReceizBrowserAdmissionStore({ databaseName: "receiz-bank-offline-note-admission-v129", namespace: `${input.uid}:allocation:${evidence.funding.allocationId}` }), assertSelectedPredecessor: input.assertOpen }, { sealDocument: input.sealDocument, ...(input.artwork ? { rasterizeSvg: () => input.artwork!(evidence.funding.amountUsdCents, attempt!.intent.noteId, true, rail) } : {}) });
             const stage = (await stages.read(issued.preparationId))!;
             const source: BankFundedNoteSource = { schema: "receiz.bank.funded-note-source.v1", fundingArtifactBytes: evidence.artifactBytes, fundingCustody: attempt.receivingCustody as BankFundedNoteSource["fundingCustody"], reserveConsumptions: [stage.reserveReceipt!], noteArtifacts: [issued.noteGenesis.artifactBytes] };
             const image = await imageFor(source);
             const sourceRef=await input.retain(new TextEncoder().encode(JSON.stringify(encodeBankFundedSource(source)))),imageRef=await input.retain(image);
-            state = await change(state, next => { const complete = { ...next.create!, phase: "complete" as const, sourceRef,imageRef }; next.create = null; next.notes[issued.noteGenesis.noteId] = complete; });
-            return { rail, amountPhiMicro: issued.noteGenesis.amountPhiMicro, noteId: issued.noteGenesis.noteId, amountUsdCents: issued.noteGenesis.amountUsdCents, image, successorAccountProof: issued.accountSuccessor.proof };
+            state = await change(await load(), next => { const complete = { ...next.create!, phase: "complete" as const, sourceRef,imageRef }; next.create = null; next.notes[issued.noteGenesis.noteId] = complete; });
+            return { rail, ...(attempt.android?{nativeHandoff:true as const}:{}), amountPhiMicro: issued.noteGenesis.amountPhiMicro, noteId: issued.noteGenesis.noteId, amountUsdCents: issued.noteGenesis.amountUsdCents, image, successorAccountProof: issued.accountSuccessor.proof };
         },
         async receivingRequest() {
             const state = await load();
@@ -245,6 +300,7 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             if (stored.transferComplete && stored.imageRef) return { noteId, image: await input.restore(stored.imageRef) };
             const request = requestBytes ? obj(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(requestBytes))) : obj(stored.transfer?.request);
             if(request.schema==='receiz.bank.note-account-receiving-request.v1'){
+                if(stored.android)throw Error("BANK_NOTE_RECEIVING_REQUEST_REQUIRED");
                 const requestSource=new TextEncoder().encode(JSON.stringify(request)),receiver=await verifyBankNoteAccountReceivingRequest(requestSource);
                 if(stored.transfer&&JSON.stringify(stored.transfer.request)!==JSON.stringify(request))throw Error('BANK_NOTE_TRANSFER_PENDING');
                 if(!stored.transfer){const original=await openBankNoteImage(await input.restore(stored.imageRef!)),head=readBankFundedNoteHead(original);
@@ -265,12 +321,14 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             if (request.schema !== "receiz.bank.note-receiving-request.v1" || Object.keys(request).sort().join("|") !== "receivingCustody|schema")
                 throw Error("BANK_NOTE_RECEIVING_REQUEST_INVALID");
             const receiver = await verifyKairosNoteReceivingCustody(request.receivingCustody as Parameters<typeof verifyKairosNoteReceivingCustody>[0]);
-            requireKairosNoteAttestedReceivingCustody(receiver);
+            requireKairosNoteHardwareReceivingCustody(receiver);
             if (stored.transfer && JSON.stringify(stored.transfer.request) !== JSON.stringify(request))
                 throw Error("BANK_NOTE_TRANSFER_PENDING");
             const source = decodeBankFundedSource(JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(await input.restore(stored.sourceRef)))), note = await verifyBankFundedNoteSource(source), head = readBankFundedNoteHead(note);
             if (!stored.transfer) {
-                state = await change(state, next => { next.notes[noteId]!.transfer = { request, acceptedAtKai: laterKai(head.packet.acceptedAtKai), nonce: crypto.randomUUID() }; });
+                const boundAt = receiver.schema === "receiz.offline-note.android-receiving-custody.v1" ? receiver.attestation.issuedAtKai : "0";
+                const after = BigInt(boundAt) > BigInt(head.packet.acceptedAtKai) ? boundAt : head.packet.acceptedAtKai;
+                state = await change(state, next => { next.notes[noteId]!.transfer = { request, acceptedAtKai: laterKai(after), nonce: crypto.randomUUID() }; });
             }
             if (head.packet.custodyMode === "qualified-anonymous" && head.packet.currentCustody.receivingCustodyCommitmentDigest === receiver.receivingCustodyCommitmentDigest && stored.imageRef) {
                 await change(state, next => { next.notes[noteId]!.transferComplete = true; });
@@ -278,14 +336,15 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
             }
             const intent = state.notes[noteId]!.transfer!, carrier = createKairosNotePortableCarrier({ sealDocument: input.sealDocument }), opened = await carrier.open(head.artifactBytes), store = new InMemoryKairosNoteSettlementStore();
             await store.admitVerifiedHeldHead(opened);
-            const successor = await settleKairosNoteQualifiedCustodyTransition({ store, carrier, senderCustody: noteAdapter(`wallet-note:${noteId}`), predecessorArtifactBytes: head.artifactBytes, expectedPredecessorArtifactSha256: head.artifactSha256, successorCustody: receiver, acceptedAtKai: intent.acceptedAtKai, transitionNonce: intent.nonce });
-            const transferred = { ...source, noteArtifacts: [...source.noteArtifacts, successor.artifactBytes] }, image = await imageFor(transferred);
+            const successor = await settleKairosNoteQualifiedCustodyTransition({ store, carrier, senderCustody: stored.android ? nativeNoteSlot(noteId) : noteAdapter(`wallet-note:${noteId}`), predecessorArtifactBytes: head.artifactBytes, expectedPredecessorArtifactSha256: head.artifactSha256, successorCustody: receiver, acceptedAtKai: intent.acceptedAtKai, transitionNonce: intent.nonce });
+            const transferred = { ...source, noteArtifacts: [...source.noteArtifacts, successor.artifactBytes] };
+            const image = await imageFor(transferred, stored.android && stored.imageRef ? await input.restore(stored.imageRef) : undefined);
             const sourceRef=await input.retain(new TextEncoder().encode(JSON.stringify(encodeBankFundedSource(transferred)))),imageRef=await input.retain(image);
-            state = await change(state, next => { next.notes[noteId] = { ...next.notes[noteId]!, sourceRef,imageRef, transferComplete: true }; });
+            state = await change(await load(), next => { next.notes[noteId] = { ...next.notes[noteId]!, sourceRef,imageRef, transferComplete: true }; });
             return { noteId, image };
         },
         async inspectNote(image: Uint8Array) { const note = isBankNoteAccountDeposit(image)?await readBankNoteAccountDeposit(image):await openBankNoteImage(image); return { rail: note.rail, noteId: note.noteId, amountUsdCents: note.amountUsdCents, amountPhiMicro: note.amountPhiMicro }; },
-        async depositNote(image: Uint8Array) {
+        async depositNote(image: Uint8Array, heldAndroid?: BankNoteRedemptionCustody) {
             let state = await load();
             const note = await openBankNoteImage(image), head = readBankFundedNoteHead(note), packet = head.packet;
             if (packet.custodyMode !== "qualified-anonymous" || !note.allocationId)
@@ -309,15 +368,19 @@ export function createBankOfflineNotesRuntime(input: Readonly<{
                 let result = recovered;
                 if (recovered.found === false) {
                     if (!attempt.terminalRef) {
-                        const receivingSlot = state.receivers[packet.currentCustody.receivingCustodyCommitmentDigest], adapter = noteAdapter(receivingSlot ?? `wallet-note:${note.noteId}`);
+                        const receivingSlot = state.receivers[packet.currentCustody.receivingCustodyCommitmentDigest];
+                        const adapter = noteAdapter(receivingSlot ?? `wallet-note:${note.noteId}`);
+                        const native = packet.currentCustody.schema === "receiz.offline-note.android-receiving-custody.v1";
+                        const device = native ? heldAndroid ?? (state.notes[note.noteId]?.android ? nativeNoteSlot(note.noteId) : null) : adapter;
+                        if (!device) throw Error("BANK_NOTE_RECEIVING_CUSTODY_REQUIRED");
                         // Retired custody must reach consumeExactHead, which only recovers
                         // the SAME intent receipt. It never activates or spends again.
-                        if (receivingSlot && (await createKairosNoteIndexedDbPwaCustodyStorage(receivingSlot).read())?.status !== "retired")
+                        if (!native && receivingSlot && (await createKairosNoteIndexedDbPwaCustodyStorage(receivingSlot).read())?.status !== "retired")
                             await adapter.activateExactSuccessor({ qualificationDigest: packet.currentCustody.qualificationDigest, noteId: note.noteId, verifiedSuccessorArtifactSha256: note.noteArtifactSha256, receivingCustodyCommitmentDigest: packet.currentCustody.receivingCustodyCommitmentDigest, wholeValuePhiMicro: note.amountPhiMicro, acceptedAtKai: packet.acceptedAtKai });
                         input.assertOpen();
-                        const terminal = await prepareBankNoteRedemption(note, attempt.intent, adapter, { sealDocument: input.sealDocument }), bytes = readBankNoteRedemption(terminal).bytes;
+                        const terminal = await prepareBankNoteRedemption(note, attempt.intent, device, { sealDocument: input.sealDocument }), bytes = readBankNoteRedemption(terminal).bytes;
                         const packed = await packBankNoteBytes(bytes),terminalRef=await input.retain(new TextEncoder().encode(packed));
-                        state = await change(state, next => { next.deposits[note.noteId]!.terminalRef = terminalRef; });
+                        state = await change(await load(), next => { next.deposits[note.noteId]!.terminalRef = terminalRef; });
                         attempt = state.deposits[note.noteId]!;
                     }
                     result = obj(await input.request(path("redemption"), { method: "POST", body: { terminalArtifactBytes:new TextDecoder().decode(await input.restore(attempt.terminalRef!)) } }));
@@ -385,11 +448,13 @@ export { exportReceizAccountFinancialRelease } from '../../../../packages/receiz
 export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) {
   const held = readReceizAccountFinancialSourceCustody(source);
   const binding = held.walletCustody;
-  if (!binding) throw Error('ACCOUNT_FINANCIAL_WALLET_CUSTODY_REQUIRED');
+  const android = held.androidWalletCustody;
+  if (!binding && !android) throw Error('ACCOUNT_FINANCIAL_WALLET_CUSTODY_REQUIRED');
   const program = held.body.program as {
     identity: { keyId: string };
     custodian: { publicKeyRawB64u: string };
     walletRecipientMode?: string;
+    walletCounterMode?: 'device';
     walletPartialPayments?: true;
     walletConnectedPayments?: true;
     walletFunding?: 'set-aside';
@@ -397,17 +462,19 @@ export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) 
   };
   return {
     keyId: program.identity.keyId, signerPublicKey: program.custodian.publicKeyRawB64u,
-    origin: binding.origin, rpId: binding.rpId, credentialIdB64u: binding.credentialIdB64u, received: held.receivedWallet,
+    ...(android ? { android: true as const, origin: android.origin, receivingCounterMode: program.walletCounterMode }
+      : { origin: binding!.origin, rpId: binding!.rpId, credentialIdB64u: binding!.credentialIdB64u }),
+    received: held.receivedWallet,
     scanTime: program.walletRecipientMode === 'scan-time',
     ...(program.walletPartialPayments ? { partialPayments: true } : {}),
     ...(program.walletConnectedPayments ? { connectedPayments: true } : {}),
     ...(program.walletFunding === 'set-aside' ? { setAside: true } : {}),
     ...(held.walletOpening ? { paymentOpening: held.walletOpening } : {}),
     ...(held.sharedWalletCounter ? { sharedWalletCounter: true } : {}),
-    async verifyAssertion(request: WalletChallenge, assertion: unknown) {
+    ...(binding ? { async verifyAssertion(request: WalletChallenge, assertion: unknown) {
       const { verifyReceizLiveFinancialWalletCustodyAssertion } = await import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody');
       return verifyReceizLiveFinancialWalletCustodyAssertion(binding, request, assertion);
-    },
+    } } : {}),
     recipients: (program.recipientBindings ?? []).map(row => ({
       accountUid: row.recipientUserId, ownerReceizId: row.recipientOwnerReceizId, conversationId: row.conversationId,
       nearby: held.hasWalletRecipient(row.recipientUserId, row.conversationId),
@@ -454,4 +521,42 @@ export async function approveBankFinancialWalletOffer(input:Readonly<{
   const {authenticatorDataB64u,clientDataJSONB64u,signatureB64u}=await input.assert(challenge,shared?.header,
     assertion=>verifyReceizFinancialWalletCustodyAssertion(binding,challenge,assertion)) as WalletAssertion;
   return {ownerConsent,assertion:{authenticatorDataB64u,clientDataJSONB64u,signatureB64u},...(signCount?{signCount}:{})};
+}
+
+export {
+  digestReceizAndroidWalletEnrollmentSlot,
+  verifyReceizAndroidWalletBinding,
+};
+
+export async function approveBankAndroidWalletOffer(input: Readonly<{
+  walletAndroid: unknown; fundedAtKaiUPulse: string;
+  offer: Parameters<typeof approveBankFinancialWalletOffer>[0]['offer'];
+  signOwner(challenge: string): Promise<import('../../../../packages/receiz-sdk/src/identity').ReceizIdentityLoginProof>;
+  assert(request: import('../../../../packages/receiz-sdk/src/accountFinancialAndroidWalletCustody').ReceizAndroidWalletAssertionChallenge): Promise<unknown>;
+}>) {
+  const { offer: exactOffer } = input;
+  const binding = await verifyReceizAndroidWalletBinding(input.walletAndroid, {
+    applicationId: exactOffer.applicationId, userId: exactOffer.recipientUserId,
+    recordSignerPublicKey: exactOffer.recipientRecordSignerPublicKey, fundedAtKaiUPulse: input.fundedAtKaiUPulse,
+    roots: receizCurrentPinnedSignatureV4Roots(),
+  });
+  if (!binding.receive) throw Error('BANK_WALLET_DEVICE_REQUIRED');
+  const offer = { ...exactOffer, recipientCredentialCertificateDigest: binding.certificateDigest };
+  const { receizFinancialWalletReceiveConsent } = await import('../../../../packages/receiz-sdk/src/accountFinancialWalletCustody');
+  const ownerConsent = await input.signOwner(receizFinancialWalletReceiveConsent(offer));
+  const challenge = await prepareReceizAndroidWalletAssertion({ binding, kind: 'receive', sequence: '0', command: offer, ownerConsent });
+  const assertion = await verifyReceizAndroidWalletAssertion(challenge, await input.assert(challenge));
+  return { ownerConsent, assertion };
+}
+
+export async function verifyBankAndroidWalletEnrollment(input: Readonly<{
+  enrollment: unknown;
+  applicationId: string; userId: string; recordSignerPublicKey: string; origin: string;
+}>) {
+  const binding = await verifyReceizAndroidWalletBinding(input.enrollment, {
+    applicationId: input.applicationId, userId: input.userId, recordSignerPublicKey: input.recordSignerPublicKey,
+    roots: receizCurrentPinnedSignatureV4Roots(), fundedAtKaiUPulse: financialKaiNow(),
+  });
+  if (binding.origin !== input.origin) throw Error('BANK_WALLET_DEVICE_MISMATCH');
+  return input.enrollment as import('../../../../packages/receiz-sdk/src/accountFinancialAndroidWalletCustody').ReceizAndroidWalletEnrollment;
 }

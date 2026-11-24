@@ -1,7 +1,7 @@
 import { createLocalFinancialSession, subscribeBrowserReconnect, type LocalFinancialSessionOptions } from './local-financial';
 import { createOpticalNoteFrames } from './optical-note-frames';
 import type { FinancialAction, WalletRecipient, WalletPaymentStage } from './local-financial-runtime';
-import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart } from './wallet-payment-bundle';
+import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart, type WalletPaymentOpening } from './wallet-payment-bundle';
 
 import { encodeNearbyWalletPayment, verifyNearbyWalletPayment, type NearbyWalletPayment, type NearbyWalletSplit } from './wallet-nearby-consent';
 
@@ -33,6 +33,9 @@ const actionKey=(action:HeldSend['action'])=>JSON.stringify([action.recipientUse
 
 const maxCents=(1n<<63n)-1n;
 const pairingError=()=>Error('BANK_WALLET_PAIRING_INVALID');
+function offerCounterMode(device: NonNullable<ReturnType<Session['walletDevice']>>) {
+  return device.android ? device.receivingCounterMode === 'device' : !!device.sharedWalletCounter;
+}
 const hasCents=(value:unknown):value is string=>typeof value==='string'&&positiveCents.test(value)&&BigInt(value)<=maxCents;
 const validPeer=(recipient:unknown):recipient is string=>typeof recipient==='string'&&!!recipient&&recipient.length<=120;
 const validApp=(applicationId:unknown)=>typeof applicationId==='string'&&/^rc_[A-Za-z0-9_-]{1,128}$/u.test(applicationId);
@@ -87,6 +90,7 @@ type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'p
   publishPeerRelease:NonNullable<LocalFinancialSessionOptions['publishPeerRelease']>;
   prepareOffline?(amountUsdCents?:string):Promise<Uint8Array|null>;
   onFundingRetained?(allocationId:string):Promise<void>;
+  onWalletReceived?(opening:WalletPaymentOpening):Promise<void>;
   prepareFullBalance?():Promise<Uint8Array|null>;
   setupReceiving?(mode:'unlock'|'resume'):Promise<void>;
   answerOffer?(offer:WalletPairOffer):Promise<WalletPairReply>;
@@ -176,6 +180,10 @@ export function createFundedWallet(input:Options) {
       await input.save({...previous,entries:[...previous.entries,{kind,digest,allocationId}]},raw);
     }
     if(kind==='source')await input.onFundingRetained?.(allocationId).catch(()=>{});
+    else {
+      const device=session.walletDevice();
+      if(device?.android&&device.paymentOpening)await input.onWalletReceived?.(device.paymentOpening);
+    }
     return session;
   }
   async function current() {
@@ -395,6 +403,8 @@ export function createFundedWallet(input:Options) {
       }
       let balance=0n,available=0n,settled=0n;
       for(const {session} of staged){
+        const device=session.walletDevice();
+        if(device?.android&&device.paymentOpening)await input.onWalletReceived?.(device.paymentOpening);
         const allocationId=session.sourceReference().allocationId;
         const authoritative=sessions.get(allocationId);
         if(!authoritative){sessions.set(allocationId,session);session.startPublication();}
@@ -531,7 +541,7 @@ export function createFundedWallet(input:Options) {
         const conversationId=[hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
         return {schema:'bankeiz.wallet.offer.v1',applicationId:input.applicationId,sourceArtifactSha256,
           allocationId:entry.allocationId,conversationId,amountUsdCents:send.amountUsdCents,recipient:send.recipient,
-          ...(device.sharedWalletCounter?{walletCounterMode:'device' as const}:{})};
+          ...(offerCounterMode(device)?{walletCounterMode:'device' as const}:{})};
       }
       if(remaining===0n?availableParts.length<2:!send.connectRemainder||!availableParts.length)return null;
       const connectUsdCents=remaining>0n?String(remaining):undefined;
@@ -653,7 +663,7 @@ export function createFundedWallet(input:Options) {
         if(!device)continue;
         if(paired&&(!device.scanTime||paired.offer.allocationId!==entry.allocationId||paired.offer.sourceArtifactSha256!==session.sourceReference().artifactSha256
           ||paired.offer.amountUsdCents!==send.amountUsdCents||paired.offer.recipient!==send.recipient||paired.offer.applicationId!==input.applicationId
-          ||(paired.offer.walletCounterMode==='device')!==!!device.sharedWalletCounter))continue;
+          ||(paired.offer.walletCounterMode==='device')!==offerCounterMode(device)))continue;
         let proof:unknown=paired?.scannedRecipient;
         let recipient:(Pick<WalletRecipient,'accountUid'|'conversationId'>&{ownerReceizId?:string})|null
           =paired?{accountUid:paired.recipientUserId,conversationId:paired.offer.conversationId}:boundRecipient(device.recipients,send.recipient,nearby);

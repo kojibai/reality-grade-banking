@@ -1,0 +1,125 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'com.android.application' version '8.13.2'
+}
+
+def bankManifest = new JsonSlurper().parse(rootProject.file('../../package.json'))
+def versionParts = bankManifest.version.tokenize('.').collect { it.toInteger() }
+def bankVersionCode = versionParts[0] * 10_000 + versionParts[1] * 100 + versionParts[2]
+def releaseKeystore = providers.environmentVariable('BANKEIZ_ANDROID_KEYSTORE')
+def releaseAlias = providers.environmentVariable('BANKEIZ_ANDROID_KEY_ALIAS')
+def releaseStorePassword = providers.environmentVariable('BANKEIZ_ANDROID_STORE_PASSWORD')
+def releaseKeyPassword = providers.environmentVariable('BANKEIZ_ANDROID_KEY_PASSWORD')
+
+def prepareLauncherIcon = tasks.register('prepareLauncherIcon', Copy) {
+    from(rootProject.file('../../public/icon-192.png'))
+    into(layout.buildDirectory.dir('generated/bankeizResources/mipmap-anydpi'))
+    rename { 'bankeiz_launcher.png' }
+}
+
+def launcherSvg = rootProject.file('../../public/icon.svg')
+def launcherMark = layout.buildDirectory.file('generated/bankeizMark/drawable/bankeiz_launcher_mark.xml')
+def prepareLauncherMark = tasks.register('prepareLauncherMark') {
+    inputs.file(launcherSvg)
+    outputs.file(launcherMark)
+    doLast {
+        def svg = new XmlSlurper(false, false).parse(launcherSvg)
+        def mark = svg.g.find { it.@id.text() == 'bank-mark' }
+        if (!mark.children().size()) throw new GradleException('The canonical Bankeiz bank mark is missing.')
+        def paths = mark.children().collect { shape ->
+            if (shape.name() == 'path') {
+                return shape.@d.text()
+            }
+            if (shape.name() != 'rect') throw new GradleException('Unsupported Bankeiz mark shape.')
+            def x = shape.@x.text().toInteger()
+            def y = shape.@y.text().toInteger()
+            def right = x + shape.@width.text().toInteger()
+            def bottom = y + shape.@height.text().toInteger()
+            def r = shape.@rx.text().toInteger()
+            return "M${x + r},$y H${right - r} A$r,$r 0 0 1 $right,${y + r} " +
+                "V${bottom - r} A$r,$r 0 0 1 ${right - r},$bottom H${x + r} " +
+                "A$r,$r 0 0 1 $x,${bottom - r} V${y + r} A$r,$r 0 0 1 ${x + r},$y Z"
+        }
+        def file = launcherMark.get().asFile
+        file.parentFile.mkdirs()
+        file.text = """<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="512" android:viewportHeight="512">
+    <group android:pivotX="256" android:pivotY="256" android:scaleX="0.86" android:scaleY="0.86">
+${paths.collect { '        <path android:fillColor="#FCFBF8" android:fillType="evenOdd" android:pathData="' + it + '" />' }.join(System.lineSeparator())}
+    </group>
+</vector>
+"""
+    }
+}
+
+def checkBankAccountEntry = tasks.register('checkBankAccountEntry', Exec) {
+    workingDir rootProject.file('../..')
+    commandLine 'node', 'scripts/check-account-entry.mjs'
+}
+
+android {
+    namespace 'com.kojibai.bankeiz'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+    defaultConfig {
+        applicationId 'com.kojibai.bankeiz'
+        minSdk 26
+        targetSdk 36
+        versionCode bankVersionCode
+        versionName bankManifest.version
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            java.srcDir rootProject.file('../android-custody-probe/src')
+            res.srcDir layout.buildDirectory.dir('generated/bankeizResources')
+            res.srcDir layout.buildDirectory.dir('generated/bankeizMark')
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (releaseKeystore.present) {
+                storeFile file(releaseKeystore.get())
+                storePassword releaseStorePassword.orNull
+                keyAlias releaseAlias.orNull
+                keyPassword releaseKeyPassword.orNull
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            applicationIdSuffix '.preview'
+            resValue 'string', 'bankeiz_app_name', 'Bankeiz Preview'
+            resValue 'bool', 'bankeiz_verify_web_links', 'false'
+        }
+        release {
+            resValue 'string', 'bankeiz_app_name', 'Bankeiz'
+            resValue 'bool', 'bankeiz_verify_web_links', 'true'
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+tasks.named('preBuild').configure { dependsOn prepareLauncherIcon, prepareLauncherMark }
+
+tasks.configureEach {
+    if (name == 'preReleaseBuild') {
+        dependsOn checkBankAccountEntry
+        doFirst {
+            if (!releaseKeystore.present || !releaseAlias.present
+                    || !releaseStorePassword.present || !releaseKeyPassword.present) {
+                throw new GradleException('Configure the Bankeiz release-signing environment before building a release APK.')
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.3'
+}

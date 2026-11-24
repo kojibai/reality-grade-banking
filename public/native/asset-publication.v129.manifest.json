@@ -3,8 +3,8 @@
   "receizVersion": "129.5.0",
   "entry": "app/lib/profile/showcase/connectedAssetPublication.client.ts",
   "moduleSha256": "0b41b6f5cbbb47a4ce0415fd70016c2be522b3db5fd345ab55408b93033072e4",
-  "sourceTreeSha256": "dbcb04e719690d97deeb2c652305653381c05e82111df733c865c119b2c10c89",
-  "inputs": 531,
+  "sourceTreeSha256": "c8c91101eb2d4ce698ccffae59415c01aa486f18a22cbef9bc94972fd8b8b5e7",
+  "inputs": 533,
   "bytes": 3100746,
   "applicationPatches": [
     {
@@ -607,7 +607,8 @@
       "baseSha256": null,
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "bad77334e6e6399e4efe7ec5aaebbc32bc1a3db1"
+      "sourceCommit": "bad77334e6e6399e4efe7ec5aaebbc32bc1a3db1",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bank-local-financial-accountFinancialExecution",
@@ -615,7 +616,8 @@
       "baseSha256": null,
       "sha256": "113310149002a1d3e420bd8f7a4dc1e40ccc6faa1751acfb636800845cd5505f",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "bad77334e6e6399e4efe7ec5aaebbc32bc1a3db1"
+      "sourceCommit": "bad77334e6e6399e4efe7ec5aaebbc32bc1a3db1",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
     },
     {
       "id": "bank-local-financial-accountFinancialCommit",
@@ -623,7 +625,8 @@
       "baseSha256": null,
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
       "purpose": "Compose the existing SDK funded Source, exact local commit, deterministic Wallet/Market math and ordered publication. No host implementation or provider code is included.",
-      "sourceCommit": "c622c2d4f23984837a4ec1dedbd33d9962ac438e"
+      "sourceCommit": "c622c2d4f23984837a4ec1dedbd33d9962ac438e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bank-local-financial-accountFinancialPublication",
@@ -1392,7 +1395,8 @@
       "baseSha256": "ac410ff8f9a20f95afefa7146acd7fea3111e120a73f563c8d8ef8de6add3f45",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
       "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
-      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",
@@ -1400,7 +1404,8 @@
       "baseSha256": "c27a52b2f4e4c356b1a3315efc075c042ef5ed72a0c633dba1a321ed874643a3",
       "sha256": "113310149002a1d3e420bd8f7a4dc1e40ccc6faa1751acfb636800845cd5505f",
       "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
-      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
     },
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",
@@ -1424,7 +1429,8 @@
       "baseSha256": "573034d4476217073a4788b10f13299d96bfd26d24a384732f85cbb28ce3deed",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
       "purpose": "Qualified129.5 SDK source and bounded existing codec propagation; preserve current v1-v3 financial effects, Note writers/rollback, issued roots and Original history. Existing application patches remain recorded.",
-      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4"
+      "upstreamCommit": "561fa42eb38c2a714a12f52dbb7231356a4419e4",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",
@@ -2153,7 +2159,8 @@
       "baseSha256": "07b518af37b1ad4234e010ef1b5d82942e49e6ccac450f6aa8a2e1a5ccb03fe7",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
       "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
-      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-merged-native-wallet",
@@ -2161,7 +2168,8 @@
       "baseSha256": "113310149002a1d3e420bd8f7a4dc1e40ccc6faa1751acfb636800845cd5505f",
       "sha256": "cd4465e206b19db9f13b4289c0aae7106f5764cec8ac6c7d802dbcfa389e710e",
       "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
-      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
     },
     {
       "id": "bankeiz-merged-native-wallet",
@@ -2169,7 +2177,8 @@
       "baseSha256": "79a12f2b7a262beed61ae65b6fb8404eaa93c360de4d683a50a127b7c3384769",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
       "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
-      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-merged-native-wallet",
@@ -2177,7 +2186,8 @@
       "baseSha256": null,
       "sha256": "beb81ca04de306b3a7c9d10d06d4508c45139ee9f809dff12a87de022bd3f2e9",
       "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
-      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
     },
     {
       "id": "bankeiz-merged-native-wallet",
@@ -2201,7 +2211,8 @@
       "baseSha256": "9c0c136596891c6e6589dbc7c3187a52bc5e720e4539a02865aa0477ba0d4eea",
       "sha256": "3d8cdbef95883d5888f61e00b6449530f422424a2c93d3da4b135e0559de2b90",
       "purpose": "Compose the merged Receiz protected Wallet Source, exact funding rails, peer proof transfer and safe custody prompt recovery.",
-      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e"
+      "sourceCommit": "6abba621b2849f68787d76c82f30eccc07186a1e",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/offlineNotePlatformAttestation.ts"
     },
     {
       "id": "bankeiz-wallet-release-original-export",
@@ -2229,28 +2240,32 @@
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
       "baseSha256": "144c167d328f03d58d3398e52bb5e72afe20d3b16a92f1a192b9f12c41af7013",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
-      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline."
+      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-scan-time-wallet-accountFinancialCommit",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": "7de16639dee509e5c1e6d2cc979e0919c8b5b2c83b33962b6a4f5046eff1d673",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
-      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline."
+      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-scan-time-wallet-accountFinancialExecution",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
       "baseSha256": "cd4465e206b19db9f13b4289c0aae7106f5764cec8ac6c7d802dbcfa389e710e",
       "sha256": "35e7f16f97278c7c55dfe922cc85c3a5d727f79f809431d25414c431ca42c09a",
-      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline."
+      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
     },
     {
       "id": "bankeiz-scan-time-wallet-accountFinancialWalletCustody",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
       "baseSha256": "c2a1aa224e826cf6c8c31af45d60dac74ed2e1b293bf4d100c833912d938ae8e",
       "sha256": "beb81ca04de306b3a7c9d10d06d4508c45139ee9f809dff12a87de022bd3f2e9",
-      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline."
+      "purpose": "Compose the Receiz Wallet verifier and browser custody for recipients paired while offline.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
     },
     {
       "id": "bankeiz-wallet-retained-change-v129",
@@ -2264,21 +2279,24 @@
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": "bd2b0c8d53751d05263043abc50d446ff636b1c9a1a41be806bbe073676fe990",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
-      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition."
+      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-wallet-retained-change-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
       "baseSha256": "35e7f16f97278c7c55dfe922cc85c3a5d727f79f809431d25414c431ca42c09a",
       "sha256": "624088772e1000e7a5ff046455766603941ffb2bc437cf3f30f8f39a78de08c1",
-      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition."
+      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
     },
     {
       "id": "bankeiz-wallet-retained-change-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
       "baseSha256": "2a2280f6b087d453c224a091d6f3d4491f4e122ff79f5f186606a1cdef36b0d7",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
-      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition."
+      "purpose": "Carry verified Wallet payment ancestry and preserve spendable change through the Bankeiz browser composition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-wallet-unlock-v129",
@@ -2313,14 +2331,16 @@
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": "51ed26a756b4082fa003ec70874a27274f3f67c5e474c9d6ddc914a6f73446bc",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
-      "purpose": "Reopen exact signed Wallet payments from retained peer proof through the existing admission store."
+      "purpose": "Reopen exact signed Wallet payments from retained peer proof through the existing admission store.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-wallet-peer-recovery-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
       "baseSha256": "77a6830a7b1b56ea9c58973527b1231ec6e5be589e18f2d1a4965e07d5f3d76c",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
-      "purpose": "Reopen exact signed Wallet payments from retained peer proof through the existing admission store."
+      "purpose": "Reopen exact signed Wallet payments from retained peer proof through the existing admission store.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-wallet-counter-continuity-v129",
@@ -2334,21 +2354,24 @@
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": "4836529f3b2aa1d8f08e81d21f377658435c6bdfc31b59520b951bb916050557",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
-      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device."
+      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-wallet-counter-continuity-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
       "baseSha256": "e1dfe9d9749e81b89d86394467b49e9f6cfaaaec2372f666c4ac2e655c2f7ae5",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
-      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device."
+      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-wallet-counter-continuity-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
       "baseSha256": "f583275efd4d1da2219ad8f14cf593fa1f459e6c10cd1f623f6252c480964c38",
       "sha256": "beb81ca04de306b3a7c9d10d06d4508c45139ee9f809dff12a87de022bd3f2e9",
-      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device."
+      "purpose": "Carry verified Wallet counter continuity across separate value allocations on the same enrolled device.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
     },
     {
       "id": "bankeiz-wallet-stale-allocation-v129",
@@ -2362,21 +2385,24 @@
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
       "baseSha256": "1964569310c9b3f0fe3ccf24b124e262e8a948003657058e2388defaa7dac705",
       "sha256": "d054b02f2dd7e42f25363ea9ceacebc77e29e1aca65b569099cd7c963c268632",
-      "purpose": "Distinguish a signed Wallet counter mismatch so the app can retain the affected allocation draft without blocking other balances."
+      "purpose": "Distinguish a signed Wallet counter mismatch so the app can retain the affected allocation draft without blocking other balances.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
     },
     {
       "id": "bankeiz-wallet-stale-allocation-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
       "baseSha256": "ee7af217e04e3e7a8b361da9a59ba1d634e7c6b683259998d36c8650c43ff9fc",
       "sha256": "beb81ca04de306b3a7c9d10d06d4508c45139ee9f809dff12a87de022bd3f2e9",
-      "purpose": "Distinguish a signed Wallet counter mismatch so the app can retain the affected allocation draft without blocking other balances."
+      "purpose": "Distinguish a signed Wallet counter mismatch so the app can retain the affected allocation draft without blocking other balances.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
     },
     {
       "id": "bankeiz-wallet-synced-proof-recovery-v129",
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
       "baseSha256": "28ee16b784fb77e61712575b2ebf35f7dfcb9452f3ce1b37a1a8e4352bbb9d2c",
       "sha256": "27b08c219ba41cbe27e44d41924f959b973ab4e2b552a213cf61e19206b11bd9",
-      "purpose": "Reuse the exact Wallet proof reader for privately synchronized payment history and preserve the established optical format."
+      "purpose": "Reuse the exact Wallet proof reader for privately synchronized payment history and preserve the established optical format.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
     },
     {
       "id": "bankeiz-held-original-local-pbi",
@@ -2391,6 +2417,194 @@
       "baseSha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4",
       "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
       "purpose": "Recover exact admitted local Original authorship before opening public delivery. Preserve canonical membership checks for the public append."
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "a6ae5d4c9746f946badc316a83f40ef0d30fba9315b0bdf425c96397a0f61bb8",
+      "sha256": "74c3cdc7d4056538c9c52e990ad40f61e3d89e1b5cf8def81daa99415d16fc6c",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition."
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "baseSha256": "fa7895530428e5d75a2b44c4668a00149e089c984c72c337cb45c98e43fa1301",
+      "sha256": "a006e3fd8f44fc921eff04ee284880be7052ef9d06003ba1728d464ef3bd74ce",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "baseSha256": "24985e95bcb778065ba4957b6ea80aef73620cd213fbba131959d390a1c3057d",
+      "sha256": "f75df2d566c47c89ea9bdf2bd0138e09c8904b172feaf89d36d2ca70890a104f",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "baseSha256": "29a97174fb1ee515a71f810571fbf381ba7a2348e986dfa4376a5dd5bfef3667",
+      "sha256": "15ee4e4833e3c29f6cb72c0998db57da7a740c9a57a41f490f3b4549db9a0d68",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
+      "baseSha256": "beb81ca04de306b3a7c9d10d06d4508c45139ee9f809dff12a87de022bd3f2e9",
+      "sha256": "93e25c9713e7d421634ef8c9daf53b42e7026a24263c8c8885349b85d725a7f9",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts",
+      "baseSha256": "3d8cdbef95883d5888f61e00b6449530f422424a2c93d3da4b135e0559de2b90",
+      "sha256": "1454a8f6f303314308018bddc21528650f8fcda4614c248c1c45c1d50113e747",
+      "purpose": "Admit native Android one-use keys through the existing funded Wallet Original and irreversible payment transition.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/offlineNotePlatformAttestation.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNoteArtifact.ts",
+      "sha256": "6df28d2372dc417eed7c37530ebe3eb3d66fe34b95286e926fd5fbfdff83ecad",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "04e8aa4d849d13836c41fbc184da40db048182ec7439a5ea0fdaf6e53e1a2921"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNoteCustodyVerification.ts",
+      "sha256": "adb03e108adb9ac336b8d56065a4e70bc1a6039b06e427c8318bff1a0e394222",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "0ec13cd92b4f7f2669d17ba8d61f5367b6617196e25bff7500d23a2aba826add"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNoteLocalTransition.ts",
+      "sha256": "9ed584eaa87a8f794a2bdceabe9372ad7529ab99dfe05e905acba7cd268ebb66",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "f68ec1341723a6c515dc2171d7f6d0af15443a4084871a02ba7226f5a3341c26"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNotePortableCarrier.ts",
+      "sha256": "de191e1624ed1c38dd4543be002478ab6f1edf4b0551215864cee6bba236fc3f",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "859db2d59fad77db29ffbd35d28b43885b23771c79bbd5547c7bcfa4e1befd7e"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNoteQualifiedCustodyTransition.ts",
+      "sha256": "8a4269466d4df1c9321eb85e1443a378fdd7af7cd4396c142a01e1445fe6cd0c",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "3ea55852ea0a2210c668cabb3841e8ae5e679475375e0a14b68d290739149e04"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosNoteAndroidCustodyAdapter.ts",
+      "sha256": "06906f33593f21388459be6aadfc19f826dc9b6e7ee4f1fa123c9a8853befcf6",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history."
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosReserveAndroidCustodyAdapter.ts",
+      "sha256": "0325b7fdaa621865a1c630c88d44850e06b02e0d45be87a69e9278d52d0dc91b",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history."
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts",
+      "sha256": "82c88e9ac4367187da23a6e2810b2f1f62fa903b022a58b5c4cc1935a5ecba88",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "c7fd63a9e7fc4a4e9be6cb27c8668be31b76e013af9b0de24488ce1c70230c7a"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/fundedNote.ts",
+      "sha256": "b51f7a4be42ccbdbf2934bc00e1874c95d5cc65f6f4a0f47499e786581e3bb6b",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "05f8914ef5384e68736950be9faccfb122832a4ca83b5e889e6ba8cd2cbf5e25"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/preparedBrowser.ts",
+      "sha256": "00e2a78b86bb2fccdbdd30eae84be2c36c2322c4d215a25d484a3e5f32386875",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "4228a27af3e606a4bded013f4387db4cbe655d6c21aa413a488662a1366e6342"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/redemption.ts",
+      "sha256": "f47a58a87c5f3ea3e6851cb67be548e3842c2e752141e0dc117ccf99d09ff256",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "ab588b93ce7f4fc5833174e44519173d3ceff28df24038359a3b7d750ddddca3"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/packages/receiz-sdk/src/androidWalletKeyCertificate.ts",
+      "sha256": "876f47672e3410ef852f4cb2775a6aa04247f9b5cb51f6c6ea9a8705b8cf814e",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "bd1b04d07e2db07b4014f52f6ab8f39dfe72edb7f04740321efd68f50e939ace",
+      "releaseBaseline": null
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/packages/receiz-sdk/src/offlineNoteAndroidHandoff.ts",
+      "sha256": "631d42a6b5b9b247995731ddc0f2b9c6624b085bad9f8582914d3dfe27e47506",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "releaseBaseline": null
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/packages/receiz-sdk/src/offlineNoteIrreversibleCustody.ts",
+      "sha256": "630486dd8f66ecd9bb272196484f9b327c9285a61899a3fd1dda33648d916800",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "53bed203b46a18ed303b644d9e0f250655431af12b66bc399971fdb463db6012",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/offlineNoteIrreversibleCustody.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/packages/receiz-sdk/src/offlineReserveAndroidCustody.ts",
+      "sha256": "2841f94574dd7008c04cee96b348a1f97883072e480d7f860240c34d66e53562",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "releaseBaseline": null
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/packages/receiz-sdk/src/offlineReserveWebAuthnCustody.ts",
+      "sha256": "ea122e24f249a28cfe2451ee606690471f4e5782b2ee9568c89f33fcedb5722f",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "7b284a4e3a73743325f709007ef3ba8bd608d419f747cbce9dba3b7d3ab5ab9a",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/offlineReserveWebAuthnCustody.ts"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "sha256": "ffb4fabef7a3548733f6a7354020f97aa8b32dd4cc351aafc737a3868305271e",
+      "purpose": "Use attested Android one-use keys in the existing funded Note origination and exact ownership history.",
+      "baseSha256": "74c3cdc7d4056538c9c52e990ad40f61e3d89e1b5cf8def81daa99415d16fc6c"
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/localAccountCredit.ts",
+      "baseSha256": "3f7685a2ac4af2064e27abe8a648056ac44381b704cc28624223fbe5ebd8be3c",
+      "sha256": "2b425e3474807b1b54540058644684938f655549e89fc5e87fb32b84126d6bc2",
+      "purpose": "Preserve the qualified WebAuthn local credit checks when verifying device-held Android Note receipts."
+    },
+    {
+      "id": "bankeiz-android-hardware-note-handoff-v129",
+      "path": "receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts",
+      "baseSha256": "e5b59538ee6ecd6efc81a7a971eaa928883579609b2100fedd5d84eeb953ce97",
+      "sha256": "0901a8a04ef8ad775b908505929876ccfb1209301bddbaa2218a1e43fcc03655",
+      "purpose": "Preserve the qualified WebAuthn local credit checks when verifying device-held Android Note receipts."
+    },
+    {
+      "id": "bankeiz-android-hardware-wallet-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialAndroidWalletCustody.ts",
+      "sha256": "984b118bee38504eff7c01cdea76605673565fc9c77290c68685c66af968cd7d",
+      "purpose": "Compose the independently attested Android hardware key with the existing Wallet lifecycle.",
+      "releaseBaseline": null
     }
   ],
   "browserDefines": {

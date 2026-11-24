@@ -1,3 +1,4 @@
+import type { ReceizAndroidNoteReceivingCustody } from "../../../packages/receiz-sdk/src/offlineNoteAndroidHandoff";
 // app/lib/wallet/kairosNoteArtifact.ts
 
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -16,7 +17,8 @@ import type { ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2 } from "../.
 
 export type KairosNoteReceivingCustodyCommitment =
   | ReceizOfflineNoteReceivingCustodyCommitmentV1
-  | ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2;
+  | ReceizOfflineNoteAttestedReceivingCustodyCommitmentV2
+  | ReceizAndroidNoteReceivingCustody;
 
 type Point = { x: number; y: number };
 type PixelAnchor = "start" | "middle" | "end";

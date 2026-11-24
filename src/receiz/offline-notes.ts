@@ -1,8 +1,8 @@
 export type BankNoteRail = 'reserve' | 'settlement' | 'composite';
 export type BankNoteFundingParts={reserve:{amountUsdCents:string;amountPhiMicro:string};settlement:{amountUsdCents:string;amountPhiMicro:string}};
 export type BankNoteReview={recipientUserId?:string;rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
-export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; }
-export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; }
+export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; nativeHandoff?:true; }
+export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; nativeHandoff?:true; }
 export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'confirmed'; rail?: BankNoteRail; walletAfterPhiMicro?: string; noteId: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
 export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';depositError?:string;noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
 export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
@@ -21,6 +21,8 @@ export interface BankOfflineNotes {
   pending(): Promise<{ noteId: string; rail?: BankNoteRail; amountUsdCents: string; amountPhiMicro?:string;fundingParts?:BankNoteFundingParts;recipientUserId?:string;canCancel?: boolean } | null>;
   cancelUnfunded(): Promise<void>;
   create(amount: string, rail?: BankNoteRail, recipientUserId?:string): Promise<BankNoteImage>;
+  nativeReceivingRequest?(): Promise<Uint8Array>;
+  acceptNativeNote?(image: Uint8Array): Promise<BankNoteImage>;
   receivingRequest(): Promise<Uint8Array>;
   transfer(noteId: string, request?: Uint8Array): Promise<{ noteId: string; image: Uint8Array }>;
   inspect(image: Uint8Array): Promise<BankNoteInspection>;
@@ -34,10 +36,14 @@ export interface BankNoteRuntime {
   receivingRequest(): Promise<Uint8Array>;
   transferNote(noteId: string, request?: Uint8Array): Promise<{ noteId: string; image: Uint8Array }>;
   inspectNote(image: Uint8Array): Promise<BankNoteInspection>;
-  depositNote(image: Uint8Array): Promise<BankNoteDeposit>;
+  depositNote(image: Uint8Array, heldAndroid?:unknown): Promise<BankNoteDeposit>;
 }
+type BankNoteAndroidSigning = {
+  sign(input:{slotDigest:string;payload:string}):Promise<{signatureB64u:string}>;
+};
 export type BankNoteRuntimeFactory = (input: {
   keyId: string; uid: string; localUid: string; origin: string; passphrase: string; fetchImpl: typeof fetch;
+  android?:BankNoteAndroidSigning & {available():boolean;enroll(purpose:'holding'|'reserve'):Promise<unknown>};
   request: (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => Promise<unknown>;
   sealDocument: (input: { fileBytes: Uint8Array; filename: string; mime: string; options?: Record<string, unknown> }) => Promise<unknown>;
   retain: (bytes: Uint8Array) => Promise<string>; restore: (digest: string) => Promise<Uint8Array>;
@@ -57,11 +63,15 @@ export interface BankPreparedNoteRuntime extends Omit<BankNoteRuntime,'cancelUnf
   prepareResources(count:{notes:number;receivers:number}):Promise<void>;
   accountProof():Promise<unknown|null>;
   hasPreparedFunding(rail:BankNoteRail):Promise<boolean>;
+  androidReceivingRequest(): Promise<Uint8Array>;
+  holdsAndroidReceivingCustody(image:Uint8Array):Promise<boolean>;
+  androidRedemptionCustody(image:Uint8Array):Promise<unknown>;
+  acceptAndroidNote(image:Uint8Array):Promise<BankNoteImage>;
   holdsReceivingCustody(image:Uint8Array):Promise<boolean>;
   depositNote(image:Uint8Array,accountProof:unknown):Promise<BankNoteDeposit & {successorAccountProof:unknown}>;
 }
-export type BankPreparedNoteFactory = (input: Omit<Parameters<BankNoteRuntimeFactory>[0],'request'|'write'> & {identity:unknown;write(next:unknown,previous:unknown,proof?:unknown):Promise<void>})=>BankPreparedNoteRuntime;
-let runtime: Promise<BankNoteAccountModule&import('./connected-note-application').ConnectedNoteModule&import('./note-history').NoteHistoryModule&{ createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
+export type BankPreparedNoteFactory = (input: Omit<Parameters<BankNoteRuntimeFactory>[0],'request'|'write'|'android'> & {identity:unknown;android?:BankNoteAndroidSigning & {enroll():Promise<unknown>};write(next:unknown,previous:unknown,proof?:unknown):Promise<void>})=>BankPreparedNoteRuntime;
+let runtime: Promise<BankNoteAccountModule&import('./connected-note-application').ConnectedNoteModule&import('./note-history').NoteHistoryModule&{ digestReceizAndroidWalletEnrollmentSlot(input:{applicationId:string;userId:string;recordSignerPublicKey:string;origin:string;challengeB64u:string;role:'receive'|'spend';purpose:'note'|'note-reserve';index:number}):Promise<string>; createBankPreparedBrowserRuntime?:BankPreparedNoteFactory; createBankOfflineNotesRuntime: BankNoteRuntimeFactory; createBankNativeNoteSealer: (input: unknown) => Promise<Parameters<BankNoteRuntimeFactory>[0]['sealDocument']> }> | undefined;
 export function loadBankNoteRuntime() {
   // Built from the pinned Receiz v129 host primitives. Loaded only when a note
   // action is opened; it never delays account or market first paint.

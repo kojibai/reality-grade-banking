@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir, mkdtemp, copyFile, symlink, rm, realpath, lstat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, copyFile, cp, symlink, rm, realpath, lstat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, relative } from 'node:path';
@@ -39,6 +39,23 @@ try {
   for (const name of ['typescript', '@types', 'react', '@receiz/ai-skills']) {
     const path = resolve(source, 'node_modules', name);
     if (!await lstat(path).catch(() => null)) await link(resolve(bank, 'node_modules', name), path);
+  }
+  if (process.argv.includes('--sdk')) {
+    const sdk = resolve(source, 'packages/receiz-sdk-release-check');
+    await cp(resolve(source, 'packages/receiz-sdk'), sdk, { recursive: true });
+    // Bankeiz's Android composition carries its own reviewed source patches.
+    // Reproduce the published SDK using the pinned originals for those files.
+    await materialize('sdk-release-baselines/receiz-sdk', sdk);
+    const applicationOnly = new Set((manifest.applicationPatches ?? []).filter(entry => entry.releaseBaseline === null).map(entry => entry.path));
+    for (const path of applicationOnly) {
+      const prefix = 'receiz/packages/receiz-sdk/src/';
+      assert.ok(path.startsWith(prefix) && !path.split('/').includes('..'), 'Invalid application-only SDK path.');
+      await rm(resolve(sdk, 'src', path.slice(prefix.length)));
+    }
+    execFileSync(process.execPath, [resolve(bank, 'node_modules/typescript/bin/tsc'), '-p', resolve(sdk, 'tsconfig.json')], { cwd: sdk, stdio: 'pipe' });
+    execFileSync(process.execPath, [resolve(sdk, 'scripts/compact-registry-projections.mjs')], { cwd: sdk, stdio: 'pipe' });
+    await verifySdkOutputInventory(sdk,manifest.sdkOutputs);
+    console.log(`SDK preferred source reproduces all ${manifest.sdkOutputs.length} qualified JavaScript files.`);
   }
   const common = { absWorkingDir: source, bundle: true, format: 'esm', platform: 'browser', target: 'es2022', minify: true, treeShaking: true, external: ['node:*'], write: false, metafile: true, legalComments: 'inline' };
   const notes = await build({ ...common, entryPoints: ['app/lib/wallet/bankNotes/browser.ts'], alias: { '@': source }, outfile: resolve(bank, 'public/native/offline-notes.v129.mjs'), banner: { js: '/*! Receiz Bank Offline Notes — composed from Receiz v129 native primitives. Generated; do not edit. */' } });
@@ -104,13 +121,6 @@ try {
   for (const name of ['sync_canonical_anchor_parser.mjs', 'sync_canonical_resource_parsers.mjs', 'sync_sigil_valuation_core.mjs', 'sync_account_financial_math.mjs']) execFileSync(process.execPath, [resolve(source, 'scripts', name), '--check', ...(name==='sync_account_financial_math.mjs'?['--esbuild-from',bank]:[])], { cwd: source, stdio: 'pipe' });
   execFileSync(process.execPath,[resolve(source,'scripts/sync_canonical_resource_parsers.mjs'),'--check','--output',resolve(bank,'native/vault/packages/receiz-sdk/src/verifier/canonicalImplementation.js')],{cwd:source,stdio:'pipe'});
 
-  if (process.argv.includes('--sdk')) {
-    const sdk = resolve(source, 'packages/receiz-sdk');
-    execFileSync(process.execPath, [resolve(bank, 'node_modules/typescript/bin/tsc'), '-p', resolve(sdk, 'tsconfig.json')], { cwd: sdk, stdio: 'pipe' });
-    execFileSync(process.execPath, [resolve(sdk, 'scripts/compact-registry-projections.mjs')], { cwd: sdk, stdio: 'pipe' });
-    await verifySdkOutputInventory(sdk,manifest.sdkOutputs);
-    console.log(`SDK preferred source reproduces all ${manifest.sdkOutputs.length} qualified JavaScript files.`);
-  }
   if (process.argv.includes('--output')) {
     const output = resolve(process.argv[process.argv.indexOf('--output') + 1]); await mkdir(output, { recursive: true });
     await writeFile(resolve(output, 'offline-notes.v129.mjs'), notesBytes); await writeFile(resolve(output, 'asset-publication.v129.mjs'), publicationBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs'), receiverBytes); await writeFile(resolve(output, 'receiver-verifier.v129.mjs.map'), JSON.stringify(map));

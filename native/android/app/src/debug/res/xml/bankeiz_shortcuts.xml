@@ -1,0 +1,11 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="device-check"
+        android:icon="@mipmap/bankeiz_launcher"
+        android:shortcutShortLabel="@string/bankeiz_device_check">
+        <intent
+            android:action="com.kojibai.bankeiz.CHECK_DEVICE"
+            android:targetPackage="com.kojibai.bankeiz.preview"
+            android:targetClass="com.kojibai.bankeiz.DeviceCheckActivity" />
+    </shortcut>
+</shortcuts>

@@ -431,6 +431,10 @@ self.addEventListener('fetch', event => {
   const publicPage = publicDigest(PUBLIC_RENDER_BUILD) && publicPath(url);
   if (publicPage) { event.respondWith(publicDocument(event.request, publicPage, PAGES[url.pathname])); return; }
   if (event.request.method !== 'GET') return;
+  if (event.request.mode === 'navigate' && url.pathname === '/app/android-launch') {
+    event.respondWith(navigationDocument(event.request, PAGES['/']));
+    return;
+  }
   const page = event.request.mode === 'navigate' && (PAGES[url.pathname] || (/^\/vote\/(?:charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/vote/record.html']) || (/^\/vault\/[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\/?$/i.test(url.pathname) && (PAGES['/vault/index.html'] || PAGES['/'])) || (/^\/pay\/[a-z0-9_]{3,24}\/?$/.test(url.pathname) && PAGES['/pay/checkout.html']) || (/^\/verify\/[a-f0-9]{64}\/?$/.test(url.pathname) && PAGES['/verify/']) || (/^\/asset\/[^/]+\/?$/.test(url.pathname) && PAGES['/explore/']));
   const nativeBuild = (url.pathname.startsWith('/native/') || url.pathname === '/proof-verifier/v129/verifier.js') && url.searchParams.size === 1 && url.searchParams.get('build') === RESOURCES[url.pathname]?.sha256;
   const path = page || (RESOURCES[url.pathname + url.search] ? url.pathname + url.search : nativeBuild ? url.pathname : undefined);

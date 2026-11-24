@@ -1,3 +1,4 @@
+import {bankAndroidWalletHardware} from './android-wallet-hardware';
 import {createHeldLedgerOriginalReader} from './held-ledger-original';
 import {waitForAssetPublicationDelivery,projectAssetPublicationReceipt} from './asset-publication';
 import {keepsWalletCashComposition} from './wallet-cash-basis';
@@ -1192,6 +1193,15 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     noteOpen();if(localNotes)return localNotes;
     // Inspection opens the complete note image, without constructing signing
     // custody or modifying either encrypted financial state family.
+    async function preparedReader(uid:string) {
+      const module=await loadBankNoteRuntime();
+      if(!module.createBankPreparedBrowserRuntime)return null;
+      const deny=async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');};
+      const passphrase=transportKeyFile.crypto.privateKeyPkcs8B64u?sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))):transportPhrase;
+      const identity=transportKeyFile.crypto.privateKeyPkcs8B64u?await protectIdentityKeyFile(transportKeyFile,passphrase):transportKeyFile;
+      return module.createBankPreparedBrowserRuntime({identity,keyId:binding.keyId,uid,localUid:keyFile.owner.uid,passphrase,origin:location.origin,assertOpen:noteOpen,
+        read:()=>loadPreparedNoteState(binding),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),write:deny,retain:deny,fetchImpl:deny,sealDocument:deny,artwork:deny});
+    }
     const inspect=async(image:Uint8Array)=>{
       const module=await loadBankNoteRuntime();noteOpen();
       if(await isConnectedNote(module,image)){const note=await readConnectedNote(module,image);noteOpen();return {...note,consumption:'connection-required' as const};}
@@ -1199,12 +1209,27 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const readonly=module.createBankOfflineNotesRuntime({keyId:binding.keyId,uid:accountUid??carriedAccountUid??knownWallet?.wallet.userId??keyFile.owner.uid,localUid:keyFile.owner.uid,origin:location.origin,passphrase:phrase,
         request:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},fetchImpl:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},sealDocument:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},
         read:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},write:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},retain:async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');},restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork});
-      return readonly.inspectNote(image);
+      const inspected=await readonly.inspectNote(image);
+      if(bankAndroidWalletHardware()&&await (await preparedReader(receivingUid()))?.holdsAndroidReceivingCustody(image))
+        return {...inspected,nativeHandoff:true as const};
+      return inspected;
     };
     const inventory=createLocalNoteInventory({keyId:binding.keyId,uid:()=>accountUid??knownWallet?.wallet.userId??null,readLegacy:()=>atNoteStage('saved-notes',()=>loadOfflineNoteState(binding)),readPrepared:()=>atNoteStage('prepared-notes',()=>loadPreparedNoteState(binding)),restore:ref=>atNoteStage('note-image',()=>loadOfflineNoteBlob(binding,ref)),inspect,assertOpen:noteOpen});
     localNoteInventory=inventory;
     const action=async<T,>(operation:()=>Promise<T>):Promise<T>=>{noteOpen();activeNoteOperations++;noteOperationEpoch++;try{return await operation();}finally{activeNoteOperations--;}};
-    localNotes={addressedCreationByDefault:true,exportImage:noteImages.exportImage,exportNote:id=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
+    localNotes={addressedCreationByDefault:true,
+      ...(bankAndroidWalletHardware()?{
+        nativeReceivingRequest:()=>action(async()=>{
+          const execution=await openNotesExecution();
+          if(!execution.nativeReceivingRequest)throw Error('BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE');
+          return execution.nativeReceivingRequest();
+        }),
+        acceptNativeNote:(image:Uint8Array)=>action(async()=>{
+          const execution=await openNotesExecution();
+          if(!execution.acceptNativeNote)throw Error('BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE');
+          return execution.acceptNativeNote(image);
+        }),
+      }:{}),exportImage:noteImages.exportImage,exportNote:id=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
       if(await localConnectedNotes().hasNote(id))return localConnectedNotes().exportNote(id);
       const note=(await inventory.savedNotes()).find(note=>note.noteId===id);if(!note)throw Error('BANK_NOTE_SOURCE_REQUIRED');
       return{...note,image:await noteImages.exportImage(note.image,id)};
@@ -1222,15 +1247,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         await validateNativeNoteDeposit({image,module,context:{receiverUserId:uid,receiverKeyId:binding.keyId},connected:localConnectedNotes(),savedNotes:()=>inventory.savedNotes(),inspectLegacy:inspect,
           holdsLegacyReceivingCustody:source=>holdsLegacyNoteReceivingCustody({image:source,uid,keyId:binding.keyId,read:()=>loadOfflineNoteState(binding),inspectCommitment:async bytes=>(await import('./note-proof-portability')).inspectLegacyReceivingCommitment(bytes)}),
           holdsReceivingCustody:async source=>{
-            if(!BANK_PREPARED_NOTE_CREDIT_ENABLED||!module.createBankPreparedBrowserRuntime)return false;
-            const deny=async()=>{throw Error('BANK_NOTE_EXPLICIT_ACTION_REQUIRED');};
-            // This reader neither enrolls nor sends the identity anywhere. A
-            // clear original needs only a protected in-memory parser input.
-            const passphrase=transportKeyFile.crypto.privateKeyPkcs8B64u?sdk.receizBase64UrlEncode(crypto.getRandomValues(new Uint8Array(32))):transportPhrase;
-            const identity=transportKeyFile.crypto.privateKeyPkcs8B64u?await protectIdentityKeyFile(transportKeyFile,passphrase):transportKeyFile;
-            const reader=module.createBankPreparedBrowserRuntime({identity,keyId:binding.keyId,uid,localUid:keyFile.owner.uid,passphrase,origin:location.origin,assertOpen:noteOpen,
-              read:()=>loadPreparedNoteState(binding),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),write:deny,retain:deny,fetchImpl:deny,sealDocument:deny,artwork:deny});
-            return reader.holdsReceivingCustody(source);
+            if(!BANK_PREPARED_NOTE_CREDIT_ENABLED)return false;
+            return await (await preparedReader(uid))?.holdsReceivingCustody(source) ?? false;
           },
         });
         noteOpen();if(receivingUid()!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
@@ -1363,6 +1381,42 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     noteOpen(); await atNoteStage('identity-transport',prepareTransport); noteOpen();
     accountUid ??= knownWallet?.wallet.userId ?? null;
     if (!accountUid) await connectClient(BANK_READ_SCOPES, BANK_READ_CONSENT);
+    const nativeNoteHardware={
+      available:()=>bankAndroidWalletHardware()!==null,
+      sign:async(challenge:{slotDigest:string;payload:string})=>{
+        noteOpen();
+        const hardware=bankAndroidWalletHardware();
+        if(!hardware)throw Error('BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE');
+        return hardware.sign(challenge);
+      },
+      enroll:async(purpose:'holding'|'reserve')=>{
+        const hardware=bankAndroidWalletHardware();
+        if(!hardware)throw Error('BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE');
+        const uid=receivingUid(),origin=location.origin;
+        const enrollment=await (await import('@receiz/sdk/offline')).createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load();
+        if(!enrollment)throw Error('BANK_NOTE_DEVICE_REQUIRED');
+        const recordSignerPublicKey=enrollment.cert.subjectPublicKeyRawB64u;
+        const [module,client]=await Promise.all([loadBankNoteRuntime(),connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT)]);
+        const platform=purpose==='reserve'?'android-note-reserve':'android-note';
+        const url='/api/connect/offline-notes/custody/attestation?platform='+platform+'&origin='+encodeURIComponent(origin);
+        const request=(method:'GET'|'POST',body?:Record<string,unknown>)=>{
+          noteOpen();
+          if(clientAccounts.get(client)?.accountUid!==uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
+          return client.request(url,{method,...(body?{body}:{})});
+        };
+        const begun=await request('GET') as {ok?:boolean;origin?:string;ticket?:string;challengeB64u?:string};
+        if(!begun?.ok||begun.origin!==origin||typeof begun.ticket!=='string'||typeof begun.challengeB64u!=='string')
+          throw Error('BANK_NOTE_DEVICE_REQUIRED');
+        const {ticket,challengeB64u}=begun;
+        const scope={applicationId:BANK_APPLICATION_ID,userId:uid,recordSignerPublicKey,origin,challengeB64u,purpose:purpose==='reserve'?'note-reserve' as const:'note' as const,index:0};
+        const receive=await hardware.enroll(await module.digestReceizAndroidWalletEnrollmentSlot({...scope,role:'receive'}));
+        const spend=await hardware.enroll(await module.digestReceizAndroidWalletEnrollmentSlot({...scope,role:'spend'}));
+        const result=await request('POST',{ticket,challengeB64u,recordSignerPublicKey,response:{receive,spend:[spend]}}) as {ok?:boolean;enrollment?:unknown};
+        noteOpen();
+        if(!result?.ok||!result.enrollment)throw Error('BANK_NOTE_DEVICE_REQUIRED');
+        return result.enrollment;
+      },
+    };
     if (!noteRuntime) {
       const module = await loadBankNoteRuntime(); await atNoteStage('device-signer',ownedSealer);
       const { createReceizIndexedDbSealStore } = await import('@receiz/sdk/offline');
@@ -1370,12 +1424,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if (!enrollment || !sealingResources) throw new Error('Your device sealing key is unavailable.');
       const sealDocument = await module.createBankNativeNoteSealer({ enrollment, resources: sealingResources });
       const request = async (path: string, options: { method: 'GET' | 'POST'; body?: Record<string, unknown> }) => { noteOpen(); const current = await connectClient(BANK_NATIVE_SCOPES, BANK_NATIVE_CONSENT); const response = await current.request(path, options); noteOpen(); return response; };
-      noteRuntime = module.createBankOfflineNotesRuntime({ keyId: binding.keyId, uid: accountUid!, localUid: keyFile.owner.uid, origin: location.origin, passphrase: transportPhrase, request, fetchImpl: createBankNoteAttestationFetch({ origin: location.origin, request, signal: lifetime.signal }), sealDocument, read: () => loadOfflineNoteState(binding), retain: (bytes: Uint8Array) => saveOfflineNoteBlob(binding, bytes), restore: (digest: string) => loadOfflineNoteBlob(binding, digest), write: (next: unknown, previous: unknown) => saveOfflineNoteState(binding, next, previous), assertOpen: noteOpen, artwork: bankNoteArtwork });
+      noteRuntime = module.createBankOfflineNotesRuntime({ keyId: binding.keyId, uid: accountUid!, localUid: keyFile.owner.uid, origin: location.origin, passphrase: transportPhrase, request, android:nativeNoteHardware, fetchImpl: createBankNoteAttestationFetch({ origin: location.origin, request, signal: lifetime.signal }), sealDocument, read: () => loadOfflineNoteState(binding), retain: (bytes: Uint8Array) => saveOfflineNoteBlob(binding, bytes), restore: (digest: string) => loadOfflineNoteBlob(binding, digest), write: (next: unknown, previous: unknown) => saveOfflineNoteState(binding, next, previous), assertOpen: noteOpen, artwork: bankNoteArtwork });
     }
     if (!preparedNoteRuntime) {
       const module = await loadBankNoteRuntime();
       if (typeof module.createBankPreparedBrowserRuntime === 'function') preparedNoteRuntime = module.createBankPreparedBrowserRuntime({
         keyId:binding.keyId,uid:accountUid!,localUid:keyFile.owner.uid,identity:transportKeyFile,passphrase:transportPhrase,origin:location.origin,
+        android:{sign:nativeNoteHardware.sign,enroll:()=>nativeNoteHardware.enroll('holding')},
         fetchImpl:createBankNoteAttestationFetch({origin:location.origin,request:async(path:string,options:{method:'GET'|'POST';body?:Record<string,unknown>})=>{noteOpen();const current=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);return current.request(path,options);},signal:lifetime.signal}),
         sealDocument:await module.createBankNativeNoteSealer({enrollment:await (await import('@receiz/sdk/offline')).createReceizIndexedDbSealStore('receiz-bank-canonical-device-signer').load(),resources:sealingResources}),
         read:()=>loadPreparedNoteState(binding),retain:(source:Uint8Array)=>saveOfflineNoteBlob(binding,source),restore:(ref:string)=>loadOfflineNoteBlob(binding,ref),assertOpen:noteOpen,artwork:bankNoteArtwork,
@@ -1404,6 +1459,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       return prepared;
     };
     return {
+      ...(prepared&&bankAndroidWalletHardware()?{
+        nativeReceivingRequest:()=>lock(()=>prepared.androidReceivingRequest()),
+        acceptNativeNote:(image:Uint8Array)=>lock(()=>prepared.acceptAndroidNote(image)),
+      }:{}),
       prepareResources:count=>lock(async()=>{await assertNoPendingWalletSend();return local().prepareResources(count);}),
       savedNotes: async () => [...await held.savedNotes(), ...(prepared ? await prepared.savedNotes() : [])],
       pending: async () => await prepared?.pending() ?? held.pending(),
@@ -1472,11 +1531,16 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         // capacity above never depends on refilling unrelated note resources.
         await assertNoPendingWalletSend();await prepared.prepareResources({notes:2,receivers:1});return prepared.receivingRequest();
       }),
-      transfer: (noteId, request) => lock(async () => prepared && (await prepared.savedNotes()).some(note=>note.noteId===noteId) ? local().transferNote(noteId,request) : held.transferNote(noteId, request)),
+      transfer: (noteId, request) => lock(async () => {
+        if(prepared&&(BANK_PREPARED_NOTE_CREDIT_ENABLED||bankAndroidWalletHardware())
+          &&(await prepared.savedNotes()).some(note=>note.noteId===noteId))return prepared.transferNote(noteId,request);
+        return held.transferNote(noteId,request);
+      }),
       inspect: image => held.inspectNote(image),
       deposit: image => lock(async () => {
         if (BANK_PREPARED_NOTE_CREDIT_ENABLED && prepared && await prepared.holdsReceivingCustody(image)) return prepared.depositNote(image,transportKeyFile);
-        const result = await held.depositNote(image); noteOpen(); void readWallet().catch(() => {}); return result; }),
+        const androidHolder=bankAndroidWalletHardware()&&prepared ? await prepared.androidRedemptionCustody(image) : undefined;
+        const result = await held.depositNote(image,androidHolder??undefined); noteOpen(); void readWallet().catch(() => {}); return result; }),
     };
   }
   let qualificationReader:ReturnType<typeof import('../qualification/source').createQualificationProgressReader>|undefined;
@@ -2102,8 +2166,9 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
   let fundedWalletPromise:Promise<import('./funded-wallet').FundedWallet>|undefined,fundedWalletSession:import('./funded-wallet').FundedWallet|undefined;
   const fundedWallet=()=>fundedWalletPromise??=(async()=>{
     noteOpen();
-    const uid=accountUid??carriedAccountUid??knownWallet?.wallet.userId;
-    if(!uid)throw Error('BANK_WALLET_ACCOUNT_REQUIRED');
+    const walletAccount=accountUid??carriedAccountUid??knownWallet?.wallet.userId;
+    if(!walletAccount)throw Error('BANK_WALLET_ACCOUNT_REQUIRED');
+    const uid=walletAccount;
     const [{createFundedWallet},storage,{createReceizIndexedDbSealStore},{createWalletDeviceJournal}]=await Promise.all([
       import('./funded-wallet'),import('./identity-vault'),import('@receiz/sdk/offline'),import('./wallet-device-journal'),
     ]);
@@ -2127,10 +2192,14 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const identity={keyId:binding.keyId,alg:binding.alg,publicKeyRawB64u:binding.publicKeyRawB64u};
     const recordSignerPublicKey=enrollment.cert.subjectPublicKeyRawB64u;
     const signOwner=(challengeText:string)=>sdk.signReceizIdentityLoginProof({keyFile,passphrase:phrase,challengeText});
-    type WalletDeviceSetup={walletWebAuthn:Awaited<ReturnType<typeof walletBrowser.enrollBankFinancialWalletDevice>>;
+    type WalletDeviceSetup=({
+      walletWebAuthn:Awaited<ReturnType<typeof walletBrowser.enrollBankFinancialWalletDevice>>;walletAndroid?:never;
+    }|{
+      walletWebAuthn?:never;walletAndroid:import('./local-financial-runtime').AndroidWalletEnrollment;
+    })&{
       account?:{payload:{issuedAtKaiUPulse:string}};claim?:import('./funded-wallet').WalletPairOffer;walletCounterMode?:'device';
       allocationId?:string;
-      receiveConsent?:Awaited<ReturnType<typeof signOwner>>;
+      receiveConsent?:Awaited<ReturnType<typeof signOwner>>;received?:true;
       pending?:{amountUsdCents:string;request:{opening:{funding:Record<string,unknown>;ownerConsent?:unknown}}}};
     const counterJournal=(credentialId:string)=>createWalletDeviceJournal({
       read:()=>storage.loadFundedWalletCounterJournal(binding,credentialId),
@@ -2142,6 +2211,37 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       const saved=await loadDevice(role);
       if(saved&&(role==='funding'?!saved.allocationId:!saved.claim))return saved;
       const origin=location.origin,rpId=bankNoteRpId(origin);if(!rpId)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+      const android=bankAndroidWalletHardware();
+      if(android){
+        const {digestReceizAndroidWalletEnrollmentSlot,verifyBankAndroidWalletEnrollment}=walletBrowser;
+        if(!digestReceizAndroidWalletEnrollmentSlot||!verifyBankAndroidWalletEnrollment)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+        const client=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);
+        const request=async(method:'GET'|'POST',body?:Record<string,unknown>)=>{
+          noteOpen();
+          if(clientAccounts.get(client)?.accountUid!==uid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
+          return client.request('/api/connect/offline-notes/custody/attestation?platform=android&origin='+encodeURIComponent(origin),{
+            method,...(body?{body}:{}),
+          });
+        };
+        const reply=await request('GET') as {ok?:boolean;origin?:string;ticket?:string;challengeB64u?:string};
+        if(!reply?.ok||reply.origin!==origin||typeof reply.ticket!=='string'||typeof reply.challengeB64u!=='string')
+          throw Error('BANK_WALLET_DEVICE_REQUIRED');
+        const {challengeB64u,ticket}=reply;
+        const scope={applicationId:BANK_APPLICATION_ID,userId:uid,recordSignerPublicKey,origin,challengeB64u};
+        const enroll=async(keyRole:'receive'|'spend',index:number)=>{
+          noteOpen();
+          return android.enroll(await digestReceizAndroidWalletEnrollmentSlot({...scope,role:keyRole,index}));
+        };
+        const receive=role==='receiving'?await enroll('receive',0):null;
+        const spend:string[][]=[];
+        for(let index=0;index<4;index++)spend.push(await enroll('spend',index));
+        const result=await request('POST',{ticket,challengeB64u,recordSignerPublicKey,response:{...(receive?{receive}:{}),spend}}) as {ok?:boolean;enrollment?:unknown};
+        if(!result?.ok)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+        const walletAndroid=await verifyBankAndroidWalletEnrollment({...scope,enrollment:result.enrollment});
+        if(walletAndroid.scope.challengeB64u!==challengeB64u||!!walletAndroid.receive!==(role==='receiving'))
+          throw Error('BANK_WALLET_DEVICE_MISMATCH');
+        noteOpen();const next={walletAndroid};await saveDevice(role,next,saved);return next;
+      }
       const fetchImpl=createBankNoteAttestationFetch({origin,signal:lifetime.signal,request:async(path,options)=>{
         const client=await connectClient(BANK_NATIVE_SCOPES,BANK_NATIVE_CONSENT);noteOpen();
         if(clientAccounts.get(client)?.accountUid!==uid)throw Error('BANK_WALLET_IDENTITY_CHANGED');
@@ -2155,9 +2255,11 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:receiving`,{signal:lifetime.signal},async()=>{
         if(!navigator.onLine)return;
         const saved=await loadDevice('receiving');
-        if(saved?.account||saved?.claim||(!saved&&mode==='resume'))return;
-        const device=saved??await enrolled('receiving');
-        const account=await send(endpoint,{operation:'receiver',recordSignerPublicKey,walletWebAuthn:device.walletWebAuthn},true) as WalletDeviceSetup['account'];
+        const used=saved?.walletAndroid&&saved.received;
+        if(!used&&(saved?.account||saved?.claim||(!saved&&mode==='resume')))return;
+        const device=!saved||used?await enrolled('receiving'):saved;
+        const account=await send(endpoint,{operation:'receiver',recordSignerPublicKey,
+          ...(device.walletAndroid?{walletAndroid:device.walletAndroid}:{walletWebAuthn:device.walletWebAuthn})},true) as WalletDeviceSetup['account'];
         if(!account?.payload.issuedAtKaiUPulse)throw Error('BANK_WALLET_PAIRING_INVALID');
         await saveDevice('receiving',{...device,account},device);
       });
@@ -2171,7 +2273,8 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         if(pending&&pending.amountUsdCents!==amountUsdCents)throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
         if(!pending){
           const identityArtifact={artifactSha256:binding.artifactSha256,exactBytesB64u:sdk.receizBase64UrlEncode(bytes)};
-          const custodian={kind:'existing-sdk-record-signer',publicKeyRawB64u:recordSignerPublicKey,walletWebAuthn:device.walletWebAuthn};
+          const custodian={kind:'existing-sdk-record-signer',publicKeyRawB64u:recordSignerPublicKey,
+            ...(device.walletAndroid?{walletAndroid:device.walletAndroid}:{walletWebAuthn:device.walletWebAuthn})};
           const request=await send(endpoint,{operation:'prepare',amountUsdCents,walletFunding:'set-aside',identity,identityArtifact,custodian},true) as NonNullable<WalletDeviceSetup['pending']>['request'];
           if(request?.opening?.funding?.accountUserId!==uid||request.opening.funding.receizKeyId!==binding.keyId)throw Error('BANK_WALLET_SOURCE_INVALID');
           const opening=request.opening as typeof request.opening&{initialState?:{wallet?:{availableUsdCents?:string}};program?:{walletFunding?:string}};
@@ -2225,11 +2328,40 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           await saveDevice('funding',{...device,allocationId},saved);
         });
       },
+      async onWalletReceived(opening){
+        if(!navigator.locks)return;
+        await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:receiving`,{signal:lifetime.signal},async()=>{
+          const saved=await loadDevice('receiving'),offer=saved?.claim;
+          if(saved?.walletAndroid&&!saved.received&&offer
+            &&offer.allocationId===opening.allocationId&&offer.sourceArtifactSha256===opening.sourceArtifactSha256
+            &&offer.conversationId===opening.conversationId&&offer.amountUsdCents===opening.amountUsdCents)
+            await saveDevice('receiving',{...saved,received:true},saved);
+        }).catch(()=>{});
+      },
       readWalletCounterEvents:({credentialIdB64u,lastSignCount})=>counterJournal(credentialIdB64u).eventsAfter(lastSignCount),
       async answerOffer(offer){
         if(!navigator.locks)throw Error('BANK_WALLET_DEVICE_REQUIRED');
         return await navigator.locks.request(`bankeiz-wallet-enrollment:${binding.artifactSha256}:receiving`,{signal:lifetime.signal},async()=>{
         const saved=await loadDevice('receiving');
+        if(saved?.walletAndroid){
+          const android=bankAndroidWalletHardware(),approve=walletBrowser.approveBankAndroidWalletOffer;
+          if(!android||!approve||!saved.account||saved.claim&&JSON.stringify(saved.claim)!==JSON.stringify(offer))
+            throw Error('BANK_WALLET_DEVICE_REQUIRED');
+          const {account,walletAndroid}=saved;
+          const approval=await approve({walletAndroid,fundedAtKaiUPulse:account.payload.issuedAtKaiUPulse,
+            offer:{applicationId:offer.applicationId,sourceArtifactSha256:offer.sourceArtifactSha256,allocationId:offer.allocationId,
+              conversationId:offer.conversationId,recipientUserId:uid,recipientKeyId:binding.keyId,recipientRecordSignerPublicKey:recordSignerPublicKey,amountUsdCents:offer.amountUsdCents},
+            async signOwner(challenge){
+              if(saved.receiveConsent)return saved.receiveConsent;
+              const receiveConsent=await signOwner(challenge);
+              await saveDevice('receiving',{...saved,claim:offer,receiveConsent},saved);
+              return receiveConsent;
+            },
+            assert(request){noteOpen();return android.sign(request);},
+          });
+          return {schema:'bankeiz.wallet.answer.v1' as const,offer,recipientUserId:uid,scannedRecipient:{account,identity,
+            custodian:{kind:'existing-sdk-record-signer',publicKeyRawB64u:recordSignerPublicKey,walletAndroid},...approval}};
+        }
         const shared=offer.walletCounterMode==='device';
         // A legacy claim has already used a different assertion contract.
         if(!saved?.account||saved.walletCounterMode&&!shared||saved.claim&&(shared||JSON.stringify(saved.claim)!==JSON.stringify(offer)))throw Error('BANK_WALLET_DEVICE_REQUIRED');
@@ -2279,6 +2411,16 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         });
       },
       async signRecord(exact){noteOpen();return new Uint8Array(await crypto.subtle.sign('Ed25519',enrollment.privateKey,exact.slice().buffer));},
+      bindAndroidWalletDevice(device){
+        if(device.keyId!==binding.keyId||device.signerPublicKey!==recordSignerPublicKey||device.origin!==location.origin)
+          throw Error('BANK_WALLET_DEVICE_MISMATCH');
+        return request=>{
+          noteOpen();
+          const android=bankAndroidWalletHardware();
+          if(!android)throw Error('BANK_WALLET_DEVICE_REQUIRED');
+          return android.sign(request);
+        };
+      },
       bindWalletDevice(device,assert){
         if(device.keyId!==binding.keyId||device.signerPublicKey!==enrollment.cert.subjectPublicKeyRawB64u||device.origin!==location.origin)
           throw Error('BANK_WALLET_DEVICE_MISMATCH');

@@ -1,3 +1,4 @@
+import { AndroidDownloadLink } from '../features/account/AndroidDownloadLink';
 import {useEffect,useId,useRef,useState} from 'react';
 import {deviceCustodyProbeReadiness,inspectDeviceCustodyEvidence,type DeviceCustodyEvidence,type DeviceAuthenticator} from './device-evidence';
 const yes=(value:boolean|null)=>value===null?'Not reported':value?'Yes':'No';
@@ -37,6 +38,7 @@ export function DeviceEvidence({onEvidence}:{onEvidence:(value:DeviceCustodyEvid
   {readiness==='checking'&&<p>Reading local custody metadata.</p>}
   {readiness==='existing-custody'&&<p role="status">Existing custody is retained. This diagnostic will not create a credential or request assertions. Inspect the existing Note through its normal action.</p>}
   {readiness==='unavailable'&&<p role="status">Local custody could not be checked. The diagnostic remains unavailable; no credential or assertion has been requested.</p>}
+  {(readiness==='unavailable'||report?.rollbackConformance.status==='refused')&&<AndroidDownloadLink className="conformance-text-link"/>}
   <p role="status">{stage}</p>
   {report&&<div className="device-evidence-result">
    <h4>Device verification record</h4>

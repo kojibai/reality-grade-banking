@@ -1,3 +1,4 @@
+import { AndroidDownloadLink } from './AndroidDownloadLink';
 import type {WalletBalanceNotice} from './wallet-balance-notice';
 import './wallet-balance-notice.css';
 
@@ -9,13 +10,14 @@ export function OfflineCashOptions({notice,canSendNearby,onSendNearby}:{notice:W
         :<><strong>{notice.title}</strong><p>{notice.message}</p></>}
     </header>
     {notice.support&&canSendNearby&&onSendNearby&&<button type="button" className="secondary-button" onClick={onSendNearby}>Send nearby</button>}
+    {notice.support&&<AndroidDownloadLink className="wallet-android-download"/>}
     {notice.support&&<details><summary>Offline Cash setup options</summary>
       <p>Offline Cash lets people with compatible devices receive and spend it again while they’re still offline.</p>
       {canSendNearby&&<p><strong>{notice.title}</strong> {notice.message}</p>}
       <ul>
         <li>Try your device’s built-in authenticator in an up-to-date browser, or <a href="/conformance/#device-evidence">check a device or NFC security key</a> you already have. The check shows what the authenticator provides.</li>
         <li>Ask your browser or device provider to support {notice.support.requirement}. <a href="/conformance/#request-platform-support">See the platform requirements</a>.</li>
-        <li>The Bankeiz Android app is in testing. A Bankeiz app for iPhone is planned.</li>
+        <li>A Bankeiz app for iPhone is planned.</li>
       </ul>
       <p className="small-copy">Reference code <code>{notice.support.code}</code></p>
     </details>}

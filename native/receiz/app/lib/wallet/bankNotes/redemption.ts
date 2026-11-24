@@ -5,7 +5,7 @@ import { verifyReceizArtifactWithCanonicalRoots } from "../../../../packages/rec
 import { verifyReceizArtifact } from "../../../../packages/receiz-sdk/src/index";
 import { parseReceizPortableAssetDocument, serializeReceizPortableAssetDocument, attachReceizPortableProofHistory, deriveReceizPortableOwnershipContinuity } from "../../../../packages/receiz-sdk/src/portableAsset";
 import { createReceizProofHistoryNode, issueReceizVerifiedArtifactTransitionHistory, verifyReceizProofHistory } from "../../../../packages/receiz-sdk/src/proofHistory";
-import { verifyReceizOfflineNoteWebAuthnConsumptionReceipt, type ReceizOfflineNoteWebAuthnConsumptionReceiptV1 } from "../../../../packages/receiz-sdk/src/offlineNoteWebAuthnCustody";
+import { verifyKairosNoteConsumptionProof, type KairosNoteConsumptionProof } from "../kairosNoteCustodyVerification";
 import type { ReceizSignatureV4RootPublicKey } from "../../../../packages/receiz-sdk/src/verifier/signatureV4";
 import type { ReceizConstitutionJson } from "../../../../packages/receiz-sdk/src/constitution";
 import { readBankFundedNoteHead, readBankFundedNoteSource, verifyBankFundedNoteSource, type BankVerifiedFundedNote } from "./fundedNote";
@@ -13,7 +13,8 @@ import { encodeBankFundedSource, decodeBankFundedSource } from "./sourceCodec";
 import { packBankNoteBytes, unpackBankNoteBytes } from "./compression";
 import { receizBase64UrlEncode, receizBase64UrlDecode } from "../../../../packages/receiz-sdk/src/identity";
 import { receizeDocumentBytesClient } from "../../documentSeal/receizeDocumentBytesClient";
-import type { KairosNotePwaCustodyAdapter } from "../kairosNotePwaCustodyAdapter";
+import type { KairosNoteConsumeExactHeadInput } from "../kairosNotePwaCustodyAdapter";
+export type BankNoteRedemptionCustody = Readonly<{consumeExactHead(input: KairosNoteConsumeExactHeadInput): Promise<KairosNoteConsumptionProof>}>;
 type RedemptionBasis = Readonly<{
     noteId: string; noteArtifactSha256: string; receiverUserId: string; receiverKeyId: string;
     amountPhiMicro: string; amountUsdCents: string; acceptedAtKai: string; nonce: string;
@@ -39,7 +40,7 @@ type Options = Readonly<{
 const verified = new WeakMap<object, {
     intent: BankNoteRedemptionIntent;
     note: BankVerifiedFundedNote;
-    receipt: ReceizOfflineNoteWebAuthnConsumptionReceiptV1;
+    receipt: KairosNoteConsumptionProof;
     bytes: Uint8Array;
 }>();
 async function intentDigests(intent: BankNoteRedemptionIntent) {
@@ -74,20 +75,21 @@ async function admit(bytes: Uint8Array, options: Options) {
 /** Consume the held native note exactly once, then seal its terminal history.
  * The intent is retained by the caller BEFORE this function; retrying the exact
  * intent reuses the adapter's retained receipt after irreversible consumption. */
-export async function prepareBankNoteRedemption(note: BankVerifiedFundedNote, intent: BankNoteRedemptionIntent, custody: Pick<KairosNotePwaCustodyAdapter, "consumeExactHead">, options: Options = {}) {
+export async function prepareBankNoteRedemption(note: BankVerifiedFundedNote, intent: BankNoteRedemptionIntent, custody: BankNoteRedemptionCustody, options: Options = {}) {
     const head = readBankFundedNoteHead(note), packet = head.packet;
     if (packet.custodyMode !== "qualified-anonymous")
         throw Error("BANK_NOTE_QUALIFIED_CUSTODY_REQUIRED");
     const { destination, digest } = await intentDigests(intent);
     if ((intent.rail ?? "reserve") !== note.rail || !note.allocationId || intent.noteId !== note.noteId || intent.noteArtifactSha256 !== note.noteArtifactSha256 || intent.amountPhiMicro !== note.amountPhiMicro || intent.amountUsdCents !== note.amountUsdCents || BigInt(intent.acceptedAtKai) <= BigInt(packet.acceptedAtKai)
-        || intent.schema === "receiz.bank.note-local-credit.v1" && intent.receiverCashCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest)
+        || intent.schema === "receiz.bank.note-local-credit.v1" && (intent.receiverCashCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest
+            || packet.currentCustody.schema === "receiz.offline-note.android-receiving-custody.v1"))
         throw Error("BANK_NOTE_REDEMPTION_INVALID");
     // Bound and compress the exact incoming graph before irreversible custody.
     // Local v2 avoids repeated base64 expansion through credit generations.
     const localFundingWire = intent.schema === "receiz.bank.note-local-credit.v1"
         ? await packBankNoteBytes(new TextEncoder().encode(JSON.stringify(encodeBankFundedSource(readBankFundedNoteSource(note))))) : null;
     const receipt = await custody.consumeExactHead({ qualificationDigest: packet.currentCustody.qualificationDigest, currentCustodyCommitmentDigest: packet.currentCustody.receivingCustodyCommitmentDigest, noteId: note.noteId, predecessorArtifactSha256: head.artifactSha256, receiverCustodyCommitmentDigest: destination, wholeValuePhiMicro: note.amountPhiMicro, acceptedAtKai: intent.acceptedAtKai, successorBasisDigest: digest });
-    await verifyReceizOfflineNoteWebAuthnConsumptionReceipt(receipt);
+    await verifyKairosNoteConsumptionProof(receipt, { roots: options.roots });
     const admission = await admit(head.artifactBytes, options), document = await parseReceizPortableAssetDocument(admission.recoveredState), history = await verifyReceizProofHistory(admission.proofHistory!);
     const node = await createReceizProofHistoryNode({ artifactId: history.artifactId, registryDigest: history.registryDigest, parentDigests: [history.headDigests[0]!], kaiPulse: intent.acceptedAtKai, receipt: structuredClone(receipt) as unknown as ReceizConstitutionJson, event: { type: "lifecycle.terminal", terminal: "settled" }, namespaceData: { settlement: { schema: intent.schema, redemptionDigest: digest, receiverUserId: intent.receiverUserId, receiverKeyId: intent.receiverKeyId } } });
     const next = await issueReceizVerifiedArtifactTransitionHistory({ predecessor: history, appendNode: node, artifactDigest: head.artifactSha256, verifierContextDigest: history.verification.verificationDigest });
@@ -124,22 +126,23 @@ export async function verifyBankNoteRedemption(bytesInput: Uint8Array, options: 
     const admission = await admit(artifact, options), document = await parseReceizPortableAssetDocument(admission.recoveredState);
     const body = document.settlement.bankRedemption as unknown as {
         intent: BankNoteRedemptionIntent;
-        receipt: ReceizOfflineNoteWebAuthnConsumptionReceiptV1;
+        receipt: KairosNoteConsumptionProof;
         fundingArtifactSha256: string;
     };
     if (document.assetType !== "wallet_note" || !["bank_redeemed_reserve","bank_redeemed_settlement","bank_locally_credited_reserve","bank_locally_credited_settlement"].includes(String(document.settlement.state)) || !body || Object.keys(body).sort().join("|") !== "fundingArtifactSha256|intent|receipt")
         throw Error("BANK_NOTE_TERMINAL_PROOF_REQUIRED");
     const intent = body.intent, { destination, digest } = await intentDigests(intent), note = await verifyBankFundedNoteSource(decodeBankFundedSource(fundedSource), options), head = readBankFundedNoteHead(note), packet = head.packet;
-    const receipt = await verifyReceizOfflineNoteWebAuthnConsumptionReceipt(body.receipt);
+    const receipt = await verifyKairosNoteConsumptionProof(body.receipt, { roots: options.roots });
     if ((intent.rail ?? "reserve") !== note.rail || document.settlement.state !== terminalState(intent, note.rail) || body.fundingArtifactSha256 !== note.fundingArtifactSha256 || packet.custodyMode !== "qualified-anonymous" || !note.allocationId || intent.noteId !== note.noteId || intent.noteArtifactSha256 !== head.artifactSha256 || intent.amountPhiMicro !== note.amountPhiMicro || intent.amountUsdCents !== note.amountUsdCents || BigInt(intent.acceptedAtKai) <= BigInt(packet.acceptedAtKai)
-        || intent.schema === "receiz.bank.note-local-credit.v1" && intent.receiverCashCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest
-        || receipt.predecessorArtifactSha256 !== head.artifactSha256 || receipt.noteId !== note.noteId || receipt.wholeValuePhiMicro !== note.amountPhiMicro || receipt.currentCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest || receipt.activationReceipt.qualificationDigest !== packet.currentCustody.qualificationDigest || receipt.custodyPublicKeyRawB64u !== packet.currentCustody.custodyPublicKeyRawB64u || receipt.receiverCustodyCommitmentDigest !== destination || receipt.successorBasisDigest !== digest || receipt.acceptedAtKai !== intent.acceptedAtKai || document.payload.sha256 !== packet.proofArtifactId || document.ownership.ownerReceizId !== packet.currentHolderReceizId)
+        || intent.schema === "receiz.bank.note-local-credit.v1" && (intent.receiverCashCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest
+            || packet.currentCustody.schema === "receiz.offline-note.android-receiving-custody.v1")
+        || receipt.predecessorArtifactSha256 !== head.artifactSha256 || receipt.noteId !== note.noteId || receipt.wholeValuePhiMicro !== note.amountPhiMicro || receipt.currentCustodyCommitmentDigest !== packet.currentCustody.receivingCustodyCommitmentDigest || receipt.activationQualificationDigest !== packet.currentCustody.qualificationDigest || receipt.custodyPublicKeyRawB64u !== packet.currentCustody.custodyPublicKeyRawB64u || receipt.receiverCustodyCommitmentDigest !== destination || receipt.successorBasisDigest !== digest || receipt.acceptedAtKai !== intent.acceptedAtKai || document.payload.sha256 !== packet.proofArtifactId || document.ownership.ownerReceizId !== packet.currentHolderReceizId)
         throw Error("BANK_NOTE_REDEMPTION_BINDING_MISMATCH");
     const history = await verifyReceizProofHistory(admission.proofHistory!), current = history.nodes.find(n => n.nodeDigest === history.headDigests[0]);
-    if (history.headDigests.length !== 1 || !current || current.event.type !== "lifecycle.terminal" || current.event.terminal !== "settled" || current.parentDigests.length !== 1 || current.parentDigests[0] !== head.history.headDigests[0] || current.kaiPulse !== intent.acceptedAtKai || canonical(current.receipt) !== canonical(receipt) || head.history.nodes.some(n => !history.nodes.some(v => v.nodeDigest === n.nodeDigest)))
+    if (history.headDigests.length !== 1 || !current || current.event.type !== "lifecycle.terminal" || current.event.terminal !== "settled" || current.parentDigests.length !== 1 || current.parentDigests[0] !== head.history.headDigests[0] || current.kaiPulse !== intent.acceptedAtKai || canonical(current.receipt) !== canonical(body.receipt) || head.history.nodes.some(n => !history.nodes.some(v => v.nodeDigest === n.nodeDigest)))
         throw Error("BANK_NOTE_TERMINAL_HISTORY_REQUIRED");
     const result = Object.freeze({ rail: note.rail, noteId: note.noteId, allocationId: note.allocationId, redemptionDigest: digest, artifactSha256: admission.artifactSha256, receiverUserId: intent.receiverUserId, receiverKeyId: intent.receiverKeyId, amountPhiMicro: note.amountPhiMicro, amountUsdCents: note.amountUsdCents, consumptionReceiptDigest: receipt.receiptDigest });
-    verified.set(result, { intent: structuredClone(intent), note, receipt, bytes });
+    verified.set(result, { intent: structuredClone(intent), note, receipt: body.receipt, bytes });
     return result;
 }
 export type BankVerifiedNoteRedemption = Awaited<ReturnType<typeof verifyBankNoteRedemption>>;

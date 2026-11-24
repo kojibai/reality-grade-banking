@@ -16,10 +16,12 @@ import type { ReceizSignatureV4RootPublicKey } from "../../../packages/receiz-sd
 import { sha256Hex } from "../../utils/sha256";
 import { prepareKairosNoteQualifiedGenesisClient } from "./kairosNoteQualifiedGenesisClient";
 import { createKairosNotePortableCarrier } from "./kairosNotePortableCarrier";
+import type { createKairosNoteAndroidCustodyAdapter } from "./kairosNoteAndroidCustodyAdapter";
+import type { createKairosReserveAndroidCustodyAdapter } from "./kairosReserveAndroidCustodyAdapter";
+import type { BankNoteReserveReceipt } from "./bankNotes/fundedNote";
 import type { KairosNotePwaCustodyAdapter } from "./kairosNotePwaCustodyAdapter";
 import type {
   KairosReserveConsumeExactSuccessorInput,
-  KairosReserveConsumptionReceiptV1,
   KairosReservePwaCustodyAdapter,
 } from "./kairosReservePwaCustodyAdapter";
 import type { KairosVerifiedReceivingCustody } from "./kairosNoteCustodyVerification";
@@ -29,6 +31,13 @@ const PROOF_CUSTODY_SCHEMA = "receiz.offline-note.local-proof-custody.v1" as con
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type PreparedNote = Awaited<ReturnType<typeof prepareKairosNoteQualifiedGenesisClient>>;
+
+type NoteCustody = Pick<KairosNotePwaCustodyAdapter,
+  "qualifyInstallation" | "createReceivingCommitment" | "activateExactSuccessor">
+  | ReturnType<typeof createKairosNoteAndroidCustodyAdapter>;
+type ReserveCustody = Pick<KairosReservePwaCustodyAdapter,
+  "inspectBoundHead" | "consumeExactSuccessor" | "commitExactSuccessor">
+  | Awaited<ReturnType<typeof createKairosReserveAndroidCustodyAdapter>>;
 
 type IssuanceStage = Readonly<{
   schema: typeof STAGE_SCHEMA;
@@ -42,7 +51,7 @@ type IssuanceStage = Readonly<{
   receivingCustody: KairosVerifiedReceivingCustody;
   note: PreparedNote;
   reserveInput: KairosReserveConsumeExactSuccessorInput;
-  reserveReceipt: KairosReserveConsumptionReceiptV1 | null;
+  reserveReceipt: BankNoteReserveReceipt | null;
   activationReceiptDigest: string | null;
 }>;
 
@@ -111,8 +120,8 @@ export type KairosOfflineNoteIssuanceInput = Readonly<{
     mintClientNonce: string;
     memo?: string | null;
   }>;
-  noteCustody: KairosNotePwaCustodyAdapter;
-  reserveCustody: KairosReservePwaCustodyAdapter;
+  noteCustody: NoteCustody;
+  reserveCustody: ReserveCustody;
   stageStore: KairosOfflineNoteIssuanceStageStore;
   proofCustody: KairosOfflineNoteProofCustodyStore;
   admissionStore: ReceizAdmissionStore;
@@ -689,7 +698,7 @@ export async function verifyKairosOfflineNoteCommittedAccountSuccessor(input: Re
   successor: ReceizKeyFileV1;
   stageStore: KairosOfflineNoteIssuanceStageStore;
   proofCustody: KairosOfflineNoteProofCustodyStore;
-  reserveCustody: KairosReservePwaCustodyAdapter;
+  reserveCustody: ReserveCustody;
   admissionRootPublicKeys?: ReadonlyMap<string, ReceizSignatureV4RootPublicKey>;
 }>): Promise<void> {
   const stage = await input.stageStore.read(input.preparationId);
