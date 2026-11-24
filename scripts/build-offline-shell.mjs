@@ -1,3 +1,4 @@
+import {androidDownloadPath} from '../src/content/android-download.mjs';
 import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
 import {bookingGuidePage} from '../src/content/booking-guide.mjs';
 import {emailGuidePage} from '../src/content/email-guide.mjs';
@@ -111,7 +112,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   for (const path of Object.keys(navigation.pages)) {
     // Conformance remains an on-demand console, outside the bank installation
     // cache. Its retained online navigation does not add verifier work at boot.
-    if (path === '/conformance/') continue;
+    if (path === '/conformance/' || path === androidDownloadPath) continue;
     // Vote already owns its exact installed document and runtime above.
     if (path === '/vote/' && pages[path]) continue;
     const canonicalPath=canonicalPublicPath(path),cooperative=canonicalPath===bankingPage.path||canonicalPath==='/agent/'||[...portabilityPages,...economyPages,...cooperativePages,...togetherPages,...twinSalesPages].some(page=>page.path===canonicalPath);
@@ -151,6 +152,7 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
     const retained=pages[path];if(!retained)continue;pages[alias]=retained;pages[alias.slice(0,-1)]=retained;
   }
   for (const path of ['/index.html', ...Object.keys(navigation.pages)]) {
+    if (path === androidDownloadPath) continue;
     const html = await readFile(resolve(root, path.slice(1) + (path.endsWith('/') ? 'index.html' : '')), 'utf8');
     for (const match of html.matchAll(/(?:href|src)="(\/(?:learn\/)[^"<>]+)"/g)) {
       const url = new URL(match[1], 'https://bankeiz.com');

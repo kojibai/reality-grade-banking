@@ -1,3 +1,4 @@
+import {androidDownloadPath,androidReleaseManifestPath} from '../src/content/android-download.mjs';
 import {decodeNavigationEnvelope} from './navigation-envelope.mjs';
 import {publicRouteAliases} from '../src/content/public-routes.mjs';
 import assert from 'node:assert/strict';
@@ -33,6 +34,7 @@ assert.equal(manifest.pages['/ledger/'], '/ledger/index.html', 'Public Ledger li
 assert.ok(shell.includes('/explore/index.html'),'Public explorer has a retained physical read-only entry.');
 for(const path of ['/explore','/explore/','/explorer','/explorer/'])assert.equal(manifest.pages[path],'/explore/index.html','Explorer aliases reopen the same physical entry offline.');
 for(const path of ['explore','ledger','feed','discover']){assert.ok(shell.includes('/'+path+'/index.html'));assert.ok(!shell.includes('/'+path+'/'),'Mutable canonical public documents cannot be immutable installer resources.');}
+assert.ok(!shell.some(url=>url===androidReleaseManifestPath||/\.apk(?:\?|$)/i.test(url)),'The APK and its release manifest must stay outside the PWA install cache.');
 assert.ok(shell.includes('/learn/guide-directory.js'),'All guides search is part of the retained public runtime.');
 for(const [alias,path] of Object.entries(publicRouteAliases)){
  const retained=path==='/learn/reality-grade-banking/'?path:'/learn/';
@@ -50,6 +52,10 @@ for (const match of index.matchAll(/<link rel="apple-touch-startup-image" href="
 const navigation = decodeNavigationEnvelope(index.match(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/)[1]).navigation;
 for (const path of Object.keys(navigation.pages)) {
   if(path==='/conformance/') {assert.ok(!shell.includes(path),'The on-demand conformance console stays outside the bank install cache');continue;}
+  if(path===androidDownloadPath){
+    assert.ok(!manifest.pages[path]&&!manifest.pages[path.slice(0,-1)]&&!shell.includes(path),'The Android download page stays available on demand');
+    continue;
+  }
   assert.ok(manifest.pages[path]&&shell.includes(manifest.pages[path]), `Missing retained offline public route ${path}`);
 }
 console.log(`Verified complete offline build ${manifest.version}: ${shell.length} exact public resources, final public routes, lazy decoder and safe waiting updates.`);

@@ -19,6 +19,12 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'assets/pdf.worker.min-Abcdef56.mjs'),'lazy PDF worker');
     const pages = { ...Object.fromEntries(['economy','farmers','fuel','repairs','grocers','housing','workers'].map(name=>['/'+name+'/',{content:name}])), '/your-twin/':{content:'Your Twin'},'/action/':{content:'Both sides'},'/banking/':{content:'Banking'}, '/guide/':{content:'User guide'}, '/protect/':{content:'Protection'},'/vaults/':{content:'Vaults'},'/fit/':{content:'Fits'},'/coops/':{content:'Cooperatives'}, '/learn/protect-your-value/':{content:'Protection'},'/cooperatives/':{content:'Cooperatives'},'/cooperatives/producers/':{content:'Producers'}, '/business/for/':{content:'Fits'},'/business/for/agencies/':{content:'Agency'},'/business/':{content:'Business'}, '/learn/': { content: 'Learn' }, '/legal/': { content: 'Legal' },'/learn/notes/':{content:'Notes'},'/standards/':{content:'Standards'},'/market-cap/':{content:'Global Market Cap'},'/explore/music/':{content:'Music'} };
     Object.assign(pages,{'/registry/':{content:'Institution conformance directory'}});
+    Object.assign(pages,{'/android/':{content:'Bankeiz for Android'}});
+    await mkdir(join(dir,'android'));
+    await writeFile(join(dir,'android/index.html'),'<a href="/downloads/Bankeiz-8.0.0.apk" download>Download APK</a>');
+    await mkdir(join(dir,'downloads'));
+    await writeFile(join(dir,'downloads/Bankeiz-8.0.0.apk'),'synthetic APK');
+    await writeFile(join(dir,'downloads/android-release.json'),'synthetic manifest');
     await mkdir(join(dir,'registry'),{recursive:true});
     await writeFile(join(dir,'registry/index.html'),'Complete held institution directory');
     await mkdir(join(dir,'learn'),{recursive:true});
@@ -45,6 +51,9 @@ it('versions complete final pages and fixed-path native resources and includes l
     await writeFile(join(dir,'proof-verifier/v129/verifier.js.map.bin'),'public complete source');
     const renderBuildFile=join(dir,'render-build.json');await writeFile(renderBuildFile,JSON.stringify({schema:'bank.public-market.render-build.v1',sha256:'a'.repeat(64)}));
     const first = await buildOfflineShell(dir, { fixed: [native],renderBuildFile });
+    expect(first.pages).not.toHaveProperty('/android/');
+    expect(first.pages).not.toHaveProperty('/android');
+    expect(first.resources.some(resource=>resource.url.startsWith('/downloads/')||resource.url==='/android/')).toBe(false);
     expect(first.pages['/registry/']).toBe('/learn/');
     expect(first.pages['/institutions/scorecard/']).toBe('/learn/');
     expect(first.resources.some(resource=>resource.url==='/learn/institution-scorecard.js')).toBe(true);
