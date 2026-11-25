@@ -442,7 +442,7 @@ export type {BankNoteAccountReceivingRequest} from "./accountReceiving";
 
 // Shared native financial composition; preserve the existing Bank Note profile.
 export * from '../../../../packages/receiz-sdk/src/accountFinancialBrowser';
-export { exportReceizAccountFinancialRelease } from '../../../../packages/receiz-sdk/src/accountFinancialCommit';
+export { admitReceizAccountFinancialRelease, exportReceizAccountFinancialRelease } from '../../../../packages/receiz-sdk/src/accountFinancialCommit';
 
 /** Existing admitted custody and signed recipients, available to the Wallet UI. */
 export function bankFinancialWalletDevice(source: ReceizAccountFinancialSource) {

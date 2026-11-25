@@ -1,4 +1,4 @@
-import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage,WitnessedWalletPaymentApproval,WitnessedWalletPaymentRequest} from './local-financial-runtime';
+import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage,WitnessedWalletPaymentApproval,WitnessedWalletPaymentRequest,WitnessedWalletReleaseApproval} from './local-financial-runtime';
 import {loadReceiz} from './client';
 import {createOpticalNoteFrames} from './optical-note-frames';
 import type {WalletDebitWitness} from './wallet-debit-witness';
@@ -294,6 +294,31 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    const ownerApproval=await input.signOwner(review.ownerChallenge);
    open();
    return {request,ownerApproval};
+  },
+  async prepareWitnessedWalletRelease():Promise<WitnessedWalletReleaseApproval>{
+   open();
+   if(!designatedWitness||!executor.reviewWitnessedWalletRelease)throw Error('BANK_WALLET_WITNESS_PAIRING_REQUIRED');
+   const current=await executor.current(),head=current.headArtifactSha256;
+   if(!head)throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
+   const request={expectedPredecessorArtifactSha256:head,atKaiUPulse:kai()};
+   const {ownerChallenge}=await executor.reviewWitnessedWalletRelease(request);
+   open();
+   const ownerApproval=await input.signOwner(ownerChallenge);
+   open();
+   return {request,ownerApproval};
+  },
+  async verifyWitnessedWalletRelease(approval:WitnessedWalletReleaseApproval,bytes:Uint8Array){
+   open();
+   if(!designatedWitness||!runtime.admitReceizAccountFinancialRelease)throw Error('BANK_WALLET_WITNESS_PAIRING_REQUIRED');
+   const {state}=await executor.current(),sequence=BigInt(state.sequence);
+   const commits=await executor.pending('0',64);
+   if(sequence!==BigInt(commits.length))throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
+   const release=await runtime.admitReceizAccountFinancialRelease(bytes,{source,financialHead:commits.at(-1)?.operation??null});
+   if(release.financialHeadArtifactSha256!==approval.request.expectedPredecessorArtifactSha256||release.atKaiUPulse!==approval.request.atKaiUPulse)
+    throw Error('BANK_WALLET_WITNESS_PAYMENT_MISMATCH');
+   const originals=await releaseContinuity(state.sequence);
+   open();
+   return {release,...originals};
   },
   async acceptWitnessedWalletPayment(approval:WitnessedWalletPaymentApproval,proof:Uint8Array){
    open();

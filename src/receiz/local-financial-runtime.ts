@@ -54,11 +54,15 @@ export type WalletDevice = Readonly<{
  Readonly<{android:true;receivingCounterMode?:'device'}>
  |Readonly<{android?:false;rpId:string;credentialIdB64u:string}>
 );
-export type FinancialRelease=Readonly<{artifactSha256:string}>;
+export type FinancialRelease=Readonly<{artifactSha256:string;financialHeadArtifactSha256?:string;atKaiUPulse?:string}>;
 export type WalletPaymentStage=Readonly<{proofBytes:number}>;
 export type WitnessedWalletPaymentRequest = Readonly<{
  operationId:string; action:Extract<FinancialAction,{kind:'send'}>;
  expectedPredecessorArtifactSha256:string; atKaiUPulse:string;
+}>;
+export type WitnessedWalletReleaseRequest = Readonly<{expectedPredecessorArtifactSha256:string;atKaiUPulse:string}>;
+export type WitnessedWalletReleaseApproval = Readonly<{
+ request:WitnessedWalletReleaseRequest; ownerApproval:ReceizIdentityLoginProof;
 }>;
 export type WitnessedWalletPaymentApproval = Readonly<{
  request:WitnessedWalletPaymentRequest; ownerApproval:ReceizIdentityLoginProof;
@@ -68,6 +72,10 @@ export type FinancialExecutor=Readonly<{
  execute(input:{operationId:string;action:FinancialAction}):Promise<FinancialCommit|Readonly<{status:'not-committed';operationId:string}>>;
  recoverWalletProof?(proof:Uint8Array,designatedWitnessPublicKey?:string):Promise<number|null>;
  reviewWitnessedWalletPayment?(input:WitnessedWalletPaymentRequest):Promise<Readonly<{ownerChallenge:string}>>;
+ executeWitnessedWalletPayment?(input:WitnessedWalletPaymentRequest,approval:ReceizIdentityLoginProof):ReturnType<FinancialExecutor['execute']>;
+ reviewWitnessedWalletRelease?(input:WitnessedWalletReleaseRequest):Promise<Readonly<{ownerChallenge:string}>>;
+ executeWitnessedWalletRelease?(input:WitnessedWalletReleaseRequest,approval:ReceizIdentityLoginProof):Promise<FinancialRelease>;
+ resumeWitnessedWalletTransition?():Promise<FinancialCommit|FinancialRelease|Readonly<{status:'not-committed';operationId:string}>|null>;
  current():Promise<{sourceArtifactSha256:string;headArtifactSha256:string|null;state:FinancialState;release?:FinancialRelease}>;
  resolve(operationId:string):Promise<FinancialCommit|null>;
  pending(afterSequence?:string,limit?:number):Promise<FinancialCommit[]>;
@@ -84,6 +92,7 @@ export type LocalFinancialRuntime=Readonly<{
  receiveReceizAccountFinancialWalletProof(input:FinancialWalletProof&{accountUserId:string;ownerKeyId:string},options:{originals:FinancialOriginalStore;designatedWitnessPublicKey?:string}):Promise<FinancialSource>;
  exportReceizAccountFinancialWalletProof(source:FinancialSource,commit:FinancialCommit):Uint8Array;
  exportReceizAccountFinancialRelease(release:FinancialRelease):Uint8Array;
+ admitReceizAccountFinancialRelease?(bytes:Uint8Array,input:{source:FinancialSource;financialHead?:FinancialOperation|null}):Promise<FinancialRelease>;
  createReceizAccountFinancialExecutor(input:FinancialExecutorOptions):Promise<FinancialExecutor>;
  commitReceizAccountFinancialWalletPaymentBatch?(stages:readonly WalletPaymentStage[]):Promise<readonly FinancialCommit[]>;
  createReceizAccountFinancialPublisher(input:{source:FinancialSource;executor:FinancialExecutor;store:ReceizAdmissionStore;originals:FinancialOriginalStore;publish(batch:FinancialPublication):Promise<unknown>;batchSize?:number}):Promise<{flush():Promise<Readonly<{status:'published'|'pending'}>>;received(operationId:string):Promise<FinancialReceivedReceipt|null>;dispose():void}>;

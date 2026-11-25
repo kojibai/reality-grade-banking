@@ -16,13 +16,18 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','wallet-deferred-sends','wallet-nearby-receipts','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
+    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','wallet-deferred-sends','wallet-nearby-receipts','funded-wallet-witness','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='funded-wallet-witness'){
+        if(!Array.isArray(state?.lots)||state.lots.length||state.pending||state.funding)
+          throw Error('Keep this Identity Record while witnessed Wallet funds or an approval are held. Open Pay offline with a witness to finish the handoff or return the funds.');
+        continue;
+      }
       if(family==='wallet-deferred-sends'||family==='wallet-nearby-receipts'){
         // Replacing this record discards the key that opens its private Wallet journal.
         const resolved = Array.isArray(state) && state.length <= 1000 && state.every(entry =>
@@ -803,8 +808,8 @@ export const saveFundedWalletCounterJournal=(binding:{artifactSha256:string},cre
 export const loadWalletReceiveOffer=(binding:{artifactSha256:string},digest:string)=>loadNoteState(binding,'funded-wallet-offer:'+digest);
 export const saveWalletReceiveOffer=(binding:{artifactSha256:string},digest:string,state:unknown)=>
   saveNoteState(binding,'funded-wallet-offer:'+digest,state,null);
-export const loadWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding')=>loadNoteState(binding,`funded-wallet-${role}`);
-export const saveWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding',state:unknown,prior:unknown)=>saveNoteState(binding,`funded-wallet-${role}`,state,prior);
+export const loadWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding'|'witness')=>loadNoteState(binding,`funded-wallet-${role}`);
+export const saveWalletPairingState=(binding:{artifactSha256:string},role:'receiving'|'funding'|'witness',state:unknown,prior:unknown)=>saveNoteState(binding,`funded-wallet-${role}`,state,prior);
 
 /** Exact composer blocks use the same owner-encrypted byte servant. This
  * separate role grants no proof admission, Note custody or financial input. */

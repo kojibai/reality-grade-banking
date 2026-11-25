@@ -223,3 +223,24 @@ test('Send Nearby selects the funded Note and Receive Nearby can forward the sam
     await act(async()=>root.unmount());host.remove();
   }
 });
+
+test('signed-in Receive opens the witness pairing camera while offline', async () => {
+  const { LiveReceive } = await import('../src/features/account/LivePayments');
+  const host=document.createElement('div'),root=createRoot(host);
+  document.body.append(host);
+  const identity={
+    username:'receiver',binding:{artifactSha256:'a'.repeat(64)},
+    witnessedWallet:async()=>({summary:async()=>({paired:false,availableUsdCents:'0',lots:[],pending:null})}),
+  } as unknown as OpenIdentity;
+  try {
+    await act(async()=>root.render(<LiveReceive identity={identity} onRefresh={()=>{}}/>));
+    await click(host,'Pay offline with a witness');
+    await vi.waitFor(()=>expect(host.textContent).toContain('Pair with a witness'));
+    await click(host,'Pair with a witness');
+    expect(scanner.read).toBeTypeOf('function');
+    expect(host.textContent).toContain('Scan the witness’s pairing QR');
+  } finally {
+    await act(async()=>root.unmount());
+    host.remove();
+  }
+});

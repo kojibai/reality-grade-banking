@@ -2641,6 +2641,13 @@
       "purpose": "Compose the Receiz witness-backed payment protocol in the Bankeiz browser runtime.",
       "sourceCommit": "59fb6a34bcfd009ee893a9333b15f608d323d5f4",
       "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialBrowser.ts"
+    },
+    {
+      "id": "bankeiz-witnessed-release-verifier",
+      "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
+      "baseSha256": "ffb4fabef7a3548733f6a7354020f97aa8b32dd4cc351aafc737a3868305271e",
+      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e",
+      "purpose": "Expose the existing exact Wallet release admission in the Bankeiz browser runtime."
     }
   ],
   "browserDefines": {
