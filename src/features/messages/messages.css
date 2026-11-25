@@ -179,6 +179,11 @@
 
 .bank-twin-context-used{font-size:10px;line-height:1.5;color:var(--bank-text-muted,#8793a3);margin-top:12px}
 
+@media(max-width:386px){
+  .bank-messages-host .bank-messaging-nav:has(.bank-compose-new){gap:0 8px;padding-inline:12px;flex-wrap:wrap}
+  .bank-messages-host .bank-messaging-nav:has(.bank-compose-new) .bank-organizer-tools{gap:8px}
+}
+
 @media(max-width:360px){.bank-messages-host .sheet{width:calc(100% - 18px)}
 .bank-twin-welcome{padding:32px 21px 20px}
 .bank-twin-welcome h3{font-size:27px}
