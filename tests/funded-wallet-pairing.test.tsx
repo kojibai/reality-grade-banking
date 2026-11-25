@@ -9,21 +9,24 @@ import { createReceizIdIdentity, signReceizIdentityLoginProof } from '@receiz/sd
 import { createDeferredWalletSend } from '../src/receiz/wallet-send-deferred';
 import { createNearbyWalletReceive } from '../src/receiz/wallet-nearby-receive';
 import { signNearbyWalletPayment } from '../src/receiz/wallet-nearby-consent';
-import type { OpticalFrames } from '../src/features/account/WalletPaymentCode';
+import type { NearbyPaymentCode } from '../src/features/account/WalletPaymentCode';
 import { createOpticalNoteFrames } from '../src/receiz/optical-note-frames';
 
 const scanner = vi.hoisted(() => ({
   read: undefined as undefined | ((bytes:Uint8Array)=>Promise<boolean>),
-  shown: undefined as OpticalFrames | undefined,
+  shown: undefined as NearbyPaymentCode | undefined,
 }));
 vi.mock('../src/features/account/PaymentScanner',()=>({PaymentScanner({onBytes}:{onBytes:(bytes:Uint8Array)=>Promise<boolean>}){
   scanner.read=onBytes;
   return <p>QR scanner</p>;
 }}));
-vi.mock('../src/features/account/WalletPaymentCode',()=>({WalletPaymentCode:({label,frames}:{label:string;frames:OpticalFrames})=>{
-  scanner.shown=frames;
-  return <output>{label}</output>;
-}}));
+vi.mock(import('../src/features/account/WalletPaymentCode'),async importOriginal=>({
+  ...await importOriginal(),
+  WalletPaymentCode:({label,frames})=>{
+    scanner.shown=frames;
+    return <output>{label}</output>;
+  },
+}));
 
 const offer:WalletPairOffer={schema:'bankeiz.wallet.offer.v1',applicationId:'rc_wallet',sourceArtifactSha256:'a'.repeat(64),
   allocationId:'b'.repeat(64),conversationId:'66666666-6666-4666-8666-666666666666',amountUsdCents:'100',recipient:'second.receiz.id'};
@@ -164,10 +167,11 @@ test('two unqualified Wallets use regular review, one payment QR and a quiet con
     await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
     await click(host,'Send payment');
     await vi.waitFor(()=>expect(host.textContent).toContain('Wallet payment QR'));
-    const payment=scanner.shown!;
-    expect(payment.count).toBe(1);
+    const payment=scanner.shown;
+    if(typeof payment!=='string')throw Error('Expected one Bankeiz payment link QR');
+    expect(payment).toMatch(/^https:\/\/bankeiz\.com\/#account\/receive\/payment\//u);
     await act(async()=>root.render(<FundedWalletReceive offline identity={merchant} onRefresh={()=>{}}/>));
-    await act(async()=>{expect(await scanner.read!(payment.frame(0))).toBe(true);});
+    await act(async()=>{expect(await scanner.read!(new TextEncoder().encode(payment))).toBe(true);});
     await vi.waitFor(()=>expect(host.textContent).toContain('Connect to confirm'));
     expect(host.textContent).toContain('$1.00');
     expect(host.querySelector('[role=alert]')).toBeNull();
