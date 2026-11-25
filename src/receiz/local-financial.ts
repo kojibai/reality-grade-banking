@@ -1,6 +1,7 @@
 import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage} from './local-financial-runtime';
 import {loadReceiz} from './client';
 import {createOpticalNoteFrames} from './optical-note-frames';
+import type {WalletDebitWitness} from './wallet-debit-witness';
 export type {LocalFinancialRuntime} from './local-financial-runtime';
 type FinancialRuntime=LocalFinancialRuntime;
 type ExecutorOptions=FinancialExecutorOptions;
@@ -20,6 +21,7 @@ export type LocalFinancialSessionOptions=Readonly<{
  publishOwnerRelease?(input:Readonly<{allocationId:string;original:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
  publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
  publishSentWalletProof?(proof:Uint8Array):Promise<unknown>;
+ walletDebitWitness?:WalletDebitWitness;
  publishPeerPayment?(input:Readonly<{walletProof:Uint8Array;receivingAllocationId:string}>):Promise<unknown>;
  assertOpen():void;online():boolean;deferPublication?:boolean;
  /** Optional host lifecycle in place of the browser's connection events. */
@@ -97,6 +99,19 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   });
  }
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,assertAndroidWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
+ const witness=protectedWallet&&executor.recoverWalletProof?input.walletDebitWitness:undefined;
+ if(witness){
+  try{
+   const held=witness.read(source.allocationId);
+   if(held&&BigInt(held.sequence)>BigInt((await executor.current()).state.sequence)){
+    const proof=await input.originals.read(held.proofRef);
+    input.assertOpen();
+    if(proof&&await (await loadReceiz()).sha256ReceizBytes(proof)===held.proofRef)
+     await executor.recoverWalletProof!(proof);
+   }
+  }catch{/* Existing protected custody and proof QR recovery remain available. */}
+ }
+ input.assertOpen();
  const publisher=incoming&&!publishExactPayments?null:await runtime.createReceizAccountFinancialPublisher({
   source,executor,store,originals:input.originals,...(protectedWallet?{batchSize:1}:{}),
   async publish(batch){
@@ -225,6 +240,26 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   nudge();
  }
  if(!input.deferPublication)startPublication();
+ async function walletPaymentBytes(operationId:string){
+  open();
+  const commit=await executor.resolve(operationId);
+  open();
+  if(!commit)return null;
+  const proof=runtime.exportReceizAccountFinancialWalletProof(source,commit);
+  if(witness&&commit.operation.action.kind==='send'&&commit.operation.action.nearby){
+   try{
+    const sequence=commit.operation.sequence,held=witness.read(source.allocationId);
+    if(!held||BigInt(held.sequence)<BigInt(sequence)){
+     const proofRef=await (await loadReceiz()).sha256ReceizBytes(proof);
+     await input.originals.retain(proofRef,proof);
+     open();
+     witness.record(source.allocationId,{sequence,proofRef});
+    }
+   }catch{/* The qualified commit remains available even when a second recovery copy cannot be saved. */}
+  }
+  open();
+  return proof;
+ }
  return Object.freeze({
   async preview(action:FinancialAction){
    open();const current=await executor.current(),at=kai();open();
@@ -271,13 +306,10 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    return runtime.commitReceizAccountFinancialWalletPaymentBatch(stages);
   },
   refreshPublication(){open();nudge();},
-  async walletPaymentBytes(operationId:string){
-   open();const commit=await executor.resolve(operationId);open();
-   return commit?runtime.exportReceizAccountFinancialWalletProof(source,commit):null;
-  },
+  walletPaymentBytes,
   async walletQr(operationId:string){
-   open();const commit=await executor.resolve(operationId);open();
-   return commit?createOpticalNoteFrames('wallet',runtime.exportReceizAccountFinancialWalletProof(source,commit)):null;
+   const proof=await walletPaymentBytes(operationId);
+   return proof?createOpticalNoteFrames('wallet',proof):null;
   },
   async releaseOriginal(){
    open();const release=await executor.release();open();

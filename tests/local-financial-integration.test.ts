@@ -1,6 +1,7 @@
 import {beforeAll,expect,it,vi} from 'vitest';
 import {IDBFactory} from 'fake-indexeddb';
 import {createLocalFinancialSession} from '../src/receiz/local-financial';
+import {createWalletDebitWitness} from '../src/receiz/wallet-debit-witness';
 import type {FinancialPublication} from '../src/receiz/local-financial-runtime';
 import {createLocalFinancialFixtureFactory} from './helpers/local-financial-fixture';
 
@@ -197,4 +198,61 @@ it('keeps a locally sealed Send pending when delivery lacks its genuine received
  const f=await localFinancialFixture({receivedProof:true}),publish=f.options.publish,session=await createLocalFinancialSession({...f.options,publish:async batch=>({...await publish(batch) as object,schema:'receiz.account-financial-publication-ack.v2',received:[{operationId:batch.originals[0].operationId,receiptOriginalB64u:'AA'}]})});
  const id='f6666666-6666-4666-8666-666666666666',sent=await session.execute({operationId:id,action:{kind:'send',recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100'}});
  expect(sent.status).toBe('committed');f.connect();expect((await session.flush()).status).toBe('pending');expect(await session.received(id)).toBeNull();expect(await session.resolve(id)).toEqual(sent);session.dispose();
+});
+
+it('reopens a locally witnessed nearby debit after the Wallet journal is restored',async()=>{
+ const f=await localFinancialFixture();
+ const held=new Map<string,string>();
+ const witness=createWalletDebitWitness('a'.repeat(64),()=>({
+  getItem:key=>held.get(key)??null,
+  setItem:(key,value)=>{held.set(key,value);},
+ }));
+ const source={...(await f.runtime.admitReceizAccountFinancialSource(f.options.sourceBytes)),sourceFamily:'native-wallet-reserve'};
+ const operationId='12345678-1234-4234-8234-123456789abc';
+ const action={kind:'send' as const,recipientUserId:'33333333-3333-4333-8333-333333333333',conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'200',nearby:true as const};
+ const walletAfter={availableUsdCents:'800',settledUsdCents:'800',balancePhiMicro:'800'};
+ const operation={operationId,sequence:'1',artifactSha256:'b'.repeat(64),action,nextState:{wallet:walletAfter}};
+ const commit={status:'committed',publication:'pending',operation};
+ const proof=new Uint8Array([2,4,6,8]);
+ let sequence='0';
+ const recovered=vi.fn(async(bytes:Uint8Array)=>{
+  expect(bytes).toEqual(proof);
+  sequence='1';
+  return 1;
+ });
+ const execute=vi.fn(async()=>{
+  sequence='1';
+  return commit;
+ });
+ const network=vi.fn(async()=>{throw Error('NETWORK_DISABLED');});
+ const load=async()=>createLocalFinancialSession({
+  ...f.options,
+  walletDebitWitness:witness,
+  publish:network,
+  runtime:{
+   ...f.runtime,
+   admitReceizAccountFinancialSource:async()=>source,
+   financialSourceApplicationId:()=>f.options.applicationId,
+   createReceizAccountFinancialExecutor:async()=>({
+    current:async()=>({state:{sequence,wallet:sequence==='0'?{...walletAfter,availableUsdCents:'1000'}:walletAfter}}),
+    execute,resolve:async()=>sequence==='1'?commit:null,recoverWalletProof:recovered,
+   }),
+   createReceizAccountFinancialPublisher:async()=>({dispose(){}}),
+   exportReceizAccountFinancialWalletProof:()=>proof.slice(),
+  } as unknown as typeof f.runtime,
+ } as Parameters<typeof createLocalFinancialSession>[0]);
+ const original=await load();
+ await original.execute({operationId,action});
+ expect(await original.walletPaymentBytes(operationId)).toEqual(proof);
+ expect(witness.read(source.allocationId)?.sequence).toBe('1');
+ original.dispose();
+ sequence='0';
+ const restored=await load();
+ try{
+  expect((await restored.current()).state.wallet.availableUsdCents).toBe('800');
+  expect(await restored.resolve(operationId)).toEqual(commit);
+  expect(recovered).toHaveBeenCalledOnce();
+  expect(execute).toHaveBeenCalledOnce();
+  expect(network).not.toHaveBeenCalled();
+ }finally{restored.dispose();}
 });

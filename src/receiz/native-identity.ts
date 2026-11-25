@@ -1,4 +1,5 @@
 import {bankAndroidWalletHardware,bankAndroidWalletHardwareForSetup} from './android-wallet-hardware';
+import {createWalletDebitWitness} from './wallet-debit-witness';
 import {createHeldLedgerOriginalReader} from './held-ledger-original';
 import {waitForAssetPublicationDelivery,projectAssetPublicationReceipt} from './asset-publication';
 import {keepsWalletCashComposition} from './wallet-cash-basis';
@@ -2380,6 +2381,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       read:()=>storage.loadFundedWalletState(binding),save:(next,prior)=>storage.saveFundedWalletState(binding,next,prior),
       lock:async<T>(work:()=>Promise<T>)=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`bankeiz-funded-wallet:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await work());},
       signOwner,prepareOffline,setupReceiving,hasCashCustody,
+      walletDebitWitness:createWalletDebitWitness(binding.keyId,()=>{
+        try{return typeof window==='undefined'?undefined:window.localStorage;}
+        catch{return undefined;}
+      }),
       async approveRemainder(value){
         const deferred=await deferredWalletSend();
         const review=await deferred.prepare(value,value.recipientLabel,true,value.split);

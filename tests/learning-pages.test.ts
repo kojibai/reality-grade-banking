@@ -24,7 +24,9 @@ it('explains connected creation and offline receipt without implying device qual
  const notes=learningPages.find(page=>page.slug==='notes')!;
  const copy=notes.sections.flat().join(' ');
  expect(copy).toContain('does not require a custody conformance Face ID prompt');
- expect(copy).toContain('reconciles on connection');
+ expect(copy).toContain('verified, received and passed on while everyone stays offline');
+ expect(copy).toContain('only the final holder needs to connect');
+ expect(copy).toContain('Until the deposit is confirmed, its value appears in Received Notes.');
  expect(copy).toContain('conforming protected');
  expect(copy).toContain('Settlement Note');
  expect(copy).toContain('exact Reserve and Settlement funding composition');
