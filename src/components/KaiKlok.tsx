@@ -15,8 +15,16 @@ const number = new Intl.NumberFormat('en-US');
 const localTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'long' });
 
 function momentStyle(moment: KaiKlokMoment): CSSProperties {
-  const tones = bankKaiMomentTones(moment, 'light');
-  return { '--kai-phase': tones.phase, '--kai-day': tones.day, '--kai-month': tones.month } as CSSProperties;
+  const light = bankKaiMomentTones(moment, 'light');
+  const dark = bankKaiMomentTones(moment, 'dark');
+  return {
+    '--kai-phase': light.phase,
+    '--kai-day': light.day,
+    '--kai-month': light.month,
+    '--kai-phase-dark': dark.phase,
+    '--kai-day-dark': dark.day,
+    '--kai-month-dark': dark.month,
+  } as CSSProperties;
 }
 
 function KaiDate({ moment }: { moment: KaiKlokMoment }) {

@@ -81,12 +81,18 @@
  --bg: var(--bank-surface-raised);
 }
 :root[data-bank-appearance="dark"] .kai-header-coordinate>strong {
- color: var(--bank-positive);
+ color: var(--kai-phase-dark);
 }
 :root[data-bank-appearance="dark"] .kai-header-button .kai-date-day {
- color: var(--bank-purple);
+ color: var(--kai-day-dark);
 }
-:root[data-bank-appearance="dark"] :is(.kai-header-button .kai-date-month,.kai-header-meta) {
+:root[data-bank-appearance="dark"] .kai-header-button .kai-date-month {
+ color: var(--kai-month-dark);
+}
+:root[data-bank-appearance="dark"] .kai-header-accent {
+ border-color: var(--kai-phase-dark);
+}
+:root[data-bank-appearance="dark"] .kai-header-meta {
  color: var(--bank-text-muted);
 }
 :root[data-bank-appearance="dark"] :is(.native-operation-review,.payment-tools,.identity-profile,.ledger-inspector) code {
