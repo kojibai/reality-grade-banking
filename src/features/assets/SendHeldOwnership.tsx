@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState, useSyncExternalStore } from 'react';
 import { ChevronRight, Layers, Search } from 'lucide-react';
+import { InlineOpening } from '../../components/InlineOpening';
 import { AmountInput } from '../../components/AmountInput';
 import { formatUnits } from '../../core/money';
 import { nativeAssetSupplyMicro } from '../../receiz/native-asset-protocol';
 import type { OpenIdentity } from '../../receiz/native-identity';
+import type { MarketPosition } from '../../receiz/market-portfolio';
+import { readOpenPortfolio, subscribeOpenPortfolio } from '../../receiz/market-portfolio-presentation';
 import type { HeldDeposit } from '../../receiz/deposit-source';
 import { NativeOperation } from '../account/NativeOperation';
 import { useHeldAssetSources } from './useHeldAssetSources';
@@ -20,6 +23,7 @@ function isSendableHolding(source: HeldDeposit): source is SendableHolding {
 }
 
 const pageSize = 24;
+const MarketShareVault = lazy(() => import('../vault/LegacyVaultExperience').then(module => ({ default: module.VaultExperience })));
 
 export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
   identity: OpenIdentity;
@@ -27,11 +31,18 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
   onRefresh(): void;
 }) {
   const { sources, busy, error } = useHeldAssetSources(identity);
+  const openPortfolio = useSyncExternalStore(subscribeOpenPortfolio, readOpenPortfolio, () => null);
+  const portfolio = openPortfolio && openPortfolio.owner === identity.binding?.artifactSha256 ? openPortfolio.portfolio : identity.knownMarketPortfolio?.();
+  const [marketShare, setMarketShare] = useState<MarketPosition | null>(null);
   const [selectedId, setSelectedId] = useState(initialDigest), [search, setSearch] = useState('');
   const [limit, setLimit] = useState(pageSize), [quantity, setQuantity] = useState('1');
   const [recipient, setRecipient] = useState('');
   const positions = sources.filter(isSendableHolding);
   const selected = positions.find(source => source.nativeAsset.assetId === selectedId || source.digest === selectedId);
+
+  if (marketShare) return <Suspense fallback={<InlineOpening label="Opening your vaults" />}>
+    <MarketShareVault identity={identity} allowCreate={false} initialInvestment={marketShare} onClose={() => setMarketShare(null)} onRefresh={onRefresh}/>
+  </Suspense>;
 
   if (selected) {
     const { nativeAsset, executionDigest, title } = selected;
@@ -70,9 +81,14 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
   const matching = positions.filter(source => [source.title, source.nativeAsset.symbol, source.nativeAsset.assetId]
     .some(value => value.toLowerCase().includes(query)));
 
+  const marketPositions = identity.vaults ? portfolio?.positions ?? [] : [];
+  const matchingMarket = marketPositions.filter(position => [position.title, position.marketItemId]
+    .some(value => value.toLowerCase().includes(query)));
+  const available = positions.length + marketPositions.length;
+
   return <section>
     <h1 className="sheet-hero">Send ownership.</h1>
-    {positions.length > 0 && <>
+    {available > 0 && <>
       <label className="search-field ownership-send-search"><Search size={17} aria-hidden="true" /><input
         type="search" aria-label="Search holdings" placeholder="Search holdings" value={search}
         onChange={event => { setSearch(event.target.value); setLimit(pageSize); }} /></label>
@@ -86,10 +102,16 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
           <span className="row-copy"><strong>{source.title}</strong><span>{formatUnits(quantityMicro)} {symbol} available</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>;
-      })}</div>
-      {!matching.length && <p role="status" className="body-copy">No holdings match your search.</p>}
-      {matching.length > limit && <button type="button" className="text-button" onClick={() => setLimit(value => value + pageSize)}>Show more holdings</button>}
+      })}{matchingMarket.slice(0, Math.max(0, limit - matching.length)).map(position => (
+        <button key={position.id} type="button" className="asset-row" onClick={() => setMarketShare(position)}>
+          <span className="asset-mark"><Layers size={20} aria-hidden="true" /></span>
+          <span className="row-copy"><strong>{position.title}</strong><span>{formatUnits(position.shareQuantityMicro)} Market shares</span></span>
+          <ChevronRight size={17} aria-hidden="true" />
+        </button>
+      ))}</div>
+      {!matching.length && !matchingMarket.length && <p role="status" className="body-copy">No holdings match your search.</p>}
+      {matching.length + matchingMarket.length > limit && <button type="button" className="text-button" onClick={() => setLimit(value => value + pageSize)}>Show more holdings</button>}
     </>}
-    {!positions.length && <p role="status" className="body-copy">{busy ? 'Opening your holdings…' : error || 'You have no asset units available to send.'}</p>}
+    {!available && <p role="status" className="body-copy">{busy ? 'Opening your holdings…' : error || 'You have no asset units available to send.'}</p>}
   </section>;
 }

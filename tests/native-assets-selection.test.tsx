@@ -67,3 +67,23 @@ it('opens Send ownership from held native positions while the shared read is pen
   expect(listDeposits).toHaveBeenCalledOnce();
  }finally{await act(async()=>root.unmount());}
 });
+
+it('opens the existing Vault handoff for a known Market share without refreshing the portfolio',async()=>{
+ const position={id:'market-position',marketItemId:'asset:market-original',title:'Market Original',shareQuantityMicro:'1500000'};
+ const marketPortfolio=vi.fn();
+ const list=vi.fn(async()=>[]);
+ const identity={
+  binding:{artifactSha256:'d'.repeat(64)},listDeposits:async()=>[],
+  knownMarketPortfolio:()=>({positions:[position]}),marketPortfolio,vaults:async()=>({list}),
+ } as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveOwnership identity={identity} onRefresh={()=>{}}/>));
+  const selected=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Market Original'))!;
+  expect(selected.textContent).toContain('1.5 Market shares');
+  await act(async()=>{selected.click();await vi.dynamicImportSettled();});
+  expect(host.textContent).toContain('Open a vault to send these shares');
+  expect(list).toHaveBeenCalledOnce();
+  expect(marketPortfolio).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());}
+});

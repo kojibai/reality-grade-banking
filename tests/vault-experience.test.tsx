@@ -80,3 +80,35 @@ it.each([false,true])('uses admitted financial pending=%s independently of unres
 });
 
 it('lands directly at Create under StrictMode, without creating before Continue, and suspends the nested modal',async()=>{const create=vi.fn(),identity={vaults:async()=>({list:async()=>[],create})} as unknown as OpenIdentity;host=document.createElement('div');document.body.append(host);root=createRoot(host);const render=(active:boolean)=>root!.render(<StrictMode><VaultExperience identity={identity} initialMode="create" active={active} onClose={vi.fn()}/></StrictMode>);await act(async()=>render(true));expect(host.textContent).toContain('Create your vault');expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);expect(create).not.toHaveBeenCalled();await act(async()=>render(false));expect(host.querySelector('dialog')?.open).toBe(false);await act(async()=>render(true));expect(host.querySelector('dialog')?.open).toBe(true);expect(host.textContent).toContain('Create your vault');await click('Back');expect(host.textContent).toContain('Create a vault');expect(create).not.toHaveBeenCalled();});
+
+it('continues a Market handoff into the exact admitted Vault lot before reviewing the recipient send',async()=>{
+ const marketItemId='asset:market-original',positionId='20000000-0000-4000-8000-000000000001';
+ const lotId='d'.repeat(64),head='e'.repeat(64),recipient='recipient.receiz.id';
+ const holding=(id:string,title:string,sourceHead:string):VaultSnapshot['investments'][number]=>({
+  lotId:id,title,sourceHead,marketItemId,positionId:view.id,quantityMicro:'1000000',assetId:null,
+  costBasisUsdCents:'100',costBasisPhiMicro:'1000000',atKaiUPulse:'100000000',operationPending:false,recorded:true,
+  publicWitness:{sha256:'b'.repeat(64),exactBytesB64u:'e30'},
+ });
+ const adopted:VaultSnapshot={...view,investments:[holding('f'.repeat(64),'Different lot','a'.repeat(64)),holding(lotId,'Market Original',head)]};
+ let current=view;
+ const moveInvestment=vi.fn(async(intent:{kind:string})=>{
+  if(intent.kind==='deposit'){current=adopted;return{status:'committed',lotId};}
+  return{status:'committed'};
+ });
+ const session={snapshot:async()=>current,lock:vi.fn(),moveInvestment};
+ const identity={vaults:async()=>({list:async()=>[{id:view.id,name:view.name}],open:async()=>session})} as unknown as OpenIdentity;
+ host=document.createElement('div');document.body.append(host);root=createRoot(host);
+ const initialInvestment={id:positionId,marketItemId,title:'Market Original',shareQuantityMicro:'1000000'};
+ await act(async()=>root!.render(<VaultExperience identity={identity} allowCreate={false} initialInvestment={initialInvestment} onClose={vi.fn()}/>));
+ expect(host.textContent).toContain('Open a vault to send these shares');
+ await click('My reserveLocked · Open to view');
+ expect(host.textContent).toContain('Market Original');
+ await click('Review transfer');
+ expect(moveInvestment.mock.calls[0][0]).toMatchObject({kind:'deposit',positionId,marketItemId,quantityMicro:'1000000'});
+ const input=[...host.querySelectorAll('label')].find(label=>label.textContent==='Recipient Receiz ID')?.querySelector('input');
+ expect(input).toBeDefined();
+ await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,recipient);input!.dispatchEvent(new Event('input',{bubbles:true}));});
+ await click('Review');
+ expect(moveInvestment.mock.calls[1][0]).toMatchObject({kind:'send',positionId:view.id,marketItemId,sourceHead:head,quantityMicro:'1000000',recipientAccountId:recipient});
+ expect(host.textContent).toContain('Your holding has moved with its proof.');
+});
