@@ -1,4 +1,5 @@
 import {InlineOpening} from '../../components/InlineOpening';
+import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
 import {useEffect,useRef,useState} from 'react';
 import {ArrowRight,Check,ShieldCheck,Upload} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
@@ -13,10 +14,19 @@ function receiveError(cause:unknown){
  return 'The original could not be received yet. Keep this file and device; any saved receiving request remains available below.';
 }
 export function ReceivedOriginal({identity,onRefresh,onClose,onCreateAsset}:{identity:OpenIdentity;onRefresh:()=>void;onClose:()=>void;onCreateAsset?:()=>void}){
+ const owner=identity.binding?.artifactOwnerReceizId,keyId=identity.binding?.keyId;
+ const address=typeof owner==='string'&&/^receiz_[a-z0-9]{18}\.receiz\.id$/.test(owner)&&typeof keyId==='string'&&/^[a-f0-9]{64}$/.test(keyId)?`${owner}#${keyId}`:'';
+ const addressCopy=useCopyFeedback(address);
+ const [addressVisible,setAddressVisible]=useState(false);
+ async function copyAddress(){
+  const ticket=generation.current;
+  try{await navigator.clipboard.writeText(address);if(ticket===generation.current)addressCopy.confirm();}
+  catch{if(ticket===generation.current)setAddressVisible(true);}
+ }
  const [api,setApi]=useState<ReceivedProof|null>(null),[review,setReview]=useState<ReceivedProofReview|null>(null),[status,setStatus]=useState<ReceivedProofStatus|null>(null);
  const [approved,setApproved]=useState(false),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const generation=useRef(0),running=useRef(false);
- useEffect(()=>{const ticket=++generation.current;running.current=false;setBusy(false);setLoading(true);setApi(null);setReview(null);setStatus(null);setError('');setApproved(false);
+ useEffect(()=>{const ticket=++generation.current;running.current=false;setBusy(false);setAddressVisible(false);setLoading(true);setApi(null);setReview(null);setStatus(null);setError('');setApproved(false);
   void identity.receivedProof!().then(async value=>{const saved=await value.status();if(ticket===generation.current){setApi(value);setStatus(saved?.status==='held'?null:saved);}}).catch(()=>{if(ticket===generation.current)setError('Saved receiving details could not be opened. Keep this device and retry.');}).finally(()=>{if(ticket===generation.current)setLoading(false);});
   return()=>{generation.current++;};
  },[identity]);
@@ -31,6 +41,8 @@ export function ReceivedOriginal({identity,onRefresh,onClose,onCreateAsset}:{ide
  return <section className="received-original">
   {held?<><div className="status-icon success"><Check size={34}/></div><h1 className="sheet-hero">Your original is held.</h1><p className="body-copy">The complete proof and its verified ownership are saved privately on this device.</p><div className="detail-list"><div><span>Original</span><strong>{status.filename}</strong></div><div><span>Status</span><strong>Original proof held</strong></div></div><button className="primary-button" disabled={busy} onClick={()=>void save()}>Save original proof</button><button className="secondary-button" onClick={onClose}>Done</button></>:
   <><header className="deposit-step-intro"><img src="/art/proof-assets-384.webp" width="1024" height="896" alt="" decoding="async"/><h1 className="sheet-hero">Deposit an asset.</h1><p className="body-copy">Upload its original proof object to verify its source and ownership.</p></header>
+  {address&&!pending&&!review&&<><button type="button" className="secondary-button" onClick={()=>void copyAddress()}><CopyFeedbackIcon copied={addressCopy.copied}/>{addressCopy.copied?'Receiving address copied':'Copy Original receiving address'}</button>
+  {addressVisible&&<label className="form-field"><span>Original receiving address</span><input readOnly value={address} onFocus={event=>event.currentTarget.select()}/></label>}</>}
   {loading&&<p className="body-copy" role="status"><InlineOpening label="Preparing saved receiving details"/></p>}
   {!loading&&!pending&&<label className="file-drop"><Upload size={30}/><strong>{busy?'Verifying original proof…':'Upload proof object'}</strong><span>Original PNG, PDF, SVG, JSON or supported file</span><input disabled={!api||busy} type="file" aria-label="Choose original proof object" onChange={event=>{void inspect(event.target.files?.[0]);event.target.value='';}}/></label>}
   {!loading&&!pending&&!review&&onCreateAsset&&<p className="deposit-create-route">Don’t have a proof object? <button type="button" aria-label="Create an asset instead" onClick={onCreateAsset}>Create an asset<ArrowRight size={13}/></button></p>}

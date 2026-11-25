@@ -39,3 +39,17 @@ it('a stale identity operation cannot leave the new ID busy or unlock its newer 
  await act(async()=>finishNew(review));expect(f.host.querySelector<HTMLInputElement>('input[type=file]')!.disabled).toBe(false);expect(nextApi.receive).not.toHaveBeenCalled();
  }finally{f.close();}
 });
+
+it('copies the open Original receiving address from the held identity without a connection',async()=>{
+ const f=fixture();
+ const owner='receiz_abcdefghijklmnopqr.receiz.id',keyId='d'.repeat(64),connect=vi.fn();
+ Object.assign(f.identity,{binding:{artifactOwnerReceizId:owner,keyId},prepareReceivingUsername:connect});
+ const writeText=vi.spyOn(navigator.clipboard,'writeText').mockResolvedValue(undefined);
+ try{
+  await f.mount();
+  await act(async()=>click(f.host,'Copy Original receiving address'));
+  expect(writeText).toHaveBeenCalledExactlyOnceWith(`${owner}#${keyId}`);
+  expect(f.host.textContent).toContain('Receiving address copied');
+  expect(connect).not.toHaveBeenCalled();
+ }finally{writeText.mockRestore();f.close();}
+});
