@@ -4,9 +4,15 @@ export type WalletBalanceNotice = {
   message: string;
   support?: { code: string; requirement: string };
   bankeizHelp?: true;
+  offerNearby?: true;
 };
 
 export function walletBalanceNotice(cause: unknown, action: BalanceAction): WalletBalanceNotice {
+  const notice = balanceNotice(cause, action);
+  return action === 'enable' ? { ...notice, offerNearby: true } : notice;
+}
+
+function balanceNotice(cause: unknown, action: BalanceAction): WalletBalanceNotice {
   const error = cause as { message?: unknown; payload?: { error?: unknown; code?: unknown } } | null;
   const value = error?.payload?.error ?? error?.payload?.code ?? error?.message;
   const code = typeof value === 'string' ? value.replace(/^OFFLINE_NOTE_CUSTODY_UNSUPPORTED:/, '') : '';
@@ -84,6 +90,10 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
     case 'OFFLINE_NOTE_CUSTODY_ATTESTATION_INVALID':
     case 'RECEIZ_OFFLINE_NOTE_PLATFORM_ATTESTATION_CERTIFICATE_INVALID':
       return { title: 'Device proof could not be verified', message: 'Wallet couldn’t confirm the credential’s attestation. Bankeiz support can help identify which part of the registration needs attention.', bankeizHelp: true };
+    case 'Unsupported Receiz bank transport.':
+      return { title: 'Offline Cash setup is incomplete', message: 'The setup request didn’t reach Receiz. Your balance is available for nearby payments.' };
+    case 'android_wallet_enrollment_unavailable':
+      return { title: 'Android setup is temporarily unavailable', message: 'The Android enrollment service is temporarily unavailable. Try enabling Offline Cash again later.' };
     case 'BANK_WALLET_FUNDED_TRANSPORT_UNAVAILABLE':
     case 'OFFLINE_NOTE_CUSTODY_CEREMONY_NOT_STARTED':
     case 'OFFLINE_NOTE_CUSTODY_ATTESTATION_ISSUER_UNAVAILABLE':
@@ -91,8 +101,12 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
     case 'BANK_NOTE_CHALLENGE_INVALID':
       return { title: 'Wallet setup could not be confirmed', message: 'The account service didn’t confirm this request. Reopen your balance to check its status before retrying.', bankeizHelp: true };
     default:
+      if (action === 'enable') return {
+        title: 'Offline Cash setup is incomplete',
+        message: 'Bankeiz couldn’t confirm Offline Cash setup. Check the Offline Cash balance before trying again.',
+      };
       return {
-        title: action === 'read' ? 'Offline balance is unavailable' : action === 'moveBack' ? 'Move back was not confirmed' : 'Offline setup was not confirmed',
+        title: action === 'read' ? 'Offline balance is unavailable' : 'Move back was not confirmed',
         message: 'Reopen your balance to check its status. If this continues, contact Bankeiz support.',
         bankeizHelp: true,
       };

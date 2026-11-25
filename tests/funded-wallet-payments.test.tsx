@@ -321,7 +321,9 @@ test('offline setup explains a specific device refusal and keeps service issues 
   const host = document.createElement('div'), root = createRoot(host);
   const prepareOffline = vi.fn()
     .mockRejectedValueOnce({ payload: { error: 'OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED' } })
-    .mockRejectedValueOnce(Error('BANK_WALLET_FUNDED_TRANSPORT_UNAVAILABLE'));
+    .mockRejectedValueOnce(Error('Unsupported Receiz bank transport.'))
+    .mockRejectedValueOnce({ payload: { error: 'android_wallet_enrollment_unavailable' } })
+    .mockRejectedValueOnce(Error('Unexpected setup error'));
   const wallet = {
     offlineBalance: async () => ({ availableUsdCents: '0', movingBackUsdCents: null }),
     prepareOffline,
@@ -346,10 +348,15 @@ test('offline setup explains a specific device refusal and keeps service issues 
     expect(host.querySelector('.wallet-balance-notice details')?.textContent).toContain('Direct WebAuthn attestation');
     expect(host.querySelector('.wallet-balance-notice code')?.textContent).toBe('OFFLINE_NOTE_CUSTODY_ATTESTATION_NOT_PROVIDED');
     expect(host.querySelector('.error-message')).toBeNull();
-    await click(host, 'Enable offline');
-    expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('account service');
-    expect(host.querySelector('.wallet-balance-notice details')).toBeNull();
-    expect(host.querySelector('.wallet-balance-notice a')?.getAttribute('href')).toBe('/help/');
+    for (const explanation of ['request didn’t reach Receiz', 'Android enrollment service is temporarily unavailable', 'Offline Cash setup is incomplete']) {
+      await click(host, 'Enable offline');
+      expect(host.querySelector('.wallet-balance-notice [role="status"]')?.textContent).toContain('Pay nearby with your balance');
+      expect(host.querySelector('.wallet-balance-notice details')?.textContent).toContain(explanation);
+      expect(host.querySelector('.wallet-balance-notice a[href="/help/"]')).toBeNull();
+      expect(host.querySelector('.wallet-balance-notice details')?.textContent).not.toContain('device provider');
+      await click(host, 'Send nearby');
+    }
+    expect(onSendNearby).toHaveBeenCalledTimes(4);
   } finally {
     await act(async () => root.unmount());
     host.remove();

@@ -1,6 +1,8 @@
 import { expect, it, vi } from 'vitest';
 import { createBankNoteAttestationFetch } from '../src/receiz/note-attestation-transport';
-import { permittedNativePath } from '../src/receiz/native-transport';
+import { nativeFetch, permittedNativePath } from '../src/receiz/native-transport';
+import { relayNativeAccount } from '../server/native-account';
+import { BANK_APPLICATION_ID } from '../src/receiz/config';
 import { noteRegistrationEvidence } from '../src/receiz/note-registration-evidence';
 import { unattestedResponse } from './fixtures/note-registration';
 const origin = 'https://bank.receiz.com';
@@ -68,4 +70,45 @@ it('keeps the exact registration response and failure while attaching only bound
  expect(noteRegistrationEvidence(failure)).toEqual({format:'none',counter:'0',userVerified:true,backupEligible:true,backedUp:true});
  expect(JSON.stringify(noteRegistrationEvidence(failure))).not.toMatch(/credential|client-data|extension|ticket/);
  expect(noteRegistrationEvidence(new Error(failure.message))).toBeNull();
+});
+
+
+it('relays Android enrollment and funded Wallet requests with the existing bearer and exact payload', async () => {
+  const post = { method: 'POST', headers: { authorization: 'Bearer fixture-access', 'content-type': 'application/json' }, body: '{"fixture":true}' };
+  const get = { method: 'GET', headers: { authorization: 'Bearer fixture-access' } };
+  const attestation = '/api/connect/offline-notes/custody/attestation?origin=https%3A%2F%2Fbankeiz.com';
+  const reserve = '/api/connect/bank/offline-reserve?applicationId=' + BANK_APPLICATION_ID;
+  const requests = ['android', 'android-note', 'android-note-reserve'].flatMap(platform =>
+    [get, post].map(options => [attestation + '&platform=' + platform, options] as const)
+  ).concat([[reserve, post]]);
+  const upstream = vi.fn(async (_url: string, _init?: RequestInit) => Response.json({ ok: true }));
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) => url.startsWith('/api/bank/native/')
+    ? relayNativeAccount(new Request('https://bankeiz.com' + url, init))
+    : upstream(url, init));
+  try {
+    for (const [path, options] of requests) {
+      const response = await nativeFetch('https://receiz.com' + path, options);
+      expect(response.status).toBe(200);
+      expect(upstream).toHaveBeenLastCalledWith('https://receiz.com' + path, expect.objectContaining({
+        method: options.method, credentials: 'omit', body: 'body' in options ? options.body : undefined,
+        headers: expect.objectContaining({ Authorization: 'Bearer fixture-access' }),
+      }));
+    }
+    for (const path of [
+      attestation + '&platform=unknown',
+      attestation + '&platform=android&platform=android',
+      attestation + '&platform=android&extra=1',
+      attestation.replace('bankeiz.com', 'bank.receiz.com') + '&platform=android',
+      reserve + '&other=1',
+      reserve + '&applicationId=' + BANK_APPLICATION_ID,
+      reserve.replace(BANK_APPLICATION_ID, 'rc_foreign'),
+    ]) {
+      expect(permittedNativePath(path, 'POST')).toBe(false);
+      expect((await relayNativeAccount(new Request('https://bankeiz.com/api/bank/native' + path, post))).status).toBe(400);
+    }
+    expect(permittedNativePath(reserve, 'GET')).toBe(false);
+    expect(upstream).toHaveBeenCalledTimes(requests.length);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
