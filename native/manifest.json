@@ -496,15 +496,15 @@
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialBrowser.ts",
-      "sha256": "bf602cc192a935fc9af28f825777766f81ed3bd3a9063387baadbd78c6a8f5cb"
+      "sha256": "4a6e96bd6fab4b5d2230e2a8ee1bb5f8c6ae99727ce377d5e98a6c77cea831af"
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialCommit.ts",
-      "sha256": "a006e3fd8f44fc921eff04ee284880be7052ef9d06003ba1728d464ef3bd74ce"
+      "sha256": "595a410b7f01c44ac949546cef9db9c84fa840be840779dc877211e8c3f217ed"
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialExecution.ts",
-      "sha256": "f75df2d566c47c89ea9bdf2bd0138e09c8904b172feaf89d36d2ca70890a104f"
+      "sha256": "9e82d455f338c6289c9c81969f655d53807138ff0f7084195a222b031c4300d2"
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialMath.generated.js",
@@ -520,7 +520,7 @@
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialSource.ts",
-      "sha256": "15ee4e4833e3c29f6cb72c0998db57da7a740c9a57a41f490f3b4549db9a0d68"
+      "sha256": "c74f0aef1693d86e4a73713fb147d045f98780f361295e53c0fd13053149f4ff"
     },
     {
       "path": "packages/receiz-sdk/src/accountFinancialWalletCustody.ts",
@@ -10226,20 +10226,20 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
-      "sha256": "bf602cc192a935fc9af28f825777766f81ed3bd3a9063387baadbd78c6a8f5cb",
-      "bytes": 2649,
+      "sha256": "4a6e96bd6fab4b5d2230e2a8ee1bb5f8c6ae99727ce377d5e98a6c77cea831af",
+      "bytes": 3017,
       "mode": 420
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
-      "sha256": "a006e3fd8f44fc921eff04ee284880be7052ef9d06003ba1728d464ef3bd74ce",
-      "bytes": 52845,
+      "sha256": "595a410b7f01c44ac949546cef9db9c84fa840be840779dc877211e8c3f217ed",
+      "bytes": 63717,
       "mode": 420
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
-      "sha256": "f75df2d566c47c89ea9bdf2bd0138e09c8904b172feaf89d36d2ca70890a104f",
-      "bytes": 16761,
+      "sha256": "9e82d455f338c6289c9c81969f655d53807138ff0f7084195a222b031c4300d2",
+      "bytes": 16867,
       "mode": 420
     },
     {
@@ -10268,8 +10268,8 @@
     },
     {
       "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
-      "sha256": "15ee4e4833e3c29f6cb72c0998db57da7a740c9a57a41f490f3b4549db9a0d68",
-      "bytes": 51572,
+      "sha256": "c74f0aef1693d86e4a73713fb147d045f98780f361295e53c0fd13053149f4ff",
+      "bytes": 54409,
       "mode": 420
     },
     {
@@ -11722,6 +11722,12 @@
       "path": "receiz/zk/sigil_proof.circom",
       "sha256": "129561e8e515a3dce48d9ea01e8e8fe1d9c08f8040ed783074ba4d2bdd00c034",
       "bytes": 543,
+      "mode": 420
+    },
+    {
+      "path": "sdk-release-baselines/receiz-sdk/src/accountFinancialBrowser.ts",
+      "sha256": "bf602cc192a935fc9af28f825777766f81ed3bd3a9063387baadbd78c6a8f5cb",
+      "bytes": 2649,
       "mode": 420
     },
     {
@@ -21056,6 +21062,42 @@
       "sha256": "984b118bee38504eff7c01cdea76605673565fc9c77290c68685c66af968cd7d",
       "purpose": "Compose the independently attested Android hardware key with the existing Wallet lifecycle.",
       "releaseBaseline": null
+    },
+    {
+      "id": "bankeiz-wallet-designated-witness-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialCommit.ts",
+      "baseSha256": "a006e3fd8f44fc921eff04ee284880be7052ef9d06003ba1728d464ef3bd74ce",
+      "sha256": "595a410b7f01c44ac949546cef9db9c84fa840be840779dc877211e8c3f217ed",
+      "purpose": "Compose the Receiz witness-backed payment protocol in the Bankeiz browser runtime.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts",
+      "sourceCommit": "59fb6a34bcfd009ee893a9333b15f608d323d5f4"
+    },
+    {
+      "id": "bankeiz-wallet-designated-witness-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialExecution.ts",
+      "baseSha256": "f75df2d566c47c89ea9bdf2bd0138e09c8904b172feaf89d36d2ca70890a104f",
+      "sha256": "9e82d455f338c6289c9c81969f655d53807138ff0f7084195a222b031c4300d2",
+      "purpose": "Compose the Receiz witness-backed payment protocol in the Bankeiz browser runtime.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts",
+      "sourceCommit": "59fb6a34bcfd009ee893a9333b15f608d323d5f4"
+    },
+    {
+      "id": "bankeiz-wallet-designated-witness-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialSource.ts",
+      "baseSha256": "15ee4e4833e3c29f6cb72c0998db57da7a740c9a57a41f490f3b4549db9a0d68",
+      "sha256": "c74f0aef1693d86e4a73713fb147d045f98780f361295e53c0fd13053149f4ff",
+      "purpose": "Compose the Receiz witness-backed payment protocol in the Bankeiz browser runtime.",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts",
+      "sourceCommit": "59fb6a34bcfd009ee893a9333b15f608d323d5f4"
+    },
+    {
+      "id": "bankeiz-wallet-designated-witness-v129",
+      "path": "receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts",
+      "baseSha256": "bf602cc192a935fc9af28f825777766f81ed3bd3a9063387baadbd78c6a8f5cb",
+      "sha256": "4a6e96bd6fab4b5d2230e2a8ee1bb5f8c6ae99727ce377d5e98a6c77cea831af",
+      "purpose": "Compose the Receiz witness-backed payment protocol in the Bankeiz browser runtime.",
+      "sourceCommit": "59fb6a34bcfd009ee893a9333b15f608d323d5f4",
+      "releaseBaseline": "sdk-release-baselines/receiz-sdk/src/accountFinancialBrowser.ts"
     }
   ],
   "historicalValuation": {

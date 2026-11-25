@@ -49,7 +49,8 @@ export function projectReceizAccountFinancialAction(source:ReceizAccountFinancia
   if(!recipient)fail('RECIPIENT_REQUIRED');
   const cents=uint(action.amountUsdCents,true);
   if(!moveBack&&custody.receivedWallet&&action.nearby!==true&&(!program.walletPartialPayments||!scanned))fail('WALLET_PEER_CUSTODY');
-  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody&&!custody.androidWalletCustody
+  if(custody.witnessedWallet&&action.nearby!==true)fail('WALLET_PEER_CUSTODY');
+  if(action.nearby===true&&(source.sourceFamily!=='native-wallet-reserve'||!custody.walletCustody&&!custody.androidWalletCustody&&!custody.witnessedWallet
    ||!scanned&&!custody.hasWalletRecipient(recipient.recipientUserId,recipient.conversationId)
    ||!program.walletPartialPayments&&(state.sequence!=='0'||action.amountUsdCents!==state.wallet.availableUsdCents)))fail('WALLET_PEER_CUSTODY');
   let phi:bigint,settled:bigint,balanceAfter:string,rate:string,nativeWallet:AccountExecutionWalletAmounts|undefined;

@@ -1,4 +1,4 @@
-import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage} from './local-financial-runtime';
+import type {LocalFinancialRuntime,FinancialExecutorOptions,FinancialCommit,FinancialAction,FinancialPublication,WalletDevice,FinancialWalletCustodyChallenge,FinancialWalletCustodyAssertion,WalletPaymentStage,WitnessedWalletPaymentApproval,WitnessedWalletPaymentRequest} from './local-financial-runtime';
 import {loadReceiz} from './client';
 import {createOpticalNoteFrames} from './optical-note-frames';
 import type {WalletDebitWitness} from './wallet-debit-witness';
@@ -22,6 +22,8 @@ export type LocalFinancialSessionOptions=Readonly<{
  publishPeerRelease?(input:Readonly<{walletProof:Uint8Array;releaseOriginal:Uint8Array;financialOriginals?:readonly Uint8Array[]}>):Promise<unknown>;
  publishSentWalletProof?(proof:Uint8Array):Promise<unknown>;
  walletDebitWitness?:WalletDebitWitness;
+ /** The owner establishes this pin in pairing, independently of received data. */
+ designatedWitnessPublicKey?:string;
  publishPeerPayment?(input:Readonly<{walletProof:Uint8Array;receivingAllocationId:string}>):Promise<unknown>;
  assertOpen():void;online():boolean;deferPublication?:boolean;
  /** Optional host lifecycle in place of the browser's connection events. */
@@ -62,6 +64,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   input.assertOpen();
   if(runtime.financialSourceApplicationId(root)!==input.applicationId)throw Error('BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH');
   source=await runtime.receiveReceizAccountFinancialWalletProof({...proof,accountUserId:input.accountUid,ownerKeyId:incoming.ownerKeyId},{
+   ...(input.designatedWitnessPublicKey?{designatedWitnessPublicKey:input.designatedWitnessPublicKey}:{}),
    originals:{
     async retain(digest,bytes){input.assertOpen();await input.originals.retain(digest,bytes);},
     async read(digest){input.assertOpen();return input.originals.read(digest);},
@@ -73,6 +76,9 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  // Persist only SDK admission coordinates here. Complete Originals remain in
  // the existing private custody port, and financial truth still comes from them.
  const protectedWallet=source.sourceFamily==='native-wallet-reserve';
+ const designatedWitness=runtime.financialSourceDesignatedWitness?.(source)??null;
+ if(designatedWitness&&designatedWitness!==input.designatedWitnessPublicKey)
+  throw Error('BANK_WALLET_WITNESS_PAIRING_REQUIRED');
  const storeScope={
   databaseName:'receiz-bankeiz-wallet-admission',namespace:protectedWallet?'wallet:protected':`wallet:${source.artifactSha256}`,
  };
@@ -80,15 +86,16 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   ?runtime.createWalletAdmissionStore(storeScope):(await loadReceiz()).createReceizBrowserAdmissionStore(storeScope));
  input.assertOpen();
  const kai=input.kai??runtime.financialKaiNow;
- const device=(input.bindWalletDevice||input.bindAndroidWalletDevice)&&runtime.bankFinancialWalletDevice?.(source);
- const partialPayments=!!(device&&device.partialPayments);
+ const device=!designatedWitness&&(input.bindWalletDevice||input.bindAndroidWalletDevice)
+  ?runtime.bankFinancialWalletDevice?.(source):undefined;
+ const partialPayments=!!designatedWitness||!!(device&&device.partialPayments);
  const publishExactPayments=!!(device&&(device.connectedPayments||device.setAside));
  let assertWalletCustody=input.assertWalletCustody;
  let assertAndroidWalletCustody:ExecutorOptions['assertAndroidWalletCustody'];
  if(device?.android){
   if(!input.bindAndroidWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
   assertAndroidWalletCustody=input.bindAndroidWalletDevice(device);
- }else if(input.bindWalletDevice){
+ }else if(!designatedWitness&&input.bindWalletDevice){
   if(!device||!runtime.assertBankFinancialWalletDevice)throw Error('BANK_WALLET_DEVICE_REQUIRED');
   const assert=runtime.assertBankFinancialWalletDevice;
   assertWalletCustody=input.bindWalletDevice(device,async request=>{
@@ -99,7 +106,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   });
  }
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,assertAndroidWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
- const witness=protectedWallet&&executor.recoverWalletProof?input.walletDebitWitness:undefined;
+ const witness=protectedWallet&&!designatedWitness&&executor.recoverWalletProof?input.walletDebitWitness:undefined;
  if(witness){
   try{
    const held=witness.read(source.allocationId);
@@ -276,10 +283,38 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    }
    return result;
   },
+  async prepareWitnessedWalletPayment({operationId,action}:Readonly<{operationId:string;action:WitnessedWalletPaymentRequest['action']}>):Promise<WitnessedWalletPaymentApproval>{
+   open();
+   if(!designatedWitness||!executor.reviewWitnessedWalletPayment)throw Error('BANK_WALLET_WITNESS_PAIRING_REQUIRED');
+   const current=await executor.current();
+   if(!current.headArtifactSha256)throw Error('BANK_LOCAL_FINANCIAL_ORIGINAL_REQUIRED');
+   const request={operationId,action:structuredClone(action),expectedPredecessorArtifactSha256:current.headArtifactSha256,atKaiUPulse:kai()};
+   const review=await executor.reviewWitnessedWalletPayment(request);
+   open();
+   const ownerApproval=await input.signOwner(review.ownerChallenge);
+   open();
+   return {request,ownerApproval};
+  },
+  async acceptWitnessedWalletPayment(approval:WitnessedWalletPaymentApproval,proof:Uint8Array){
+   open();
+   if(!designatedWitness||!executor.recoverWalletProof)throw Error('BANK_WALLET_WITNESS_PAIRING_REQUIRED');
+   const request=structuredClone(approval.request);
+   await executor.recoverWalletProof(proof,designatedWitness);
+   open();
+   const accepted=await executor.resolve(request.operationId);
+   const {canonicalizeReceizV122}=await loadReceiz();
+   open();
+   if(!accepted||accepted.operation.predecessorArtifactSha256!==request.expectedPredecessorArtifactSha256
+    ||accepted.operation.atKaiUPulse!==request.atKaiUPulse
+    ||canonicalizeReceizV122(accepted.operation.action)!==canonicalizeReceizV122(request.action))
+    throw Error('BANK_WALLET_WITNESS_PAYMENT_MISMATCH');
+   nudge();
+   return accepted;
+  },
   async recoverWalletProof(proof:Uint8Array){
    open();
    if(!protectedWallet||!executor.recoverWalletProof)return null;
-   const recovered=await executor.recoverWalletProof(proof);
+   const recovered=await executor.recoverWalletProof(proof,designatedWitness??undefined);
    open();
    if(recovered)nudge();
    return recovered;

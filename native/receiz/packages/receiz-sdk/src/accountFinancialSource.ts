@@ -76,6 +76,7 @@ type WalletRecipient = Readonly<{
 }> & (
  Readonly<{binding: ReceizFinancialWalletCustodyBinding; androidBinding?:never}>
  | Readonly<{binding?:never; androidBinding: ReceizAndroidWalletBinding}>
+ | Readonly<{binding?:never; androidBinding?:never}>
 );
 export const WALLET_RECIPIENT_ACCOUNT_DOMAIN = 'receiz.bank.wallet-recipient-account.v1';
 const admitted = new WeakMap<ReceizAccountFinancialSource,Readonly<{
@@ -121,9 +122,31 @@ async function verifyWalletRecipientAccount(account:Record<string,unknown>,paylo
  * receive assertion before exposing the recipient to the Wallet reducer. */
 export async function prepareReceizScannedWalletRecipient(source:ReceizAccountFinancialSource,action:ReceizAccountSendAction,at:string,priorRecipients?:ReadonlySet<string>){
  const held=admitted.get(source),program=held?.body.program as Record<string,unknown>|undefined;
- if(!held||!held.walletCustody&&!held.androidWalletCustody||program?.walletRecipientMode!=='scan-time'||action.recipientUserId===source.accountUserId
-  ||!UUID.test(action.recipientUserId)||!UUID.test(action.conversationId))fail('WALLET_RECIPIENT');
+ const witnessed=program?.walletRecipientMode==='designated-witness';
+ if(!held||!program||!witnessed&&(!held.walletCustody&&!held.androidWalletCustody||program.walletRecipientMode!=='scan-time')
+  ||action.recipientUserId===source.accountUserId||!UUID.test(action.recipientUserId)||!UUID.test(action.conversationId))fail('WALLET_RECIPIENT');
  const snapshot=structuredClone(action),command=canonical(snapshot);
+ if(witnessed){
+  if(snapshot.nearby!==true)fail('WALLET_RECIPIENT');
+  const row=object(snapshot.scannedRecipient,['account','identity']);
+  const account=object(row.account,['payload','signature']);
+  const payload=object(account.payload,['applicationId','accountUserId','ownerReceizId','keyId','issuedAtKaiUPulse']);
+  const ownerReceizId=string(payload.ownerReceizId),keyId=hash(payload.keyId);
+  const identity=object(row.identity,['keyId','alg','publicKeyRawB64u']);
+  const alg=string(identity.alg),publicKey=string(identity.publicKeyRawB64u);
+  // Handoffs inherit the issuer-pinned independent signer. The receiver
+  // opens its own identity and cannot nominate substitute witness custody.
+  const custodian=object(program.custodian,['kind','publicKeyRawB64u']);
+  if(payload.applicationId!==program.applicationId||payload.accountUserId!==snapshot.recipientUserId
+   ||ownerReceizId===source.ownerReceizId||!/^[-a-z0-9_]+\.receiz\.id$/u.test(ownerReceizId)||identity.keyId!==keyId
+   ||!['Ed25519','P-256'].includes(alg)||publicKey===custodian.publicKeyRawB64u
+   ||await deriveReceizIdentityKeyIdFromPublicKeyRawB64u(publicKey,alg as ReceizIdentityKeyAlgorithm)!==keyId)fail('WALLET_RECIPIENT');
+  await verifyWalletRecipientAccount(account,payload,held.roots,at);
+  const entries=scanned.get(source)??new WeakMap();
+  entries.set(action,{at,command,recipient:freeze({userId:snapshot.recipientUserId,ownerReceizId,identity,custodian})});
+  scanned.set(source,entries);
+  return [];
+ }
  if(snapshot.nearby!==true){
   if(program.walletConnectedPayments!==true)fail('WALLET_RECIPIENT');
   const row=object(snapshot.scannedRecipient,['account']);
@@ -200,6 +223,7 @@ export function readReceizAccountFinancialSourceCustody(source:ReceizAccountFina
   walletCustody: held.walletCustody,
   androidWalletCustody: held.androidWalletCustody,
   sharedWalletCounter: !!held.walletCustody&&(held.body.program as Record<string,unknown>).walletCounterMode==='device',
+  witnessedWallet:(held.body.program as Record<string,unknown>).walletRecipientMode==='designated-witness',
   receivedWallet: held.walletLineage!==undefined,
   walletOpening: held.walletOpening,
   hasWalletRecipient: (accountId:string,conversationId:string) => held.walletRecipients.has(accountId+':'+conversationId),
@@ -235,7 +259,10 @@ async function validateSourceOpenings(
   if(allWalletRails&&p.walletRails!=='all'||partial&&(!scanTime||p.walletPartialPayments!==true)||shared&&(!partial||p.walletCounterMode!=='device'))fail('PROGRAM');
   if(connected&&(!shared||p.walletConnectedPayments!==true))fail('PROGRAM');
   if(setAside&&(!shared||connected||p.walletFunding!=='set-aside'))fail('PROGRAM');
-  if(scanTime&&(!nativeReserve||!publicIdentityOpening||!allWalletRails||p.walletRecipientMode!=='scan-time'||array(p.recipientBindings).length))fail('PROGRAM');
+  const witnessed=p.walletRecipientMode==='designated-witness';
+  if(scanTime&&(!nativeReserve||!publicIdentityOpening||!allWalletRails
+   ||p.walletRecipientMode!=='scan-time'&&!witnessed||array(p.recipientBindings).length))fail('PROGRAM');
+  if(witnessed&&(!partial||shared||connected||setAside))fail('PROGRAM');
   if(orderProgram){const policy=object(p.orderPolicy,['schema','origin','priceRule','remainder','fillAuthority']);if(policy.schema!=='receiz.bank.account-market-order-policy.v1'||policy.origin!=='offline'||policy.priceRule!=='approved-bound'||policy.remainder!=='keep-open'||policy.fillAuthority!=='source-financial-root')fail('ORDER_POLICY');}
   const identity=object(p.identity,['keyId','alg','publicKeyRawB64u']);if(identity.keyId!==f.receizKeyId||!['Ed25519','P-256'].includes(string(identity.alg)))fail('IDENTITY');
   const hasWalletCustody=nativeReserve&&!!p.custodian&&Object.hasOwn(p.custodian,'walletWebAuthn');
@@ -243,7 +270,8 @@ async function validateSourceOpenings(
   if(hasAndroidWalletCustody&&(hasWalletCustody||!scanTime||array(p.marketTerms).length))fail('CUSTODY');
   const custodian=object(p.custodian,['kind','publicKeyRawB64u',...(hasWalletCustody?['walletWebAuthn']:[]),...(hasAndroidWalletCustody?['walletAndroid']:[])]);
   if(custodian.kind!=='existing-sdk-record-signer'||await digest(custodian)!==f.receivingCustodyCommitmentDigest)fail('CUSTODY');bytes(custodian.publicKeyRawB64u,32);
-  if(publicIdentityOpening&&(p.identityOpening!=='public-commitment'||!hasWalletCustody&&!hasAndroidWalletCustody))fail('CUSTODY');
+  if(witnessed&&(hasWalletCustody||hasAndroidWalletCustody||custodian.publicKeyRawB64u===identity.publicKeyRawB64u))fail('CUSTODY');
+  if(publicIdentityOpening&&(p.identityOpening!=='public-commitment'||!hasWalletCustody&&!hasAndroidWalletCustody&&!witnessed))fail('CUSTODY');
   const walletCustody=hasWalletCustody?await verifyReceizFinancialWalletCustodyBinding(custodian.walletWebAuthn,{roots,fundedAtKaiUPulse:at}):undefined;
   const androidWalletCustody=hasAndroidWalletCustody?await verifyReceizAndroidWalletBinding(custodian.walletAndroid,{roots,
    applicationId:string(p.applicationId),userId:string(p.accountUserId),recordSignerPublicKey:string(custodian.publicKeyRawB64u),fundedAtKaiUPulse:at}):undefined;
@@ -553,9 +581,10 @@ export async function readReceizAccountFinancialWalletRecoveryProof(
 
 /** Recover only exact Wallet spends belonging to the held Source. The full
  * peer proof is admitted before it can supply any of those Originals. */
-export async function walletRecoveryOriginals(source:ReceizAccountFinancialSource,encoded:Uint8Array){
- const held=admitted.get(source);
- if(!held||!held.walletCustody&&!held.androidWalletCustody)fail('CUSTODY_REQUIRED');
+export async function walletRecoveryOriginals(source:ReceizAccountFinancialSource,encoded:Uint8Array,designatedWitnessPublicKey?:string){
+ const held=admitted.get(source),custody=readReceizAccountFinancialSourceCustody(source);
+ if(!held||!custody.walletCustody&&!custody.androidWalletCustody&&!custody.witnessedWallet)fail('CUSTODY_REQUIRED');
+ checkDesignatedWitness(custody,designatedWitnessPublicKey);
  const proof=readReceizAccountFinancialWalletProof(encoded);
  const root=held.walletLineage?.sourceOriginal??held.bytes;
  if(await sha256ReceizBytes(proof.sourceOriginal)!==await sha256ReceizBytes(root))return [];
@@ -565,17 +594,26 @@ export async function walletRecoveryOriginals(source:ReceizAccountFinancialSourc
   .map(operation=>operation.artifactBytes());
 }
 
+// Trust is established by the Wallet owner's own pairing. An incoming Source
+// cannot choose an acceptable witness for itself.
+function checkDesignatedWitness(custody:ReturnType<typeof readReceizAccountFinancialSourceCustody>,expected?:string){
+ const program=custody.body.program as {custodian:{publicKeyRawB64u:string}};
+ if(custody.witnessedWallet&&expected!==program.custodian.publicKeyRawB64u)fail('DESIGNATED_WITNESS_UNTRUSTED');
+}
+
 /** Reopen each exact signed spend from the enclosing funded Wallet Source.
  * Each accepted send consumes its input and carries one fixed recipient. The
  * same incoming Original always leads to the same recipient allocation. */
 export async function receiveReceizAccountFinancialWalletProof(
  input: ReceizAccountFinancialWalletProof & Readonly<{accountUserId:string;ownerKeyId:string}>,
- options: Readonly<{roots?:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>;originals:ReceizAccountFinancialOriginalStore}>,
+ options: Readonly<{roots?:ReadonlyMap<string,ReceizSignatureV4RootPublicKey>;originals:ReceizAccountFinancialOriginalStore;designatedWitnessPublicKey?:string}>,
 ): Promise<ReceizAccountFinancialSource> {
  const {source,ancestry}=await openWalletProof(input,options.roots);
  const {accountUserId,ownerKeyId}=input;
- const program = readReceizAccountFinancialSourceCustody(source).body.program as {identity:{keyId:string}};
+ const custody=readReceizAccountFinancialSourceCustody(source);
+ const program = custody.body.program as {identity:{keyId:string};custodian:{publicKeyRawB64u:string}};
  if(source.accountUserId!==accountUserId||program.identity.keyId!==ownerKeyId)fail('WALLET_RECIPIENT');
+ checkDesignatedWitness(custody,options.designatedWitnessPublicKey);
  for(const original of ancestry){
   await options.originals.retain(original.artifactSha256,original.bytes.slice());
   const retained = await options.originals.read(original.artifactSha256);

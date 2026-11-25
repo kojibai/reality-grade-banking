@@ -20,6 +20,11 @@ export function createWalletAdmissionStore(options:Pick<ReceizBrowserAdmissionSt
 export function financialSourceApplicationId(source:ReceizAccountFinancialSource):string{
  return (readReceizAccountFinancialSourceCustody(source).body.funding as {applicationId:string}).applicationId;
 }
+/** Read the issuer-pinned witness key from the exact admitted Source. */
+export function financialSourceDesignatedWitness(source:ReceizAccountFinancialSource):string|null{
+ const custody=readReceizAccountFinancialSourceCustody(source);
+ return custody.witnessedWallet?(custody.body.program as {custodian:{publicKeyRawB64u:string}}).custodian.publicKeyRawB64u:null;
+}
 export function financialKaiNow():string{return String(receizKaiNow().uPulse);}
 
 import type {ReceizAccountFinancialState} from './accountFinancialExecution.js';
