@@ -2876,8 +2876,8 @@
     },
     {
       "path": "android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/AndroidCustodyKey.java",
-      "sha256": "da92ff1a4d5bdbf7f101bc54f57c6e423028e8ed0583b75294b416fa165b449e",
-      "bytes": 4410,
+      "sha256": "de18afdc9bb55320a9e9510c2e05a728e9687ff00d2fe86b3a4956dad3db78b6",
+      "bytes": 4493,
       "mode": 420
     },
     {
@@ -2894,8 +2894,8 @@
     },
     {
       "path": "android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/BankeizWalletHardware.java",
-      "sha256": "5b5bb562215d0d5587939d59d9511638b2be86ab799f63c7d5b3565fa45b7d45",
-      "bytes": 3233,
+      "sha256": "de079c129aaa7b8d3e2faca064165ee62fb0db4d97337b3f9601b32e69417ac1",
+      "bytes": 3843,
       "mode": 420
     },
     {
@@ -2923,6 +2923,12 @@
       "mode": 420
     },
     {
+      "path": "android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/WalletKeyProvider.java",
+      "sha256": "873919a545fb5b60231b5d1b79fa72edce449d30db1bd77bd33afc708e7e49c5",
+      "bytes": 1671,
+      "mode": 420
+    },
+    {
       "path": "android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/AttestationFieldsTest.java",
       "sha256": "1a768c4ce9c99619dc0e50cf7563d17f330327835c85a56a9a66d79aa8a86b56",
       "bytes": 3711,
@@ -2944,6 +2950,12 @@
       "path": "android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/P256SignatureTest.java",
       "sha256": "58db93bcacbfabc581e6a787ff9e4628053c87ab9e53e8dcb89507bba61161bf",
       "bytes": 1745,
+      "mode": 420
+    },
+    {
+      "path": "android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/WalletKeyProviderTest.java",
+      "sha256": "90cec7525d9c8f53aa2ca61ed95b68227f78396076669c7676730faade1aa093",
+      "bytes": 3289,
       "mode": 420
     },
     {
@@ -2990,8 +3002,8 @@
     },
     {
       "path": "android/app/src/main/java/com/kojibai/bankeiz/BankeizWalletTab.java",
-      "sha256": "4e4549ac7f938c3cc74abd9ac8780c7966a7049e0d835f5808c706235f89dea1",
-      "bytes": 7427,
+      "sha256": "c3327e6372612a67f9d430087fbaf9fb5894b2f793feea7ae9ff4584da7b6b77",
+      "bytes": 7419,
       "mode": 420
     },
     {
