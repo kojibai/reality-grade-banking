@@ -1343,7 +1343,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           if(!connected&&navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
           if(!connected&&!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
           if(!connected)await connectedContext();
-          return noteLock(async()=>{await assertNoteCreateState();const result=await localConnectedNotes().create(amount,rail,recipientUserId,artwork);return{...result,consumption:'connection-required' as const};});
+          return noteLock(async()=>{
+            await assertNoteCreateState();
+            const notes=localConnectedNotes();
+            const result=await (artwork?notes.create(amount,rail,recipientUserId,artwork):notes.create(amount,rail,recipientUserId));
+            return {...result,consumption:'connection-required' as const};
+          });
         }
         if(recipientUserId)throw Error('BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE');
         if(rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');
