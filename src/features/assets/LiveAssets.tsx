@@ -16,20 +16,13 @@ import {Investments} from './Investments';
 import type {MarketPortfolio} from '../../receiz/market-portfolio';
 import type {InvestmentHistory} from '../../receiz/market-projection/investment-history';
 import { LiveOwnership } from './LiveOwnership';
+import { useHeldAssetSources } from './useHeldAssetSources';
 import {formatUnits,formatMoney} from '../../core/money';
 import { CustodyDelivery } from '../deposit/CustodyDelivery';
 import {projectHeldCollectibles} from '../../receiz/collectibles';
 import {CollectiblesIcon} from '../collectibles/CollectiblesIcon';
 import '../collectibles/collection-entry.css';
 const CollectionPanel=lazy(()=>import('../collectibles/CollectionPanel').then(module=>({default:module.CollectionPanel})));
-function useHeldSources(identity: OpenIdentity, active = true, revision = 0) {
-  const [view,setView]=useState(()=>({identity,sources:identity.knownDeposits?.()??[] as readonly HeldDeposit[],error:'',busy:identity.knownDeposits?.()==null}));
-  useEffect(()=>{if(!active)return;let alive=true;
-    const read=()=>{void identity.listDeposits().then(sources=>{if(alive)setView({identity,sources,error:'',busy:false});}).catch(()=>{if(alive)setView(previous=>({identity,sources:previous.identity===identity?previous.sources:identity.knownDeposits?.()??[],error:'Your held proof sources could not be opened.',busy:false}));});};
-    read();addEventListener('bankeiz:asset-sources',read);return()=>{alive=false;removeEventListener('bankeiz:asset-sources',read);};
-  },[identity,active,revision]);
-  return view.identity===identity?view:{sources:identity.knownDeposits?.()??[],error:'',busy:identity.knownDeposits?.()==null};
-}
 function useOpenedAssetSignatureRetry(identity:OpenIdentity,active:boolean,digest:string|null,source?:HeldDeposit,originalUrl?:string|null){
  const held=useRef(source);held.current=source;
  const canInspect=source?.composerOriginal===true;
@@ -39,14 +32,14 @@ function useOpenedAssetSignatureRetry(identity:OpenIdentity,active:boolean,diges
   else identity.retryAssetSignatureOnOpen?.(digest,held.current);
  },[identity,active,digest,canInspect,originalUrl]);
 }
-export function LiveAssets({ identity, active, revision, showcase = [], showcaseBusy = false, investments, investmentHistory=null,marketItems=[],historyItems=marketItems,pulse=0,onOpen,source }: { source?:ReturnType<typeof useHeldSources>; identity: OpenIdentity; active: boolean; revision: number; showcase?: PublicMarketItem[]; showcaseBusy?: boolean; investments?:{data:MarketPortfolio|null;busy:boolean;error:boolean};investmentHistory?:InvestmentHistory|null;marketItems?:PublicMarketItem[];historyItems?:PublicMarketItem[];pulse?:number; onOpen: (action: UIAction) => void }) {
+export function LiveAssets({ identity, active, revision, showcase = [], showcaseBusy = false, investments, investmentHistory=null,marketItems=[],historyItems=marketItems,pulse=0,onOpen,source }: { source?:ReturnType<typeof useHeldAssetSources>; identity: OpenIdentity; active: boolean; revision: number; showcase?: PublicMarketItem[]; showcaseBusy?: boolean; investments?:{data:MarketPortfolio|null;busy:boolean;error:boolean};investmentHistory?:InvestmentHistory|null;marketItems?:PublicMarketItem[];historyItems?:PublicMarketItem[];pulse?:number; onOpen: (action: UIAction) => void }) {
   const [selectedId,setSelectedId]=useState<string|null>(null),[shown, setShown] = useState(50);
   const [collectionOpen,setCollectionOpen]=useState(false);
   const collection=identity.localHistory&&identity.binding?projectHeldCollectibles(identity.localHistory,identity.binding,collectionOpen?marketItems:undefined,identity.knownWallet?.()?.wallet.userId):null;
   const selected=selectedId?showcase.find(item=>item.id===selectedId)??null:null,setSelected=(item:PublicMarketItem|null)=>setSelectedId(item?.id??null);
   const sentinel = useRef<HTMLDivElement | null>(null);
   useEffect(() => { if (!active || !sentinel.current || shown >= showcase.length || typeof IntersectionObserver === 'undefined') return; const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) setShown(count => Math.min(showcase.length, count + 50)); }, { rootMargin: '600px 0px' }); observer.observe(sentinel.current); return () => observer.disconnect(); }, [active, shown, showcase.length]);
-  const heldSource = useHeldSources(identity, active&&!source, revision);
+  const heldSource = useHeldAssetSources(identity, active&&!source, revision);
   const { sources, error, busy } = source??heldSource;
   const {pending,proofs,heldByDigest}=useMemo(()=>({
     pending:sources.filter(source=>source.kind==='intake'),
@@ -70,7 +63,7 @@ export function LiveAssets({ identity, active, revision, showcase = [], showcase
 }
 export function LiveAssetDetail({ identity, digest, active = true, onRefresh = () => {}, marketItems = [], onTrade }: { identity: OpenIdentity; digest: string; active?: boolean; onRefresh?: () => void; marketItems?:readonly PublicMarketItem[]; onTrade?:(side:'buy'|'sell',marketItemId:string)=>void }) {
   const [action, setAction] = useState<'send' | 'sell' | 'buy' | 'redeem' | null>(null);
-  const { sources, error, busy } = useHeldSources(identity), source = sources.find(value => value.digest === digest || value.nativeAsset?.assetId===digest);
+  const { sources, error, busy } = useHeldAssetSources(identity), source = sources.find(value => value.digest === digest || value.nativeAsset?.assetId===digest);
   useOpenedAssetSignatureRetry(identity,active,source?.kind==='proof'&&!source.nativeAsset?source.digest:null,source);
   const [saveError,setSaveError]=useState(''),savingOriginal=useRef<object|null>(null);
   const selection=useRef({identity,digest,source,open:true});

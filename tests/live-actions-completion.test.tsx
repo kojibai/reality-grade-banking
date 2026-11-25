@@ -7,6 +7,7 @@ import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CreateAsset } from '../src/features/assets/CreateAsset';
 import { LiveSend } from '../src/features/account/LivePayments';
 import type { OpenIdentity } from '../src/receiz/native-identity';
+import type { HeldDeposit } from '../src/receiz/deposit-source';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const identity = { listDeposits: async () => [], pendingCardDeposit: async () => null, binding: { artifactOwnerReceizId: 'test.receiz.id' } } as unknown as OpenIdentity;
 it('opens the Exchange form instead of the generic proof-source placeholder', async () => {
@@ -38,11 +39,20 @@ it('offers funded creation through the transaction review instead of only sealin
     expect(host.textContent).toContain('Backing amount'); expect(host.textContent).toContain('Review asset creation');
   } finally { act(() => root.unmount()); }
 });
-it('opens an ownership form from Send without a permanently disabled action', async () => {
+it('opens the live ownership form for a selected holding from Send', async () => {
   const host = document.createElement('div'), root = createRoot(host);
+  const source: HeldDeposit = {
+    digest: 'a'.repeat(64), executionDigest: 'b'.repeat(64), filename: 'test.receizbundle',
+    title: 'Studio units', kind: 'proof', status: 'held-proof', bytes: new Uint8Array(), pulse: null,
+    nativeAsset: { assetId: 'c'.repeat(64), quantityMicro: '1000000', lockedQuantityMicro: '0', supplyMicro: '1000000',
+      symbol: 'STUDIO', status: 'active', backingRail: 'reserve', backingUsdCents: '100', backingPhiMicro: '1000000',
+      sourceKaiUPulse: '100000000', issuedAtKaiUPulse: '100000000' },
+  };
+  const owner = { ...identity, listDeposits: async () => [source] };
   try {
-    await act(async () => root.render(<LiveSend identity={identity} wallet={null} onClose={vi.fn()} />));
+    await act(async () => root.render(<LiveSend identity={owner} wallet={null} onClose={vi.fn()} />));
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent === 'Send ownership')!.click());
+    await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes(source.title))!.click());
     expect(host.textContent).toContain('Ownership to send'); expect(host.textContent).toContain('Review ownership transfer');
     expect(host.textContent).not.toContain('still being connected');
   } finally { act(() => root.unmount()); }

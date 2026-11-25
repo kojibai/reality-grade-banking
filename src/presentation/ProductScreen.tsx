@@ -76,7 +76,19 @@ export function ProductScreen({screen,example='overview',financialStage='before'
  case 'ledger':source='ConsoleShell,Ledger,LedgerInspector';body=<Ledger active={false} initialTab="mine" personalHistory={{available:true,completeAtSealedHead:true,records:[{...record,accountFlow:'out'}]}}/>;break;
  case 'identity':source='ConsoleShell,Sheet,IdentityProfile';body=sheet('Your account',<IdentityProfile identity={identity} active={false} onForget={async()=>forbidden()} onRefresh={noop}/>);break;
  case 'note-create':case 'note-review':case 'note-deposit':source='ConsoleShell,Sheet,OfflineNotes,OfflineNotePreview';body=sheet(screen==='note-deposit'?'Receive':'Send',<OfflineNotes identity={identity} mode={screen==='note-deposit'?'deposit':'create'} initialReview={screen==='note-review'} onBack={noop} onRefresh={noop}/>);break;
- case 'send-ownership':source='ConsoleShell,Sheet,LiveOwnership';body=sheet('Send',<LiveOwnership identity={identity} onRefresh={noop}/>);break;
+ case 'send-ownership':{
+  const sourceDigest='0'.repeat(64),assetId='1'.repeat(64);
+  const holding:import('../receiz/deposit-source').HeldDeposit={
+   digest:'2'.repeat(64),executionDigest:sourceDigest,title:'Studio Archive',filename:'example.receizbundle',
+   kind:'proof',status:'held-proof',pulse:null,bytes:new Uint8Array(),
+   nativeAsset:{assetId,quantityMicro:'25000000',lockedQuantityMicro:'0',supplyMicro:'1000000000',
+    symbol:'STUDIO',backingRail:'reserve',backingUsdCents:'100000',backingPhiMicro:'50000000',
+    status:'active',issuedAtKaiUPulse:'100000000',sourceKaiUPulse:'100000000'},
+  };
+  source='ConsoleShell,Sheet,LiveOwnership';
+  body=sheet('Send',<LiveOwnership identity={{...identity,knownDeposits:()=>[holding]}} onRefresh={noop}/>);
+  break;
+ }
  case 'send-review':source='ConsoleShell,Sheet,WalletPaymentReview';body=sheet('Send',<WalletPaymentReview review={exampleReview} approved={false} busy={false} onApprove={noop} onSend={noop} onEdit={noop}/>);break;
  case 'send-complete':source='ConsoleShell,Sheet,WalletPaymentResult';body=sheet('Send',<WalletPaymentResult outcome={{status:'recorded',clientNonce:'example-not-a-payment',transferId:'example-not-a-transfer'}} busy={false} onCheck={noop} onAgain={noop}/>);break;
  case 'receive-checkout':case 'receive-embedded':source='ConsoleShell,Sheet,LiveReceive,PaymentTools';body=sheet('Receive',<LiveReceive identity={identity} active={false} initialLinkMode="checkout" initialToolsMode={screen==='receive-embedded'?'checkout':'button'}/>);break;

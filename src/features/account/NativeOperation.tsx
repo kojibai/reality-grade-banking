@@ -7,7 +7,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
   const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
@@ -50,6 +50,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     const t = review.terms, request = review.request, rail = 'rail' in request ? request.rail : null;
     return <section className="native-operation-review"><h1 className="sheet-hero">Review {title.toLowerCase()}.</h1>
       <div className="detail-list">
+        {request.kind === 'send-ownership' && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
         {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}
         {rail && <div><span>Account</span><strong>{rail === 'reserve' ? 'Reserve' : 'Settlement'}</strong></div>}
         {t.recipient && <div><span>Recipient</span><strong>{t.recipient}</strong></div>}
@@ -57,7 +58,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
         {t.debitPhiMicro !== '0' && <div><span>Exact value</span><strong>{formatUnits(t.debitPhiMicro)} Φ</strong></div>}
         {t.creditUsdCents !== '0' && <div><span>You receive</span><strong>{formatMoney(t.creditUsdCents)}</strong></div>}
         {t.creditPhiMicro !== '0' && <div><span>Exact received value</span><strong>{formatUnits(t.creditPhiMicro)} Φ</strong></div>}
-        {t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}</strong></div>}
+        {t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}{request.kind === 'send-ownership' && ownership ? ' ' + ownership.symbol : ''}</strong></div>}
         <div><span>Fee</span><strong>{formatMoney(t.feeUsdCents)}</strong></div>
         {t.debitUsdCents !== '0' && <div><span>Total debit</span><strong>{formatMoney((BigInt(t.debitUsdCents) + BigInt(t.feeUsdCents)).toString())}</strong></div>}
       </div>

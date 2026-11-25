@@ -37,3 +37,33 @@ it('keeps the ownership modal mapped to the latest exact execution source after 
   expect(p.inputKey).not.toBe(beforeKey);
  });
 });
+
+it('opens Send ownership from held native positions while the shared read is pending',async()=>{
+ const heldPosition=held('a','d','1200007');
+ heldPosition.nativeAsset!.lockedQuantityMicro='4000000';
+ const original={...held('b','f'),nativeAsset:undefined,executionDigest:undefined,title:'Whole proof'};
+ const listDeposits=vi.fn(()=>new Promise<readonly HeldDeposit[]>(()=>{}));
+ const identity={knownDeposits:()=>[heldPosition,original],listDeposits} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<LiveOwnership identity={identity} onRefresh={()=>{}}/>));
+  expect(host.textContent).toContain('Native units');
+  expect(host.textContent).not.toContain('Whole proof');
+  const select=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Native units'))!;
+  await act(async()=>select.click());
+  expect(host.textContent).toContain('1.200007 UNIT available');
+  expect(host.textContent).toContain('4 UNIT committed to offers');
+  const set=(input:HTMLInputElement,value:string)=>{
+   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);
+   input.dispatchEvent(new Event('input',{bubbles:true}));
+  };
+  const recipient=host.querySelector<HTMLInputElement>('input[placeholder="Receiz ID or public username"]')!;
+  await act(async()=>set(recipient,'@buyer'));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='All')!.click());
+  expect(p.input!()).toEqual({kind:'send-ownership',assetDigest:'d'.repeat(64),quantityMicro:'1200007',recipient:'@buyer'});
+  const amount=host.querySelector<HTMLInputElement>('input[aria-label="Ownership to send"]')!;
+  await act(async()=>set(amount,'1.200008'));
+  expect(()=>p.input!()).toThrow('Enter a quantity within your available units.');
+  expect(listDeposits).toHaveBeenCalledOnce();
+ }finally{await act(async()=>root.unmount());}
+});
