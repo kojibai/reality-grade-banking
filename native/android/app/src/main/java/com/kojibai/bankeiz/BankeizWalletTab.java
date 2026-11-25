@@ -47,7 +47,7 @@ final class BankeizWalletTab extends CustomTabsCallback {
     }
 
     boolean launch(TrustedWebActivityIntentBuilder intent, Runnable fallback) {
-        if (!BankeizWalletHardware.available(activity) || !hasSystemChrome()) return false;
+        if (!BankeizWalletHardware.available() || !hasSystemChrome()) return false;
         connection = new CustomTabsServiceConnection() {
             @Override
             public void onCustomTabsServiceConnected(ComponentName provider, CustomTabsClient client) {

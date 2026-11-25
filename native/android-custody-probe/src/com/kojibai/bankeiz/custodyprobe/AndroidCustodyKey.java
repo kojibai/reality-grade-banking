@@ -20,8 +20,9 @@ final class AndroidCustodyKey {
     record Enrollment(Certificate[] chain, AttestationFields attestation) {
         boolean reportsHardwareSingleUse() {
             return hardwareLevel(attestation.keySecurityLevel())
-                    && hardwareLevel(attestation.attestationSecurityLevel())
-                    && Integer.valueOf(1).equals(attestation.hardwareUsageCount());
+                    && attestation.attestationSecurityLevel() == attestation.keySecurityLevel()
+                    && Integer.valueOf(1).equals(attestation.hardwareUsageCount())
+                    && attestation.softwareUsageCount() == null;
         }
 
         private static boolean hardwareLevel(int level) {
