@@ -1,4 +1,4 @@
-import {bankAndroidWalletHardware} from './android-wallet-hardware';
+import {bankAndroidWalletHardware,bankAndroidWalletHardwareForSetup} from './android-wallet-hardware';
 import {createHeldLedgerOriginalReader} from './held-ledger-original';
 import {waitForAssetPublicationDelivery,projectAssetPublicationReceipt} from './asset-publication';
 import {keepsWalletCashComposition} from './wallet-cash-basis';
@@ -2209,9 +2209,13 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     const saveDevice=(role:'receiving'|'funding',next:WalletDeviceSetup,previous:WalletDeviceSetup|null)=>storage.saveWalletPairingState(binding,role,next,previous);
     async function enrolled(role:'receiving'|'funding'):Promise<WalletDeviceSetup>{
       const saved=await loadDevice(role);
-      if(saved&&(role==='funding'?!saved.allocationId:!saved.claim))return saved;
+      const reusable=saved&&(role==='funding'?!saved.allocationId:!saved.claim)?saved:null;
+      // A prepared funding request may already have reached the allocator.
+      // Reuse that exact request instead of switching its custody mid-retry.
+      if(reusable?.pending)return reusable;
       const origin=location.origin,rpId=bankNoteRpId(origin);if(!rpId)throw Error('BANK_WALLET_DEVICE_REQUIRED');
-      const android=bankAndroidWalletHardware();
+      const android=await bankAndroidWalletHardwareForSetup(lifetime.signal);
+      if(reusable&&(!android||reusable.walletAndroid))return reusable;
       if(android){
         const {digestReceizAndroidWalletEnrollmentSlot,verifyBankAndroidWalletEnrollment}=walletBrowser;
         if(!digestReceizAndroidWalletEnrollmentSlot||!verifyBankAndroidWalletEnrollment)throw Error('BANK_WALLET_DEVICE_REQUIRED');

@@ -1,30 +1,43 @@
 const ORIGIN = 'https://bankeiz.com';
+const ANDROID_APP_ORIGIN = 'android-app://bankeiz.com';
+const BRIDGE_UNAVAILABLE = 'BANK_ANDROID_WALLET_BRIDGE_UNAVAILABLE';
 const PROTOCOL = 'bankeiz.android-wallet.v1';
 const NO_HARDWARE = 'BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE';
 const digest = /^[a-f0-9]{64}$/u;
 type Pending = {resolve(result: unknown): void; reject(error: Error): void};
 
 let channel: MessagePort | undefined;
+let offeredPort: MessagePort | undefined;
 const pending = new Map<string, Pending>();
+const bridgeReady = new EventTarget();
+const androidLaunch = typeof window !== 'undefined' && window.location.origin === ORIGIN
+  && window === window.top && window.location.pathname === '/app/android-launch';
 
 if (typeof window !== 'undefined' && window.location.origin === ORIGIN && window === window.top) {
   window.addEventListener('message', event => {
-    if (!event.isTrusted || event.source !== null || event.origin !== ORIGIN
-      || event.ports.length !== 1 || typeof event.data !== 'string' || event.data.length > 255) return;
-    try {
-      const hello = JSON.parse(event.data);
-      if (hello?.schema !== PROTOCOL || hello.operation !== 'ready') return;
-    } catch { return; }
-    channel?.close();
-    for (const request of pending.values()) request.reject(Error(NO_HARDWARE));
-    pending.clear();
+    // Chrome delivers the verified app port in an empty window message. App
+    // messages, including its ready announcement, arrive on that port.
+    if (!event.isTrusted || event.source !== null || event.origin !== ANDROID_APP_ORIGIN
+      || event.data !== '' || event.ports.length !== 1) return;
+    offeredPort?.close();
     const port = event.ports[0]!;
-    channel = port;
+    offeredPort = port;
     port.onmessage = reply => {
-      if (port !== channel || typeof reply.data !== 'string' || reply.data.length > 65_536) return;
+      if ((port !== channel && port !== offeredPort) || typeof reply.data !== 'string' || reply.data.length > 65_536) return;
       try {
         const body = JSON.parse(reply.data);
-        if (body?.schema !== PROTOCOL || typeof body.id !== 'string') return;
+        if (body?.schema !== PROTOCOL) return;
+        if (port === offeredPort) {
+          if (body.operation !== 'ready' || Object.keys(body).length !== 2) return;
+          channel?.close();
+          for (const request of pending.values()) request.reject(Error(NO_HARDWARE));
+          pending.clear();
+          offeredPort = undefined;
+          channel = port;
+          bridgeReady.dispatchEvent(new Event('ready'));
+          return;
+        }
+        if (typeof body.id !== 'string') return;
         const request = pending.get(body.id);
         if (!request) return;
         if (body.error !== undefined) request.reject(Error(NO_HARDWARE));
@@ -32,6 +45,29 @@ if (typeof window !== 'undefined' && window.location.origin === ORIGIN && window
       } catch { /* Only a well-formed reply can resolve a request. */ }
     };
   });
+}
+
+/** Wait only during an explicit custody setup in the APK or its verified channel. */
+export async function bankAndroidWalletHardwareForSetup(signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  const hardware = bankAndroidWalletHardware();
+  if (hardware || (!androidLaunch && !offeredPort)) return hardware;
+
+  await new Promise<void>(resolve => {
+    const finish = () => {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', finish);
+      bridgeReady.removeEventListener('ready', finish);
+      resolve();
+    };
+    const timeout = setTimeout(finish, 4_000);
+    bridgeReady.addEventListener('ready', finish, { once: true });
+    signal?.addEventListener('abort', finish, { once: true });
+  });
+  signal?.throwIfAborted();
+  const ready = bankAndroidWalletHardware();
+  if (!ready) throw Error(BRIDGE_UNAVAILABLE);
+  return ready;
 }
 
 export function bankAndroidWalletHardware() {

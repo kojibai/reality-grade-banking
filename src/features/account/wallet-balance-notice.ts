@@ -14,6 +14,10 @@ export function walletBalanceNotice(cause: unknown, action: BalanceAction): Wall
     ({ title, message, support: { code, requirement } });
 
   switch (code) {
+    case 'BANK_ANDROID_WALLET_BRIDGE_UNAVAILABLE':
+      return device('Android secure setup is unavailable',
+        'Open Bankeiz from the installed app icon with Chrome up to date, then try again. You can still make nearby payments from your regular balance.',
+        'A verified connection between the Bankeiz app and Android Keystore');
     case 'ANDROID_WALLET_ATTESTATION_HARDWARE':
     case 'BANK_ANDROID_WALLET_HARDWARE_UNAVAILABLE':
       return device('This setup needs device hardware support',
