@@ -1,3 +1,4 @@
+import {needsHandoffProof,openWitnessedNote,type NoteHandoffWitness,type NoteHandoffHead} from './note-handoff-witness';
 import type {BankNoteImage,BankNoteInspection,BankNoteRail,BankNoteReview} from './offline-notes';
 import type {ReceivedNoteSource} from './note-received-deposits';
 
@@ -5,6 +6,7 @@ type Transfer={requestRef:string;sourceRef?:string;imageRef?:string;purpose?:'se
 type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;artworkRef?:string;deliveryImage?:true;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
 type State={schema:'bank.connected-notes.v1';uid:string;keyId:string;current:string|null;notes:Record<string,Row>};
 const hash=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
+const digest=async(bytes:Uint8Array)=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(v=>v.toString(16).padStart(2,'0')).join('');
 const json=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
 const parse=(v:Uint8Array)=>JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(v));
 const recipientValid=(value:string|undefined)=>value===undefined||/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -51,6 +53,8 @@ export interface ConnectedNotePorts{
  prepareCancellation?(authorization:unknown):Promise<Uint8Array>;
  cancel(authorization:unknown,preparedRequest?:Uint8Array):Promise<Uint8Array>;
  inspect(source:Uint8Array):Promise<BankNoteInspection>;
+ handoffWitness?:NoteHandoffWitness;
+ verifyHandoff?(predecessor:Uint8Array,successor:Uint8Array):Promise<Uint8Array>;
  handover(source:Uint8Array,request:Uint8Array,noteIdentity:Uint8Array):Promise<Uint8Array>;
  /** Actual native handover/source verification, including the receiving key. */
  verifySelfDeposit?(source:Uint8Array):Promise<ReceivedNoteSource>;
@@ -81,7 +85,13 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
   if(!row.imageRef||!row.sourceRef)return fail('SOURCE_REQUIRED');const inspection=await inspectSource(row.sourceRef);
   if(inspection.noteId!==row.noteId||inspection.amountUsdCents!==row.amountUsdCents||inspection.rail!==row.rail)fail('SOURCE_REQUIRED');
   const self=!!row.transfer?.sourceRef&&row.transfer.purpose==='self-deposit';if(self){const source=await original(row.transfer!.sourceRef!);await selfSource(row,source);if(row.transfer!.creditRef)await selfCredit(row,source,await original(row.transfer!.creditRef!),true);}
-  return{...inspection,image:await original(row.transfer?.imageRef??row.imageRef),transferred:!!row.transfer?.imageRef,transferPending:!!row.transfer&&!row.transfer.imageRef&&!self,...(self?{selfDeposit:row.transfer!.creditRef?'confirmed' as const:'pending' as const}:{})};
+  const witness=input.handoffWitness?.read(row.sourceRef);
+  let handoffRecovery=!!witness&&!row.transfer?.sourceRef;
+  if(witness&&row.transfer?.sourceRef){
+   try{await openWitnessedNote(witness,input.restore);}
+   catch(cause){if(!needsHandoffProof(cause))throw cause;handoffRecovery=true;}
+  }
+  return{...inspection,...(handoffRecovery?{handoffRecovery:true as const}:{}),image:await original(row.transfer?.imageRef??row.imageRef),transferred:!!row.transfer?.imageRef,transferPending:!!row.transfer&&!row.transfer.imageRef&&!self,...(self?{selfDeposit:row.transfer!.creditRef?'confirmed' as const:'pending' as const}:{})};
  }
  async function selfSource(row:Row,source:Uint8Array){
   if(!input.verifySelfDeposit)fail('SELF_DEPOSIT_SOURCE_REQUIRED');const ref=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(source)))].map(v=>v.toString(16).padStart(2,'0')).join('');let pending=selfAdmissions.get(ref);if(!pending){pending=input.verifySelfDeposit!(source.slice());selfAdmissions.set(ref,pending);void pending.catch(()=>{if(selfAdmissions.get(ref)===pending)selfAdmissions.delete(ref);});}const held=await pending;input.assertOpen();
@@ -93,11 +103,36 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
   if(!pending){pending=input.verifySelfDepositCredit!(source.slice(),receipt.slice(),expected);if(memo){creditAdmissions.set(key,pending);void pending.catch(()=>{if(creditAdmissions.get(key)===pending)creditAdmissions.delete(key);});}}await pending;input.assertOpen();
  }
  async function confirmSelfDeposit(id:string,receipt:Uint8Array){let held=await load(),row=held.state.notes[id];if(row?.transfer?.purpose!=='self-deposit'||!row.transfer.sourceRef)return false;const source=await original(row.transfer.sourceRef);await selfSource(row,source);await selfCredit(row,source,receipt);const creditRef=await input.retain(receipt.slice());input.assertOpen();await original(creditRef);if(row.transfer.creditRef){if(row.transfer.creditRef!==creditRef)fail('EXACT_DEPOSIT_REQUIRED');return true;}row={...row,transfer:{...row.transfer,creditRef}};held.state.notes[id]=row;await save(held.state,held.previous);creditAdmissions.set(JSON.stringify([row.transfer!.sourceRef,creditRef,{uid:input.uid,keyId:input.keyId,noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents}]),Promise.resolve());return true;}
+ async function recoverHandoff(held:Awaited<ReturnType<typeof load>>,row:Row,witness:NoteHandoffHead,proof?:Uint8Array){
+  if(!row.sourceRef||!input.verifyHandoff||row.transfer?.purpose==='self-deposit'
+   ||row.transfer&&row.transfer.requestRef!==witness.requestRef)throw Error('BANK_NOTE_EXACT_TRANSFER_REQUIRED');
+  if(row.transfer?.sourceRef&&row.transfer.sourceRef!==witness.successorRef)fail('EXACT_TRANSFER_REQUIRED');
+  const exact=await openWitnessedNote(witness,input.restore,proof);
+  if(await digest(exact)!==witness.successorRef)fail('EXACT_TRANSFER_REQUIRED');
+  if(row.transfer?.sourceRef&&!proof)return row;
+  const request=await input.verifyHandoff(await original(row.sourceRef),exact.slice());input.assertOpen();
+  if(await digest(request)!==witness.requestRef)fail('EXACT_TRANSFER_REQUIRED');
+  if(await input.retain(request)!==witness.requestRef||proof&&await input.retain(exact)!==witness.successorRef)fail('SOURCE_REQUIRED');
+  if(row.transfer?.sourceRef)return row;
+  const restored={...row,transfer:{requestRef:witness.requestRef,sourceRef:witness.successorRef}};
+  held.state.notes[row.noteId]=restored;
+  await save(held.state,held.previous);
+  return restored;
+ }
  async function retainedTransfer(id:string,request?:Uint8Array,purpose?:'self-deposit'){
   let held=await load(),row=held.state.notes[id];if(!row||row.phase!=='issued'||!row.sourceRef)fail('SOURCE_REQUIRED');if(row.transfer&&row.transfer.purpose!==purpose)fail('EXACT_TRANSFER_REQUIRED');if(purpose&&!input.verifySelfDeposit)fail('SELF_DEPOSIT_SOURCE_REQUIRED');
+  const predecessor=row.sourceRef!;
+  const witness=input.handoffWitness?.read(predecessor);
+  if(witness){
+   if(purpose||request&&await digest(request)!==witness.requestRef)fail('EXACT_TRANSFER_REQUIRED');
+   row=await recoverHandoff(held,row,witness);
+   return {held:await load(),row};
+  }
   if(row.transfer){if(row.transfer.purpose!==purpose)fail('EXACT_TRANSFER_REQUIRED');if(request){const previous=await original(row.transfer.requestRef);if(previous.length!==request.length||previous.some((v,i)=>v!==request[i]))fail('EXACT_TRANSFER_REQUIRED');}}
   else{if(!request?.length)return fail('RECEIVING_REQUEST_REQUIRED');const requestRef=await input.retain(request);input.assertOpen();row={...row,transfer:{requestRef,...(purpose?{purpose}:{})}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
   if(!row.transfer!.sourceRef){const source=await input.handover(await original(row.sourceRef!),await original(row.transfer!.requestRef),await original(row.noteIdentityRef));input.assertOpen();if(purpose)await selfSource(row,source);const sourceRef=await input.retain(source);input.assertOpen();row={...row,transfer:{...row.transfer!,sourceRef}};held.state.notes[id]=row;held=await save(held.state,held.previous);}
+  if(!purpose&&input.handoffWitness&&(await inspectSource(predecessor)).forwardable)
+   input.handoffWitness.record(predecessor,{requestRef:row.transfer!.requestRef,successorRef:row.transfer!.sourceRef!});
   return {held,row};
  }
  async function transfer(id:string,request?:Uint8Array){
@@ -113,7 +148,9 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
   async hasNote(id:string){const row=(await load()).state.notes[id];return !!row&&row.phase==='issued';},
   async holdsFundingSource(id:string,source:Uint8Array){
    const row=(await load()).state.notes[id];
-   if(!row||row.phase!=='issued'||!row.sourceRef||row.transfer)return false;
+   if(!row||row.phase!=='issued'||!row.sourceRef)return false;
+   if(input.handoffWitness?.read(row.sourceRef))fail('EXACT_TRANSFER_REQUIRED');
+   if(row.transfer)return false;
    const held=await original(row.sourceRef);await original(row.noteIdentityRef);
    return held.length===source.length&&held.every((value,index)=>value===source[index]);
   },
@@ -153,6 +190,10 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
   async exportNote(id:string):Promise<BankNoteImage>{
    const held=await load();let row=held.state.notes[id];
    if(!row||row.phase!=='issued'||!row.sourceRef||!row.imageRef)fail('SOURCE_REQUIRED');
+   if(input.handoffWitness?.read(row.sourceRef!)){
+    await transfer(id);
+    return note((await load()).state.notes[id]!);
+   }
    // Upgrade an older retained funding image only on explicit Save. Its old
    // original remains content-addressed; no financial issue is repeated.
    if(!row.transfer&&!row.deliveryImage&&input.deliveryImage){
@@ -169,6 +210,14 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    const proof=await input.cancel(authorization,row.cancelRequestRef?await original(row.cancelRequestRef):undefined);input.assertOpen();const cancellationRef=await input.retain(proof);held.state.notes[row.noteId]={...row,phase:'cancelled',cancellationRef};held.state.current=null;await save(held.state,held.previous);
   },
   transfer,prepareSelfDeposit,confirmSelfDeposit,
+  async recoverTransferSource(id:string,proof?:Uint8Array){
+   const held=await load(),row=held.state.notes[id];
+   if(!row||!row.sourceRef||row.phase!=='issued')return fail('SOURCE_REQUIRED');
+   const witness=input.handoffWitness?.read(row.sourceRef);
+   if(!witness)return fail('FORWARD_UNAVAILABLE');
+   const recovered=await recoverHandoff(held,row,witness,proof);
+   return original(recovered.transfer!.sourceRef!);
+  },
   async transferSource(id:string,request?:Uint8Array){
    const current=(await load()).state.notes[id];
    if(!current?.sourceRef||!(await inspectSource(current.sourceRef)).forwardable)fail('FORWARD_UNAVAILABLE');

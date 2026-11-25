@@ -1,5 +1,6 @@
 import {expect,it} from 'vitest';
 import {createHash} from 'node:crypto';
+import {createNoteHandoffWitness} from '../src/receiz/note-handoff-witness';
 import {createConnectedNoteRuntime} from '../src/receiz/connected-note-runtime';
 // Orchestration only. Actual signed sources and atomic native conservation
 // are exercised separately against the Receiz connected Note implementation.
@@ -8,14 +9,14 @@ function fixture(){
  const bytes=(text:string)=>new TextEncoder().encode(text),source=bytes('isolated-verified-funding');
  const ports={uid:'account',keyId:'a'.repeat(64),assertOpen(){},
   read:async()=>structuredClone(state),write:async(next:unknown,previous:unknown)=>{expect(previous).toEqual(state);state=structuredClone(next);},
-  retain:async(value:Uint8Array)=>{const ref=createHash('sha256').update(value).digest('hex');blobs.set(ref,value.slice());return ref;},restore:async(ref:string)=>blobs.get(ref)!.slice(),
+  retain:async(value:Uint8Array)=>{const ref=createHash('sha256').update(value).digest('hex');blobs.set(ref,value.slice());return ref;},restore:async(ref:string)=>{const value=blobs.get(ref);if(!value)throw Error('BANK_NOTE_EXACT_SOURCE_UNAVAILABLE');return value.slice();},
   prepare:async(amountUsdCents:string,rail:'reserve'|'settlement'='reserve')=>{preparations++;return{noteId:'note',operationId:'b'.repeat(64),rail,amountUsdCents,authorization:{operationId:'b'.repeat(64),noteId:'note',amountUsdCents,rail},noteIdentityBytes:bytes('private-note-key-only-in-encrypted-custody')};},
   issue:async(authorization:unknown,operationId:string,recoverFirst:boolean)=>{submissions++;requests.push({authorization,operationId,recoverFirst});if(lost)throw Error('RESPONSE_LOST');return{noteId:'note',rail:'reserve' as const,amountUsdCents:'200',amountPhiMicro:'1000000',sourceBytes:source,privateOpeningBytes:bytes('private-opening')};},
   inspect:async()=>({noteId:'note',rail:'reserve' as const,amountUsdCents:'200',amountPhiMicro:'1000000'}),
   handover:async(_source:Uint8Array,request:Uint8Array,key:Uint8Array)=>{expect(new TextDecoder().decode(key)).toContain('private-note-key');return bytes('signed-handover:'+new TextDecoder().decode(request));},
   image:async(value:Uint8Array)=>value.slice(),cancel:async()=>bytes('verified-native-cancellation'),
  };
- return{ports,requests,get state(){return state;},get preparations(){return preparations;},get submissions(){return submissions;},lost(value:boolean){lost=value;}};
+ return{ports,requests,rewind(prior:unknown){state=structuredClone(prior);},forget(value:Uint8Array){blobs.delete(createHash('sha256').update(value).digest('hex'));},get state(){return state;},get preparations(){return preparations;},get submissions(){return submissions;},lost(value:boolean){lost=value;}};
 }
 it('reuses the exact retained creation request after a lost response without generating another Note key',async()=>{
  const f=fixture(),runtime=createConnectedNoteRuntime(f.ports);f.lost(true);
@@ -139,4 +140,37 @@ it('refuses custom artwork preparation failure before creating a funded Note',as
  await expect(runtime.create('200','reserve',undefined,new Blob(['broken']))).rejects.toThrow('INVALID_ARTWORK');
  expect(f.submissions).toBe(0);
  expect(await runtime.pending()).toBeNull();
+});
+
+it('reopens the issued Note handoff from its separate witness and refuses a second destination',async()=>{
+ const f=fixture(),records=new Map<string,string>();
+ const handoffWitness=createNoteHandoffWitness(f.ports.keyId,()=>({
+  getItem:key=>records.get(key)??null,setItem:(key,value)=>{records.set(key,value);},
+ }));
+ const bytes=(value:string)=>new TextEncoder().encode(value);
+ const request=bytes('first recipient'),other=bytes('second recipient');
+ let handoffs=0;
+ const ports={...f.ports,handoffWitness,inspect:async()=>({...await f.ports.inspect(),forwardable:true as const}),
+  handover:async(source:Uint8Array,receiving:Uint8Array,authority:Uint8Array)=>{handoffs++;return f.ports.handover(source,receiving,authority);},
+  verifyHandoff:async(source:Uint8Array,successor:Uint8Array)=>{
+   expect(source).toEqual(bytes('isolated-verified-funding'));
+   expect(successor).toEqual(bytes('signed-handover:first recipient'));
+   return request;
+  },
+ };
+ const runtime=createConnectedNoteRuntime(ports);
+ await runtime.create('200');
+ const restorePoint=structuredClone(f.state);
+ const proof=await runtime.transferSource('note',request);
+ f.rewind(restorePoint);
+ const cold=createConnectedNoteRuntime(ports);
+ expect((await cold.savedNotes())[0]).toMatchObject({handoffRecovery:true});
+ await expect(cold.transferSource('note',other)).rejects.toThrow('BANK_NOTE_EXACT_TRANSFER_REQUIRED');
+ expect(await cold.recoverTransferSource('note')).toEqual(proof);
+ f.rewind(restorePoint);f.forget(proof);
+ await expect(cold.recoverTransferSource('note')).rejects.toThrow('BANK_NOTE_HANDOFF_PROOF_REQUIRED');
+ expect(await cold.recoverTransferSource('note',proof)).toEqual(proof);
+ expect(await createConnectedNoteRuntime(ports).transferSource('note')).toEqual(proof);
+ expect(handoffs).toBe(1);
+ expect(f.submissions).toBe(1);
 });

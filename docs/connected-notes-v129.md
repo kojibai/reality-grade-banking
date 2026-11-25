@@ -55,6 +55,38 @@ and rollback-resistant exact-head retirement. It may continue offline within its
 qualified capacity. Neither a connected claim nor a browser storage flag can
 replace that evidence.
 
+### Recovering a handoff
+
+Bankeiz keeps a compact witness in browser storage separate from the encrypted
+Note journal. The witness links the exact predecessor and saved successor
+digests. If an older Note journal is restored while this witness survives,
+Bankeiz reopens the signed successor before it can expose another handoff or
+submit the old Note for deposit. When the proof is missing from local storage,
+the recipient can show the received proof QR or share the saved proof. The
+existing native reader verifies the exact successor before restoring the
+handoff, without requiring a connection.
+
+| What the wallet holds | What the user can do |
+| --- | --- |
+| A verified funded Note | Send or receive it nearby, including repeated offline handoffs. |
+| The newer witness and the matching signed successor | Reopen the same outgoing QR without connecting. |
+| The newer witness and an older Note record | Recover the exact successor from the receiving device’s QR or a saved proof. Another handoff or deposit from the old record stays paused. |
+| The newer witness with no available proof | Retrieve a saved copy when connected or ask the recipient for their proof. Connecting alone does not recreate a handoff that was never shared. |
+
+The witness records digests only. The complete signed successor remains in
+the existing Note custody. A restore of both browser stores can remove the
+witness, so it cannot detect every device rollback.
+
+Send and Receive remain the normal entrances. Opening them does not start
+device enrollment. Offline Cash setup is offered when the wallet already
+holds verified custody evidence for this installation. Previously held
+Offline Cash and its recovery stay visible. Regular-balance nearby payments
+can be saved offline and become spendable on confirmation. Funded Notes
+can be passed on offline, with the final holder connecting to deposit.
+Creating a new connected Note or adding a new Offline Cash allocation from
+the regular balance currently requires a connection.
+
+
 ## Exact contracts
 
 `/api/connect/offline-notes/connected?origin=<registered origin>` uses existing

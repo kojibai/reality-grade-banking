@@ -295,7 +295,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
         }).catch(()=>null);
         const owned=inventory?.saved.find(note=>note.forwardable&&!note.transferred&&!note.transferPending&&!note.selfDeposit
           &&note.amountUsdCents===input.amountUsdCents&&note.recipientUserId===input.recipient);
-        const incoming=inventory?.received.find((note):note is BankReceivedNoteDeposit=>note.status==='received'&&note.forwardable===true
+        const incoming=inventory?.received.find((note):note is BankReceivedNoteDeposit=>note.status==='received'&&(note.forwardable===true||note.handoffRecovery===true)
           &&note.amountUsdCents===input.amountUsdCents);
         const note=owned??incoming;
         if(note){setNoteSend({note,recipient:input.recipient});return;}
@@ -416,7 +416,7 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
         if(active.current){
           if(retained.status==='received'||retained.status==='forwarded')setNoteHandoff(retained);
           setStatus(retained.status==='forwarded'?'Note already passed on.':retained.status==='received'
-            ?`${formatMoney(retained.amountUsdCents)} received. ${retained.forwardable?'You can send this Note offline.':'Connect to add it to your balance.'}`
+            ?`${formatMoney(retained.amountUsdCents)} received. ${retained.handoffRecovery?'This Note was passed on. Recover the saved handoff.':retained.forwardable?'You can send this Note offline.':'Connect to add it to your balance.'}`
             :'Note already added to your account.');
           setNoteReceivingQr(undefined);
           reader.current=readOpticalNoteFrames('wallet');setError('');onRefresh();

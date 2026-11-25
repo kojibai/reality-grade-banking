@@ -5,7 +5,7 @@ import {selectNoteFunding} from './note-funding';
 import {atNoteStage} from './note-stage';
 
 type Json=Record<string,any>;
-type Projection=BankNoteInspection&{rail:BankNoteRail;kind:'funding'|'handover';funding:Json;receiverUserId?:string;receiverKeyId?:string;redemptionDigest?:string;predecessorSha256s?:readonly string[];fundingArtifactSha256:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array};
+type Projection=BankNoteInspection&{rail:BankNoteRail;kind:'funding'|'handover';funding:Json;handover?:{receivingRequest:string;successors?:readonly {receivingRequest:string}[]};receiverUserId?:string;receiverKeyId?:string;redemptionDigest?:string;predecessorSha256s?:readonly string[];fundingArtifactSha256:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array};
 export interface ConnectedNoteModule{
  isBankConnectedNoteImage(bytes:Uint8Array):Promise<boolean>;
  isBankConnectedNoteSource(bytes:Uint8Array):Promise<boolean>;
@@ -30,7 +30,7 @@ const path=()=>`/api/connect/offline-notes/connected?origin=${encodeURIComponent
 const fields=(response:unknown,decode:(v:string)=>Uint8Array)=>{const v=obj(response);if(v.ok!==true||typeof v.source!=='string'||typeof v.privateAccountOpening!=='string')throw Error('BANK_NOTE_RESULT_PENDING');return{source:decode(v.source),opening:decode(v.privateAccountOpening),cancelled:v.cancelled===true};};
 /** Browser composition only. All financial source admission, signed authority,
  * conservation and once-only consumption remain in Receiz v129. */
-export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'prepareArtwork'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'|'verifySelfDeposit'|'verifySelfDepositCredit'>&{
+export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'prepareArtwork'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'verifyHandoff'|'image'|'verifySelfDeposit'|'verifySelfDepositCredit'>&{
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
  artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail,customArtwork?:Blob):Promise<Uint8Array>;
@@ -80,6 +80,15 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
    if(!preparedRequest)throw Error('BANK_NOTE_SOURCE_REQUIRED');const signed=parse(preparedRequest);
    const response=fields(await context.request(path(),{method:'POST',body:{action:'cancel',authorization:signed}}),decode),proof=await module.verifyBankConnectedNoteCancellation(response.source,response.opening);
    if(!response.cancelled||proof.operationId!==a.operationId||proof.noteId!==a.noteId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return proof.proofBytes;
+  },
+  async verifyHandoff(predecessor,successor){
+   const module=await input.module();
+   const [funding,terminal]=await Promise.all([module.readBankConnectedNoteSource(predecessor),module.readBankConnectedNoteSource(successor)]);
+   input.assertOpen();
+   if(funding.kind!=='funding'||terminal.kind!=='handover'||terminal.noteId!==funding.noteId
+    ||terminal.fundingArtifactSha256!==funding.terminalArtifactSha256||terminal.predecessorSha256s?.length
+    ||!terminal.handover)throw Error('BANK_NOTE_EXACT_TRANSFER_REQUIRED');
+   return decode(terminal.handover.receivingRequest);
   },
   async inspect(source){
    const held=await(await input.module()).readBankConnectedNoteSource(source);
