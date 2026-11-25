@@ -1,4 +1,4 @@
-import { createLocalFinancialSession, subscribeBrowserReconnect, type LocalFinancialSessionOptions } from './local-financial';
+import { createLocalFinancialSession, loadLocalFinancialRuntime, subscribeBrowserReconnect, type LocalFinancialSessionOptions } from './local-financial';
 import { createOpticalNoteFrames } from './optical-note-frames';
 import type { FinancialAction, WalletRecipient, WalletPaymentStage } from './local-financial-runtime';
 import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart, type WalletPaymentOpening } from './wallet-payment-bundle';
@@ -191,6 +191,29 @@ export function createFundedWallet(input:Options) {
     input.assertOpen();
     return exactCheckpoint(await input.read());
   }
+  async function recoverWalletOpening(proof:Uint8Array,state:Checkpoint,raw:unknown){
+    const runtime=input.runtime??await loadLocalFinancialRuntime();
+    const {sourceOriginal}=runtime.readReceizAccountFinancialWalletProof(proof);
+    // A recipient's saved proof carries the exact funding Original. Admit
+    // the owner's Source and its debit before restoring the missing index.
+    const session=await open('source',sourceOriginal,true).catch(error=>{
+      if(error instanceof Error&&error.message==='BANK_LOCAL_FINANCIAL_IDENTITY_MISMATCH')return null;
+      throw error;
+    });
+    if(!session)return null;
+    const {allocationId}=session.sourceReference();
+    try{
+      if(state.entries.some(entry=>entry.allocationId===allocationId))return null;
+      const recovered=await session.recoverWalletProof(proof);
+      if(recovered===null)return null;
+      const digest=await retainExact('source',sourceOriginal);
+      await input.save({...state,entries:[...state.entries,{kind:'source',digest,allocationId}]},raw);
+      sessions.get(allocationId)?.dispose();
+      sessions.set(allocationId,session);
+      session.startPublication();
+      return recovered;
+    }finally{if(sessions.get(allocationId)!==session)session.dispose();}
+  }
   function recoverWalletProof(bytes:Uint8Array,allocationId?:string){
     const proof=bytes.slice();
     return input.lock(async()=>{
@@ -205,7 +228,7 @@ export function createFundedWallet(input:Options) {
         if(result>0&&entry.stalledSend&&!await session.resolve(entry.stalledSend.id))reopened.add(entry.allocationId);
       }
       if(reopened.size)await input.save({...state,entries:state.entries.map(entry=>reopened.has(entry.allocationId)?withoutStalledSend(entry):entry)},raw);
-      return recovered;
+      return recovered===null&&!allocationId?recoverWalletOpening(proof,state,raw):recovered;
     });
   }
   function scheduleRecovery(session:Session) {

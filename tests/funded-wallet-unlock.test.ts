@@ -36,6 +36,56 @@ test('background resume can recover an existing credential and an offline unlock
   expect(setupReceiving).toHaveBeenCalledTimes(1);
 });
 
+test('the recipient’s exact receipt restores an owned Wallet opening and debit from an empty journal offline', async () => {
+  const { options, runtime } = await (await createLocalFinancialFixtureFactory())();
+  const opening = { ...await runtime.admitReceizAccountFinancialSource(options.sourceBytes), sourceFamily: 'native-wallet-reserve' };
+  const receipt = Uint8Array.of(1, 2, 3);
+  const retained = new Map<string, Uint8Array>();
+  let checkpoint: unknown = null;
+  let sequence = '0';
+  const network = vi.fn(async () => { throw Error('Network disabled'); });
+  const recovered = vi.fn(async (bytes: Uint8Array) => {
+    expect(bytes).toEqual(receipt);
+    if (sequence === '1') return 0;
+    sequence = '1';
+    return 1;
+  });
+  const open = () => createFundedWallet({
+    ...options, ownerKeyId: 'a'.repeat(64), lock: work => work(), online: () => false,
+    findSource: network, publish: network, publishPeerRelease: network,
+    read: async () => checkpoint,
+    async save(next, previous) { expect(previous).toBe(checkpoint); checkpoint = next; },
+    async retain(bytes) { retained.set(opening.artifactSha256, bytes.slice()); return opening.artifactSha256; },
+    async reopen(digest) {
+      const exact = retained.get(digest);
+      if (!exact) throw Error('Missing Wallet Original');
+      return exact.slice();
+    },
+    runtime: {
+      ...runtime,
+      readReceizAccountFinancialWalletProof() { return { sourceOriginal: options.sourceBytes }; },
+      admitReceizAccountFinancialSource: async () => opening,
+      financialSourceApplicationId: () => options.applicationId,
+      createReceizAccountFinancialExecutor: async () => ({
+        recoverWalletProof: recovered,
+        async current() { return { state: { sequence, wallet: { availableUsdCents: sequence === '1' ? '400' : '10000' } } }; },
+      }),
+      createReceizAccountFinancialPublisher: async () => ({ dispose() {} }),
+    } as unknown as typeof runtime,
+  });
+  const restored = open();
+  try {
+    expect(await restored.recoverWalletProof(receipt)).toBe(1);
+    expect(retained.get(opening.artifactSha256)).toEqual(options.sourceBytes);
+    expect(await restored.recoverWalletProof(receipt)).toBe(0);
+  } finally { restored.dispose(); }
+  const reopened = open();
+  try {
+    expect((await reopened.availableFunding())?.wallet.availableUsdCents).toBe('400');
+    expect(network).not.toHaveBeenCalled();
+  } finally { reopened.dispose(); }
+});
+
 test('an unavailable online writer never starts a new approval', async () => {
   const { wallet, findSource, setupReceiving } = walletFixture();
   findSource.mockRejectedValueOnce(Error('BANK_WALLET_FUNDED_TRANSPORT_UNAVAILABLE'));

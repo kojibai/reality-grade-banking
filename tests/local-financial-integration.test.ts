@@ -200,7 +200,7 @@ it('keeps a locally sealed Send pending when delivery lacks its genuine received
  expect(sent.status).toBe('committed');f.connect();expect((await session.flush()).status).toBe('pending');expect(await session.received(id)).toBeNull();expect(await session.resolve(id)).toEqual(sent);session.dispose();
 });
 
-it('reopens a locally witnessed nearby debit after the Wallet journal is restored',async()=>{
+it('reopens the exact nearby debit after restoring the Wallet journal before the payment QR was opened',async()=>{
  const f=await localFinancialFixture();
  const held=new Map<string,string>();
  const witness=createWalletDebitWitness('a'.repeat(64),()=>({
@@ -243,7 +243,6 @@ it('reopens a locally witnessed nearby debit after the Wallet journal is restore
  } as Parameters<typeof createLocalFinancialSession>[0]);
  const original=await load();
  await original.execute({operationId,action});
- expect(await original.walletPaymentBytes(operationId)).toEqual(proof);
  expect(witness.read(source.allocationId)?.sequence).toBe('1');
  original.dispose();
  sequence='0';
@@ -251,6 +250,7 @@ it('reopens a locally witnessed nearby debit after the Wallet journal is restore
  try{
   expect((await restored.current()).state.wallet.availableUsdCents).toBe('800');
   expect(await restored.resolve(operationId)).toEqual(commit);
+  expect(await restored.walletPaymentBytes(operationId)).toEqual(proof);
   expect(recovered).toHaveBeenCalledOnce();
   expect(execute).toHaveBeenCalledOnce();
   expect(network).not.toHaveBeenCalled();

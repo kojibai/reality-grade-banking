@@ -247,23 +247,25 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   nudge();
  }
  if(!input.deferPublication)startPublication();
+ async function retainWalletDebit(commit:FinancialCommit,proof?:Uint8Array){
+  if(!witness||commit.operation.action.kind!=='send'||!commit.operation.action.nearby)return;
+  try{
+   const sequence=commit.operation.sequence,held=witness.read(source.allocationId);
+   if(held&&BigInt(held.sequence)>=BigInt(sequence))return;
+   const exact=proof??runtime.exportReceizAccountFinancialWalletProof(source,commit);
+   const proofRef=await (await loadReceiz()).sha256ReceizBytes(exact);
+   await input.originals.retain(proofRef,exact);
+   open();
+   witness.record(source.allocationId,{sequence,proofRef});
+  }catch{/* The qualified commit remains available even when a second recovery copy cannot be saved. */}
+ }
  async function walletPaymentBytes(operationId:string){
   open();
   const commit=await executor.resolve(operationId);
   open();
   if(!commit)return null;
   const proof=runtime.exportReceizAccountFinancialWalletProof(source,commit);
-  if(witness&&commit.operation.action.kind==='send'&&commit.operation.action.nearby){
-   try{
-    const sequence=commit.operation.sequence,held=witness.read(source.allocationId);
-    if(!held||BigInt(held.sequence)<BigInt(sequence)){
-     const proofRef=await (await loadReceiz()).sha256ReceizBytes(proof);
-     await input.originals.retain(proofRef,proof);
-     open();
-     witness.record(source.allocationId,{sequence,proofRef});
-    }
-   }catch{/* The qualified commit remains available even when a second recovery copy cannot be saved. */}
-  }
+  await retainWalletDebit(commit,proof);
   open();
   return proof;
  }
@@ -276,6 +278,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   async execute(request:Parameters<typeof executor.execute>[0]){
    open();const result=await executor.execute(request);
    if(result.status==='committed'){
+    await retainWalletDebit(result);
     // Optional presentation and delivery are subsequent to the SDK's durable
     // accepted Original. Their failure cannot turn it into another execution.
     try{void Promise.resolve(input.onCommitted?.(result)).catch(()=>{});}catch{/* Retained completion remains available through resolve. */}
@@ -341,7 +344,7 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    if(!protectedWallet||!executor.recoverWalletProof)return null;
    const recovered=await executor.recoverWalletProof(proof,designatedWitness??undefined);
    open();
-   if(recovered)nudge();
+   if(recovered&&publicationStarted)nudge();
    return recovered;
   },
   sourceReference(){open();return {allocationId:source.allocationId,artifactSha256:source.artifactSha256};},
