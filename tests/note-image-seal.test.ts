@@ -3,6 +3,8 @@ import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {createNoteImageExporter} from '../src/receiz/note-image-seal';
+import {createLocalNoteDepositQueue} from '../src/receiz/note-received-deposits';
+import {encodeNotePng} from '../src/receiz/note-png';
 import {canonicalizeReceizConstitution as canonical} from '../node_modules/@receiz/sdk/dist/constitution.js';
 import {verifyReceizDocumentBytesCanonical} from '../node_modules/@receiz/sdk/dist/verifier/canonical.js';
 import type {ReceizSignatureV4RootPublicKey} from '../node_modules/@receiz/sdk/dist/verifier/signatureV4.js';
@@ -41,7 +43,9 @@ it('exports all three Note rails and signed handovers as canonical PNG proofs, p
   const exporter=createNoteImageExporter({assertOpen(){},inspect,verify:async bytes=>(await verify(bytes)).ok,
    seal:async input=>{seals++;const result=await signing.seal({fileBytes:input.bytes,filename:input.filename,mime:input.mimeType});return{artifactBytes:result.artifactBytes,mimeType:'image/png',verification:await verify(result.artifactBytes)};},
   });
-  const originals=[{name:'handover',image:raw,source:original.terminalSourceBytes}];
+  const artwork=await encodeNotePng(new Uint8ClampedArray([164,31,90,255,15,131,182,255,237,212,154,255,45,82,41,255]),2,2);
+  const customImage=await native.exportBankConnectedNoteImage(original.terminalSourceBytes,artwork,{roots:signing.roots});
+  const originals=[{name:'handover',image:customImage,source:original.terminalSourceBytes}];
   for(const rail of ['reserve','settlement','composite']){
    const funding={...original.funding,rail,amountUsdCents:'200',amountPhiMicro:'1000000',usdPerPhiMicrocents:'200000000',...(rail==='composite'?{fundingParts:{reserve:{amountUsdCents:'100',amountPhiMicro:'500000'},settlement:{amountUsdCents:'100',amountPhiMicro:'500000'}}}:{})};
    const body={schema:'receiz.bank.connected-note.funding-source.v1',funding,fundingSignature:await signing.financialSignature(funding)};
@@ -62,8 +66,33 @@ it('exports all three Note rails and signed handovers as canonical PNG proofs, p
    await expect(denied.exportImage(result,original.noteId)).rejects.toThrow('SEAL_INVALID');
    await expect(exporter.exportImage(result,'another-note')).rejects.toThrow('SOURCE_CHANGED');
    if(name==='handover'){
+    expect(verified.bundle?.artifactSha256Basis).toBe(hash(customImage));
     const credit=await native.verifyBankConnectedNoteReceipt(fixture('credit.receipt'),{roots:signing.roots});
     expect(credit.noteId).toBe(reopened.noteId);expect(credit.credit.terminalSourceSha256).toBe(reopened.terminalArtifactSha256);expect(credit.handover.handoverDigest).toBe(reopened.redemptionDigest);
+    let checkpoint:unknown=null,submissions=0;
+    const blobs=new Map<string,Uint8Array>();
+    const ports={
+     uid:credit.receiverUserId,keyId:credit.receiverKeyId,assertOpen(){},
+     read:async()=>structuredClone(checkpoint),
+     write:async(next:unknown)=>{checkpoint=structuredClone(next);},
+     retain:async(value:Uint8Array)=>{const ref=hash(value);blobs.set(ref,value.slice());return ref;},
+     restore:async(ref:string)=>blobs.get(ref)!.slice(),
+     verify:(value:Uint8Array)=>native.readBankConnectedNoteSource(value,{roots:signing.roots}),
+     submit:async(value:Uint8Array)=>{
+      const admitted=await native.verifyBankConnectedNoteReceipt(fixture('credit.receipt'),{roots:signing.roots});
+      expect(admitted.terminalSourceBytes).toEqual(value);
+      submissions++;
+      return {noteId:admitted.noteId,rail:admitted.rail,amountPhiMicro:admitted.amountPhiMicro,amountUsdCents:admitted.amountUsdCents,reserveAfterUsdCents:admitted.accountAfter.reserveUsdCents,proofBytes:admitted.proofBytes};
+     },
+    };
+    const queue=createLocalNoteDepositQueue(ports);
+    expect((await queue.receive(reopened.terminalSourceBytes,result)).hasOriginalImage).toBe(true);
+    await queue.reconcile();
+    const cold=createLocalNoteDepositQueue(ports);
+    await cold.reconcile();
+    expect((await cold.confirmed(reopened.noteId))?.status).toBe('confirmed');
+    expect(hash(await cold.exportOriginalImage(reopened.noteId))).toBe(hash(result));
+    expect(submissions).toBe(1);
    }
   }
   expect(seals).toBe(4);expect(requests).toBe(0);

@@ -116,3 +116,27 @@ it('releases self-deposit custody only after exact independently admitted native
  await runtime.confirmSelfDeposit('note',proof);expect(await hasHeldConnectedNotes(f.state,{restore:ports.restore,verifySelfDepositCredit})).toBe(false);expect(await hasHeldConnectedNotes(f.state)).toBe(true);
  const before=selfReads,credits=creditReads;await runtime.savedNotes();await runtime.savedNotes();expect(selfReads-before).toBeLessThanOrEqual(1);expect(creditReads-credits).toBeLessThanOrEqual(1);const saved=(await runtime.savedNotes())[0];expect(saved).toMatchObject({selfDeposit:'confirmed',transferred:false,transferPending:false});const cold=createConnectedNoteRuntime(ports),coldBefore=selfReads;await cold.savedNotes();expect(selfReads-coldBefore).toBe(1);
 });
+
+it('reopens the exact artwork of an interrupted issue and uses it on every exported image',async()=>{
+ const f=fixture(),artwork=new Blob(['chosen artwork'],{type:'image/png'});
+ const face=new Uint8Array([81,82,83]),prepared=async()=>face.slice();
+ const ports={...f.ports,prepareArtwork:prepared,deliveryImage:async(_source:Uint8Array,_note:unknown,_key:Uint8Array,art?:Uint8Array)=>art??new Uint8Array([0]),image:async(_source:Uint8Array,_note:unknown,art?:Uint8Array)=>art??new Uint8Array([0])};
+ const first=createConnectedNoteRuntime(ports);
+ f.lost(true);await expect(first.create('200','reserve',undefined,artwork)).rejects.toThrow('RESPONSE_LOST');
+ f.lost(false);
+ const cold=createConnectedNoteRuntime({...ports,prepareArtwork:async()=>{throw Error('The artwork is already held');}});
+ await expect(cold.create('200','reserve',undefined,new Blob(['different artwork']))).rejects.toThrow('EXACT_RESUME_REQUIRED');
+ const note=await cold.create('200','reserve');
+ expect(note.image).toEqual(face);
+ expect((await cold.exportNote(note.noteId)).image).toEqual(face);
+ expect((await cold.transfer(note.noteId,new Uint8Array([42]))).image).toEqual(face);
+ expect((await createConnectedNoteRuntime(ports).savedNotes())[0].image).toEqual(face);
+ expect(f.submissions).toBe(2);
+});
+
+it('refuses custom artwork preparation failure before creating a funded Note',async()=>{
+ const f=fixture(),runtime=createConnectedNoteRuntime({...f.ports,prepareArtwork:async()=>{throw Error('INVALID_ARTWORK');}});
+ await expect(runtime.create('200','reserve',undefined,new Blob(['broken']))).rejects.toThrow('INVALID_ARTWORK');
+ expect(f.submissions).toBe(0);
+ expect(await runtime.pending()).toBeNull();
+});

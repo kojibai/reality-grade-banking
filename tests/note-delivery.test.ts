@@ -60,7 +60,10 @@ it('reopens and reuses the exact admitted terminal for the same recipient while 
  const d=api(),recipient=await receiver(),other=await receiver(),opened=await d.openConnectedNoteDelivery({native:module,bytes:bytes('note.png')});
  const terminal=await d.prepareConnectedNoteDelivery({native:module,delivery:opened,identity:recipient.keyFile,accountUserId:recipient.uid,kai:'14000000'}),heldStorage=storage();
  const queue=()=>createLocalNoteDepositQueue({uid:recipient.uid,keyId:recipient.keyId,assertOpen(){},...heldStorage,verify:b=>openConnectedAccountNote(module,b,{receiverUserId:recipient.uid,receiverKeyId:recipient.keyId}),submit:async()=>{throw Error('NO_NETWORK_OR_CREDIT_IN_READ_ONLY_TEST');}});
- expect((await queue().receive(terminal)).status).toBe('received');const retained=await queue().retainedSource(metadata.noteId);expect(retained).toEqual(terminal);retained!.fill(0);
+ expect(opened.originalImage).toEqual(bytes('note.png'));
+ expect(await queue().receive(terminal,opened.originalImage)).toMatchObject({status:'received',hasOriginalImage:true});
+ expect(await queue().exportOriginalImage(metadata.noteId)).toEqual(bytes('note.png'));
+ const retained=await queue().retainedSource(metadata.noteId);expect(retained).toEqual(terminal);retained!.fill(0);
  const exact=(await queue().retainedSource(metadata.noteId))!;expect(exact).toEqual(terminal);
  expect(await d.prepareConnectedNoteDelivery({native:module,delivery:{source:opened.source},identity:recipient.keyFile,accountUserId:recipient.uid,kai:'14000001',retainedSource:exact})).toEqual(terminal);
  await expect(d.prepareConnectedNoteDelivery({native:module,delivery:opened,identity:other.keyFile,accountUserId:other.uid,kai:'14000001',retainedSource:terminal})).rejects.toThrow('BANK_NOTE_IDENTITY_BINDING_REQUIRED');

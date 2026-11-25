@@ -2,7 +2,7 @@ import type {BankNoteImage,BankNoteInspection,BankNoteRail,BankNoteReview} from 
 import type {ReceivedNoteSource} from './note-received-deposits';
 
 type Transfer={requestRef:string;sourceRef?:string;imageRef?:string;purpose?:'self-deposit';creditRef?:string};
-type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;deliveryImage?:true;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
+type Row={noteId:string;operationId:string;rail:BankNoteRail;amountUsdCents:string;authorizationRef:string;noteIdentityRef:string;phase:'prepared'|'submitted'|'issued'|'cancelled';sourceRef?:string;openingRef?:string;imageRef?:string;artworkRef?:string;deliveryImage?:true;transfer?:Transfer;cancellationRef?:string;cancelRequestRef?:string};
 type State={schema:'bank.connected-notes.v1';uid:string;keyId:string;current:string|null;notes:Record<string,Row>};
 const hash=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const json=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
@@ -17,7 +17,7 @@ export function readConnectedNoteCheckpoint(value:unknown):State|null{
  if(!s||s.schema!=='bank.connected-notes.v1'||typeof s.uid!=='string'||!s.uid||typeof s.keyId!=='string'||!s.keyId||!s.notes||typeof s.notes!=='object'||Array.isArray(s.notes)||Object.keys(s.notes).length>128||s.current!==null&&(typeof s.current!=='string'||!s.notes[s.current]))fail();
  for(const [id,row]of Object.entries(s.notes)){
   if(!row||row.noteId!==id||!id||!hash(row.operationId)||!hash(row.authorizationRef)||!hash(row.noteIdentityRef)||!['reserve','settlement','composite'].includes(row.rail)||!/^\d{1,9}$/.test(row.amountUsdCents)||BigInt(row.amountUsdCents)<=0n||BigInt(row.amountUsdCents)>100000000n||!['prepared','submitted','issued','cancelled'].includes(row.phase))fail();
-  for(const ref of [row.sourceRef,row.openingRef,row.imageRef,row.cancellationRef,row.cancelRequestRef,row.transfer?.requestRef,row.transfer?.sourceRef,row.transfer?.imageRef,row.transfer?.creditRef])if(ref!==undefined&&!hash(ref))fail();
+  for(const ref of [row.sourceRef,row.openingRef,row.imageRef,row.artworkRef,row.cancellationRef,row.cancelRequestRef,row.transfer?.requestRef,row.transfer?.sourceRef,row.transfer?.imageRef,row.transfer?.creditRef])if(ref!==undefined&&!hash(ref))fail();
   if(row.deliveryImage!==undefined&&row.deliveryImage!==true||row.deliveryImage&&!row.imageRef)fail();
   if(row.transfer?.creditRef&&(!row.transfer.sourceRef||row.transfer.purpose!=='self-deposit'))fail();
   if(row.transfer?.purpose!==undefined&&row.transfer.purpose!=='self-deposit'||row.transfer?.purpose==='self-deposit'&&row.transfer.imageRef)fail();
@@ -44,6 +44,7 @@ export interface ConnectedNotePorts{
  retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;
  review?(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteReview>;
  prepare(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<ConnectedNotePreparation>;
+ prepareArtwork?(file:Blob,note:ConnectedNotePreparation):Promise<Uint8Array>;
  /** The port independently verifies complete native funding and its opening. */
  issue(authorization:unknown,operationId:string,recoverFirst:boolean,allowSubmit?:boolean):Promise<ConnectedNoteFundingResult>;
  /** The returned bytes are a verified native cancellation, not an HTTP flag. */
@@ -54,9 +55,9 @@ export interface ConnectedNotePorts{
  /** Actual native handover/source verification, including the receiving key. */
  verifySelfDeposit?(source:Uint8Array):Promise<ReceivedNoteSource>;
  verifySelfDepositCredit?(source:Uint8Array,receipt:Uint8Array,expected:SelfDepositCreditBinding):Promise<void>;
- image(source:Uint8Array,note:BankNoteInspection):Promise<Uint8Array>;
+ image(source:Uint8Array,note:BankNoteInspection,artwork?:Uint8Array):Promise<Uint8Array>;
  /** Existing scoped Note authority enters only the complete sealed delivery. */
- deliveryImage?(source:Uint8Array,note:BankNoteInspection,noteIdentity:Uint8Array):Promise<Uint8Array>;
+ deliveryImage?(source:Uint8Array,note:BankNoteInspection,noteIdentity:Uint8Array,artwork?:Uint8Array):Promise<Uint8Array>;
  onIssued?():void;
 }
 /** The caller serializes mutations with the existing account/Notes locks. No
@@ -72,9 +73,10 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
  }
  async function load(){input.assertOpen();const previous=await input.read();input.assertOpen();const state=readConnectedNoteCheckpoint(previous)??{schema:'bank.connected-notes.v1',uid:input.uid,keyId:input.keyId,current:null,notes:{}} as State;if(state.uid!==input.uid||state.keyId!==input.keyId)fail('IDENTITY_CHANGED');return{state,previous};}
  async function original(ref:string){const bytes=await input.restore(ref);input.assertOpen();const d=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes)))].map(v=>v.toString(16).padStart(2,'0')).join('');if(d!==ref)fail('SOURCE_REQUIRED');return bytes;}
+ async function heldArtwork(row:Row){return row.artworkRef?original(row.artworkRef):undefined;}
  async function save(state:State,previous:unknown){await input.write(state,previous);input.assertOpen();return load();}
  const current=(state:State)=>state.current?state.notes[state.current]!:null;
- async function reviewed(row:Row){const a=parse(await original(row.authorizationRef));if(a.noteId!==row.noteId||a.amountUsdCents!==row.amountUsdCents||a.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');return{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,...(a.amountPhiMicro?{amountPhiMicro:a.amountPhiMicro}:{}),...(a.fundingParts?{fundingParts:a.fundingParts}:{}),...(a.recipientUserId?{recipientUserId:a.recipientUserId}:{}),canCancel:row.phase!=='issued'};}
+ async function reviewed(row:Row){const a=parse(await original(row.authorizationRef));if(a.noteId!==row.noteId||a.amountUsdCents!==row.amountUsdCents||a.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');return{noteId:row.noteId,rail:row.rail,amountUsdCents:row.amountUsdCents,...(a.amountPhiMicro?{amountPhiMicro:a.amountPhiMicro}:{}),...(a.fundingParts?{fundingParts:a.fundingParts}:{}),...(a.recipientUserId?{recipientUserId:a.recipientUserId}:{}),...(row.artworkRef?{hasCustomArtwork:true as const}:{}),canCancel:row.phase!=='issued'};}
  async function note(row:Row):Promise<BankNoteImage>{
   if(!row.imageRef||!row.sourceRef)return fail('SOURCE_REQUIRED');const inspection=await inspectSource(row.sourceRef);
   if(inspection.noteId!==row.noteId||inspection.amountUsdCents!==row.amountUsdCents||inspection.rail!==row.rail)fail('SOURCE_REQUIRED');
@@ -100,7 +102,7 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
  }
  async function transfer(id:string,request?:Uint8Array){
   const {held,row:before}=await retainedTransfer(id,request);let row=before;
-  if(!row.transfer!.imageRef){const source=await original(row.transfer!.sourceRef!),imageRef=await input.retain(await input.image(source,await input.inspect(source)));input.assertOpen();row={...row,transfer:{...row.transfer!,imageRef}};held.state.notes[id]=row;await save(held.state,held.previous);}
+  if(!row.transfer!.imageRef){const source=await original(row.transfer!.sourceRef!),imageRef=await input.retain(await input.image(source,await input.inspect(source),await heldArtwork(row)));input.assertOpen();row={...row,transfer:{...row.transfer!,imageRef}};held.state.notes[id]=row;await save(held.state,held.previous);}
   return{noteId:id,image:await original(row.transfer!.imageRef!)};
  }
  async function prepareSelfDeposit(id:string,request?:Uint8Array){const {row}=await retainedTransfer(id,request,'self-deposit');return{noteId:id,sourceBytes:await selfSource(row,await original(row.transfer!.sourceRef!))};}
@@ -116,28 +118,36 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    return held.length===source.length&&held.every((value,index)=>value===source[index]);
   },
   async savedNotes(){const {state}=await load();return Promise.all(Object.values(state.notes).filter(row=>row.phase==='issued'&&!!row.imageRef).map(note));},
-  async create(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<BankNoteImage>{
+  async create(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string,artwork?:Blob):Promise<BankNoteImage>{
    if(!recipientValid(recipientUserId))fail('RECIPIENT_REQUIRED');
    let held=await load(),row=current(held.state);
-   if(row&&(row.amountUsdCents!==amountUsdCents||rail!==undefined&&row.rail!==rail||(await reviewed(row)).recipientUserId!==recipientUserId))fail('EXACT_RESUME_REQUIRED');
+   if(row&&(artwork!==undefined||row.amountUsdCents!==amountUsdCents||rail!==undefined&&row.rail!==rail||(await reviewed(row)).recipientUserId!==recipientUserId))fail('EXACT_RESUME_REQUIRED');
    if(!row){
     if(Object.keys(held.state.notes).length>=128)fail('DEVICE_CAPACITY');
     const prepared=await input.prepare(amountUsdCents,rail,recipientUserId);input.assertOpen();
     if(prepared.amountUsdCents!==amountUsdCents||rail!==undefined&&prepared.rail!==rail||held.state.notes[prepared.noteId]||!hash(prepared.operationId))fail('EXACT_RESUME_REQUIRED');
-    const [authorizationRef,noteIdentityRef]=await Promise.all([input.retain(json(prepared.authorization)),input.retain(prepared.noteIdentityBytes)]);input.assertOpen();
-    row={noteId:prepared.noteId,operationId:prepared.operationId,rail:prepared.rail,amountUsdCents,authorizationRef,noteIdentityRef,phase:'prepared'};
+    if(artwork&&!input.prepareArtwork)fail('ARTWORK_INVALID');
+    const face=artwork?await input.prepareArtwork!(artwork,prepared):undefined;
+    input.assertOpen();
+    const [authorizationRef,noteIdentityRef,artworkRef]=await Promise.all([
+     input.retain(json(prepared.authorization)),
+     input.retain(prepared.noteIdentityBytes),
+     face?input.retain(face):undefined,
+    ]);
+    input.assertOpen();
+    row={noteId:prepared.noteId,operationId:prepared.operationId,rail:prepared.rail,amountUsdCents,authorizationRef,noteIdentityRef,...(artworkRef?{artworkRef}:{}),phase:'prepared'};
     held.state.notes[row.noteId]=row;held.state.current=row.noteId;held=await save(held.state,held.previous);
    }
    if(row.phase==='cancelled')fail('CANCELLED');
    if(!row.sourceRef){
     const recoverFirst=row.phase!=='prepared',authorization=parse(await original(row.authorizationRef));
-    if(!recoverFirst){row={...row,phase:'submitted'};held.state.notes[row.noteId]=row;held=await save(held.state,held.previous);}
+    if(!recoverFirst){await heldArtwork(row);row={...row,phase:'submitted'};held.state.notes[row.noteId]=row;held=await save(held.state,held.previous);}
     const result=await input.issue(authorization,row.operationId,recoverFirst,row.cancelRequestRef?false:undefined);input.assertOpen();
     if(result.noteId!==row.noteId||result.amountUsdCents!==row.amountUsdCents||result.rail!==row.rail)fail('EXACT_RESUME_REQUIRED');
     const [sourceRef,openingRef]=await Promise.all([input.retain(result.sourceBytes),input.retain(result.privateOpeningBytes)]);input.assertOpen();
     row={...row,sourceRef,openingRef,phase:'issued'};held.state.notes[row.noteId]=row;held=await save(held.state,held.previous);input.onIssued?.();
    }
-   if(!row.imageRef){const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!),image=input.deliveryImage?await input.deliveryImage(source,inspection,await original(row.noteIdentityRef)):await input.image(source,inspection),imageRef=await input.retain(image);input.assertOpen();row={...row,imageRef,...(input.deliveryImage?{deliveryImage:true as const}:{})};held.state.notes[row.noteId]=row;held.state.current=null;await save(held.state,held.previous);}
+   if(!row.imageRef){const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!),face=await heldArtwork(row),image=input.deliveryImage?await input.deliveryImage(source,inspection,await original(row.noteIdentityRef),face):await input.image(source,inspection,face),imageRef=await input.retain(image);input.assertOpen();row={...row,imageRef,...(input.deliveryImage?{deliveryImage:true as const}:{})};held.state.notes[row.noteId]=row;held.state.current=null;await save(held.state,held.previous);}
    return note(row);
   },
   async exportNote(id:string):Promise<BankNoteImage>{
@@ -147,7 +157,7 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    // original remains content-addressed; no financial issue is repeated.
    if(!row.transfer&&!row.deliveryImage&&input.deliveryImage){
     const source=await original(row.sourceRef!),inspection=await inspectSource(row.sourceRef!);
-    const image=await input.deliveryImage(source,inspection,await original(row.noteIdentityRef));input.assertOpen();
+    const image=await input.deliveryImage(source,inspection,await original(row.noteIdentityRef),await heldArtwork(row));input.assertOpen();
     const imageRef=await input.retain(image);input.assertOpen();
     row={...row,imageRef,deliveryImage:true};held.state.notes[id]=row;await save(held.state,held.previous);
    }

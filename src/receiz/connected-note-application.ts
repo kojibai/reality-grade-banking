@@ -29,10 +29,10 @@ const path=()=>`/api/connect/offline-notes/connected?origin=${encodeURIComponent
 const fields=(response:unknown,decode:(v:string)=>Uint8Array)=>{const v=obj(response);if(v.ok!==true||typeof v.source!=='string'||typeof v.privateAccountOpening!=='string')throw Error('BANK_NOTE_RESULT_PENDING');return{source:decode(v.source),opening:decode(v.privateAccountOpening),cancelled:v.cancelled===true};};
 /** Browser composition only. All financial source admission, signed authority,
  * conservation and once-only consumption remain in Receiz v129. */
-export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'|'verifySelfDeposit'|'verifySelfDepositCredit'>&{
+export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'review'|'prepare'|'prepareArtwork'|'issue'|'cancel'|'prepareCancellation'|'inspect'|'handover'|'image'|'verifySelfDeposit'|'verifySelfDepositCredit'>&{
  module():Promise<ConnectedNoteModule>;context():Promise<Context>;
  sdk:{createReceizIdentityKeyFile(input:{owner:{uid:string}}):Promise<{keyFile:ReceizKeyFile}>;serializeReceizIdentityArtifact(key:ReceizKeyFile):string;parseReceizIdentityArtifactText(text:string):ReceizKeyFile;receizBase64UrlEncode(bytes:Uint8Array):string;receizBase64UrlDecode(text:string):Uint8Array;receizKaiNow():{pulse:number}};
- artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail):Promise<Uint8Array>;
+ artwork(amount:string,id:string,compact?:boolean,rail?:BankNoteRail,customArtwork?:Blob):Promise<Uint8Array>;
  sealImage(image:Uint8Array,noteId:string):Promise<Uint8Array>;
  onFundingVerified?(source:Uint8Array,opening:Uint8Array,proof:{funding:Json}):void;
 }){
@@ -59,6 +59,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
    const authorization=await module.createBankConnectedNoteIssue({identity:context.identity,passphrase:context.passphrase,accountUserId:input.uid,noteIdentity,rail,amountUsdCents,...(recipientUserId?{recipientUserId}:{}),...(rail!=='reserve'?{amountPhiMicro:funding.amountPhiMicro}:{}),...(funding.fundingParts?{fundingParts:funding.fundingParts}:{}),quotePulse:quote.quotePulse,nowMs:quote.issuedAtMs,usdPerPhiMicrocents:rate,expectedReserveBeforeUsdCents:quote.reserveUsdCents,expectedWalletBeforePhiMicro:quote.balancePhiMicro});
    input.assertOpen();if(authorization.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{noteId:authorization.noteId,operationId:authorization.operationId,amountUsdCents,rail,authorization,noteIdentityBytes:new TextEncoder().encode(input.sdk.serializeReceizIdentityArtifact(noteIdentity))};
   },
+  prepareArtwork:(file,note)=>input.artwork(note.amountUsdCents,note.noteId,false,note.rail,file),
   async issue(authorization,operationId,recoverFirst,allowSubmit=true){
    const module=await input.module(),context=await input.context(),a=obj(authorization);input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
    let response:unknown=recoverFirst?await context.request(`${path()}&allocationId=${operationId}`,{method:'GET'}):{found:false};
@@ -80,8 +81,8 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
   async handover(source,receivingRequestBytes,noteIdentityBytes){const module=await input.module();return module.createBankConnectedNoteHandover({fundingSourceBytes:source,receivingRequestBytes,noteIdentity:input.sdk.parseReceizIdentityArtifactText(new TextDecoder('utf-8',{fatal:true}).decode(noteIdentityBytes)),kai:String(input.sdk.receizKaiNow().pulse)});},
   async verifySelfDeposit(source){const held=await(await input.module()).readBankConnectedNoteSource(source);input.assertOpen();if(held.kind!=='handover'||held.receiverUserId!==input.uid||held.receiverKeyId!==input.keyId||!held.redemptionDigest)throw Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED');return{...held,receiverUserId:held.receiverUserId,receiverKeyId:held.receiverKeyId,redemptionDigest:held.redemptionDigest};},
   verifySelfDepositCredit:async(source,receipt,expected)=>verifyConnectedSelfDepositCredit(await input.module(),source,receipt,expected),
-  async image(source,note){
-   const module=await input.module(),image=await module.exportBankConnectedNoteImage(source,await input.artwork(note.amountUsdCents,note.noteId,false,note.rail));
+  async image(source,note,artwork){
+   const module=await input.module(),image=await module.exportBankConnectedNoteImage(source,artwork??await input.artwork(note.amountUsdCents,note.noteId,false,note.rail));
    // The native envelope proves the financial source. Its PNG also needs the
    // existing canonical document seal, binding the artwork and that envelope.
    // Runtime retains this result before completing creation or handover, so a

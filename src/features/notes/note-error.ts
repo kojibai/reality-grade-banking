@@ -19,6 +19,8 @@ export function noteError(cause:unknown):string{
  if(code==='BANK_NOTE_RECIPIENT_REQUIRED'||code==='BANK_NOTE_RECIPIENT_UNAVAILABLE')return 'Choose an existing Receiz username for this Note.';
  if(code==='BANK_NOTE_RECIPIENT_MISMATCH'||code==='BANK_CONNECTED_NOTE_RECIPIENT_MISMATCH')return 'This Note is addressed to a different account. Open that account to deposit it.';
  if(code==='BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE')return 'This saved Note uses its original deposit terms. Keep its exact recovery path.';
+ if(code==='BANK_NOTE_ARTWORK_INVALID')return 'Choose a readable PNG, JPEG or WebP image up to 8 MB.';
+ if(code==='BANK_NOTE_ARTWORK_RECIPIENT_REQUIRED')return 'Choose a specific recipient to add artwork to this Note.';
  if(code==='BANK_NOTE_INSUFFICIENT_FUNDS')return 'Choose an amount within your available balance.';
  if(stage?.stage==='note-quote'&&/service_unavailable|503|fetch|network/i.test(code))return 'The account service could not complete this Note review. No value was moved by the review. Try again shortly.';
  if(code==='BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION')return 'Connect to create this Note.';

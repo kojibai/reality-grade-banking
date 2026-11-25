@@ -10,7 +10,7 @@ export const NOTE_DELIVERY_KEYWORD='receiz.bank.connected-note-delivery.v1';
 const schema=NOTE_DELIVERY_KEYWORD,MAX_IMAGE=8*1024*1024,MAX_AUTHORITY=16384;
 const chunkOptions={keyword:NOTE_DELIVERY_KEYWORD,maxCompressedBytes:MAX_AUTHORITY*2,maxTextBytes:MAX_AUTHORITY*2};
 type Source=Awaited<ReturnType<ConnectedNoteModule['readBankConnectedNoteSource']>>;
-export type ConnectedNoteDelivery={source:Source;noteIdentity?:ReceizKeyFile};
+export type ConnectedNoteDelivery={source:Source;noteIdentity?:ReceizKeyFile;originalImage?:Uint8Array};
 type ReceivingModule=ConnectedNoteModule&Pick<BankNoteAccountModule,'createBankNoteAccountReceivingRequest'>;
 const same=(a:Uint8Array,b:Uint8Array)=>a.length===b.length&&a.every((value,index)=>value===b[index]);
 const fail=(code:string):never=>{throw Error(`BANK_NOTE_DELIVERY_${code}`);};
@@ -43,11 +43,11 @@ export async function openConnectedNoteDelivery(input:{native:ConnectedNoteModul
   if(proof.status!=='verified-artifact')throw Error('BANK_NOTE_IMAGE_SEAL_INVALID');
  }
  const source=await readConnectedNote(input.native,bytes),chunks=png?readPngTextChunks(bytes,chunkOptions):[];
- if(!chunks.length)return{source};
+ if(!chunks.length)return{source,...(png?{originalImage:bytes}:{})};
  if(chunks.length!==1||chunks[0].text.length>MAX_AUTHORITY*2)fail('SOURCE_MISMATCH');
  const text=chunks[0].text,value=JSON.parse(text);
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!=='fundingArtifactSha256|noteId|noteIdentity|schema'||canonical(value)!==text||value.schema!==schema||value.noteId!==source.noteId||value.fundingArtifactSha256!==source.terminalArtifactSha256||typeof value.noteIdentity!=='string')fail('SOURCE_MISMATCH');
- return{source,noteIdentity:authority(source,value.noteIdentity)};
+ return{source,noteIdentity:authority(source,value.noteIdentity),originalImage:bytes};
 }
 
 /** Compose the existing signed destination and Note handover on import. Only

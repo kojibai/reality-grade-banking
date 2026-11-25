@@ -5,6 +5,7 @@ export const noteTitle=(_rail:NoteRail='reserve')=>'Settlement Note';
 export const noteAccountLabel=(rail:NoteRail='reserve')=>rail==='composite'?'Settlement + Reserve':rail==='settlement'?'Settlement':'Reserve';
 export const NOTE_FONT = 'Reserve Note Serif';
 export const NOTE_PAPER = '/notes/banknote-engraving.webp';
+export const NOTE_ARTWORK_PANEL = { x: 494, y: 83, width: 228, height: 319 };
 export const NOTE_DIGITS = '/notes/denomination-engraving.png';
 export const NOTE_MASTHEAD = '/notes/reserve-note-masthead.png';
 export const NOTE_SETTLEMENT_MASTHEAD = '/notes/settlement-note-masthead.png';
