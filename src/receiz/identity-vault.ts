@@ -16,13 +16,20 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
+    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','wallet-deferred-sends','wallet-nearby-receipts','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
       if(!row)continue;
       const clear=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row.iv),additionalData:new TextEncoder().encode(key)},saved.wrappingKey,row.bytes);
       const state=JSON.parse(new TextDecoder().decode(clear));
+      if(family==='wallet-deferred-sends'||family==='wallet-nearby-receipts'){
+        // Replacing this record discards the key that opens its private Wallet journal.
+        const resolved = Array.isArray(state) && state.length <= 1000 && state.every(entry =>
+          family==='wallet-deferred-sends' ? entry?.status==='recorded'||entry?.status==='not-sent' : entry?.original!=null);
+        if(!resolved)throw Error('Keep this Identity Record while nearby payments are awaiting confirmation. Open Send or Receive to check their status.');
+        continue;
+      }
       if(family==='share-certificates'){
         const checkpoint=(await import('./share-certificates')).readShareCertificateCheckpoint(state,digest);
         if(checkpoint?.current.status==='pending')throw Error('Keep this ID until its certificate operation is confirmed. Reopen Certificates to continue the exact request.');
