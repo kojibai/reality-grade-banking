@@ -338,26 +338,46 @@ test('an outstanding review keeps its selected account when an already visible s
  }finally{act(()=>root.unmount());host.remove();}
 });
 
-test('starts Bankeiz connected Note creation with an addressed recipient and offers protected open creation explicitly', async () => {
+test('only offers addressed Notes when the device has no verified protected Note', async () => {
  const review=vi.fn(),create=vi.fn();
  const identity={offlineNotes:async()=>({addressedCreationByDefault:true,savedNotes:async()=>[],pending:async()=>null,review,create})} as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
  try {
   await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
-  expect(host.querySelector<HTMLInputElement>('input[name="note-recipient"]:checked')?.parentElement?.textContent).toContain('Specific person');
+  expect(host.querySelector('[role=combobox]')).toBeTruthy();
   await act(async()=>click(host,'Review note'));
   expect(review).not.toHaveBeenCalled();
   expect(create).not.toHaveBeenCalled();
   expect(host.textContent).toContain('Choose an existing Receiz username');
-  expect(host.textContent).toContain('Open Note (qualified device)');
+  expect(host.textContent).not.toContain('Open Note');
  } finally {act(()=>root.unmount());}
+});
+
+test('offers Send nearby without starting new Note funding while disconnected', async () => {
+ const onUseSendNearby=vi.fn(),review=vi.fn(),create=vi.fn();
+ const identity={offlineNotes:async()=>({addressedCreationByDefault:true,savedNotes:async()=>[],pending:async()=>null,review,create})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ const prior=Object.getOwnPropertyDescriptor(navigator,'onLine');
+ Object.defineProperty(navigator,'onLine',{configurable:true,value:false});
+ try {
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()} onUseSendNearby={onUseSendNearby}/>));
+  expect(host.textContent).not.toContain('Review note');
+  await act(async()=>click(host,'Send nearby'));
+  expect(onUseSendNearby).toHaveBeenCalledExactlyOnceWith('100');
+  expect(review).not.toHaveBeenCalled();
+  expect(create).not.toHaveBeenCalled();
+ } finally {
+  act(()=>root.unmount());
+  if(prior)Object.defineProperty(navigator,'onLine',prior);
+  else Reflect.deleteProperty(navigator,'onLine');
+ }
 });
 
 test('keeps the reviewed artwork bound to the selected recipient and excludes it from open Notes',async()=>{
  const peer={kind:'user',userId:'33333333-3333-4333-8333-333333333333',username:'mira',displayName:'Mira',avatarUrl:null};
  const review=vi.fn(async(amountUsdCents:string,recipientUserId?:string)=>({rail:'reserve',amountUsdCents,recipientUserId}));
  const create=vi.fn(async(amountUsdCents:string,_rail:unknown,recipientUserId?:string)=>({noteId:'targeted',rail:'reserve',amountUsdCents,recipientUserId,image:new Uint8Array([1])}));
- const identity={messaging:async()=>({accountUid:'owner',knownConversations:()=>[{members:[peer]}],search:async()=>[],conversations:async()=>[]}),offlineNotes:async()=>({addressedCreationByDefault:true,pending:async()=>null,savedNotes:async()=>[],review,create})}as unknown as OpenIdentity;
+ const identity={messaging:async()=>({accountUid:'owner',knownConversations:()=>[{members:[peer]}],search:async()=>[],conversations:async()=>[]}),offlineNotes:async()=>({addressedCreationByDefault:true,pending:async()=>null,savedNotes:async()=>[{noteId:'held-note',amountUsdCents:'5000',image:new Uint8Array([1])}],review,create})}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);document.body.appendChild(host);
  const artwork=new File(['test image'],'studio.png',{type:'image/png'});
  try{

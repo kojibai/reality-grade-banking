@@ -13,6 +13,8 @@ import { WalletPaymentCode, createNearbyPaymentCode, type NearbyPaymentCode, typ
 import { isNearbyWalletPayment, type NearbyWalletPayment } from '../../receiz/wallet-nearby-consent';
 import { nearbyPaymentLinkBytes, readNearbyPaymentLink } from '../../receiz/wallet-nearby-link';
 import { walletBalanceNotice, type WalletBalanceNotice } from './wallet-balance-notice';
+import {ForwardNoteHandoff} from '../notes/ForwardNoteHandoff';
+import type {BankForwardedNote,BankNoteDepositResult,BankNoteImage,BankReceivedNoteDeposit} from '../../receiz/offline-notes';
 import {OfflineCashOptions} from './OfflineCashOptions';
 
 const walletError=(cause:unknown)=>{
@@ -68,12 +70,13 @@ export function FundedWalletBalance({identity,onRefresh,onSendNearby}:{identity:
     return()=>{active=false;window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};
   },[identity]);
   const movingBack=balance?.movingBackUsdCents;
+  const canEnable=balance?.canEnable===true;
   const canSendNearby=!!identity.nearbyWalletReceive;
   function edit(next:NonNullable<typeof editing>){
     setEditing(editing===next?null:next);setAmount('');setMessage('');setNotice(null);
   }
   async function change(moveBack:boolean){
-    if(running.current||navigator.onLine===false)return;
+    if(running.current||navigator.onLine===false||!moveBack&&!canEnable)return;
     running.current=true;setBusy(true);setNotice(null);setMessage('');
     try{
       const wallet=await identity.fundedWallet!();
@@ -93,14 +96,15 @@ export function FundedWalletBalance({identity,onRefresh,onSendNearby}:{identity:
       if(wallet)setBalance(await wallet.offlineBalance().catch(()=>balance));
     }finally{running.current=false;setBusy(false);}
   }
+  if(!canEnable&&!movingBack&&(!balance||balance.availableUsdCents==='0'))return null;
   return <section className="detail-list wallet-offline-balance" aria-label="Offline cash">
     <div>
       <span>Offline cash</span>
       <div className="wallet-offline-balance-controls">
         <strong aria-live="polite">{balance?formatMoney(balance.availableUsdCents):'—'}</strong>
-        <button type="button" className="icon-button" aria-label="Enable more funds offline" title="Enable offline"
+        {canEnable&&<button type="button" className="icon-button" aria-label="Enable more funds offline" title="Enable offline"
           aria-expanded={editing==='add'} aria-controls={editing==='add'?formId:undefined}
-          disabled={!balance||busy||!online||!!movingBack} onClick={()=>edit('add')}><Plus size={18} aria-hidden="true"/></button>
+          disabled={busy||!online||!!movingBack} onClick={()=>edit('add')}><Plus size={18} aria-hidden="true"/></button>}
         <button type="button" className="icon-button" aria-label="Move back" title="Move back"
           aria-expanded={editing==='moveBack'} aria-controls={editing==='moveBack'?formId:undefined}
           disabled={!balance||balance.availableUsdCents==='0'||busy||!online||!!movingBack} onClick={()=>edit('moveBack')}><Minus size={18} aria-hidden="true"/></button>
@@ -108,7 +112,7 @@ export function FundedWalletBalance({identity,onRefresh,onSendNearby}:{identity:
     </div>
     {movingBack?<button type="button" className="secondary-button" disabled={busy||!online}
       onClick={()=>void change(true)}>Finish moving back {formatMoney(movingBack)}</button>:
-      editing&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
+      editing&&(editing==='moveBack'||canEnable)&&<form id={formId} onSubmit={event=>{event.preventDefault();void change(editing==='moveBack');}}>
         <AmountInput label={editing==='add'?'Amount to enable offline':'Amount to move back'} dollars value={amount} onChange={setAmount} disabled={busy||!online}/>
         {editing==='add'&&<p className="body-copy small-copy">Use this amount to pay nearby without internet. Your device may ask you to approve setup.</p>}
         <button className="primary-button" disabled={busy||!online||!amount.trim()}>{editing==='add'?'Enable offline':'Move back funds'}</button>
@@ -156,6 +160,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   const [deferredReview,setDeferredReview]=useState<DeferredWalletSendReview|null>(null);
   const [deferredAmount,setDeferredAmount]=useState<string|null>(null);
   const [nearbyCode,setNearbyCode]=useState<NearbyPaymentCode|null>(null);
+  const [noteSend,setNoteSend]=useState<{note:BankNoteImage|BankReceivedNoteDeposit|BankForwardedNote;recipient:string}>();
   const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
   const [connectionNotice,setConnectionNotice]=useState('');
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
@@ -217,6 +222,13 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
       finally{setPendingBundle(await wallet.pendingBundle());}
     })}>Continue payment</button>{errors}
   </section>;
+  if(noteSend)return <section className="native-operation-result">
+    <h1 className="sheet-hero">{'status' in noteSend.note&&noteSend.note.status==='forwarded'?'Show Note QR.':'Send a funded Note.'}</h1>
+    <p className="body-copy">{formatMoney(noteSend.note.amountUsdCents)} · The recipient can send this Note offline or connect to add it to their balance.</p>
+    <ForwardNoteHandoff identity={identity} note={noteSend.note} recipient={noteSend.recipient} startScanning
+      onForwarded={note=>{setNoteSend({...noteSend,note});onRefresh();}}/>
+    <button className="text-button" type="button" onClick={()=>{setNoteSend(undefined);onNext();}}>Back to Send</button>
+  </section>;
   if(nearbyCode)return <section className="native-operation-result" aria-live="polite">
     <h1 className="sheet-hero">Show payment QR.</h1>
     <p className="body-copy">The recipient can save this payment now and use the funds once they connect and it’s confirmed.</p>
@@ -275,6 +287,19 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
       }catch(cause){
         if(!fundedWalletUnavailable(cause))throw cause;
       }
+      if(input.nearby&&identity.offlineNotes){
+        const inventory=await identity.offlineNotes().then(async notes=>{
+          const saved=await notes.savedNotes();
+          const received:BankNoteDepositResult[]=await notes.receivedNotes?.()??[];
+          return {saved,received};
+        }).catch(()=>null);
+        const owned=inventory?.saved.find(note=>note.forwardable&&!note.transferred&&!note.transferPending&&!note.selfDeposit
+          &&note.amountUsdCents===input.amountUsdCents&&note.recipientUserId===input.recipient);
+        const incoming=inventory?.received.find((note):note is BankReceivedNoteDeposit=>note.status==='received'&&note.forwardable===true
+          &&note.amountUsdCents===input.amountUsdCents);
+        const note=owned??incoming;
+        if(note){setNoteSend({note,recipient:input.recipient});return;}
+      }
       if(identity.deferredWalletSend){
         try{
           const deferred=await identity.deferredWalletSend();
@@ -310,6 +335,8 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
   useEffect(()=>{if(offline||linkedPayment)setExpanded(true);},[offline,linkedPayment]);
   const reader=useRef(readOpticalNoteFrames('wallet'));
   const [status,setStatus]=useState(''),[error,setError]=useState('');
+  const [noteHandoff,setNoteHandoff]=useState<BankReceivedNoteDeposit|BankForwardedNote>();
+  const [noteReceivingQr,setNoteReceivingQr]=useState<OpticalFrames>();
   const [received,setReceived]=useState<{allocationId:string}|null>(null);
   const [reply,setReply]=useState<OpticalFrames|null>(null);
   const [receiptProof,setReceiptProof]=useState<{frames:OpticalFrames;index:number}|null>(null);
@@ -383,10 +410,27 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
         await saveNearby(nearby);
         return true;
       }
+      if(identity.offlineNotes&&proof.bytes[0]===123
+        &&JSON.parse(new TextDecoder().decode(proof.bytes))?.schema==='receiz.bank.connected-note.handover-source.v1'){
+        const notes=await identity.offlineNotes(),retained=await notes.deposit(proof.bytes);
+        if(active.current){
+          if(retained.status==='received'||retained.status==='forwarded')setNoteHandoff(retained);
+          setStatus(retained.status==='forwarded'?'Note already passed on.':retained.status==='received'
+            ?`${formatMoney(retained.amountUsdCents)} received. ${retained.forwardable?'You can send this Note offline.':'Connect to add it to your balance.'}`
+            :'Note already added to your account.');
+          setNoteReceivingQr(undefined);
+          reader.current=readOpticalNoteFrames('wallet');setError('');onRefresh();
+        }
+        return true;
+      }
       const pair=readWalletPairing(proof.bytes);
       if(pair){
         if(pair.schema!=='bankeiz.wallet.offer.v1'&&pair.schema!=='bankeiz.wallet.offer.v2')throw Error('BANK_WALLET_PAIRING_INVALID');
-        if(active.current){setOffer(pair);reader.current=readOpticalNoteFrames('wallet');setError('');}
+        const custody=await identity.fundedWallet?.().then(wallet=>wallet.hasReceivingCustody?.()).catch(()=>false);
+        if(!active.current)return true;
+        reader.current=readOpticalNoteFrames('wallet');setError('');
+        if(custody)setOffer(pair);
+        else await offerFromBalance(pair);
         return true;
       }
       const wallet=await identity.fundedWallet!();
@@ -422,6 +466,29 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
       return true;
     }
   }
+  async function showNoteReceivingQr(){
+    if(!identity.offlineNotes||busy)return;
+    setBusy(true);setError('');
+    try{
+      const notes=await identity.offlineNotes();
+      const frames=await createOpticalNoteFrames('request',await notes.receivingRequest());
+      if(active.current)setNoteReceivingQr(frames);
+    }catch(cause){if(active.current)setError(walletError(cause));}
+    finally{if(active.current)setBusy(false);}
+  }
+  async function offerFromBalance(offer:WalletOffer){
+    const address=identity.walletReceivingAddress?.();
+    if(identity.nearbyWalletReceive&&offer.recipient===address){
+      const frames=await pairFrames({schema:connectionReplySchema,offer});
+      if(!active.current)return;
+      setReply(frames);
+      setStatus('Connect to use these funds after you scan the payment.');
+    }else{
+      setReply(null);
+      setStatus('Ask the sender to use Send Nearby from their balance.');
+    }
+    setOffer(null);
+  }
   async function approveOffer(){
     if(!offer||busy)return;
     setBusy(true);setStatus('');setError('');
@@ -431,15 +498,8 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
       if(active.current){setReply(frames);setOffer(null);}
     }catch(cause){
       if(!active.current)return;
-      if(fundedWalletUnavailable(cause)&&identity.nearbyWalletReceive&&offer.recipient===identity.walletReceivingAddress?.()){
-        setReply(await pairFrames({schema:connectionReplySchema,offer}));
-        setOffer(null);
-        setStatus('Connect to confirm after you scan the payment.');
-      }else if(cause instanceof Error&&cause.message==='BANK_WALLET_DEVICE_REQUIRED'){
-        setOffer(null);
-        setReply(null);
-        setStatus('Offline cash is unavailable for this payment. The sender can complete the payment when they’re online.');
-      }else setError(walletError(cause));
+      if(fundedWalletUnavailable(cause))await offerFromBalance(offer);
+      else setError(walletError(cause));
     }
     finally{if(active.current)setBusy(false);}
   }
@@ -468,8 +528,12 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
         <p className="body-copy">Save this nearby payment to your account. Once confirmed, it will be available to spend.</p>
         <button className="primary-button" type="button" disabled={busy} onClick={()=>void acceptLink()}>Accept payment</button>
       </> : !offer&&!receiptProof&&<>
-        <p className="body-copy small-copy">Scan the sender’s payment QR or use a photo of it. For a moving QR, keep the camera on the code until all frames are scanned.</p>
-        <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
+        {noteReceivingQr?<><WalletPaymentCode frames={noteReceivingQr} label="Note receiving QR" onError={cause=>setError(walletError(cause))}/>
+          <button className="text-button" type="button" onClick={()=>setNoteReceivingQr(undefined)}>Scan their Note QR</button></>
+          : <><p className="body-copy small-copy">Scan the sender’s payment QR or use a photo of it. For a moving QR, keep the camera on the code until all frames are scanned.</p>
+            <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
+            {identity.offlineNotes&&<button className="text-button" type="button" disabled={busy} onClick={()=>void showNoteReceivingQr()}>Show Note receiving QR</button>}</>}
+        {noteHandoff&&<ForwardNoteHandoff key={noteHandoff.noteId} identity={identity} note={noteHandoff} onForwarded={value=>{setNoteHandoff(value);setStatus('Note ready to hand off.');onRefresh();}}/>}
       </>}
     {offer&&<><p className="body-copy">Approve receiving {formatMoney(offer.amountUsdCents)} on this device.</p>
       <button type="button" className="primary-button" disabled={busy} onClick={()=>void approveOffer()}>Approve receiving</button>

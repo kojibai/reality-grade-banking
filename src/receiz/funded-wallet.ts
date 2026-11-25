@@ -89,6 +89,7 @@ type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'p
   publish(allocationId:string,batch:Parameters<LocalFinancialSessionOptions['publish']>[0]):Promise<unknown>;
   publishPeerRelease:NonNullable<LocalFinancialSessionOptions['publishPeerRelease']>;
   prepareOffline?(amountUsdCents?:string):Promise<Uint8Array|null>;
+  hasCashCustody?(role:'receiving'|'funding'):Promise<boolean>;
   onFundingRetained?(allocationId:string):Promise<void>;
   onWalletReceived?(opening:WalletPaymentOpening):Promise<void>;
   prepareFullBalance?():Promise<Uint8Array|null>;
@@ -445,6 +446,7 @@ export function createFundedWallet(input:Options) {
     warm:()=>unlocking??(warming??=restoreAndSetup('resume').finally(()=>{warming=undefined;})),
     unlock:()=>unlocking??=(restoreAndSetup('unlock').finally(()=>{unlocking=undefined;})),
     resume,
+    hasReceivingCustody:()=>input.hasCashCustody?.('receiving')??Promise.resolve(false),
     async prepareOffline(amountUsdCents?:string){
       if(!input.prepareOffline)throw Error('BANK_WALLET_DEVICE_REQUIRED');
       const prepare=input.prepareOffline;
@@ -459,8 +461,12 @@ export function createFundedWallet(input:Options) {
     },
     async offlineBalance(){
       const state=await current();
-      const available=await offlineAllocations(state);
-      return {availableUsdCents:String(available.reduce((sum,item)=>sum+item.cents,0n)),movingBackUsdCents:state.moveBack?.amountUsdCents??null};
+      const [available,canEnable]=await Promise.all([
+        offlineAllocations(state),
+        input.hasCashCustody?.('funding').catch(()=>false),
+      ]);
+      return {availableUsdCents:String(available.reduce((sum,item)=>sum+item.cents,0n)),movingBackUsdCents:state.moveBack?.amountUsdCents??null,
+        ...(canEnable?{canEnable:true as const}:{})};
     },
     async moveBack(amountUsdCents:string){
       if(!input.online())throw Error('BANK_LOCAL_FINANCIAL_OFFLINE');

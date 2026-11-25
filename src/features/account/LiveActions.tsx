@@ -30,7 +30,7 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
     const difference=currentAvailabilityDifference(wallet,observation?.history??[],observation?.observedAt??null);
     const showOfflineBalance=action.kind==='balance'&&active&&!!identity.fundedWallet;
     body=<>
-      <p className="balance-label">{showOfflineBalance?'Available online':'Available balance'}</p>
+      <p className="balance-label">Available balance</p>
       <div className="success-amount navy-text balance-sheet-amount">{wallet?formatMoney(wallet.totalUsdCents):'—'}</div>
       <p className="body-copy small-copy">{wallet?difference!==null?'Your Settlement calculation is below.':'Ready to send, receive or keep with you.':'Your verified account balance appears here.'}</p>
       <p className="balance-local-time">{new Date().toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})} · Local time</p>

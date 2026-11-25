@@ -49,7 +49,7 @@ test.each([false,true])('regular Wallet components carry scan-time approval into
     return {recipientLabel:offer.recipient,amountUsdCents:'100',quote:{amountPhiMicro:'500000',settledUsdCents:'0',ecosystemUsdCents:'100'}};
   });
   const receiver=vi.fn(async()=>paymentAnswer);
-  const wallet={outgoing:async()=>null,availableReceipt:async()=>null,offer:async()=>paymentOffer,answer:receiver,review};
+  const wallet={outgoing:async()=>null,availableReceipt:async()=>null,offer:async()=>paymentOffer,hasReceivingCustody:async()=>true,answer:receiver,review};
   const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
   const send=()=> <FundedWalletSend identity={identity} request={()=>({recipient:offer.recipient,amountUsdCents:'100',nearby:true})}
     onRefresh={()=>{}} onNext={()=>{}}>Payment fields</FundedWalletSend>;
@@ -70,20 +70,20 @@ test.each([false,true])('regular Wallet components carry scan-time approval into
   }finally{await act(async()=>root.unmount());host.remove();}
 });
 
-test('nearby Receive presents a custody limitation without reporting a received payment',async()=>{
+test('nearby Receive offers balance confirmation without opening new protected custody',async()=>{
   const host=document.createElement('div'),root=createRoot(host);
   document.body.append(host);
-  const onRefresh=vi.fn();
-  const wallet={availableReceipt:async()=>null,answer:async()=>{throw Error('BANK_WALLET_DEVICE_REQUIRED');}};
-  const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
+  const onRefresh=vi.fn(),answerOffer=vi.fn();
+  const wallet={availableReceipt:async()=>null,hasReceivingCustody:async()=>false,answer:answerOffer};
+  const identity={fundedWallet:async()=>wallet,walletReceivingAddress:()=>answer.recipientUserId,nearbyWalletReceive:async()=>({list:async()=>[],subscribe:()=>()=>{}})} as unknown as OpenIdentity;
   try{
     await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
-    await scan(offer);
-    await click(host,'Approve receiving');
-    expect(host.querySelector('[role="status"]')?.textContent).toContain('Offline cash is unavailable for this payment');
-    expect(host.textContent).toContain('The sender can complete the payment when they’re online.');
+    await scan({...offer,recipient:answer.recipientUserId});
+    expect(host.textContent).not.toContain('Approve receiving');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('Connect to use these funds after you scan the payment.');
     expect(host.querySelector('[role="alert"]')).toBeNull();
-    expect(host.textContent).not.toContain('Wallet recipient reply QR');
+    expect(host.textContent).toContain('Wallet recipient reply QR');
+    expect(answerOffer).not.toHaveBeenCalled();
     expect(onRefresh).not.toHaveBeenCalled();
   }finally{await act(async()=>root.unmount());host.remove();}
 });
@@ -179,5 +179,47 @@ test('two unqualified Wallets use regular review, one payment QR and a quiet con
   }finally{
     await act(async()=>root.unmount());
     host.remove();
+  }
+});
+
+test('Send Nearby selects the funded Note and Receive Nearby can forward the same amount offline',async()=>{
+  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+  const raw=(name:string)=>new TextEncoder().encode(JSON.stringify({schema:'receiz.bank.connected-note.handover-source.v1',name}));
+  const ab=raw('A to B'),bc=raw('B to C'),request=Uint8Array.of(21,34,55);
+  const owned={noteId:'same-note',rail:'reserve' as const,recipientUserId:answer.recipientUserId,amountUsdCents:'100',forwardable:true as const,image:Uint8Array.of(137)};
+  const received={status:'received' as const,noteId:owned.noteId,rail:owned.rail,amountUsdCents:'100',amountPhiMicro:'1000000',forwardable:true as const,proofBytes:ab};
+  const forwardOwnedNote=vi.fn(async()=>({...received,status:'forwarded' as const,proofBytes:ab}));
+  const forwardReceivedNote=vi.fn(async()=>({...received,status:'forwarded' as const,proofBytes:bc}));
+  const deposit=vi.fn(async()=>received);
+  const missingCash=async()=>{throw Error('BANK_WALLET_DEVICE_REQUIRED');},deferredWalletSend=vi.fn();
+  const sender={fundedWallet:missingCash,deferredWalletSend,offlineNotes:async()=>({savedNotes:async()=>[owned],forwardOwnedNote})} as unknown as OpenIdentity;
+  const receiver={fundedWallet:missingCash,offlineNotes:async()=>({receivingRequest:async()=>request,deposit,forwardReceivedNote})} as unknown as OpenIdentity;
+  async function scanShown(){
+    const frames=scanner.shown,scanFrame=scanner.read!;
+    if(!frames||typeof frames==='string')throw Error('Expected portable Note frames');
+    await act(async()=>{for(let index=0;index<frames.count;index++)await scanFrame(frames.frame(index));});
+  }
+  try{
+    await act(async()=>root.render(<FundedWalletSend identity={sender} request={()=>({recipient:answer.recipientUserId,amountUsdCents:'100',nearby:true})}
+      onRefresh={()=>{}} onNext={()=>{}}>Payment fields</FundedWalletSend>));
+    await click(host,'Review payment');
+    expect(deferredWalletSend).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('Scan the recipient’s Note receiving QR.');
+    scanner.shown=await createOpticalNoteFrames('request',request);
+    await scanShown();
+    expect(forwardOwnedNote).toHaveBeenCalledExactlyOnceWith(owned.noteId,request);
+    expect(host.textContent).toContain('Forwarded Note QR');
+    await act(async()=>root.render(<FundedWalletReceive identity={receiver} offline onRefresh={()=>{}}/>));
+    scanner.shown=await createOpticalNoteFrames('wallet',ab);
+    await scanShown();
+    expect(deposit).toHaveBeenCalledExactlyOnceWith(ab);
+    expect(host.textContent).toContain('You can send this Note offline.');
+    await click(host,'Send Note nearby');
+    scanner.shown=await createOpticalNoteFrames('request',request);
+    await scanShown();
+    expect(forwardReceivedNote).toHaveBeenCalledExactlyOnceWith(owned.noteId,request,undefined);
+    expect(host.textContent).toContain('Forwarded Note QR');
+  }finally{
+    await act(async()=>root.unmount());host.remove();
   }
 });

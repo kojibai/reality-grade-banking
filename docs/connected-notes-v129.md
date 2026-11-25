@@ -19,7 +19,7 @@ antirollback requirements of qualified continuous offline sending.
    protected financial-root signature, then its private account opening. Both
    remain retained before packaging. The PNG carries the complete public funding source and its scoped per-Note delivery authority under the canonical image seal. It contains no account signing key or private account balance opening.
 5. The holder saves and sends the original PNG. On import, the receiving account locally composes its existing signed receiving request and the Note handover from that complete image. No receiving-request file exchange is needed for a new connected Note. The exact terminal is retained before credit submission; reimport reuses it.
-   New connected Notes from Bankeiz require a recipient. Their stable account UID is included in the signed issue and financial funding source, so only that account can form an accepted handover or claim even after a username change. Previously issued open Notes retain their original redemption rules. New open Notes use qualified Note custody.
+   New connected Notes from Bankeiz require a recipient. Their stable account UID is included in the signed issue and financial funding source, so only that account can take the first handover even after a username change. Previously issued open Notes retain their original redemption rules. New open Notes use qualified Note custody.
 
 6. The receiver verifies the complete source and destination offline. **Received
    Notes** holds it separately from available account credit. This is verified
@@ -31,6 +31,24 @@ antirollback requirements of qualified continuous offline sending.
    another credit. Only the full verified native credit and private opening can
    mark the local queue confirmed. Reconciliation runs before account spending
    or creating a new Note from that value. Unknown outcomes keep that spending barrier. A known already-deposited copy stays paused without blocking a later valid incoming Note; retries are explicit and reuse the retained claim.
+
+### Passing on a funded Note
+
+The native writer includes the recipient’s admitted keys in the existing funding
+quote where available. The signed issue and funded Original bind those keys. The
+first holder can pass on that exact funded Note while offline. Each handoff
+verifies the predecessor, signs it to the next holder’s Note receiving QR, and
+saves the exact successor before the sender shows the outgoing QR. The recipient
+can receive it in **Receive nearby** and pass it on the same way. A saved outgoing
+QR can be reopened after a restart.
+
+The last holder can add the value to their balance on connection through the
+ordinary Note claim. Intermediate holders can stay offline. Account credit
+consumes that original funding once and keeps the complete chain with the
+receipt. If competing chains reach the writer, only one can receive credit.
+Regular balance payments still use their existing Send Nearby path when there
+is no matching funded Note. Notes issued without the signed onward policy keep
+their original redemption rule.
 
 Qualified local consumption continues to require the existing attested custody
 and rollback-resistant exact-head retirement. It may continue offline within its

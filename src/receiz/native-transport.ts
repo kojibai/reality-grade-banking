@@ -60,8 +60,10 @@ export function permittedNativePath(path: string, method: string): boolean {
   }
   if (url.pathname === '/api/connect/offline-notes/connected') {
     const keys=[...url.searchParams.keys()],verb=method.toUpperCase();
-    if(!['POST','GET'].includes(verb)||url.searchParams.getAll('origin').length!==1||!bankNoteRpId(url.searchParams.get('origin')??'')||keys.some(key=>!['origin','allocationId','noteId','intent'].includes(key)||url.searchParams.getAll(key).length!==1))return false;
+    if(!['POST','GET'].includes(verb)||url.searchParams.getAll('origin').length!==1||!bankNoteRpId(url.searchParams.get('origin')??'')||keys.some(key=>!['origin','allocationId','noteId','intent','recipientUserId'].includes(key)||url.searchParams.getAll(key).length!==1))return false;
     if(verb==='POST')return keys.length===1;
+    if(url.searchParams.has('recipientUserId'))return keys.length===3&&url.searchParams.get('intent')==='quote'
+      &&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(url.searchParams.get('recipientUserId')??'');
     return keys.length===2&&(url.searchParams.has('intent')?url.searchParams.get('intent')==='quote':url.searchParams.has('allocationId')?/^[a-f0-9]{64}$/.test(url.searchParams.get('allocationId')??''):/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('noteId')??''));
   }
   if(url.pathname==='/api/mcp/account')return method.toUpperCase()==='POST'&&!url.search;

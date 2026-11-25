@@ -25,22 +25,12 @@ const subscribeConnection=(listener:()=>void)=>{
   return()=>{window.removeEventListener('online',listener);window.removeEventListener('offline',listener);};
 };
 const deviceOffline=()=>navigator.onLine===false;
-function useWalletCustody(identity:OpenIdentity|undefined,active:boolean){
-  useEffect(()=>{
-    if(!active||!identity?.fundedWallet)return;
-    const restore=()=>{void identity.fundedWallet!().then(wallet=>wallet.warm()).catch(()=>{});};
-    restore();
-    window.addEventListener('online',restore);
-    return()=>window.removeEventListener('online',restore);
-  },[identity,active]);
-}
 import {ReceivingHelp,type ReceivingHelpInput} from '../adoption/ReceivingHelp';
 
 const Invoice=lazy(()=>import('../invoices/InvoiceComposer').then(module=>({default:module.InvoiceComposer})));
 const Counter=lazy(()=>import('./MerchantCounter').then(module=>({default:module.MerchantCounter})));
 
 export function LiveReceive({ identity, onRefresh = () => {}, active = true, initialLinkMode='send', initialToolsMode='button', linkedPayment, onLinkedPaymentSaved }: { identity: OpenIdentity; onRefresh?: () => void; active?: boolean; initialLinkMode?:'send'|'checkout';initialToolsMode?:'button'|'checkout';linkedPayment?:string;onLinkedPaymentSaved?:()=>void }) {
-  useWalletCustody(identity,active);
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
   const [noteMode, setNoteMode] = useState(false),[counterMode,setCounterMode]=useState(false),[invoiceMode,setInvoiceMode]=useState(false);
   const [linkMode,setLinkMode]=useState<'send'|'checkout'>(initialLinkMode);
@@ -79,7 +69,6 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
 }
 
 export function LiveSend({ identity, active = true, onRefresh = () => {}, initialRequest, initialRecipient, initialMemo='', initialNearbyGuide, onClose: _onClose }: { identity?: OpenIdentity; active?: boolean; onRefresh?: () => void; wallet: SharedWallet | null; initialRequest?: PaymentRequest | null;initialMemo?:string; initialNearbyGuide?:{amount?:string}; initialRecipient?: {userId:string;username:string;displayName?:string}; onClose: () => void }) {
-  useWalletCustody(identity,active);
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
   const [nearby,setNearby]=useState(!!initialRequest?.nearbyRecipient),[keepOffline,setKeepOffline]=useState(false);
   const [fundedReview,setFundedReview]=useState<{identity:OpenIdentity;review:FundedWalletReview}>();

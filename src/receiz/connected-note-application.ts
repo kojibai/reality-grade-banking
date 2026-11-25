@@ -5,7 +5,7 @@ import {selectNoteFunding} from './note-funding';
 import {atNoteStage} from './note-stage';
 
 type Json=Record<string,any>;
-type Projection=BankNoteInspection&{rail:BankNoteRail;kind:'funding'|'handover';funding:Json;receiverUserId?:string;receiverKeyId?:string;redemptionDigest?:string;fundingArtifactSha256:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array};
+type Projection=BankNoteInspection&{rail:BankNoteRail;kind:'funding'|'handover';funding:Json;receiverUserId?:string;receiverKeyId?:string;redemptionDigest?:string;predecessorSha256s?:readonly string[];fundingArtifactSha256:string;terminalArtifactSha256:string;terminalSourceBytes:Uint8Array};
 export interface ConnectedNoteModule{
  isBankConnectedNoteImage(bytes:Uint8Array):Promise<boolean>;
  isBankConnectedNoteSource(bytes:Uint8Array):Promise<boolean>;
@@ -15,6 +15,7 @@ export interface ConnectedNoteModule{
  createBankConnectedNoteIssue(input:Json):Promise<Json>;
  createBankConnectedNoteCancellation(input:Json):Promise<Json>;
  createBankConnectedNoteHandover(input:Json):Promise<Uint8Array>;
+ createBankConnectedNoteSuccessor?(input:Json):Promise<Uint8Array>;
  createBankConnectedNoteClaim(input:Json):Promise<Json>;
  verifyBankConnectedNoteFunding(source:Uint8Array,opening:Uint8Array):Promise<Projection&{accountAfter:Json}>;
  verifyBankConnectedNoteReceipt?(receipt:Uint8Array):Promise<BankNoteInspection&{kind:string;credit?:Json;terminalSourceBytes:Uint8Array;terminalArtifactSha256:string;redemptionDigest?:string}>;
@@ -37,27 +38,30 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
  onFundingVerified?(source:Uint8Array,opening:Uint8Array,proof:{funding:Json}):void;
 }){
  const decode=input.sdk.receizBase64UrlDecode;
- let heldReview:{amount:string;requested?:BankNoteRail;quote:Json;funding:ReturnType<typeof selectNoteFunding>}|undefined;
- async function review(amount:string,requested?:BankNoteRail){
+ let heldReview:{amount:string;requested?:BankNoteRail;recipientUserId?:string;quote:Json;funding:ReturnType<typeof selectNoteFunding>}|undefined;
+ async function review(amount:string,requested?:BankNoteRail,recipientUserId?:string){
   if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
   const context=await input.context();input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
-  const response=obj(await atNoteStage('note-quote',()=>context.request(`${path()}&intent=quote`,{method:'GET'}))),quote=obj(response.quote),rate=quote.usdPerPhiMicrocents;
+  const addressed=recipientUserId&&!!(await input.module()).createBankConnectedNoteSuccessor;
+  const recipientQuery=addressed?'&recipientUserId='+encodeURIComponent(recipientUserId!):'';
+  const response=obj(await atNoteStage('note-quote',()=>context.request(`${path()}${recipientQuery}&intent=quote`,{method:'GET'}))),quote=obj(response.quote),rate=quote.usdPerPhiMicrocents;
   if(response.ok!==true||typeof rate!=='string'||!(/^[1-9]\d{0,18}$/).test(rate)||typeof quote.quotePulse!=='string'||!/^\d{1,18}$/.test(quote.quotePulse)||!Number.isSafeInteger(quote.issuedAtMs)||!Number.isSafeInteger(quote.expiresAtMs)||quote.expiresAtMs-quote.issuedAtMs!==300000)throw Error('BANK_NOTE_QUOTE_INVALID');
-  const funding=selectNoteFunding(amount,quote,requested);input.assertOpen();heldReview={amount,requested,quote,funding};return structuredClone(funding);
+  const funding=selectNoteFunding(amount,quote,requested);input.assertOpen();heldReview={amount,requested,recipientUserId:addressed?recipientUserId:undefined,quote,funding};return structuredClone(funding);
  }
  return createConnectedNoteRuntime({...input,
   review,
   async prepare(amountUsdCents,requested,recipientUserId){
    if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
    if(!recipientUserId)throw Error('BANK_NOTE_RECIPIENT_REQUIRED');
-   if(!heldReview||heldReview.amount!==amountUsdCents||requested!==undefined&&heldReview.funding.rail!==requested)await review(amountUsdCents,requested);
+   const addressed=!!(await input.module()).createBankConnectedNoteSuccessor;
+   if(!heldReview||heldReview.amount!==amountUsdCents||addressed&&heldReview.recipientUserId!==recipientUserId||requested!==undefined&&heldReview.funding.rail!==requested)await review(amountUsdCents,requested,recipientUserId);
    const {quote,funding}=heldReview!,rail=funding.rail,rate=quote.usdPerPhiMicrocents;
    if(Date.now()>quote.expiresAtMs)throw Error('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
    const module=await input.module(),context=await input.context();input.assertOpen();if(context.uid!==input.uid)throw Error('BANK_NOTE_IDENTITY_CHANGED');
    if(Date.now()>quote.expiresAtMs)throw Error('BANK_NOTE_ALLOCATION_QUOTE_MISMATCH');
    const noteIdentity=(await input.sdk.createReceizIdentityKeyFile({owner:{uid:crypto.randomUUID()}})).keyFile;
-   const authorization=await module.createBankConnectedNoteIssue({identity:context.identity,passphrase:context.passphrase,accountUserId:input.uid,noteIdentity,rail,amountUsdCents,...(recipientUserId?{recipientUserId}:{}),...(rail!=='reserve'?{amountPhiMicro:funding.amountPhiMicro}:{}),...(funding.fundingParts?{fundingParts:funding.fundingParts}:{}),quotePulse:quote.quotePulse,nowMs:quote.issuedAtMs,usdPerPhiMicrocents:rate,expectedReserveBeforeUsdCents:quote.reserveUsdCents,expectedWalletBeforePhiMicro:quote.balancePhiMicro});
-   input.assertOpen();if(authorization.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{noteId:authorization.noteId,operationId:authorization.operationId,amountUsdCents,rail,authorization,noteIdentityBytes:new TextEncoder().encode(input.sdk.serializeReceizIdentityArtifact(noteIdentity))};
+   const authorization=await module.createBankConnectedNoteIssue({identity:context.identity,passphrase:context.passphrase,accountUserId:input.uid,noteIdentity,rail,amountUsdCents,...(recipientUserId?{recipientUserId}:{}),...(quote.recipientKeyIds?{recipientKeyIds:quote.recipientKeyIds}:{}),...(rail!=='reserve'?{amountPhiMicro:funding.amountPhiMicro}:{}),...(funding.fundingParts?{fundingParts:funding.fundingParts}:{}),quotePulse:quote.quotePulse,nowMs:quote.issuedAtMs,usdPerPhiMicrocents:rate,expectedReserveBeforeUsdCents:quote.reserveUsdCents,expectedWalletBeforePhiMicro:quote.balancePhiMicro});
+   input.assertOpen();if(authorization.recipientUserId!==recipientUserId||JSON.stringify(authorization.recipientKeyIds)!==JSON.stringify(quote.recipientKeyIds))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{noteId:authorization.noteId,operationId:authorization.operationId,amountUsdCents,rail,authorization,noteIdentityBytes:new TextEncoder().encode(input.sdk.serializeReceizIdentityArtifact(noteIdentity))};
   },
   prepareArtwork:(file,note)=>input.artwork(note.amountUsdCents,note.noteId,false,note.rail,file),
   async issue(authorization,operationId,recoverFirst,allowSubmit=true){
@@ -66,7 +70,7 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
    if(obj(response).found===false){if(!allowSubmit)throw Error('BANK_NOTE_CANCELLATION_PENDING');response=await atNoteStage('note-issue',()=>context.request(path(),{method:'POST',body:{action:'issue',authorization}}));}
    const wire=fields(response,decode);if(wire.cancelled)throw Error('BANK_NOTE_CANCELLED');
    const proof=await module.verifyBankConnectedNoteFunding(wire.source,wire.opening),f=proof.funding;
-   if(f.recipientUserId!==a.recipientUserId||f.operationId!==operationId||f.noteId!==a.noteId||f.accountUserId!==input.uid||f.issuer?.keyId!==input.keyId||f.noteAuthority?.keyId!==a.noteAuthority?.keyId||f.rail!==a.rail||f.amountUsdCents!==a.amountUsdCents||a.rail!=='reserve'&&(f.amountPhiMicro!==a.amountPhiMicro||f.usdPerPhiMicrocents!==a.usdPerPhiMicrocents)||(a.rail==='composite'?['reserve','settlement'].some(rail=>['amountUsdCents','amountPhiMicro'].some(k=>f.fundingParts?.[rail]?.[k]!==a.fundingParts?.[rail]?.[k])):f.fundingParts!==undefined))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
+   if(f.recipientUserId!==a.recipientUserId||JSON.stringify(f.recipientKeyIds)!==JSON.stringify(a.recipientKeyIds)||f.operationId!==operationId||f.noteId!==a.noteId||f.accountUserId!==input.uid||f.issuer?.keyId!==input.keyId||f.noteAuthority?.keyId!==a.noteAuthority?.keyId||f.rail!==a.rail||f.amountUsdCents!==a.amountUsdCents||a.rail!=='reserve'&&(f.amountPhiMicro!==a.amountPhiMicro||f.usdPerPhiMicrocents!==a.usdPerPhiMicrocents)||(a.rail==='composite'?['reserve','settlement'].some(rail=>['amountUsdCents','amountPhiMicro'].some(k=>f.fundingParts?.[rail]?.[k]!==a.fundingParts?.[rail]?.[k])):f.fundingParts!==undefined))throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
    input.onFundingVerified?.(wire.source,wire.opening,proof);
    return{...proof,sourceBytes:wire.source,privateOpeningBytes:wire.opening};
   },
@@ -77,7 +81,10 @@ export function createConnectedNoteApplication(input:Omit<ConnectedNotePorts,'re
    const response=fields(await context.request(path(),{method:'POST',body:{action:'cancel',authorization:signed}}),decode),proof=await module.verifyBankConnectedNoteCancellation(response.source,response.opening);
    if(!response.cancelled||proof.operationId!==a.operationId||proof.noteId!==a.noteId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return proof.proofBytes;
   },
-  inspect:async source=>(await input.module()).readBankConnectedNoteSource(source),
+  async inspect(source){
+   const held=await(await input.module()).readBankConnectedNoteSource(source);
+   return {...held,...(held.funding?.recipientKeyIds?{forwardable:true as const}:{})};
+  },
   async handover(source,receivingRequestBytes,noteIdentityBytes){const module=await input.module();return module.createBankConnectedNoteHandover({fundingSourceBytes:source,receivingRequestBytes,noteIdentity:input.sdk.parseReceizIdentityArtifactText(new TextDecoder('utf-8',{fatal:true}).decode(noteIdentityBytes)),kai:String(input.sdk.receizKaiNow().pulse)});},
   async verifySelfDeposit(source){const held=await(await input.module()).readBankConnectedNoteSource(source);input.assertOpen();if(held.kind!=='handover'||held.receiverUserId!==input.uid||held.receiverKeyId!==input.keyId||!held.redemptionDigest)throw Error('BANK_NOTE_IDENTITY_BINDING_REQUIRED');return{...held,receiverUserId:held.receiverUserId,receiverKeyId:held.receiverKeyId,redemptionDigest:held.redemptionDigest};},
   verifySelfDepositCredit:async(source,receipt,expected)=>verifyConnectedSelfDepositCredit(await input.module(),source,receipt,expected),

@@ -114,12 +114,7 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   const personalHistory = useMemo(() => { if (!account.identity) return null; try { return projectPersonalHistory(account.identity.localHistory, account.wallet?.userId); } catch { return { records: [], available: false, completeAtSealedHead: false }; } }, [account.identity, account.wallet?.userId]);
   const twinLedger=useMemo(()=>{try{const records=mergePublicRecords(personalHistory?.records??[],privateHistory.cache?.records??[]);return{records,context:bankTwinContextRecords(records),accountUid:account.wallet?.userId??privateHistory.cache?.accountUid??''};}catch{return{records:[],context:[],accountUid:''};}},[personalHistory,privateHistory.cache,account.wallet?.userId]);
   const refreshAccountSources=()=>{setSourceRevision(value=>value+1);void account.refresh();void privateHistory.refresh();};
-  const unlockWallet=()=>{
-    if(navigator.onLine&&navigator.userActivation?.isActive!==false&&account.identity?.fundedWallet)
-      void account.identity.fundedWallet().then(wallet=>wallet.unlock()).catch(()=>{});
-  };
   const open = (action: UIAction) => {
-    if(action.kind==='receive'||(action.kind==='send'&&!action.nearbyGuide))unlockWallet();
     history.pushState({ panel, sheet: action, overlayEntry: true }, '', routeHash(panel, action)); setSheet(action);
   };
   const consumeVaultsEntry=useCallback(()=>{const route=parseRoute(location.hash);if(location.pathname!=='/'||route.sheet?.kind!=='profile'||route.sheet.vaults!=='create')return;const action:UIAction={kind:'profile'};history.replaceState({...history.state,panel:route.panel,sheet:action},'',location.search+routeHash(route.panel,action));setSheet(action);},[]);
@@ -131,7 +126,7 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
   };
   const restoreMessages=()=>{if(location.pathname==='/')open({kind:'messages'});else requestBankNavigation(routeHash(panel,{kind:'messages'}));};
   const close = () => { if (sheetCloseBehavior(history.state) === 'back') history.back(); else { history.replaceState({ panel, sheet: null }, '', routeHash(panel)); setSheet(null); } };
-  const navigate = (next: Panel) => { if(next==='account')unlockWallet();positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
+  const navigate = (next: Panel) => { positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
   useEffect(()=>{
     const selectRoute=()=>{
       const active=location.pathname==='/';

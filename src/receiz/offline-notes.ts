@@ -1,11 +1,12 @@
 export type BankNoteRail = 'reserve' | 'settlement' | 'composite';
 export type BankNoteFundingParts={reserve:{amountUsdCents:string;amountPhiMicro:string};settlement:{amountUsdCents:string;amountPhiMicro:string}};
 export type BankNoteReview={recipientUserId?:string;rail:BankNoteRail;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteFundingParts};
-export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; nativeHandoff?:true; }
-export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; consumption?:'connection-required'; nativeHandoff?:true; }
+export interface BankNoteImage extends Omit<BankNoteReview,'rail'> { noteId: string; rail?: BankNoteRail; image: Uint8Array; forwardable?:true; transferred?: boolean; transferPending?: boolean; selfDeposit?:'pending'|'confirmed'; accountUpdateWarning?: string; consumption?:'connection-required'; nativeHandoff?:true; }
+export interface BankNoteInspection extends Omit<BankNoteReview,'rail'> { rail?: BankNoteRail; noteId: string; amountPhiMicro: string; forwardable?:true; consumption?:'connection-required'; nativeHandoff?:true; }
 export interface BankNoteDeposit extends Omit<BankNoteReview,'rail'> { status?:'confirmed'; hasOriginalImage?:true; rail?: BankNoteRail; walletAfterPhiMicro?: string; noteId: string; proofBytes: Uint8Array; reserveAfterUsdCents: string; }
-export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';hasOriginalImage?:true;depositError?:string;noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
-export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit;
+export interface BankReceivedNoteDeposit extends BankNoteReview {status:'received';forwardable?:true;hasOriginalImage?:true;depositError?:string;noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;}
+export interface BankForwardedNote extends BankNoteReview {status:'forwarded';noteId:string;amountPhiMicro:string;proofBytes:Uint8Array;hasOriginalImage?:true;}
+export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit|BankForwardedNote;
 export interface BankNotePending extends Omit<BankNoteReview, 'rail'> { noteId: string; rail?: BankNoteRail; canCancel?: boolean; hasCustomArtwork?: true; }
 export interface BankOfflineNotes {
   addressedCreationByDefault?: true;
@@ -13,6 +14,8 @@ export interface BankOfflineNotes {
   exportImage?(image:Uint8Array,noteId:string):Promise<Uint8Array>;
   exportReceivedNote?(noteId:string):Promise<Uint8Array>;
   receivedNotes?():Promise<BankNoteDepositResult[]>;
+  forwardReceivedNote?(noteId:string,request:Uint8Array,expectedRecipient?:string):Promise<BankForwardedNote>;
+  forwardOwnedNote?(noteId:string,request?:Uint8Array):Promise<BankForwardedNote>;
   reconcileReceivedNotes?(retryFailed?:boolean):Promise<BankNoteDepositResult[]>;
   recoverDeposit?(image:Uint8Array):Promise<BankNoteDepositResult|null>;
   /** Read-only admission for this active receiver or locally held funding custody. */
@@ -53,6 +56,7 @@ export type BankNoteRuntimeFactory = (input: {
   artwork: (amount: string, noteId: string, compact?: boolean, rail?: BankNoteRail) => Promise<Uint8Array>;
 }) => BankNoteRuntime;
 export interface BankNoteAccountModule {
+ verifyBankNoteAccountReceivingRequest(bytes:Uint8Array):Promise<{receiverUserId:string}>;
  createBankNoteAccountReceivingRequest(input:{identity:unknown;passphrase?:string;accountUserId:string}):Promise<Uint8Array>;
  isBankNoteAccountDeposit(bytes:Uint8Array):boolean;
  readBankNoteAccountDeposit(bytes:Uint8Array):Promise<import('./note-received-deposits').ReceivedNoteSource>;

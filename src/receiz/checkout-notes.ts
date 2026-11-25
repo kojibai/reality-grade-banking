@@ -9,6 +9,7 @@ export function createCheckoutNotes(input:{identity:Pick<OpenIdentity,'offlineNo
  const same=(a:BankNoteInspection,b:{noteId:string;rail?:string;amountUsdCents:string;amountPhiMicro?:string;fundingParts?:BankNoteInspection['fundingParts']})=>a.noteId===b.noteId&&(a.rail??'reserve')===(b.rail??'reserve')&&a.amountUsdCents===b.amountUsdCents&&a.amountPhiMicro===b.amountPhiMicro&&sameNoteFundingParts(a.fundingParts,b.fundingParts);
  async function adopt(entry:CheckoutNoteEntry,result:BankNoteDepositResult):Promise<CheckoutNoteEntry>{
   input.assertCurrent();if(!same(entry.inspection,result))throw Error('BANK_NOTE_DEPOSIT_BINDING_MISMATCH');
+  if(result.status==='forwarded')throw Error('BANK_NOTE_ALREADY_DEPOSITED');
   if(result.status==='received')return{...entry,status:'received'};
   if(!result.proofBytes?.length)throw Error('BANK_NOTE_DEPOSIT_PROOF_REQUIRED');
   const creditSourceDigest=await input.storeSource(result.proofBytes);input.assertCurrent();return{...entry,status:'confirmed',creditSourceDigest};

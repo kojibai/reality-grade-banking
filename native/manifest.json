@@ -160,7 +160,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/connectedNote.ts",
-      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04"
+      "sha256": "ef1fd1dfd4c6d08965d9cfea5b0fd4085f232c4bb03244ace7a83c865eeaa308"
     },
     {
       "path": "app/lib/wallet/bankNotes/connectedNoteImage.ts",
@@ -8294,7 +8294,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
-      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04",
+      "sha256": "ef1fd1dfd4c6d08965d9cfea5b0fd4085f232c4bb03244ace7a83c865eeaa308",
       "bytes": 36343,
       "mode": 420
     },

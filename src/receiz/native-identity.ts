@@ -1132,7 +1132,25 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     receivedNoteQueue=createLocalNoteDepositQueue({uid,keyId:binding.keyId,assertOpen:assertQueueOpen,
       read:()=>loadReceivedNoteDepositState(binding),write:(next,previous)=>saveReceivedNoteDepositState(binding,next,previous),
       retain:bytes=>saveOfflineNoteBlob(binding,bytes),restore:ref=>loadOfflineNoteBlob(binding,ref),
-      verify:async bytes=>{const module=await loadBankNoteRuntime();return await isConnectedNote(module,bytes)?openConnectedAccountNote(module,bytes,context):module.openBankNoteAccountDeposit(bytes,context);},
+      verify:async bytes=>{
+        const module=await loadBankNoteRuntime();
+        if(!await isConnectedNote(module,bytes))return module.openBankNoteAccountDeposit(bytes,context);
+        const held=await openConnectedAccountNote(module,bytes,context);
+        return {...held,...(held.funding.recipientKeyIds&&module.createBankConnectedNoteSuccessor?{forwardable:true as const}:{})};
+      },
+      forward:async(source,request)=>{
+        const module=await loadBankNoteRuntime();assertQueueOpen();
+        if(!module.createBankConnectedNoteSuccessor)throw Error('BANK_NOTE_FORWARD_UNAVAILABLE');
+        return module.createBankConnectedNoteSuccessor({sourceBytes:source,receivingRequestBytes:request,
+          identity:keyFile,passphrase:phrase,accountUserId:uid,kai:String(sdk.receizKaiNow().pulse)});
+      },
+      verifyForward:async(source,successor)=>{
+        const module=await loadBankNoteRuntime();
+        const [previous,next]=await Promise.all([openConnectedAccountNote(module,source,context),module.readBankConnectedNoteSource(successor)]);
+        assertQueueOpen();
+        if(next.kind!=='handover'||next.noteId!==previous.noteId||next.fundingArtifactSha256!==previous.fundingArtifactSha256
+          ||next.predecessorSha256s?.at(-1)!==previous.terminalArtifactSha256)throw Error('BANK_NOTE_EXACT_TRANSFER_REQUIRED');
+      },
       prepare:async bytes=>{
         const module=await loadBankNoteRuntime();assertQueueOpen();
         const body=await isConnectedNote(module,bytes)?await prepareConnectedAccountNoteClaim({module,bytes,context:await connectedContext(),encode:sdk.receizBase64UrlEncode}):new TextEncoder().encode(JSON.stringify(await module.prepareBankNoteAccountDepositSubmission(bytes,context)));
@@ -1233,7 +1251,19 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       if(await localConnectedNotes().hasNote(id))return localConnectedNotes().exportNote(id);
       const note=(await inventory.savedNotes()).find(note=>note.noteId===id);if(!note)throw Error('BANK_NOTE_SOURCE_REQUIRED');
       return{...note,image:await noteImages.exportImage(note.image,id)};
-    }))),savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,exportReceivedNote:id=>localReceivedNotes().exportOriginalImage(id),receivedNotes:()=>localReceivedNotes().list(),reconcileReceivedNotes:async(retryFailed=false)=>{await synchronizeReceivedNotes(retryFailed);return localReceivedNotes().list();},
+    }))),savedNotes:async()=>[...await inventory.savedNotes(),...(await localConnectedNotes().savedNotes()).map(note=>({...note,consumption:'connection-required' as const}))],pending:notePending,inspect,exportReceivedNote:id=>localReceivedNotes().exportOriginalImage(id),receivedNotes:()=>localReceivedNotes().list(),
+      forwardReceivedNote:(noteId,request,expectedRecipient)=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
+        if(expectedRecipient&&(await(await loadBankNoteRuntime()).verifyBankNoteAccountReceivingRequest(request)).receiverUserId!==expectedRecipient)
+          throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
+        const result=await localReceivedNotes().forward(noteId,request);await paintReceivedNotes();return result;
+      }))),
+      forwardOwnedNote:(noteId,request)=>action(()=>withAccountExecutionLock(()=>noteLock(async()=>{
+        const bytes=await localConnectedNotes().transferSource(noteId,request);
+        const held=await(await loadBankNoteRuntime()).readBankConnectedNoteSource(bytes);noteOpen();
+        return {status:'forwarded' as const,noteId:held.noteId,rail:held.rail,amountUsdCents:held.amountUsdCents,
+          amountPhiMicro:held.amountPhiMicro,...(held.fundingParts?{fundingParts:held.fundingParts}:{}),proofBytes:held.terminalSourceBytes};
+      }))),
+      reconcileReceivedNotes:async(retryFailed=false)=>{await synchronizeReceivedNotes(retryFailed);return localReceivedNotes().list();},
       validateDeposit:async image=>{
         const module=await loadBankNoteRuntime(),uid=receivingUid();noteOpen();
         if(await isConnectedNote(module,image)){
@@ -1321,7 +1351,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           if(await isConnectedNote(module,image)){
             const {openConnectedNoteDelivery,prepareConnectedNoteDelivery}=await import('./note-delivery'),delivery=await openConnectedNoteDelivery({native:module,bytes:image}),held=delivery.source;noteOpen();
             if(receivingUid().startsWith('receiz_device_'))await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);
-            if(held.funding.recipientUserId&&held.funding.recipientUserId!==receivingUid())throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
+            if(held.kind==='funding'&&held.funding.recipientUserId&&held.funding.recipientUserId!==receivingUid())throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
             const queue=localReceivedNotes(),confirmed=await queue.confirmed(held.noteId);if(confirmed)return confirmed;
             original=held.terminalSourceBytes;originalImage=delivery.originalImage;
             if(held.kind==='funding'){
@@ -2208,6 +2238,25 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     });
     const loadDevice=(role:'receiving'|'funding')=>storage.loadWalletPairingState(binding,role) as Promise<WalletDeviceSetup|null>;
     const saveDevice=(role:'receiving'|'funding',next:WalletDeviceSetup,previous:WalletDeviceSetup|null)=>storage.saveWalletPairingState(binding,role,next,previous);
+    // Both saved enrollment variants are already admitted before saveDevice.
+    // This read controls presentation only. All custody mutations still use
+    // the existing verifier and assertion bound to their exact action.
+    async function hasCashCustody(role:'receiving'|'funding'){
+      const enrolledHere=(device:WalletDeviceSetup|null)=>{
+        if(device?.walletAndroid){
+          const {scope}=device.walletAndroid;
+          return !!bankAndroidWalletHardware()&&scope.applicationId===BANK_APPLICATION_ID
+            &&scope.userId===uid&&scope.recordSignerPublicKey===recordSignerPublicKey&&scope.origin===location.origin;
+        }
+        const enrollment=device?.walletWebAuthn,certificate=enrollment?.platformAttestationCertificate;
+        return !!enrollment?.rollbackConformanceEvidence&&certificate?.origin===location.origin
+          &&certificate.rpId===bankNoteRpId(location.origin);
+      };
+      const receiver=await loadDevice('receiving');noteOpen();
+      if(role==='receiving')return !!receiver?.account&&!receiver.received&&enrolledHere(receiver);
+      if(enrolledHere(receiver))return true;
+      const funding=await loadDevice('funding');noteOpen();return enrolledHere(funding);
+    }
     async function enrolled(role:'receiving'|'funding'):Promise<WalletDeviceSetup>{
       const saved=await loadDevice(role);
       const reusable=saved&&(role==='funding'?!saved.allocationId:!saved.claim)?saved:null;
@@ -2308,7 +2357,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       },
       read:()=>storage.loadFundedWalletState(binding),save:(next,prior)=>storage.saveFundedWalletState(binding,next,prior),
       lock:async<T>(work:()=>Promise<T>)=>{if(!navigator.locks)throw Error('BANK_EXECUTION_DEVICE_LOCK_REQUIRED');return await navigator.locks.request(`bankeiz-funded-wallet:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await work());},
-      signOwner,prepareOffline,setupReceiving,
+      signOwner,prepareOffline,setupReceiving,hasCashCustody,
       async approveRemainder(value){
         const deferred=await deferredWalletSend();
         const review=await deferred.prepare(value,value.recipientLabel,true,value.split);

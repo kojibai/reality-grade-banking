@@ -54,8 +54,8 @@ export async function openConnectedNoteDelivery(input:{native:ConnectedNoteModul
  * the existing receiver claim and native writer can grant account credit. */
 export async function prepareConnectedNoteDelivery(input:{native:ReceivingModule;delivery:ConnectedNoteDelivery;identity:ReceizKeyFile;passphrase?:string;accountUserId:string;kai:string;retainedSource?:Uint8Array}):Promise<Uint8Array>{
  const {source,noteIdentity}=input.delivery,context={receiverUserId:input.accountUserId,receiverKeyId:input.identity.keyId};
- if(source.funding.recipientUserId!==undefined&&source.funding.recipientUserId!==input.accountUserId)throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
  if(source.kind==='handover')return(await openConnectedAccountNote(input.native,source.terminalSourceBytes,context)).terminalSourceBytes.slice();
+ if(source.funding.recipientUserId!==undefined&&source.funding.recipientUserId!==input.accountUserId)throw Error('BANK_NOTE_RECIPIENT_MISMATCH');
  if(input.retainedSource){
   const retained=await openConnectedAccountNote(input.native,input.retainedSource,context);
   if(retained.noteId!==source.noteId||retained.fundingArtifactSha256!==source.terminalArtifactSha256)throw Error('BANK_NOTE_EXACT_DEPOSIT_REQUIRED');

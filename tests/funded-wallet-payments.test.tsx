@@ -244,7 +244,7 @@ test('regular Receive includes the Wallet QR scanner and keeps the existing Note
     expect(nearby.querySelector('[aria-label="Use QR image"]')).not.toBeNull();
     expect(nearby.textContent).toContain('sender’s payment QR');
     expect(host.textContent).toContain('Deposit note');
-    expect(wallet.warm).toHaveBeenCalledOnce();
+    expect(wallet.warm).not.toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
     host.remove();
@@ -280,7 +280,7 @@ test('the balance controls add and move back chosen amounts while leaving the re
   const host = document.createElement('div'), root = createRoot(host);
   let cents = 2000n;
   const wallet = {
-    offlineBalance: async () => ({ availableUsdCents: String(cents), movingBackUsdCents: null }),
+    offlineBalance: async () => ({ availableUsdCents: String(cents), movingBackUsdCents: null, canEnable: true as const }),
     prepareOffline: vi.fn(async (amount: string) => { cents += BigInt(amount); }),
     moveBack: vi.fn(async (amount: string) => { cents -= BigInt(amount); return { status: 'published' }; }),
   };
@@ -325,7 +325,7 @@ test('offline setup explains a specific device refusal and keeps service issues 
     .mockRejectedValueOnce({ payload: { error: 'android_wallet_enrollment_unavailable' } })
     .mockRejectedValueOnce(Error('Unexpected setup error'));
   const wallet = {
-    offlineBalance: async () => ({ availableUsdCents: '0', movingBackUsdCents: null }),
+    offlineBalance: async () => ({ availableUsdCents: '0', movingBackUsdCents: null, canEnable: true as const }),
     prepareOffline,
   };
   const identity = { fundedWallet: async () => wallet, nearbyWalletReceive:vi.fn() } as unknown as OpenIdentity;
@@ -361,4 +361,31 @@ test('offline setup explains a specific device refusal and keeps service issues 
     await act(async () => root.unmount());
     host.remove();
   }
+});
+
+test('balance keeps unverified Offline Cash out of the standard experience', async () => {
+  const { FundedWalletBalance } = await import('../src/features/account/FundedWalletPayments');
+  const host = document.createElement('div'), root = createRoot(host);
+  const prepareOffline = vi.fn(), unlock = vi.fn(), warm = vi.fn();
+  const wallet = { offlineBalance: async () => ({availableUsdCents:'0',movingBackUsdCents:null,canEnable:false}), prepareOffline, unlock, warm };
+  try {
+    await act(async () => root.render(<FundedWalletBalance identity={{fundedWallet:async()=>wallet} as unknown as OpenIdentity} onRefresh={()=>{}}/>));
+    expect(host.querySelector('[aria-label="Offline cash"]')).toBeNull();
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(prepareOffline).not.toHaveBeenCalled();
+    expect(unlock).not.toHaveBeenCalled();
+    expect(warm).not.toHaveBeenCalled();
+  } finally { await act(async () => root.unmount()); }
+});
+
+test('balance preserves held cash and recovery when new Offline Cash setup is unavailable', async () => {
+  const { FundedWalletBalance } = await import('../src/features/account/FundedWalletPayments');
+  const host = document.createElement('div'), root = createRoot(host);
+  const wallet = {offlineBalance:async()=>({availableUsdCents:'500',movingBackUsdCents:null,canEnable:false})};
+  try {
+    await act(async () => root.render(<FundedWalletBalance identity={{fundedWallet:async()=>wallet} as unknown as OpenIdentity} onRefresh={()=>{}}/>));
+    expect(host.querySelector('[aria-label="Offline cash"]')?.textContent).toContain('$5.00');
+    expect(host.querySelector('[aria-label="Move back"]')).toBeTruthy();
+    expect(host.querySelector('[aria-label="Enable more funds offline"]')).toBeNull();
+  } finally { await act(async () => root.unmount()); }
 });

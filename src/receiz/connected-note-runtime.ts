@@ -42,7 +42,7 @@ export type ConnectedNoteFundingResult=BankNoteInspection&{sourceBytes:Uint8Arra
 export interface ConnectedNotePorts{
  uid:string;keyId:string;assertOpen():void;read():Promise<unknown>;write(next:unknown,previous:unknown):Promise<void>;
  retain(bytes:Uint8Array):Promise<string>;restore(ref:string):Promise<Uint8Array>;
- review?(amountUsdCents:string,rail?:BankNoteRail):Promise<BankNoteReview>;
+ review?(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<BankNoteReview>;
  prepare(amountUsdCents:string,rail?:BankNoteRail,recipientUserId?:string):Promise<ConnectedNotePreparation>;
  prepareArtwork?(file:Blob,note:ConnectedNotePreparation):Promise<Uint8Array>;
  /** The port independently verifies complete native funding and its opening. */
@@ -169,6 +169,12 @@ export function createConnectedNoteRuntime(input:ConnectedNotePorts){
    const proof=await input.cancel(authorization,row.cancelRequestRef?await original(row.cancelRequestRef):undefined);input.assertOpen();const cancellationRef=await input.retain(proof);held.state.notes[row.noteId]={...row,phase:'cancelled',cancellationRef};held.state.current=null;await save(held.state,held.previous);
   },
   transfer,prepareSelfDeposit,confirmSelfDeposit,
+  async transferSource(id:string,request?:Uint8Array){
+   const current=(await load()).state.notes[id];
+   if(!current?.sourceRef||!(await inspectSource(current.sourceRef)).forwardable)fail('FORWARD_UNAVAILABLE');
+   const {row}=await retainedTransfer(id,request);
+   return original(row.transfer!.sourceRef!);
+  },
   async pendingSelfDeposits(){const {state}=await load();return Object.values(state.notes).filter(row=>row.transfer?.purpose==='self-deposit'&&!row.transfer.creditRef).map(row=>row.noteId);},
   async recoverSelfDeposit(id:string){const row=(await load()).state.notes[id];return row?.phase==='issued'&&row.transfer?.purpose==='self-deposit'?prepareSelfDeposit(id):null;},
   async recoverTransfer(id:string){

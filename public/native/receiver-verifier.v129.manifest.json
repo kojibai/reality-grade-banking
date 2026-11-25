@@ -2,10 +2,10 @@
   "schema": "receiz.bank.receiver-verifier-build.v1",
   "version": "129.5.0",
   "sourceCommit": "528e397e1d4821e3591258227b9739e1f9856f52",
-  "moduleSha256": "953fb281babfe60cf0ecbf6c3e8b2ce6657436e9313b9d8655074f48b66a2d3b",
-  "sourceMapSha256": "7a2d8bdfc307aa5899bd40c14525618dbcee5f3902681134c817de1d45dc393d",
-  "sourceTreeSha256": "9bfaf16bee73890df877048b1199dead5e4a93091a063c0919338a42ae063b4e",
-  "bytes": 2118343,
+  "moduleSha256": "3f01f2926c4399610879b67ad9c5ee4c2c3941d2ccb3d72e137ccc288a06983d",
+  "sourceMapSha256": "6415b41faaa32b38e863f30093fa36c664ceace0e62acb0b2ab07427cbfae40f",
+  "sourceTreeSha256": "ae76e672b94a6417f4a80cb75b016b176006e6328923147a2566fec8f1200b3b",
+  "bytes": 2120039,
   "inputs": [
     {
       "path": "receiz/packages/receiz-sdk/src/v124KaiBridge.generated.ts",
@@ -949,7 +949,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/connectedNote.ts",
-      "sha256": "8166ba0fe97430ccee7683a380f0983d9beec99a071d932aee06e9b7f08dbb04"
+      "sha256": "ef1fd1dfd4c6d08965d9cfea5b0fd4085f232c4bb03244ace7a83c865eeaa308"
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/accountReceiving.ts",
