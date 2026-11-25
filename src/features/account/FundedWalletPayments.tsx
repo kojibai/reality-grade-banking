@@ -9,8 +9,9 @@ import { AmountInput } from '../../components/AmountInput';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
 import { WalletPaymentReview } from './WalletSendOperation';
-import { WalletPaymentCode, type OpticalFrames } from './WalletPaymentCode';
-import { encodeNearbyWalletPayment, isNearbyWalletPayment, type NearbyWalletPayment } from '../../receiz/wallet-nearby-consent';
+import { WalletPaymentCode, createNearbyPaymentCode, type NearbyPaymentCode, type OpticalFrames } from './WalletPaymentCode';
+import { isNearbyWalletPayment, type NearbyWalletPayment } from '../../receiz/wallet-nearby-consent';
+import { nearbyPaymentLinkBytes, readNearbyPaymentLink } from '../../receiz/wallet-nearby-link';
 import { walletBalanceNotice, type WalletBalanceNotice } from './wallet-balance-notice';
 import {OfflineCashOptions} from './OfflineCashOptions';
 
@@ -27,10 +28,10 @@ const walletError=(cause:unknown)=>{
   }
   return 'Wallet could not open or complete this payment. Any accepted payment remains saved on this device.';
 };
-function readNearbyPacket(bytes:Uint8Array){
+function readNearbyPacket(bytes:Uint8Array):NearbyWalletPayment|null{
   if(bytes[0]!==123)return null;
   const packet:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
-  return isNearbyWalletPayment(packet)?packet:null;
+  return isNearbyWalletPayment(packet)?packet as NearbyWalletPayment:null;
 }
 const connectionReplySchema='bankeiz.wallet.confirm-on-connection.v1';
 function connectionReply(bytes:Uint8Array, offer:WalletOffer){
@@ -120,7 +121,7 @@ export function FundedWalletBalance({identity,onRefresh,onSendNearby}:{identity:
 
 export function DeferredWalletPayments({identity}:{identity:OpenIdentity}){
   const [entries,setEntries]=useState<readonly DeferredWalletSendEntry[]>([]);
-  const [savedCode,setSavedCode]=useState<{id:string;frames:OpticalFrames}|null>(null);
+  const [savedCode,setSavedCode]=useState<{id:string;frames:NearbyPaymentCode}|null>(null);
   useEffect(()=>{
     let active=true,unsubscribe:(()=>void)|undefined;
     setEntries([]);
@@ -142,7 +143,7 @@ export function DeferredWalletPayments({identity}:{identity:OpenIdentity}){
         ? <><WalletPaymentCode frames={savedCode.frames} label="Saved payment QR" onError={()=>setSavedCode(null)}/>
           <button className="text-button" onClick={()=>setSavedCode(null)}>Hide QR</button></>
         : <button className="text-button" onClick={()=>{const payment=entry.payment;if(payment)
-          void createOpticalNoteFrames('wallet',encodeNearbyWalletPayment(payment)).then(frames=>setSavedCode({id:entry.clientNonce,frames}));}}>Show payment QR</button>)}
+          void createNearbyPaymentCode(payment).then(frames=>setSavedCode({id:entry.clientNonce,frames}));}}>Show payment QR</button>)}
     </div>)}</div>
   </details>;
 }
@@ -154,7 +155,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
   const [deferredReview,setDeferredReview]=useState<DeferredWalletSendReview|null>(null);
   const [deferredAmount,setDeferredAmount]=useState<string|null>(null);
-  const [nearbyCode,setNearbyCode]=useState<OpticalFrames|null>(null);
+  const [nearbyCode,setNearbyCode]=useState<NearbyPaymentCode|null>(null);
   const [pairing,setPairing]=useState<{offer:WalletOffer;frames:OpticalFrames;input:ReturnType<typeof request>}|null>(null);
   const [connectionNotice,setConnectionNotice]=useState('');
   const pairReader=useRef(readOpticalNoteFrames('wallet'));
@@ -198,7 +199,8 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   }
   if(result)return <section className="native-operation-result" aria-live="polite">
     <h1 className="sheet-hero">{result.qr?'Show payment QR.':'Payment kept on this device.'}</h1>
-    {result.qr?<WalletPaymentCode frames={result.qr} label="Wallet payment QR" onError={cause=>setError(walletError(cause))}/>:
+    {result.qr?<><p className="body-copy small-copy">Ask the recipient to scan this code in Bankeiz under Receive nearby.</p>
+      <WalletPaymentCode frames={result.qr} label="Wallet payment QR" onError={cause=>setError(walletError(cause))}/></>:
       <p className="body-copy">Wallet will deliver the signed payment when this device reconnects.</p>}
     <button className="secondary-button" disabled={busy} onClick={()=>void act(async()=>{
       const wallet=await identity.fundedWallet!();await wallet.completeOutgoing(result.operationId);
@@ -218,6 +220,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   if(nearbyCode)return <section className="native-operation-result" aria-live="polite">
     <h1 className="sheet-hero">Show payment QR.</h1>
     <p className="body-copy">The recipient can save this payment now and use the funds once they connect and it’s confirmed.</p>
+    <p className="body-copy small-copy">{typeof nearbyCode==='string'?'Scan in Bankeiz or open the link from your camera.':'Scan in Bankeiz using Receive nearby.'}</p>
     <WalletPaymentCode frames={nearbyCode} label="Wallet payment QR" onError={cause=>setError(walletError(cause))}/>
     <button className="secondary-button" onClick={()=>{setNearbyCode(null);onNext();}}>Send another payment</button>
     {errors}
@@ -234,7 +237,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
       const entry=await wallet.approve(deferredReview,deferredReview.confirmationDigest);
       if(deferredReview.nearby){
         if(!entry?.payment)throw Error('BANK_WALLET_QUEUE_INVALID');
-        setNearbyCode(await createOpticalNoteFrames('wallet',encodeNearbyWalletPayment(entry.payment)));
+        setNearbyCode(await createNearbyPaymentCode(entry.payment));
       }else setDeferredAmount(deferredReview.amountUsdCents);
       setDeferredReview(null);setApproved(false);
       void wallet.resume().catch(()=>{});
@@ -297,10 +300,14 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
     {connectionNotice&&<p className="body-copy small-copy" role="status">{connectionNotice}</p>}{errors}</>;
 }
 
-export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenIdentity;offline:boolean;onRefresh:()=>void}){
+export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,onLinkedPaymentSaved}:{
+  identity:OpenIdentity;offline:boolean;onRefresh:()=>void;linkedPayment?:string;onLinkedPaymentSaved?:()=>void;
+}){
   const panelId=useId();
-  const [expanded,setExpanded]=useState(offline);
-  useEffect(()=>{if(offline)setExpanded(true);},[offline]);
+  const [expanded,setExpanded]=useState(offline||!!linkedPayment);
+  const [savedLink,setSavedLink]=useState<string>();
+  const paymentToAccept=linkedPayment&&linkedPayment!==savedLink?linkedPayment:undefined;
+  useEffect(()=>{if(offline||linkedPayment)setExpanded(true);},[offline,linkedPayment]);
   const reader=useRef(readOpticalNoteFrames('wallet'));
   const [status,setStatus]=useState(''),[error,setError]=useState('');
   const [received,setReceived]=useState<{allocationId:string}|null>(null);
@@ -333,23 +340,47 @@ export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenI
     }).catch(()=>{});
     return()=>{current=false;active.current=false;reader.current=readOpticalNoteFrames('wallet');};
   },[identity]);
+  async function saveNearby(packet:NearbyWalletPayment|null){
+    if(!packet||!identity.nearbyWalletReceive)throw Error('BANK_WALLET_NEARBY_CONSENT_INVALID');
+    const inbox=await identity.nearbyWalletReceive();
+    if(!active.current)return;
+    const entry=await inbox.receive(packet);
+    if(!active.current)return;
+    reader.current=readOpticalNoteFrames('wallet');
+    setReply(null);
+    setError('');
+    setStatus(entry.original?'Payment already confirmed.':'Payment saved on this device.');
+    void inbox.resume().catch(()=>{});
+  }
+  async function acceptLink(){
+    if(!paymentToAccept||busy)return;
+    setBusy(true);setError('');
+    try{
+      const bytes=nearbyPaymentLinkBytes(paymentToAccept);
+      if(!bytes)throw Error('BANK_WALLET_NEARBY_CONSENT_INVALID');
+      await saveNearby(readNearbyPacket(bytes));
+      if(active.current){setSavedLink(paymentToAccept);onLinkedPaymentSaved?.();}
+    }catch(cause){if(active.current)setError(walletError(cause));}
+    finally{if(active.current)setBusy(false);}
+  }
   async function scan(bytes:Uint8Array){
-    if(!isOpticalNoteFrame(bytes))return false;
     try {
+      if(!isOpticalNoteFrame(bytes)){
+        const linked=readNearbyPaymentLink(new TextDecoder().decode(bytes));
+        if(!linked){
+          if(active.current)setStatus('Use the payment QR from the sender’s Send screen.');
+          return false;
+        }
+        await saveNearby(readNearbyPacket(linked));
+        return true;
+      }
       const next=reader.current.push(bytes);
       if(!next){if(active.current)setStatus(`${reader.current.received} of ${reader.current.count} frames scanned.`);return false;}
       const proof=await next;
       if(!active.current)return true;
       const nearby=readNearbyPacket(proof.bytes);
-      if(nearby&&identity.nearbyWalletReceive){
-        const inbox=await identity.nearbyWalletReceive();
-        const received=await inbox.receive(nearby);
-        if(!active.current)return true;
-        reader.current=readOpticalNoteFrames('wallet');
-        setReply(null);
-        setError('');
-        setStatus(received.original?'Payment already confirmed.':'Payment saved on this device.');
-        void inbox.resume().catch(()=>{});
+      if(nearby){
+        await saveNearby(nearby);
         return true;
       }
       const pair=readWalletPairing(proof.bytes);
@@ -433,8 +464,11 @@ export function FundedWalletReceive({identity,offline,onRefresh}:{identity:OpenI
       <QrCode size={16} aria-hidden="true"/><span>Receive nearby</span><ChevronDown size={16} aria-hidden="true"/>
     </button>
     <div id={panelId} className="receive-nearby-panel" hidden={!expanded}>{expanded&&<>
-      {!offer&&!receiptProof&&<>
-        <p className="body-copy small-copy">Scan the sender’s payment QR. Works offline.</p>
+      {paymentToAccept ? <>
+        <p className="body-copy">Save this nearby payment to your account. Once confirmed, it will be available to spend.</p>
+        <button className="primary-button" type="button" disabled={busy} onClick={()=>void acceptLink()}>Accept payment</button>
+      </> : !offer&&!receiptProof&&<>
+        <p className="body-copy small-copy">Scan the sender’s payment QR or use a photo of it. For a moving QR, keep the camera on the code until all frames are scanned.</p>
         <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
       </>}
     {offer&&<><p className="body-copy">Approve receiving {formatMoney(offer.amountUsdCents)} on this device.</p>

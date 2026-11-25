@@ -1,5 +1,6 @@
 import type { Panel } from '../components/BottomNav';
 import type { UIAction } from './useBank';
+import { nearbyPaymentHashPrefix, nearbyPaymentLinkToken } from '../receiz/wallet-nearby-link';
 export interface ConsoleRoute { panel: Panel; sheet: UIAction | null; }
 export function sheetCloseBehavior(state: { overlayEntry?: boolean; sheet?: UIAction } | null): 'back' | 'replace' { return state?.overlayEntry ? 'back' : 'replace'; }
 export function routeHash(panel: Panel, action: UIAction | null = null): string {
@@ -7,6 +8,7 @@ export function routeHash(panel: Panel, action: UIAction | null = null): string 
   if(action?.kind==='profile'&&action.vaults==='create')return '#account/profile/vaults/create';
   if(action?.kind==='balance'&&action.focus==='settlement')return `#${panel}/balance/settlement`;
   if (!action) return `#${panel}`;
+  if(action.kind==='receive'&&action.nearbyPayment)return nearbyPaymentHashPrefix+action.nearbyPayment;
   if(action.kind==='send'&&action.nearbyGuide)return `#${panel}/send/nearby`;
   if(action.kind==='send'&&action.recipient)return `#${panel}/send/to/${encodeURIComponent(action.recipient.userId)}/${encodeURIComponent(action.recipient.username)}`;
   if(action.kind==='market-trade')return `#${panel}/market-trade/${encodeURIComponent(action.marketItemId)}/${action.side}`;
@@ -26,9 +28,13 @@ export function parseRoute(hash: string): ConsoleRoute {
     if(kind==='send'&&id==='to')return {panel,sheet:{kind:'send',...(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(mode??'')&&/^[a-z0-9_]{3,24}$/.test(recipientUsername??'')?{recipient:{userId:mode,username:recipientUsername}}:{})}};
     if(kind==='messages')return {panel,sheet:{kind:'messages',...(id==='business'?{business:true as const}:{})}};
     if(kind==='profile')return {panel,sheet:{kind:'profile',...(id==='vaults'&&mode==='create'?{vaults:'create' as const}:{})}};
+    if(kind==='receive'){
+      const nearbyPayment=nearbyPaymentLinkToken(hash);
+      return {panel,sheet:{kind:'receive',...(nearbyPayment?{nearbyPayment}:{})}};
+    }
     if(kind==='balance')return {panel,sheet:{kind:'balance',...(id==='settlement'?{focus:'settlement' as const}:{})}};
     if (kind === 'send') return { panel, sheet: { kind: 'send', assetId: id } };
-    if (['earn-originals', 'account-proof', 'deposit', 'receive', 'growth', 'currency', 'exchange', 'rules', 'business'].includes(kind)) return { panel, sheet: { kind: kind as 'earn-originals' | 'account-proof' | 'deposit' | 'receive' | 'growth' | 'currency' | 'exchange' | 'rules' | 'business' } };
+    if (['earn-originals', 'account-proof', 'deposit', 'growth', 'currency', 'exchange', 'rules', 'business'].includes(kind)) return { panel, sheet: { kind: kind as 'earn-originals' | 'account-proof' | 'deposit' | 'growth' | 'currency' | 'exchange' | 'rules' | 'business' } };
     return { panel, sheet: null };
   } catch { return { panel: 'account', sheet: null }; }
 }

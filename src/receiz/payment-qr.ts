@@ -1,6 +1,17 @@
 // QR Model 2 byte mode, mask 0. Keep the public request symbol unchanged.
 const paymentVersion = { version: 9, capacity: 230, alignment: [6, 26, 46], formatLevel: 1, dataWords: 232, blockCount: 2, correctionWords: 30 };
 const opticalVersion = { version: 23, capacity: 857, alignment: [6, 30, 54, 78, 102], formatLevel: 0, dataWords: 860, blockCount: 18, correctionWords: 28 };
+const mediumLinkVersion = { version: 27, capacity: 1465, alignment: [6, 34, 62, 90, 118], formatLevel: 1, dataWords: 1468, blockCount: 12, correctionWords: 30 };
+const largeLinkVersion = { version: 40, capacity: 2953, alignment: [6, 30, 58, 86, 114, 142, 170], formatLevel: 1, dataWords: 2956, blockCount: 25, correctionWords: 30 };
+export const walletPaymentLinkCapacity = largeLinkVersion.capacity;
+
+export function walletPaymentLinkQr(link: string): boolean[][] {
+  const bytes = new TextEncoder().encode(link);
+  const version = [opticalVersion, mediumLinkVersion, largeLinkVersion].find(candidate => bytes.length <= candidate.capacity);
+  if (!version) throw new Error('Payment link exceeds QR capacity.');
+  return byteQr(bytes, version);
+}
+
 export function paymentQr(text: string): boolean[][] {
   const bytes = new TextEncoder().encode(text);
   if (!bytes.length || bytes.length > paymentVersion.capacity) throw new Error('Payment link exceeds QR capacity.');

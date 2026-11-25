@@ -21,7 +21,7 @@ import type { PublicMarketItem } from '../../receiz/public-market';
 import { CreateAsset } from '../assets/CreateAsset';
 import {AssetCreationSheet} from '../assets/AssetCreationSheet';
 import { IdentityProfile } from './IdentityProfile';
-export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, cardResumeSessionId, onCardResumeConsumed, onOpenAssistant = onClose, onVaultsEntryConsumed, active = true, marketItems = [], onOpen }: { onOpen?:(action:UIAction)=>void; onOpenAssistant?:()=>void;onVaultsEntryConsumed?:()=>void; cardResumeSessionId?:string|null;onCardResumeConsumed?:()=>void;marketItems?: PublicMarketItem[]; active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
+export function LiveActions({ action, identity, wallet, onClose, onForget, onRefresh, paymentRequest, cardResumeSessionId, onCardResumeConsumed, onOpenAssistant = onClose, onVaultsEntryConsumed, onLinkedPaymentSaved, active = true, marketItems = [], onOpen }: { onOpen?:(action:UIAction)=>void; onOpenAssistant?:()=>void;onVaultsEntryConsumed?:()=>void; onLinkedPaymentSaved?:(token:string)=>void; cardResumeSessionId?:string|null;onCardResumeConsumed?:()=>void;marketItems?: PublicMarketItem[]; active?: boolean; action: UIAction; identity: OpenIdentity; wallet: SharedWallet | null; onClose: () => void; onForget: () => Promise<void>; onRefresh: () => void; paymentRequest?: PaymentRequest | null }) {
   useEffect(()=>{if(action.kind==='send'&&cardResumeSessionId)onCardResumeConsumed?.();},[action.kind,cardResumeSessionId,onCardResumeConsumed]);
   const titles: Record<string, string> = { business: 'Business', 'market-trade':'Market trade','account-proof':'Your account proof','earn-originals':'Earn from Originals',deposit: 'Add', send: 'Send', receive: 'Receive', balance: 'Your balance', growth: 'Settlement', profile: 'Your Receiz ID', currency: 'New original', exchange: 'Exchange', rules: 'Money rules' };
   let body;
@@ -46,7 +46,11 @@ export function LiveActions({ action, identity, wallet, onClose, onForget, onRef
   else if(action.kind==='market-trade') body=<MarketTradeFlow key={`${identity.binding?.artifactSha256}:${action.marketItemId}:${action.side}`} identity={identity} wallet={wallet} intent={{itemId:action.marketItemId,side:action.side,title:marketItems.find(item=>item.id===action.marketItemId)?.title??'Proof object'}} onRefresh={onRefresh}/>;
   else if (action.kind === 'trade') body = <LiveOwnership identity={identity} mode={action.mode} initialDigest={action.assetId} onRefresh={onRefresh} />;
   else if (action.kind === 'exchange') body = <LiveExchange identity={identity} items={marketItems} onRefresh={onRefresh} />;
-  else if (action.kind === 'receive') body = <LiveReceive identity={identity} onRefresh={onRefresh} active={active}/>;
+  else if (action.kind === 'receive') {
+    const payment=action.nearbyPayment;
+    body=<LiveReceive identity={identity} onRefresh={onRefresh} active={active} linkedPayment={payment}
+      onLinkedPaymentSaved={payment?()=>onLinkedPaymentSaved?.(payment):undefined}/>;
+  }
   else if (action.kind === 'deposit') body = <LiveDeposit identity={identity} onClose={onClose} onRefresh={onRefresh} resumeSessionId={cardResumeSessionId} onResumeConsumed={onCardResumeConsumed} onCreateAsset={onOpen?()=>onOpen({kind:'currency'}):undefined} />;
   else if (action.kind === 'send') body = <LiveSend active={active} identity={identity} onRefresh={onRefresh} wallet={wallet} initialRequest={action.nearbyGuide?null:action.paymentRequest??(action.recipient?null:paymentRequest)} initialRecipient={action.recipient} initialNearbyGuide={action.nearbyGuide} onClose={onClose} />;
   else if (action.kind === 'pending' || action.kind === 'asset' || action.kind === 'proof') body = <LiveAssetDetail identity={identity} active={active} onRefresh={onRefresh} marketItems={marketItems} onTrade={onOpen?(side,marketItemId)=>onOpen({kind:'market-trade',side,marketItemId}):undefined} digest={action.kind === 'pending' ? action.depositId : action.assetId} />;

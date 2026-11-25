@@ -39,7 +39,7 @@ import {ReceivingHelp,type ReceivingHelpInput} from '../adoption/ReceivingHelp';
 const Invoice=lazy(()=>import('../invoices/InvoiceComposer').then(module=>({default:module.InvoiceComposer})));
 const Counter=lazy(()=>import('./MerchantCounter').then(module=>({default:module.MerchantCounter})));
 
-export function LiveReceive({ identity, onRefresh = () => {}, active = true, initialLinkMode='send', initialToolsMode='button' }: { identity: OpenIdentity; onRefresh?: () => void; active?: boolean; initialLinkMode?:'send'|'checkout';initialToolsMode?:'button'|'checkout' }) {
+export function LiveReceive({ identity, onRefresh = () => {}, active = true, initialLinkMode='send', initialToolsMode='button', linkedPayment, onLinkedPaymentSaved }: { identity: OpenIdentity; onRefresh?: () => void; active?: boolean; initialLinkMode?:'send'|'checkout';initialToolsMode?:'button'|'checkout';linkedPayment?:string;onLinkedPaymentSaved?:()=>void }) {
   useWalletCustody(identity,active);
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
   const [noteMode, setNoteMode] = useState(false),[counterMode,setCounterMode]=useState(false),[invoiceMode,setInvoiceMode]=useState(false);
@@ -48,11 +48,11 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
   const [amount, setAmount] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false), [tagWritten, setTagWritten] = useState(false), [tagHelp, setTagHelp] = useState(false); const nfc = useRef<AbortController | null>(null);
   const [receiving,setReceiving]=useState<{identity:OpenIdentity|null;username:string|null;pending:boolean;error:string}>({identity:null,username:null,pending:false,error:''}),[receivingAttempt,setReceivingAttempt]=useState(0);
   useEffect(()=>{
-    if(heldCoordinate||!identity.prepareReceivingUsername)return;
+    if(linkedPayment||heldCoordinate||!identity.prepareReceivingUsername)return;
     let active=true;setReceiving({identity,username:null,pending:true,error:''});
     void Promise.resolve().then(()=>identity.prepareReceivingUsername!()).then(value=>{if(!active)return;const username=publicReceizId(value)?.slice(0,-10)??null;setReceiving({identity,username,pending:false,error:username?'':'Your public receiving ID is still being prepared. Try again.'});},()=>{if(active)setReceiving({identity,username:null,pending:false,error:'Your public receiving ID could not be prepared yet. Try again.'});});
     return()=>{active=false;};
-  },[identity,receivingAttempt,heldCoordinate]);
+  },[identity,receivingAttempt,heldCoordinate,linkedPayment]);
   useEffect(() => () => nfc.current?.abort(), []);
   const receivingPending=!heldCoordinate&&!!identity.prepareReceivingUsername&&(receiving.identity!==identity||receiving.pending);
   const canonical = identity.prepareReceivingUsername?(receiving.identity===identity?receiving.username??'':''):(publicReceizId(identity.accountUsername?.()) ?? publicReceizId(identity.username) ?? '').replace(/\.receiz\.id$/, '');
@@ -68,6 +68,8 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
   const writeTag = async () => { const Reader = (window as unknown as { NDEFReader?: BankNfcConstructor }).NDEFReader; if (!Reader || !isSecureContext) { setTagHelp(true); setNotice('This browser cannot write NFC tags. Use the NFC URL below in your tag writer as a URL record, or open this bank in Chrome on an NFC-enabled Android phone.'); return; } if (busy) return; setBusy(true); nfc.current?.abort(); const controller = new AbortController(); nfc.current = controller; setNotice('Hold a writable NFC tag near your phone.'); try { await new Reader().write({ records: [{ recordType: 'url', data: request.nfcUrl }] }, { signal: controller.signal }); if (!controller.signal.aborted) { setTagWritten(true); setNotice('Tag ready. A tap opens your bank payment request.'); } } catch (cause) { if (!controller.signal.aborted) setNotice(cause instanceof Error && cause.name === 'NotAllowedError' ? 'Allow NFC access to program this tag.' : 'The tag could not be written. Try a writable tag or use your QR code.'); } finally { if (!controller.signal.aborted) setBusy(false); } };
   useEffect(() => { nfc.current?.abort(); setBusy(false); setTagWritten(false); }, [request.link]);
   const verifyTag = async () => { const Reader = (window as unknown as { NDEFReader?: BankNfcConstructor }).NDEFReader; if (!Reader || busy) return; const controller = new AbortController(); nfc.current?.abort(); nfc.current = controller; setBusy(true); setNotice('Hold the programmed tag near your phone again.'); try { await verifyPaymentTag(Reader, request.nfcUrl, controller.signal); if (!controller.signal.aborted) setNotice('Verified. This tag opens your exact bank payment request.'); } catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : 'The tag could not be verified.'); } finally { controller.abort(); if (nfc.current === controller) setBusy(false); } };
+  if(linkedPayment)return <FundedWalletReceive key={identity.binding.artifactSha256} identity={identity}
+    offline={offline} onRefresh={onRefresh} linkedPayment={linkedPayment} onLinkedPaymentSaved={onLinkedPaymentSaved}/>;
   if(invoiceMode)return <Suspense fallback={<p className="body-copy" role="status">Opening invoice editor…</p>}><Invoice identity={identity} active={active} onBack={()=>setInvoiceMode(false)}/></Suspense>;
   if(counterMode)return <Suspense fallback={<p className="body-copy"><InlineOpening label="Preparing Counter"/></p>}><Counter identity={identity} visible={active} onBack={()=>setCounterMode(false)}/></Suspense>;
   if (noteMode) return <OfflineNotes identity={identity} mode="deposit" onBack={() => setNoteMode(false)} onRefresh={onRefresh} />;

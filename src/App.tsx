@@ -123,6 +123,12 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
     history.pushState({ panel, sheet: action, overlayEntry: true }, '', routeHash(panel, action)); setSheet(action);
   };
   const consumeVaultsEntry=useCallback(()=>{const route=parseRoute(location.hash);if(location.pathname!=='/'||route.sheet?.kind!=='profile'||route.sheet.vaults!=='create')return;const action:UIAction={kind:'profile'};history.replaceState({...history.state,panel:route.panel,sheet:action},'',location.search+routeHash(route.panel,action));setSheet(action);},[]);
+  const consumeLinkedPayment = (token:string) => {
+    const route=parseRoute(location.hash);
+    if(route.sheet?.kind!=='receive'||route.sheet.nearbyPayment!==token)return;
+    const action:UIAction={kind:'receive'};
+    history.replaceState({...history.state,sheet:action},'',routeHash(route.panel,action));
+  };
   const restoreMessages=()=>{if(location.pathname==='/')open({kind:'messages'});else requestBankNavigation(routeHash(panel,{kind:'messages'}));};
   const close = () => { if (sheetCloseBehavior(history.state) === 'back') history.back(); else { history.replaceState({ panel, sheet: null }, '', routeHash(panel)); setSheet(null); } };
   const navigate = (next: Panel) => { if(next==='account')unlockWallet();positions.current[panel] = scrollY; history.pushState({ panel: next, sheet: null }, '', routeHash(next)); setPanel(next); setSheet(null); requestAnimationFrame(() => scrollTo(0, positions.current[next] ?? 0)); };
@@ -134,8 +140,16 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
         if(active){const route=parseRoute(location.hash);setPanel(route.panel);setSheet(route.sheet);}
       });
     };
+    const selectPaymentLink=()=>{
+      const {sheet:next}=parseRoute(location.hash);
+      if(location.pathname==='/'&&next?.kind==='receive'&&next.nearbyPayment)selectRoute();
+    };
     addEventListener('popstate',selectRoute);addEventListener('receiz-bank:surface',selectRoute);
-    return ()=>{removeEventListener('popstate',selectRoute);removeEventListener('receiz-bank:surface',selectRoute);};
+    addEventListener('hashchange',selectPaymentLink);
+    return ()=>{
+      removeEventListener('popstate',selectRoute);removeEventListener('receiz-bank:surface',selectRoute);
+      removeEventListener('hashchange',selectPaymentLink);
+    };
   },[]);
   useEffect(() => { if (account.identity && onBank) { if(notification)clearNotificationUrl();const route = paymentRequest ? { panel: 'account' as const, sheet: { kind: 'send' as const } } : parseRoute(location.hash); setPanel(route.panel); setSheet(route.sheet); history.replaceState(route, '', `${location.search}${routeHash(route.panel, route.sheet)}`); } }, [account.identity, paymentRequest, onBank]);
   useEffect(()=>{
@@ -155,6 +169,6 @@ function BankApp({verifiedEmailMessage}:{verifiedEmailMessage?:EmailMessageObser
     <div hidden={panel !== 'assets'}><LiveAssets identity={account.identity} active={onBank && panel === 'assets'} revision={sourceRevision} investments={investments} investmentHistory={investmentHistory} marketItems={publicMarket.catalog?.items??EMPTY_MARKET_ITEMS} historyItems={publicMarket.historyCatalog?.items??EMPTY_MARKET_ITEMS} pulse={publicMarket.pulse} showcase={showcase} showcaseBusy={publicMarket.status === 'loading'} onOpen={open} /></div>
     <div hidden={panel !== 'ledger'}><Ledger sourceReader={account.identity?.readHeldLedgerOriginal} active={onBank && panel === 'ledger'} personalHistory={personalHistory} privateHistory={privateHistory} /></div>
     {messagesMounted.current&&<MessagesPanel initialEmailMessage={verifiedEmailMessage} initialMeeting={meetingEntry} initialBusinessRequest={businessEntry.request?.owner===account.identity?businessEntry.request:null} onBusinessConsumed={businessEntry.consume} identity={account.identity} initialNotification={notification} initialRecipient={messageRecipient?.owner===account.identity?messageRecipient:null} active={onBank&&sheet?.kind==='messages'} twinContextRecords={twinLedger.context} heldLedger={twinLedger} onOpen={restoreMessages} onClose={close} onPreparePayment={recipient=>open({kind:'send',...(recipient?{recipient}:{})})}/>}
-    {sheet && sheet.kind!=='messages' && <LiveActions onOpen={open} onVaultsEntryConsumed={consumeVaultsEntry} onOpenAssistant={()=>{if(location.pathname==='/'&&parseRoute(location.hash).sheet?.kind==='business')open({kind:'messages'});}} marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={refreshAccountSources} onForget={async () => { await account.forget(); setSheet(null); }} />}
+    {sheet && sheet.kind!=='messages' && <LiveActions onOpen={open} onVaultsEntryConsumed={consumeVaultsEntry} onLinkedPaymentSaved={consumeLinkedPayment} onOpenAssistant={()=>{if(location.pathname==='/'&&parseRoute(location.hash).sheet?.kind==='business')open({kind:'messages'});}} marketItems={publicMarket.catalog?.items} key={sheet.kind==='send'?'send:'+(sheet.recipient?.userId??'')+':'+(sheet.recipient?.username??''):sheet.kind} active={onBank} action={sheet} identity={account.identity} wallet={account.wallet} paymentRequest={paymentRequest} cardResumeSessionId={cardResumeSessionId} onCardResumeConsumed={consumeCardResume} onClose={close} onRefresh={refreshAccountSources} onForget={async () => { await account.forget(); setSheet(null); }} />}
   </ConsoleShell></>;
 }
