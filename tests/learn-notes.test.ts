@@ -33,3 +33,21 @@ it('links the offline guidance to the standard and the explicit device diagnosti
   expect(article).toContain('qualification remain release requirements');
   expect(article).not.toContain('navigator.credentials');
 });
+
+it('explains offline handoff, connected funding and final deposit in the public and manual guides',async()=>{
+ const {learningPages}=await import('../src/content/learning-pages.mjs');
+ // @ts-expect-error The operating manual uses static ESM templates.
+ const {docsArticles}=await import('../docs-app/content.mjs');
+ // @ts-expect-error The operating manual uses static ESM templates.
+ const {docsDocument}=await import('../docs-app/renderer.mjs');
+ const notes=learnArticle(learningPages.find(page=>page.slug==='notes')!,learningPages,escape);
+ const offline=learnArticle(learningPages.find(page=>page.slug==='offline-banking')!,learningPages,escape);
+ const manual=docsDocument(docsArticles.find((page:{slug:string})=>page.slug==='notes'));
+ for(const html of [notes,offline,manual]){
+  expect(html).toContain('only the final holder');
+  expect(html).toContain('Send Note nearby');
+  expect(html).toContain('regular balance needs a connection');
+ }
+ expect(offline).toContain('The sender can stay offline');
+ expect(manual).toContain('Show received proof QR');
+});

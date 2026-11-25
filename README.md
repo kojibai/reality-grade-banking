@@ -76,8 +76,9 @@ on a screenshot or another application's interpretation.
 - **An invoice your client can open.** Create from Receive, retain the sealed
   PDF, send to the selected client or copy a link. The client chooses the
   existing exact payment review. Reading the invoice never charges them.
-- **Funded Notes.** Create from the available account, save the original and
-  hand it to its addressed recipient. Funding is selected automatically.
+- **Funded Notes.** Create from your available account while connected.
+  Receive and pass on a supported funded Note while everyone stays offline.
+  Only the final holder connects to deposit it. See the [Note guide](https://bankeiz.com/learn/notes/).
 - **Your public identity.** A complete profile at your username, with your
   existing Receiz portrait, banner, links and public collection. Edit the same
   identity in either application; open, share and experience its assets in place.

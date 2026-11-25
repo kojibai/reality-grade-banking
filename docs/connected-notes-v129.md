@@ -55,6 +55,19 @@ and rollback-resistant exact-head retirement. It may continue offline within its
 qualified capacity. Neither a connected claim nor a browser storage flag can
 replace that evidence.
 
+### Verification evidence
+
+| Verified path | Scope |
+| --- | --- |
+| Funded Note from A through B, C, D, E, F and G | The native writer fixture starts with a signed funding allocation, prohibits fetch during all six handoffs and verifies that G receives the exact credit once. The original amount and funding source survive all six handoffs. An earlier holder cannot claim a second credit after the final deposit. |
+| Exact recovery on an iPhone | Safari on an iPhone 17 Pro Max runs the synthetic fixture with WebAuthn and network fetches disabled during recovery. It reopens the exact signed handoff from a second test wallet’s proof after a simulated restore and refuses an alternative recipient if the proof is missing. |
+| Nearby regular-balance payment | In the isolated Mac-to-iPhone fixture, the receiver confirmed $100 in test funds without the sender reconnecting. This uses the nearby Wallet payment signature and connected confirmation. |
+| New Note from regular balance on an unqualified device | The exercised connected profile requires a native funding allocation for a new Note. The current local-issuance contract requires a device-bound account proof. The current default while offline is **Send nearby** or passing on a Note whose funding was already admitted. |
+
+The physical fixture tests recovery. The six-handoff sequence and final credit
+run against an isolated native writer. Deployed financial qualification needs
+a separate run through the actual deployed Wallet.
+
 ### Recovering a handoff
 
 Bankeiz keeps a compact witness in browser storage separate from the encrypted
