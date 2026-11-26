@@ -37,12 +37,12 @@ function People({people,onAll,active,expanded=false}:{people:DiscoveryPerson[];o
  useEffect(()=>{if(!active||shown>=publicPeople.length||!row.current||!last.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{root:expanded?null:row.current,rootMargin:expanded?'400px 0px':'0px 400px'});observer.observe(last.current);return()=>observer.disconnect();},[active,shown,publicPeople.length,expanded]);
  return <section className="discover-people" aria-label="People to discover"><div className="discover-section-heading"><h2>People to discover</h2>{onAll&&<button onClick={onAll}>See all<ArrowRight size={15}/></button>}</div><div ref={row} className={'discover-people-list'+(expanded?' is-expanded':'')}>{publicPeople.slice(0,shown).map((person,i)=><a ref={i===Math.min(shown,publicPeople.length)-1?last:undefined} key={person.username} href={profilePagePath(profileUsernameLabel(person.username,person.receivingUsername))}><PersonAvatar person={person}/><strong>{person.name}</strong><span>@{profileUsernameLabel(person.username,person.receivingUsername)}</span></a>)}</div>{expanded&&shown<publicPeople.length&&<div className="discover-more"><button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button></div>}</section>;
 }
-function Work({item,onOpen,eager,active,measureAudience}:{item:PublicMarketItem;onOpen():void;eager:boolean;active:boolean;measureAudience:boolean}){
+function Work({item,onOpen,eager,active,measureAudience,spotlightBooking}:{item:PublicMarketItem;onOpen():void;eager:boolean;active:boolean;measureAudience:boolean;spotlightBooking?:string}){
  const kind=feedKind(item),text=kind==='moment'||kind==='essay',knownImage=text||kind==='document'?null:safeReceizArtworkUrl(item.artworkUrl),image=usePublicObjectArtwork(knownImage,item),Icon=icons[kind],ref=useRef<HTMLDivElement>(null),[visible,setVisible]=useState(false);
  useEffect(()=>{if(!active||kind!=='document'&&kind!=='video'||!ref.current)return;if(typeof IntersectionObserver==='undefined'){setVisible(true);return;}const observer=new IntersectionObserver(entries=>{const near=entries.some(entry=>entry.isIntersecting);if(kind==='video')setVisible(near);else if(near){setVisible(true);observer.disconnect();}},{rootMargin:'100px'});observer.observe(ref.current);return()=>observer.disconnect();},[kind,active]);
  useEffect(()=>active&&ref.current?observeOriginalImpression(ref.current,publicOriginalEngagement(item),'bankeiz_discover'):undefined,[active,item]);
  useEffect(()=>measureAudience&&ref.current&&publicOriginalEngagement(item)?observeDiscoverVenueAudience(ref.current):undefined,[measureAudience,item]);
- return <button className="discover-work" onClick={()=>{trackPublicEngagement(publicOriginalEngagement(item),'original_open','bankeiz_discover');onOpen();}} aria-label={`Open ${item.title}`}><div ref={ref} aria-hidden="true" className={`discover-cover is-${kind}`}>
+ return <button className="discover-work" data-spotlight-original={spotlightBooking?item.originalDigest:undefined} data-spotlight-booking={spotlightBooking} onClick={()=>{trackPublicEngagement(publicOriginalEngagement(item),'original_open','bankeiz_discover');onOpen();}} aria-label={`Open ${item.title}`}><div ref={ref} aria-hidden="true" className={`discover-cover is-${kind}`}>
  {kind==='collectible'&&image?<PublicCollectibleArtwork item={item} eager={eager}/>:kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:knownImage?<img src={image??undefined} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image?.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
@@ -50,7 +50,7 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const heldPlacements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,emptySpotlightPlacements);
  const placements=catalog?.spotlight??heldPlacements;
- const windows=useMemo(()=>placements.map(row=>({digest:row.originalSha256,start:marketUPulseTime(row.startKaiUPulse),end:marketUPulseTime(row.endKaiUPulse)})),[placements]);
+ const windows=useMemo(()=>placements.map(row=>({id:row.id,digest:row.originalSha256,start:marketUPulseTime(row.startKaiUPulse),end:marketUPulseTime(row.endKaiUPulse)})),[placements]);
  const [placementTime,setPlacementTime]=useState(Date.now);
  useEffect(()=>{
   if(!active||!windows.length)return;
@@ -68,11 +68,16 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  const scrollTools=useScrollReveal(active,'.discover-search');
  const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?(catalog.publicProfileHeads??[]):seedHeads,catalog?.publicProfileHeadRefusals),[items,catalog?.publicProfileHeads,catalog?.publicProfileHeadRefusals,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
- const spotlight=useMemo(()=>{
-  if(!windows.length||!initial)return [];
-  const digests=new Set(windows.filter(row=>row.start<=placementTime&&placementTime<row.end).map(row=>row.digest));
-  return digests.size?items.filter(item=>item.originalDigest&&digests.has(item.originalDigest)):[];
- },[windows,placementTime,initial,items]);
+ const liveBookings=useMemo(()=>{
+  if(!windows.length||!initial)return null;
+  const bookings=new Map<string,string>();
+  for(const {id,digest,start,end} of windows)if(start<=placementTime&&placementTime<end){
+   const held=bookings.get(digest);
+   bookings.set(digest,held?held+' '+id:id);
+  }
+  return bookings.size?bookings:null;
+ },[windows,placementTime,initial]);
+ const spotlight=useMemo(()=>liveBookings?items.filter(item=>item.originalDigest&&liveBookings.has(item.originalDigest)):[],[liveBookings,items]);
  const organicRows=spotlight.length?rows.filter(item=>!spotlight.includes(item)):rows;
  useEffect(()=>{
   if(!active)return;
@@ -137,11 +142,11 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  useEffect(()=>{setShown(20);},[query,filter]);
  useEffect(()=>{if(!active||shown>=results.items.length||!more.current||typeof IntersectionObserver==='undefined')return;const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))setShown(count=>count+20);},{rootMargin:'500px'});observer.observe(more.current);return()=>observer.disconnect();},[active,shown,results.items.length]);
  const select=(next:DiscoveryFilter)=>{setFilter(next);if(next!=='collectible'||items.some(item=>item.category==='sports')||collecting)return;setCollecting(true);void prepareFeedCollectibles().then(found=>setItems(held=>appendFeedItems(held,found))).catch(()=>{}).finally(()=>setCollecting(false));};
- const gallery=(works:PublicMarketItem[],offset=0)=><div className="discover-gallery">{works.map((item,i)=><Work key={item.id} item={item} eager={i+offset<4} active={active} measureAudience={active&&initial&&!selected} onOpen={()=>setSelected({id:item.id})}/>)}</div>;
+ const gallery=(works:PublicMarketItem[],offset=0,bookings?:ReadonlyMap<string,string>|null)=><div className="discover-gallery">{works.map((item,i)=><Work key={item.id} item={item} eager={i+offset<4} active={active} measureAudience={active&&initial&&!selected} spotlightBooking={bookings&&item.originalDigest?bookings.get(item.originalDigest):undefined} onOpen={()=>setSelected({id:item.id})}/>)}</div>;
  return <div className="discovery-page"><div className="discover-shell"><header className="discover-header"><a href="/" aria-label="Bankeiz home"><BankMark/></a><nav className="discover-workspaces" aria-label="Main navigation"><a href="/analytics/">Analytics</a><a href="/explore/">Explore</a><a href="/ledger/">Ledger</a><a href="/learn/">Learn</a></nav><div><button className="discover-icon" aria-label="Open feed" title="Open feed" onClick={()=>setSelected({})}><GalleryVerticalEnd size={21} strokeWidth={1.5}/></button><a href={appearance?'/#account/profile':'/'} className="discover-account" aria-label="Open your account"><ProfileAvatar src={appearance?.avatarUrl} name={appearance?.name??'ID'} fallback="ID" eager/></a></div></header>
  <main><h1>Discover</h1><div className={'discover-search-tools'+(scrollTools.away?' is-away':'')} onFocusCapture={scrollTools.reveal}><div className="discover-search"><Search size={19} strokeWidth={1.6}/><input type="search" aria-label="Search people and their work" placeholder="Search people and their work" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off" spellCheck={false}/>{query&&<button aria-label="Clear search" onClick={()=>setQuery('')}><X size={16}/></button>}</div>
  <nav className="discover-filters" aria-label="Discover categories">{categories.map(([key,label])=><button key={key} onClick={()=>select(key)} aria-pressed={filter===key}>{label}</button>)}</nav></div>
- {initial?<>{spotlight.length>0&&<section aria-label="Spotlight"><div className="discover-section-heading"><h2>Spotlight</h2></div>{gallery(spotlight)}</section>}
+ {initial?<>{spotlight.length>0&&<section aria-label="Spotlight"><div className="discover-section-heading"><h2>Spotlight</h2></div>{gallery(spotlight,0,liveBookings)}</section>}
   {gallery(organicRows.slice(0,4))}{people.length>0&&<People key={filter+':'+query} active={active} people={people} onAll={()=>select('People')}/>} {gallery(organicRows.slice(4),4)}</>:<>{people.length>0&&<People key={filter+':'+query} active={active} expanded={filter==='People'} people={people}/>} {filter!=='People'&&gallery(rows)}</>}
  {!rows.length&&!people.length&&<div className="discover-empty"><h2>{collecting?'Collectibles':'Room for discovery.'}</h2><p>{searched?'Try a name, a title or a different word.':'Explore another category or discover all works.'}</p><button onClick={()=>{setQuery('');select('All');}}>See all works<ArrowRight size={15}/></button></div>}
  <div ref={more} className="discover-more">{filter!=='People'&&results.items.length>shown&&<button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button>}</div>

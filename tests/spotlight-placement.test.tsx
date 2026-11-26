@@ -72,9 +72,13 @@ it('takes an active Spotlight reservation and its removal from the existing sele
   expect(host.querySelector('[aria-label="Spotlight"]')).toBeNull();
   await act(async()=>{expect(publishDiscoveredPublicCatalog(scheduled)).toBe(true);});
   expect(host.querySelector('[aria-label="Spotlight"]')?.textContent).toContain('Public Original');
+  const served=host.querySelector('[aria-label="Spotlight"] [data-spotlight-booking]');
+  expect(served?.getAttribute('data-spotlight-booking')).toBe(bookingId);
+  expect(served?.getAttribute('data-spotlight-original')).toBe(originalSha256);
   expect(host.querySelectorAll('[aria-label="Open Public Original"]')).toHaveLength(1);
   await act(async()=>{expect(publishDiscoveredPublicCatalog(catalog('3',[]))).toBe(true);});
   expect(host.querySelector('[aria-label="Spotlight"]')).toBeNull();
+  expect(host.querySelector('[data-spotlight-booking]')).toBeNull();
   expect(host.querySelectorAll('[aria-label="Open Public Original"]')).toHaveLength(1);
   expect(fetcher).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());now.mockRestore();vi.unstubAllGlobals();}

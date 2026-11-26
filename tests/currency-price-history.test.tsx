@@ -77,3 +77,21 @@ it('places the listing quote on the first frame while a cold currency opens the 
   expect(host.textContent).toContain('$2.50');
  } finally { await act(async()=>root.unmount());vi.unstubAllGlobals(); }
 });
+
+it('shows the existing Discover impression aggregate on the first frame without adding price points or requests',async()=>{
+ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+ const fetcher=vi.fn(()=>Promise.reject(Error('Unexpected traffic fetch')));
+ vi.stubGlobal('fetch',fetcher);
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<CurrencyPriceHistory assetId={'d'.repeat(64)} symbol="SPT" discoverTraffic
+    opening={{priceUsdCentsPerUnit:'93',at:'2026-11-26T00:00:00Z'}}/>));
+  expect(host.textContent).toContain('292 recorded Discover card impressions');
+  expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('Discover card impressions');
+  const price=[...host.querySelectorAll('button')].find(button=>button.textContent==='Price')!;
+  await act(async()=>price.click());
+  expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('purchase price in US dollars');
+  expect(host.textContent).not.toContain('292 recorded');
+  expect(fetcher).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());vi.unstubAllGlobals();}
+});

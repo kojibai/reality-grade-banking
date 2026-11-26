@@ -80,6 +80,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
     {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol} openLedger={!readOnly}
+      discoverTraffic={currency.symbol==='SPT'&&currency.preset==='service-credit'&&currency.adaptiveSupply===true}
       opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
       <div><span>{currency.adaptiveSupply?'Current supply':'Supply cap'}</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
       {currency.poolPricing&&<div><span>Pricing</span><strong>Market pool</strong></div>}
