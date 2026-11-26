@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { AmountInput } from '../../components/AmountInput';
-import { formatUnits } from '../../core/money';
+import { formatUnits, parseAmount } from '../../core/money';
 import type { HeldDeposit } from '../../receiz/deposit-source';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import { openCurrencyNoteFile, type CurrencyNotes as CurrencyNoteController } from '../../receiz/currency-notes';
+import {nativeCurrencyQuantityIncrement} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { NativeOperation } from '../account/NativeOperation';
 
 type Saved = Awaited<ReturnType<CurrencyNoteController['files']>>;
@@ -39,13 +40,16 @@ export function IssueCurrencyNote({ identity, asset, onRefresh }: {
   const [issued, setIssued] = useState<Saved>([]);
   const holding = asset.nativeAsset;
   if (!identity.currencyNotes || !holding?.currency || !asset.executionDigest) return null;
+  const step = nativeCurrencyQuantityIncrement(holding.currency.policy);
+  const wholeUnits = step === 1_000_000n;
   return <>
     <NativeOperation identity={identity} title="Currency note" confirmLabel="Issue note" onRefresh={onRefresh}
       inputKey={JSON.stringify([asset.executionDigest,amount,recipient,revision])}
       input={async () => {
-        const trimmed = amount.trim();
-        if (!/^\d{1,16}$/u.test(trimmed) || BigInt(trimmed) < 1n) throw Error('Enter a positive whole number of units.');
-        const quantity = BigInt(trimmed) * 1_000_000n;
+        const quantity = BigInt(parseAmount(amount));
+        if (quantity <= 0n || quantity%step !== 0n) {
+          throw Error(wholeUnits?'Enter a positive whole number of units.':'Enter units in increments of 0.001.');
+        }
         if (quantity > BigInt(holding.quantityMicro)) throw Error('Choose an amount within your available units.');
         const address = recipient.trim();
         if (address && !/^[A-Za-z0-9_.@-]{1,160}$/u.test(address)) throw Error('Enter a Receiz ID or public username.');
@@ -58,7 +62,7 @@ export function IssueCurrencyNote({ identity, asset, onRefresh }: {
         setIssued(await (await identity.currencyNotes!()).files(holding.assetId,result.nativeAssetSource));
       }}>
       <p className="body-copy">Reserve units you own in a note you can share as a file.</p>
-      <AmountInput label="Whole units to reserve" value={amount} onChange={setAmount} suffix={holding.symbol}/>
+      <AmountInput label={wholeUnits?"Whole units to reserve":"Units to reserve"} value={amount} onChange={setAmount} suffix={holding.symbol}/>
       <label className="form-field">Recipient (optional)
         <input value={recipient} onChange={event=>setRecipient(event.target.value)} placeholder="Receiz ID or public username"/>
       </label>

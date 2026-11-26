@@ -16,6 +16,7 @@ import * as nativeAsset from '../src/receiz/native-asset';
 import type { BankOperationResult, BankOperationInput } from '../src/receiz/bank-operations';
 import type { AssetComposerDraft } from '../src/receiz/asset-composer';
 import type { HeldDeposit } from '../src/receiz/deposit-source';
+import { publicNativeAssetBinding } from '../src/receiz/native-asset-public-binding';
 
 const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefined,operations:undefined as (()=>Promise<unknown>)|undefined,onResult:undefined as ((result:BankOperationResult)=>void)|undefined}));
 vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{input:()=>BankOperationInput;operations?:()=>Promise<unknown>;onResult?:(result:BankOperationResult)=>void;children:React.ReactNode})=>{
@@ -233,6 +234,26 @@ it('uses one available balance when purchasing a public currency by stable asset
   expect(host.textContent).toContain('Purchase whole units at $0.25 each from your available balance.');
   expect(host.querySelector('select')).toBeNull();
   expect(review.input?.()).toEqual({kind:'buy-currency',assetId:id,quantityMicro:'1000000'});
+ } finally {await act(async()=>root.unmount());}
+});
+
+it('keeps fractional service credits in the public Market and buys the signed minimum', async () => {
+ const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64);
+ const identity={listDeposits:async()=>[]} as unknown as OpenIdentity;
+ const binding={id,issuanceSourceSha256:'b'.repeat(64),headSourceSha256:'c'.repeat(64),publicCertificateSha256:'d'.repeat(64)};
+ const currency={symbol:'FIELD',supplyMicro:'1999000',priceUsdCentsPerUnit:'25',preset:'service-credit'} as const;
+ expect(publicNativeAssetBinding({...binding,currency})).toBeUndefined();
+ const admitted=publicNativeAssetBinding({...binding,currency:{...currency,quantityIncrementMicro:'1000'}});
+ expect(admitted?.currency?.supplyMicro).toBe('1999000');
+ try {
+  await act(async()=>root.render(<LiveOwnership identity={identity} mode="buy" nativeAssetId={id}
+   publicCurrency={admitted!.currency} onRefresh={()=>{}}/>));
+  const field=host.querySelector<HTMLInputElement>('[aria-label="Units to buy"]')!;
+  const setValue=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!;
+  await act(async()=>{setValue.call(field,'0.001');field.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(review.input?.()).toEqual({kind:'buy-currency',assetId:id,quantityMicro:'1000'});
+  await act(async()=>{setValue.call(field,'0.0005');field.dispatchEvent(new Event('input',{bubbles:true}));});
+  expect(()=>review.input?.()).toThrow('Enter units in increments of 0.001.');
  } finally {await act(async()=>root.unmount());}
 });
 

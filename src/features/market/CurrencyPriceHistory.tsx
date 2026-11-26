@@ -5,6 +5,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { PublicDocumentFormatContext } from '../../core/public-document-format';
 import { emptyCurrencyPriceHistory, emptyCurrencyTrades, heldCurrencyPriceHistory, heldCurrencyTrades, subscribeCurrencyPriceHistory } from '../../receiz/currency-ledger-view';
 import type { PublicCurrencyActivity } from '../../receiz/currency-ledger-view';
+import { formatPlacementDuration } from '../../receiz/native-service-placement';
 import { spotlightTrafficHistory } from './spotlight-traffic-history';
 
 export function CurrencyPriceHistory({assetId, symbol, opening, openLedger = false, discoverTraffic = false}: {
@@ -56,6 +57,7 @@ export function CurrencyPriceHistory({assetId, symbol, opening, openLedger = fal
   const points: readonly {at:string;usdCents:string}[] = recorded.length ? recorded : opening?.at && Number.isFinite(Date.parse(opening.at))
     ? [{at:opening.at,usdCents:opening.priceUsdCentsPerUnit}] : [];
   const latest = points.at(-1)?.usdCents ?? opening?.priceUsdCentsPerUnit;
+  const pulsesPerUnit = recorded.at(-1)?.pulsesPerUnit;
   if (!latest && !discoverTraffic) return null;
   const visible = chartPeriodPoints(points,period), range = chartPeriodBounds(points,period);
   const previous = range && visible[0] && points[points.indexOf(visible[0])-1];
@@ -71,6 +73,8 @@ export function CurrencyPriceHistory({assetId, symbol, opening, openLedger = fal
       <strong className="asset-price-amount">{formatMoney(latest)}</strong>
       <span>Purchase price per {symbol}</span>
     </div>}
+    {pulsesPerUnit&&<div className="detail-list"><div><span>Latest verified placement rate</span>
+      <strong>{formatPlacementDuration(BigInt(pulsesPerUnit)*1_000_000n)} per {symbol}</strong></div></div>}
     {(points.length>0||discoverTraffic)&&<div className="asset-chart">
       {(trades.length>0||discoverTraffic)&&<div className="segmented currency-chart-metrics" role="group" aria-label="Currency chart">
         <button type="button" className={!showVolume&&!showTraffic?'active':''} aria-pressed={!showVolume&&!showTraffic} onClick={()=>setMetric('price')}>Price</button>

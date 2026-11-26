@@ -1,7 +1,17 @@
 import { bankNativeWalletInteger } from '../../../../packages/receiz-sdk/src/nativeWalletEconomics.js';
 
+export type NativeCurrencyPlacementDuration = Readonly<{
+  pulsesPerUnit: string;
+  live?: Readonly<{
+    referenceImpressions: string;
+    minimumPulsesPerUnit: string;
+    maximumPulsesPerUnit: string;
+  }>;
+}>;
+
 export type NativeCurrencyServicePricingTerms = Readonly<{
   automaticIssuance?: true;
+  placementDuration?: NativeCurrencyPlacementDuration;
   unitsPerPlacement: string;
   viewsPerPlacement: string;
   capacityBasisPoints: string;
@@ -25,11 +35,28 @@ function positive(value: unknown): string {
   try { return bankNativeWalletInteger(value, true).toString(); } catch { return fail(); }
 }
 
+function inspectPlacementDuration(input: unknown): NativeCurrencyPlacementDuration {
+  const dynamic = !!input && typeof input === 'object' && Object.hasOwn(input, 'live');
+  const value = exact(input, ['pulsesPerUnit', ...(dynamic ? ['live'] : [])]);
+  const pulsesPerUnit = positive(value.pulsesPerUnit);
+  if (!dynamic) return Object.freeze({ pulsesPerUnit });
+  const terms = exact(value.live, ['referenceImpressions', 'minimumPulsesPerUnit', 'maximumPulsesPerUnit']);
+  const referenceImpressions = positive(terms.referenceImpressions);
+  const minimumPulsesPerUnit = positive(terms.minimumPulsesPerUnit);
+  const maximumPulsesPerUnit = positive(terms.maximumPulsesPerUnit);
+  if (BigInt(minimumPulsesPerUnit) > BigInt(pulsesPerUnit) || BigInt(pulsesPerUnit) > BigInt(maximumPulsesPerUnit)) {
+    return fail();
+  }
+  return Object.freeze({ pulsesPerUnit, live: Object.freeze({ referenceImpressions, minimumPulsesPerUnit, maximumPulsesPerUnit }) });
+}
+
 export function inspectNativeCurrencyServicePricingTerms(input: unknown): NativeCurrencyServicePricingTerms {
+  const hasDuration = !!input && typeof input === 'object' && Object.hasOwn(input, 'placementDuration');
   const automaticIssuance = !!input && typeof input === 'object' && Object.hasOwn(input, 'automaticIssuance');
   const value = exact(input, [
     'unitsPerPlacement', 'viewsPerPlacement', 'capacityBasisPoints', 'bookingWindowDays',
     'benchmarkUsdCentsPerThousandImpressions', 'windowLengthKai', 'maximumAgeKai', 'venues', ...(automaticIssuance ? ['automaticIssuance'] : []),
+    ...(hasDuration ? ['placementDuration'] : []),
   ]);
   if (automaticIssuance && value.automaticIssuance !== true) return fail();
   if (!Array.isArray(value.venues) || !value.venues.length || value.venues.length > 32) return fail();
@@ -50,6 +77,7 @@ export function inspectNativeCurrencyServicePricingTerms(input: unknown): Native
     || BigInt(windowLengthKai) > 31n * 17_492n || BigInt(maximumAgeKai) > 31n * 17_492n) return fail();
   return Object.freeze({
     ...(automaticIssuance ? { automaticIssuance: true as const } : {}),
+    ...(hasDuration ? { placementDuration: inspectPlacementDuration(value.placementDuration) } : {}),
     unitsPerPlacement: positive(value.unitsPerPlacement), viewsPerPlacement: positive(value.viewsPerPlacement),
     capacityBasisPoints, bookingWindowDays, benchmarkUsdCentsPerThousandImpressions: positive(value.benchmarkUsdCentsPerThousandImpressions),
     windowLengthKai, maximumAgeKai, venues: Object.freeze(venues),

@@ -78,7 +78,9 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
   if(prices&&time&&record.currency&&!record.kind.endsWith('-service-placement')){
    const currency=record.currency,key=currency.assetId+':'+currency.symbol;
    const points=prices.get(key)??[];
-   points.push({at:time,usdCents:currency.priceUsdCentsPerUnit,kaiUPulse:record.kaiUpulse});
+   const pulsesPerUnit=currency.pulsesPerUnit??points.at(-1)?.pulsesPerUnit;
+   points.push({at:time,usdCents:currency.priceUsdCentsPerUnit,kaiUPulse:record.kaiUpulse,
+    ...(pulsesPerUnit?{pulsesPerUnit}:{})});
    prices.set(key,points);
    if(currency.quantityMicro&&(record.kind==='asset.buy-currency'||record.kind==='asset.sell-currency')){
     const activity=trades.get(key)??[];
@@ -100,7 +102,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
     const left=BigInt(a.kaiUPulse),right=BigInt(b.kaiUPulse);
     return left<right?-1:left>right?1:0;
    });
-   prices.set(key,points.filter((point,index)=>index===0||index===points.length-1||point.usdCents!==points[index-1].usdCents));
+   prices.set(key,points.filter((point,index)=>index===0||index===points.length-1||point.usdCents!==points[index-1].usdCents||point.pulsesPerUnit!==points[index-1].pulsesPerUnit));
   }
   const {ledgerId,sourceHistory}=review.snapshot;
   for(const activity of trades.values())activity.sort((a,b)=>{
