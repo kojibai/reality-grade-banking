@@ -5,7 +5,8 @@ export const PUBLIC_LEDGER_DOMAIN='receiz.public-action-ledger.root-signature.v1
 export const PUBLIC_LEDGER_MAX_BYTES=16*1024*1024;
 const currencyActions = ['asset.issue-currency','asset.buy-currency','asset.sell-currency','asset.send-ownership','asset.manage-currency','asset.govern-currency','asset.quote-currency','asset.reserve-service-placement','asset.cancel-service-placement','asset.expire-service-placement','asset.start-service-placement','asset.complete-service-placement','asset.issue-currency-note','asset.redeem-currency-note'] as const;
 
-export type PublicLedgerRecord=Readonly<{id:string;sequence:number;kind:string;kaiUpulse:string;entryHash:string;previousHash:string;amountUsdCents:string|null;currency?:PublicCurrencyActivity}>;
+export type PublicSpotlightPlacement=Readonly<{id:string;venueId:string;originalSha256:string;startKaiUPulse:string;endKaiUPulse:string;status:'reserved'|'started'|'delivered'|'cancelled'|'expired'}>;
+export type PublicLedgerRecord=Readonly<{id:string;sequence:number;kind:string;kaiUpulse:string;entryHash:string;previousHash:string;amountUsdCents:string|null;currency?:PublicCurrencyActivity;placement?:PublicSpotlightPlacement}>;
 export type PublicLedgerSnapshot=Readonly<{
  schema:'receiz.public-action-ledger.v1';domain:typeof PUBLIC_LEDGER_DOMAIN;issuerRootKid:string;ledgerId:string;
  scope:'public-action-history';baseline:'native'|'observed';financialAdmission:false;
@@ -18,6 +19,17 @@ const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&
 const exact=(v:Record<string,unknown>,keys:readonly string[])=>Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const hex=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
 const uint=(v:unknown):v is string=>typeof v==='string'&&/^(0|[1-9][0-9]{0,39})$/.test(v);
+function inspectSpotlightPlacement(value:unknown,kind:unknown):PublicSpotlightPlacement {
+ const status:Record<string,PublicSpotlightPlacement['status']>={
+  'asset.reserve-service-placement':'reserved','asset.start-service-placement':'started','asset.complete-service-placement':'delivered',
+  'asset.cancel-service-placement':'cancelled','asset.expire-service-placement':'expired',
+ };
+ if(!object(value)||!exact(value,['id','venueId','originalSha256','startKaiUPulse','endKaiUPulse','status'])||typeof kind!=='string'
+  ||value.status!==status[kind]||typeof value.id!=='string'||! /^[a-f0-9-]{36}$/u.test(value.id)
+  ||typeof value.venueId!=='string'||! /^[a-z0-9][a-z0-9_-]{0,63}$/u.test(value.venueId)||!hex(value.originalSha256)
+  ||!uint(value.startKaiUPulse)||!uint(value.endKaiUPulse)||BigInt(value.startKaiUPulse)>=BigInt(value.endKaiUPulse))return fail();
+ return Object.freeze(value) as PublicSpotlightPlacement;
+}
 function fail():never{throw Error('PUBLIC_LEDGER_STATEMENT_INVALID');}
 /** Shape is display preparation, never a verifier verdict. */
 export function inspectPublicLedgerStatement(input:unknown):PublicLedgerSnapshot{
@@ -32,7 +44,7 @@ export function inspectPublicLedgerStatement(input:unknown):PublicLedgerSnapshot
   ||v.rootSignature.kid!==v.issuerRootKid||v.rootSignature.alg!=='Ed25519'||typeof v.rootSignature.sig!=='string'||!/^[A-Za-z0-9_-]{86}$/.test(v.rootSignature.sig))fail();
  const ids=new Set<string>(),hashes=new Set<string>();let seq=0;
  for(const row of v.records){
-  if(!object(row)||!exact(row,['id','sequence','kind','kaiUpulse','entryHash','previousHash','amountUsdCents',...(Object.hasOwn(row,'currency')?['currency']:[])])
+  if(!object(row)||!exact(row,['id','sequence','kind','kaiUpulse','entryHash','previousHash','amountUsdCents',...(Object.hasOwn(row,'currency')?['currency']:[]),...(Object.hasOwn(row,'placement')?['placement']:[])])
    ||typeof row.id!=='string'||!row.id||row.id.length>128||ids.has(row.id)||!Number.isSafeInteger(row.sequence)||(row.sequence as number)<=seq
    ||typeof row.kind!=='string'||!/^[a-z0-9._:-]{3,120}$/.test(row.kind)||!uint(row.kaiUpulse)||BigInt(row.kaiUpulse)>BigInt(v.kaiUpulse)
    ||!hex(row.entryHash)||!hex(row.previousHash)||hashes.has(row.entryHash)||row.amountUsdCents!==null&&!uint(row.amountUsdCents))fail();
@@ -42,6 +54,7 @@ export function inspectPublicLedgerStatement(input:unknown):PublicLedgerSnapshot
     ||currency.tradeUsdCents!==undefined&&!['asset.buy-currency','asset.sell-currency'].includes(String(row.kind)))fail();
    row.currency=currency;
   }
+  if(Object.hasOwn(row,'placement'))row.placement=inspectSpotlightPlacement(row.placement,row.kind);
   seq=row.sequence as number;ids.add(row.id);hashes.add(row.entryHash);Object.freeze(row);
  }
  Object.freeze(v.records);Object.freeze(v.sourceHistory);Object.freeze(v.rootSignature);return Object.freeze(v) as PublicLedgerSnapshot;
@@ -70,11 +83,12 @@ export function publicLedgerContinuation(held:PublicLedgerSnapshot,incoming:Publ
  const rows=Math.min(held.records.length,incoming.records.length);
  let addsCurrency=false, dropsCurrency=false;
  for(let i=0;i<rows;i++){
-  const {currency:knownCurrency,...known}=held.records[i],{currency:nextCurrency,...next}=incoming.records[i];
+  const {currency:knownCurrency,placement:knownPlacement,...known}=held.records[i],{currency:nextCurrency,placement:nextPlacement,...next}=incoming.records[i];
   if(canonicalizeReceizV122(known)!==canonicalizeReceizV122(next)
-    ||knownCurrency&&nextCurrency&&canonicalizeReceizV122(knownCurrency)!==canonicalizeReceizV122(nextCurrency))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
-  addsCurrency ||= !knownCurrency && !!nextCurrency;
-  dropsCurrency ||= !!knownCurrency && !nextCurrency;
+    ||knownCurrency&&nextCurrency&&canonicalizeReceizV122(knownCurrency)!==canonicalizeReceizV122(nextCurrency)
+    ||knownPlacement&&nextPlacement&&canonicalizeReceizV122(knownPlacement)!==canonicalizeReceizV122(nextPlacement))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
+  addsCurrency ||= !knownCurrency && !!nextCurrency || !knownPlacement && !!nextPlacement;
+  dropsCurrency ||= !!knownCurrency && !nextCurrency || !!knownPlacement && !nextPlacement;
  }
  if(incoming.sourceHistory.length===held.sourceHistory.length){
   if(incoming.records.length!==held.records.length||incoming.kaiUpulse!==held.kaiUpulse||addsCurrency&&dropsCurrency)throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');

@@ -1,9 +1,10 @@
 import {currencyPricesAlreadySelected,retainCurrencyPriceHistory,type CurrencyPricePoint,type CurrencyTrade} from './currency-ledger-view';
 import type {PublicLedgerFileReview} from './public-ledger-proof';
-import type {PublicLedgerSource} from './public-ledger-statement';
+import type {PublicLedgerSource,PublicSpotlightPlacement} from './public-ledger-statement';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
 import {mergePublicRecords,type PublicRecord} from './public-network';
 import {walletPointTime} from './wallet-series';
+import {projectSpotlightPlacements} from './spotlight-placement-view';
 
 let pending:Promise<PublicLedgerFileReview|null>|null=null;
 let heldRead:Promise<PublicLedgerFileReview|null>|null=null;
@@ -66,7 +67,9 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
  const incoming:PublicRecord[]=[];
  const prices=currencyPricesAlreadySelected(review.artifactSha256)?null:new Map<string,CurrencyPricePoint[]>();
  const trades=new Map<string,CurrencyTrade[]>();
+ const placements:PublicSpotlightPlacement[]=[];
  for(const record of review.snapshot.records){
+  if(record.placement)placements.push(record.placement);
   // The retained original may support coordinates larger than this UI cache.
   // Such records remain in the original rather than being truncated or coerced.
   if(record.kaiUpulse.length>30||record.amountUsdCents!==null&&record.amountUsdCents.length>25)continue;
@@ -90,6 +93,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
    evidence:{...compatible?.evidence,entryHash:record.entryHash,prevHash:record.previousHash},
    ...(record.currency?{details:{...compatible?.details,currency:record.currency}}:{}),authority:'public-source-projection'});
  }
+ projectSpotlightPlacements(review.snapshot,review.artifactSha256,placements);
  if(prices){
   for(const [key,points] of prices){
    points.sort((a,b)=>{

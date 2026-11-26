@@ -1,3 +1,4 @@
+import {inspectPlacementAction,type PlacementAction} from './native-service-placement';
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
 import {inspectNativeCurrencyPolicy,inspectNativeCurrencyManagement,type NativeCurrencyManagement,type NativeCurrencyPolicy} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {inspectNativeAssetFundingComponents} from './native-asset-backing';
@@ -15,6 +16,7 @@ export type BankOperationInput =
   | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string; authoredSource?: ImportedProofSourceReference }
   | { kind: 'issue-currency'; definition: AssetDefinition; policy: NativeCurrencyPolicy; authoredSource?: ImportedProofSourceReference }
   | ({assetDigest:string}|{assetId:string}) & { kind:'buy-currency'; quantityMicro:string }
+  | { kind: 'book-currency-service'; assetDigest: string; placement: PlacementAction }
   | { kind: 'manage-currency'; assetDigest: string; changes: NativeCurrencyManagement }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
@@ -55,6 +57,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const input = structuredClone(value), r = record(input);
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'issue-currency': ['definition', 'policy', ...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])], 'buy-currency': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro'],
+    'book-currency-service': ['assetDigest', 'placement'],
     'manage-currency': ['assetDigest', 'changes'],
     'issue-currency-note': ['assetDigest','quantityMicro','claimCommitment','recipient','artworkSha256'],
     'redeem-currency-note': ['assetId','quantityMicro','claimSecret'],
@@ -84,6 +87,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
     if (input.artworkSha256 !== null) digest(input.artworkSha256);
   }
   if (input.kind === 'redeem-currency-note') digest(input.claimSecret);
+  if (input.kind === 'book-currency-service') inspectPlacementAction(input.placement);
   if (input.kind === 'manage-currency') input.changes=inspectNativeCurrencyManagement(input.changes);
   if (input.kind === 'issue-currency') {
     if(!input.authoredSource)fail();
@@ -129,7 +133,7 @@ export function createBankOperations(input: {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
       if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
-      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || value.kind === 'manage-currency' || value.kind === 'issue-currency-note' || value.kind === 'redeem-currency-note' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+      if (value.kind === 'book-currency-service' || value.kind === 'issue-currency' || value.kind === 'buy-currency' || value.kind === 'manage-currency' || value.kind === 'issue-currency-note' || value.kind === 'redeem-currency-note' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
       if('fundingRule'in value)throw Error('BANK_ASSET_AUTOMATIC_RUNTIME_REQUIRED');
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {

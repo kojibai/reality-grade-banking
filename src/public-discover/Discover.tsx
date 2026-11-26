@@ -20,6 +20,8 @@ import {preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/p
 import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
 import {observePublicProfileDirectory,publicProfileDirectoryIsLive,receivePublicProfileForDiscovery,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
+import {emptySpotlightPlacements,heldSpotlightPlacements,subscribeSpotlightPlacements} from '../receiz/spotlight-placement-view';
+import {marketUPulseTime} from '../receiz/market-projection/coordinates';
 import './discover.css';
 const Document=lazy(()=>import('../public-feed/FeedDocument'));
 const categories:[DiscoveryFilter,string][]=[['All','All'],['audio','Music'],['video','Videos'],['book','Books'],['image','Images'],['essay','Essays'],['moment','Moments'],['document','Documents'],['collectible','Collectibles'],['People','People']];
@@ -43,12 +45,32 @@ function Work({item,onOpen,eager,active}:{item:PublicMarketItem;onOpen():void;ea
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
 export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];seedHeads?:PublicMarketCatalog['publicProfileHeads'];active?:boolean}){
+ const placements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,emptySpotlightPlacements);
+ const windows=useMemo(()=>placements.map(row=>({digest:row.originalSha256,start:marketUPulseTime(row.startKaiUPulse),end:marketUPulseTime(row.endKaiUPulse)})),[placements]);
+ const [placementTime,setPlacementTime]=useState(Date.now);
+ useEffect(()=>{
+  if(!active||!windows.length)return;
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  const tick=()=>{
+   const now=Date.now();setPlacementTime(now);
+   let next=Infinity;
+   for(const {start,end} of windows){if(start>now)next=Math.min(start,next);if(end>now)next=Math.min(end,next);}
+   if(Number.isFinite(next))timer=setTimeout(tick,Math.min(next-now,2_147_483_647));
+  };
+  tick();return()=>clearTimeout(timer);
+ },[windows,active]);
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
  const publicationAt=useRef(-Infinity),selectedCatalog=useRef<PublicMarketCatalog|null>(null);
  const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const scrollTools=useScrollReveal(active,'.discover-search');
  const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?(catalog.publicProfileHeads??[]):seedHeads,catalog?.publicProfileHeadRefusals),[items,catalog?.publicProfileHeads,catalog?.publicProfileHeadRefusals,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;
+ const spotlight=useMemo(()=>{
+  if(!windows.length||!initial)return [];
+  const digests=new Set(windows.filter(row=>row.start<=placementTime&&placementTime<row.end).map(row=>row.digest));
+  return digests.size?items.filter(item=>item.originalDigest&&digests.has(item.originalDigest)):[];
+ },[windows,placementTime,initial,items]);
+ const organicRows=spotlight.length?rows.filter(item=>!spotlight.includes(item)):rows;
  useEffect(()=>{
   if(!active)return;
   const abort=new AbortController();
@@ -116,7 +138,8 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  return <div className="discovery-page"><div className="discover-shell"><header className="discover-header"><a href="/" aria-label="Bankeiz home"><BankMark/></a><nav className="discover-workspaces" aria-label="Main navigation"><a href="/analytics/">Analytics</a><a href="/explore/">Explore</a><a href="/ledger/">Ledger</a><a href="/learn/">Learn</a></nav><div><button className="discover-icon" aria-label="Open feed" title="Open feed" onClick={()=>setSelected({})}><GalleryVerticalEnd size={21} strokeWidth={1.5}/></button><a href={appearance?'/#account/profile':'/'} className="discover-account" aria-label="Open your account"><ProfileAvatar src={appearance?.avatarUrl} name={appearance?.name??'ID'} fallback="ID" eager/></a></div></header>
  <main><h1>Discover</h1><div className={'discover-search-tools'+(scrollTools.away?' is-away':'')} onFocusCapture={scrollTools.reveal}><div className="discover-search"><Search size={19} strokeWidth={1.6}/><input type="search" aria-label="Search people and their work" placeholder="Search people and their work" value={query} onChange={event=>setQuery(event.target.value)} autoComplete="off" spellCheck={false}/>{query&&<button aria-label="Clear search" onClick={()=>setQuery('')}><X size={16}/></button>}</div>
  <nav className="discover-filters" aria-label="Discover categories">{categories.map(([key,label])=><button key={key} onClick={()=>select(key)} aria-pressed={filter===key}>{label}</button>)}</nav></div>
- {initial?<>{gallery(rows.slice(0,4))}{people.length>0&&<People key={filter+':'+query} active={active} people={people} onAll={()=>select('People')}/>} {gallery(rows.slice(4),4)}</>:<>{people.length>0&&<People key={filter+':'+query} active={active} expanded={filter==='People'} people={people}/>} {filter!=='People'&&gallery(rows)}</>}
+ {initial?<>{spotlight.length>0&&<section aria-label="Spotlight"><div className="discover-section-heading"><h2>Spotlight</h2></div>{gallery(spotlight)}</section>}
+  {gallery(organicRows.slice(0,4))}{people.length>0&&<People key={filter+':'+query} active={active} people={people} onAll={()=>select('People')}/>} {gallery(organicRows.slice(4),4)}</>:<>{people.length>0&&<People key={filter+':'+query} active={active} expanded={filter==='People'} people={people}/>} {filter!=='People'&&gallery(rows)}</>}
  {!rows.length&&!people.length&&<div className="discover-empty"><h2>{collecting?'Collectibles':'Room for discovery.'}</h2><p>{searched?'Try a name, a title or a different word.':'Explore another category or discover all works.'}</p><button onClick={()=>{setQuery('');select('All');}}>See all works<ArrowRight size={15}/></button></div>}
  <div ref={more} className="discover-more">{filter!=='People'&&results.items.length>shown&&<button onClick={()=>setShown(count=>count+20)}>Show more<ArrowRight size={15}/></button>}</div>
  <footer className="discover-footer"><a href="/explore/">Explore the market<ArrowRight size={14}/></a></footer></main></div>

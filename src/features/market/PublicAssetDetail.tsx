@@ -34,8 +34,10 @@ import {admittedAssetPublicationItem} from '../../receiz/asset-publication-adopt
 
 export type CurrencyManagementContext={identity:import('../../receiz/native-identity').OpenIdentity;accountUid:string|null;onRefresh():void};
 const CurrencySettings=lazy(()=>import('../assets/CurrencySettings').then(module=>({default:module.CurrencySettings})));
+const CurrencyPlacement=lazy(()=>import('./CurrencyPlacement').then(module=>({default:module.CurrencyPlacement})));
 
 export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false,currencyManagement }: { item: PublicMarketItem;currencyManagement?:CurrencyManagementContext; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
+  const [placementOpen,setPlacementOpen]=useState(false);
   const mediaRoot=useRef<HTMLElement>(null);
   const engagement=useOriginalEngagement(item,!readOnly,'bankeiz_asset_detail',mediaRoot);
   const format=useContext(PublicDocumentFormatContext),firstFrame=useContext(PublicDocumentPulseContext)!==undefined;
@@ -88,6 +90,11 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     <PublicAssetChart periods={periods} fallback={item.chart} item={item} inventory={item.category==='sports'?undefined:inventory} metric={metric} onMetricChange={setMetric}/><ShareInventory item={item} priceUsd={price}/>
     </>}
     {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('buy', item.id); }}>{currency?`Buy ${currency.symbol}`:'Buy ownership'}</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('sell', item.id); }}>{currency?`Sell ${currency.symbol}`:'Take cash'}</button></div>}
+    {!readOnly&&currency?.adaptiveSupply&&currency.preset==='service-credit'&&currencyManagement?.accountUid&&<details className="transaction-proof-details" onToggle={event=>setPlacementOpen(event.currentTarget.open)}>
+      <summary>Book a placement</summary>
+      {placementOpen&&<Suspense fallback={<p role="status">Opening placements…</p>}><CurrencyPlacement key={item.nativeAsset!.id}
+        assetId={item.nativeAsset!.id} identity={currencyManagement.identity} symbol={currency.symbol} onRefresh={currencyManagement.onRefresh}/></Suspense>}
+    </details>}
     {canOpenCurrencySettings&&currencyManagement?.accountUid&&<details className="transaction-proof-details" onToggle={event=>setSettingsOpen(event.currentTarget.open)}>
       <summary>{currencyManagement.accountUid===ownerUid?'Manage currency':'Currency governance'}</summary>
       {settingsOpen&&<Suspense fallback={<p role="status">Opening currency settings…</p>}><CurrencySettings

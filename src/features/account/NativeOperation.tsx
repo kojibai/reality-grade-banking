@@ -11,7 +11,7 @@ import { CurrencySalesDates } from '../assets/CurrencySalesDates';
 import { CurrencyTransferAmount, type CurrencyTransferDetails } from '../assets/CurrencyTransferAmount';
 import { shareCapitalizationUsdCents } from '../../receiz/market-share-inventory';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership, currencyTransfer, committedTitle }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; committedTitle?: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; currencyTransfer?: {unitPriceUsdCents: string; onCommitted(details:CurrencyTransferDetails):void}; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership, currencyTransfer, committedTitle, reviewDetails }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; committedTitle?: string; onRefresh(): void; children: ReactNode; reviewDetails?:ReactNode; ownership?: { title: string; symbol: string }; currencyTransfer?: {unitPriceUsdCents: string; onCommitted(details:CurrencyTransferDetails):void}; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [reviewUnitPrice, setReviewUnitPrice] = useState<string>();
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
@@ -75,6 +75,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     const issuePolicy = request.kind === 'issue-currency' ? request.policy : null;
     const creatorUnits = issuePolicy?.kind === 'constant-product-pool' ? issuePolicy.creatorQuantityMicro : '0';
     return <section className="native-operation-review"><h1 className="sheet-hero" ref={issuePolicy ? currencyReviewHeading : undefined} tabIndex={issuePolicy ? -1 : undefined}>Review {title.toLowerCase()}.</h1>
+      {reviewDetails}
       {currencySummary && ownership && <CurrencyTransferAmount {...currencySummary} symbol={ownership.symbol}/>}
       <div className="detail-list">
         {!currencySummary && (request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
