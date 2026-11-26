@@ -25,7 +25,7 @@ const privateBankStyles=bankOwnedStyles(bankStyles,{host:{name:'PublicAssetTrade
 
 it('carries the existing small Discover body beside Bank while Feed stays lightweight',()=>{
  const builderStatements=['navigationPages=','bankRuntime=','navigation=','bundle=','bankBundle='].map(statement).join('\n');
- const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''},'html.learn-surface{color:navy}');
+ const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactStaticNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''},'html.learn-surface{color:navy}');
  const value=read(bundle),discover=value.pages['/discover/'];
  expect(discover).toMatchObject({runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz'});
  expect(expand(discover.head,value.styles)).toBe(discoverHead);
@@ -78,7 +78,7 @@ it('retains Discover metadata without duplicate body in immersive Feed and Disco
  for(const runtime of ['feed','discover']){
   const name=runtime+'Bundle';
   const line=builder.split('\n').find(row=>row.trimStart().startsWith('const '+name+'='))!;
-  const html=new Function('page','compactNavigation','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','navigationScript','discoveryWorkspacePages',line+';return '+name+';')({runtime},compactNavigation,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank',navigationScript,workspaces);
+  const html=new Function('page','compactStaticNavigation','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','navigationScript','discoveryWorkspacePages',line+';return '+name+';')({runtime},compactNavigation,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank',navigationScript,workspaces);
   const value=read(html);expect(value.pages['/discover/'].content).toBe('');expect(expand(value.pages['/discover/'].head,value.styles)).toBe(discoverHead);expect(value.pages['/discover/'].entry).toBe(pages['/discover/'].entry);
   expect(expand(value.pages['/explore/'].content,value.styles)).toBe(pages['/explore/'].content);
   if(runtime==='discover'){

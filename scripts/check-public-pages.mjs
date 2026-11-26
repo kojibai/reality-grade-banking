@@ -366,5 +366,14 @@ assert.ok(discoveryOpening.includes('data-public-runtime="discover"')&&discovery
 assert.ok(discoveryOpening.includes('<style data-public-page-style="discover">')&&!/<link rel="stylesheet"/.test(discoveryOpening),'Discovery does not wait for a stylesheet.');
 assert.ok(/<script type="module" async[^>]*src="\/assets\/discover-/.test(discoveryDocument),'Discovery hydrates before unrelated document payload.');
 assert.ok(!discoveryOpening.includes('site-footer')&&!discoveryOpening.includes('account-opening-screen'),'Discovery starts with works, without footer or account work.');
+assert.equal(discoveryOpening.match(/<style id="bankeiz-appearance">/g)?.length,1,'Discovery installs its appearance once before paint.');
+const discoveryNavigation=expandNavigation(decodeNavigationEnvelope(discoveryDocument.match(navigationPattern)[1]).navigation);
+for(const page of [...Object.values(discoveryNavigation.pages),discoveryNavigation.bank]){
+ assert.ok(!page.head.includes('id="bankeiz-appearance"'),'Retained heads reuse the installed appearance.');
+}
+assert.ok(!/<link rel="(?:modulepreload|stylesheet)"|<script type="module"|id="bankeiz-opening-critical"/.test(discoveryNavigation.bank.head),'Retained Bank navigation uses its existing entry and CSS instead of carrying document startup tags.');
+
 const discoveryInterfaceSize=discoveryDocument.length-carriedTextSize(discoveryDocument,'public-discovery-seed',12)-carriedNavigationTextSize(discoveryDocument);
 assert.ok(discoveryInterfaceSize<700000,`Discovery interface and non-text payload are ${discoveryInterfaceSize} bytes. The 700 kB uncompressed budget still applies.`);
+
+console.log(`Verified Discovery first paint and retained navigation (${discoveryInterfaceSize} of 700000 bytes).`);

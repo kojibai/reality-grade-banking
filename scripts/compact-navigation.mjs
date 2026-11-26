@@ -1,6 +1,22 @@
 /** Carry identical page styles once. Heads expand only when their page is used;
  * the initial HTML and every destination keep their exact original CSS. */
-export function compactNavigation(input) {
+export function compactNavigation(input, {installedAppearance} = {}) {
+  if (installedAppearance) {
+    const retainedPage = page => ({...page, head:page.head.replace(installedAppearance,'')});
+    const bank = retainedPage(input.bank);
+    // Retained navigation already imports bank.entry and installs bank.css.
+    // Its head only needs the metadata and styles restored by the router.
+    bank.head = bank.head
+      .replace(/[ \t\r\n]*<link rel="(?:modulepreload|stylesheet)"[^>]*>/g,'')
+      .replace(/[ \t\r\n]*<script type="module"[^>]*>[\s\S]*?<\/script>/g,'')
+      .replace(/<style id="bankeiz-opening-critical">[\s\S]*?<\/style>/g,'');
+    input = {
+      ...input,
+      pages:Object.fromEntries(Object.entries(input.pages).map(([path,page])=>[path,retainedPage(page)])),
+      bank,
+    };
+  }
+
   // The existing styles table is a lossless shared-markup table. Both head
   // styles and repeated body fragments use the same references and decoder.
   const styles=[],indices=new Map();

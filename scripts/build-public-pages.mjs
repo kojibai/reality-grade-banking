@@ -59,7 +59,7 @@ import { createServer } from 'vite';
 import { openingShellHtml } from './opening-shell.mjs';
 import { buildLaunchImages } from './build-launch-images.mjs';
 import { learnAssets } from './learn-assets.mjs';
-import {withAppAppearance} from './app-appearance.mjs';
+import {bankAppearanceHead,withAppAppearance} from './app-appearance.mjs';
 import { learnHome, learnArticle,learnHeader,learningDirectoryPage } from './learn-template.mjs';
 import {realityGradeStandardContent} from './reality-grade-standard.mjs';
 import { accountNoticePages } from './account-notice-pages.mjs';
@@ -272,12 +272,14 @@ const exampleBanks=packExampleBanks(publicPages);Object.assign(publicPages,examp
 const navigationPages=Object.fromEntries(Object.entries(publicPages).map(([path,page])=>[path,path==='/feed/'?{...page,content:''}:page]));
 const bankRuntime={head:bankHead,entry:bankEntry,styles:privateBankStyles,content:bankContent};
 const navigation={reserved:feedState.profileNames,pages:navigationPages,aliases:publicRouteAliases};
-const bundle=navigationScript(compactNavigation({...navigation,bank:{...bankRuntime,css:bankCss}}),exampleBanks.shared);
+const installedAppearance=bankAppearanceHead();
+const compactStaticNavigation=input=>compactNavigation(input,{installedAppearance});
+const bundle=navigationScript(compactStaticNavigation({...navigation,bank:{...bankRuntime,css:bankCss}}),exampleBanks.shared);
 // The home document already embeds every exact Bank sheet below. The router
 // toggles those nodes on return; only cold public entrances need carried copies.
 // Learn's scoped styles enter with the held guide, so keep them in the same
 // compressed navigation payload instead of parsing them on the Bank entrance.
-const bankBundle=navigationScript(compactNavigation({...navigation,bank:bankRuntime,learnCss:publicCss}),exampleBanks.shared);
+const bankBundle=navigationScript(compactStaticNavigation({...navigation,bank:bankRuntime,learnCss:publicCss}),exampleBanks.shared);
 await writeFile('dist/learn/learn.css', publicCss);
 await writeFile('dist/learn/learn.js', publicJs);
 let entryHtml = bankHtml.replace('</head>', `<script src="${jsUrl}" defer></script>${valueBoot}</head>`).replace('</body>', () => `${bankBundle}</body>`);
@@ -310,12 +312,12 @@ const discoveryWorkspacePages={
  '/ledger/':{...publicPages['/ledger/'],content:ledgerStates.get('/ledger/').content,analyticsSeed:{...publicPages['/analytics/'].analyticsSeed,path:'ledger'}},
  '/explore/':{...publicPages['/explore/'],content:exploreDestination.content,exploreFrame:{generation:exploreDestination.seed.generation,packet:explorePacketDigest}},
 };
-const feedBundle=navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':{...publicPages['/feed/'],content:''},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}}));
+const feedBundle=navigationScript(compactStaticNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':{...publicPages['/feed/'],content:''},'/explore/':publicPages['/explore/'],'/discover/':{...publicPages['/discover/'],content:''}},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}}));
 const documents={...publicPages,...Object.fromEntries(Object.entries(publicRouteAliases).map(([alias,path])=>[alias,publicPages[path]]))};
 for (const [path, page] of Object.entries(documents)) {
   await mkdir(`dist${path}`, { recursive: true });
   const runtimeHtml = runtimeDocuments.get(path);
-  const discoverBundle=page.runtime==='discover'?navigationScript(compactNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':publicPages['/feed/'],'/discover/':{...publicPages['/discover/'],content:''},...discoveryWorkspacePages},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})):null;
+  const discoverBundle=page.runtime==='discover'?navigationScript(compactStaticNavigation({reserved:feedState.profileNames,pages:{...navigationMetadata,'/feed/':publicPages['/feed/'],'/discover/':{...publicPages['/discover/'],content:''},...discoveryWorkspacePages},aliases:{'/explorer/':'/explore/'},bank:{head:bankHead,entry:bankEntry,styles:privateBankStyles,css:bankCss,content:bankContent}})):null;
   const feedHtml=['feed','discover'].includes(page.runtime)?earlyPublicRuntimeDocument(runtimeHtml).replace('</head>',`<script src="${jsUrl}" defer></script></head>`).replace('</body>',()=>`${discoverBundle??feedBundle}</body>`):null;
   const directMarketing=directMarketingEntries.get(path);
   const document=withReadingLink(directMarketing ? withAppAppearance(directMarketing) : feedHtml??(runtimeHtml ? runtimeDocumentHtml(runtimeHtml,page.runtime) : withAppAppearance(`<!doctype html><html lang="en" class="learn-surface"><head>${page.head}</head><body data-bank-surface="learn"><div id="public-learn-root">${page.content}</div>${bundle}</body></html>`)),path);

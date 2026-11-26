@@ -42,6 +42,27 @@ it('shares repeated source-link markup in a retained head without dropping a sin
  expect(JSON.stringify(packed).length).toBeLessThan(JSON.stringify(original).length*.65);
 });
 
+it('carries restored metadata and styles once when the document already installs appearance and runtime',()=>{
+ const canonical='<link rel="canonical" href="https://bankeiz.com/">';
+ const appearance='<style id="bankeiz-appearance">:root{color-scheme:light dark}</style><script>installAppearance()</script>';
+ const startup='<link rel="modulepreload" crossorigin href="/assets/bank-chunk.js">'
+  +'<script type="module" crossorigin src="/assets/bank.js"></script><link rel="stylesheet" href="/assets/bank.css">'
+  +'<style id="bankeiz-opening-critical">body{background:white}</style>';
+ const input = {
+  pages:{'/guide/':{head:head+appearance,content:'<main>Held guide</main>'}},
+  bank:{head:'<title>Bank</title>'+canonical+appearance+startup,content:'<main>Held Bank</main>',
+   entry:'/assets/bank.js',styles:['/assets/bank.css'],css:{'/assets/bank.css':css}},
+ };
+ const before=structuredClone(input),packed=compactNavigation(input,{installedAppearance:appearance});
+ const expand=(value:unknown)=>Array.isArray(value)?value.map(part=>typeof part==='number'?packed.styles[part]:part).join(''):value;
+ expect(expand(packed.pages['/guide/'].head)).toBe(head);
+ expect(expand(packed.bank.head)).toBe('<title>Bank</title>'+canonical);
+ expect(packed.bank.entry).toBe(input.bank.entry);
+ expect(packed.bank.styles).toEqual(input.bank.styles);
+ expect(expand((packed.bank.css as Record<string,unknown>)['/assets/bank.css'])).toBe(css);
+ expect(input).toEqual(before);
+});
+
 it('keeps unique large destination styles within delivery capacity by sharing their repeated declarations losslessly',()=>{
  const repeated='display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:1px solid #dfe5ed;border-radius:12px;background:#fff;color:#172b45;';
  const first=Array.from({length:160},(_,i)=>`.relationship-part-${i}{${repeated}--part:${i}}`).join('');
