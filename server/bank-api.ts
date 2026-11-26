@@ -1,3 +1,4 @@
+import {discoverVenueAudiencePath,relayDiscoverVenueAudience} from './spotlight-traffic.js';
 import {handlePublicBookingConversation} from './public-booking-conversation.js';
 import {handleOriginalsQualification} from './originals-qualification.js';
 import {relayTwinWorkspace} from './twin-workspace.js';
@@ -19,6 +20,9 @@ import {handlePublicDocument} from './public-document.js';
 // adapter changes HTTP interfaces only; it never parses or reseals a proof.
 export async function handleBankApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname===discoverVenueAudiencePath) return relayDiscoverVenueAudience({
+    key: process.env.RECEIZ_SPOTLIGHT_INGRESS_KEY, platformTrusted: process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production',
+  })(request);
   if (url.pathname==='/api/bank/public-profile-directory/stream') return handlePublicProfileDirectoryStream(request);
   if (url.pathname==='/api/bank/public-profile-directory') return handlePublicProfileDirectory(request);
   if (url.pathname.startsWith('/api/bank/booking/')) return handlePublicBookingConversation(request);
