@@ -1,3 +1,4 @@
+import {currencyPricesAlreadySelected,retainCurrencyPriceHistory} from './currency-ledger-view';
 import type {PublicLedgerFileReview} from './public-ledger-proof';
 import type {PublicLedgerSource} from './public-ledger-statement';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
@@ -58,16 +59,32 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
  if(!review.snapshot)return [...known];
  const existing=new Map(known.filter(row=>row.source==='actions').map(row=>[row.sourceId,row]));
  const incoming:PublicRecord[]=[];
+ const prices=currencyPricesAlreadySelected(review.artifactSha256)?null:new Map<string,{at:string;usdCents:string}[]>();
  for(const record of review.snapshot.records){
   // The retained original may support coordinates larger than this UI cache.
   // Such records remain in the original rather than being truncated or coerced.
   if(record.kaiUpulse.length>30||record.amountUsdCents!==null&&record.amountUsdCents.length>25)continue;
   const previous=existing.get(record.id),compatible=previous&&(!previous.evidence.entryHash||previous.evidence.entryHash===record.entryHash)?previous:undefined;
   let time:string|null=null;try{time=walletPointTime(record.kaiUpulse);}catch{/* The exact coordinate remains available. */}
+  if(prices&&time&&record.currency){
+   const currency=record.currency,key=currency.assetId+':'+currency.symbol;
+   const points=prices.get(key)??[];
+   points.push({at:time,usdCents:currency.priceUsdCentsPerUnit});
+   prices.set(key,points);
+  }
   incoming.push({...compatible,id:`actions:${record.id}`,sourceId:record.id,source:'actions',kind:record.kind,
    title:compatible?.title??record.kind.replace(/[._]/g,' '),detail:compatible?.detail??'',time:compatible?.time??time,actor:compatible?.actor??null,
    amountUsdCents:record.amountUsdCents,kaiUpulse:record.kaiUpulse,pulse:(BigInt(record.kaiUpulse)/1_000_000n).toString(),sourceUrl:compatible?.sourceUrl??null,
-   evidence:{...compatible?.evidence,entryHash:record.entryHash,prevHash:record.previousHash},authority:'public-source-projection'});
+   evidence:{...compatible?.evidence,entryHash:record.entryHash,prevHash:record.previousHash},
+   ...(record.currency?{details:{...compatible?.details,currency:record.currency}}:{}),authority:'public-source-projection'});
+ }
+ if(prices){
+  for(const [key,points] of prices){
+   points.sort((a,b)=>a.at.localeCompare(b.at));
+   prices.set(key,points.filter((point,index)=>index===0||index===points.length-1||point.usdCents!==points[index-1].usdCents));
+  }
+  const {ledgerId,sourceHistory}=review.snapshot;
+  retainCurrencyPriceHistory({id:ledgerId,history:sourceHistory,artifact:review.artifactSha256},prices);
  }
  // The exact admitted original outranks conflicting discovery rows. Do not
  // route those weaker duplicates through the peer-evidence conflict policy.

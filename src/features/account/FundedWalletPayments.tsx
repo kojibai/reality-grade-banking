@@ -441,9 +441,10 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
     if(busy)return;
     const current=()=>active.current&&activeIdentity.current===identity;
     setBusy(true);setError('');setStatus('');
+    let bytes:Uint8Array|undefined;
     try{
       if(!file.size||file.size>opticalNotePayloadLimit)throw Error('BANK_WALLET_RECOVERY_FILE_INVALID');
-      const bytes=new Uint8Array(await file.arrayBuffer());
+      bytes=new Uint8Array(await file.arrayBuffer());
       if(!current())return;
       const wallet=await identity.fundedWallet!();
       if(!current())return;
@@ -465,9 +466,15 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
     }catch(cause){
       if(!current())return;
       const code=cause instanceof Error?cause.message:'';
-      setError(code==='BANK_WALLET_DEVICE_REQUIRED'||code==='BANK_WALLET_DEVICE_MISMATCH'
-        ?'Keep this recovery file. This phone needs the original Wallet signing credential to reopen the payment.'
-        :'This file could not be verified for this Wallet. Open the matching Receiz ID and choose the original recovery file.');
+      if(code==='BANK_WALLET_DEVICE_REQUIRED'||code==='BANK_WALLET_DEVICE_MISMATCH'){
+        const verified=bytes&&await identity.verifyWalletRecoveryOwner?.(bytes).catch(()=>false);
+        if(!current())return;
+        if(verified){
+          setStatus('The signed payment matches this Receiz ID. Keep the recovery file. Sending again requires the Wallet’s original signing credential.');
+          return;
+        }
+      }
+      setError('This file could not be verified for this Wallet. Open the matching Receiz ID and choose the original recovery file.');
     }finally{if(current())setBusy(false);}
   }
   async function acceptLink(){

@@ -1043,6 +1043,8 @@ export async function retainProofBatch(binding: { artifactSha256: string }, orig
 
 export const loadNativePaymentState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-payments');
 export const saveNativePaymentState=(binding:{artifactSha256:string},value:import('./native-payment').NativePaymentState,expected:unknown)=>saveNoteState(binding,'native-payments',value,expected);
+export const loadCurrencyNoteDraft=(binding:{artifactSha256:string},commitment:string)=>loadNoteState(binding,`currency-note:${commitment}`);
+export const saveCurrencyNoteDraft=(binding:{artifactSha256:string},commitment:string,value:unknown)=>saveNoteState(binding,`currency-note:${commitment}`,value,null);
 export const loadNativeAssetState=(binding:{artifactSha256:string})=>loadNoteState(binding,'native-assets');
 export const saveNativeAssetState=(binding:{artifactSha256:string},value:import('./native-asset').NativeAssetState,expected:unknown)=>saveNoteState(binding,'native-assets',value,expected);
 

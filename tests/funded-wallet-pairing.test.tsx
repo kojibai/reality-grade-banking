@@ -180,7 +180,8 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
   const latestRecoveryFiles=vi.fn(async()=>[{operationId:offer.conversationId,amountUsdCents:'100',recoveryProof:exact}]);
   const wallet={availableReceipt:async()=>null,receiptProofCount:async()=>0,completeOutgoing,latestRecoveryFiles,
     outgoing:async()=>({operationId:offer.conversationId,qr,recoveryProof:exact}),restoreWalletRecoveryFile,receive};
-  const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
+  const verifyWalletRecoveryOwner=vi.fn(async (_bytes:Uint8Array)=>true);
+  const identity={fundedWallet:async()=>wallet,verifyWalletRecoveryOwner} as unknown as OpenIdentity;
   try{
     await act(async()=>root.render(<FundedWalletSend identity={identity} request={()=>({
       recipient:offer.recipient,amountUsdCents:'100',nearby:true,
@@ -212,6 +213,13 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
     await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
     expect(host.textContent).toContain('This file is older than the payment history on this device.');
     expect(receive).not.toHaveBeenCalled();
+    restoreWalletRecoveryFile.mockRejectedValueOnce(Error('BANK_WALLET_DEVICE_REQUIRED'));
+    await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
+    expect(verifyWalletRecoveryOwner).toHaveBeenCalledExactlyOnceWith(exact);
+    expect(host.textContent).toContain('The signed payment matches this Receiz ID.');
+    expect(host.textContent).toContain('Sending again requires the Wallet’s original signing credential.');
+    expect(onRefresh).toHaveBeenCalledTimes(2);
+
   }finally{
     if(originalShare)Object.defineProperty(navigator,'share',originalShare);else Reflect.deleteProperty(navigator,'share');
     if(originalCanShare)Object.defineProperty(navigator,'canShare',originalCanShare);else Reflect.deleteProperty(navigator,'canShare');

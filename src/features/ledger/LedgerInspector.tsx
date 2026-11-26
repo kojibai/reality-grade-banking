@@ -1,3 +1,5 @@
+import {readPublicCurrencyActivity} from '../../receiz/currency-ledger-view';
+import {LedgerCurrencyDetails} from './LedgerCurrency';
 import type {HeldLedgerOriginalReader} from '../../receiz/held-ledger-original';
 import {ledgerShareCertificate} from '../../receiz/ledger-share-certificate';
 import {CopyFeedbackIcon,useCopyFeedback} from '../../components/CopyFeedback';
@@ -44,6 +46,7 @@ function ExactRecordJson({value,initiallyExpanded=false}:{value:unknown;initiall
 }
 
 export function LedgerInspector({sourceReader,record,value,currentValue,valuation,relations,valueSource=null,inApp=false,receiptMode=false,preparedReceipt,initiallyExpanded=false}:{sourceReader?:HeldLedgerOriginalReader;record:PublicRecord;value:LedgerValueDisplay;currentValue?:LedgerValueDisplay|null;valuation?:LedgerFields|null;relations?:ReturnType<typeof indexLedgerRelations>;valueSource?:LedgerValueIndex|null;inApp?:boolean;receiptMode?:boolean;preparedReceipt?:string|null;initiallyExpanded?:boolean}){
+ const currency=readPublicCurrencyActivity(record.details?.currency);
  const title=ledgerRecordTitle(record),paymentRole=ledgerPaymentRole(record);
  const recordedAt=ledgerRecordedTime(record),scheduledFor=record.appointment?.scheduledFor;
  const {copied,confirm,clear}=useCopyFeedback(record.id);
@@ -67,14 +70,14 @@ export function LedgerInspector({sourceReader,record,value,currentValue,valuatio
  return <section className="ledger-inspector" aria-label={`Record details: ${title}`}>
   <div className="ledger-inspector-heading"><div><span>{record.source==='proofs'?'Proof object':'Activity record'}</span><h3>{title}</h3></div><FileText size={18} strokeWidth={1.3}/></div>
   {record.detail&&record.detail!==record.title&&(record.source==='proofs'?<ProofCaption caption={record.detail}/>:<p className="ledger-inspector-description">{record.detail}</p>)}
-  <div className="ledger-inspector-values"><div><span>{paymentRole==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value} showPulse={false}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'||currentValue.basis==='live-model'?'Current live value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}<LedgerValueChange value={value} currentValue={currentValue}/></div>
+  {(!currency||record.amountUsdCents!==null)&&<div className="ledger-inspector-values"><div><span>{paymentRole==='execution'?'Referenced transfer amount':value.basis==='unavailable'?'No amount carried':ledgerValueLabel(value)}</span><LedgerValue value={value} showPulse={false}/>{value.amountUsdCents!==null&&value.pulse&&<small>Value at ☤KAI {value.pulse}</small>}</div>{value.considerationUsdCents!==null&&<div><span>Consideration</span><strong>{formatMoney(value.considerationUsdCents)}</strong><small>Recorded payment, separate from asset value.</small></div>}{currentValue&&currentValue.amountUsdCents!==null&&<div><span>{currentValue.basis==='intrinsic-model'||currentValue.basis==='live-model'?'Current live value':'Latest source quote'}</span><LedgerValue value={currentValue}/><small>Separate from the value at this event.</small></div>}<LedgerValueChange value={value} currentValue={currentValue}/></div>}
   {ledgerShareCertificate(record)&&<section className="detail-list" aria-label="Certificate movement"><div><span>Shares {record.kind.endsWith('export')?'in certificate':'deposited'}</span><strong>{formatUnits(ledgerShareCertificate(record)!.shareQuantityMicro)}</strong></div><div><span>Share certificate</span><a className="source-link" href={'/shares/'+encodeURIComponent(ledgerShareCertificate(record)!.noteToken)+'/'}>Live value &amp; shares<ArrowUpRight size={14}/></a></div></section>}
-  <LedgerAssetChart record={record} valueSource={valueSource}/>
+  {currency?<LedgerCurrencyDetails currency={currency} at={recordedAt} kind={record.kind}/>:<LedgerAssetChart record={record} valueSource={valueSource}/>}
   <LedgerTradeDetails trade={ledgerAssetTrade(record)}/>
   {!receiptMode&&<LedgerFundingTrace record={record} relations={relations} initiallyExpanded={initiallyExpanded}/>}
   {typeof details.publicNote==='string'&&<section className="ledger-public-note"><h4>Payment memo</h4><p>{details.publicNote}</p></section>}
   {original&&record.evidence.artifactDigest&&safeReceizPublicUrl(original,"original")&&<ProofMedia key={[record.evidence.artifactDigest,original,reading??''].join(':')} imageProof={imageProof} renderImageProof={renderImageProof} publicImageUrl={imageProof?publicAssetImagePreviewUrl(imageProof):undefined} title={record.title} source={{kind:"public",url:original,digest:record.evidence.artifactDigest,...(reading?{postUrl:reading,hasLongForm:details.hasLongForm===true}:{})}}/>}
-  {value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
+  {!currency&&value.gap&&<p className="ledger-inspector-note">{value.gap}</p>}
   <div className="ledger-inspector-grid"><section><h4>The record</h4><LedgerFieldsView fields={{reference:record.sourceId,activity:record.kind,source:record.source,...(recordedAt?{recordedAt}:{}),...(scheduledFor?{scheduledFor}:{}),...(record.pulse?{pulse:record.pulse}:{}),...(record.kaiUpulse?{kaiUpulse:record.kaiUpulse}:{}),...(record.actor?{publicIdentity:record.actor}:{}),...(record.sender?{from:record.sender}:{}),...(record.recipient?{to:record.recipient}:{})}}/></section>
   {Object.keys(participants).length>0&&<section><h4>People &amp; ownership</h4><LedgerFieldsView fields={participants}/></section>}
   {Object.keys(document.valueOperands).length>0&&<section><h4>Value inputs</h4><LedgerFieldsView fields={document.valueOperands as LedgerFields}/></section>}

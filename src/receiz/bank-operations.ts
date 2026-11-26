@@ -18,6 +18,8 @@ export type BankOperationInput =
   | { kind: 'manage-currency'; assetDigest: string; changes: NativeCurrencyManagement }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
+  | { kind: 'issue-currency-note'; assetDigest: string; quantityMicro: string; claimCommitment: string; recipient: string | null; artworkSha256: string | null }
+  | { kind: 'redeem-currency-note'; assetId: string; quantityMicro: string; claimSecret: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
   | ({assetDigest:string}|{assetId:string}) & { kind: 'sell-share'; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' | 'currency-pool' }
   | ({assetDigest:string}|{assetId:string}) & { kind: 'buy-shares'; quantityMicro: string; rail: BankRail }
@@ -54,6 +56,8 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'issue-currency': ['definition', 'policy', ...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])], 'buy-currency': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro'],
     'manage-currency': ['assetDigest', 'changes'],
+    'issue-currency-note': ['assetDigest','quantityMicro','claimCommitment','recipient','artworkSha256'],
+    'redeem-currency-note': ['assetId','quantityMicro','claimSecret'],
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
     'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail', 'buyer'],
     'buy-shares': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
@@ -66,7 +70,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   if ('quantityMicro' in input) exact(input.quantityMicro, true);
   if ('assetDigest' in input) digest(input.assetDigest);
   if ('assetId' in input) digest(input.assetId);
-  if ('recipient' in input) {
+  if ('recipient' in input && !(input.kind === 'issue-currency-note' && input.recipient === null)) {
     if (typeof input.recipient !== 'string' || !/^[A-Za-z0-9_.@-]{1,160}$/u.test(input.recipient.trim())) throw Error('Enter a Receiz ID or public username.');
     input.recipient = input.recipient.trim();
     // Receiz profile names are case-insensitive. Opaque receiving coordinates
@@ -75,6 +79,11 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   }
   if (input.kind === 'sell-share' && (!['bank', 'market', 'currency-pool'].includes(input.buyer)
     || input.buyer === 'currency-pool' && input.rail !== 'reserve')) fail();
+  if (input.kind === 'issue-currency-note') {
+    digest(input.claimCommitment);
+    if (input.artworkSha256 !== null) digest(input.artworkSha256);
+  }
+  if (input.kind === 'redeem-currency-note') digest(input.claimSecret);
   if (input.kind === 'manage-currency') input.changes=inspectNativeCurrencyManagement(input.changes);
   if (input.kind === 'issue-currency') {
     if(!input.authoredSource)fail();
@@ -120,7 +129,7 @@ export function createBankOperations(input: {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
       if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
-      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || value.kind === 'manage-currency' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || value.kind === 'manage-currency' || value.kind === 'issue-currency-note' || value.kind === 'redeem-currency-note' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
       if('fundingRule'in value)throw Error('BANK_ASSET_AUTOMATIC_RUNTIME_REQUIRED');
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {
@@ -186,6 +195,8 @@ export function bankOperationError(error: unknown): string {
   const code = error instanceof Error ? error.message : '';
   if(code.startsWith('COMPOSER_'))return 'Check your original, cover and attached files, then review again.';
   if(code==='BANK_ASSET_FUNDED_OFFER_UNAVAILABLE')return 'There is no matching offer for this ownership yet. Your balance and ownership are unchanged.';
+  if(code==='BANK_NATIVE_ASSET_CURRENCY_NOTE_UNAVAILABLE'||code==='currency_note_unavailable')return 'These reserved units are no longer available to claim. Check the original note file.';
+  if(code==='BANK_NATIVE_ASSET_CURRENCY_NOTE_RECIPIENT_REQUIRED'||code==='currency_note_recipient_required')return 'Open the account named on the currency note to claim its units.';
   if(code==='BANK_ASSET_WHOLE_SUPPLY_REQUIRED')return 'Redemption requires all of this asset’s outstanding ownership.';
   if(code==='BANK_ASSET_MOMENT_SOURCE_REQUIRED')return 'Your original source could not be prepared. Keep your selected files and review again when connected.';
   const stage=noteFailureStage(error)?.stage;

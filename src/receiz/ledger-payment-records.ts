@@ -16,6 +16,9 @@ const fundingTitles:Record<string,string>={
 };
 // Display names only. Preserve the exact kind, summary and original evidence.
 const actionTitles:Record<string,string>={
+ 'asset.issue-currency':'Currency issued','asset.buy-currency':'Currency bought','asset.sell-currency':'Currency sold',
+ 'asset.manage-currency':'Currency terms updated','asset.govern-currency':'Currency vote applied',
+ 'asset.issue-currency-note':'Currency note issued','asset.redeem-currency-note':'Currency note redeemed',
  'auth.login.receiz_id':'Signed In','auth.login.passkey':'Signed In','auth.login.receiz_key':'Signed In','auth.login.magic_link':'Signed In',
  'auth.login.receiz_id.create':'Account Created','auth.login.receiz_id.switch':'Account Switched','auth.logout':'Signed Out',
  'identity.key.receiz_device_bind':'Device Linked','identity.key.enroll':'Signing Key Added','identity.key.revoke':'Signing Key Revoked',
@@ -52,6 +55,7 @@ export function ledgerRecordTitle(record:PublicRecord){
  if(role==='movement')return flow==='in'?'Money Received':flow==='out'?'Money Sent':'Money Transfer';
  if(role==='execution')return 'Delegated Wallet Transfer';
  if(record.source==='actions'&&Object.hasOwn(actionTitles,record.kind))return actionTitles[record.kind];
+ if(record.source==='actions'&&record.kind==='asset.send-ownership'&&record.details?.currency)return 'Currency transferred';
  if(record.source==='graph'&&record.kind==='card-transfer')return 'Collectible Transfer';
  if(record.source==='wallet'){
   const origin=record.details?.fundingOrigin,source=origin&&typeof origin==='object'&&!Array.isArray(origin)?origin.source:undefined;

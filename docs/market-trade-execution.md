@@ -147,3 +147,25 @@ The regression exercises `createMarketTrade` → installed SDK → `nativeFetch`
 `relayNativeAccount` → a synthetic upstream. It reproduces an uncertain original,
 closes that same nonce, reopens the retained terminal result and permits a new
 review with exactly one trade submission. No real account or funds are used.
+
+## Currency activity and notes
+
+The public Ledger reads issuance, purchases, sell-backs, transfers, terms
+changes, and note activity from the same admitted Native Asset operations.
+Each currency event retains its original action hash, predecessor hash,
+and Kai position. The public view carries the currency ID and ticker, any
+quantity moved, and the purchase price in force at that event. It excludes
+bearer claim secrets, private artwork, and account identifiers.
+
+The Market and Ledger chart the recorded purchase price in dollars per
+unit. The chart reuses accepted currency events already loaded by the shared
+Ledger, without a separate request. The listing’s carried price is visible
+when no Ledger history has been loaded. A sell-back review
+shows the exact available proceeds from the liquidity pool.
+
+A currency note reserves units the issuer already owns. The downloaded
+`.receizcurrency` file carries signed issuance, a claim credential, and
+optional custom artwork. It can be opened and checked offline. Claiming
+posts a signed redemption against that reservation and credits currency
+units. Bearer notes should be shared privately. An addressed note also
+requires the named account. Each reservation can credit one redemption.

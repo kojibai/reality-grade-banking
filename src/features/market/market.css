@@ -12,3 +12,10 @@
 
 .market-explorer-tools{position:sticky;top:max(10px,env(safe-area-inset-top));z-index:6;isolation:isolate;transform:translateY(0);transition:transform .2s ease}.market-explorer-tools:before{content:'';position:absolute;inset:-12px -20px 0;background:var(--bg,var(--bank-surface,#fcfbf8));z-index:-1}.market-explorer-tools.is-away{transform:translateY(calc(-100% - 20px - env(safe-area-inset-top)))}
 @media(prefers-reduced-motion:reduce){.market-explorer-tools{transition:none}}
+
+.currency-mark {
+  border-radius: 50%;
+  font-size: .67rem;
+  font-weight: 750;
+  letter-spacing: .015em;
+}

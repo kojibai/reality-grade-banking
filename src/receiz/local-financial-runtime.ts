@@ -89,6 +89,9 @@ export type LocalFinancialRuntime=Readonly<{
  createWalletAdmissionStore?(input:{databaseName:string;namespace:string}):ReceizAdmissionStore;
  admitReceizAccountFinancialSource(bytes:Uint8Array):Promise<FinancialSource>;
  readReceizAccountFinancialWalletProof(bytes:Uint8Array):FinancialWalletProof;
+ inspectReceizAccountFinancialWalletPaymentParties?(proof:FinancialWalletProof):Promise<{
+  payer:FinancialSource;payerKeyId:string;recipient:FinancialSource;recipientKeyId:string;
+ }>;
  receiveReceizAccountFinancialWalletProof(input:FinancialWalletProof&{accountUserId:string;ownerKeyId:string},options:{originals:FinancialOriginalStore;designatedWitnessPublicKey?:string}):Promise<FinancialSource>;
  exportReceizAccountFinancialWalletProof(source:FinancialSource,commit:FinancialCommit):Uint8Array;
  exportReceizAccountFinancialRelease(release:FinancialRelease):Uint8Array;

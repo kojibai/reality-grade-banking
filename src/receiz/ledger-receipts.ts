@@ -7,9 +7,10 @@ import {ledgerValueForRecord,readLedgerValueDisplay,readLedgerValueOperands,type
 import {readLedgerDetails,readLedgerValuationTrace,type LedgerFields} from './ledger-inspection';
 import {decodeReceiptPacket,encodeReceiptPacket} from './receipt-packet';
 import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
-export const ACTIVITY_FILTERS=['all','transactions','transfers','actions','proofs'] as const;
+export const ACTIVITY_FILTERS=['all','transactions','transfers','currencies','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
-export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'>):Exclude<ActivityCategory,'all'>{
+export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'|'details'>):Exclude<ActivityCategory,'all'>{
+ if(record.source==='actions'&&record.details?.currency)return 'currencies';
  if(/transfer|send|payment_sent|payment_received/i.test(record.kind))return 'transfers';
  if(ledgerAssetTradeSide(record)||isCertificateMovement(record.kind))return 'transactions';
  if(record.source==='wallet'||/purchase|sale|trade|exchange|note_(mint|claim)|reserve_credit|deposit|withdraw/i.test(record.kind))return 'transactions';

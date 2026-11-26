@@ -140,7 +140,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e"
+      "sha256": "4cb4ca485ac8e08f2863f9fddb4900e78f1688df927fa9513a18c5b15ae408a6"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -1430,7 +1430,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e"
+      "sha256": "4cb4ca485ac8e08f2863f9fddb4900e78f1688df927fa9513a18c5b15ae408a6"
     },
     {
       "path": "app/lib/wallet/bankNotes/bytePacking.ts",
@@ -8264,7 +8264,7 @@
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
-      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e",
+      "sha256": "4cb4ca485ac8e08f2863f9fddb4900e78f1688df927fa9513a18c5b15ae408a6",
       "bytes": 49913,
       "mode": 420
     },
@@ -21108,7 +21108,7 @@
       "id": "bankeiz-witnessed-release-verifier",
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
       "baseSha256": "ffb4fabef7a3548733f6a7354020f97aa8b32dd4cc351aafc737a3868305271e",
-      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e",
+      "sha256": "4cb4ca485ac8e08f2863f9fddb4900e78f1688df927fa9513a18c5b15ae408a6",
       "purpose": "Expose the existing exact Wallet release admission in the Bankeiz browser runtime."
     },
     {

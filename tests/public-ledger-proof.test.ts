@@ -19,3 +19,14 @@ describe('public Ledger verification boundaries',()=>{
   expect(()=>publicLedgerContinuation(old,{...old,sourceHistory:[h('b'),h('3')]})).toThrow(/CONFLICT/);
  });
 });
+
+it('accepts signed currency details on the same history and preserves the stronger retained projection',()=>{
+ const base=snapshot(),old=inspectPublicLedgerStatement({...base,records:[{...base.records[0],kind:'asset.buy-currency'}]});
+ const currency={assetId:h('1'),symbol:'LOCAL',priceUsdCentsPerUnit:'55',quantityMicro:'3000000'};
+ const enriched=inspectPublicLedgerStatement({...old,records:[{...old.records[0],currency}]});
+ expect(publicLedgerContinuation(old,enriched)).toBe('extends');
+ expect(publicLedgerContinuation(enriched,old)).toBe('older');
+ expect(()=>publicLedgerContinuation(enriched,{...enriched,records:[{...enriched.records[0],currency:{...currency,priceUsdCentsPerUnit:'99'}}]})).toThrow(/CONFLICT/);
+ expect(()=>inspectPublicLedgerStatement({...enriched,records:[{...enriched.records[0],kind:'auth.logout'}]})).toThrow(/INVALID/);
+ expect(()=>inspectPublicLedgerStatement({...enriched,records:[{...old.records[0],currency:{...currency,claimSecret:h('2')}}]})).toThrow(/INVALID/);
+});

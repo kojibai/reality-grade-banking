@@ -7,7 +7,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership }: { identity?: OpenIdentity; input(): BankOperationInput; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
   const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
@@ -20,7 +20,9 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
   const prepare = async () => {
     if (running.current) return; const ticket = generation.current; running.current = true; setBusy(true); setError('');setFailure(null);
     try {
-      const request = input();
+      const pending = input();
+      const request = pending instanceof Promise ? await pending : pending;
+      if (ticket !== generation.current) return;
       if (!operations&&!identity?.operations) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
       const connected = await (operations?operations():identity!.operations!()); if (ticket !== generation.current) return; api.current = connected;
       const next = await connected.prepare(request);
@@ -57,6 +59,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
           {request.changes.priceUsdCentsPerUnit!==undefined&&<div><span>New purchase price per unit</span><strong>{formatMoney(request.changes.priceUsdCentsPerUnit)}</strong></div>}
           {request.changes.salesPaused!==undefined&&<div><span>New sales</span><strong>{request.changes.salesPaused?'Paused':'Open'}</strong></div>}
         </>}
+        {request.kind==='issue-currency-note'&&<div><span>Payable to</span><strong>{request.recipient??'Holder of the note'}</strong></div>}
         {request.kind==='buy-currency'&&<div><span>Payment destination</span><strong>Currency pool</strong></div>}
         {request.kind==='sell-share'&&request.buyer==='currency-pool'&&<div><span>Payment source</span><strong>Currency pool</strong></div>}
         {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}

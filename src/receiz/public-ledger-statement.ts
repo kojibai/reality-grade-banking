@@ -1,8 +1,11 @@
+import {readPublicCurrencyActivity,type PublicCurrencyActivity} from './currency-ledger-view';
 import {canonicalizeReceizV122,digestReceizCanonicalV122,deriveReceizIdentityKeyIdFromPublicKeyRawB64u,receizBase64UrlEncode,verifyReceizIdentityPublicKeyProjectionSignature} from '@receiz/sdk';
 import type {ReceizSignatureV4RootPublicKey} from '../../native/receiz/packages/receiz-sdk/src/verifier/signatureV4';
 export const PUBLIC_LEDGER_DOMAIN='receiz.public-action-ledger.root-signature.v1';
 export const PUBLIC_LEDGER_MAX_BYTES=16*1024*1024;
-export type PublicLedgerRecord=Readonly<{id:string;sequence:number;kind:string;kaiUpulse:string;entryHash:string;previousHash:string;amountUsdCents:string|null}>;
+const currencyActions = ['asset.issue-currency','asset.buy-currency','asset.sell-currency','asset.send-ownership','asset.manage-currency','asset.govern-currency','asset.issue-currency-note','asset.redeem-currency-note'] as const;
+
+export type PublicLedgerRecord=Readonly<{id:string;sequence:number;kind:string;kaiUpulse:string;entryHash:string;previousHash:string;amountUsdCents:string|null;currency?:PublicCurrencyActivity}>;
 export type PublicLedgerSnapshot=Readonly<{
  schema:'receiz.public-action-ledger.v1';domain:typeof PUBLIC_LEDGER_DOMAIN;issuerRootKid:string;ledgerId:string;
  scope:'public-action-history';baseline:'native'|'observed';financialAdmission:false;
@@ -29,10 +32,16 @@ export function inspectPublicLedgerStatement(input:unknown):PublicLedgerSnapshot
   ||v.rootSignature.kid!==v.issuerRootKid||v.rootSignature.alg!=='Ed25519'||typeof v.rootSignature.sig!=='string'||!/^[A-Za-z0-9_-]{86}$/.test(v.rootSignature.sig))fail();
  const ids=new Set<string>(),hashes=new Set<string>();let seq=0;
  for(const row of v.records){
-  if(!object(row)||!exact(row,['id','sequence','kind','kaiUpulse','entryHash','previousHash','amountUsdCents'])
+  if(!object(row)||!exact(row,['id','sequence','kind','kaiUpulse','entryHash','previousHash','amountUsdCents',...(Object.hasOwn(row,'currency')?['currency']:[])])
    ||typeof row.id!=='string'||!row.id||row.id.length>128||ids.has(row.id)||!Number.isSafeInteger(row.sequence)||(row.sequence as number)<=seq
    ||typeof row.kind!=='string'||!/^[a-z0-9._:-]{3,120}$/.test(row.kind)||!uint(row.kaiUpulse)||BigInt(row.kaiUpulse)>BigInt(v.kaiUpulse)
    ||!hex(row.entryHash)||!hex(row.previousHash)||hashes.has(row.entryHash)||row.amountUsdCents!==null&&!uint(row.amountUsdCents))fail();
+  if(Object.hasOwn(row,'currency')){
+   const currency=readPublicCurrencyActivity(row.currency);
+   if(!currency||!currencyActions.some(kind=>kind===row.kind)
+    ||currency.tradeUsdCents!==undefined&&!['asset.buy-currency','asset.sell-currency'].includes(String(row.kind)))fail();
+   row.currency=currency;
+  }
   seq=row.sequence as number;ids.add(row.id);hashes.add(row.entryHash);Object.freeze(row);
  }
  Object.freeze(v.records);Object.freeze(v.sourceHistory);Object.freeze(v.rootSignature);return Object.freeze(v) as PublicLedgerSnapshot;
@@ -59,8 +68,18 @@ export function publicLedgerContinuation(held:PublicLedgerSnapshot,incoming:Publ
  const common=Math.min(held.sourceHistory.length,incoming.sourceHistory.length);
  for(let i=0;i<common;i++)if(held.sourceHistory[i]!==incoming.sourceHistory[i])throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
  const rows=Math.min(held.records.length,incoming.records.length);
- for(let i=0;i<rows;i++)if(canonicalizeReceizV122(held.records[i])!==canonicalizeReceizV122(incoming.records[i]))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
- if(incoming.sourceHistory.length===held.sourceHistory.length){if(incoming.records.length!==held.records.length||incoming.kaiUpulse!==held.kaiUpulse)throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');return 'same';}
+ let addsCurrency=false, dropsCurrency=false;
+ for(let i=0;i<rows;i++){
+  const {currency:knownCurrency,...known}=held.records[i],{currency:nextCurrency,...next}=incoming.records[i];
+  if(canonicalizeReceizV122(known)!==canonicalizeReceizV122(next)
+    ||knownCurrency&&nextCurrency&&canonicalizeReceizV122(knownCurrency)!==canonicalizeReceizV122(nextCurrency))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
+  addsCurrency ||= !knownCurrency && !!nextCurrency;
+  dropsCurrency ||= !!knownCurrency && !nextCurrency;
+ }
+ if(incoming.sourceHistory.length===held.sourceHistory.length){
+  if(incoming.records.length!==held.records.length||incoming.kaiUpulse!==held.kaiUpulse||addsCurrency&&dropsCurrency)throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');
+  return addsCurrency?'extends':dropsCurrency?'older':'same';
+ }
  if(incoming.sourceHistory.length<held.sourceHistory.length){if(incoming.records.length>held.records.length||BigInt(incoming.kaiUpulse)>BigInt(held.kaiUpulse))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');return 'older';}
- if(incoming.records.length<held.records.length||BigInt(incoming.kaiUpulse)<BigInt(held.kaiUpulse))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');return 'extends';
+ if(dropsCurrency||incoming.records.length<held.records.length||BigInt(incoming.kaiUpulse)<BigInt(held.kaiUpulse))throw Error('PUBLIC_LEDGER_HISTORY_CONFLICT');return 'extends';
 }

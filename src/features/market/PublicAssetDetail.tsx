@@ -1,3 +1,4 @@
+import {CurrencyPriceHistory} from './CurrencyPriceHistory';
 import {publicOriginalCheckoutUrl} from '../../receiz/public-original-purchase';
 import {OriginalPurchase} from './OriginalPurchase';
 import {PublicDocumentFormatContext,PublicDocumentPulseContext} from '../../core/public-document-format';
@@ -55,7 +56,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const canReviewTrade=!!onTrade&&!item.id.startsWith('sports:');
   const details=!item.sealedCopies?.length&&publicDetails?.source===item.sourceUrl?publicDetails.details:item;
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
-  const periods=usePublicAssetPeriods(item),[metric,setMetric]=useState<'value'|'cap'>('value');
+  const periods=usePublicAssetPeriods(item,!currency),[metric,setMetric]=useState<'value'|'cap'>('value');
   const current=periods?.ALL.at(-1),price=current?Number(current.usdCents)/100:item.priceUsd;
   const inventory=compatibleShareInventory(item,item.shareInventory),quantity=inventory?marketCapitalizationQuantity(inventory):null,cap=quantity!==null&&price!==null&&Number.isSafeInteger(Math.round(price*100))?shareCapitalizationUsdCents(String(Math.round(price*100)),quantity):null,showCap=metric==='cap'&&!!inventory,headline=showCap?(cap===null?'—':formatMoney(cap)):formatPublicPrice(price);
   const [publicImageOpen,setPublicImageOpen]=useState(false),publicImage=publicAssetImagePreviewUrl(item);
@@ -74,10 +75,10 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {standalone&&owner&&profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)&&<a className="asset-profile-byline" href={profilePagePath(profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername))}><PublicOwnerAvatar item={admission?item:carried??item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
-    {currency?<div className="detail-list">
-      <div><span>{currency.issuerControls?'Price when published':'Purchase price'}</span><strong>{formatMoney(currency.priceUsdCentsPerUnit)} per {currency.symbol}</strong></div>
+    {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol}
+      opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
       <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
-    </div>:<>
+    </div></>:<>
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
     <PublicAssetChart periods={periods} fallback={item.chart} item={item} inventory={item.category==='sports'?undefined:inventory} metric={metric} onMetricChange={setMetric}/><ShareInventory item={item} priceUsd={price}/>

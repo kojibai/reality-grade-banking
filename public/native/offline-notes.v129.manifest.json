@@ -1,10 +1,10 @@
 {
   "schema": "receiz.bank.native-runtime-build.v1",
   "version": "129.5.0",
-  "moduleSha256": "d3bb9cc6289af61b9ac93ccb19aa6eaf04fb7f8b52dcbd602d517f413eb534e5",
-  "sourceTreeSha256": "dc60522bc579ceb32866b66d3717597650dbec5ddb4ca1b240cf0a9729013b7b",
+  "moduleSha256": "d327746672fd59751be4d193edce650d4ffabbec429d26136014eae9d2dbe545",
+  "sourceTreeSha256": "81823d6b70dd74516378d1ff102c2288411d596bbc6aa94702236a059770287d",
   "inputs": 324,
-  "bytes": 2553382,
+  "bytes": 2553696,
   "applicationPatches": [
     {
       "id": "bankeiz-webauthn-realm",
@@ -2645,7 +2645,7 @@
       "id": "bankeiz-witnessed-release-verifier",
       "path": "receiz/app/lib/wallet/bankNotes/browser.ts",
       "baseSha256": "ffb4fabef7a3548733f6a7354020f97aa8b32dd4cc351aafc737a3868305271e",
-      "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e",
+      "sha256": "4cb4ca485ac8e08f2863f9fddb4900e78f1688df927fa9513a18c5b15ae408a6",
       "purpose": "Expose the existing exact Wallet release admission in the Bankeiz browser runtime."
     },
     {

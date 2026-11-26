@@ -80,8 +80,10 @@ When the file is available on the phone, open the same Receiz ID and choose
 checks the proof and restores accepted Wallet history without the original
 recipient or a network request. A proof from directly funded Wallet value
 carries its opening Original. For value received from another Wallet, the
-previous receiving proof must already be held by the Wallet. Recovery still
-requires the original Wallet signing credential. Save files before a restore
+previous receiving proof must already be held by the Wallet. A signed recovery file can be checked offline against the matching Identity
+Record when the Wallet signer is unavailable. That check proves which account
+made the payment. Spending again requires the Wallet's original signing
+credential and the existing custody checks. Save files before a restore
 and allow iCloud Drive to sync them if you plan to retrieve them on another
 installation.
 
