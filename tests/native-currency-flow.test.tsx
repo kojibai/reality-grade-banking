@@ -33,7 +33,7 @@ it('opens currency issue from Add and stages an authored draft with the selected
  try {
   await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
   expect([...host.querySelectorAll('.deposit-options button strong')].map(label=>label.textContent)).toEqual([
-   'Add money','Issue a currency','An asset','Settlement Note',
+   'Add money','Issue a currency','An asset','Notes',
   ]);
   const issue=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!;
   await act(async()=>{issue.click();await vi.dynamicImportSettled();});
@@ -53,20 +53,27 @@ it('opens currency issue from Add and stages an authored draft with the selected
  } finally {await act(async()=>root.unmount());}
 });
 
-it('reviews a currency note through the same Receive deposit picker',async()=>{
+it.each(['Receive','Add'] as const)('reviews a currency note through the shared %s deposit picker',async(entry)=>{
  const host=document.createElement('div'),root=createRoot(host),inspect=vi.fn();
  const identity={username:'recipient',binding:{artifactSha256:'b'.repeat(64)},offlineNotes:async()=>({receivedNotes:async()=>[],inspect}),
   currencyNotes:async()=>({files:async()=>[]})} as unknown as OpenIdentity;
  const note={assetId:'a'.repeat(64),issuedBy:'issuer.receiz.id',quantityMicro:'2000000',recipient:null,
   claimCommitment:'c'.repeat(64),claimSecret:'d'.repeat(64),artwork:null};
- vi.mocked(openCurrencyNoteFile).mockResolvedValueOnce(note);
+ vi.mocked(openCurrencyNoteFile).mockClear().mockResolvedValueOnce(note);
  try {
-  await act(async()=>root.render(<LiveReceive identity={identity}/>));
-  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Deposit note')!.click());
+  await act(async()=>root.render(entry==='Receive'
+    ? <LiveReceive identity={identity}/>
+    : <LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  const open = entry==='Receive'
+    ? [...host.querySelectorAll('button')].find(button=>button.textContent==='Deposit note')
+    : [...host.querySelectorAll<HTMLButtonElement>('.deposit-options button')].find(button=>button.querySelector('strong')?.textContent==='Notes');
+  expect(open).toBeDefined();
+  await act(async()=>open!.click());
   const picker=host.querySelector<HTMLInputElement>('input[type="file"]')!;
   expect(host.querySelectorAll('input[type="file"]')).toHaveLength(1);
   expect(picker.accept).toContain('.png');
   expect(picker.accept).toContain('.receizcurrency');
+  expect(picker.closest('label')?.textContent).toContain('Settlement Note PNG, deposit proof, or currency note file');
   const file=new File(['fixture'],'field.receizcurrency',{type:'application/json'});
   Object.defineProperty(picker,'files',{value:[file]});
   await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));

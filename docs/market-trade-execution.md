@@ -165,7 +165,8 @@ shows the exact available proceeds from the liquidity pool.
 
 A currency note reserves units the issuer already owns. The downloaded
 `.receizcurrency` file carries signed issuance, a claim credential, and
-optional custom artwork. Use **Receive → Deposit note** to open the file.
-It can be checked offline. Depositing posts a signed redemption against that reservation and credits currency
+optional custom artwork. Open the file from **Receive → Deposit note** or
+**+ Add → Notes**. Both use the same picker. A note can be checked offline.
+Depositing posts a signed redemption against that reservation and credits currency
 units. Bearer notes should be shared privately. An addressed note also
 requires the named account. Each reservation can credit one redemption.
