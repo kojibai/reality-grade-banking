@@ -25,7 +25,7 @@ it('starts blank after reopening and resumes a retained checkout only when expli
 it('offers one asset deposit path that requires its original proof instead of an intake form', async () => {
   const host = document.createElement('div'), root = createRoot(host);
   try { await act(async () => root.render(<LiveDeposit identity={{} as OpenIdentity} onClose={vi.fn()} onRefresh={vi.fn()} />));
-    expect([...host.querySelectorAll('.deposit-options strong')].map(node => node.textContent)).toEqual(['Add money', 'An asset', 'Settlement Note']);
+    expect([...host.querySelectorAll('.deposit-options strong')].map(node => node.textContent)).toEqual(['Add money', 'An asset', 'Notes']);
     expect(host.querySelector('a[href*="receiz.com/wallet"]')).toBeNull();
     await act(async () => { [...host.querySelectorAll('button')].find(button => button.textContent?.includes('An asset'))!.click(); await vi.dynamicImportSettled(); });
     expect(host.textContent).toContain('Deposit an asset.');

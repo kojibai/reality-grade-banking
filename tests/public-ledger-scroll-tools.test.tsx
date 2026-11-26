@@ -57,7 +57,13 @@ it('listens only while the retained Ledger route is active and cancels a queued 
 });
 it('keeps the initial server-rendered tools and rows visible before scroll effects',()=>{
  const doc=new DOMParser().parseFromString(renderToStaticMarkup(<PublicLedgerApp active={false}/>),'text/html'),bar=doc.querySelector('.public-ledger-tools');
- expect(bar).not.toBeNull();expect(bar?.classList.contains('is-away')).toBe(false);expect(bar?.querySelector('[aria-label="Search public activity"]')).not.toBeNull();expect(bar?.querySelectorAll('[aria-label="Activity type"] button')).toHaveLength(5);expect(doc.querySelectorAll('.public-ledger-row')).toHaveLength(2);
+ expect(bar).not.toBeNull();
+ expect(bar?.classList.contains('is-away')).toBe(false);
+ expect(bar?.querySelector('[aria-label="Search public activity"]')).not.toBeNull();
+ expect(Array.from(bar!.querySelectorAll('[aria-label="Activity type"] button'), button => button.textContent)).toEqual([
+  'All activity', 'Transactions', 'Transfers', 'Currencies', 'Actions', 'Proofs',
+ ]);
+ expect(doc.querySelectorAll('.public-ledger-row')).toHaveLength(2);
 });
 it('waits for the public workspace natural position, including reduced-motion focus and retained reopen',async()=>{
  naturalTop=1400;vi.stubGlobal('matchMedia',()=>({matches:true,media:'(prefers-reduced-motion: reduce)',addEventListener(){},removeEventListener(){}}));
