@@ -38,6 +38,8 @@ type Props={currency?:CurrencyVotingContext;activeWorkspace?:boolean;accountIden
 const closedSessionKey='bank.voting.session.closed';
 function closedVotingSession(){try{return sessionStorage.getItem(closedSessionKey)==='1';}catch{return false;}}
 const blank=Object.freeze([]) as readonly GovernanceRow[];
+const proposalAuthor=(charter:Row<'charter'>,owner:string)=>charter.document.terms.rules.execution?.rule==='registered-roll-closure-v1'
+  ||charterAdmitsMember(charter.document.terms.rules,owner);
 const asRow=(o:GovernanceOriginal):GovernanceRow=>({digest:o.digest,document:o.document,pulse:o.pulse,profileUid:null});
 function save(file:File){const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 
@@ -60,7 +62,7 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
   const rows=useMemo(()=>{const published=new Set(publicRows.map(r=>r.digest));return [...publicRows,...privateSources.filter(o=>!published.has(o.digest)).map(asRow)];},[publicRows,privateSources]);
   const chosen=rows.find(r=>r.digest===selected),charters=ofKind(rows,'charter').filter(r=>!currency
     ||r.document.terms.rules.execution?.currency?.assetId===currency.assetId&&(!currency.charterDigest||r.digest===currency.charterDigest)),actor=identity?.binding.artifactOwnerReceizId??null;
-  const eligibleCharters=charters.filter(c=>actor&&charterAdmitsMember(c.document.terms.rules,actor)&&charterRatification(c,rows).complete);
+  const eligibleCharters=charters.filter(c=>actor&&proposalAuthor(c,actor)&&charterRatification(c,rows).complete);
   const publicProfile=Boolean(profile&&!profile.ownerIdentity);
   const [personal,setPersonal]=useState(Boolean(profile?.ownerIdentity));
   const [preparedName,setPreparedName]=useState<{owner:OpenIdentity;name:string}|null>(null);
@@ -239,7 +241,7 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
       }
       if(charterId){
         const target=charters.find(c=>c.digest===charterId),owner=currentIdentity.current?.binding.artifactOwnerReceizId;
-        if(!target||!owner||!charterAdmitsMember(target.document.terms.rules,owner))throw Error('This charter accepts proposals from its voting members. Open an enrolled identity to propose here.');
+        if(!target||!owner||!proposalAuthor(target,owner))throw Error('This charter accepts proposals from its voting members. Open an enrolled identity to propose here.');
         if(!charterRatification(target,rows).complete)throw Error('The founding members must ratify this charter before proposals open.');
         select(charterId);setMode('proposal');setScreen('proposal');return;
       }
@@ -279,8 +281,9 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
       const charter=await exact(terms.charter);check(who);
       if(charter.document.terms.kind!=='charter')throw Error('Select the exact founding charter Original.');
       const rules=charter.document.terms.rules,member=who.binding.artifactOwnerReceizId;
+      const registered=rules.execution?.rule==='registered-roll-closure-v1';
       if(terms.kind==='ratification'&&!rules.founders.includes(member))throw Error('Only a named founder may ratify this charter.');
-      if(!['ratification','candidacy','challenge'].includes(terms.kind)&&!charterAdmitsMember(rules,member))throw Error('Only a voting member may take this action.');
+      if(!['ratification','candidacy','challenge'].includes(terms.kind)&&!(registered&&['proposal','registration','ballot'].includes(terms.kind))&&!charterAdmitsMember(rules,member))throw Error('Only a voting member may take this action.');
       if(terms.kind==='candidacy'){
         const office=rules.offices?.find(o=>o.name===terms.office);
         if(office?.selection!=='Election'||office.eligibility==='Electorate'&&!charterAdmitsMember(rules,member))throw Error('This office does not admit this candidacy.');
@@ -301,13 +304,13 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
       }
       if(terms.kind==='closure'){await reviewClosure(terms,member,String(receizKaiNow().pulse),exact,rows);check(who);}
       if(terms.kind==='proposal'&&terms.payment&&(!rules.execution?.treasury||JSON.stringify(terms.payment)!==JSON.stringify(rules.execution.treasury)))throw Error('The payment must match the charter’s exact authorized installment.');
-      if(terms.kind==='ballot'||terms.kind==='challenge'){
+      if(terms.kind==='ballot'||terms.kind==='challenge'||terms.kind==='registration'){
         const p=await exact(terms.proposal);check(who);
         if(p.document.terms.kind!=='proposal'||p.document.terms.charter!==charter.digest)throw Error('The proposal is bound to a different charter.');
         if(terms.kind==='ballot'){
           const proposal=asRow(p) as Row<'proposal'>,founding=asRow(charter) as Row<'charter'>;
-          if(!eligibleProposal(proposal,founding,rows)||!p.document.terms.choices.includes(terms.choice))throw Error('Check the proposal, ratifications and candidate evidence before voting.');
-          if(BigInt(receizKaiNow().pulse)>=voteEnds(proposal,founding))throw Error('The voting window has closed.');
+          if(!p.document.terms.choices.includes(terms.choice)||!registered&&!eligibleProposal(proposal,founding,rows))throw Error('Check the proposal, ratifications and candidate evidence before voting.');
+          if(!registered&&BigInt(receizKaiNow().pulse)>=voteEnds(proposal,founding))throw Error('The voting window has closed.');
         }
       }
       if(terms.kind==='mandate'&&(!charter.document.terms.rules.allowMandates||terms.delegate&&!charterAdmitsMember(rules,terms.delegate)))throw Error('The charter does not admit this mandate.');
@@ -327,11 +330,23 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
     const proposal=terms.kind==='closure'&&ofKind(rows,'proposal').find(row=>row.digest===terms.proposal);
     const mayApply=terms.kind==='closure'&&(!proposal||Boolean(proposal.document.terms.currencyChange));
     await rememberGovernanceDelivery(who,original,mayApply?'applying':'held');
+    if(terms.kind==='proposal'||terms.kind==='registration'||terms.kind==='ballot'||terms.kind==='challenge'){
+      const held=ofKind(rows,'charter').find(row=>row.digest===terms.charter);
+      const opened=held?null:await exact(terms.charter);
+      const charterTerms=held?.document.terms??opened?.document.terms;
+      if(charterTerms?.kind==='charter'&&charterTerms.rules.execution?.rule==='registered-roll-closure-v1'){
+        const {submitHolderGovernanceOriginal}=await import('../../receiz/currency-governance');
+        const exactCharter=opened??await exact(terms.charter);
+        check(who);await submitHolderGovernanceOriginal(who,exactCharter,original);
+      }
+    }
     check(who);await who.publishGovernanceOriginal(original);notifyGovernancePublication();
     if(!mayApply)await rememberGovernanceDelivery(who,original,'delivered');
     check(who);const pending=await governanceOutbox(who);check(who);setOutbox(pending);go(original.digest);
     if(mayApply)void resumeDelivery(true)?.catch(()=>{});
   }
+  const registeredCharter = chosen?.document.terms.kind === 'charter'
+    && chosen.document.terms.rules.execution?.rule === 'registered-roll-closure-v1';
   return <div className="voting-board" aria-label="Voting">
     {screen==='list'&&<>
       <GovernanceHeading mark={!profile&&!embedded} eyebrow={profile&&!publicProfile?(publicId?'@'+publicId:undefined):profile?.name} title={embedded?'Community governance':profile&&!publicProfile?profile.name:publicProfile?'Public voting record':actor?'Voting dashboard':'Public voting'}>
@@ -351,7 +366,8 @@ export function VotingBoard({currency,profile,initialDigest,initialDraft,account
     </>}
     {!profile&&!embedded&&screen!=='list'&&<GovernanceHeading title="Public voting" eyebrow={publicId?'@'+publicId:undefined}/>}
     {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer currency={currency} founding={founding} member={member} identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId+(founding?.name??'')} charters={eligibleCharters} onCharter={id=>{select(id);setFiles([]);setAttachments([]);}} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
-    {screen==='detail'&&(chosen?<><GovernanceDetail onCurrencyApplied={currency?.onApplied} memberName={member} identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} currencyDeliveryRows={publicRows} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!embedded&&!publicProfile&&!entryBusy&&!busy} compose={!currency||currency.charterDigest===chosen.digest?id=>start('proposal',id):undefined} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
+    {screen==='detail'&&(chosen?<><GovernanceDetail onCurrencyApplied={currency?.onApplied} memberName={member} identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} currencyDeliveryRows={publicRows} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!embedded&&!publicProfile&&!entryBusy&&!busy} compose={currency?currency.charterDigest===chosen.digest?id=>start('proposal',id):undefined:
+      registeredCharter?undefined:id=>start('proposal',id)} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
     {screen==='review'&&terms&&<section className="gov-stack"><h2>Review {terms.kind}</h2><p>Your Receiz owner ID and these terms will be visible in the Original. You can save it on this device and choose when to publish it.</p><GovernanceFacts member={member} terms={terms}/>{founding&&!editionSource&&<div className="gov-box"><a href="/vote/constitution-zero/" target="_blank" rel="noreferrer">Read Constitution Zero</a><button type="button" disabled={busy||writing} onClick={()=>void run(createEdition)}>Create Constitution Original</button></div>}
       {attachments.length>0&&<GovernanceFileList files={attachments} remove={source=>{if(source===editionSource)setEditionSource('');setAttachments(all=>all.filter(item=>item.source!==source));}}/>}
       {identity&&['charter','proposal','mandate','challenge','candidacy'].includes(terms.kind)&&<GovernanceFilePicker identity={identity} attach={addAttachment} onEditing={setWriting} files={files} disabled={busy} change={setFiles}/>} <div className="gov-actions"><button disabled={busy||writing||Boolean(founding&&!editionSource)} className="gov-primary" onClick={()=>void run(confirm)}><FileCheck2 size={16}/>{busy?'Sealing…':'Seal Original'}</button><button disabled={busy||writing} onClick={()=>setScreen(terms.kind==='charter'?'charter':terms.kind==='proposal'?'proposal':'detail')}>{terms.kind==='charter'||terms.kind==='proposal'?'Edit details':'Back'}</button></div></section>}

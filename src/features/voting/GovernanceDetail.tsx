@@ -10,7 +10,7 @@ import {GovernanceProof} from './GovernanceProof';
 import type {GovernanceOriginal} from '../../receiz/governance-documents';
 import {receizKaiNow} from '@receiz/sdk';
 import {charterAdmitsMember,charterElectorate} from '../../receiz/governance-documents';
-import {useEffect,useState,type ReactNode} from 'react';
+import {lazy,Suspense,useEffect,useState,type ReactNode} from 'react';
 import {ArrowLeft,FileCheck2,Vote} from 'lucide-react';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import type {GovernanceTerms} from '../../receiz/governance-documents';
@@ -19,6 +19,8 @@ import {ballotRegister,charterRatification,governanceTitle,ofKind,observedSeats}
 import {GovernanceFileList} from './GovernanceFiles';
 
 import {GovernanceTime,votingTimeLeft} from './GovernanceTime';
+
+const HolderVote = lazy(() => import('./HolderVote').then(module => ({default:module.HolderVote})));
 
 function ProposalText({text}:{text:string}){
   return <div className="gov-motion-text">{text.split(/\n\s*\n/).map((paragraph,i)=>
@@ -117,7 +119,7 @@ export function GovernanceDetail({currencyDeliveryRows,onCurrencyApplied,row,row
     {terms.kind==='charter'&&<>{terms.logo&&charterTab!=='Charter rules'&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}<p>{terms.rules.purpose}</p><nav className="gov-tabs" aria-label="Charter sections">{(['Decisions','People','Charter rules'] as const).map(name=><button key={name} aria-current={charterTab===name?'page':undefined} onClick={()=>setCharterTab(name)}>{name}</button>)}</nav></>}
     {terms.kind==='charter'&&practicePanel?.(charterTab)}
     {terms.kind==='charter'&&charterTab==='Decisions'&&<section className="gov-charter-decisions">
-      {compose&&ratified?.complete&&(authorized||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}
+      {compose&&ratified?.complete&&(authorized||registered&&actor||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}
       {(['Proposals','Polls'] as const).map(group=>{const list=decisions.filter(r=>(r.document.terms.decision==='Poll')===(group==='Polls'));return <section key={group}><div className="gov-section-heading"><h3>{group}</h3><small>{list.length}</small></div>
         {list.length?list.map(item=><div className="gov-list-item" key={item.digest}><button className="gov-row" onClick={()=>go(item.digest)}><span className="gov-meta">{item.document.terms.decision}</span><strong>{governanceTitle(item)}</strong><GovernanceTime pulse={item.pulse} label="Proposed"/></button></div>):<p>No {group.toLowerCase()} held for this charter.</p>}</section>;})}
     </section>}
@@ -160,9 +162,12 @@ export function GovernanceDetail({currencyDeliveryRows,onCurrencyApplied,row,row
         :<GovernanceCertification key={proposal.digest+actor} {...{proposal,charter,rows,read,identity}}/>)}
       {authorized&&!ofKind(related,'closure').some(r=>r.document.author===actor)&&now>=closureOpens(proposal,charter)&&<button onClick={()=>review({kind:'closure',charter:charter.digest,proposal:proposal.digest,evidence:proposalEvidence(proposal,rows)})}>Review evidence for closure</button>}
     </section>}
+    {proposal&&registered&&charter&&identity?.authorizeGovernanceOriginal&&read&&!example&&<Suspense fallback={null}>
+      <HolderVote key={actor ?? ''} {...{identity,charter,proposal,read,review}}/>
+    </Suspense>}
     {proposal&&practicePanel?.('Proposal')}
     {proposal&&ofKind(related,'challenge').length>0&&<section><h3>Challenges</h3>{ofKind(related,'challenge').map(recordLink)}</section>}
-    {terms.kind==='proposal'&&actor&&<details><summary>Challenge this decision</summary><form className="gov-form" onSubmit={e=>{e.preventDefault();review({kind:'challenge',charter:terms.charter,proposal:row.digest,text:text.trim()});}}><label>Public evidence and requested remedy<textarea required maxLength={4000} value={text} onChange={e=>setText(e.target.value)}/></label><button>Review challenge</button></form></details>}
+    {terms.kind==='proposal'&&actor&&!registered&&<details><summary>Challenge this decision</summary><form className="gov-form" onSubmit={e=>{e.preventDefault();review({kind:'challenge',charter:terms.charter,proposal:row.digest,text:text.trim()});}}><label>Public evidence and requested remedy<textarea required maxLength={4000} value={text} onChange={e=>setText(e.target.value)}/></label><button>Review challenge</button></form></details>}
     {terms.kind==='charter'&&charterTab==='People'&&terms.rules.allowMandates&&authorized&&ratified?.complete&&<details><summary>Manage representation</summary><form className="gov-form" onSubmit={e=>{e.preventDefault();review({kind:'mandate',charter:row.digest,delegate:delegate||null,scope:scope.trim(),untilKaiPulse:expiry,previous:mandateHeads[0]?.digest??null});}}>
       <label>Representative{terms.rules.participation?<input value={delegate} placeholder="Receiz owner ID" onChange={e=>setDelegate(e.target.value.trim())}/>:<select value={delegate} onChange={e=>setDelegate(e.target.value)}><option value="">Revoke this scope</option>{charterElectorate(terms.rules).filter(id=>id!==actor).map(id=><option key={id} value={id}>{member(id)}</option>)}</select>}</label><label>Decision scope<select required value={scope} onChange={e=>setScope(e.target.value)}><option value="">Choose a scope</option>{['Policy','Poll','Treasury','Election','Amendment'].map(v=><option key={v} value={v}>{member(v)}</option>)}</select></label><small>A mandate applies to proposals opened after it is issued. A direct ballot overrides representation.</small>
       <label>Expiry in Kai pulses<input required pattern="[1-9][0-9]{0,24}" value={expiry} onChange={e=>setExpiry(e.target.value)}/></label><button disabled={mandateHeads.length>1||(!delegate&&!mandateHeads.length)}>Review mandate</button></form></details>}

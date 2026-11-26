@@ -22,6 +22,11 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const templates=founding?{...charterTemplates,[founding.name]:founding.rules}:charterTemplates;
   const [template,setTemplate]=useState<string>(founding?.name??'Member association');
   const [openRoll,setOpenRoll]=useState(Boolean(founding));
+  const [holderVoting,setHolderVoting]=useState(false);
+  const [custodian,setCustodian]=useState(''),[custodianKey,setCustodianKey]=useState('');
+  const [registerOriginal,setRegisterOriginal]=useState<File|null>(null);
+  const [registrationDays,setRegistrationDays]=useState(7),[rollReviewDays,setRollReviewDays]=useState(1);
+  const [quorum,setQuorum]=useState(20);
   type CharterDraft = (typeof charterTemplates)[string];
   const [charterEdits,setCharterEdits]=useState<Record<string, Partial<CharterDraft>>>({});
   const rules={...templates[template],...charterEdits[template]};
@@ -87,11 +92,26 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         const max=currency.poolPricing?String(price):servicePricing&&!maximumPrice.trim()?undefined:bankOperationDollars(maximumPrice);
         if(BigInt(min)>price||max!==undefined&&BigInt(max)<price)throw Error('The current price must fit the charter’s price range.');
         setBuilding(true);
-        const register=await (await identity.governanceExecution()).createRegister();
-        selectedExecution={rule:'unanimous-evidence-closure-v1',custodian:register.custodian,
-          registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,
-          currency:{assetId:currency.assetId,minimumPriceUsdCents:min,...(max===undefined?{}:{maximumPriceUsdCents:max}),allowSalesPause,
-            ...(servicePricing?{servicePricing}:{})}};
+        const terms={assetId:currency.assetId,minimumPriceUsdCents:min,...(max===undefined?{}:{maximumPriceUsdCents:max}),
+          allowSalesPause,...(servicePricing?{servicePricing}:{})};
+        if(holderVoting){
+          const registerOwner=custodian.trim();
+          if(founders.trim())throw Error('Use one founder to link this open holder charter from Bankeiz.');
+          if(!registerOriginal||!registerOwner||registerOwner===owner||!/^[a-f0-9]{64}$/u.test(custodianKey.trim())){
+            throw Error('Choose the independent custodian’s register Original and enter its public key ID.');
+          }
+          const {openGovernanceRegister}=await import('../../receiz/governance-execution-register');
+          const {register}=await openGovernanceRegister(registerOriginal,registerOwner);
+          if(register.head!==register.registerGenesisHead)throw Error('Choose the custodian’s starting register Original.');
+          selectedExecution={rule:'registered-roll-closure-v1',custodian:register.custodian,
+            registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,currency:terms,
+            custodianKeyId:custodianKey.trim(),registrationDays,rollReviewDays,quorumPercent:quorum,
+            eligibility:{rule:'native-currency-holders-v1',minimumQuantityMicro:'1'}};
+        }else{
+          const register=await (await identity.governanceExecution()).createRegister();
+          selectedExecution={rule:'unanimous-evidence-closure-v1',custodian:register.custodian,
+            registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,currency:terms};
+        }
       }
       let currencyChange;
       if(currency&&mode==='proposal'){
@@ -103,7 +123,7 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         if(!Object.keys(changes).length)throw Error(currency.poolPricing||proposalUsesVenuePricing?'Choose a new sales setting.':'Choose a new purchase price or sales setting.');
         currencyChange={assetId:currency.assetId,expectedHead:currency.settingsHead,changes};
       }
-      const terms=mode==='charter'?{kind:'charter',...(logo?{logo}:{}),rules:{...rules,...policyText,offices,articles,...(openRoll?{participation:'open-registration'}:{}),...(!openRoll&&selectedExecution?{execution:selectedExecution}:{}),...(!openRoll&&separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
+      const terms=mode==='charter'?{kind:'charter',...(logo?{logo}:{}),rules:{...rules,...policyText,offices,articles,...(holderVoting?{allowMandates:false}:{}),...(openRoll?{participation:'open-registration'}:{}),...(!openRoll&&selectedExecution?{execution:selectedExecution}:{}),...(!openRoll&&!holderVoting&&separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
         {kind:'proposal',charter:charter?.digest,title:title.trim(),text,decision,...(currencyChange?{currencyChange}:{}),...(election?{office,nominations:selected,choices:selected.map(d=>candidates.find(c=>c.digest===d)?.document.author)}:{...(decision==='Treasury'&&payment?{payment}:{}),choices:bindingBinary?['Approve','Reject']:options.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)})};
       const reviewed=readGovernanceTerms(terms);
       if(reviewed.kind==='charter'&&!reviewed.rules.founders.includes(owner))throw Error('Include your own Receiz owner ID among the founders.');
@@ -125,8 +145,8 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       <label>{mode==='charter'?'Purpose and scope':'What should members decide?'}<textarea required rows={4} maxLength={4000} value={mode==='charter'?rules.purpose:body} onChange={e=>mode==='charter'?editRules({purpose:e.target.value}):editProposal({text:e.target.value})}/></label>
       {mode==='charter'?<><CharterLogoPicker logo={logo} change={setLogo} busy={setLogoBusy}/><p>Founding member <strong>{member?.(owner)??owner}</strong></p><label>Additional founders <small>One Receiz owner ID per line. Each founder ratifies the charter.</small><textarea value={founders} onChange={e=>setFounders(e.target.value)}/></label>
         {!currency&&<label className="gov-check"><input type="checkbox" checked={openRoll} onChange={e=>setOpenRoll(e.target.checked)}/>Open participation for advisory votes</label>}
-        {!openRoll&&<label className="gov-check"><input type="checkbox" checked={separate} onChange={e=>setSeparate(e.target.checked)}/>Choose a separate voting membership</label>}
-        {!openRoll&&separate&&<label>Voting members <small>One Receiz owner ID per line. Only these members may propose and vote.</small><textarea required value={electorate} onChange={e=>setElectorate(e.target.value)}/></label>}</>:<>
+        {!openRoll&&!holderVoting&&<label className="gov-check"><input type="checkbox" checked={separate} onChange={e=>setSeparate(e.target.checked)}/>Choose a separate voting membership</label>}
+        {!openRoll&&!holderVoting&&separate&&<label>Voting members <small>One Receiz owner ID per line. Only these members may propose and vote.</small><textarea required value={electorate} onChange={e=>setElectorate(e.target.value)}/></label>}</>:<>
         {election?<><label>Office<select required value={office} onChange={e=>{setOffice(e.target.value);setSelected([]);}}><option value="">Choose an elected office</option>{electiveOffices.map(o=><option key={o.name}>{o.name}</option>)}</select></label>
           {!electiveOffices.length&&<p>This charter lists no elected offices. Its amendment procedure describes how members can propose one.</p>}
           <fieldset className="gov-box"><legend>Candidate statements</legend>{candidates.map(c=><label className="gov-check" key={c.digest}><input type="checkbox" checked={selected.includes(c.digest)} onChange={e=>setSelected(v=>e.target.checked?[...v.filter(d=>candidates.find(x=>x.digest===d)?.document.author!==c.document.author),c.digest]:v.filter(d=>d!==c.digest))}/>{member?.(c.document.author)??c.document.author} · {c.document.terms.statement}</label>)}{!candidates.length&&<p>Candidates can submit their own statements from the charter.</p>}</fieldset></>:bindingBinary?<p>Ballot choices · Approve / Reject</p>:<label>Ballot choices <small>One choice per line.</small><textarea required value={options} onChange={e=>editProposal({options:e.target.value})}/></label>}
@@ -139,7 +159,7 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       </>}
     </>}
     {step===2&&<>
-      <label className="gov-check"><input type="checkbox" checked={rules.allowMandates} onChange={e=>setRepresentation(e.target.checked)}/>Permit scoped representative mandates</label>
+      {!holderVoting&&<label className="gov-check"><input type="checkbox" checked={rules.allowMandates} onChange={e=>setRepresentation(e.target.checked)}/>Permit scoped representative mandates</label>}
       {(Object.keys(ruleLabels) as (keyof typeof ruleLabels)[]).map(k=><label key={k}>{ruleLabels[k]}<textarea required maxLength={4000} value={rules[k]} onChange={e=>editRules({[k]:e.target.value})}/></label>)}
       {currency&&<fieldset className="gov-box gov-form"><legend>Currency rules</legend>
         {currency.poolPricing?<p>The pool sets prices. This charter governs new sales.</p>:<><label>Lowest purchase price (USD)<input required inputMode="decimal" value={minimumPrice} onChange={e=>setMinimumPrice(e.target.value)}/></label>
@@ -147,6 +167,15 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         <label className="gov-check"><input type="checkbox" checked={venuePricing} onChange={e=>setVenuePricing(e.target.checked)}/>Set the purchase price from verified venue traffic</label>
         {venuePricing&&<VenuePricingFields value={venueTerms} onChange={setVenueTerms}/>}</>}
         <label className="gov-check"><input type="checkbox" checked={allowSalesPause} onChange={e=>setAllowSalesPause(e.target.checked)}/>Allow votes to pause or reopen sales</label>
+        <label className="gov-check"><input type="checkbox" checked={holderVoting} onChange={e=>setHolderVoting(e.target.checked)}/>Open voting to currency holders</label>
+        {holderVoting&&<div className="gov-fields">
+          <label>Custodian Receiz ID<input required value={custodian} onChange={e=>setCustodian(e.target.value)}/></label>
+          <label>Custodian public key ID<input required pattern="[a-f0-9]{64}" value={custodianKey} onChange={e=>setCustodianKey(e.target.value)}/></label>
+          <label>Custodian register Original<input type="file" required onChange={e=>setRegisterOriginal(e.target.files?.[0]??null)}/></label>
+          <label>Registration period (days)<input type="number" value={registrationDays} required min={1} max={90} onChange={e=>setRegistrationDays(Number(e.target.value))}/></label>
+          <label>Roll review period (days)<input type="number" value={rollReviewDays} required min={1} max={90} onChange={e=>setRollReviewDays(Number(e.target.value))}/></label>
+          <label>Quorum (%)<input type="number" value={quorum} required min={1} max={100} onChange={e=>setQuorum(Number(e.target.value))}/></label>
+        </div>}
       </fieldset>}
       {!currency&&identity&&!openRoll&&<CharterExecutionFields identity={identity} owner={owner} value={execution} change={v=>setExecutions(all=>({...all,[template]:v}))}/>}
       <CharterOffices offices={rules.offices} articles={rules.articles} setOffices={offices=>editRules({offices})} setArticles={articles=>editRules({articles})}/>

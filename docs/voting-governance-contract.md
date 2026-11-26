@@ -28,7 +28,9 @@ A currency issued with editable terms can link a ratified charter from its own a
 
 Voting members can propose changes and vote from the currency page. Each proposal binds the exact settings it would replace. Buys, sells and transfers can continue during voting. A previously approved settings change supersedes proposals written against its predecessor.
 
-After the vote and challenge periods, every eligible voter signs the same evidence list. Bankeiz submits the complete approved proof when the signed closure is available. The native currency writer reopens the charter, ratifications, proposal, ballots and closure Originals and applies an eligible change once. No second issuer or custodian signature is required for the currency change. A rejected proposal or a proof outside the charter’s authority leaves the settings as they were.
+For a fixed electorate, every eligible voter signs the same evidence list after the vote and challenge periods. Bankeiz submits the complete approved proof when the signed closure is available. The native currency writer reopens the charter, ratifications, proposal, ballots and closure Originals and applies an eligible change once. No second issuer or custodian signature is required for the currency change. A rejected proposal or a proof outside the charter’s authority leaves the settings as they were.
+
+An open holder charter lets account holders register for each proposal. Eligibility uses the currency holdings recorded before the proposal’s opening Kai. Open the proposal and check vote status to see the registration, review, voting and challenge periods. Bankeiz saves the signed registration or ballot when you submit it, then shows it as accepted once it appears in the register. The charter’s independent custodian signs each register update. Once the challenge period closes and the charter’s conditions are met, the native writer applies an approved settings change once. The issuer links a single-founder open charter from Currency settings by authorizing the exact charter and ratification Originals.
 
 ## Treasury
 
