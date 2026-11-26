@@ -81,9 +81,9 @@ export async function buildOfflineShell(directory = 'dist', { fixed = fixedResou
   if (manifest['feed/index.html']) {visit('feed/index.html');urls.add('/feed/index.html');}
   if (manifest['discover/index.html']) {visit('discover/index.html');urls.add('/discover/index.html');}
   // Archive every generated operand without broadening the Bank installation.
-  // Its two supported workers are emitted outside Vite's manifest graph.
+  // These supported workers are emitted outside Vite's manifest graph.
   const runtimeAssets=await generatedRuntimeAssets(root);
-  for(const row of runtimeAssets)if(/^\/assets\/(?:composite-wallet-)?worker-[\w-]+\.js$/.test(row.url))urls.add(row.url);
+  for(const row of runtimeAssets)if(/^\/assets\/(?:composite-wallet-|browser-wallet-archive-)?worker-[\w-]+\.js$/.test(row.url))urls.add(row.url);
   // The public calculator is emitted separately from Vite's app manifest.
   // Retain every lazy module so its verifier/replay also opens offline.
   for (const name of await readdir(resolve(root, 'learn'))) if (/^value-explainer-(?:main|chunk)-[A-Za-z0-9]+\.js$/.test(name)) urls.add('/learn/' + name);

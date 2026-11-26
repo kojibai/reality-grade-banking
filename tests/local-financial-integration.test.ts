@@ -2,6 +2,7 @@ import {beforeAll,expect,it,vi} from 'vitest';
 import {IDBFactory} from 'fake-indexeddb';
 import {createLocalFinancialSession} from '../src/receiz/local-financial';
 import {createWalletDebitWitness} from '../src/receiz/wallet-debit-witness';
+import {createDeviceWalletRecovery,sealDeviceWalletArchive} from '../src/receiz/device-wallet-recovery';
 import type {FinancialPublication} from '../src/receiz/local-financial-runtime';
 import {createLocalFinancialFixtureFactory} from './helpers/local-financial-fixture';
 
@@ -41,6 +42,61 @@ it('recovers exact retained commits on cold reopen and does not depend on option
  expect(await cold.execute(request)).toEqual(committed);expect(f.requests).toHaveLength(0);expect(f.listeners.size).toBe(1);
  f.connect();expect((await cold.flush()).status).toBe('published');expect(f.requests.flatMap(b=>b.originals)).toHaveLength(1);
  cold.dispose();expect(f.listeners.size).toBe(0);
+});
+
+it('reopens the signed debit, spends again offline and syncs the exact archived chain once',async()=>{
+ const f=await localFinancialFixture();
+ const {sha256ReceizBytes}=await import('@receiz/sdk');
+ const files=new Map<string,Uint8Array>();
+ const device={
+   async read(key:string){return files.get(key)?.slice()??null;},
+   async write(key:string,previous:string|null,bytes:Uint8Array){
+     const before=files.get(key);
+     if((before?await sha256ReceizBytes(before):null)!==previous)return false;
+     files.set(key,bytes.slice());return true;
+   },
+ };
+ const wrappingKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+ const scope={accountUid:f.options.accountUid,keyId:'a'.repeat(64),recordSignerPublicKey:'fixture-record-signer'};
+ const openArchive=()=>createDeviceWalletRecovery(sealDeviceWalletArchive(device,wrappingKey,()=>{}),scope);
+ const fundingDigest=await sha256ReceizBytes(f.options.sourceBytes);
+ const archived=openArchive();
+ await archived.originals.retain(fundingDigest,f.options.sourceBytes);
+ const request={operationId:'88888888-7777-4777-8777-777777777777',action:{
+   kind:'send' as const,recipientUserId:'33333333-3333-4333-8333-333333333333',
+   conversationId:'44444444-4444-4444-8444-444444444444',amountUsdCents:'100',
+ }};
+ const first=await createLocalFinancialSession({...f.options,store:archived.admission,originals:archived.originals});
+ const committed=await first.execute(request);
+ if(committed.status!=='committed')throw Error('Missing debit Original');
+ const debitDigest=committed.operation.artifactSha256;
+ const exactDebit=await archived.originals.read(debitDigest);
+ const before=await first.current();
+ first.dispose();
+ expect(exactDebit).not.toBeNull();
+ expect(f.requests).toHaveLength(0);
+
+ const restored=openArchive();
+ const funding=await restored.originals.read(fundingDigest);
+ if(!funding)throw Error('Missing preserved funding Original');
+ const cold=await createLocalFinancialSession({...f.options,sourceBytes:funding,store:restored.admission,originals:restored.originals});
+ try {
+   expect(await restored.originals.read(debitDigest)).toEqual(exactDebit);
+   expect(await cold.current()).toEqual(before);
+   expect(await cold.execute(request)).toEqual(committed);
+   const next=await cold.execute({operationId:'88888888-7777-4777-8777-777777777778',action:{...request.action,amountUsdCents:'50'}});
+   if(next.status!=='committed')throw Error('Missing successor debit Original');
+   expect(next.operation.predecessorArtifactSha256).toBe(debitDigest);
+   const nextDigest=next.operation.artifactSha256;
+   const exactNext=await restored.originals.read(nextDigest);
+   expect(exactNext).not.toBeNull();
+   expect(f.requests).toHaveLength(0);
+   f.connect();
+   expect((await cold.flush()).status).toBe('published');
+   const published=f.requests.flatMap(batch=>batch.originals);
+   expect(published.map(row=>row.artifactSha256)).toEqual([debitDigest,nextDigest]);
+   expect(published.map(row=>f.runtime.decode(row.artifactBytesB64u))).toEqual([exactDebit,exactNext]);
+ } finally {cold.dispose();}
 });
 
 it('projects genuine retained Kai growth offline and retains every committed debit',async()=>{

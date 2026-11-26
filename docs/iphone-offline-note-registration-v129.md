@@ -49,6 +49,27 @@ format and backup flags. Neither the diagnostic nor this record repairs the
 older saved-checkpoint decryption error, resets custody, creates a financial
 certificate, changes the production gates or enables prepared credit.
 
+## Wallet recovery in the installed PWA
+
+On an installed iPhone PWA with the origin-private file system and Web Locks,
+new funded Wallets can retain the exact signed funding and payment Originals
+there. Bankeiz retains a non-exportable encryption key for those files in the
+existing device vault, scoped to the exact Identity Record. Reopening the
+same record on this device can recover the files after removing the active
+ID. The existing Receiz admission runtime reopens those Originals and their
+accepted commits. Recovery still requires the retained archive key, device
+signer and files. Existing Wallets keep their original journal and credentials.
+
+File storage preserves proofs. Protected offline spending still requires the
+existing Receiz custody evidence, including a device-bound credential and
+advancing signed counters. The user's separate Home Screen PWA check on
+November 25, 2026 reported built-in WebAuthn, format `none`, backup eligible
+and backed up, and a counter of `0 → 0`. User verification and PRF succeeded.
+The check reported `OFFLINE_NOTE_CUSTODY_ROLLBACK_CONFORMANCE_FAILED` and
+zero financial actions. That credential did not qualify. Clearing all PWA
+site data can remove the archive and its keys; local journal recovery
+requires both. See [WebKit's storage documentation](https://webkit.org/blog/12257/the-file-system-access-api-with-origin-private-file-system/).
+
 ## Initial registration report
 
 The initial reported iPhone Safari/PWA error was

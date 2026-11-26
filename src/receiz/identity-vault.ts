@@ -1,3 +1,4 @@
+import type { DeviceWalletArchive } from './device-wallet-recovery';
 import { BANK_APPLICATION_ID, BANK_STORAGE_APPLICATION_ID, isBankNativeApplicationId } from './config';
 import { readWalletObservation } from './wallet-observation';
 import { validatePrivateLedgerPages } from './private-history';
@@ -796,6 +797,67 @@ export async function loadOfflineNoteBlob(binding: { artifactSha256: string }, d
 export const saveWalletFinancialOriginal=(binding:{artifactSha256:string},bytes:Uint8Array)=>savePrivateByteBlob('wallet-financial-original',binding,bytes);
 export const loadWalletFinancialOriginal=(binding:{artifactSha256:string},digest:string)=>loadPrivateByteBlob('wallet-financial-original',binding,digest);
 export const loadFundedWalletState=(binding:{artifactSha256:string})=>loadNoteState(binding,'funded-wallet');
+export async function openDeviceWalletArchive(
+  binding:{artifactSha256:string},archive:DeviceWalletArchive,assertOpen:()=>void,
+):Promise<DeviceWalletArchive> {
+  const saved=await held();
+  if(!saved)throw Error('BANK_NOTE_IDENTITY_UNAVAILABLE');
+  await sameSavedIdentity(saved,binding);
+  const {sealDeviceWalletArchive}=await import('./device-wallet-recovery');
+  assertOpen();
+  // The same device can reopen its archive after the current ID is removed
+  // and reimported. This key encrypts proof files and cannot open an ID.
+  const slot=`wallet-archive-key|${BANK_STORAGE_APPLICATION_ID}|${binding.artifactSha256}`;
+  let encrypted:typeof archive|undefined;
+  async function open(create:boolean) {
+    assertOpen();
+    if(encrypted)return encrypted;
+    const active=await held();
+    if(!active)throw Error('BANK_WALLET_ARCHIVE_KEY_UNAVAILABLE');
+    await sameSavedIdentity(active,binding);
+    const proposed=create?await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']):null;
+    const db=await database();
+    let key:CryptoKey|null=null;
+    try{
+      await new Promise<void>((resolve,reject)=>{
+        const tx=db.transaction('identity',create?'readwrite':'readonly',create?{durability:'strict'}:undefined);
+        const records=tx.objectStore('identity'), current=records.get('current'), stored=records.get(slot);
+        stored.onsuccess=()=>{
+          const selected=current.result as SavedIdentity|undefined;
+          if(!selected||!equalCipher(selected.bytes,active.bytes)||!equalCipher(selected.iv,active.iv)){tx.abort();return;}
+          const retained=stored.result as CryptoKey|undefined;
+          if(retained&&(retained.extractable||retained.type!=='secret'||retained.algorithm?.name!=='AES-GCM')){tx.abort();return;}
+          key=retained??proposed;
+          if(!retained&&proposed)records.put(proposed,slot);
+        };
+        tx.oncomplete=()=>resolve();
+        tx.onabort=()=>reject(Error('BANK_WALLET_ARCHIVE_KEY_UNAVAILABLE'));
+        tx.onerror=()=>reject(tx.error);
+      });
+    }finally{db.close();}
+    assertOpen();
+    if(key)encrypted??=sealDeviceWalletArchive(archive,key,assertOpen);
+    return encrypted;
+  }
+  return {
+    async read(ref){
+      const port=await open(false);
+      if(port)return port.read(ref);
+      if(!await archive.read(ref))return null;
+      const concurrent=await open(false);
+      if(!concurrent)throw Error('BANK_WALLET_ARCHIVE_KEY_UNAVAILABLE');
+      return concurrent.read(ref);
+    },
+    async write(ref,previous,next){
+      const port=await open(false);
+      if(port)return port.write(ref,previous,next);
+      const held=await archive.read(ref);
+      const ready=await open(!held);
+      if(!ready)throw Error('BANK_WALLET_ARCHIVE_KEY_UNAVAILABLE');
+      return ready.write(ref,previous,next);
+    },
+  };
+}
 export const loadFundedWalletAssertion=async(binding:{artifactSha256:string},digest:string)=>
   await loadNoteState(binding,'wallet-assertion:'+digest) as import('./local-financial-runtime').FinancialWalletCustodyAssertion|null;
 export const saveFundedWalletAssertion=(binding:{artifactSha256:string},digest:string,assertion:import('./local-financial-runtime').FinancialWalletCustodyAssertion)=>
