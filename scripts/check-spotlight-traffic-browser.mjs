@@ -6,11 +6,16 @@ import {chromium} from 'playwright';
 
 const directory = resolve('dist');
 const report = '/api/bank/spotlight/in-view';
+const received = [];
 const mimeTypes = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png'};
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, 'http://localhost');
+    if (url.pathname === report) {
+      received.push(request.headers);
+      return response.writeHead(204).end();
+    }
     const path = resolve(directory, '.' + (url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname));
     if (!path.startsWith(directory + '/')) return response.writeHead(404).end();
     const bytes = await readFile(path);
@@ -26,14 +31,9 @@ try {
     ? {executablePath: process.env.BANK_BROWSER_EXECUTABLE} : {})});
   const context = await browser.newContext({viewport: {width: 390, height: 844}, serviceWorkers: 'block'});
   const page = await context.newPage();
-  const received = [];
   await page.route('**/*', route => {
     const {origin: site, pathname} = new URL(route.request().url());
     if (site !== origin || (pathname.startsWith('/api/') && pathname !== report)) return route.abort();
-    if (pathname === report) {
-      received.push(route.request());
-      return route.fulfill({status: 204});
-    }
     return route.continue();
   });
   let releaseEntry;
@@ -44,11 +44,13 @@ try {
   assert.equal(received.length, 0, 'held Discover must paint with the runtime and APIs blocked');
   await page.evaluate(() => { window.heldSpotlightCard = document.querySelector('.discover-gallery .discover-work'); });
   const seen = page.waitForRequest(request => new URL(request.url()).pathname === report);
+  const acknowledged = page.waitForResponse(response => new URL(response.url()).pathname === report);
   releaseEntry();
   const request = await seen;
   assert.equal(request.method(), 'POST');
   assert.equal(request.postData(), null);
-  const headers = await request.allHeaders();
+  assert.equal((await acknowledged).status(), 204);
+  const [headers] = received;
   assert.equal(headers['sec-fetch-site'], 'same-origin');
   assert.equal(headers['sec-fetch-mode'], 'same-origin');
   assert.equal(headers['sec-fetch-dest'], 'empty');

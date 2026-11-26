@@ -5,6 +5,11 @@ import {expect,it,vi} from 'vitest';
 import {CurrencyPlacement} from '../src/features/market/CurrencyPlacement';
 import {preparePlacementOffer} from '../src/receiz/native-service-placement';
 import type {OpenIdentity} from '../src/receiz/native-identity';
+import {Discover} from '../src/public-discover/Discover';
+import {publishDiscoveredPublicCatalog} from '../src/receiz/asset-publication-adoption';
+import {parsePublicMarket} from '../src/receiz/public-market';
+import {createHeldPublicMarketInput} from '../src/receiz/public-market-held-catalog';
+import {marketUPulseTime} from '../src/receiz/market-projection/coordinates';
 
 vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:({children,input,onResult,reviewDetails}: {
  children:React.ReactNode;input():Promise<unknown>;onResult(result:{status:string}):void;reviewDetails:React.ReactNode;
@@ -44,4 +49,33 @@ it('loads the schedule on entry to the booking panel and reviews the exact Origi
 it('refuses an offer that changes the selected credits before opening native review',async()=>{
  const identity={currencyGovernance:async()=>({assetDigest,placement:{...placement,terms:{...placement.terms,quantityMicro:'101000000'}}})} as unknown as OpenIdentity;
  await expect(preparePlacementOffer(identity,assetId,originalId,slot)).rejects.toThrow('PLACEMENT_SOURCE_INVALID');
+});
+
+it('takes an active Spotlight reservation and its removal from the existing selected membership',async()=>{
+ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
+ const host=document.createElement('div'),root=createRoot(host);
+ const now=vi.spyOn(Date,'now').mockReturnValue(marketUPulseTime(slot.startKaiUPulse)+100);
+ const fetcher=vi.fn(()=>Promise.reject(Error('Unexpected request while displaying held membership')));
+ vi.stubGlobal('fetch',fetcher);
+ const originalSha256='d'.repeat(64);
+ const display=[{id:'public-original',receizId:originalId,title:'Public Original',
+  profileOriginal:{media:{originalDownloadSha256Hex:originalSha256}}}];
+ const catalog=(sequence:string,spotlight:unknown)=>parsePublicMarket({ok:true,transport:{publicOriginals:display,spotlight,
+  publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:1,
+   revision:sequence.repeat(64),selection:{provider:'e'.repeat(64),sequence:sequence.padStart(20,'0')}}}});
+ const scheduled=catalog('2',[{id:bookingId,venueId:slot.venueId,originalSha256,
+  startKaiUPulse:slot.startKaiUPulse,endKaiUPulse:slot.endKaiUPulse,status:'reserved'}]);
+ try{
+  expect(scheduled.spotlight).toHaveLength(1);
+  expect(createHeldPublicMarketInput(scheduled)?.catalog.spotlight).toEqual(scheduled.spotlight);
+  await act(async()=>root.render(<Discover seed={scheduled.items} active={false}/>));
+  expect(host.querySelector('[aria-label="Spotlight"]')).toBeNull();
+  await act(async()=>{expect(publishDiscoveredPublicCatalog(scheduled)).toBe(true);});
+  expect(host.querySelector('[aria-label="Spotlight"]')?.textContent).toContain('Public Original');
+  expect(host.querySelectorAll('[aria-label="Open Public Original"]')).toHaveLength(1);
+  await act(async()=>{expect(publishDiscoveredPublicCatalog(catalog('3',[]))).toBe(true);});
+  expect(host.querySelector('[aria-label="Spotlight"]')).toBeNull();
+  expect(host.querySelectorAll('[aria-label="Open Public Original"]')).toHaveLength(1);
+  expect(fetcher).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());now.mockRestore();vi.unstubAllGlobals();}
 });

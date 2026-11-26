@@ -47,7 +47,9 @@ function Work({item,onOpen,eager,active,measureAudience}:{item:PublicMarketItem;
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
 export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];seedHeads?:PublicMarketCatalog['publicProfileHeads'];active?:boolean}){
- const placements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,emptySpotlightPlacements);
+ const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
+ const heldPlacements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,emptySpotlightPlacements);
+ const placements=catalog?.spotlight??heldPlacements;
  const windows=useMemo(()=>placements.map(row=>({digest:row.originalSha256,start:marketUPulseTime(row.startKaiUPulse),end:marketUPulseTime(row.endKaiUPulse)})),[placements]);
  const [placementTime,setPlacementTime]=useState(Date.now);
  useEffect(()=>{
@@ -63,7 +65,6 @@ export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];s
  },[windows,active]);
  const [items,setItems]=useState(seed),[query,setQuery]=useState(''),[filter,setFilter]=useState<DiscoveryFilter>('All'),[shown,setShown]=useState(20),[selected,setSelected]=useState<{id?:string}|null>(null),[collecting,setCollecting]=useState(false);
  const publicationAt=useRef(-Infinity),selectedCatalog=useRef<PublicMarketCatalog|null>(null);
- const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
  const scrollTools=useScrollReveal(active,'.discover-search');
  const appearance=useSyncExternalStore(subscribeAccountAppearance,readAccountAppearance,()=>null),index=useMemo(()=>buildDiscoveryIndex(items,catalog?(catalog.publicProfileHeads??[]):seedHeads,catalog?.publicProfileHeadRefusals),[items,catalog?.publicProfileHeads,catalog?.publicProfileHeadRefusals,seedHeads]),results=useMemo(()=>searchDiscovery(index,query,filter),[index,query,filter]),more=useRef<HTMLDivElement>(null);
  const searched=query.trim().length>0,rows=results.items.slice(0,shown),initial=!searched&&filter==='All',people=results.people;

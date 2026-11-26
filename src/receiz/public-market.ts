@@ -19,6 +19,8 @@ import {publicDocumentUrl} from './public-document.js';
 import {publicBookSource,type PublicBookSource} from './public-book.js';
 import {profileAvatarUrl} from './profile-avatar.js';
 import {createHeldPublicMarketInput,readHeldPublicMarketInput} from './public-market-held-catalog.js';
+import {readPublicSpotlightPlacements} from './spotlight-placement-view.js';
+import type {PublicSpotlightPlacement} from './public-ledger-statement.js';
 /** Public discovery and quotes are display projections; they grant no ownership. */
 export interface PublicMarketItem {
   originalCreator?:Readonly<{userId:string|null;username:string|null;displayName:string|null}>;
@@ -64,7 +66,7 @@ export interface PublicMarketItem {
   authority: 'projection-only'; canTrade: false;
 }
 type PublicMarketSelection=Readonly<{provider:string;sequence:string}>;
-export interface PublicMarketCatalog { publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadRefusals?:readonly PublicProfileHeadRefusal[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; selection?:PublicMarketSelection;observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
+export interface PublicMarketCatalog { spotlight?:readonly PublicSpotlightPlacement[];publicProfileHeads?:readonly PublicProfileHead[];publicProfileHeadRefusals?:readonly PublicProfileHeadRefusal[];publicProfileHeadsRevision?:string;items: PublicMarketItem[]; complete: boolean; revision: string; selection?:PublicMarketSelection;observedAt: string | null; sourceCount: number; sportsCoverage?: 'complete' | 'partial' | 'missing'; sportsObservedAt?:string|null;sportsSealedBirthsObservedAt?:string|null;sportsHistorySnapshot?:SportsHistorySnapshot; }
 export function readPublicMarketSelection(value:unknown):PublicMarketSelection|undefined{
  const {provider,sequence}=record(value);
  return typeof provider==='string'&&/^[a-f0-9]{64}$/.test(provider)&&typeof sequence==='string'&&/^\d{20}$/.test(sequence)?{provider,sequence}:undefined;
@@ -245,7 +247,8 @@ export function parsePublicMarket(membership: unknown, snapshot?: unknown): Publ
   const publicProfileHeadRefusals=readPublicProfileHeadRefusals(transport.publicProfileHeads),refusedOwners=new Set(publicProfileHeadRefusals.map(head=>head.profile.userId)),publicProfileHeads=readPublicProfileHeads(transport.publicProfileHeads).filter(head=>!refusedOwners.has(String(head.profile.userId))),headRevision=text(transport.publicProfileHeadsRevision,64),selection=readPublicMarketSelection(meta.selection);
   const catalog: PublicMarketCatalog = { ...(publicProfileHeads.length?{publicProfileHeads}:{}),...(publicProfileHeadRefusals.length?{publicProfileHeadRefusals}:{}),...(headRevision&&/^[a-f0-9]{64}$/.test(headRevision)?{publicProfileHeadsRevision:headRevision}:{}),items, complete: meta.version === 1 && meta.scope === 'whole-market-visible-showcase' && meta.source === 'canonical-complete' && meta.isComplete === true && meta.itemCount === items.length,
     revision: text(meta.revision, 256) ?? '', ...(selection?{selection}:{}),observedAt: text(transport.generatedAt, 64), sourceCount: Number.isSafeInteger(meta.itemCount) && Number(meta.itemCount) >= 0 ? Number(meta.itemCount) : items.length };
-  return mergePublicQuotes(catalog, snapshot);
+  const spotlight=selection&&catalog.complete?readPublicSpotlightPlacements(transport.spotlight):undefined;
+  return mergePublicQuotes(spotlight?{...catalog,spotlight}:catalog, snapshot);
 }
 /** Curated proof presentation carried by Ledger records and receipts. Reuse the
  * public URL/model/quantity readers; never transport full works or authority. */
