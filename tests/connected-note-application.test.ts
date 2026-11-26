@@ -36,6 +36,14 @@ it.each([
 it('creates a connected Reserve Note with one account read and one write without device attestation, preserving original Reserve backing',async()=>{
  const f=fixture(),note=await f.runtime.create('200',undefined,recipient);expect(note.amountUsdCents).toBe('200');expect(f.wallet).not.toHaveBeenCalled();expect(f.request).toHaveBeenCalledTimes(2);expect(f.request.mock.calls[1][1].body).toMatchObject({action:'issue'});expect(JSON.stringify(f.request.mock.calls)).not.toContain('privateKey');expect(f.createKey).toHaveBeenCalledOnce();
 });
+it('issues an Open Note over the existing connected path without a recipient or a second quote',async()=>{
+ const f=fixture();
+ await f.runtime.review('200');
+ const note=await f.runtime.create('200','reserve');
+ expect(note).toMatchObject({amountUsdCents:'200',rail:'reserve'});
+ expect(f.module.createBankConnectedNoteIssue).toHaveBeenCalledExactlyOnceWith(expect.not.objectContaining({recipientUserId:expect.anything()}));
+ expect(f.request.mock.calls.map(call=>call[1].method)).toEqual(['GET','POST']);
+});
 it('recovers the original issue before retrying after a lost response and never requotes or regenerates the Note key',async()=>{
  const f=fixture();const original=f.request.getMockImplementation()!;f.request.mockImplementationOnce(original).mockRejectedValueOnce(Error('lost'));
  await expect(f.runtime.create('200',undefined,recipient)).rejects.toThrow('lost');await f.runtime.create('200',undefined,recipient);
@@ -78,9 +86,9 @@ it('the self-deposit producer admits actual handover receiver binding and never 
  const result=await f.runtime.prepareSelfDeposit('22222222-2222-4222-8222-222222222222',new Uint8Array([4]));expect(result.sourceBytes).toEqual(raw);expect(f.module.exportBankConnectedNoteImage).toHaveBeenCalledOnce();expect(f.sealImage).toHaveBeenCalledOnce();
 });
 
-it('requires a recipient before quoting, generating a key or retaining a new connected Note',async()=>{
+it('refuses an invalid recipient before quoting, generating a key or retaining a new connected Note',async()=>{
  const f=fixture();
- await expect(f.runtime.create('200')).rejects.toThrow('BANK_NOTE_RECIPIENT_REQUIRED');
+ await expect(f.runtime.create('200',undefined,'invalid-recipient')).rejects.toThrow('BANK_NOTE_RECIPIENT_REQUIRED');
  expect(f.request).not.toHaveBeenCalled();expect(f.createKey).not.toHaveBeenCalled();
  expect(await f.runtime.pending()).toBeNull();
 });

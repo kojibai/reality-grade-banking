@@ -81,7 +81,11 @@ it.each([
  try{
   const host=mount(compactReceiptLink(receiptLink(row)!));
   const provenance=host.querySelector('.receipt-provenance')!;
-  expect(provenance.textContent).toContain('Funding source');
+  expect(provenance.textContent).toContain(kind==='note_claim'?'Source of funds':'Funding source');
+  if(kind==='note_claim')act(()=>{
+   const funds=provenance.querySelector<HTMLDetailsElement>('details.ledger-funding-sources')!;
+   funds.open=true;funds.dispatchEvent(new Event('toggle'));
+  });
   act(()=>{const details=provenance.querySelector<HTMLDetailsElement>('details.ledger-funding-full')!;details.open=true;details.dispatchEvent(new Event('toggle'));});
   expect(provenance.textContent).toContain(objectId);
   expect(provenance.textContent).toContain(digest);

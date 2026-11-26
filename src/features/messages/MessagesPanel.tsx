@@ -126,6 +126,29 @@ export function MessagesPanel(props:MessagesPanelProps){
 }
 function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLedger,twinContextRecords=[],initialRecipient,initialNotification,initialEmailMessage,initialMeeting,initialBusinessRequest,onBusinessConsumed}:MessagesPanelProps){
   const [organizerEntry,setOrganizerEntry]=useState<OrganizerEntry|null>(null),[lastOrganizerEntry,setLastOrganizerEntry]=useState<OrganizerEntry|null>(null);
+  const messagesHost=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const host=messagesHost.current,viewport=window.visualViewport;
+    if(!active||!host||!viewport)return;
+    const sync=()=>{
+      if(viewport.scale!==1){
+        host.style.removeProperty('--bank-messages-height');
+        host.style.removeProperty('--bank-messages-top');
+        return;
+      }
+      host.style.setProperty('--bank-messages-height',`${viewport.height}px`);
+      host.style.setProperty('--bank-messages-top',`${viewport.offsetTop}px`);
+    };
+    sync();
+    viewport.addEventListener('resize',sync);
+    viewport.addEventListener('scroll',sync);
+    return()=>{
+      viewport.removeEventListener('resize',sync);
+      viewport.removeEventListener('scroll',sync);
+      host.style.removeProperty('--bank-messages-height');
+      host.style.removeProperty('--bank-messages-top');
+    };
+  },[active]);
   const organizerIntent=useRef(0);
   const openOrganizer=(view:OrganizerEntry['view'],person?:ChatPerson,correspondent?:OrganizerEntry['correspondent'])=>{chooseView();const ticket=organizerIntent.current,entry={id:ticket,view,...(person?{person}:{}),...(correspondent?{correspondent}:{})};const show=()=>{if(!live()||ticket!==organizerIntent.current)return;setOrganizerEntry(entry);setLastOrganizerEntry(entry);};if(organizerCodeReady)show();else void preloadMessageOrganizer().then(show).catch(cause=>{if(live()&&ticket===organizerIntent.current)setNotice(errorText(cause));});};
   const [retained]=useState(()=>identity.knownMessagingDisplay?.()??null);
@@ -706,7 +729,7 @@ function MessagesSession({identity,active,onClose,onOpen,onPreparePayment,heldLe
   const peerLabel=peerNames.slice(0,2).join(', ')+(peerNames.length>2?' and '+(peerNames.length-2)+' others':'');
   const preparePayment=()=>{if(!onPreparePayment)return;const peers=mode==='thread'&&thread?.kind==='dm'?thread.members.filter(person=>person.kind==='user'&&person.userId!==accountUid):[];const peer=peers.length===1?peers[0]:null;onPreparePayment(peer?.username&&/^[a-z0-9_]{3,24}$/.test(peer.username)?{userId:peer.userId,username:peer.username}:undefined);};
   const messageContact=(person:ChatPerson)=>{setOrganizerEntry(null);if(!api)return;const known=api.knownConversations().find(row=>row.kind==='dm'&&row.members.some(member=>member.kind==='user'&&member.userId===person.userId));if(known)pick(known);else{chooseView();setPicked([person]);setMode('new');void createConversation([person]);}};
-  return <div className="bank-messages-host"><Sheet title={twinWorkspaceOpen&&mode==='twin'&&!organizerEntry?'Your Twin':organizerEntry?organizerEntry.view==='calendar'||organizerEntry.view==='appointment'?'Calendar':'Contacts':title} active={active} onClose={onClose}><section className="bank-messaging" aria-label="Your agent and messages">
+  return <div className="bank-messages-host" ref={messagesHost}><Sheet className="bank-messages-sheet" title={twinWorkspaceOpen&&mode==='twin'&&!organizerEntry?'Your Twin':organizerEntry?organizerEntry.view==='calendar'||organizerEntry.view==='appointment'?'Calendar':'Contacts':title} active={active} onClose={onClose}><section className="bank-messaging" aria-label="Your agent and messages">
     {consent==='needed'?<div className="bank-messaging-consent"><BankMark/><h3>Your conversations,<br/>through your ID.</h3><p>Use your existing Receiz messages, groups, calls and agent through this ID. Nothing sent until you send.</p><button className="primary-button" type="button" onClick={()=>void connect(true)}>Enable messages<ArrowUpRight size={17}/></button></div>:<>
       {(mode!=='call'&&mode!=='new'||organizerEntry)&&<MessageNavigation twinFirst={twinFirst} mode={mode} organizing={!!organizerEntry} organizerView={organizerEntry?.view} hasOrganizer={!!identity.organizer} onWarmOrganizer={()=>{void preloadMessageOrganizer();}} onOrganizer={openOrganizer} onView={view=>{setOrganizerEntry(null);chooseView();setUpgradeOpen(false);setMode(view);setNotice('');}} onNew={()=>{setOrganizerEntry(null);chooseView();setMode('new');setNotice('');}}><NotificationsControl api={api}/></MessageNavigation>}
       {lastOrganizerEntry&&OrganizerPanel&&<OrganizerPanel identity={identity} entry={lastOrganizerEntry} active={active&&!!organizerEntry} onBack={()=>setOrganizerEntry(null)} onMessage={messageContact}/> }

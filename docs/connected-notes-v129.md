@@ -19,7 +19,7 @@ antirollback requirements of qualified continuous offline sending.
    protected financial-root signature, then its private account opening. Both
    remain retained before packaging. The PNG carries the complete public funding source and its scoped per-Note delivery authority under the canonical image seal. It contains no account signing key or private account balance opening.
 5. The holder saves and sends the original PNG. On import, the receiving account locally composes its existing signed receiving request and the Note handover from that complete image. No receiving-request file exchange is needed for a new connected Note. The exact terminal is retained before credit submission; reimport reuses it.
-   New connected Notes from Bankeiz require a recipient. Their stable account UID is included in the signed issue and financial funding source, so only that account can take the first handover even after a username change. Previously issued open Notes retain their original redemption rules. New open Notes use qualified Note custody.
+   Create Note starts with an Open Note when connected issuance is available. Anyone holding the complete original can present it for deposit. The native writer credits its funded value once, and another copy stays uncredited. The creator can choose a recipient to bind the first handover to that stable account UID across username changes. The signed first-recipient keys also carry the policy for onward QR handoffs.
 
 6. The receiver verifies the complete source and destination offline. **Received
    Notes** holds it separately from available account credit. This is verified
@@ -34,7 +34,9 @@ antirollback requirements of qualified continuous offline sending.
 
 ### Passing on a funded Note
 
-The native writer includes the recipient’s admitted keys in the existing funding
+An Open Note can be passed offline as its complete original image. The first valid deposit consumes the Note, and the recipient’s balance becomes spendable after confirmation.
+
+For recipient-bound Notes, the native writer includes the recipient’s admitted keys in the existing funding
 quote where available. The signed issue and funded Original bind those keys. The
 first holder can pass on that exact funded Note while offline. Each handoff
 verifies the predecessor, signs it to the next holder’s Note receiving QR, and
@@ -62,7 +64,7 @@ replace that evidence.
 | Funded Note from A through B, C, D, E, F and G | The native writer fixture starts with a signed funding allocation, prohibits fetch during all six handoffs and verifies that G receives the exact credit once. The original amount and funding source survive all six handoffs. An earlier holder cannot claim a second credit after the final deposit. |
 | Exact recovery on an iPhone | Safari on an iPhone 17 Pro Max runs the synthetic fixture with WebAuthn and network fetches disabled during recovery. It reopens the exact signed handoff from a second test wallet’s proof after a simulated restore and refuses an alternative recipient if the proof is missing. |
 | Nearby regular-balance payment | In the isolated Mac-to-iPhone fixture, the receiver confirmed $100 in test funds without the sender reconnecting. This uses the nearby Wallet payment signature and connected confirmation. |
-| New Note from regular balance on an unqualified device | The exercised connected profile requires a native funding allocation for a new Note. The current local-issuance contract requires a device-bound account proof. The current default while offline is **Send nearby** or passing on a Note whose funding was already admitted. |
+| New Note from regular balance on an unqualified device | The Bankeiz-origin route test issues an Open Note through the native writer. The delivery fixture verifies offline receipt, recovery after reopen and one credit when another holder presents a copy. The connected profile requires a native funding allocation for a new Note. The current local-issuance contract requires a device-bound account proof. The current default while offline is **Send nearby** or passing on a Note whose funding was already admitted. |
 
 The physical fixture tests recovery. The six-handoff sequence and final credit
 run against an isolated native writer. Deployed financial qualification needs

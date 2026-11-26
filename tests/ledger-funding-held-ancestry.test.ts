@@ -57,3 +57,24 @@ it('reuses the complete exact legacy cohort already held by the view instead of 
  const wrong=structuredClone(record);(wrong.details!.fundingCohorts as any)[0].amountPhiMicro='1001';
  expect(ledgerFundingTrace(enrichWalletFundingContext([wrong],[])[0]).context?.coverage.status).toBe('incomplete');
 });
+
+it.each(['public-source-projection','account-source-projection'] as const)('opens the exact held funding credit in %s',authority=>{
+ const [,parent]=records(authority);
+ const credit={...parsePublicNetworkPage('wallet',{ok:true,events:[{id:'parent',kind:'credit',amountUsdCents:'700',metadata:{direction:'credit'}}]}).records[0],authority};
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ try{
+  const [enriched]=enrichWalletFundingContext([credit],[parent]);
+  const trace=ledgerFundingTrace(enriched);
+  expect(trace.context?.root).toEqual({kind:'credit',id:'parent'});
+  expect(trace.steps.map(step=>step.sourceId)).toEqual([asset,'parent']);
+  expect(trace.steps.at(-1)).toMatchObject({kind:'wallet_credit',label:'This funding credit',amountUsdCents:'700'});
+  const restored=receiptDisplayRecord(readLedgerReceipt(JSON.parse(JSON.stringify(completeLedgerReceipt(enriched)))));
+  expect(ledgerFundingTrace(restored).steps).toEqual(trace.steps);
+  expect(ledgerFundingTrace(enrichWalletFundingContext([{...credit,amountUsdCents:'701'}],[parent])[0]).context).toBeUndefined();
+  expect(ledgerFundingTrace(enrichWalletFundingContext([{...credit,accountFlow:'out'}],[parent])[0]).context).toBeUndefined();
+  if(authority==='public-source-projection'){
+   expect(ledgerFundingTrace(enrichWalletFundingContext([credit],[{...parent,authority:'account-source-projection'}])[0]).context).toBeUndefined();
+  }
+  expect(fetch).not.toHaveBeenCalled();
+ }finally{vi.unstubAllGlobals();}
+});

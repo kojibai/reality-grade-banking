@@ -47,6 +47,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
   const [specificRecipient,setSpecificRecipient]=useState(false),[recipient,setRecipient]=useState(''),[selectedRecipient,setSelectedRecipient]=useState<{userId:string;username:string}|null>(null);
   const [addressedCreationByDefault,setAddressedCreationByDefault]=useState(false);
   const [funding,setFunding]=useState<BankNoteReview|null>(null);
+  const [reviewedConnectedOpen,setReviewedConnectedOpen]=useState(false);
   const [amount, setAmount] = useState('100'), [review, setReview] = useState(initialReview), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
   const [failureStage,setFailureStage]=useState<ReturnType<typeof noteFailureStage>>(null);
   const [connectionRequired,setConnectionRequired]=useState(false);
@@ -117,7 +118,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       if(!current)return;
       setSaved(items);
       setAddressedCreationByDefault(n.addressedCreationByDefault===true);
-      setSpecificRecipient(!offersOpenNote(n.addressedCreationByDefault===true,items));
+      setSpecificRecipient(!offersOpenNote(n.addressedCreationByDefault===true,items)&&(!n.openConnected||navigator.onLine===false));
       if(value)setFunding({...value,rail:value.rail??'reserve'});
       if(value){setPending(value);setRail(value.rail??'reserve');setAmount(`${BigInt(value.amountUsdCents)/100n}.${(BigInt(value.amountUsdCents)%100n).toString().padStart(2,'0')}`);setReview(true);}
       setInventoryReady(true);
@@ -241,13 +242,15 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
     const value=cents(amount),runtime=api.current??await notes();
     if(specificRecipient&&runtime.addressedCreationByDefault&&!pending&&navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
     const target=specificRecipient?await recipientUid():undefined;
-    const result=runtime.review?await(target?runtime.review(value,target):runtime.review(value)):{rail,amountUsdCents:value,...(target?{recipientUserId:target}:{})};
+    const openConnected=!target&&!canOpenProtected&&!pending?runtime.openConnected:undefined;
+    const result=openConnected?await openConnected.review(value):runtime.review?await(target?runtime.review(value,target):runtime.review(value)):{rail,amountUsdCents:value,...(target?{recipientUserId:target}:{})};
     if(result.amountUsdCents!==value||result.recipientUserId!==target)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
-    if(alive.current){setFunding(result);setRail(result.rail);setReview(true);}
+    if(alive.current){setFunding(result);setRail(result.rail);setReviewedConnectedOpen(!!openConnected);setReview(true);}
   });
   // A saved protected Note was admitted by the existing local inventory reader.
   // Creating a new open Note still requires that operation's native custody checks.
-  const canChooseOpenNote=offersOpenNote(addressedCreationByDefault,saved);
+  const canOpenProtected=offersOpenNote(addressedCreationByDefault,saved);
+  const canChooseOpenNote=canOpenProtected||(!offline&&!!api.current?.openConnected);
   const sendFromBalance=addressedCreationByDefault&&!pending&&!canChooseOpenNote&&offline&&!!onUseSendNearby;
   const addressedRecipient=<fieldset className="native-operation-fields" disabled={busy}>
     <RecipientInput identity={identity} value={recipient}
@@ -275,7 +278,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
           {review && <div className="detail-list"><div><span>{rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(pending?.amountUsdCents ?? funding?.amountUsdCents ?? cents(amount))}</strong></div><div><span>{(pending?.recipientUserId??funding?.recipientUserId)?'First recipient':'Who can deposit'}</span><strong>{(pending?.recipientUserId??funding?.recipientUserId)?selectedRecipient&&selectedRecipient.userId===(pending?.recipientUserId??funding?.recipientUserId)?'@'+selectedRecipient.username:'Chosen account':'Anyone with the Note'}</strong></div></div>}
           <p className="body-copy small-copy">This amount moves from your account into the Note when creation completes.{review&&rail!=='reserve'?' Its exact funded units stay intact; their dollar reference can change.':''}</p>
           <details className="note-value-details"><summary>Note details</summary>{funding?.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(funding.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{formatMoney(funding.fundingParts.settlement.amountUsdCents)}</strong></div></div>}<p>{rail==='composite'?'One Settlement Note carries the full amount. Its two funding sources retain their exact units and complete proof underneath; you do not have to choose between them.':rail==='settlement'?'This Settlement Note holds exact Phi. Deposit returns the same Phi; its dollar value follows the deterministic rate.':'This Settlement Note holds its funded dollar denomination. Deposit returns that amount to your account.'}</p><p>Your identity signing key stays on this device. Keep the original PNG and this device until the Note is deposited or transferred.</p></details>
-          <button className="primary-button" disabled={busy || !inventoryReady} onClick={() => { if (!review) {if(!specificRecipient&&!api.current?.review){try{cents(amount);setReview(true);setError('');}catch(cause){report(cause);}}else reviewNote();return;} void run(async () => { const runtime=await notes(),owner=identity,amountValue=pending?.amountUsdCents??funding?.amountUsdCents??cents(amount),target=pending?.recipientUserId??funding?.recipientUserId;const value=target?await runtime.create(amountValue,undefined,target):await (addressedCreationByDefault&&!pending&&funding?runtime.create(amountValue,funding.rail):runtime.create(amountValue)); if (alive.current&&currentIdentity.current===owner) { setCreated(value); setPending(null); onRefresh(); if(currentIdentity.current===owner)await onCreated?.(value); } }); }}><ArrowUpRight size={17} />{busy ? 'Preparing your note…' : review ? pending ? 'Resume this note' : 'Create funded note' : 'Review note'}</button>
+          <button className="primary-button" disabled={busy || !inventoryReady} onClick={() => { if (!review) {if(!specificRecipient&&!api.current?.review&&!api.current?.openConnected){try{cents(amount);setReview(true);setError('');}catch(cause){report(cause);}}else reviewNote();return;} void run(async () => { const runtime=await notes(),owner=identity,amountValue=pending?.amountUsdCents??funding?.amountUsdCents??cents(amount),target=pending?.recipientUserId??funding?.recipientUserId;const value=reviewedConnectedOpen&&!pending&&runtime.openConnected?await runtime.openConnected.create(amountValue,funding?.rail):target?await runtime.create(amountValue,undefined,target):await (addressedCreationByDefault&&!pending&&funding?runtime.create(amountValue,funding.rail):runtime.create(amountValue)); if (alive.current&&currentIdentity.current===owner) { setCreated(value); setPending(null); onRefresh(); if(currentIdentity.current===owner)await onCreated?.(value); } }); }}><ArrowUpRight size={17} />{busy ? 'Preparing your note…' : review ? pending ? 'Resume this note' : 'Create funded note' : 'Review note'}</button>
         </>}
       {!review && saved.length > 0 && <div className="retained-deposits"><p className="body-copy small-copy">Saved notes</p>{saved.map(note => <button key={note.noteId} className="asset-row" onClick={() => setCreated(note)}><span className="row-copy"><strong>{formatMoney(note.amountUsdCents)}</strong><span>{note.selfDeposit ? note.selfDeposit==='confirmed'?'Deposited · original kept':'Deposit pending · original kept' : note.handoffRecovery ? 'Passed on · recover handoff' : note.transferred ? 'Transferred · save the updated image' : note.transferPending ? 'Transfer pending · resume' : 'Open your original note'}</span></span><Download size={18} /></button>)}</div>}
       {pending?.canCancel && <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { await (await notes()).cancelUnfunded(); if (alive.current) { setPending(null); setReview(false);setFunding(null); } })}>Discard unissued note</button>}

@@ -620,6 +620,17 @@ it('routes new addressed online Note creation through connected composition with
  try{const notes=await identity.offlineNotes!();const result=await notes.create('100',undefined,connectedNoteRecipient);expect(result).toMatchObject({noteId:'connected-note',consumption:'connection-required'});expect(fixture.connectedCreate).toHaveBeenCalledWith('100',undefined,connectedNoteRecipient);expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.wallet).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();expect(fixture.save).toHaveBeenCalled();}finally{identity.dispose();vi.unstubAllGlobals();}
 });
 
+it('issues a connected Open Note without recipient enrollment or protected custody',async()=>{
+ fixture.connectedEnabled=true;noteEnrollment.mockRejectedValue(Error('ATTESTATION_MUST_NOT_RUN'));
+ const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);
+ try{
+  const notes=await identity.offlineNotes!();
+  const note=await notes.openConnected!.create('100','reserve');
+  expect(note).toMatchObject({noteId:'connected-note',consumption:'connection-required'});
+  expect(fixture.connectedCreate).toHaveBeenCalledExactlyOnceWith('100','reserve',undefined);
+  expect(noteEnrollment).not.toHaveBeenCalled();expect(fixture.create).not.toHaveBeenCalled();
+ }finally{identity.dispose();}
+});
 it('uses qualified custody for open Notes and refuses addressed creation while disconnected',async()=>{
  fixture.connectedEnabled=true;
  const identity=await openCanonicalIdentity(new Uint8Array([1]),'local-test-passphrase','fixture.receiz',true);

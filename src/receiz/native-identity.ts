@@ -25,7 +25,7 @@ import {createTwinCreditPurchaseCoordination,readTwinCreditPurchaseIntent,type R
 import {BANK_WALLET_SEND_SCOPES,BANK_WALLET_SEND_CONSENT} from './config';
 import { loadNativePaymentState, saveNativePaymentState, loadNativeAssetState, saveNativeAssetState, loadOfflineNoteState, saveOfflineNoteState, loadPreparedNoteState, savePreparedNoteState, saveOfflineNoteBlob, loadOfflineNoteBlob } from './identity-vault';
 import { createBankNoteAttestationFetch } from './note-attestation-transport';
-import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRuntime } from './offline-notes';
+import { loadBankNoteRuntime, bankNoteArtwork, type BankOfflineNotes, type BankNoteRail, type BankNoteRuntime } from './offline-notes';
 import type { ReceizClient, ReceizIdentityPublicBinding, ReceizKeyFile, ReceizIdentityAccountProjection } from '@receiz/sdk';
 import { loadReceiz } from './client';
 import { BANK_APPLICATION_ID, BANK_PREVIOUS_NATIVE_APPLICATION_ID, isBankNativeApplicationId, BANK_CARD_APPLICATION_IDS, BANK_READ_CONSENT, BANK_READ_SCOPES, BANK_CARD_CONSENT, BANK_CARD_SCOPES, BANK_NATIVE_CONSENT, BANK_NATIVE_SCOPES, BANK_RECOVERY_SCOPES, BANK_RECOVERY_CONSENT } from './config';
@@ -1278,7 +1278,35 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       return {status:'forwarded' as const,noteId:held.noteId,rail:held.rail,amountUsdCents:held.amountUsdCents,
         amountPhiMicro:held.amountPhiMicro,...(held.fundingParts?{fundingParts:held.fundingParts}:{}),proofBytes:held.terminalSourceBytes};
     };
+    const reviewCreation=(amount:string,recipientUserId?:string,connectedOpen=false)=>action(()=>withAccountExecutionLock(async()=>{
+      await assertNoteCreateState();const pending=await notePending();
+      if(pending){if(pending.amountUsdCents!==amount||pending.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
+      if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+      if(!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
+      await connectedContext();
+      return noteLock(async()=>{
+        const reviewed=await localConnectedNotes().review(amount,recipientUserId);
+        if(!recipientUserId&&!connectedOpen&&reviewed.rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');
+        return reviewed;
+      });
+    }));
+    const createConnected=(amount:string,rail?:BankNoteRail,recipientUserId?:string,artwork?:Blob)=>noteLock(async()=>{
+      await assertNoteCreateState();
+      const notes=localConnectedNotes();
+      const result=await (artwork?notes.create(amount,rail,recipientUserId,artwork):notes.create(amount,rail,recipientUserId));
+      return {...result,consumption:'connection-required' as const};
+    });
     localNotes={addressedCreationByDefault:true,
+      ...(BANK_CONNECTED_NOTE_ISSUANCE_ENABLED?{openConnected:{
+        review:amount=>reviewCreation(amount,undefined,true),
+        create:(amount,rail)=>action(()=>withAccountExecutionLock(async()=>{
+          if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
+          await assertNoteCreateState();
+          if(await inventory.pending())throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');
+          await connectedContext();
+          return createConnected(amount,rail);
+        })),
+      }}:{}),
       ...(bankAndroidWalletHardware()?{
         nativeReceivingRequest:()=>action(async()=>{
           const execution=await openNotesExecution();
@@ -1347,18 +1375,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
         if(saved?.schema!=='receiz.bank.offline-notes-device.v1'||!saved.deposits?.[row.noteId])return null;
         return(await openNotesExecution()).deposit(image);
       },
-      review:(amount,recipientUserId)=>action(()=>withAccountExecutionLock(async()=>{
-        await assertNoteCreateState();const pending=await notePending();
-        if(pending){if(pending.amountUsdCents!==amount||pending.recipientUserId!==recipientUserId)throw Error('BANK_NOTE_EXACT_RESUME_REQUIRED');return{...pending,rail:pending.rail??'reserve'};}
-        if(navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
-        if(!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
-        await connectedContext();
-        return noteLock(async()=>{
-          const reviewed=await localConnectedNotes().review(amount,recipientUserId);
-          if(!recipientUserId&&reviewed.rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');
-          return reviewed;
-        });
-      })),
+      review:reviewCreation,
       prepareResources:count=>action(()=>withAccountExecutionLock(async()=>{await assertNoPendingWalletSend();return(await openNotesExecution()).prepareResources!(count);})),
       create:(amount,rail,recipientUserId,artwork)=>action(()=>withAccountExecutionLock(async()=>{
         if(artwork&&!recipientUserId)throw Error('BANK_NOTE_ARTWORK_RECIPIENT_REQUIRED');
@@ -1376,12 +1393,7 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
           if(!connected&&navigator.onLine===false)throw Error('BANK_NOTE_OFFLINE_CREATION_REQUIRES_CONNECTION');
           if(!connected&&!BANK_CONNECTED_NOTE_ISSUANCE_ENABLED)throw Error('BANK_NOTE_SERVICE_UNAVAILABLE');
           if(!connected)await connectedContext();
-          return noteLock(async()=>{
-            await assertNoteCreateState();
-            const notes=localConnectedNotes();
-            const result=await (artwork?notes.create(amount,rail,recipientUserId,artwork):notes.create(amount,rail,recipientUserId));
-            return {...result,consumption:'connection-required' as const};
-          });
+          return createConnected(amount,rail,recipientUserId,artwork);
         }
         if(recipientUserId)throw Error('BANK_NOTE_RECIPIENT_BINDING_UNAVAILABLE');
         if(rail==='composite')throw Error('BANK_NOTE_OPEN_REQUIRES_SINGLE_RAIL');

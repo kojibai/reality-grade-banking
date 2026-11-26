@@ -119,7 +119,7 @@ it('connects a verified Note deposit to its exact held creation graph without ex
   expect(enrichWalletFundingContext([{...localMint,pulse:'3'}],[mint])[0].details).not.toHaveProperty('fundingContext');
   const enriched=enrichWalletFundingContext([local],[mint])[0],trace=ledgerFundingTrace(enriched);
   expect(trace.steps.map(step=>step.sourceId)).toEqual([objectId,'sender-debit','receiver-credit']);
-  expect(trace.steps.at(-1)).toMatchObject({label:'This transaction',amountUsdCents:'100'});
+  expect(trace.steps.at(-1)).toMatchObject({label:'This funding credit',amountUsdCents:'100'});
   const receipt=readReceiptLink(receiptLink(enriched)!);expect(ledgerFundingTrace({...enriched,details:receipt.details??undefined}).steps.map(step=>step.sourceId)).toEqual([objectId,'sender-debit','receiver-credit']);
   const conflict={...local,details:{...local.details,noteReceipt:{...local.details!.noteReceipt as any,operationId:'b'.repeat(64)}}};
   expect(enrichWalletFundingContext([conflict],[mint])[0].details).not.toHaveProperty('fundingContext');

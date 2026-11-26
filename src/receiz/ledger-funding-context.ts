@@ -61,19 +61,38 @@ export function readLedgerFundingContext(raw:unknown,eventId?:string):LedgerFund
  pages.set(result,{nodes,roots:new Map([[key(root),root]]),coverage:result.coverage});closures.set(result,new Map([[key(root),result]]));
  return result;
 }
+const walletEntryId=(record:PublicRecord)=>record.sourceId.replace(/^wallet_ledger:/,'');
+function creditReference(record:PublicRecord){
+ if(record.source==='wallet'&&record.amountUsdCents!==null&&record.kind!=='debit'&&record.accountFlow!=='out'&&object(record.details?.fundingOrigin).direction!=='debit')return 'credit:'+walletEntryId(record);
+}
+function fundingContextForRecord(record:PublicRecord,raw:unknown){
+ const credit=creditReference(record),note=record.evidence.noteId??record.details?.noteId;
+ return readLedgerFundingContext(raw,record.evidence.transferId??walletEntryId(record))
+  ??(credit?readLedgerFundingContext(raw,credit):undefined)
+  ??(typeof note==='string'?readLedgerFundingContext(raw,note):undefined);
+}
+function matchingFundingRoot(record:PublicRecord,context:LedgerFundingContext){
+ const root=context.nodes[key(context.root)];
+ if(!root||root.amountUsdCents!==record.amountUsdCents||record.valueOperands?.amountPhiMicro&&root.amountPhiMicro!==record.valueOperands.amountPhiMicro)return;
+ if(context.root.kind==='credit'){
+  if(key(context.root)!==creditReference(record))return;
+  if(root.kaiUpulse&&record.kaiUpulse&&root.kaiUpulse!==record.kaiUpulse)return;
+  if(root.kaiUpulse&&record.pulse&&String(BigInt(root.kaiUpulse)/1_000_000n)!==record.pulse)return;
+  if(root.occurredAt&&record.time&&Date.parse(root.occurredAt)!==Date.parse(record.time))return;
+ }
+ return root;
+}
 export function applyLedgerFundingContext(record:PublicRecord,raw:unknown):PublicRecord{
- const noteId=record.evidence.noteId??record.details?.noteId;
- const context=readLedgerFundingContext(raw,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(typeof noteId==='string'?readLedgerFundingContext(raw,noteId):undefined);if(!context)return record;
- const root=context.nodes[key(context.root)];if(!root||root.amountUsdCents!==record.amountUsdCents||record.valueOperands?.amountPhiMicro&&root.amountPhiMicro!==record.valueOperands.amountPhiMicro)return record;
+ const context=fundingContextForRecord(record,raw);if(!context)return record;
+ const root=matchingFundingRoot(record,context);if(!root)return record;
  const attribution=root.attribution;
  return{...record,details:{...record.details,fundingContext:context as unknown as LedgerFields,...(attribution?{fundingAttribution:attribution as unknown as LedgerFields,...(record.evidence.transferId?{fundingTransferId:record.evidence.transferId}:{})}:{})}};
 }
 /** The graph describes recorded source basis and exact parent references.
  * Ancestor payment amounts are full originals, never this payment's slice. */
 export function ledgerFundingContextTrace(record:PublicRecord):LedgerFundingTrace|undefined{
- const noteId=record.evidence.noteId??record.details?.noteId;
- const context=readLedgerFundingContext(record.details?.fundingContext,record.evidence.transferId??record.sourceId.replace(/^wallet_ledger:/,''))??(typeof noteId==='string'?readLedgerFundingContext(record.details?.fundingContext,noteId):undefined);if(!context)return;
- const root=context.nodes[key(context.root)];if(!root||root.amountUsdCents!==record.amountUsdCents)return;
+ const context=fundingContextForRecord(record,record.details?.fundingContext);
+ if(!context||!matchingFundingRoot(record,context))return;
  const order:FundingNode[]=[],seen=new Set<string>(),stack:{ref:FundingRef;exit:boolean}[]=[{ref:context.root,exit:false}];
  while(stack.length){const item=stack.pop()!,id=key(item.ref);if(item.exit){const node=context.nodes[id];if(node)order.push(node);continue;}if(seen.has(id))continue;seen.add(id);const node=context.nodes[id];if(!node)continue;stack.push({ref:item.ref,exit:true});for(const parent of node.parents)stack.push({ref:parent,exit:false});}
  const steps:LedgerCausalStep[]=[],origins:LedgerCausalStep[]=[];
@@ -87,7 +106,8 @@ export function ledgerFundingContextTrace(record:PublicRecord):LedgerFundingTrac
   if(node.ref.kind==='source-context'||node.ref.kind==='proof-basis')continue;
   if(node.ref.kind==='debit'&&node.parents.length&&representedDebits.has(key(node.ref)))continue;
   const selected=key(node.ref)===key(context.root),payment=node.ref.kind==='transfer'||node.ref.kind==='note';
-  const step:LedgerCausalStep={id:key(node.ref),kind:selected?'wallet_debit':node.ref.kind==='credit'?(node.source==='profile_rollup_seed'?'glyph_economy_value':'wallet_credit'):'transfer',label:selected?'This transaction':payment?'Parent payment':reserveSources.has(node.source??'')?'Funding deposit':'Incoming funding credit',detail:selected?'Recorded payment with its original source references.':payment?'Full amount of the original parent payment; separate from this transaction’s funding slice.':'Recorded source event preserved through the onward payment.',sourceId:node.ref.id,...(node.originalDigest?{sourceHash:node.originalDigest}:{}),...(node.amountUsdCents?{amountUsdCents:node.amountUsdCents}:{}),...(node.amountPhiMicro?{amountPhiMicro:node.amountPhiMicro}:{}),...(node.occurredAt?{occurredAt:node.occurredAt}:{}),...(node.kaiUpulse?{kaiUpulse:node.kaiUpulse,kaiPulse:String(BigInt(node.kaiUpulse)/1000000n)}:{})};steps.push(step);if(node.ref.kind==='credit'&&(reserveSources.has(node.source??'')||node.source==='profile_rollup_seed')||!selected&&node.originalDigest&&!node.parents.length)origins.push(step);
+  const credit=node.ref.kind==='credit';
+  const step:LedgerCausalStep={id:key(node.ref),kind:credit?(node.source==='profile_rollup_seed'?'glyph_economy_value':'wallet_credit'):selected?'wallet_debit':'transfer',label:selected?(credit?'This funding credit':'This transaction'):payment?'Parent payment':reserveSources.has(node.source??'')?'Funding deposit':'Incoming funding credit',detail:selected?(credit?'Recorded credit with its original funding references.':'Recorded payment with its original source references.'):payment?'Full amount of the original parent payment; separate from this transaction’s funding slice.':'Recorded source event preserved through the onward payment.',sourceId:node.ref.id,...(node.originalDigest?{sourceHash:node.originalDigest}:{}),...(node.amountUsdCents?{amountUsdCents:node.amountUsdCents}:{}),...(node.amountPhiMicro?{amountPhiMicro:node.amountPhiMicro}:{}),...(node.occurredAt?{occurredAt:node.occurredAt}:{}),...(node.kaiUpulse?{kaiUpulse:node.kaiUpulse,kaiPulse:String(BigInt(node.kaiUpulse)/1000000n)}:{})};steps.push(step);if(node.ref.kind==='credit'&&(reserveSources.has(node.source??'')||node.source==='profile_rollup_seed')||!selected&&node.originalDigest&&!node.parents.length)origins.push(step);
  }
  const components:LedgerFundingTrace['components']=[];for(const [field,rail]of [['settledUsdCents','reserve'],['phiUsdCents','settlement']]as const){const amount=record.valueOperands?.[field];if(amount&&BigInt(amount)>0n)components.push({rail,amountUsdCents:amount});}
  return{basis:'recorded-funding-context',boundary:context.coverage.status==='complete'?'source-origins':'origins-not-carried',valueOrigins:[],sources:origins,steps,components,context};
@@ -156,13 +176,18 @@ export function retainLedgerFundingAncestors(records:readonly PublicRecord[],sou
   for(const [record,context]of contexts){
    if(record.authority!==authority||seen.has(context))continue;
    seen.add(context);roots.set(key(context.root),context.root);coverage[key(context.root)]=context.coverage;
-   for(const [id,node]of Object.entries(context.nodes))nodes[id]=nodes[id]?mergeFundingNode(nodes[id],node,nodes,context.nodes):node;
+   for(const [id,node]of Object.entries(context.nodes)){
+    nodes[id]=nodes[id]?mergeFundingNode(nodes[id],node,nodes,context.nodes):node;
+    if(node.ref.kind==='credit')roots.set(id,node.ref);
+   }
   }
   const raw={schema:'receiz.wallet.funding-context.v1'};pages.set(raw,{nodes,roots,coverage});families.set(authority,raw);return raw;
  }
  return records.map(record=>{
-  const context=contexts.get(record);if(!context||context.coverage.status==='complete')return record;
-  const next=readLedgerFundingContext(family(record.authority),key(context.root));
+  const context=contexts.get(record);if(context?.coverage.status==='complete')return record;
+  const root=context?key(context.root):creditReference(record);
+  if(!root)return record;
+  const next=readLedgerFundingContext(family(record.authority),root);
   if(!next)return record;
   // A missing parent may now be held, but the selected root must still agree
   // with the receipt's own amount and exact native units.

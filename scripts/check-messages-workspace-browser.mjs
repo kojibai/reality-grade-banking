@@ -19,6 +19,26 @@ for(const [engine,type] of Object.entries(process.env.MESSAGES_BROWSER_ENGINES==
   try{
    await page.goto(origin+'/tests/browser/messages-retained.html?appointment&'+channel);
    await page.getByRole('button',{name:'Open conversation Mira',exact:true}).click();
+   const sheet=page.locator('.bank-messages-sheet[open]'),bounds=await sheet.boundingBox();
+   assert.ok(bounds);
+   if(width<=600){
+    assert.deepEqual(bounds,{x:0,y:0,width,height:950},'Messages fills the phone viewport');
+    if(channel==='own'){
+     const composer=page.getByRole('textbox',{name:'Message…',exact:true});
+     await composer.fill('Draft stays above the keyboard');
+     await page.setViewportSize({width,height:540});
+     await page.waitForFunction(()=>document.querySelector('.bank-messages-sheet').getBoundingClientRect().height===540);
+     const field=await composer.boundingBox();
+     assert.ok(field&&field.y+field.height<=540);
+     assert.equal(await composer.inputValue(),'Draft stays above the keyboard');
+     await composer.fill('');
+     await composer.blur();
+     await page.setViewportSize({width,height:950});
+    }
+   }else{
+    assert.equal(bounds.width,480,'Desktop keeps the compact Messages dialog');
+    assert.ok(bounds.x>0&&bounds.y>0);
+   }
    await page.getByRole('button',{name:'Review appointment from message',exact:true}).click();
    const form=page.locator('.bank-message-appointment-form');
    assert.equal(await form.locator('[name=attendees]').inputValue(),channel==='email'?'mira@example.test':'');
@@ -34,6 +54,8 @@ for(const [engine,type] of Object.entries(process.env.MESSAGES_BROWSER_ENGINES==
    await page.getByText('Saved to Calendar',{exact:true}).waitFor();
    const writes=await page.evaluate(()=>window.calendarWrites);assert.equal(writes.length,1);assert.equal(writes[0].metadata.sourceMessageId,'44444444-4444-4444-8444-444444444444');assert.equal(writes[0].metadata.conversationId,'33333333-3333-4333-8333-333333333333');
    await page.getByRole('button',{name:'Schedule appointment',exact:true}).click();await page.getByRole('textbox',{name:'Appointment title',exact:true}).waitFor();assert.equal(await page.locator('.organizer-form [name=attendees]').inputValue(),channel==='email'?'mira@example.test':'');
+   await sheet.locator(':scope > .sheet-header').getByRole('button',{name:'Close',exact:true}).click();
+   await sheet.waitFor({state:'hidden'});
    assert.deepEqual(errors,[]);results.push({engine,width,channel,layout,calendarWrites:1});
   }finally{await context.close();}}
   const ctx=await browser.newContext({viewport:{width,height:950},serviceWorkers:'block'}),twin=await ctx.newPage();

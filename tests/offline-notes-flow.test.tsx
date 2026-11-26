@@ -353,6 +353,21 @@ test('only offers addressed Notes when the device has no verified protected Note
  } finally {act(()=>root.unmount());}
 });
 
+test('defaults to connected Open Note with no username on an unqualified device',async()=>{
+ const openConnected={review:vi.fn(async()=>({rail:'reserve',amountUsdCents:'10000'})),create:vi.fn(async()=>({noteId:'open',rail:'reserve',amountUsdCents:'10000',consumption:'connection-required',image:new Uint8Array([1])}))};
+ const identity={offlineNotes:async()=>({addressedCreationByDefault:true,savedNotes:async()=>[],pending:async()=>null,openConnected})} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
+  expect(host.querySelector('[role=combobox]')).toBeNull();
+  expect(host.querySelector('summary')?.textContent).toContain('Open Note');
+  await act(async()=>click(host,'Review note'));
+  expect(openConnected.review).toHaveBeenCalledExactlyOnceWith('10000');
+  await act(async()=>click(host,'Create funded note'));
+  expect(openConnected.create).toHaveBeenCalledExactlyOnceWith('10000','reserve');
+  expect(host.textContent).toContain('Your note is ready.');
+ }finally{act(()=>root.unmount());}
+});
 test('offers Send nearby without starting new Note funding while disconnected', async () => {
  const onUseSendNearby=vi.fn(),review=vi.fn(),create=vi.fn();
  const identity={offlineNotes:async()=>({addressedCreationByDefault:true,savedNotes:async()=>[],pending:async()=>null,review,create})} as unknown as OpenIdentity;

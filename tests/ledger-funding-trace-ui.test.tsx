@@ -104,3 +104,27 @@ it('keeps funding sources and full history as independent compact disclosures un
   expect(history.textContent).toContain('Recorded acquisition');expect(sources.open).toBe(true);expect(fetch).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
 });
+it('shows the source breakdown and nests the full history inside a carried funding credit',()=>{
+ const credit={kind:'credit',id:'incoming'},original={kind:'proof-basis',id:'original'},digest='d'.repeat(64);
+ const record=parsePublicNetworkPage('wallet',{ok:true,events:[{id:'incoming',kind:'credit',amountUsdCents:'700',
+  valueReceipt:{settledUsdCents:'200',phiUsdCents:'500'}}],fundingContexts:{schema:'receiz.wallet.funding-context.v1',
+   root:credit,nodes:{'credit:incoming':{ref:credit,parents:[original],amountUsdCents:'700'},
+    'proof-basis:original':{ref:original,parents:[],originalDigest:digest}}}}).records[0];
+ const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div'),root=createRoot(host);
+ try{
+  act(()=>root.render(<LedgerFundingTrace record={record}/>));
+  expect(host.querySelector('.ledger-funding-full')).toBeNull();
+  openSources(host);
+  const funds=host.querySelector('.ledger-funding-sources')!;
+  expect(funds.textContent).toContain('Source of funds');
+  expect(funds.textContent).toContain('$7.00');
+  expect(funds.textContent).toContain('$2.00');
+  expect(funds.textContent).toContain('$5.00');
+  const history=funds.querySelector<HTMLDetailsElement>('.ledger-funding-full')!;
+  act(()=>{history.open=true;history.dispatchEvent(new Event('toggle'));});
+  expect(history.textContent).toContain('This funding credit');
+  expect(history.textContent).toContain(digest);
+  expect(fetch).not.toHaveBeenCalled();
+ }finally{act(()=>root.unmount());vi.unstubAllGlobals();}
+});

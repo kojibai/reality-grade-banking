@@ -10,6 +10,10 @@ export type BankNoteDepositResult=BankNoteDeposit|BankReceivedNoteDeposit|BankFo
 export interface BankNotePending extends Omit<BankNoteReview, 'rail'> { noteId: string; rail?: BankNoteRail; canCancel?: boolean; hasCustomArtwork?: true; }
 export interface BankOfflineNotes {
   addressedCreationByDefault?: true;
+  openConnected?: {
+    review(amount: string): Promise<BankNoteReview>;
+    create(amount: string, rail?: BankNoteRail): Promise<BankNoteImage>;
+  };
   exportNote?(id:string):Promise<BankNoteImage>;
   exportImage?(image:Uint8Array,noteId:string):Promise<Uint8Array>;
   exportReceivedNote?(noteId:string):Promise<Uint8Array>;

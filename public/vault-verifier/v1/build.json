@@ -2016,7 +2016,7 @@
     },
     {
       "path": "src/receiz/connected-note-application.ts",
-      "sha256": "d09c7e778889543a293b646a246137cead066886b9c7975c89c9ba4ade9f3612"
+      "sha256": "90d3b0b5c07e1049d9de2c207db5f781706065268c5042a990c08d8fa1a22d23"
     },
     {
       "path": "src/receiz/connected-note-runtime.ts",
@@ -2132,7 +2132,7 @@
     },
     {
       "path": "src/receiz/offline-notes.ts",
-      "sha256": "a57c31961d46f9eddc8cfd81d06fe37709f575588efe0728f2098ba3e45b9828"
+      "sha256": "dca03fe9c9186c6e78d75fe234235fd65a2e341fb14f271d0dac1c38a1d85bc4"
     },
     {
       "path": "src/receiz/organizer-paths.ts",
@@ -2281,8 +2281,8 @@
       "bytes": 11399581
     },
     "inspector.js.map": {
-      "sha256": "e93899d16dc0606e479a197de84bfae62c21ae0ad2af36bdbcfb87c2cc48d47d",
-      "bytes": 30023682
+      "sha256": "d1ea258439b4f0234ba2debd28c95a0f8dd84d57b089a928487fc98b82cc485a",
+      "bytes": 30023768
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
