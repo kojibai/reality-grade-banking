@@ -52,9 +52,9 @@ it('applies a signed currency decision in place when the final elector’s closu
  const members=charterElectorate(charter.document.terms.rules);
  const closures=members.map((author,index)=>({digest:String(index).padStart(64,'0'),pulse:'99999999',profileUid:null,
   document:{...charter.document,author,terms:{kind:'closure' as const,charter:charter.digest,proposal:proposal.digest,evidence:[]}}}));
- const identity={currencyGovernance:vi.fn()} as unknown as OpenIdentity;
  const asset={headSourceSha256:'c'.repeat(64)};
- applyCurrencyDecision.mockResolvedValue({status:'applied',asset,sourceSha256:asset.headSourceSha256});
+ const identity={currencyGovernance:vi.fn(),backedAssetPublication:async()=>({readPublicAsset:async()=>({asset})})} as unknown as OpenIdentity;
+ applyCurrencyDecision.mockResolvedValue({status:'applied',assetId:proposal.document.terms.currencyChange.assetId,sourceSha256:asset.headSourceSha256});
  const render=(complete:boolean)=>act(async()=>root.render(<CurrencyDecisionApplication {...{proposal,charter,read,identity,onApplied}}
   rows={[...rows,...(complete?closures:closures.slice(1))]}/>));
  try{

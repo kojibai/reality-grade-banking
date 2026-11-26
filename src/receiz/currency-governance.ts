@@ -23,7 +23,21 @@ export async function retainRatifiedCurrencyCharter(identity: OpenIdentity, char
   return { governanceCharterSha256: charter.digest, governanceEvidenceSha256: result.governanceEvidenceSha256 };
 }
 
-export async function applyCurrencyDecision(identity: OpenIdentity, proposal: Row<'proposal'>, rows: readonly GovernanceRow[], read: (digest: string) => Promise<GovernanceOriginal>) {
+type CurrencyReceipt = { status: 'rejected' } | { status: 'applied'; assetId: string; sourceSha256: string };
+const deliveries = new WeakMap<OpenIdentity, Map<string, Promise<CurrencyReceipt>>>();
+
+export function applyCurrencyDecision(identity: OpenIdentity, proposal: Row<'proposal'>, rows: readonly GovernanceRow[], read: (digest: string) => Promise<GovernanceOriginal>) {
+  const attempts = deliveries.get(identity) ?? new Map<string, Promise<CurrencyReceipt>>();
+  deliveries.set(identity, attempts);
+  const pending = attempts.get(proposal.digest);
+  if (pending) return pending;
+  const delivery = submitCurrencyDecision(identity, proposal, rows, read);
+  attempts.set(proposal.digest, delivery);
+  void delivery.then(result => { if (result.status === 'rejected') attempts.delete(proposal.digest); }, () => { attempts.delete(proposal.digest); });
+  return delivery;
+}
+
+async function submitCurrencyDecision(identity: OpenIdentity, proposal: Row<'proposal'>, rows: readonly GovernanceRow[], read: (digest: string) => Promise<GovernanceOriginal>) {
   if (!identity.currencyGovernance) throw Error('Open a Bankeiz account to deliver the decision proof.');
   const originals = await collectClosedEvidence(proposal, rows, read);
   const decision = await readGovernanceDecision({ proposal: proposal.digest, originals });
@@ -38,6 +52,5 @@ export async function applyCurrencyDecision(identity: OpenIdentity, proposal: Ro
   if (result?.status !== 'applied' || result.proposalSha256 !== proposal.digest || result.assetId !== assetId || !hex(result.sourceSha256)) {
     throw Error('The currency’s accepted change is unavailable.');
   }
-  const { asset } = await (await identity.backedAssetPublication()).readPublicAsset(assetId);
-  return { status: 'applied' as const, asset, sourceSha256: result.sourceSha256 };
+  return { status: 'applied' as const, assetId, sourceSha256: result.sourceSha256 };
 }

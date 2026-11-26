@@ -33,7 +33,8 @@ export function CurrencyDecisionApplication({ proposal, charter, rows, read, ide
         else {
           setSource(result.sourceSha256);
           setMessage('The currency change was applied.');
-          onApplied?.(result.asset);
+          if (onApplied) void identity!.backedAssetPublication().then(reader => reader.readPublicAsset(result.assetId))
+            .then(({ asset }) => { if (active) onApplied(asset); }).catch(() => { /* The accepted receipt stays visible. */ });
         }
       } catch (error) {
         if (!active) return;
@@ -44,7 +45,7 @@ export function CurrencyDecisionApplication({ proposal, charter, rows, read, ide
     }
     void sync();
     return () => { active = false; };
-  }, [identity, proposal.digest, evidence, signatures, members.length, retry, source]);
+  }, [identity, proposal.digest, evidence, signatures, members.length, retry]);
   useEffect(() => {
     const online = () => setRetry(value => value + 1);
     window.addEventListener('online', online);

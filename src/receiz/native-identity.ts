@@ -606,19 +606,6 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     await directory.admitPublicGovernanceRow(row);
     if(!directory.governanceRows().some(item=>item.digest===original.digest))throw Error('The exact governance Original was not acknowledged.');
     noteOpen();
-    if(original.document.terms.kind==='closure'){
-      const {proposal}=original.document.terms;
-      void (async()=>{
-        await directory.refreshGovernanceDirectory();
-        noteOpen();
-        const {ofKind}=await import('./governance-view'),rows=directory.governanceRows();
-        const target=ofKind(rows,'proposal').find(row=>row.digest===proposal);
-        if(target?.document.terms.currencyChange){
-          const {applyCurrencyDecision}=await import('./currency-governance');
-          await applyCurrencyDecision(openedIdentity,target,rows,directory.heldGovernanceOriginal);
-        }
-      })().catch(()=>{});
-    }
   }
   function recordExports(){
     noteOpen();recordProofExports??=Promise.all([import('./record-proof-export'),import('./identity-vault')]).then(([{createRecordProofExports},storage])=>createRecordProofExports({
