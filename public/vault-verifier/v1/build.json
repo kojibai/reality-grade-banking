@@ -1940,7 +1940,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "6a27869537ec6657f8865f028922bffac374a303e94b939e5b33a29c9ccd8459"
+      "sha256": "ebe74dab88a889b4aa318cfd67dc93f37fa7beeb09f18e606ad034d6253970d9"
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
@@ -2277,11 +2277,11 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "2e640fe2749a0504f3ed6cf916e183fa37e9b497004f6c6f04ad4dd27386f109",
+      "sha256": "bcab46fd87831c28bf644429cb7228abefc05af4b7f9bbb8231be4b6f521b72c",
       "bytes": 11399581
     },
     "inspector.js.map": {
-      "sha256": "d1ea258439b4f0234ba2debd28c95a0f8dd84d57b089a928487fc98b82cc485a",
+      "sha256": "9a14ecf0c946ad9daf8f698606bea388dfd2be22815f613c1c2e85458fc0289b",
       "bytes": 30023768
     },
     "verify.mjs": {
@@ -2289,7 +2289,7 @@
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "0ab20b8b1cdece6f9777b6c3b74ef48c506a308ed258b8724f347cf9f475a73b",
+      "sha256": "553d5be004ed92e9de866f0a35c3955eae5834daaa38c5bbd892e168393719b7",
       "bytes": 11404431
     },
     "README.txt": {

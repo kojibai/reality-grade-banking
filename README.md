@@ -4,7 +4,7 @@
 
 [![Verify reference](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/kojibai/reality-grade-banking/actions/workflows/verify.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/License-GPL--3.0--only-2349d8.svg)](LICENSE)
-[![Bankeiz 7.0.0](https://img.shields.io/badge/Bankeiz-7.0.0-2349d8.svg)](docs/releases/7.0.0.md)
+[![Bankeiz 9.0.0](https://img.shields.io/badge/Bankeiz-9.0.0-2349d8.svg)](docs/releases/9.0.0.md)
 [![Receiz v129](https://img.shields.io/badge/Receiz-129.5.0-2349d8.svg)](package.json)
 
 Reality-Grade Banking is an open banking architecture and receiving standard for money
@@ -31,7 +31,11 @@ ordinary account amount; they do not require the user to choose separate kinds
 of money. A dollar reference, an asset valuation and an executed payment each
 retain their actual meaning.
 
-**The payment moves. Its proof stays connected.**
+**Bankeiz 9.0.0 · Make your own economy.** Transfer shares, a whole Original,
+or an exact piece of one. Issue a currency, service credit, coupon, or reward.
+Use nearby payments when the internet is down and follow the funding history
+when you need it. [What changed in 9.0.0](docs/releases/9.0.0.md) ·
+[Qualification and publication](docs/releases/9.0.0-qualification.md)
 
 [Open Bankeiz](https://bankeiz.com/) ·
 [Explore assets](https://bankeiz.com/explore/) ·
@@ -291,6 +295,19 @@ See the [origin contract](docs/bankeiz-origin-activation.md),
 [qualification requirements](institution/qualification.md).
 
 ## Release evidence
+
+**[Bankeiz 9.0.0 — Make your own economy](docs/releases/9.0.0.md)**
+
+The [complete inventory](docs/releases/9.0.0-commit-inventory.json) covers 61
+implementation commits since the published 8.0.0 tag. See the
+[qualification record](docs/releases/9.0.0-qualification.md) for the tested
+scope, physical-device results, and publication state.
+
+**[Bankeiz 8.0.0 — Value that keeps moving](docs/releases/8.0.0.md)**
+
+Version 8 brought Wallet funding, nearby payments, and retained signing and
+delivery into the same flow. Its [qualification record](docs/releases/8.0.0-qualification.md)
+keeps the exact scope and evidence.
 
 **[Bankeiz 7.0.0 — An economy you can inspect](docs/releases/7.0.0.md)**
 

@@ -1,0 +1,2178 @@
+{
+  "schema": "bankeiz.release-source-inventory.v1",
+  "scope": "Exact committed changes from the published v8.0.0 tag through the v9 implementation checkpoint. The following release commit adds version metadata and release records.",
+  "baseline": {
+    "tag": "v8.0.0",
+    "commit": "588c4a0ff416d40d88bf6e0103f6d16ce14e1951",
+    "tree": "3721cceccf2467e86bc56024d04fd511d0855ac4"
+  },
+  "head": {
+    "commit": "06cd676647660e4854d2cd70620a7d0ef5772cc2",
+    "tree": "a406cdd618e8a1ea966289e370cc2090a01a189e"
+  },
+  "counts": {
+    "reachableCommits": 61,
+    "netChangedFileRecords": 402
+  },
+  "commitsOldestFirst": [
+    {
+      "sha": "28a91416cad90d84e11db820990c9d52984ede18",
+      "tree": "bd0eb503e7d892774e4437eaf3a92899c9f3bc54",
+      "parents": [
+        "588c4a0ff416d40d88bf6e0103f6d16ce14e1951"
+      ],
+      "authoredAt": "2026-11-24T07:42:09-05:00",
+      "subject": "Show local time and Kai pulse in Voting"
+    },
+    {
+      "sha": "f3f8464449b888da2a18dbbb73d7fb8d99631f6d",
+      "tree": "b5c08e679e2c2ed64858f5743eaa28f03221930f",
+      "parents": [
+        "28a91416cad90d84e11db820990c9d52984ede18"
+      ],
+      "authoredAt": "2026-11-24T09:14:26-05:00",
+      "subject": "Align Learn appearance and Receiz release downloads"
+    },
+    {
+      "sha": "361829140e751e12e166f23e0a9ae4d93f9dd124",
+      "tree": "f2b07b2e3deb6608a3680209a315707af5f40228",
+      "parents": [
+        "f3f8464449b888da2a18dbbb73d7fb8d99631f6d"
+      ],
+      "authoredAt": "2026-11-24T09:49:02-05:00",
+      "subject": "Limit Learn controls to their public footer"
+    },
+    {
+      "sha": "093d5c9856fa2e76996e1b814ffb26cfef11a1c0",
+      "tree": "2a266ff09173d9987104a26b1fe4964f1f3ca975",
+      "parents": [
+        "361829140e751e12e166f23e0a9ae4d93f9dd124"
+      ],
+      "authoredAt": "2026-11-24T09:55:08-05:00",
+      "subject": "Explain offline Wallet setup and balance availability"
+    },
+    {
+      "sha": "9d269050ce2976a1ef1f9154419d79d73755bf6f",
+      "tree": "31159c288d0a119ca3132b495c728486947664fb",
+      "parents": [
+        "093d5c9856fa2e76996e1b814ffb26cfef11a1c0"
+      ],
+      "authoredAt": "2026-11-24T10:20:02-05:00",
+      "subject": "Clarify Offline cash and resume regular Wallet Send"
+    },
+    {
+      "sha": "f002667ebb20d0bbbbf9949ac22b0433b78adf97",
+      "tree": "947a8e51f54ac38486c1f1080d6a16b70d6b7805",
+      "parents": [
+        "9d269050ce2976a1ef1f9154419d79d73755bf6f"
+      ],
+      "authoredAt": "2026-11-24T11:16:00-05:00",
+      "subject": "Queue approved distant Wallet payments until reconnect"
+    },
+    {
+      "sha": "97b033c24eafa355aab406a396c0d6c8996a2b30",
+      "tree": "76002cc5f53abe5ab3f485eddfdf1eb346a02c03",
+      "parents": [
+        "f002667ebb20d0bbbbf9949ac22b0433b78adf97"
+      ],
+      "authoredAt": "2026-11-24T11:56:45-05:00",
+      "subject": "Fix dark contrast across the conformance workspace"
+    },
+    {
+      "sha": "c25d471616eded941fdadfac7cdf9448251f4401",
+      "tree": "8e658c1f79fd3fdca05ed411815894345ee8f719",
+      "parents": [
+        "97b033c24eafa355aab406a396c0d6c8996a2b30"
+      ],
+      "authoredAt": "2026-11-24T12:01:21-05:00",
+      "subject": "Check external security keys in device conformance"
+    },
+    {
+      "sha": "a9a8d3176325f587e07737e98be54a984c9d9f62",
+      "tree": "87ce591ae1b1836dfcbbb2ac5509a44d45ebd666",
+      "parents": [
+        "c25d471616eded941fdadfac7cdf9448251f4401"
+      ],
+      "authoredAt": "2026-11-24T12:27:12-05:00",
+      "subject": "Use live deterministic collection caps in Analytics"
+    },
+    {
+      "sha": "3e5e013bd1e547bb154c3c6e2213ec9ad6f6a8ba",
+      "tree": "b53bd3a2c78462d522c0696757cf364c0d6fa7ed",
+      "parents": [
+        "a9a8d3176325f587e07737e98be54a984c9d9f62"
+      ],
+      "authoredAt": "2026-11-24T12:30:43-05:00",
+      "subject": "Verify live Analytics caps after held-page hydration"
+    },
+    {
+      "sha": "2339c8afa3db37cb022b183b5eab35dbcee02995",
+      "tree": "40ea642bd6e664efeb6bbcd237440bdb728e5ec5",
+      "parents": [
+        "3e5e013bd1e547bb154c3c6e2213ec9ad6f6a8ba"
+      ],
+      "authoredAt": "2026-11-24T13:39:07-05:00",
+      "subject": "Add the shared color mode switch to Conformance"
+    },
+    {
+      "sha": "34313b4685841ebed0c4b8f899e652b407f5d6f5",
+      "tree": "e8808d48ac796a9d022abf2312ab8b99631bf56b",
+      "parents": [
+        "2339c8afa3db37cb022b183b5eab35dbcee02995"
+      ],
+      "authoredAt": "2026-11-24T14:01:11-05:00",
+      "subject": "Complete Original purchases in Bankeiz checkout"
+    },
+    {
+      "sha": "ced5c4cf3702951ce643ca0ac77c1a7f51ad17f0",
+      "tree": "0de6f808bb160e72016deaa7e427bf0cb692c302",
+      "parents": [
+        "34313b4685841ebed0c4b8f899e652b407f5d6f5"
+      ],
+      "authoredAt": "2026-11-24T14:19:49-05:00",
+      "subject": "Keep held Market coverage and ignore superseded refresh errors"
+    },
+    {
+      "sha": "d0fb015a398589ed7b81a04bdde28e0bcf1ac003",
+      "tree": "e276d465f55dabb845b4a9f1fe8cf27111dcd535",
+      "parents": [
+        "ced5c4cf3702951ce643ca0ac77c1a7f51ad17f0"
+      ],
+      "authoredAt": "2026-11-24T14:19:49-05:00",
+      "subject": "Restore shared styles in Meet walkthroughs"
+    },
+    {
+      "sha": "757bd72335e2195f8f40f56969a6202bc4978b50",
+      "tree": "07409254b8e1c5d39bd69789567fe58bd28abd3a",
+      "parents": [
+        "d0fb015a398589ed7b81a04bdde28e0bcf1ac003"
+      ],
+      "authoredAt": "2026-11-24T14:32:27-05:00",
+      "subject": "Support offline Wallet handoffs and mixed payments"
+    },
+    {
+      "sha": "2b0ead3f0fffec287f56eedfbb89f6689e49838a",
+      "tree": "68482ab63711dd1946b556682e619cf9603cff55",
+      "parents": [
+        "757bd72335e2195f8f40f56969a6202bc4978b50"
+      ],
+      "authoredAt": "2026-11-24T16:08:09-05:00",
+      "subject": "Guide offline payments and keep connected Notes addressed"
+    },
+    {
+      "sha": "2badefbbf97f8fa59a138d640568d06919e58db3",
+      "tree": "d207c4c0c16244f63b9bfd9d7354546be1e405dd",
+      "parents": [
+        "2b0ead3f0fffec287f56eedfbb89f6689e49838a"
+      ],
+      "authoredAt": "2026-11-24T16:28:56-05:00",
+      "subject": "Associate Bankeiz with its signed Android app"
+    },
+    {
+      "sha": "fca022e63e8792fcf5368a6393fb89422ec4c731",
+      "tree": "2ec30971fee573aa85c2073b72bb98be68cb2829",
+      "parents": [
+        "2badefbbf97f8fa59a138d640568d06919e58db3"
+      ],
+      "authoredAt": "2026-11-24T18:25:54-05:00",
+      "subject": "Enable Bankeiz Android Offline Cash and Notes"
+    },
+    {
+      "sha": "5f19ec9b0cbd25e9642ce401c2ab430fb7b3c2c9",
+      "tree": "c4ad2486d98e5ded0be8e6ccad13fbe8bcc089b8",
+      "parents": [
+        "fca022e63e8792fcf5368a6393fb89422ec4c731"
+      ],
+      "authoredAt": "2026-11-24T18:30:32-05:00",
+      "subject": "Record Android verifier conformance and launch routing"
+    },
+    {
+      "sha": "c7203f8e7abd85e918f2e4cc026496b8a2240d06",
+      "tree": "9949916d57b5c9bff63bf5325ce49b26a8ffb1ae",
+      "parents": [
+        "5f19ec9b0cbd25e9642ce401c2ab430fb7b3c2c9"
+      ],
+      "authoredAt": "2026-11-24T18:32:30-05:00",
+      "subject": "Keep local Android build files out of source downloads"
+    },
+    {
+      "sha": "206ebe8cca88c3f4c01613009b76f7380ded62ae",
+      "tree": "9ba7c31dcaf714f426cbb5cd4a3fa52795fee872",
+      "parents": [
+        "c7203f8e7abd85e918f2e4cc026496b8a2240d06"
+      ],
+      "authoredAt": "2026-11-24T18:36:57-05:00",
+      "subject": "Publish the signed Bankeiz 8.0.0 Android download"
+    },
+    {
+      "sha": "9d9231df4fd0ba2ca091fd89c23db7d6f32c115a",
+      "tree": "ee4542a445563a45d1173607eddad2699af9a378",
+      "parents": [
+        "206ebe8cca88c3f4c01613009b76f7380ded62ae"
+      ],
+      "authoredAt": "2026-11-24T18:51:09-05:00",
+      "subject": "Make payment QR the primary offline Send action"
+    },
+    {
+      "sha": "ce87a93d9bfe946c9ecb79ee30c4541d734ed883",
+      "tree": "99248d7937bfd968adff48b09b8a868198d2797f",
+      "parents": [
+        "9d9231df4fd0ba2ca091fd89c23db7d6f32c115a"
+      ],
+      "authoredAt": "2026-11-24T18:53:04-05:00",
+      "subject": "Keep the Android download on demand during offline builds"
+    },
+    {
+      "sha": "8620f5be30b470049f27fe357adb7c0bde417e24",
+      "tree": "4bec1429d9b7ed752627da4dd4d554004b7ff5fe",
+      "parents": [
+        "ce87a93d9bfe946c9ecb79ee30c4541d734ed883"
+      ],
+      "authoredAt": "2026-11-24T19:22:07-05:00",
+      "subject": "Connect Android Offline Cash to the verified native channel"
+    },
+    {
+      "sha": "113bbec26ca3c85b91c8f9353de06802cac7757b",
+      "tree": "0e92454481080700518d4cb942158b79e1ab65bb",
+      "parents": [
+        "8620f5be30b470049f27fe357adb7c0bde417e24"
+      ],
+      "authoredAt": "2026-11-24T19:58:01-05:00",
+      "subject": "Route Android Offline Cash setup through the native relay"
+    },
+    {
+      "sha": "22b74c7836f2be11c8a0c81cb1b43f208c012fc1",
+      "tree": "568597e57732f586d95096d8cb26203cd9c30a43",
+      "parents": [
+        "113bbec26ca3c85b91c8f9353de06802cac7757b"
+      ],
+      "authoredAt": "2026-11-24T19:58:01-05:00",
+      "subject": "Keep compose inside compact Messages sheets"
+    },
+    {
+      "sha": "a40a280e0cb70420acf691446f1755b7b4e051f0",
+      "tree": "b86b2e60e0e2208bf37ba9b027ea1ac75133ec89",
+      "parents": [
+        "22b74c7836f2be11c8a0c81cb1b43f208c012fc1"
+      ],
+      "authoredAt": "2026-11-24T20:31:36-05:00",
+      "subject": "Open nearby payment QR links in Bankeiz"
+    },
+    {
+      "sha": "1b5511cf6161c1deaa00800ee017105a4406eda4",
+      "tree": "1477b25c2442c8ca37c40b95fef72eeb54111ad1",
+      "parents": [
+        "a40a280e0cb70420acf691446f1755b7b4e051f0"
+      ],
+      "authoredAt": "2026-11-24T20:46:21-05:00",
+      "subject": "Try verified Android hardware custody when StrongBox is unavailable"
+    },
+    {
+      "sha": "fb14eaeea9aa8266e443258d9857ebd662ba7162",
+      "tree": "61cfbd795665658576be7fdfac6be52d23d08023",
+      "parents": [
+        "1b5511cf6161c1deaa00800ee017105a4406eda4"
+      ],
+      "authoredAt": "2026-11-24T20:58:16-05:00",
+      "subject": "Align Kai Klok header colors in dark mode"
+    },
+    {
+      "sha": "d80bebb8728a4da58e5c28fdf919d1335ae6a99c",
+      "tree": "0d006d1bca45286607f2200844da140657cd1370",
+      "parents": [
+        "fb14eaeea9aa8266e443258d9857ebd662ba7162"
+      ],
+      "authoredAt": "2026-11-24T21:01:35-05:00",
+      "subject": "Refresh Android custody source manifest"
+    },
+    {
+      "sha": "4a217b6b4e5fdb79ddfce21d86400f5b53af4b28",
+      "tree": "4280f31a4db28b32ea2b52d987bfd2dcec19c7cc",
+      "parents": [
+        "d80bebb8728a4da58e5c28fdf919d1335ae6a99c"
+      ],
+      "authoredAt": "2026-11-24T21:22:28-05:00",
+      "subject": "Exercise real Bankeiz QR links in wallet pairing test"
+    },
+    {
+      "sha": "fe69a6278f2b747b6a71a6eff4f6157545e95095",
+      "tree": "b12ab579c4429080306d8bbf182ae3e915edd74b",
+      "parents": [
+        "4a217b6b4e5fdb79ddfce21d86400f5b53af4b28"
+      ],
+      "authoredAt": "2026-11-24T22:19:57-05:00",
+      "subject": "Open Send ownership from verified backed holdings"
+    },
+    {
+      "sha": "da44dd7e9a04ef125df989cc6cfa39d7f309e19a",
+      "tree": "3af069c11048e246db779fb5014736c7bc94277d",
+      "parents": [
+        "fe69a6278f2b747b6a71a6eff4f6157545e95095"
+      ],
+      "authoredAt": "2026-11-25T02:54:54-05:00",
+      "subject": "Preserve custom artwork on addressed Notes"
+    },
+    {
+      "sha": "8870d5fab4523fbad75da360bfd73f75b99e1ea2",
+      "tree": "02b28846c49ff88800640f1abf69d8210a19a913",
+      "parents": [
+        "da44dd7e9a04ef125df989cc6cfa39d7f309e19a"
+      ],
+      "authoredAt": "2026-11-25T10:27:58-05:00",
+      "subject": "Guide Market share sends through held Vault custody"
+    },
+    {
+      "sha": "5ffb41f36219ef6f53f0f8bdede8c3ef3569bb83",
+      "tree": "776c6a6a7107a0040d48eee04d8fde75eb47321b",
+      "parents": [
+        "8870d5fab4523fbad75da360bfd73f75b99e1ea2"
+      ],
+      "authoredAt": "2026-11-25T10:55:32-05:00",
+      "subject": "Copy a native Original receiving address from Bankeiz"
+    },
+    {
+      "sha": "8bf29e63cf2143ac67722ac95a1dafe73d09506f",
+      "tree": "76f806196c53273b21dde0216734dc29737d70f3",
+      "parents": [
+        "5ffb41f36219ef6f53f0f8bdede8c3ef3569bb83"
+      ],
+      "authoredAt": "2026-11-25T11:54:07-05:00",
+      "subject": "Make funded Note handoffs the default offline path"
+    },
+    {
+      "sha": "e138c7ff6ba734c7369ae34835b5836979473e94",
+      "tree": "0743033c8aac20d44f5e785131ef83cae8d354ab",
+      "parents": [
+        "8bf29e63cf2143ac67722ac95a1dafe73d09506f"
+      ],
+      "authoredAt": "2026-11-25T12:30:09-05:00",
+      "subject": "Recover witnessed offline Note handoffs after restore"
+    },
+    {
+      "sha": "b9997ecf7db64bc680760af30f187bcfa3dfcee1",
+      "tree": "ed0d829ab9e62106dce8b3f1849fbecb8aa2dbe6",
+      "parents": [
+        "e138c7ff6ba734c7369ae34835b5836979473e94"
+      ],
+      "authoredAt": "2026-11-25T12:37:38-05:00",
+      "subject": "Align CI with the offline Note send flow"
+    },
+    {
+      "sha": "517aa278f0b143c9cddab6020aea1aebfe2fff25",
+      "tree": "8f38001a47874e525d20ebcadc77d80852f882c3",
+      "parents": [
+        "b9997ecf7db64bc680760af30f187bcfa3dfcee1"
+      ],
+      "authoredAt": "2026-11-25T12:50:18-05:00",
+      "subject": "Document offline Note handoffs and final deposit"
+    },
+    {
+      "sha": "1c4edc9736ef63d729690d8dbea696b719f19e15",
+      "tree": "6620c2f36c32a8093eef9b177f4c910555298a50",
+      "parents": [
+        "517aa278f0b143c9cddab6020aea1aebfe2fff25"
+      ],
+      "authoredAt": "2026-11-25T13:16:42-05:00",
+      "subject": "Recover witnessed nearby Wallet debits offline"
+    },
+    {
+      "sha": "7a88d56c90488db5247f6b9513562b25aa677f16",
+      "tree": "1eef3189ff156056aea3ccb456b39a53568f0ccb",
+      "parents": [
+        "1c4edc9736ef63d729690d8dbea696b719f19e15"
+      ],
+      "authoredAt": "2026-11-25T14:07:01-05:00",
+      "subject": "Preserve pending nearby Wallet custody on identity replacement"
+    },
+    {
+      "sha": "9ae1d5146422937a01879bb9da52706fdec0568a",
+      "tree": "b3bf41ea5e8a13418797b77216c3ae73ba47db65",
+      "parents": [
+        "7a88d56c90488db5247f6b9513562b25aa677f16"
+      ],
+      "authoredAt": "2026-11-25T14:54:07-05:00",
+      "subject": "Compose witnessed offline payments in the Bankeiz Wallet runtime"
+    },
+    {
+      "sha": "1c5bb7d83cd98ed7f922a50d8c3ecd73644f087a",
+      "tree": "b6c920456366d81dcde3e05b5254a5eb6b3790ba",
+      "parents": [
+        "9ae1d5146422937a01879bb9da52706fdec0568a"
+      ],
+      "authoredAt": "2026-11-25T15:18:56-05:00",
+      "subject": "Pair Wallets and scan witnessed payments in Bankeiz"
+    },
+    {
+      "sha": "23f551e5ab6b55dee1c2c137d876c1f264855992",
+      "tree": "edde79a11c1c6bc0c1c3a526076d42af535dd5f9",
+      "parents": [
+        "1c5bb7d83cd98ed7f922a50d8c3ecd73644f087a"
+      ],
+      "authoredAt": "2026-11-25T18:24:21-05:00",
+      "subject": "Recover Wallet debits from recipient payment proofs"
+    },
+    {
+      "sha": "29010404e61f943cae46aeb13eb48b445d0e4cee",
+      "tree": "4a310b2e4a68c50a3e5e2309bfbc34fb74bc4d8e",
+      "parents": [
+        "23f551e5ab6b55dee1c2c137d876c1f264855992"
+      ],
+      "authoredAt": "2026-11-25T19:25:21-05:00",
+      "subject": "Recover signed Wallet debits from the iPhone PWA archive"
+    },
+    {
+      "sha": "2dc702fafbfc3a70630c195e9259c1d8528a58dd",
+      "tree": "7d28998ea00ef65e8c7defc75efe6e0bcb495dcf",
+      "parents": [
+        "29010404e61f943cae46aeb13eb48b445d0e4cee"
+      ],
+      "authoredAt": "2026-11-25T19:46:38-05:00",
+      "subject": "Save exact Wallet recovery proofs to Files"
+    },
+    {
+      "sha": "326ec94fb8fa184e405744b57230b1572d54d175",
+      "tree": "4abd663cf304fa9019afd5aead163f35d88c4dfb",
+      "parents": [
+        "2dc702fafbfc3a70630c195e9259c1d8528a58dd"
+      ],
+      "authoredAt": "2026-11-25T19:57:38-05:00",
+      "subject": "Check Wallet recovery files against retained signed history"
+    },
+    {
+      "sha": "4a6eb35742a985b03c5847ec096c36e005cca0b3",
+      "tree": "a550359146e6fc0eeed475d903cba0661c0d692c",
+      "parents": [
+        "326ec94fb8fa184e405744b57230b1572d54d175"
+      ],
+      "authoredAt": "2026-11-25T20:06:22-05:00",
+      "subject": "Keep latest signed Wallet debits available for recovery export"
+    },
+    {
+      "sha": "dfb3c64d8e8b35eef8c8618975f9758ba9e47811",
+      "tree": "af45b2bb26464f059ee12658e43793a97453c941",
+      "parents": [
+        "4a6eb35742a985b03c5847ec096c36e005cca0b3"
+      ],
+      "authoredAt": "2026-11-25T20:25:42-05:00",
+      "subject": "Recover retained Wallet debits before signing offline"
+    },
+    {
+      "sha": "a8f4d12bc44c18d194307e41ddf2074d5109f69d",
+      "tree": "784c30f3956f007ca568b83bd7a3c1dde530c6dd",
+      "parents": [
+        "dfb3c64d8e8b35eef8c8618975f9758ba9e47811"
+      ],
+      "authoredAt": "2026-11-25T22:17:46-05:00",
+      "subject": "Improve Wallet recovery file handling on iPhone"
+    },
+    {
+      "sha": "700c332198cbf5edfbcc34f3926970ac8fa2c27c",
+      "tree": "7c79782f45adbfa1e5482f5278620f4e1c50d1ea",
+      "parents": [
+        "a8f4d12bc44c18d194307e41ddf2074d5109f69d"
+      ],
+      "authoredAt": "2026-11-25T21:31:05-05:00",
+      "subject": "Connect fixed-cap currency issuance and transfers in Bankeiz"
+    },
+    {
+      "sha": "4731ab954b92862a6b37d66372ad3de3d067ec56",
+      "tree": "3d47d4d60f0444a3d02403c1773beb8a5d946491",
+      "parents": [
+        "700c332198cbf5edfbcc34f3926970ac8fa2c27c"
+      ],
+      "authoredAt": "2026-11-25T23:03:51-05:00",
+      "subject": "Link currency settings and community voting in place"
+    },
+    {
+      "sha": "258c1079f1de7a89a5c45af96bb0fd42ad2f354c",
+      "tree": "856e3a0652c32532960e87ea5ffea97edf580b5c",
+      "parents": [
+        "4731ab954b92862a6b37d66372ad3de3d067ec56"
+      ],
+      "authoredAt": "2026-11-25T23:53:09-05:00",
+      "subject": "Show held currency prices and causal activity in Market and Ledger"
+    },
+    {
+      "sha": "cce8388cfbddfd1efffe2d94d46e7896c245b028",
+      "tree": "1c72ea15f8d2086dc3f64999124418c3339c8d77",
+      "parents": [
+        "258c1079f1de7a89a5c45af96bb0fd42ad2f354c"
+      ],
+      "authoredAt": "2026-11-26T00:07:44-05:00",
+      "subject": "Keep one Receive scanner and deposit currency notes in Receive"
+    },
+    {
+      "sha": "eab070112b8c53135d599303584f142796d67dd4",
+      "tree": "ab9f1a340982e5d0f4e27bdfe511c546d62bc081",
+      "parents": [
+        "cce8388cfbddfd1efffe2d94d46e7896c245b028"
+      ],
+      "authoredAt": "2026-11-26T00:17:08-05:00",
+      "subject": "Use a single Notes entry in Add for both note types"
+    },
+    {
+      "sha": "cf9d0866c09323fb5a08e4ce894be1c5048e7bf2",
+      "tree": "00636a495af3f0a9849ac856c9a2a69b424b06a3",
+      "parents": [
+        "eab070112b8c53135d599303584f142796d67dd4"
+      ],
+      "authoredAt": "2026-11-26T00:24:25-05:00",
+      "subject": "Show current dollar value beside held currency units"
+    },
+    {
+      "sha": "6ac6ef1908dbd402e5ce5f12276fff039368f67b",
+      "tree": "9ff2e33b615cc3a38a8b81dc5f2466f2a18c044f",
+      "parents": [
+        "cf9d0866c09323fb5a08e4ce894be1c5048e7bf2"
+      ],
+      "authoredAt": "2026-11-26T00:51:10-05:00",
+      "subject": "Align Add and Ledger CI with currency UX"
+    },
+    {
+      "sha": "85d3422b73a4596beb57aa78d87f2cc1eefe735b",
+      "tree": "b3e56897c1949defea8a5deb228489239c184bba",
+      "parents": [
+        "6ac6ef1908dbd402e5ce5f12276fff039368f67b"
+      ],
+      "authoredAt": "2026-11-26T01:22:03-05:00",
+      "subject": "Complete Original range transfers and refresh currency markets"
+    },
+    {
+      "sha": "c62a227c9e21ed64aae81f0ea083d6d910ff2236",
+      "tree": "c77fee278e2da20645b1667978fcdab82007f877",
+      "parents": [
+        "85d3422b73a4596beb57aa78d87f2cc1eefe735b"
+      ],
+      "authoredAt": "2026-11-26T01:56:48-05:00",
+      "subject": "Finish currency launch pools and keep Discovery within its budget"
+    },
+    {
+      "sha": "d144d72a4fdfe1e0c7aca2ab016a2c50db7049b3",
+      "tree": "a750b92c3c42305cc106590a93032a0f31898d96",
+      "parents": [
+        "c62a227c9e21ed64aae81f0ea083d6d910ff2236"
+      ],
+      "authoredAt": "2026-11-26T03:06:09-05:00",
+      "subject": "Polish Add, Notes and currency entry and streamline Kai Klok"
+    },
+    {
+      "sha": "06cd676647660e4854d2cd70620a7d0ef5772cc2",
+      "tree": "a406cdd618e8a1ea966289e370cc2090a01a189e",
+      "parents": [
+        "d144d72a4fdfe1e0c7aca2ab016a2c50db7049b3"
+      ],
+      "authoredAt": "2026-11-26T03:29:21-05:00",
+      "subject": "Support connected Open Notes, funding continuity and full-screen mobile Messages"
+    }
+  ],
+  "netChangedFiles": [
+    {
+      "status": "M",
+      "path": "README.md"
+    },
+    {
+      "status": "M",
+      "path": "branding/site-footer.d.mts"
+    },
+    {
+      "status": "M",
+      "path": "branding/site-footer.mjs"
+    },
+    {
+      "status": "M",
+      "path": "docs-app/articles/money.mjs"
+    },
+    {
+      "status": "M",
+      "path": "docs/connected-notes-v129.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/current-function-boundaries.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/iphone-offline-note-registration-v129.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/market-trade-execution.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/note-continuity-standard.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/public-sdk-schemas.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/releases/8.0.0.md"
+    },
+    {
+      "status": "M",
+      "path": "docs/voting-governance-contract.md"
+    },
+    {
+      "status": "M",
+      "path": "institution/build-demo/README.txt"
+    },
+    {
+      "status": "M",
+      "path": "institution/proof-verifier/README.txt"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/AndroidManifest.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/README.md"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/build-probe.sh"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/AndroidCustodyKey.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/AndroidSignatureStorage.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/AttestationFields.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/BankeizWalletHardware.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/OneUseKeyEnrollment.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/OneUseSignatureJournal.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/P256Signature.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/ProbeActivity.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/src/com/kojibai/bankeiz/custodyprobe/WalletKeyProvider.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/AttestationFieldsTest.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/OneUseKeyEnrollmentTest.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/OneUseSignatureJournalTest.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/P256SignatureTest.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android-custody-probe/test/com/kojibai/bankeiz/custodyprobe/WalletKeyProviderTest.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android/.gitignore"
+    },
+    {
+      "status": "A",
+      "path": "native/android/README.md"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/build.gradle"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/debug/res/xml/bankeiz_shortcuts.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/AndroidManifest.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/java/com/kojibai/bankeiz/BankeizLaunchUrl.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/java/com/kojibai/bankeiz/BankeizLauncherActivity.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/java/com/kojibai/bankeiz/BankeizWalletTab.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/java/com/kojibai/bankeiz/DeviceCheckActivity.java"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/res/drawable/bankeiz_launcher_surface.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/res/mipmap-anydpi-v26/bankeiz_launcher.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/res/values/strings.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/app/src/main/res/xml/bankeiz_shortcuts.xml"
+    },
+    {
+      "status": "A",
+      "path": "native/android/assetlinks-from-apk.sh"
+    },
+    {
+      "status": "A",
+      "path": "native/android/gradle.properties"
+    },
+    {
+      "status": "A",
+      "path": "native/android/settings.gradle"
+    },
+    {
+      "status": "A",
+      "path": "native/android/stage-release.sh"
+    },
+    {
+      "status": "A",
+      "path": "native/android/tests/com/kojibai/bankeiz/BankeizLaunchUrlTest.java"
+    },
+    {
+      "status": "M",
+      "path": "native/manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/showcase/bankAssetContent.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/profile/showcase/originalPieceDelivery.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/profile/showcase/originalPieceRanges.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/profile/showcase/originalReceivingAddress.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/profile/types.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/browser.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/connectedNote.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/fundedNote.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/localAccountCredit.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/nativeAssetBacking.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/preparedBrowser.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/bankNotes/redemption.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/wallet/kairosNoteAndroidCustodyAdapter.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNoteArtifact.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNoteCustodyVerification.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNoteLocalTransition.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNotePortableCarrier.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosNoteQualifiedCustodyTransition.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosOfflineNoteLocalIssuance.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/app/lib/wallet/kairosReserveAndroidCustodyAdapter.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/app/lib/wallet/kairosReservePwaCustodyAdapter.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialAndroidWalletCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialBrowser.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialCommit.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialExecution.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialSource.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/accountFinancialWalletCustody.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/androidWalletKeyCertificate.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineNoteAndroidHandoff.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineNoteIrreversibleCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineNotePlatformAttestation.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineReserveAndroidCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/receiz/packages/receiz-sdk/src/offlineReserveWebAuthnCustody.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/accountFinancialBrowser.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/accountFinancialCommit.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/accountFinancialExecution.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/accountFinancialSource.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/accountFinancialWalletCustody.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/offlineNoteIrreversibleCustody.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/offlineNotePlatformAttestation.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/sdk-release-baselines/receiz-sdk/src/offlineReserveWebAuthnCustody.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/vault/app/lib/profile/showcase/bankAssetContent.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/vault/app/lib/wallet/bankNotes/nativeAssetBacking.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/vault/app/lib/wallet/bankNotes/nativeAssetCurrency.ts"
+    },
+    {
+      "status": "M",
+      "path": "native/vault/app/lib/wallet/bankNotes/nativeAssetHolding.ts"
+    },
+    {
+      "status": "A",
+      "path": "native/vault/packages/receiz-sdk/src/nativeWalletEconomics.ts"
+    },
+    {
+      "status": "A",
+      "path": "public/.well-known/assetlinks.json"
+    },
+    {
+      "status": "A",
+      "path": "public/downloads/Bankeiz-8.0.0.apk"
+    },
+    {
+      "status": "A",
+      "path": "public/downloads/SHA256SUMS"
+    },
+    {
+      "status": "A",
+      "path": "public/downloads/android-release.json"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/accept-money.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/business.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/independent-bank.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/learn.css"
+    },
+    {
+      "status": "M",
+      "path": "public/learn/product-walkthrough.css"
+    },
+    {
+      "status": "M",
+      "path": "public/native/asset-publication.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/asset-publication.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/business-seal.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/business-seal.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/offline-notes.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/offline-notes.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.mjs"
+    },
+    {
+      "status": "M",
+      "path": "public/native/receiver-verifier.v129.mjs.map"
+    },
+    {
+      "status": "M",
+      "path": "public/native/vault.v1.manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/native/vault.v1.mjs"
+    },
+    {
+      "status": "A",
+      "path": "public/social/android-ceedf5e107725d26.png"
+    },
+    {
+      "status": "M",
+      "path": "public/social/manifest.json"
+    },
+    {
+      "status": "M",
+      "path": "public/vault-verifier/v1/build.json"
+    },
+    {
+      "status": "M",
+      "path": "public/vault-verifier/v1/inspector.js"
+    },
+    {
+      "status": "M",
+      "path": "public/vault-verifier/v1/inspector.js.map"
+    },
+    {
+      "status": "M",
+      "path": "public/vault-verifier/v1/verify.html"
+    },
+    {
+      "status": "A",
+      "path": "scripts/android-download-page.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "scripts/android-download-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/app-appearance.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-build-demo.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-license-notices.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-meeting-previews.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-offline-shell.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-product-previews.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-proof-verifier.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/build-vault-runtime.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-meeting-browser.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-messages-workspace-browser.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-offline-shell.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-first-frames.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-public-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/client-work-library.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/learning-visuals.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/navigation-envelope.d.mts"
+    },
+    {
+      "status": "M",
+      "path": "scripts/navigation-envelope.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-page-metadata.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/public-sdk-schemas-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/reality-grade-page.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/rebuild-native.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/scope-product-css.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/site-footer.d.mts"
+    },
+    {
+      "status": "M",
+      "path": "scripts/site-footer.mjs"
+    },
+    {
+      "status": "M",
+      "path": "scripts/source-files.mjs"
+    },
+    {
+      "status": "M",
+      "path": "server/native-account.ts"
+    },
+    {
+      "status": "M",
+      "path": "server/profile-runtime/public-market-render-build.json"
+    },
+    {
+      "status": "M",
+      "path": "src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/checkout/CheckoutReceipt.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/checkout/HostedCheckout.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/checkout/OriginalDownload.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/AccountProofDetails.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/KaiKlok.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/SiteFooter.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok-face.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok-motion.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok/CanonicalKaiKlock.css"
+    },
+    {
+      "status": "M",
+      "path": "src/components/kai-klok/CanonicalKaiKlock.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/components/useKaiOrb.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/ConformanceApp.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/DeviceEvidence.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/conformance/device-evidence.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/content/android-download.d.mts"
+    },
+    {
+      "status": "A",
+      "path": "src/content/android-download.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/content/client-work-demo.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/conformance-reference-status.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/learning-pages.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/content/meeting-ui.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/content/note-continuity.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/content/offline-guides.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/content/product-ui.generated.json"
+    },
+    {
+      "status": "M",
+      "path": "src/core/app-appearance.mjs"
+    },
+    {
+      "status": "M",
+      "path": "src/core/routes.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/core/useBank.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/AndroidDownloadLink.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/FundedWalletPayments.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/IdentityProfile.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LiveActions.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/LivePayments.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/NativeOperation.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/OfflineCashOptions.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/PaymentScanner.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/WalletPaymentCode.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/account/WalletSendOperation.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/WitnessedWalletPanel.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/wallet-balance-notice.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/account/wallet-balance-notice.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/AssetComposer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/AssetStudioPreview.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/CreateAsset.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/CurrencySettings.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/IssueCurrency.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/LiveAssets.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/LiveOwnership.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/SendHeldOwnership.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/SendOriginal.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/assets/asset-creation-studio.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/issue-currency.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/ownership-send.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/useHeldAssetSources.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/features/assets/useHeldOriginalPieces.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/deposit/LiveDeposit.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/deposit/ReceivedOriginal.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/deposit/deposit.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/Ledger.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/ledger/LedgerCurrency.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/LedgerFundingTrace.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/ledger/LedgerInspector.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/market/CurrencyPriceHistory.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/LiveMarketTrade.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/Market.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/MarketTradeFlow.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/OriginalPurchase.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicAssetDetail.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicAssetTradePortal.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/PublicObjectRow.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/TradeAmountPresets.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/market/market.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/meeting/StartMeetingPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/meeting/meeting.css"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/MessagesPanel.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/messages/messages.css"
+    },
+    {
+      "status": "A",
+      "path": "src/features/notes/CurrencyNotes.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/notes/ForwardNoteHandoff.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/notes/OfflineNotes.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/notes/note-error.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/features/vault/LegacyVaultExperience.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/vault/NoteVaultExperience.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/vault/VaultExperience.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/CurrencyDecisionApplication.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/GovernanceComposer.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/GovernanceDetail.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/GovernanceRegister.tsx"
+    },
+    {
+      "status": "A",
+      "path": "src/features/voting/GovernanceTime.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/VotingBoard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/features/voting/voting.css"
+    },
+    {
+      "status": "M",
+      "path": "src/main.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/observatory/NetworkAtlas.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/observatory/catalog.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/presentation/ProductScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicAssetPage.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-explorer/PublicAssetTradeHost.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/public-ledger/PublicLedgerApp.tsx"
+    },
+    {
+      "status": "M",
+      "path": "src/pwa/sw.template.js"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/account-proof-statement.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/android-wallet-hardware.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/backed-asset-client.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/bank-operations.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/browser-wallet-archive-worker.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/browser-wallet-archive.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/checkout-notes.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/checkout-request.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/checkout-state.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/connected-note-application.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/connected-note-runtime.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/currency-governance.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/currency-ledger-view.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/currency-notes.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/currency-presets.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/deposit-source.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/device-wallet-recovery.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/fixed-checkout.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/funded-wallet.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/governance-closed-decision.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/governance-documents.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/governance-execution-plan.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/hosted-checkout.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/identity-vault.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-funding-context.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-inspection.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-payment-records.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/ledger-receipts.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/local-financial-runtime.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/local-financial.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-categories.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/build-history.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/market-projection/catalog-sports.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/usePublicAssetPeriods.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-projection/worker.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/market-share-inventory.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-asset-backing.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-asset-holding-protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-asset-holding.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-asset-protocol.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-asset-public-binding.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-identity.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/native-transport.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/note-artwork.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/note-delivery.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/note-design.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/note-handoff-witness.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/note-local-inventory.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/note-received-deposits.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/offline-notes.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/offline-proof-build.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-checkout-path.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-checkout.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-piece-proof.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-piece-runtime.d.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-piece-runtime.js"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/original-pieces.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/payment-decoder.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/payment-qr.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/payment-request.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/proof-library.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-asset-trade.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-ledger-continuity.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-ledger-statement.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market-held-catalog.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-market.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/public-original-purchase.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/usePublicMarket.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/vault/market.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-debit-witness.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-nearby-consent.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-nearby-link.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-nearby-receive.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/wallet-payment-bundle.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-send-deferred.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/receiz/wallet-send.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/wallet-witness-custody.ts"
+    },
+    {
+      "status": "A",
+      "path": "src/receiz/witnessed-wallet.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/appearance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/conformance-appearance.css"
+    },
+    {
+      "status": "A",
+      "path": "src/styles/site-footer-appearance.css"
+    },
+    {
+      "status": "M",
+      "path": "src/styles/site-footer.css"
+    },
+    {
+      "status": "M",
+      "path": "tests/account-proof-closures.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/android-download.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/android-wallet-hardware.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/browser-wallet-archive.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/conformance-startup-loading.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/connected-note-application.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/connected-note-runtime.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/currency-notes.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/currency-price-history.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/device-custody-evidence.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/device-wallet-recovery.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/fixtures/hosted-checkout.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/forwardable-note-custody.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/funded-wallet-pairing.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/funded-wallet-payments.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/funded-wallet-unlock.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/governance-charter-navigation.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/held-source-vault.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/hosted-checkout-ui.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/kai-klok-motion.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/kai-klok.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/learn-notes.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/learning-pages.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-funding-held-ancestry.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-funding-history.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-funding-trace-ui.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-receipt-view.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/ledger-render-work.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-actions-completion.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-deposit.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-market.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/live-payments.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/local-financial-integration.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-history-original-addition-worker.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-refresh-status.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/market-worker-retained-inputs.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-assets-selection.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/native-currency-flow.test.tsx"
+    },
+    {
+      "status": "A",
+      "path": "tests/native-currency-protocol.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/native-note-account-handoff.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/navigation-envelope.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/note-attestation-transport.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/note-delivery.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/note-image-seal.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/observatory-catalog.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/offline-notes-flow.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/offline-shell-build.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/original-checkout.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/original-piece-transport.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/original-pieces-ui.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/owned-assets-live.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/paid-original-previews.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-asset-cold-chart.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-ledger-continuity.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-ledger-proof.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-ledger-scroll-tools.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/public-reading-isolation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/pwa.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/received-original.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/routes.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/site-footer.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/vault-experience.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "tests/vault-market.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/wallet-nearby-connection.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/wallet-nearby-link.test.ts"
+    },
+    {
+      "status": "A",
+      "path": "tests/wallet-send-deferred.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "tests/wallet-send.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "vercel.json"
+    }
+  ]
+}

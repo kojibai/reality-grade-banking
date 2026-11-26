@@ -4,6 +4,26 @@ Reality-Grade Banking repository releases include the Bankeiz financial
 application. Its product versions are independent of Receiz protocol/package versions.
 Full release records and qualification evidence live in [docs/releases](docs/releases/README.md).
 
+## 9.0.0 — Make your own economy
+
+[Full release notes](docs/releases/9.0.0.md) ·
+[Qualification](docs/releases/9.0.0-qualification.md) ·
+[Complete committed inventory](docs/releases/9.0.0-commit-inventory.json).
+
+- Send Market shares, a Whole Original, or exact Original byte ranges. Whole
+  and piece sends commit against one shared ownership history.
+- Issue currencies, service credits, coupons, and rewards. Set supply and
+  allocations, fund liquidity when retaining units, link community governance,
+  transfer holdings, and make redeemable currency Notes.
+- See holdings and current dollar values in Assets. Follow trades and carried
+  prices in Market and Ledger. Deposit settlement and currency Notes through the
+  same entry.
+- Hand off nearby payments with one QR. See which portion is available offline
+  and which is available after confirmation. Forward funded Notes offline, issue
+  Open Notes while connected, and recover exact signed Wallet debits.
+- Trace funding credits, use focused Add money and full-screen mobile Messages,
+  and see shared appearance, Voting time, and Kai Klok refinements.
+
 ## 8.0.0 — Value that keeps moving
 
 [Full release notes](docs/releases/8.0.0.md) ·

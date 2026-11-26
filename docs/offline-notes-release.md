@@ -2,14 +2,15 @@
 
 ## Current release and integration gates
 
-Version 1.0.0 is published; the current release preparation is
-[3.0.0](releases/3.0.0.md). The
+See the [Bankeiz 9.0.0 release record](releases/9.0.0-qualification.md)
+for current qualification and publication status. The
 [Note continuity standard](note-continuity-standard.md),
 [connected-account contract](connected-notes-v129.md) and
-[account-destination contract](note-account-deposit-v129.md) define the present
-integration. The recipient can verify and retain a completed addressed original
-offline, then reconcile through the supported Receiz credit contract. Connected
-creation and qualified continuous-offline creation remain distinct capabilities.
+[account-destination contract](note-account-deposit-v129.md) define the
+integration. Connected issuance supports open and addressed Notes. A recipient
+can verify and hold the supported Original offline, then deposit it using the
+Receiz credit contract. Fully offline issuance and continuous use depend on
+the prepared funding and protected custody available on that device.
 
 Before advertising a financial/device capability, qualify the actual admitted
 funding, receiver-bound original, once-only credit, duplicate refusal and

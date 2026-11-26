@@ -1,6 +1,8 @@
 # Release process
 
-See [Bankeiz 8.0.0](releases/8.0.0.md) and its [qualification and publication record](releases/8.0.0-qualification.md). The record tracks local qualification, committed source, CI, deployment, and live assessment.
+See [Bankeiz 9.0.0](releases/9.0.0.md) and its [qualification and publication record](releases/9.0.0-qualification.md) for the current source, CI, deployment, and live evidence.
+
+The previous release is [Bankeiz 8.0.0](releases/8.0.0.md), with its own [qualification and publication record](releases/8.0.0-qualification.md).
 
 See the [v7.0.0 qualification and publication record](releases/7.0.0-qualification.md)
 for its exact release state. Bankeiz 6.0.0 was published as
