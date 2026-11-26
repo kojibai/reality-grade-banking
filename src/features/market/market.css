@@ -14,6 +14,7 @@
 @media(prefers-reduced-motion:reduce){.market-explorer-tools{transition:none}}
 
 .currency-trade-tape { margin-block: 24px 12px; }
+.currency-trade-tape .segmented { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .currency-trade-tape table { width: 100%; table-layout: fixed; margin-top: 10px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .currency-trade-tape th, .currency-trade-tape td { padding: 9px 6px; text-align: right; vertical-align: top; }
 .currency-trade-tape th:first-child { width: 49%; }
@@ -23,3 +24,15 @@
 .currency-trade-tape time { display: block; margin-top: 4px; }
 .currency-trade-tape td { overflow-wrap: anywhere; border-top: 1px solid var(--line); font-size: .875rem; }
 .currency-trade-tape td strong { overflow-wrap: anywhere; }
+.currency-chart-metrics { margin-block: 2px 12px; }
+.currency-market-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 80px), 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+  padding-block: 12px;
+  border-block: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.currency-market-stats dt { font-size: .75rem; color: var(--bank-text-secondary,var(--navy)); }
+.currency-market-stats dd { margin: 4px 0 0; font-size: .875rem; font-weight: 620; overflow-wrap: anywhere; }

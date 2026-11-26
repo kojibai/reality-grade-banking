@@ -36,6 +36,14 @@ it('renders a held currency immediately and follows the shared signed ledger wit
   expect(table.textContent).toContain('$3.25');
   expect(table.textContent).toContain('$3.75');
   const button=(label:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent===label)!;
+  const activity=host.querySelector('[aria-label="LOCAL market activity"]')!;
+  expect(activity.textContent).toContain('Bought3 LOCAL');
+  expect(activity.textContent).toContain('Sold2 LOCAL');
+  expect(activity.textContent).toContain('Traded value$7.00');
+  await act(async()=>button('Volume').click());
+  expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('LOCAL cumulative volume, from 3 to 5');
+  await act(async()=>button('Price').click());
+  expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('from 1.25 to 2');
   await act(async()=>button('Buys').click());
   expect(table.textContent).toContain('Buy · 3 LOCAL');
   expect(table.textContent).not.toContain('Sell · 2 LOCAL');

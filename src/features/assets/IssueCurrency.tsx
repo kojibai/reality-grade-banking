@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
 import { formatMoney, formatUnits, parseAmount } from '../../core/money';
 import { AmountInput } from '../../components/AmountInput';
 import { CurrencyMark } from '../../components/CurrencyMark';
@@ -216,27 +216,32 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
             <p className="small-copy">All units start for sale. Their purchases fund the pool for sell-backs.</p>
           </>}
         </section>
-        <fieldset className="currency-creation-panel currency-controls">
-          <legend>{pooled ? 'Sales control' : 'Price and sales control'}</legend>
-          <div className="currency-control-options">
-            <label className="currency-control-option">
-              <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => setIssuerControls(false)} />
-              <LockKeyhole size={17} aria-hidden="true" />
-              <span><strong>Fixed terms</strong><small>{pooled ? 'Keep sales open under the pool rules.' : 'Keep the opening price and sales terms.'}</small></span>
-            </label>
-            <label className="currency-control-option">
-              <input type="radio" name={controlGroup} value="managed" checked={issuerControls} onChange={() => setIssuerControls(true)} />
-              <SlidersHorizontal size={17} aria-hidden="true" />
-              <span><strong>Issuer-managed</strong><small>{pooled ? 'Pause or resume new sales.' : 'Change the price or pause new sales.'}</small></span>
-            </label>
-          </div>
-        </fieldset>
-        <section className="currency-creation-panel currency-governance-intro" aria-labelledby={controlGroup + '-governance'}>
-          <Vote size={20} aria-hidden="true" />
-          <div><h2 id={controlGroup + '-governance'}>Community governance</h2>
-            <p className="small-copy">{issuerControls ? (pooled ? 'Create a charter after issuance to let members vote on pausing or resuming sales.' : 'Create a charter after issuance to let members vote on price and sales.') : 'Choose Issuer-managed to enable a community charter after issuance.'}</p>
-          </div>
-        </section>
+        <details className="currency-creation-panel currency-advanced">
+          <summary><SlidersHorizontal size={18} aria-hidden="true" /><span>
+            <strong>Advanced terms</strong><small>{issuerControls ? 'Issuer-managed' : 'Fixed terms'}</small>
+          </span><ChevronDown size={17} aria-hidden="true" /></summary>
+          <fieldset className="currency-controls">
+            <legend>{pooled ? 'Sales control' : 'Price and sales control'}</legend>
+            <div className="currency-control-options">
+              <label className="currency-control-option">
+                <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => setIssuerControls(false)} />
+                <LockKeyhole size={17} aria-hidden="true" />
+                <span><strong>Fixed terms</strong><small>{pooled ? 'Keep sales open under the pool rules.' : 'Keep the opening price and sales terms.'}</small></span>
+              </label>
+              <label className="currency-control-option">
+                <input type="radio" name={controlGroup} value="managed" checked={issuerControls} onChange={() => setIssuerControls(true)} />
+                <SlidersHorizontal size={17} aria-hidden="true" />
+                <span><strong>Issuer-managed</strong><small>{pooled ? 'Pause or resume new sales.' : 'Change the price or pause new sales.'}</small></span>
+              </label>
+            </div>
+          </fieldset>
+          <section className="currency-governance-intro" aria-labelledby={controlGroup + '-governance'}>
+            <Vote size={20} aria-hidden="true" />
+            <div><h2 id={controlGroup + '-governance'}>Community governance</h2>
+              <p className="small-copy">{issuerControls ? (pooled ? 'Create a charter after issuance to let members vote on pausing or resuming sales.' : 'Create a charter after issuance to let members vote on price and sales.') : 'Choose Issuer-managed to enable a community charter after issuance.'}</p>
+            </div>
+          </section>
+        </details>
       </NativeOperation>
       {issueSource && issuerControls && <section className="currency-creation-launch" aria-label="Configure currency governance">
         <button ref={governanceButton} type="button" className="primary-button" disabled={openingGovernance} onClick={() => void openGovernance()}>

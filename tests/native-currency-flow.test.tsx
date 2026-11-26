@@ -62,6 +62,8 @@ it('opens currency issue inside An asset, preserves the Original draft, and stag
   await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
   const click = (name:string) => act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!.click());
   await click('Set currency terms');
+  const advanced = host.querySelector<HTMLDetailsElement>('.currency-advanced')!;
+  expect(advanced.open).toBe(false);
   expect(host.textContent).toContain('Community governance');
   await act(async()=>{
    enter(host,'Supply cap','10');
@@ -72,6 +74,8 @@ it('opens currency issue inside An asset, preserves the Original draft, and stag
   await click('Set currency terms');
   const selected=review.input?.();
   expect(selected).toMatchObject({kind:'issue-currency',definition:{name:'Field credit',symbol:'FIELD',units:'10'},policy:{priceUsdCentsPerUnit:'25'}});
+  await act(async()=>host.querySelector<HTMLElement>('.currency-advanced summary')!.click());
+  expect(host.querySelector<HTMLDetailsElement>('.currency-advanced')?.open).toBe(true);
   const optIn = host.querySelector<HTMLInputElement>('input[type=radio][value=managed]')!;
   await act(async()=>optIn.click());
   expect(review.input?.()).toMatchObject({policy:{issuerControls:true}});

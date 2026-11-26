@@ -91,6 +91,22 @@
 .currency-control-option strong, .currency-control-option small { display: block; }
 .currency-control-option strong { font-size: 13px; }
 .currency-control-option small { color: var(--bank-text-secondary, #52657b); font-size: 12px; line-height: 1.35; margin-top: 3px; }
+.currency-advanced > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.currency-advanced > summary::-webkit-details-marker { display: none; }
+.currency-advanced > summary strong, .currency-advanced > summary small { display: block; }
+.currency-advanced > summary svg { color: var(--bank-link, #2d56ad); }
+.currency-advanced > summary small { color: var(--bank-text-secondary, #52657b); margin-top: 3px; }
+.currency-advanced[open] > summary svg:last-child { transform: rotate(180deg); }
+.currency-advanced > fieldset { border: 0; padding: 0; margin: 16px 0 0; min-inline-size: 0; }
+.currency-advanced > fieldset legend { padding: 0 0 8px; }
+.currency-advanced > section { border-top: 1px solid var(--bank-line-subtle, #dce2eb); margin-top: 16px; padding-top: 14px; }
 .currency-governance-intro { display: flex; align-items: flex-start; gap: 10px; }
 .currency-governance-intro p { margin-top: 4px; }
 @media (min-width: 460px) {
