@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {Window,type HTMLStyleElement as TestStyleElement} from 'happy-dom';
 import {afterEach,expect,it,vi} from 'vitest';
 import {compactNavigation} from '../scripts/compact-navigation.mjs';
+import {bankAppearanceHead} from '../scripts/app-appearance.mjs';
 import {bankOwnedStyles} from '../scripts/public-bank-styles.mjs';
 
 const windows:Window[]=[],router='// All public guides'+readFileSync('public/learn/learn.js','utf8').split('// All public guides')[1];
@@ -17,8 +18,8 @@ async function navigation(coldPublic:boolean){
  const declaration=line('privateBankStyles');
  if(declaration){const {bankOwnedStyles}=await import('../scripts/public-bank-styles.mjs');privateBankStyles=new Function('bankStyles','styleManifest','bankOwnedStyles',declaration+';return privateBankStyles;')(allStyles,manifest,bankOwnedStyles);}
  const pages={'/feed/':{runtime:'feed',entry:'/feed.js',title:'Feed',head:'<title>Feed</title><style data-public-page-style="feed">.feed-scroll{display:block}</style>',content:'<main class="feed-scroll">Retained Feed'+controls+'<a href="/">Return</a></main>'}};
- const builder=['navigationPages','bankRuntime','navigation','bundle','bankBundle'].map(line).join('\n');
- const text=new Function('navigationScript','compactNavigation','feedState','publicPages','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builder+';return '+(coldPublic?'bundle':'bankBundle')+';')(navigationScript,compactNavigation,{profileNames:[]},pages,{},'<title>Bank</title>','/bank.js',allStyles,privateBankStyles,css,'<main class="console">Held Bank'+controls+'</main><nav class="bottom-nav">Bank navigation</nav>',{shared:''},'');
+ const builder=['navigationPages','bankRuntime','navigation','installedAppearance','compactStaticNavigation','bundle','bankBundle'].map(line).join('\n');
+ const text=new Function('navigationScript','compactNavigation','bankAppearanceHead','feedState','publicPages','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builder+';return '+(coldPublic?'bundle':'bankBundle')+';')(navigationScript,compactNavigation,bankAppearanceHead,{profileNames:[]},pages,{},'<title>Bank</title>','/bank.js',allStyles,privateBankStyles,css,'<main class="console">Held Bank'+controls+'</main><nav class="bottom-nav">Bank navigation</nav>',{shared:''},'');
  return{pages,text,privateBankStyles};
 }
 async function setup(coldPublic=false){

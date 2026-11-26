@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
 import {compactNavigation} from '../scripts/compact-navigation.mjs';
+import {bankAppearanceHead} from '../scripts/app-appearance.mjs';
 import {bankOwnedStyles} from '../scripts/public-bank-styles.mjs';
 import {profileNavigationHtml} from '../server/profile-navigation';
 
@@ -18,6 +19,7 @@ const pages={
 };
 const builder=readFileSync('scripts/build-public-pages.mjs','utf8');
 const statement=(name:string)=>builder.split('\n').find(line=>line.startsWith(`const ${name}`))!;
+const staticNavigationStatements=['installedAppearance=','compactStaticNavigation='].map(statement).join('\n')+'\n';
 const read=(html:string)=>decodeNavigationEnvelope(/<script id="receiz-navigation" type="application\/json">([\s\S]*?)<\/script>/.exec(html)![1]).navigation;
 const expand=(value:unknown,styles:string[])=>Array.isArray(value)?value.map(part=>typeof part==='number'?styles[part]:part).join(''):value;
 const bankStyles=['/assets/bank.css','/assets/public-host.css'],bankCss={'/assets/bank.css':'.console{display:grid}','/assets/public-host.css':'.form-field{display:grid}'};
@@ -25,7 +27,7 @@ const privateBankStyles=bankOwnedStyles(bankStyles,{host:{name:'PublicAssetTrade
 
 it('carries the existing small Discover body beside Bank while Feed stays lightweight',()=>{
  const builderStatements=['navigationPages=','bankRuntime=','navigation=','bundle=','bankBundle='].map(statement).join('\n');
- const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactStaticNavigation','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''},'html.learn-surface{color:navy}');
+ const [bundle,bankBundle]=new Function('navigationScript','publicPages','compactNavigation','bankAppearanceHead','feedState','publicRouteAliases','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','exampleBanks','publicCss',staticNavigationStatements+builderStatements+';return [bundle,bankBundle];')(navigationScript,pages,compactNavigation,bankAppearanceHead,{profileNames:[]},{},'<title>Bank</title>','/assets/bank-held.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank content',{shared:''},'html.learn-surface{color:navy}');
  const value=read(bundle),discover=value.pages['/discover/'];
  expect(discover).toMatchObject({runtime:'discover',entry:'/assets/discover-held.js',title:'Discover | Bankeiz'});
  expect(expand(discover.head,value.styles)).toBe(discoverHead);
@@ -78,7 +80,7 @@ it('retains Discover metadata without duplicate body in immersive Feed and Disco
  for(const runtime of ['feed','discover']){
   const name=runtime+'Bundle';
   const line=builder.split('\n').find(row=>row.trimStart().startsWith('const '+name+'='))!;
-  const html=new Function('page','compactStaticNavigation','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','navigationScript','discoveryWorkspacePages',line+';return '+name+';')({runtime},compactNavigation,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank',navigationScript,workspaces);
+  const html=new Function('page','compactNavigation','bankAppearanceHead','feedState','navigationMetadata','publicPages','bankHead','bankEntry','bankStyles','privateBankStyles','bankCss','bankContent','navigationScript','discoveryWorkspacePages',staticNavigationStatements+line+';return '+name+';')({runtime},compactNavigation,bankAppearanceHead,{profileNames:[]},metadata,pages,'<title>Bank</title>','/assets/bank.js',bankStyles,privateBankStyles,bankCss,'Frozen Bank',navigationScript,workspaces);
   const value=read(html);expect(value.pages['/discover/'].content).toBe('');expect(expand(value.pages['/discover/'].head,value.styles)).toBe(discoverHead);expect(value.pages['/discover/'].entry).toBe(pages['/discover/'].entry);
   expect(expand(value.pages['/explore/'].content,value.styles)).toBe(pages['/explore/'].content);
   if(runtime==='discover'){
