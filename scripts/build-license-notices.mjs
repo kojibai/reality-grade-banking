@@ -102,11 +102,11 @@ const legalPage={
   head: publicLegalHtml.match(/<head>([\s\S]*?)<\/head>/)[1],
   content: publicLegalHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1],
 };
-const patchLegal=({navigation,shared})=>{
+const patchLegal=({navigation,shared},options)=>{
  navigation.pages['/legal/']=legalPage;
- return writeNavigationScript(navigation,shared);
+ return writeNavigationScript(navigation,shared,options);
 };
-const bundle=patchLegal(publicEntry),homeBundle=patchLegal(home),navigation=publicEntry.navigation;
+const bundle=patchLegal(publicEntry),homeBundle=patchLegal(home,{preferSmaller:true}),navigation=publicEntry.navigation;
 await writeFile('dist/legal/index.html', withAppAppearance(publicLegalHtml.replace(/<body([^>]*)>([\s\S]*?)<\/body>/, (_, attributes, content) => `<body${attributes}><div id="public-learn-root">${content}</div>${bundle}</body>`)));
 // Preserve the exact Bank stylesheet bytes in just their existing carrier.
 await writeFile('dist/index.html',(await readFile('dist/index.html','utf8')).replace(navigationPattern,()=>homeBundle));

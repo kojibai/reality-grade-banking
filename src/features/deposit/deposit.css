@@ -5,8 +5,6 @@
 
 .deposit-create-route{font-size:11px;line-height:1.8;text-align:center;color:var(--bank-text-muted,#8593a7);margin:15px 0 0}.deposit-create-route button{display:inline-flex;align-items:center;gap:5px;color:var(--bank-link,#3154d8);font-size:inherit;font-weight:550;background:none;border:0;padding:2px 3px;cursor:pointer}
 
-.deposit-flow .deposit-payment-summary{font-size:11px;line-height:1.65;margin:14px 0 0;color:var(--bank-text-muted,#788598)}
-
 .deposit-flow .deposit-originals-link{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 2px;margin-top:8px;color:var(--bank-text,#34475e);text-decoration:none;border-radius:6px}
 .deposit-originals-link>span{display:grid;gap:4px;min-width:0}
 .deposit-originals-link strong{font-size:13px;line-height:1.45;font-weight:580;letter-spacing:-.15px}
@@ -14,3 +12,89 @@
 .deposit-originals-link>svg{flex:none;color:var(--bank-text-secondary,#6d7e96)}
 .deposit-originals-link:hover strong,.deposit-originals-link:hover>svg{color:var(--blue)}
 .deposit-originals-link:focus-visible{outline:2px solid var(--blue);outline-offset:4px}
+
+.deposit-payment-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.deposit-payment-heading .sheet-hero {
+  margin: 0;
+  font-size: clamp(25px, 7vw, 32px);
+}
+.deposit-payment-heading .body-copy { margin: 7px 0 0; }
+.deposit-payment-symbol {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  height: 44px;
+  border: 1px solid var(--bank-line-subtle, #dce4ef);
+  border-radius: 12px;
+  background: var(--bank-info-surface, #edf2fa);
+  color: var(--bank-link, #2750ad);
+}
+.deposit-payment-amount {
+  min-width: 0;
+  padding: clamp(11px, 4vw, 17px);
+  border: 1px solid var(--bank-line-subtle, #e1e7ee);
+  border-radius: 17px;
+  background: var(--bank-surface-subtle, #f4f6fa);
+}
+.deposit-payment-amount .form-field { margin: 0; }
+.deposit-payment-amount .form-field > span {
+  font-size: 13px;
+  font-weight: 650;
+}
+.deposit-payment-amount .amount-input {
+  min-height: 66px;
+  gap: 7px;
+  padding-inline: 13px;
+  border-radius: 11px;
+}
+.deposit-payment-amount .amount-input:focus-within {
+  border-color: var(--bank-link, #3154ae);
+  box-shadow: 0 0 0 1px var(--bank-link, #3154ae);
+}
+.deposit-payment-amount .amount-input.large input {
+  color: var(--bank-text, #162a43);
+  font-size: clamp(28px, 8vw, 38px);
+  font-variant-numeric: tabular-nums;
+}
+.deposit-payment-amount .amount-input input:focus { outline: none; }
+.deposit-payment-amount .amount-prefix { font-size: 25px; }
+.deposit-payment-amount .amount-suffix { font-weight: 600; }
+.deposit-payment-amount .quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 10px;
+}
+.deposit-payment-amount .quick-amounts button {
+  border: 1px solid var(--bank-line-subtle, #dce3ed);
+  border-radius: 9px;
+  background: var(--bank-surface-raised, #fff);
+  color: var(--bank-text, #203956);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.deposit-payment-amount .quick-amounts button[aria-pressed="true"] {
+  border-color: var(--bank-info-line, #9eb4e7);
+  background: var(--bank-info-surface, #eaf0ff);
+  color: var(--bank-link, #284db2);
+}
+.deposit-payment-amount .quick-amounts button:focus-visible {
+  outline-color: var(--bank-link, #284db2);
+}
+.deposit-payment-step .deposit-payment-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--bank-text-secondary, #50647d);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 15px 0 0;
+}
+.deposit-payment-summary svg { flex: none; margin-top: 1px; }
+.deposit-payment-step .primary-button { margin-top: 13px; }
+.deposit-payment-step .deposit-consent-details { margin: 14px 0 0; }

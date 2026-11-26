@@ -17,7 +17,6 @@ import {NoteContinuityDetails} from './NoteContinuityDetails';
 import {OfflineCashOptions} from '../account/OfflineCashOptions';
 import {walletBalanceNotice,type WalletBalanceNotice} from '../account/wallet-balance-notice';
 import {noteTitle} from '../../receiz/note-design';
-import {NOTE_ARTWORK_TYPES, validateNoteArtworkFile} from '../../receiz/note-artwork';
 import {captureNoteDepositProof,readNoteProofImport} from '../../receiz/note-proof-portability';
 const CurrencyNoteReview=lazy(()=>import('./CurrencyNotes').then(module=>({default:module.CurrencyNoteReview})));
 function download(bytes: Uint8Array, filename: string, type: string) {
@@ -36,6 +35,10 @@ function exactPhi(value?: string): string {
   const [whole, fraction] = formatUnits(value).split('.');
   return `${new Intl.NumberFormat('en-US').format(BigInt(whole))}${fraction ? `.${fraction}` : ''}`;
 }
+// The inventory reader only exposes the protected Note after custody admission.
+function offersOpenNote(addressed: boolean, inventory: readonly BankNoteImage[]) {
+  return !addressed || inventory.some(note=>note.consumption!=='connection-required');
+}
 export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, initialReview=false,onCreated,onUseSendNearby,allowCurrencyNotes=false }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string;initialReview?:boolean;allowCurrencyNotes?:boolean;onCreated?:(note:BankNoteImage)=>Promise<void>;onUseSendNearby?:(amount:string)=>void }) {
   const acceptsCurrencyNotes = mode === 'deposit' && allowCurrencyNotes && !!identity.currencyNotes;
   const [selectedCurrencyNote,setSelectedCurrencyNote] = useState<{identity:OpenIdentity;file:File}>();
@@ -43,7 +46,6 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
   const [rail, setRail] = useState<BankNoteRail>(()=>identity.knownWallet?.()?.wallet.reserveUsdCents==='0'?'settlement':'reserve');
   const [specificRecipient,setSpecificRecipient]=useState(false),[recipient,setRecipient]=useState(''),[selectedRecipient,setSelectedRecipient]=useState<{userId:string;username:string}|null>(null);
   const [addressedCreationByDefault,setAddressedCreationByDefault]=useState(false);
-  const [artwork,setArtwork]=useState<File|null>(null),[artworkUrl,setArtworkUrl]=useState<string>();
   const [funding,setFunding]=useState<BankNoteReview|null>(null);
   const [amount, setAmount] = useState('100'), [review, setReview] = useState(initialReview), [busy, setBusy] = useState(false), [error, setError] = useState(''),[registrationCode,setRegistrationCode]=useState('');
   const [failureStage,setFailureStage]=useState<ReturnType<typeof noteFailureStage>>(null);
@@ -107,7 +109,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
   },[identity,mode]);
   useEffect(() => {
     if (!identity.offlineNotes || mode !== 'create') return;
-    let current = true;setInventoryReady(false);setArtwork(null);
+    let current = true;setInventoryReady(false);
     void notes().then(async n => {
       const itemsRead=n.savedNotes?n.savedNotes():Promise.resolve([]);
       const pendingRead=(async()=>{try{return {value:await n.pending()};}catch(error){return {error};}})();
@@ -115,19 +117,13 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       if(!current)return;
       setSaved(items);
       setAddressedCreationByDefault(n.addressedCreationByDefault===true);
-      setSpecificRecipient(n.addressedCreationByDefault===true);
+      setSpecificRecipient(!offersOpenNote(n.addressedCreationByDefault===true,items));
       if(value)setFunding({...value,rail:value.rail??'reserve'});
       if(value){setPending(value);setRail(value.rail??'reserve');setAmount(`${BigInt(value.amountUsdCents)/100n}.${(BigInt(value.amountUsdCents)%100n).toString().padStart(2,'0')}`);setReview(true);}
       setInventoryReady(true);
     }).catch(cause=>{if(current)report(cause);});
     return()=>{current=false;};
   }, [identity,mode]);
-  useEffect(() => {
-    if (!artwork || !specificRecipient) { setArtworkUrl(undefined); return; }
-    const url = URL.createObjectURL(artwork);
-    setArtworkUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [artwork, specificRecipient]);
   useEffect(() => { if (!created) return; const url = URL.createObjectURL(new Blob([new Uint8Array(created.image)], { type: 'image/png' })); setImageUrl(url); return () => URL.revokeObjectURL(url); }, [created]);
   const run = async (operation: () => Promise<void>) => {
     if (running.current) return;
@@ -251,7 +247,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
   });
   // A saved protected Note was admitted by the existing local inventory reader.
   // Creating a new open Note still requires that operation's native custody checks.
-  const canChooseOpenNote=!addressedCreationByDefault||saved.some(note=>note.consumption!=='connection-required');
+  const canChooseOpenNote=offersOpenNote(addressedCreationByDefault,saved);
   const sendFromBalance=addressedCreationByDefault&&!pending&&!canChooseOpenNote&&offline&&!!onUseSendNearby;
   const addressedRecipient=<fieldset className="native-operation-fields" disabled={busy}>
     <RecipientInput identity={identity} value={recipient}
@@ -263,35 +259,26 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
     {mode === 'create' && !created && <><h1 className="sheet-hero">{pending ? 'Resume your note.' : review ? 'Your value. In your hands.' : 'Create a note.'}</h1><p className="body-copy">Your value, in your hands. Ready to move—even offline.</p>
       {!review && <AmountInput label="Note amount" value={amount} onChange={value=>{if(!running.current)setAmount(value);}} disabled={busy} dollars />}
       {!review && inventoryReady && !sendFromBalance && (canChooseOpenNote
-        ? <details className="note-value-details note-recipient-choice" open={addressedCreationByDefault||undefined}>
+        ? <details className="note-value-details note-recipient-choice">
           <summary>Who can deposit? · {specificRecipient?'Specific person':addressedCreationByDefault?'Open Note':'Anyone with the Note'}</summary>
-          <label><input type="radio" name="note-recipient" checked={!specificRecipient} disabled={busy} onChange={()=>{setSpecificRecipient(false);setArtwork(null);setFunding(null);}}/>{addressedCreationByDefault?'Open Note':'Anyone with the Note'}</label>
+          <label><input type="radio" name="note-recipient" checked={!specificRecipient} disabled={busy} onChange={()=>{setSpecificRecipient(false);setFunding(null);}}/>{addressedCreationByDefault?'Open Note':'Anyone with the Note'}</label>
           <label><input type="radio" name="note-recipient" checked={specificRecipient} disabled={busy} onChange={()=>{setSpecificRecipient(true);setFunding(null);setDeviceOptions(null);}}/>{addressedCreationByDefault?'Specific person':'Only a specific person'}</label>
-          {specificRecipient?addressedRecipient:<p>{addressedCreationByDefault?'Choose the recipient when you hand off the Note.':'Keep the original PNG safe. Anyone holding it can deposit its value once.'}</p>}
+          {specificRecipient?addressedRecipient:<p>Anyone holding the original Note can deposit it once.</p>}
         </details>
         : addressedRecipient)}
-      {!review && !sendFromBalance && addressedCreationByDefault && specificRecipient && <div className="note-value-details">
-        <label className="form-field"><span>Note artwork (optional)</span><input type="file" accept={NOTE_ARTWORK_TYPES} disabled={busy} onChange={event=>{
-          const file=event.currentTarget.files?.[0];
-          if(!file||running.current)return;
-          try {validateNoteArtworkFile(file);setArtwork(file);setError('');}
-          catch(cause){setArtwork(null);report(cause);}
-        }}/></label>
-        {artwork && <button className="text-button" disabled={busy} onClick={()=>setArtwork(null)}>Remove artwork</button>}
-      </div>}
       {sendFromBalance
         ? <><p className="body-copy small-copy">Send from your balance while you’re offline. You can create a new funded Note when you reconnect.</p>
           <button className="primary-button" disabled={busy||!inventoryReady} onClick={()=>onUseSendNearby?.(amount)}>Send nearby</button></>
         : <>
-          {!pending?.hasCustomArtwork && <OfflineNotePreview artwork={artworkUrl} amount={review&&funding?`${BigInt(funding.amountUsdCents)/100n}.${(BigInt(funding.amountUsdCents)%100n).toString().padStart(2,'0')}`:amount} rail={rail} />}
-          {review && (pending?.hasCustomArtwork || artwork) && <p className="body-copy small-copy">{pending?.hasCustomArtwork?'Your artwork is saved with this Note.':artwork?.name}</p>}
-          {review && <div className="detail-list"><div><span>{rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(pending?.amountUsdCents ?? funding?.amountUsdCents ?? cents(amount))}</strong></div><div><span>{(pending?.recipientUserId??funding?.recipientUserId)?'First recipient':'Who can deposit'}</span><strong>{(pending?.recipientUserId??funding?.recipientUserId)?selectedRecipient&&selectedRecipient.userId===(pending?.recipientUserId??funding?.recipientUserId)?'@'+selectedRecipient.username:'Chosen account':addressedCreationByDefault?'Recipient chosen at handoff':'Anyone with the Note'}</strong></div></div>}
+          {!pending?.hasCustomArtwork && <OfflineNotePreview amount={review&&funding?`${BigInt(funding.amountUsdCents)/100n}.${(BigInt(funding.amountUsdCents)%100n).toString().padStart(2,'0')}`:amount} rail={rail} />}
+          {review && pending?.hasCustomArtwork && <p className="body-copy small-copy">Your artwork is saved with this Note.</p>}
+          {review && <div className="detail-list"><div><span>{rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(pending?.amountUsdCents ?? funding?.amountUsdCents ?? cents(amount))}</strong></div><div><span>{(pending?.recipientUserId??funding?.recipientUserId)?'First recipient':'Who can deposit'}</span><strong>{(pending?.recipientUserId??funding?.recipientUserId)?selectedRecipient&&selectedRecipient.userId===(pending?.recipientUserId??funding?.recipientUserId)?'@'+selectedRecipient.username:'Chosen account':'Anyone with the Note'}</strong></div></div>}
           <p className="body-copy small-copy">This amount moves from your account into the Note when creation completes.{review&&rail!=='reserve'?' Its exact funded units stay intact; their dollar reference can change.':''}</p>
           <details className="note-value-details"><summary>Note details</summary>{funding?.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(funding.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{formatMoney(funding.fundingParts.settlement.amountUsdCents)}</strong></div></div>}<p>{rail==='composite'?'One Settlement Note carries the full amount. Its two funding sources retain their exact units and complete proof underneath; you do not have to choose between them.':rail==='settlement'?'This Settlement Note holds exact Phi. Deposit returns the same Phi; its dollar value follows the deterministic rate.':'This Settlement Note holds its funded dollar denomination. Deposit returns that amount to your account.'}</p><p>Your identity signing key stays on this device. Keep the original PNG and this device until the Note is deposited or transferred.</p></details>
-          <button className="primary-button" disabled={busy || !inventoryReady} onClick={() => { if (!review) {if(!specificRecipient&&!api.current?.review){try{cents(amount);setReview(true);setError('');}catch(cause){report(cause);}}else reviewNote();return;} void run(async () => { const runtime=await notes(),owner=identity,amountValue=pending?.amountUsdCents??funding?.amountUsdCents??cents(amount),target=pending?.recipientUserId??funding?.recipientUserId;const value=target?await (artwork&&!pending?runtime.create(amountValue,undefined,target,artwork):runtime.create(amountValue,undefined,target)):await (addressedCreationByDefault&&!pending&&funding?runtime.create(amountValue,funding.rail):runtime.create(amountValue)); if (alive.current&&currentIdentity.current===owner) { setCreated(value); setPending(null); onRefresh(); if(currentIdentity.current===owner)await onCreated?.(value); } }); }}><ArrowUpRight size={17} />{busy ? 'Preparing your note…' : review ? pending ? 'Resume this note' : 'Create funded note' : 'Review note'}</button>
+          <button className="primary-button" disabled={busy || !inventoryReady} onClick={() => { if (!review) {if(!specificRecipient&&!api.current?.review){try{cents(amount);setReview(true);setError('');}catch(cause){report(cause);}}else reviewNote();return;} void run(async () => { const runtime=await notes(),owner=identity,amountValue=pending?.amountUsdCents??funding?.amountUsdCents??cents(amount),target=pending?.recipientUserId??funding?.recipientUserId;const value=target?await runtime.create(amountValue,undefined,target):await (addressedCreationByDefault&&!pending&&funding?runtime.create(amountValue,funding.rail):runtime.create(amountValue)); if (alive.current&&currentIdentity.current===owner) { setCreated(value); setPending(null); onRefresh(); if(currentIdentity.current===owner)await onCreated?.(value); } }); }}><ArrowUpRight size={17} />{busy ? 'Preparing your note…' : review ? pending ? 'Resume this note' : 'Create funded note' : 'Review note'}</button>
         </>}
       {!review && saved.length > 0 && <div className="retained-deposits"><p className="body-copy small-copy">Saved notes</p>{saved.map(note => <button key={note.noteId} className="asset-row" onClick={() => setCreated(note)}><span className="row-copy"><strong>{formatMoney(note.amountUsdCents)}</strong><span>{note.selfDeposit ? note.selfDeposit==='confirmed'?'Deposited · original kept':'Deposit pending · original kept' : note.handoffRecovery ? 'Passed on · recover handoff' : note.transferred ? 'Transferred · save the updated image' : note.transferPending ? 'Transfer pending · resume' : 'Open your original note'}</span></span><Download size={18} /></button>)}</div>}
-      {pending?.canCancel && <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { await (await notes()).cancelUnfunded(); if (alive.current) { setPending(null); setReview(false);setArtwork(null);setFunding(null); } })}>Discard unissued note</button>}
+      {pending?.canCancel && <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { await (await notes()).cancelUnfunded(); if (alive.current) { setPending(null); setReview(false);setFunding(null); } })}>Discard unissued note</button>}
       {review && !pending && <button className="secondary-button" disabled={busy} onClick={() => {setReview(false);setFunding(null);}}>Edit amount</button>}
     </>}
     {created && <><div className="status-icon success"><Check size={32} /></div><h1 className="sheet-hero">{created.selfDeposit ? created.selfDeposit==='confirmed'?'Your note is deposited.':'Your deposit is pending.' : created.transferred ? created.consumption==='connection-required'?'Your note is addressed.':'Your note is transferred.' : created.transferPending ? 'Resume your transfer.' : 'Your note is ready.'}</h1><p className="body-copy">{created.selfDeposit ? created.selfDeposit==='confirmed'?'Its value has been returned to your account. Keep this original for your records.':'This original image is kept for your records. Your retained deposit will confirm when connected.' : created.transferred ? created.consumption==='connection-required'?'Save this updated image and send it to the recipient. Its one-time deposit is confirmed when they connect.':'Save this updated image and send it to the recipient.' : created.rail==='reserve'?`${formatMoney(created.amountUsdCents)} is held in your Note.`:`Your Note holds its exact funded value. ${formatMoney(created.amountUsdCents)} records its value at creation.`}</p>{imageUrl && <img className="issued-note-image" src={imageUrl} alt={`Your funded ${formatMoney(created.amountUsdCents)} ${noteTitle(created.rail)}`} />}<button className="primary-button" disabled={busy} onClick={() => saveCreated()}><Download size={17} />{created.selfDeposit?'Save original image':'Save note image'}</button>
@@ -308,7 +295,7 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       {!created.selfDeposit&&!created.transferred&&!created.transferPending&&created.consumption==='connection-required'&&<p className="body-copy small-copy">Save and send the original PNG. {created.recipientUserId?'The chosen account receives it first.':'Anyone holding it can deposit its value once.'} Its complete proof travels with it.</p>}
 
     </>}
-    {mode === 'deposit' && !deposited && !created && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">{acceptsCurrencyNotes ? 'Choose the original file to review it before depositing.' : api.current?.nativeReceivingRequest ? 'Open the original Note image to review it.' : 'Open the original Note image to add it to your account.'}</p>{api.current?.nativeReceivingRequest&&<button className="secondary-button" disabled={busy} onClick={() => void downloadNativeRequest()}><Download size={17} />Get a Note receiving request</button>}<label className="file-drop"><Upload size={30} /><strong>{<>{acceptsCurrencyNotes?'Choose note file':'Choose note image'}{busy&&<InlineOpening compact label="Preparing your note"/>}</>}</strong><span>{acceptsCurrencyNotes?'Settlement Note PNG, deposit proof, or currency note file':'Original note PNG or deposit proof'}</span><input type="file" accept={'image/png,.png,application/json,.json'+(acceptsCurrencyNotes?',.receizcurrency':'')} disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
+    {mode === 'deposit' && !deposited && !created && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">{acceptsCurrencyNotes ? 'Review a Settlement or currency Note before depositing it.' : api.current?.nativeReceivingRequest ? 'Open the original Note image to review it.' : 'Open the original Note image to add it to your account.'}</p>{api.current?.nativeReceivingRequest&&<button className="secondary-button" disabled={busy} onClick={() => void downloadNativeRequest()}><Download size={17} />Get a Note receiving request</button>}<label className="file-drop"><Upload size={30} /><strong>Choose a Note{busy&&<InlineOpening compact label="Preparing your note"/>}</strong><span>Original Note image or proof</span><input type="file" accept={'image/png,.png,application/json,.json'+(acceptsCurrencyNotes?',.receizcurrency':'')} disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
       {currencyFile&&<Suspense fallback={<InlineOpening label="Opening currency note"/>}><CurrencyNoteReview identity={identity} file={currencyFile} onRefresh={onRefresh}/></Suspense>}
       {inspection && <><div className="detail-list"><div><span>{inspection.rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(inspection.amountUsdCents)}</strong></div><div><span>Into</span><strong>{inspection.nativeHandoff ? 'Your saved Notes' : 'Your account'}</strong></div></div><button className="primary-button" disabled={busy} onClick={() => void depositReviewedNote()}><FileDown size={17} />{inspection.nativeHandoff ? 'Accept Note' : busy ? 'Depositing your note…' : 'Deposit note'}</button><p className="body-copy small-copy">{inspection.nativeHandoff ? 'Your Note is ready to pass on offline once you accept it.' : 'Deposit adds the Note’s exact funded value to your account once. Its complete proof stays with the receipt.'}</p><details className="note-value-details"><summary>Note details</summary><p>{noteTitle(inspection.rail)} · Exact funded units and complete source proof stay intact.</p>{inspection.rail==='settlement'&&<p>{exactPhi(inspection.amountPhiMicro)} Φ · Dollar reference at creation; deposit preserves these exact units.</p>}{inspection.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(inspection.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{exactPhi(inspection.fundingParts.settlement.amountPhiMicro)} Φ</strong></div></div>}</details></>}
 

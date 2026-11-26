@@ -29,7 +29,6 @@ export function projectCanonicalKaiFace(pulse: number, moment: KaiKlokMoment = p
     hue: bankKaiMomentTones(moment, 'dark').phase,
     kaiPulseEternal: pulse,
     harmonicDayPercent: Number(dayMicro) / Number(N_DAY_MICRO) * 100,
-    microCyclePercent: lattice.percentIntoStep * 100,
     dayLabel: moment.weekday, monthLabel: moment.monthName, monthDay: moment.day,
     eternalBeatIndex: exact.beat, eternalStepIndex: exact.stepIndex,
     canonical: {

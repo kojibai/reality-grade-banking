@@ -73,7 +73,6 @@ export interface KaiKlockProps {
   };
   hue: string;
   harmonicDayPercent: number;            // day progress 0–100 (for rim progress)
-  microCyclePercent: number;             // micro percent (for orb delay)
   dayLabel: string;
   monthLabel: string;
   monthDay: number;
@@ -102,7 +101,6 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
   hue,
   kaiPulseEternal,
   harmonicDayPercent,
-  microCyclePercent,
   dayLabel,
   monthLabel,
   monthDay,
@@ -126,19 +124,9 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
     ? harmonicDayPercent
     : derivedDayFraction * 100;
 
-  // Micro-cycle fallback: progress within the current step (0–100)
-  const pulsesIntoBeatFallback =
-    effectivePulse - Math.floor(effectivePulse / ETERNAL_PULSES_PER_BEAT) * ETERNAL_PULSES_PER_BEAT;
-  const stepFracFallback =
-    (pulsesIntoBeatFallback % ETERNAL_PULSES_PER_STEP) / ETERNAL_PULSES_PER_STEP;
-  const effectiveMicroCyclePercent = Number.isFinite(microCyclePercent)
-    ? microCyclePercent
-    : stepFracFallback * 100;
-
   const circumference = 2 * Math.PI * R;
   const dashOff       = circumference * (1 - effectiveHarmonicDayPercent / 100);
 
-  const orbDelay = -(effectiveMicroCyclePercent / 100) * pulseIntervalSec;
   const pulseKey = effectivePulse;
 
   const months     = ["Aethon", "Virelai", "Solari", "Amarin", "Kaelus", "Umbriel", "Noctura", "Liora"];
@@ -249,7 +237,7 @@ const KaiKlock: React.FC<KaiKlockProps> = ({
         <defs><radialGradient id={`centerSurface-${uid}`} cx="45%" cy="28%" r="80%"><stop offset="0%" stopColor="#263d54" /><stop offset="65%" stopColor="#1b3046" /><stop offset="100%" stopColor="#132539" /></radialGradient></defs>
         <circle cx={C} cy={C} r={HALO_R + HALO_STROKE - .8} className="center-surface" fill={`url(#centerSurface-${uid})`} />
         <circle cx={C} cy={C} r={HALO_R + HALO_STROKE} className="inner-halo" />
-        <g className="orb-spin" style={{ animationDelay: `${orbDelay}s` }}>
+        <g className="orb-spin">
           <circle cx={C} cy={C - (HALO_R + HALO_STROKE)} r={3.6} className="micro-orb orb-glow" />
         </g>
 

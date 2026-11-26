@@ -56,12 +56,12 @@ it('listens only while the retained Ledger route is active and cancels a queued 
  expect(refresh).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
 });
 it('keeps the initial server-rendered tools and rows visible before scroll effects',()=>{
- const doc=new DOMParser().parseFromString(renderToStaticMarkup(<PublicLedgerApp active={false}/>),'text/html'),bar=doc.querySelector('.public-ledger-tools');
+ const doc=new DOMParser().parseFromString(renderToStaticMarkup(<PublicLedgerApp active={false} initialFilter="currencies"/>),'text/html'),bar=doc.querySelector('.public-ledger-tools');
  expect(bar).not.toBeNull();
  expect(bar?.classList.contains('is-away')).toBe(false);
  expect(bar?.querySelector('[aria-label="Search public activity"]')).not.toBeNull();
  expect(Array.from(bar!.querySelectorAll('[aria-label="Activity type"] button'), button => button.textContent)).toEqual([
-  'All activity', 'Transactions', 'Transfers', 'Currencies', 'Actions', 'Proofs',
+  'All activity', 'Transactions', 'Transfers', 'Actions', 'Proofs',
  ]);
  expect(doc.querySelectorAll('.public-ledger-row')).toHaveLength(2);
 });

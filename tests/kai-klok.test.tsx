@@ -102,7 +102,6 @@ it('feeds the face only the exact native eternal state', () => {
   expect(Object.keys(face).some(key => /solar|anchor|rotationOverride/i.test(key))).toBe(false);
   expect(Object.keys(face.canonical).some(key => /solar|anchor/i.test(key))).toBe(false);
   expect(face.canonical.eternalStepFraction).toBeGreaterThan(0);
-  expect(face.microCyclePercent).toBe(face.canonical.eternalStepFraction * 100);
   const firstM7 = Number((252n * N_DAY_MICRO + 999_999n) / 1_000_000n);
   const seventh = projectCanonicalKaiFace(firstM7);
   expect(seventh.monthLabel).toBe('Noktura'); expect(seventh.canonical.monthIndex).toBe(7);

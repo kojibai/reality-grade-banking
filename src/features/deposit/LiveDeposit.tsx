@@ -1,6 +1,6 @@
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Banknote, Building2, Check, ChevronRight, CircleDollarSign, Coins, Package, ShieldCheck, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Banknote, Building2, Check, ChevronRight, CircleDollarSign, LockKeyhole, Package, ShieldCheck, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { HeldDeposit } from '../../receiz/deposit-source';
 import type { CardCheckout, CardDepositStatus } from '../../receiz/card-deposit';
@@ -14,7 +14,6 @@ import { BuyAmountPresets } from '../market/TradeAmountPresets';
 import './deposit.css';
 import {UnfinishedCheckouts} from '../../components/UnfinishedCheckouts';
 
-const IssueCurrency=lazy(()=>import('../assets/IssueCurrency').then(module=>({default:module.IssueCurrency})));
 const ReceivedOriginal=lazy(()=>import('./ReceivedOriginal').then(module=>({default:module.ReceivedOriginal})));
 
 function OriginalsValueLink(){
@@ -22,7 +21,7 @@ function OriginalsValueLink(){
 }
 
 export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onResumeConsumed, funding, onCreateAsset, onAssetBack, initialKind='choose' }: { onAssetBack?:()=>void;initialKind?:'choose'|'asset'; onCreateAsset?:()=>void;resumeSessionId?:string|null;onResumeConsumed?:()=>void;identity: OpenIdentity; onClose: () => void; onRefresh: () => void; funding?:{purchase?:{itemId:string;title:string};purpose?:'purchase'|'payment';initialAmount?:string;onBack?(amount:string):void;onCheckout?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onPurchaseApproved?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onCredited(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void} }) {
-  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note' | 'issue-currency'>(funding?'dollars':initialKind);
+  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note'>(funding?'dollars':initialKind);
   const [amount, setAmount] = useState(funding?.initialAmount??'');
   const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [cardStatus, setCardStatus] = useState('');
@@ -52,27 +51,71 @@ export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onR
     if(['expired','unpaid','credited'].includes(result.status)){terminalCheckouts.current.add(value.sessionId);setRetainedCheckouts(values=>values.filter(item=>item.sessionId!==value.sessionId));if(result.status==='credited'){onRefresh();setError('This payment already completed. Its funds are in your balance.');}}
     else setError(result.status==='settling'?'This payment is processing. Its original checkout remains saved.':'This checkout is still open. Try cancelling again.');
   });
+  const startCheckout = () => run(async () => {
+    const ticket = generation.current;
+    const value = await identity.beginCardDeposit(amount, true);
+    if (ticket !== generation.current) return;
+    const approved = {sessionId: value.sessionId, amountUsdCents: value.amountUsdCents};
+    funding?.onCheckout?.(approved);
+    if (funding?.purchase) funding.onPurchaseApproved?.(approved);
+    setCheckout(value);
+    setRetainedCheckouts(values => [value, ...values.filter(item => item.sessionId !== value.sessionId)]);
+  });
   const saveProof = () => { if (!deposit) return; const url = URL.createObjectURL(new Blob([new Uint8Array(deposit.bytes)])), link = document.createElement('a'); link.href = url; link.download = deposit.filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
   if (kind === 'note') return <OfflineNotes identity={identity} mode="deposit" allowCurrencyNotes={!funding} backLabel={funding?(funding.purpose==='payment'?'Back to payment':'Back to purchase'):'All add options'} onBack={() => funding?funding.onBack?.(amount):setKind('choose')} onRefresh={onRefresh} />;
   return <div className="deposit-flow">
     {kind !== 'choose' && !funding?.purchase && <button className="back-link" aria-label={kind==='asset'&&onAssetBack?'Back to creating':undefined} disabled={busy} onClick={() => { if(kind==='asset'&&onAssetBack){onAssetBack();return;}if(funding){funding.onBack?.(amount);return;}setKind('choose'); setDeposit(null); setAmount(''); setCheckout(null); setCardStatus(''); setError(''); }}><ArrowLeft size={16} />{kind==='asset'&&onAssetBack?'Back to creating':funding?(funding.purpose==='payment'?'Back to payment':'Back to purchase'):'All options'}</button>}
     {kind === 'choose' && <><header className="deposit-intro"><div><h1 className="sheet-hero">Add money to<br/>your account.</h1><p className="body-copy">Money and assets.<br/>One account.</p></div><img src="/art/proof-assets-384.webp" width="1024" height="896" alt="" decoding="async"/></header><p className="deposit-choice-label">Choose what you’re adding.</p><div className="deposit-options">
       <button className="deposit-money-choice" onClick={() => setKind('dollars')}><span className="choice-icon green"><CircleDollarSign /></span><span><strong>Add money</strong><small>Secure payment checkout</small></span><ChevronRight size={20} /></button>
-      {!!identity.backedAssetPublication&&<button onClick={() => setKind('issue-currency')}><span className="choice-icon blue"><Coins /></span><span><strong>Issue a currency</strong><small>Set supply, pricing and governance</small></span><ChevronRight size={20} /></button>}
       <button onClick={() => onCreateAsset?onCreateAsset():setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>An asset</strong><small>Create or upload its original proof object</small></span><ChevronRight size={20} /></button>
-      <button onClick={() => setKind('note')}><span className="choice-icon green"><Banknote aria-hidden="true" /></span><span><strong>Notes</strong><small>Deposit a note file</small></span><ChevronRight size={20} /></button>
+      <button onClick={() => setKind('note')}><span className="choice-icon green"><Banknote aria-hidden="true" /></span><span><strong>Notes</strong><small>Settlement and currency Notes</small></span><ChevronRight size={20} /></button>
     </div><p className="trust-line"><ShieldCheck size={18} />Your source and history stay connected.</p><details className="deposit-consent-details"><summary>Details</summary><p className="body-copy small-copy">Adding funds brings money into your proof-native account. Its Original carries the value and proof. A completed Note can travel directly between people, including offline. Bankeiz provides convenient tools; any receiving implementation preserves the exact value, ownership and history.</p></details><OriginalsValueLink/></>}
-    {kind==='issue-currency'&&<Suspense fallback={<InlineOpening label="Opening currency issue"/>}><IssueCurrency key={identity.binding?.artifactSha256} identity={identity} onRefresh={onRefresh}/></Suspense>}
     {deposit && <><div className={`status-icon ${deposit.kind === 'proof' ? 'success' : ''}`}>{deposit.kind === 'proof' ? <Check size={34} /> : <Package size={31} />}</div><h1 className="sheet-hero">{deposit.kind === 'intake' ? 'Your deposit request is saved.' : 'Your proof is in your account.'}</h1><p className="body-copy">{deposit.kind === 'intake' ? `${deposit.title} stays yours while custody, ownership terms and funding are verified.` : 'The complete original proof is verified and held privately on this device.'}</p>
       <div className="detail-list"><div><span>Asset</span><strong>{deposit.title}</strong></div>{deposit.intake && <div><span>Quantity</span><strong>{deposit.intake.quantity}</strong></div>}<div><span>Status</span><strong>{deposit.kind === 'intake' ? deposit.delivery ? 'Awaiting verified receipt' : 'Awaiting custody instructions' : 'Original proof held'}</strong></div>{deposit.pulse && <div><span>☤KAI</span><strong>{deposit.pulse}</strong></div>}</div>
       {deposit.delivery && <CustodyDelivery instructions={deposit.delivery} />}
       <div className="note-box"><ShieldCheck size={18} /><p>{deposit.kind === 'intake' ? deposit.delivery ? 'Your request is saved. Physical custody and value are confirmed by the verified receipt after your item arrives.' : 'Add the delivery or ownership instructions for this asset. Its verified intake and financial records establish custody and any funds added to your account.' : 'Ownership recovery and spendable value follow the proof’s verification and execution rules.'}</p></div>
       <button className="primary-button" onClick={saveProof}>Save original proof</button><button className="secondary-button" onClick={onClose}>Done</button>
     </>}
-    {kind === 'dollars' && !checkout && <><h1 className="sheet-hero">{funding?.purchase?'Buy ownership.':'Add to your balance.'}</h1>{funding?.purchase&&<p className="body-copy">{funding.purchase.title}</p>}<p className="body-copy">{funding?(funding.purpose==='payment'?'Add money to your account. You’ll review the payment after your deposit is credited.':funding.purchase?'Choose your dollar budget. Your payment buys that amount of ownership at the live Market price; the final quantity can change.':'Choose an amount for this purchase. You can buy a fraction of the asset. You’ll review the trade after your deposit is credited.'):'Choose an amount to add to your account.'}</p><AmountInput label="Amount" value={amount} onChange={setAmount} dollars />
-      <BuyAmountPresets value={amount} onChange={setAmount} disabled={busy}/>
-      {funding&&!funding.purchase&&<button type="button" className="secondary-button" disabled={busy} onClick={()=>setKind('note')}>Pay with a Note</button>}
-      <><p className="body-copy small-copy deposit-payment-summary">{funding?.purchase?'Continue to approve this purchase budget. After your payment is credited, the purchase continues automatically for this asset.':'Choose how to pay at secure checkout. Your progress is saved on this device.'}</p><details className="deposit-consent-details"><summary>{funding?.purchase?'Purchase details':'Details'}</summary><p className="body-copy small-copy">{funding?.purchase?'You approve the displayed dollar budget for this asset at the live Market execution price. The payment funds the purchase; its final ownership quantity can change. The existing Receiz payment and trade rules apply, and your signing key stays on this device.':BANK_CARD_CONSENT}</p>{!funding?.purchase&&<p className="body-copy small-copy">Your funds enter the proof-native economy. The Original carries their value and proof. Completed Notes can travel directly between people, including offline. Any receiving implementation keeps the exact value, ownership, history and use rights together.</p>}</details>{!funding?.purchase&&<OriginalsValueLink/>}<button className="primary-button" disabled={busy} onClick={() => void run(async () => { const ticket = generation.current, value = await identity.beginCardDeposit(amount, true); if (ticket === generation.current) { funding?.onCheckout?.({sessionId:value.sessionId,amountUsdCents:value.amountUsdCents});if(funding?.purchase)funding.onPurchaseApproved?.({sessionId:value.sessionId,amountUsdCents:value.amountUsdCents});setCheckout(value); setRetainedCheckouts(values => [value, ...values.filter(item => item.sessionId !== value.sessionId)]); } })}>{funding?.purchase?'Continue to payment':'Continue'}{busy&&<InlineOpening compact label="Preparing secure payment"/>}<ArrowRight size={17} /></button></>
+    {kind === 'dollars' && !checkout && <>
+      <div className="deposit-payment-step">
+        <header className="deposit-payment-heading">
+          <div>
+            <h1 className="sheet-hero">{funding?.purchase ? 'Buy ownership.' : 'Add to your balance.'}</h1>
+            {funding?.purchase && <p className="body-copy">{funding.purchase.title}</p>}
+          </div>
+          <span className="deposit-payment-symbol" aria-hidden="true">
+            {funding?.purchase ? <Building2 size={23}/> : <CircleDollarSign size={23}/>}
+          </span>
+        </header>
+        {funding && <p className="body-copy">{funding.purpose === 'payment'
+          ? 'Add money to your account. You’ll review the payment after your deposit is credited.'
+          : funding.purchase
+            ? 'Choose your dollar budget. Your payment buys that amount of ownership at the live Market price; the final quantity can change.'
+            : 'Choose an amount for this purchase. You can buy a fraction of the asset. You’ll review the trade after your deposit is credited.'}</p>}
+        <div className="deposit-payment-amount">
+          <AmountInput label="Amount" value={amount} onChange={setAmount} dollars suffix="USD" disabled={busy}/>
+          <BuyAmountPresets value={amount} onChange={setAmount} disabled={busy}
+            label={funding?.purchase ? undefined : 'Suggested deposit amounts'}/>
+        </div>
+        {funding && !funding.purchase && <button type="button" className="secondary-button" disabled={busy} onClick={() => setKind('note')}>Pay with a Note</button>}
+        <p className="deposit-payment-summary">
+          <LockKeyhole size={16} aria-hidden="true"/>
+          <span>{funding?.purchase
+            ? 'Continue to approve this purchase budget. After your payment is credited, the purchase continues automatically for this asset.'
+            : 'Choose how to pay at secure checkout. Your progress is saved on this device.'}</span>
+        </p>
+        <button type="button" className="primary-button" disabled={busy} onClick={() => void startCheckout()}>
+          {funding?.purchase ? 'Continue to payment' : funding ? 'Continue' : 'Continue to checkout'}
+          {busy ? <InlineOpening compact label="Preparing secure payment"/> : <ArrowRight size={17} aria-hidden="true"/>}
+        </button>
+        <details className="deposit-consent-details">
+          <summary>{funding?.purchase ? 'Purchase details' : 'Details'}</summary>
+          <p className="body-copy small-copy">{funding?.purchase
+            ? 'You approve the displayed dollar budget for this asset at the live Market execution price. The payment funds the purchase; its final ownership quantity can change. The existing Receiz payment and trade rules apply, and your signing key stays on this device.'
+            : BANK_CARD_CONSENT}</p>
+          {!funding?.purchase && <p className="body-copy small-copy">Your funds enter the proof-native economy. The Original carries their value and proof. Completed Notes can travel directly between people, including offline. Any receiving implementation keeps the exact value, ownership, history and use rights together.</p>}
+        </details>
+      </div>
       <UnfinishedCheckouts entries={retainedCheckouts.map(value=>({id:value.sessionId,amountUsdCents:value.amountUsdCents,label:observedStatuses[value.sessionId]==='settling'?'Check payment status':undefined,cancellable:observedStatuses[value.sessionId]!=='settling'}))} busy={busy} onResume={id=>{const value=retainedCheckouts.find(row=>row.sessionId===id);if(!value)return;funding?.onCheckout?.({sessionId:value.sessionId,amountUsdCents:value.amountUsdCents});setCheckout(value);setCardStatus(observedStatuses[value.sessionId]??'');setError('');}} onCancel={identity.cancelCardDeposit?id=>{const value=retainedCheckouts.find(row=>row.sessionId===id);if(value)void cancelCheckout(value);}:undefined}/>
     </>}
     {kind === 'dollars' && checkout && cardStatus !== 'credited' && <><h1 className="sheet-hero">{funding?.purchase?'Buy':'Add'} {formatMoney(checkout.amountUsdCents)}{funding?.purchase?' of ownership.':'.'}</h1><p className="body-copy">{funding?.purchase?funding.purchase.title:'Complete your secure payment.'}</p>{['','open'].includes(cardStatus)?<ReceizCardCheckout checkout={checkout} onCheck={checkCard}/>:<><p className="body-copy" role="status">{cardStatus==='checking'?'Checking your saved deposit…':cardStatus==='needs-check'?'Your saved deposit needs a status check.':''}</p><button className="secondary-button" disabled={busy} onClick={()=>void checkCard()}>Check deposit status</button></>}{['open','settling','expired','unpaid'].includes(cardStatus) && <p className="body-copy" role="status">{cardStatus === 'settling' ? 'Your payment is processing. Account credit is pending.' : cardStatus === 'expired' ? 'This checkout expired. No deposit was confirmed.' : cardStatus === 'unpaid' ? 'Payment was not completed.' : 'This payment is still open.'}</p>}</>}

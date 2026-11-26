@@ -1,7 +1,7 @@
 import {formatUnits} from '../../core/money';
 
-export function BuyAmountPresets({value,onChange,disabled=false}:{value:string;onChange(value:string):void;disabled?:boolean}){
- return <div className="quick-amounts trade-amount-presets" role="group" aria-label="Purchase amounts">
+export function BuyAmountPresets({value,onChange,disabled=false,label='Purchase amounts'}:{value:string;onChange(value:string):void;disabled?:boolean;label?:string}){
+ return <div className="quick-amounts trade-amount-presets" role="group" aria-label={label}>
   {['100','250','500','1000'].map(amount=><button type="button" key={amount} disabled={disabled} aria-pressed={value===amount} onClick={()=>onChange(amount)}>{amount==='1000'?'$1,000':`$${amount}`}</button>)}
  </div>;
 }

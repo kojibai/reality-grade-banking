@@ -104,3 +104,6 @@
 .asset-seal-progress{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 0;border-top:1px solid var(--border,var(--bank-line-subtle,#e1e6ef));border-bottom:1px solid var(--border,var(--bank-line-subtle,#e1e6ef));margin:12px 0;color:var(--navy,var(--bank-text,#172b45))}
 .asset-seal-progress>div{display:grid;gap:6px;min-width:0}.asset-seal-progress strong{font-size:14px;font-weight:500}.asset-seal-progress>div>span{font-size:11px;color:var(--bank-text-muted,#7b8ba1);font-variant-numeric:tabular-nums}
 .asset-seal-progress>progress{appearance:none;display:block;width:100%;height:2px;border:0;background:var(--bank-info-surface,#e7ecf4);color:var(--blue,var(--bank-link,#244dcb))}.asset-seal-progress>progress::-webkit-progress-bar{background:var(--bank-info-surface,#e7ecf4)}.asset-seal-progress>progress::-webkit-progress-value{background:var(--blue,#244dcb)}.asset-seal-progress>progress::-moz-progress-bar{background:var(--blue,#244dcb)}
+
+.asset-canvas-actions{display:grid;justify-items:center;margin-top:8px}
+.asset-canvas-actions .asset-import-entry{min-height:44px;padding:8px;margin:0}

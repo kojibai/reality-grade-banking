@@ -12,7 +12,7 @@ export function kaiPulseMotionFromMicro(micro: bigint) {
 export type KaiPulseMotion = ReturnType<typeof kaiPulseMotionFromMicro> & { sampledAt?: number };
 
 /** One native pulse, composited by the browser; never an independent loop. */
-export function animateKaiPulseOrb(orb: Element, readMotion: () => KaiPulseMotion, displayedPulse: number, material?: Element) {
+export function animateKaiPulseOrb(orb: Element, readMotion: () => KaiPulseMotion, material?: Element) {
   const animation = orb.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], {
     duration: KAI_PULSE_MOTION_MS, iterations: 1, easing: 'linear', fill: 'forwards',
   });
@@ -21,14 +21,11 @@ export function animateKaiPulseOrb(orb: Element, readMotion: () => KaiPulseMotio
     { opacity: .16, transform: 'scale(1.0015)' },
     { opacity: .08, transform: 'scale(1)' },
   ], { duration: KAI_PULSE_MOTION_MS, iterations: 1, easing: 'ease-in-out', fill: 'forwards' });
-  // Cancellation is expected on every native boundary, suspension and dismissal.
-  // Observe the WAAPI completion promises before cancel can reject them.
-  void animation.finished?.catch(() => {});
-  void breath?.finished?.catch(() => {});
+  let orbCompletion: Promise<Animation> | undefined, breathCompletion: Promise<Animation> | undefined;
   // Sample the held source at effect commit, after compositor objects exist.
   // If a boundary passed during rendering, hold the top until the native sample
   // catches the display up; never let a stale render start a second time law.
-  const reanchor = () => {
+  const reanchor = (displayedPulse: number) => {
     const motion = readMotion();
     const currentTime = motion.pulse === displayedPulse ? motion.phase * motion.periodMs : motion.periodMs;
     animation.currentTime = currentTime;
@@ -40,7 +37,16 @@ export function animateKaiPulseOrb(orb: Element, readMotion: () => KaiPulseMotio
       animation.startTime = motion.sampledAt - currentTime;
       if (breath) breath.startTime = motion.sampledAt - currentTime;
     }
+    // A sweep that has reached its end gets a new completion promise on
+    // reanchoring. Observe each promise once before a later cancellation.
+    if (animation.finished !== orbCompletion) {
+      orbCompletion = animation.finished;
+      void orbCompletion?.catch(() => {});
+    }
+    if (breath?.finished !== breathCompletion) {
+      breathCompletion = breath?.finished;
+      void breathCompletion?.catch(() => {});
+    }
   };
-  reanchor();
   return { reanchor, cancel: () => { animation.cancel(); breath?.cancel(); } };
 }

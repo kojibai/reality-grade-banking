@@ -32,12 +32,11 @@
 .kai-klok .kai-canonical-face .day-progress-track { fill: none; stroke: #34455b; stroke-width: 2.4px; }
 .kai-klok .kai-canonical-face .day-progress { stroke: var(--kai-phase); stroke-width: 2.4px; filter: none; animation: none; opacity: 1; transition: stroke-dashoffset .55s ease-out, stroke .4s ease-out; }
 .kai-klok[data-kai-boundary=beat] .kai-canonical-face .day-progress { transition: stroke .4s ease-out; }
-.kai-klok .kai-canonical-face .orb-spin { animation: none; transform: none; }
 .kai-klok .kai-canonical-face .kai-svg text { font-family: inherit; font-variant-numeric: tabular-nums; filter: none !important; text-shadow: none; stroke: #142337; stroke-width: .15px; paint-order: stroke fill; }
 .kai-klok .kai-canonical-face .beat-number { font-size: 5.2px; font-weight: 650; text-shadow: none; stroke: #dce7f0a6; stroke-width: .18px; }
 .kai-klok .kai-canonical-face .inner-halo { filter: drop-shadow(0 0 .18px #172b45); opacity: 1; }
 .kai-klok .kai-canonical-face .center-surface { stroke: #3a5067; stroke-width: .3px; filter: drop-shadow(0 .5px .8px #06101d80); }
-.kai-klok .kai-canonical-face .micro-orb { stroke: #172b4555; stroke-width: .15px; filter: none; animation: none; }
+.kai-klok .kai-canonical-face .micro-orb { stroke: #172b4555; stroke-width: .15px; }
 .kai-klok .kai-canonical-face .center-pulse, .kai-klok .kai-canonical-face .eternal-pulse, .kai-klok .kai-canonical-face .center-sub { stroke: #142337 !important; stroke-width: .15px !important; filter: none !important; text-shadow: none; }
 .kai-klok .kai-canonical-face .center-pulse { font-size: 12.8px; font-weight: 600; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
 .kai-klok .kai-canonical-face .center-coordinate-label { fill: #a5b4c5; stroke: none; font-size: 3.5px; font-weight: 550; letter-spacing: .13px; }

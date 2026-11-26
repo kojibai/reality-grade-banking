@@ -34,7 +34,8 @@ it('samples the held native source after animation creation and aligns one bound
     expect(orb.animate).toHaveBeenCalledTimes(1); expect(breath.animate).toHaveBeenCalledTimes(1);
     return { ...kaiPulseMotionFromMicro(42_500_000n), sampledAt: 10_000 };
   });
-  const cycle = animateKaiPulseOrb(orb as unknown as Element, read, 42, breath as unknown as Element);
+  const cycle = animateKaiPulseOrb(orb as unknown as Element, read, breath as unknown as Element);
+  cycle.reanchor(42);
   expect(orbAnimation.currentTime).toBe(KAI_PULSE_MOTION_MS / 2);
   expect(breathAnimation.currentTime).toBe(orbAnimation.currentTime);
   expect(orbAnimation.startTime).toBe(10_000 - KAI_PULSE_MOTION_MS / 2);
@@ -46,7 +47,7 @@ it('samples the held native source after animation creation and aligns one bound
 it('holds the top if a native boundary passed before the effect committed', () => {
   const animation = { currentTime: 0, cancel: vi.fn() };
   const orb = { animate: () => animation };
-  animateKaiPulseOrb(orb as unknown as Element, () => kaiPulseMotionFromMicro(43_001_000n), 42);
+  animateKaiPulseOrb(orb as unknown as Element, () => kaiPulseMotionFromMicro(43_001_000n)).reanchor(42);
   expect(animation.currentTime).toBe(KAI_PULSE_MOTION_MS);
 });
 
@@ -70,11 +71,11 @@ it('samples the native source once per required controller anchor', () => {
   expect(readMotion).toHaveBeenCalledTimes(2); expect(animations).toHaveLength(2);
   sampledPulse = 43;
   act(() => root!.render(<Orb pulse={43} revision={2} />));
-  expect(readMotion).toHaveBeenCalledTimes(3); expect(animations).toHaveLength(4);
+  expect(readMotion).toHaveBeenCalledTimes(3); expect(animations).toHaveLength(2);
   act(() => root!.render(<Orb pulse={43} revision={2} visible={false} />));
   expect(readMotion).toHaveBeenCalledTimes(3);
   act(() => root!.render(<Orb pulse={43} revision={3} />));
-  expect(readMotion).toHaveBeenCalledTimes(4); expect(animations).toHaveLength(6);
+  expect(readMotion).toHaveBeenCalledTimes(4); expect(animations).toHaveLength(4);
   act(() => root!.unmount()); root = undefined;
   expect(animations.every(animation => animation.cancel.mock.calls.length === 1)).toBe(true);
 });
@@ -151,11 +152,11 @@ it('reanchors the same animation on focus-only sleep recovery when performance d
   vi.setSystemTime(Number(epochMsFromPulse(14_717_711n)) + 1000);
   act(() => window.dispatchEvent(new Event('focus')));
   expect(performance.now()).toBe(performanceBefore); expect(vi.getTimerCount()).toBe(1);
-  expect(animations).toHaveLength(4); expect(animations[0].cancel).toHaveBeenCalledOnce();
+  expect(animations).toHaveLength(2); expect(animations[0].cancel).not.toHaveBeenCalled();
   expect(host.querySelector('.orb-spin')).toBe(orb);
   expect(host.querySelector('.kai-header-button')?.textContent).toContain('14,717,711');
-  expect(animations[2].currentTime).toBeGreaterThan(990); expect(animations[2].currentTime).toBeLessThan(1010);
-  expect(animations[3].currentTime).toBe(animations[2].currentTime);
+  expect(animations[0].currentTime).toBeGreaterThan(990); expect(animations[0].currentTime).toBeLessThan(1010);
+  expect(animations[1].currentTime).toBe(animations[0].currentTime);
 });
 
 it('keeps one native boundary timer and reanchors the existing orb at the next pulse', () => {
@@ -171,11 +172,12 @@ it('keeps one native boundary timer and reanchors the existing orb at the next p
   act(() => vi.advanceTimersByTime(5200));
   expect(animations).toHaveLength(2);
   act(() => vi.advanceTimersByTime(40));
-  expect(animations).toHaveLength(4); expect(vi.getTimerCount()).toBe(1);
-  expect(animations[0].cancel).toHaveBeenCalledOnce(); expect(animations[1].cancel).toHaveBeenCalledOnce();
+  expect(animations).toHaveLength(2); expect(vi.getTimerCount()).toBe(1);
+  expect(animations[0].cancel).not.toHaveBeenCalled(); expect(animations[1].cancel).not.toHaveBeenCalled();
   expect(host.querySelector('.orb-spin')).toBe(orb);
+  expect(animations[0].currentTime).toBeGreaterThanOrEqual(0); expect(animations[0].currentTime).toBeLessThan(20);
+  expect(animations[0].currentTime).toBe(animations[1].currentTime);
   expect(host.querySelector('.kai-header-button')?.textContent).toContain('14,717,708');
-  expect(animations[2].currentTime).toBeGreaterThanOrEqual(0); expect(animations[2].currentTime).toBeLessThan(20);
 });
 
 it('balances motion subscriptions and animation disposal across five explicit open and close visits', () => {

@@ -39,10 +39,15 @@ it('opens payment checkout directly without a method selector or an unfunded bal
   const create = vi.fn(async () => checkout), refresh = vi.fn(), host = document.createElement('div'), root = createRoot(host);
   const click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent === text)!.click();
   try { await act(async () => root.render(<LiveDeposit identity={{ beginCardDeposit: create } as unknown as OpenIdentity} onClose={vi.fn()} onRefresh={refresh} />));
+    expect(host.querySelector('a[href="/learn/earn-from-originals/"]')?.textContent ?? '').toContain('Earn from Originals');
     await act(async () => [...host.querySelectorAll('button')].find(button => button.textContent?.includes('Add money'))!.click());
+    expect(host.querySelector('a[href="/learn/earn-from-originals/"]')).toBeNull();
     expect([...host.querySelectorAll('button')].some(button => ['Card', 'Wire'].includes(button.textContent ?? ''))).toBe(false);
     expect(host.textContent).toContain('Choose how to pay at secure checkout.'); expect(host.textContent).not.toMatch(/card|wire/i); expect(create).not.toHaveBeenCalled();
-    act(() => click('$100')); await act(async () => click('Continue'));
+    expect(host.querySelector('[role="group"][aria-label="Suggested deposit amounts"]')).not.toBeNull();
+    act(() => click('$100'));
+    expect(host.querySelector('button[aria-pressed="true"]')?.textContent).toBe('$100');
+    await act(async () => click('Continue to checkout'));
     expect(create).toHaveBeenCalledExactlyOnceWith('100', true);
     expect(host.querySelector('iframe')?.getAttribute('src')).toContain(checkout.sessionId);
     expect(refresh).not.toHaveBeenCalled(); expect(host.textContent).not.toContain('Added to your balance');
@@ -106,7 +111,7 @@ it('a delayed initial resume list cannot erase a checkout created while the read
   const host = document.createElement('div'), root = createRoot(host), click = (text: string) => [...host.querySelectorAll('button')].find(button => button.textContent?.includes(text))!.click();
   try {
     await act(async () => root.render(<LiveDeposit identity={identity} onClose={() => {}} onRefresh={() => {}} />));
-    act(() => click('Add money')); await act(async () => click('Continue')); act(() => click('All options')); act(() => click('Add money'));
+    act(() => click('Add money')); await act(async () => click('Continue to checkout')); act(() => click('All options')); act(() => click('Add money'));
     expect(host.textContent).toContain('Resume secure checkout');
     await act(async () => restore([])); expect(host.textContent).toContain('Resume secure checkout');
   } finally { act(() => root.unmount()); }

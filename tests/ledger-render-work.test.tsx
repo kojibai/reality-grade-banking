@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import {act} from 'react';
+import {act,cloneElement} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {Ledger} from '../src/features/ledger/Ledger';
@@ -112,4 +112,37 @@ it('formats the complete JSON only when its disclosure is opened, while keeping 
  const disclosure=host.querySelector<HTMLDetailsElement>('.ledger-exact-json')!;
  expect(disclosure.querySelector('pre')).toBeNull();expect(host.querySelector('[aria-label="Download original proof"]')).not.toBeNull();
  act(()=>{disclosure.open=true;disclosure.dispatchEvent(new Event('toggle'));});expect(JSON.parse(disclosure.querySelector('pre')!.textContent!)).toMatchObject({id:'selected',title:'Selected original'});
+});
+
+it.each([
+ ['public Ledger', <PublicLedgerApp active={false}/>],
+ ['signed-in Ledger', <Ledger active={false}/>],
+] as const)('offers Currencies in %s only when the held activity includes currency records',(_,view)=>{
+ const ordinary={id:'ordinary',actionKind:'record',summary:'Ordinary action',pulse:1};
+ const currency={id:'currency',actionKind:'asset.buy-currency',summary:'Field currency purchase',pulse:2,
+  currency:{assetId:'a'.repeat(64),symbol:'FIELD',priceUsdCentsPerUnit:'25',quantityMicro:'1000000'}};
+ const fetch=vi.fn();
+ vi.stubGlobal('fetch',fetch);
+ const host=document.createElement('div');
+ document.body.append(host);
+ root=createRoot(host);
+ const filter=(label:string)=>[...host.querySelectorAll<HTMLButtonElement>('[aria-label="Activity type"] button')].find(button=>button.textContent===label);
+ const render=(actions:object[])=>{
+  held.network={records:parsePublicNetworkPage('actions',{ok:true,actions}).records,sources:{},bootstrap:false,refresh:()=>{},loadMore:()=>{}};
+  act(()=>root.render(cloneElement(view)));
+ };
+ render([ordinary]);
+ expect(filter('Currencies')).toBeUndefined();
+ render([ordinary,currency]);
+ expect(filter('Currencies')).toBeDefined();
+ act(()=>filter('Actions')!.click());
+ expect(filter('Currencies')).toBeDefined();
+ act(()=>filter('Currencies')!.click());
+ expect(filter('Currencies')?.getAttribute('aria-pressed')).toBe('true');
+ expect(host.textContent).not.toContain('Ordinary action');
+ render([ordinary]);
+ expect(filter('Currencies')).toBeUndefined();
+ expect(filter('All activity')?.getAttribute('aria-pressed')).toBe('true');
+ expect(host.textContent).toContain('Ordinary action');
+ expect(fetch).not.toHaveBeenCalled();
 });

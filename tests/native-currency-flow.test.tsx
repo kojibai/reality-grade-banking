@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { LiveReceive } from '../src/features/account/LivePayments';
 import { openCurrencyNoteFile } from '../src/receiz/currency-notes';
+import { CreateAsset } from '../src/features/assets/CreateAsset';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
 import { LiveOwnership } from '../src/features/assets/LiveOwnership';
@@ -28,16 +29,26 @@ function enter(host:HTMLElement,label:string,value:string) {
  field!.dispatchEvent(new Event('input',{bubbles:true}));
 }
 
-it('opens currency issue from Add and stages an authored draft with the selected terms',async()=>{
+it('opens currency issue inside An asset, preserves the Original draft, and stages an authored draft with the selected terms',async()=>{
  const host=document.createElement('div'),root=createRoot(host),operations=vi.fn((draft:AssetComposerDraft)=>({draft}));
- const identity={backedAssetPublication:async()=>({operations}),currencyNotes:vi.fn()} as unknown as OpenIdentity;
+ const identity={backedAssetPublication:async()=>({pending:async()=>null,operations}),currencyNotes:vi.fn()} as unknown as OpenIdentity;
  document.body.append(host);
  try {
-  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  const props={identity,onClose:()=>{},onRefresh:()=>{}};
+  await act(async()=>root.render(<LiveDeposit {...props} onCreateAsset={()=>root.render(<CreateAsset {...props}/>)}/>));
   expect([...host.querySelectorAll('.deposit-options button strong')].map(label=>label.textContent)).toEqual([
-   'Add money','Issue a currency','An asset','Notes',
+   'Add money','An asset','Notes',
   ]);
-  const issue=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!;
+  const findButton=(name:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!;
+  await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('.deposit-options button')].find(button=>button.querySelector('strong')?.textContent==='An asset')!.click());
+  expect(host.textContent).toContain('Make it yours.');
+  await act(async()=>enter(host,'Title','An Original in progress'));
+  const issue=findButton('Issue a currency');
+  expect(issue.closest('.asset-canvas-empty')).toBe(host.querySelector('[aria-label="Use an existing proof"]')?.closest('.asset-canvas-empty'));
+  await act(async()=>{issue.click();await vi.dynamicImportSettled();});
+  await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Go back"]')!.click());
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Title"]')?.value).toBe('An Original in progress');
+  expect(host.querySelector('.currency-creation')).toBeNull();
   await act(async()=>{issue.click();await vi.dynamicImportSettled();});
   expect(host.querySelector('input[aria-label="Supply cap"]')).toBeNull();
   await act(async()=>{
@@ -46,7 +57,7 @@ it('opens currency issue from Add and stages an authored draft with the selected
   });
   expect(host.querySelector('[aria-label="Your currency preview"]')?.textContent).toContain('Field credit');
   const artwork = new File(['local artwork'], 'field.png', {type:'image/png'});
-  const picker = host.querySelector<HTMLInputElement>('input[type=file]')!;
+  const picker = host.querySelector<HTMLInputElement>('.currency-creation input[type=file]')!;
   Object.defineProperty(picker,'files',{value:[artwork]});
   await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
   const click = (name:string) => act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!.click());
@@ -74,7 +85,7 @@ it('opens the issued currency charter editor from the admitted source without re
  const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64),issuer='issuer.receiz.id';
  const actor={artifactSha256:'c'.repeat(64),artifactOwnerReceizId:issuer};
  const readPublicAsset=vi.fn();
- const identity={binding:actor,backedAssetPublication:async()=>({readPublicAsset})} as unknown as OpenIdentity;
+ const identity={binding:actor,backedAssetPublication:async()=>({pending:async()=>null,readPublicAsset})} as unknown as OpenIdentity;
  const packet={schema:'receiz.bank.native-asset-result.v1',status:'committed',source:{
   filename:'native-asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:'f'.repeat(64),exactBytesB64u:'e30',
  }}as const;
@@ -86,7 +97,7 @@ it('opens the issued currency charter editor from the admitted source without re
  const click=(text:string)=>act(async()=>{findButton(text)!.click();await vi.dynamicImportSettled();});
  document.body.append(host);
  try {
-  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  await act(async()=>root.render(<CreateAsset identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
   await click('Issue a currency');
   await act(async()=>{enter(host,'Name','Field credit');enter(host,'Currency code','FIELD');});
   await click('Set currency terms');
@@ -127,7 +138,9 @@ it.each(['Receive','Add'] as const)('reviews a currency note through the shared 
   expect(host.querySelectorAll('input[type="file"]')).toHaveLength(1);
   expect(picker.accept).toContain('.png');
   expect(picker.accept).toContain('.receizcurrency');
-  expect(picker.closest('label')?.textContent).toContain('Settlement Note PNG, deposit proof, or currency note file');
+  expect(picker.closest('label')?.querySelector('strong')?.textContent).toBe('Choose a Note');
+  expect(picker.closest('label')?.textContent).toContain('Original Note image or proof');
+  expect(host.textContent).toContain('Review a Settlement or currency Note before depositing it.');
   const file=new File(['fixture'],'field.receizcurrency',{type:'application/json'});
   Object.defineProperty(picker,'files',{value:[file]});
   await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
@@ -201,14 +214,14 @@ it('reviews creator changes against the exact admitted currency head', async()=>
 
 it.each(['service-credit', 'coupon', 'rewards'] as const)('issues the %s preset and requires pool funding when keeping units',async(preset)=>{
  const host=document.createElement('div'),root=createRoot(host);
- const identity={backedAssetPublication:vi.fn()} as unknown as OpenIdentity;
+ const identity={backedAssetPublication:async()=>({pending:async()=>null})} as unknown as OpenIdentity;
  const click=(name:string)=>act(async()=>{
   [...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!.click();
   await vi.dynamicImportSettled();
  });
  document.body.append(host);
  try {
-  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  await act(async()=>root.render(<CreateAsset identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
   await act(async()=>{
    [...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!.click();
    await vi.dynamicImportSettled();

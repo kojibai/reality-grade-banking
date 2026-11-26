@@ -164,19 +164,9 @@ filter:
   drop-shadow(0 0 18px color-mix(in srgb,var(--arc) 55%,transparent));
 }
 
-/* ─── Micro-orb: spin + breath-glow (now arc-coloured) ─────────── */
-.kai-canonical-face .micro-orb {
-fill: var(--arc);
-filter:
-  drop-shadow(0 0 6px var(--arc))
-  drop-shadow(0 0 18px var(--arc));
-animation: kai-source-klockBreath var(--cycle) ease-in-out infinite;
-}
-.kai-canonical-face .orb-spin {
-animation: kai-source-orbSpin var(--cycle) linear infinite;
-transform-origin: 60px 60px;
-}
-@keyframes kai-source-orbSpin { to { transform: rotate(360deg); } }
+/* The Bankeiz dial drives the orb from the native pulse. */
+.kai-canonical-face .micro-orb { fill: var(--arc); }
+.kai-canonical-face .orb-spin { transform-origin: 60px 60px; }
 
 /* Arc Label Palette */
 .kai-canonical-face .arc-ignition      { --arc: #ff1559; }

@@ -373,26 +373,28 @@ test('offers Send nearby without starting new Note funding while disconnected', 
  }
 });
 
-test('keeps the reviewed artwork bound to the selected recipient and excludes it from open Notes',async()=>{
+test('defaults to Open Note when custody supports it and offers an optional recipient without an artwork picker',async()=>{
  const peer={kind:'user',userId:'33333333-3333-4333-8333-333333333333',username:'mira',displayName:'Mira',avatarUrl:null};
  const review=vi.fn(async(amountUsdCents:string,recipientUserId?:string)=>({rail:'reserve',amountUsdCents,recipientUserId}));
  const create=vi.fn(async(amountUsdCents:string,_rail:unknown,recipientUserId?:string)=>({noteId:'targeted',rail:'reserve',amountUsdCents,recipientUserId,image:new Uint8Array([1])}));
  const identity={messaging:async()=>({accountUid:'owner',knownConversations:()=>[{members:[peer]}],search:async()=>[],conversations:async()=>[]}),offlineNotes:async()=>({addressedCreationByDefault:true,pending:async()=>null,savedNotes:async()=>[{noteId:'held-note',amountUsdCents:'5000',image:new Uint8Array([1])}],review,create})}as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);document.body.appendChild(host);
- const artwork=new File(['test image'],'studio.png',{type:'image/png'});
  try{
   await act(async()=>root.render(<OfflineNotes identity={identity} mode="create" onBack={vi.fn()} onRefresh={vi.fn()}/>));
-  await act(async()=>host.querySelectorAll<HTMLInputElement>('input[name="note-recipient"]')[0].click());
+  expect(host.querySelector('summary')?.textContent).toBe('Who can deposit? · Open Note');
+  expect(host.querySelector('[role=combobox]')).toBeNull();
+  await act(async()=>click(host,'Review note'));
+  expect(review).toHaveBeenCalledExactlyOnceWith('10000');
+  expect(host.querySelector('.detail-list')?.textContent).toContain('Anyone with the Note');
+  await act(async()=>click(host,'Edit amount'));
   expect(host.querySelector('input[type=file]')).toBeNull();
   await act(async()=>host.querySelectorAll<HTMLInputElement>('input[name="note-recipient"]')[1].click());
   await act(async()=>host.querySelector<HTMLInputElement>('[role=combobox]')!.focus());
   await act(async()=>host.querySelector<HTMLElement>('[role=option]')!.click());
-  const field=host.querySelector<HTMLInputElement>('input[type=file]')!;
-  await act(async()=>{Object.defineProperty(field,'files',{value:[artwork]});field.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(host.querySelector('input[type=file]')).toBeNull();
   await act(async()=>click(host,'Review note'));
-  expect(host.textContent).toContain('studio.png');
   expect(create).not.toHaveBeenCalled();
   await act(async()=>click(host,'Create funded note'));
-  expect(create).toHaveBeenCalledExactlyOnceWith('10000',undefined,peer.userId,artwork);
+  expect(create).toHaveBeenCalledExactlyOnceWith('10000',undefined,peer.userId);
  }finally{act(()=>root.unmount());host.remove();}
 });
