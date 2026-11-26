@@ -9,6 +9,7 @@ import {Discover} from '../src/public-discover/Discover';
 import {parsePublicMarket} from '../src/receiz/public-market';
 import {publicOwnerSealAvatar} from '../src/public-explorer/PublicOwnerAvatar';
 import {buildDiscoveryIndex,orderDiscoveryItems} from '../src/public-discover/discovery-index';
+import {discoverSpotlightSeedScript,selectDiscoverSeed} from '../src/public-discover/spotlight-seed';
 import sharp from 'sharp';
 const head=(i:number)=>({profile:{userId:'owner-'+i,username:'person_'+i,displayName:'Person '+i,isPrivate:false,createdAt:'2026-11-09T13:00:00Z',avatarUrl:null},viewer:{canView:true},stats:{originals:0,originalViews:0,streams:0,witnessedSeconds:0,streamCompletionRatePct:0}});
 it('the actual Discover writer keeps eighty-two profiles while rendering twenty header-only people with bounded local portraits and no request',async()=>{
@@ -22,10 +23,10 @@ it('the actual Discover writer keeps eighty-two profiles while rendering twenty 
  const membership={ok:true,transport:{publicMembership:{version:1,source:'canonical-complete',scope:'whole-market-visible-showcase',isComplete:true,itemCount:1,revision:'held'},publicOriginals:[{id:'one',receizId:'one',title:'Existing Original',profileOriginal:{media:null}}],publicProfileHeads:heads}};
  const before=JSON.stringify(membership),fetcher=vi.fn(()=>{throw Error('No network belongs in first paint');});vi.stubGlobal('fetch',fetcher);
  const previous=process.cwd(),root=await mkdtemp(join(tmpdir(),'discover-header-paint-'));
- const modules={'/src/public-discover/Discover.tsx':{Discover},'/src/public-discover/discovery-index.ts':{orderDiscoveryItems,buildDiscoveryIndex},'/src/receiz/public-market.ts':{parsePublicMarket},'/src/public-explorer/PublicOwnerAvatar.tsx':{publicOwnerSealAvatar},'/src/receiz/profile-artwork.ts':{publicProfileAvatar}};
+ const modules={'/src/public-discover/Discover.tsx':{Discover},'/src/public-discover/discovery-index.ts':{orderDiscoveryItems,buildDiscoveryIndex},'/src/public-discover/spotlight-seed.ts':{discoverSpotlightSeedScript,selectDiscoverSeed},'/src/receiz/public-market.ts':{parsePublicMarket},'/src/public-explorer/PublicOwnerAvatar.tsx':{publicOwnerSealAvatar},'/src/receiz/profile-artwork.ts':{publicProfileAvatar}};
  try{
   await mkdir(join(root,'public'));await writeFile(join(root,'public/receiz-public-market.json'),before);process.chdir(root);
-  const prepared=await renderDiscoveryState({ssrLoadModule:async(path:string)=>{expect(path in modules).toBe(true);return modules[path as keyof typeof modules];}});
+  const prepared=await renderDiscoveryState({ssrLoadModule:async(path:string)=>{expect(path in modules,`Unexpected Discover SSR module: ${path}`).toBe(true);return modules[path as keyof typeof modules];}});
   const people=buildDiscoveryIndex([],prepared.seedHeads).people;expect(people).toHaveLength(20);expect(people.every(p=>p.items.length===0&&p.avatarUrl?.startsWith('data:image/webp;base64,'))).toBe(true);
   expect(prepared.content.match(/href="\/person_\d+\//g)).toHaveLength(20);expect(prepared.content).not.toContain('data:image/svg+xml');expect(prepared.content.length+JSON.stringify(prepared.seedHeads).length).toBeLessThan(100000);
   expect(prepared.content).not.toContain(portrait);
