@@ -1,6 +1,7 @@
 // Synchronization/retention mechanics only; the canonical verifier is mocked at
 // its existing boundary. These fixtures are not source qualification evidence.
 import {beforeEach,expect,it,vi} from 'vitest';
+import {heldCurrencyTrades,heldCurrencyPriceHistory} from '../src/receiz/currency-ledger-view';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
 const f=vi.hoisted(()=>({held:null as unknown,read:vi.fn(),open:vi.fn(),retain:vi.fn(),load:vi.fn(),save:vi.fn(),custody:new WeakMap<object,unknown>()}));
 vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:f.load,savePublicNetworkCache:f.save,savePublicLedgerDisplayCache:(_review:unknown,cache:unknown)=>f.save(cache)}));
@@ -75,4 +76,24 @@ it('lets a held canonical transfer replace conflicting weaker discovery fields',
 it('reports display durability failure after retaining the actual original and never substitutes rows for it',async()=>{
  const next=review('new');f.open.mockResolvedValue(next.value);f.save.mockResolvedValue(false);vi.stubGlobal('fetch',vi.fn(async()=>Response.json(next.source)));
  await expect(synchronizePublicLedger()).rejects.toThrow('DISPLAY_CACHE_UNAVAILABLE');expect(f.held).toBe(next.value);expect(f.retain).toHaveBeenCalledWith(next.value);
+});
+
+it('projects only accepted buys and sells and keeps every trade at a shared quote',async()=>{
+ const assetId='b'.repeat(64);
+ const opening=review('currency-source');
+ const first=opening.value.snapshot.records[0];
+ const currency={assetId,symbol:'CASH',priceUsdCentsPerUnit:'123',quantityMicro:'2000000'};
+ const held={...opening.value,snapshot:{...opening.value.snapshot,ledgerId:'trade-projection',sourceHistory:['held'],
+  records:[
+   {...first,id:'buy',kind:'asset.buy-currency',currency:{...currency,tradeUsdCents:'246'}},
+   {...first,id:'send',entryHash:'c'.repeat(64),kind:'asset.send-ownership',kaiUpulse:'1000001',currency},
+   {...first,id:'sell',entryHash:'d'.repeat(64),kind:'asset.sell-currency',kaiUpulse:'1000002',currency:{...currency,tradeUsdCents:'190'}},
+  ]}};
+ f.custody.set(held,{source:opening.source});
+ await publicLedgerDisplayRows(held as never,[]);
+ expect(heldCurrencyTrades(assetId,'CASH')).toEqual([
+  expect.objectContaining({side:'sell',kaiUPulse:'1000002',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'190'}),
+  expect.objectContaining({side:'buy',kaiUPulse:'1000000',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'246'}),
+ ]);
+ expect(heldCurrencyPriceHistory(assetId,'CASH').at(-1)?.usdCents).toBe('123');
 });

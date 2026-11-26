@@ -8,13 +8,14 @@ import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
 import { LiveOwnership } from '../src/features/assets/LiveOwnership';
 import type { OpenIdentity } from '../src/receiz/native-identity';
-import type { BankOperationInput } from '../src/receiz/bank-operations';
+import * as nativeAsset from '../src/receiz/native-asset';
+import type { BankOperationResult, BankOperationInput } from '../src/receiz/bank-operations';
 import type { AssetComposerDraft } from '../src/receiz/asset-composer';
 import type { HeldDeposit } from '../src/receiz/deposit-source';
 
-const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefined,operations:undefined as (()=>Promise<unknown>)|undefined}));
-vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{input:()=>BankOperationInput;operations?:()=>Promise<unknown>;children:React.ReactNode})=>{
- review.input=props.input;review.operations=props.operations;return props.children;
+const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefined,operations:undefined as (()=>Promise<unknown>)|undefined,onResult:undefined as ((result:BankOperationResult)=>void)|undefined}));
+vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{input:()=>BankOperationInput;operations?:()=>Promise<unknown>;onResult?:(result:BankOperationResult)=>void;children:React.ReactNode})=>{
+ review.input=props.input;review.operations=props.operations;review.onResult=props.onResult;return props.children;
 }}));
 vi.mock('../src/receiz/currency-notes', async importOriginal => ({
  ...(await importOriginal<typeof import('../src/receiz/currency-notes')>()), openCurrencyNoteFile:vi.fn(),
@@ -30,6 +31,7 @@ function enter(host:HTMLElement,label:string,value:string) {
 it('opens currency issue from Add and stages an authored draft with the selected terms',async()=>{
  const host=document.createElement('div'),root=createRoot(host),operations=vi.fn((draft:AssetComposerDraft)=>({draft}));
  const identity={backedAssetPublication:async()=>({operations}),currencyNotes:vi.fn()} as unknown as OpenIdentity;
+ document.body.append(host);
  try {
   await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
   expect([...host.querySelectorAll('.deposit-options button strong')].map(label=>label.textContent)).toEqual([
@@ -37,20 +39,72 @@ it('opens currency issue from Add and stages an authored draft with the selected
   ]);
   const issue=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!;
   await act(async()=>{issue.click();await vi.dynamicImportSettled();});
+  expect(host.querySelector('input[aria-label="Supply cap"]')).toBeNull();
   await act(async()=>{
    enter(host,'Name','Field credit');
-   enter(host,'Currency code','FIELD');
+   enter(host,'Currency code','field');
+  });
+  expect(host.querySelector('[aria-label="Your currency preview"]')?.textContent).toContain('Field credit');
+  const artwork = new File(['local artwork'], 'field.png', {type:'image/png'});
+  const picker = host.querySelector<HTMLInputElement>('input[type=file]')!;
+  Object.defineProperty(picker,'files',{value:[artwork]});
+  await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
+  const click = (name:string) => act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!.click());
+  await click('Set currency terms');
+  expect(host.textContent).toContain('Community governance');
+  await act(async()=>{
    enter(host,'Supply cap','10');
    enter(host,'Purchase price per unit','0.25');
   });
+  await click('Edit currency details');
+  expect(host.querySelector('img[alt="Selected currency artwork"]')).not.toBeNull();
+  await click('Set currency terms');
   const selected=review.input?.();
   expect(selected).toMatchObject({kind:'issue-currency',definition:{name:'Field credit',symbol:'FIELD',units:'10'},policy:{priceUsdCentsPerUnit:'25'}});
-  const optIn = host.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+  const optIn = host.querySelector<HTMLInputElement>('input[type=radio][value=managed]')!;
   await act(async()=>optIn.click());
   expect(review.input?.()).toMatchObject({policy:{issuerControls:true}});
   await review.operations?.();
-  expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',definition:expect.objectContaining({units:'10'})}));
- } finally {await act(async()=>root.unmount());}
+  expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',
+   definition:expect.objectContaining({units:'10'}),files:[{id:'currency-artwork',role:'primary',file:artwork}]}));
+ } finally {await act(async()=>root.unmount());host.remove();}
+});
+
+it('opens the issued currency charter editor from the admitted source without rereading Market', async()=>{
+ const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64),issuer='issuer.receiz.id';
+ const actor={artifactSha256:'c'.repeat(64),artifactOwnerReceizId:issuer};
+ const readPublicAsset=vi.fn();
+ const identity={binding:actor,backedAssetPublication:async()=>({readPublicAsset})} as unknown as OpenIdentity;
+ const packet={schema:'receiz.bank.native-asset-result.v1',status:'committed',source:{
+  filename:'native-asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:'f'.repeat(64),exactBytesB64u:'e30',
+ }}as const;
+ const receipt={schema:'receiz.bank.native-asset-receipt.v1',review:{request:{kind:'issue-currency',actorReceizId:issuer,definition:{name:'Field credit',symbol:'FIELD'}}},
+  assetAfter:{id,currency:{policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'25',issuerControls:true},issuerAccountId:'00000000-0000-4000-8000-000000000001'}}};
+ const verifier=vi.spyOn(nativeAsset,'verifyNativeAssetSource').mockResolvedValue({packet,receipt} as unknown as Awaited<ReturnType<typeof nativeAsset.verifyNativeAssetSource>>);
+ const load=vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('Public governance reads unavailable'));
+ const findButton=(text:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text));
+ const click=(text:string)=>act(async()=>{findButton(text)!.click();await vi.dynamicImportSettled();});
+ document.body.append(host);
+ try {
+  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  await click('Issue a currency');
+  await act(async()=>{enter(host,'Name','Field credit');enter(host,'Currency code','FIELD');});
+  await click('Set currency terms');
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value=managed]')!.click());
+  expect(findButton('Set up voting and governance')).toBeUndefined();
+  await act(async()=>review.onResult?.({status:'committed',nativeAssetSource:packet}));
+  await click('Set up voting and governance');
+  await act(async()=>{await vi.dynamicImportSettled();});
+  expect(verifier).toHaveBeenCalledExactlyOnceWith(packet);
+  expect(readPublicAsset).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('Field credit · FIELD');
+  await click('Create charter');
+  expect(host.textContent).toContain('Choose a separate voting membership');
+  await act(async()=>enter(host,'Organization name','Field credit members'));
+  await click('Continue');
+  expect(host.textContent).toContain('Lowest purchase price (USD)');
+  expect(host.textContent).toContain('Approval threshold (%)');
+ } finally {await act(async()=>root.unmount());host.remove();verifier.mockRestore();load.mockRestore();}
 });
 
 it.each(['Receive','Add'] as const)('reviews a currency note through the shared %s deposit picker',async(entry)=>{

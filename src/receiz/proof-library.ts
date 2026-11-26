@@ -6,7 +6,7 @@ import {openCanonicalProofFile,hasProofCaptureCarrier,isProofPng} from './proof-
 import {extractAccountProofPng} from './account-proof-png';
 import type { VerifiedAccountProof } from './account-proof';
 
-export type ProofKind = 'owned-source' | 'received-original' | 'account-source' | 'execution-recovery' | 'note-image' | 'note-deposit' | 'payment-receipt' | 'asset-receipt';
+export type ProofKind = 'owned-source' | 'received-original' | 'account-source' | 'execution-recovery' | 'note-image' | 'note-deposit' | 'payment-receipt' | 'asset-receipt' | 'original-piece';
 export interface ProofSource { kind: ProofKind; filename: string; bytes: Uint8Array; }
 export interface ProofSummary { kind: ProofKind; digest: string; filename: string; title: string; size: number; operationId?: string; participantCount?: number; }
 export interface ProofReview { items: readonly ProofSummary[]; totalBytes: number; }
@@ -19,7 +19,7 @@ export interface ProofLibrary {
   exportProof(digest: string): Promise<{ bytes: Uint8Array; filename: string }>;
 }
 const MAX_SOURCE = 32 * 1024 * 1024, MAX_TOTAL = 64 * 1024 * 1024, MAX_WIRE = 90 * 1024 * 1024, MAX_COUNT = 1000;
-const kinds: readonly ProofKind[] = ['owned-source', 'received-original', 'account-source', 'execution-recovery', 'note-image', 'note-deposit', 'payment-receipt', 'asset-receipt'];
+const kinds: readonly ProofKind[] = ['owned-source', 'received-original', 'account-source', 'execution-recovery', 'note-image', 'note-deposit', 'payment-receipt', 'asset-receipt', 'original-piece'];
 const filename = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 240 && !/[\x00-\x1f\x7f/\\]/u.test(value);
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const exact = (v: Record<string, unknown>, fields: string[]) => Object.keys(v).length === fields.length && fields.every(key => Object.hasOwn(v, key));
@@ -32,6 +32,7 @@ function json(bytes:Uint8Array):unknown{try{return JSON.parse(utf8(bytes));}catc
 const accountStatement=(value:unknown)=>object(value)&&['bankeiz.public-account-statement.v1','bankeiz.public-account-statement.v2','bankeiz.public-account-statement.v3','bankeiz.public-account-statement.v4'].includes(String(value.schema));
 function rawKind(value:unknown):ProofKind|null{
  if(!object(value))return null;
+ if(value.schema==='receiz.original-piece.package.v1')return 'original-piece';
  if(value.schema==='bankeiz.account-proof.v1')return 'account-source';
  if(value.schema==='receiz.bank.native-asset-result.v1')return 'asset-receipt';
  if(value.schema==='receiz.bank.native-payment-result.v1')return 'payment-receipt';
@@ -44,7 +45,7 @@ export async function proofDigest(bytes: Uint8Array): Promise<string> {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes)))].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 export function createProofLibrary(input: {
-  binding: { keyId: string; artifactOwnerReceizId: string };
+  binding: { keyId: string; artifactOwnerReceizId: string; identityOwnerReceizId?: string };
   assertOpen(): void;
   readOwned(): Promise<ProofSource[]>;
   readArchive(): Promise<ProofSource[]>;
@@ -99,6 +100,11 @@ export function createProofLibrary(input: {
       const opened=await openCanonicalProofFile(file);canonical=true;
       if(opened.sealedArtifact.artifactSha256!==digest)throw Error('PROOF_SOURCE_DIGEST_MISMATCH');
       title=`Received original · ${opened.verifiedPayload.filename}`;
+    } else if(source.kind==='original-piece'){
+      const {verifyOriginalPieceArchive}=await import('./original-piece-proof');
+      const {delivery,received}=await verifyOriginalPieceArchive(file,binding);canonical=true;
+      title=`${received?'Received Original pieces':'Sent Original pieces'} · ${delivery.head.filename}`;
+      extra={operationId:delivery.head.command.operationId};
     } else if(source.kind==='payment-receipt'){
       const native=await nativeInput(source,file,digest);canonical=native.canonical;
       const {verifyNativePaymentSource}=await import('./native-payment');const {receipt}=await verifyNativePaymentSource(JSON.parse(utf8(native.bytes)));

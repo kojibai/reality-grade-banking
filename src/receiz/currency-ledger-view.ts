@@ -14,10 +14,15 @@ export function readPublicCurrencyActivity(value:unknown):PublicCurrencyActivity
 }
 
 export type CurrencyPricePoint = Readonly<{at:string;usdCents:string;kaiUPulse:string}>;
+export type CurrencyTrade = Readonly<{
+  id:string; side:'buy'|'sell'; at:string; kaiUPulse:string; quantityMicro:string; priceUsdCentsPerUnit:string; tradeUsdCents?:string;
+}>;
 type PriceHistory = readonly CurrencyPricePoint[];
+const emptyTrades: readonly CurrencyTrade[] = Object.freeze([]);
 const empty:PriceHistory = Object.freeze([]);
 let activeLedger:{id:string;length:number;head:string;artifact:string}|undefined;
 let prices = new Map<string,PriceHistory>();
+const trades = new Map<string,readonly CurrencyTrade[]>();
 const listeners = new Set<()=>void>();
 
 export function subscribeCurrencyPriceHistory(listener:()=>void) {
@@ -26,6 +31,8 @@ export function subscribeCurrencyPriceHistory(listener:()=>void) {
 }
 export const heldCurrencyPriceHistory = (assetId:string,symbol:string)=>prices.get(assetId+':'+symbol) ?? empty;
 export const emptyCurrencyPriceHistory = ()=>empty;
+export const heldCurrencyTrades = (assetId:string,symbol:string)=>trades.get(assetId+':'+symbol) ?? emptyTrades;
+export const emptyCurrencyTrades = ()=>emptyTrades;
 
 export function currencyPricesAlreadySelected(artifact:string) {
   return activeLedger?.artifact===artifact;
@@ -34,6 +41,7 @@ export function currencyPricesAlreadySelected(artifact:string) {
 /** Publish only the display projection of the shared Ledger's admitted read. */
 export function retainCurrencyPriceHistory(
   source:Readonly<{id:string;history:readonly string[];artifact:string}>, next:Map<string,PriceHistory>,
+  nextTrades?:Map<string,readonly CurrencyTrade[]>,
 ) {
   if (!source.history?.length) return;
   if (activeLedger && (source.id!==activeLedger.id || source.history[activeLedger.length-1]!==activeLedger.head)) return;
@@ -44,6 +52,12 @@ export function retainCurrencyPriceHistory(
     if(previous?.length===points.length&&previous.every((point,index)=>
       point.kaiUPulse===points[index].kaiUPulse&&point.at===points[index].at&&point.usdCents===points[index].usdCents))continue;
     prices.set(key,points);
+    changed = true;
+  }
+  for (const [key, activity] of nextTrades ?? []) {
+    const previous = trades.get(key);
+    if (previous?.length === activity.length && previous.every((trade,index) => trade.id === activity[index].id)) continue;
+    trades.set(key, activity);
     changed = true;
   }
   if(changed)for(const listener of listeners)listener();

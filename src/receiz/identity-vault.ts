@@ -730,7 +730,7 @@ async function saveNoteState(binding: { artifactSha256: string; keyId?: string }
     }
     const wallet = family === 'funded-wallet' || family.startsWith('funded-wallet-') || family.startsWith('wallet-assertion:');
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['identity', 'operations'], 'readwrite', wallet ? { durability: 'strict' } : undefined), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
+      const tx = db.transaction(['identity', 'operations'], 'readwrite', (wallet || family === 'original-piece-send') ? { durability: 'strict' } : undefined), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
       read.onsuccess = () => {
         const current = read.result as SavedIdentity | undefined;
         if (!current || !equal(current.bytes, saved.bytes) || !equal(current.iv, saved.iv)) { tx.abort(); return; }
@@ -903,7 +903,7 @@ function openProofFrame(bytes: Uint8Array): PortableProof {
   const size = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0);
   if (size > 1024 || size + 4 >= bytes.length) throw Error('PROOF_ARCHIVE_INVALID');
   const meta = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.slice(4, 4 + size)));
-  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['received-original','account-source','execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(meta.kind)
+  if (!meta || Object.keys(meta).sort().join('|') !== 'filename|kind' || !['received-original','account-source','execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt','original-piece'].includes(meta.kind)
     || typeof meta.filename !== 'string' || !meta.filename || meta.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(meta.filename)) throw Error('PROOF_ARCHIVE_INVALID');
   return { kind: meta.kind, filename: meta.filename, bytes: bytes.slice(4 + size) };
 }
@@ -976,7 +976,7 @@ export async function retainProofBatch(binding: { artifactSha256: string }, orig
   for (const source of sources) {
     total += source.bytes.length;
     if (!source.bytes.length || source.bytes.length > 32 * 1024 * 1024 || total > 64 * 1024 * 1024
-      || !['owned-source','received-original','account-source', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt'].includes(source.kind)
+      || !['owned-source','received-original','account-source', 'execution-recovery', 'note-image', 'note-deposit','payment-receipt','asset-receipt','original-piece'].includes(source.kind)
       || !source.filename || source.filename.length > 240 || /[\x00-\x1f\x7f/\\]/u.test(source.filename)) throw Error('PROOF_SOURCE_INVALID');
     const digest = await proofDigest(source.bytes), prior = seen.get(digest);
     if (prior && prior !== source.kind) throw Error('PROOF_SOURCE_KIND_CONFLICT');
@@ -1134,3 +1134,6 @@ export const saveCounterRegisterWork=(binding:{artifactSha256:string},value:unkn
 // Private receiving invitations are preparation, never payment or custody state.
 export const loadReceivingWork=(binding:{artifactSha256:string})=>loadNoteState(binding,'receiving-work-v1');
 export const saveReceivingWork=(binding:{artifactSha256:string},value:import('../adoption/workspace').ReceivingWorkState,expected:unknown)=>saveNoteState(binding,'receiving-work-v1',value,expected);
+
+export const loadOriginalPieceSend=(binding:{artifactSha256:string})=>loadNoteState(binding,'original-piece-send');
+export const saveOriginalPieceSend=(binding:{artifactSha256:string},next:unknown,previous:unknown)=>saveNoteState(binding,'original-piece-send',next,previous);

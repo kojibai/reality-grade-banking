@@ -1,0 +1,80 @@
+.currency-creation { min-width: 0; }
+.currency-creation .creation-intro h1:focus { outline: none; }
+.currency-creation .asset-studio-preview {
+  min-height: 158px;
+  margin: 12px 0 0;
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--bank-info-surface, #eaf0fa), var(--bank-surface-subtle, #f3f5f9));
+}
+.currency-creation .asset-studio-case { flex-basis: 132px; width: 132px; }
+.currency-creation .asset-studio-context { min-width: 0; padding-right: 14px; }
+.currency-creation .asset-studio-context strong, .currency-creation .asset-studio-context small { overflow-wrap: anywhere; }
+.currency-creation .asset-studio-context small:empty { display: none; }
+.currency-creation-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.currency-creation-identity { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.currency-creation-hint { color: var(--bank-text-muted, #596b83); margin: 7px 0 0; }
+.currency-creation textarea { resize: vertical; }
+.currency-creation-artwork { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 7px; }
+.currency-creation-artwork .back-link { position: relative; min-height: 44px; margin: 0; }
+.currency-artwork-picker { cursor: pointer; }
+.currency-artwork-picker:focus-within { outline: 2px solid var(--bank-link, #2554c7); outline-offset: 3px; border-radius: 4px; }
+.currency-artwork-picker input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.currency-terms-heading .body-copy { margin: 0 0 10px; overflow-wrap: anywhere; }
+.currency-creation-panel {
+  border: 1px solid var(--bank-line-subtle, #dce2eb);
+  border-radius: 13px;
+  background: var(--bank-surface-raised, #fff);
+  padding: 12px;
+  margin: 12px 0;
+  min-inline-size: 0;
+}
+.currency-creation-panel h2, .currency-creation-panel legend {
+  color: var(--bank-text, #172b45);
+  font-size: 14px;
+  font-weight: 650;
+  margin: 0;
+}
+.currency-creation-panel legend { padding: 0 5px; }
+.currency-creation-panel p {
+  color: var(--bank-text-secondary, #52657b);
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+.currency-creation-panel .form-field { margin: 10px 0 0; }
+.currency-creation-panel .form-field > span { min-height: 2.5em; margin-bottom: 4px; }
+.currency-creation-panel .amount-input input { min-height: 44px; font-size: 16px; }
+.currency-control-options { display: grid; gap: 7px; }
+.currency-control-option {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: start;
+  gap: 9px;
+  padding: 8px;
+  min-height: 45px;
+  border: 1px solid var(--bank-line-subtle, #dce2eb);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.currency-control-option:has(input:checked) {
+  background: var(--bank-info-surface, #ebf1ff);
+  border-color: var(--bank-info-line, #8ea7df);
+}
+.currency-control-option input { margin: 2px 0 0; accent-color: var(--bank-link, #2d56ad); }
+.currency-control-option svg, .currency-governance-intro > svg { flex: none; color: var(--bank-link, #2d56ad); }
+.currency-control-option strong, .currency-control-option small { display: block; }
+.currency-control-option strong { font-size: 13px; }
+.currency-control-option small { color: var(--bank-text-secondary, #52657b); font-size: 12px; line-height: 1.35; margin-top: 3px; }
+.currency-governance-intro { display: flex; align-items: flex-start; gap: 10px; }
+.currency-governance-intro p { margin-top: 4px; }
+@media (min-width: 460px) {
+  .currency-control-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .currency-creation-panel .form-field > span { min-height: 0; }
+}
+
+.currency-creation-launch .small-copy { margin: 8px 0 0; color: var(--bank-text-secondary, #52657b); line-height: 1.45; }
+.currency-creation-charter h1 { overflow-wrap: anywhere; }
+.currency-creation-charter h1:focus { outline: none; }

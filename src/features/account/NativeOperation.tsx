@@ -7,7 +7,7 @@ import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership, committedTitle }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; committedTitle?: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
   const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
@@ -43,7 +43,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
   };
   if (result) return <section className="native-operation-result" aria-live="polite">
     {result.status === 'committed' && <div className="status-icon success"><Check size={30} /></div>}
-    <h1 className="sheet-hero">{result.status === 'committed' ? 'Transaction complete.' : result.status === 'zero-write' ? 'Transaction not completed.' : 'Confirming your transaction.'}</h1>
+    <h1 className="sheet-hero">{result.status === 'committed' ? committedTitle ?? 'Transaction complete.' : result.status === 'zero-write' ? 'Transaction not completed.' : 'Confirming your transaction.'}</h1>
     <p className="body-copy">{result.status === 'committed' ? 'The accepted transaction proof is saved on this device. Your account is refreshing from its source.' : result.status === 'zero-write' ? 'The native service confirmed that this transaction made no changes. Review new terms to try again.' : 'Keep this transaction’s reference. Check its recorded outcome before starting another; your original request is preserved.'}</p>
     {result.retentionWarning && <p className="body-copy small-copy" role="status">{result.retentionWarning}</p>}{identity && <BankExecutionRecoveryPanel identity={identity} onRefresh={onRefresh} />}
     {result.status === 'zero-write' && <button className="secondary-button" onClick={() => setResult(null)}>Review again</button>}
@@ -53,7 +53,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     return <section className="native-operation-review"><h1 className="sheet-hero">Review {title.toLowerCase()}.</h1>
       <div className="detail-list">
         {(request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
-        {request.kind==='issue-currency'&&<><div><span>Currency</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div><div><span>Purchase price per unit</span><strong>{formatMoney(request.policy.priceUsdCentsPerUnit)}</strong></div><div><span>Creator allocation</span><strong>0 units</strong></div></>}
+        {request.kind==='issue-currency'&&<><div><span>Currency</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div><div><span>Purchase price per unit</span><strong>{formatMoney(request.policy.priceUsdCentsPerUnit)}</strong></div><div><span>Creator allocation</span><strong>0 units</strong></div><div><span>Price and sales control</span><strong>{request.policy.issuerControls?'Issuer-managed':'Fixed terms'}</strong></div></>}
         {request.kind==='manage-currency'&&<>
           {request.changes.governanceCharterSha256&&<div><span>Community charter</span><strong className="proof-coordinate">{request.changes.governanceCharterSha256}</strong></div>}
           {request.changes.priceUsdCentsPerUnit!==undefined&&<div><span>New purchase price per unit</span><strong>{formatMoney(request.changes.priceUsdCentsPerUnit)}</strong></div>}

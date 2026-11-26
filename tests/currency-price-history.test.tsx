@@ -5,6 +5,10 @@ import {expect,it,vi} from 'vitest';
 import {CurrencyPriceHistory} from '../src/features/market/CurrencyPriceHistory';
 import {retainCurrencyPriceHistory} from '../src/receiz/currency-ledger-view';
 
+const ledger=vi.hoisted(()=>({readHeldPublicLedger:vi.fn(async()=>null),publicLedgerDisplayRows:vi.fn(async()=>[]),
+ synchronizePublicLedger:vi.fn(async()=>null)}));
+vi.mock('../src/receiz/public-ledger-continuity',()=>ledger);
+
 it('renders a held currency immediately and follows the shared signed ledger without a request',async()=>{
  const assetId='a'.repeat(64), at='2026-01-01T00:00:00.000Z', later='2026-01-02T00:00:00.000Z';
  const network=vi.fn(async()=>{throw Error('EXTRA_NETWORK_REQUEST');});
@@ -18,10 +22,26 @@ it('renders a held currency immediately and follows the shared signed ledger wit
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['first','second'],artifact:'current'},new Map([
    [assetId+':LOCAL',[{at,usdCents:'125',kaiUPulse:'1000000'},{at:later,usdCents:'200',kaiUPulse:'2000000'}]],
    ['b'.repeat(64)+':LOCAL',[{at:later,usdCents:'999',kaiUPulse:'2000000'}]],
+  ]),new Map([
+   [assetId+':LOCAL',[
+    {id:'sell',side:'sell',at:later,kaiUPulse:'2000000',quantityMicro:'2000000',priceUsdCentsPerUnit:'200',tradeUsdCents:'325'},
+    {id:'buy',side:'buy',at,kaiUPulse:'1000000',quantityMicro:'3000000',priceUsdCentsPerUnit:'125',tradeUsdCents:'375'},
+   ]],
   ])));
   expect(host.textContent).toContain('$2.00');
   expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('from 1.25 to 2');
   expect(host.textContent).not.toContain('$9.99');
+  const table=host.querySelector('table')!;
+  expect([...table.querySelectorAll('tbody tr')].map(row=>row.querySelector('strong')?.textContent)).toEqual(['Sell · 2 LOCAL','Buy · 3 LOCAL']);
+  expect(table.textContent).toContain('$3.25');
+  expect(table.textContent).toContain('$3.75');
+  const button=(label:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent===label)!;
+  await act(async()=>button('Buys').click());
+  expect(table.textContent).toContain('Buy · 3 LOCAL');
+  expect(table.textContent).not.toContain('Sell · 2 LOCAL');
+  await act(async()=>button('Sells').click());
+  expect(table.textContent).toContain('Sell · 2 LOCAL');
+  expect(table.textContent).not.toContain('Buy · 3 LOCAL');
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['first'],artifact:'older'},new Map([
    [assetId+':LOCAL',[{at,usdCents:'125',kaiUPulse:'1000000'}]],
   ])));
@@ -30,4 +50,19 @@ it('renders a held currency immediately and follows the shared signed ledger wit
  }finally{
   await act(async()=>root.unmount());vi.unstubAllGlobals();
  }
+});
+
+it('places the listing quote on the first frame while a cold currency opens the shared Ledger',async()=>{
+ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);
+ const host=document.createElement('div'),root=createRoot(host);
+ let finish!:()=>void;
+ ledger.synchronizePublicLedger.mockImplementationOnce(()=>new Promise<null>(resolve=>{finish=()=>resolve(null);}));
+ try {
+  await act(async()=>root.render(<CurrencyPriceHistory assetId={'c'.repeat(64)} symbol="NEW" openLedger
+    opening={{priceUsdCentsPerUnit:'250',at:null}}/>));
+  expect(host.textContent).toContain('$2.50');
+  await vi.waitFor(()=>expect(ledger.synchronizePublicLedger).toHaveBeenCalledOnce());
+  await act(async()=>finish());
+  expect(host.textContent).toContain('$2.50');
+ } finally { await act(async()=>root.unmount());vi.unstubAllGlobals(); }
 });

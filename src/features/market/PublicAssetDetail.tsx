@@ -75,7 +75,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {standalone&&owner&&profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)&&<a className="asset-profile-byline" href={profilePagePath(profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername))}><PublicOwnerAvatar item={admission?item:carried??item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
-    {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol}
+    {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol} openLedger={!readOnly}
       opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
       <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
     </div></>:<>

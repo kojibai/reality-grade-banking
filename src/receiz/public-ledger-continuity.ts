@@ -1,4 +1,4 @@
-import {currencyPricesAlreadySelected,retainCurrencyPriceHistory,type CurrencyPricePoint} from './currency-ledger-view';
+import {currencyPricesAlreadySelected,retainCurrencyPriceHistory,type CurrencyPricePoint,type CurrencyTrade} from './currency-ledger-view';
 import type {PublicLedgerFileReview} from './public-ledger-proof';
 import type {PublicLedgerSource} from './public-ledger-statement';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
@@ -60,6 +60,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
  const existing=new Map(known.filter(row=>row.source==='actions').map(row=>[row.sourceId,row]));
  const incoming:PublicRecord[]=[];
  const prices=currencyPricesAlreadySelected(review.artifactSha256)?null:new Map<string,CurrencyPricePoint[]>();
+ const trades=new Map<string,CurrencyTrade[]>();
  for(const record of review.snapshot.records){
   // The retained original may support coordinates larger than this UI cache.
   // Such records remain in the original rather than being truncated or coerced.
@@ -71,6 +72,12 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
    const points=prices.get(key)??[];
    points.push({at:time,usdCents:currency.priceUsdCentsPerUnit,kaiUPulse:record.kaiUpulse});
    prices.set(key,points);
+   if(currency.quantityMicro&&(record.kind==='asset.buy-currency'||record.kind==='asset.sell-currency')){
+    const activity=trades.get(key)??[];
+    activity.push({id:record.entryHash,side:record.kind==='asset.buy-currency'?'buy':'sell',at:time,kaiUPulse:record.kaiUpulse,
+     quantityMicro:currency.quantityMicro,priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,tradeUsdCents:currency.tradeUsdCents});
+    trades.set(key,activity);
+   }
   }
   incoming.push({...compatible,id:`actions:${record.id}`,sourceId:record.id,source:'actions',kind:record.kind,
    title:compatible?.title??record.kind.replace(/[._]/g,' '),detail:compatible?.detail??'',time:compatible?.time??time,actor:compatible?.actor??null,
@@ -87,7 +94,11 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
    prices.set(key,points.filter((point,index)=>index===0||index===points.length-1||point.usdCents!==points[index-1].usdCents));
   }
   const {ledgerId,sourceHistory}=review.snapshot;
-  retainCurrencyPriceHistory({id:ledgerId,history:sourceHistory,artifact:review.artifactSha256},prices);
+  for(const activity of trades.values())activity.sort((a,b)=>{
+   const left=BigInt(a.kaiUPulse),right=BigInt(b.kaiUPulse);
+   return left>right?-1:left<right?1:a.id.localeCompare(b.id);
+  });
+  retainCurrencyPriceHistory({id:ledgerId,history:sourceHistory,artifact:review.artifactSha256},prices,trades);
  }
  // The exact admitted original outranks conflicting discovery rows. Do not
  // route those weaker duplicates through the peer-evidence conflict policy.

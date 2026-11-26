@@ -19,3 +19,14 @@
   font-weight: 750;
   letter-spacing: .015em;
 }
+
+.currency-trade-tape { margin-block: 24px 12px; }
+.currency-trade-tape table { width: 100%; table-layout: fixed; margin-top: 10px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.currency-trade-tape th, .currency-trade-tape td { padding: 9px 6px; text-align: right; vertical-align: top; }
+.currency-trade-tape th:first-child { width: 49%; }
+.currency-trade-tape th:first-child, .currency-trade-tape td:first-child { padding-left: 0; text-align: left; }
+.currency-trade-tape th:last-child, .currency-trade-tape td:last-child { padding-right: 0; }
+.currency-trade-tape th, .currency-trade-tape time { color: var(--bank-text-secondary,var(--navy)); font-size: .75rem; font-weight: 500; }
+.currency-trade-tape time { display: block; margin-top: 4px; }
+.currency-trade-tape td { overflow-wrap: anywhere; border-top: 1px solid var(--line); font-size: .875rem; }
+.currency-trade-tape td strong { overflow-wrap: anywhere; }

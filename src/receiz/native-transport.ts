@@ -89,6 +89,9 @@ export function permittedNativePath(path: string, method: string): boolean {
     return keys.length===1 && (url.searchParams.has('clientNonce') ? /^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'') : /^\d{1,18}\.\d{2}$/.test(url.searchParams.get('amountUsd')??''));
   }
   if (/^\/api\/connect\/bank\/(?:payments\/(?:prepare|execute|recover)|assets\/(?:prepare|execute|recover|portfolio))$/.test(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.getAll('applicationId').length === 1 && (url.pathname.endsWith('/recover') ? isBankNativeApplicationId(url.searchParams.get('applicationId')) : url.searchParams.get('applicationId') === BANK_APPLICATION_ID);
+  if (url.pathname === '/api/connect/bank/original-pieces') {
+    return method.toUpperCase() === 'POST' && url.searchParams.size === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
+  }
   if (url.pathname === '/api/connect/bank/offline-reserve') {
     return method.toUpperCase() === 'POST' && url.searchParams.size === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   }
