@@ -19,7 +19,7 @@ const fields=(v:Record<string,unknown>,keys:readonly string[])=>Object.keys(v).l
 const fail=():never=>{throw Error('BANK_ASSET_PLACEMENT_SOURCE_INVALID');};
 const slotFields=['venueId','startKaiUPulse','endKaiUPulse','quantityMicro'] as const;
 
-function slot(value:unknown):value is PlacementSlot {
+function slot(value:unknown):value is Record<string,unknown> & PlacementSlot {
  return object(value)&&typed(value.venueId,name)&&typed(value.startKaiUPulse,integer)&&typed(value.endKaiUPulse,integer)
   &&typed(value.quantityMicro,integer)&&value.quantityMicro!=='0'
   &&BigInt(value.startKaiUPulse)<BigInt(value.endKaiUPulse)&&BigInt(value.endKaiUPulse)<=BigInt(Number.MAX_SAFE_INTEGER);
