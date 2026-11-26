@@ -1,9 +1,23 @@
-/** A fixed-price primary sale and two-rail pool carried inside the existing native asset Source. */
+import { bankNativeWalletValue, type BankNativeWalletAmounts } from '../../../../packages/receiz-sdk/src/nativeWalletEconomics';
+
+export const nativeCurrencyPresets = ['currency', 'service-credit', 'coupon', 'rewards'] as const;
+export type NativeCurrencyPreset = typeof nativeCurrencyPresets[number];
+export function isNativeCurrencyPreset(value: unknown): value is NativeCurrencyPreset {
+  return nativeCurrencyPresets.some(preset => preset === value);
+}
+
+/** The native asset Source retains launch terms and the two Wallet rails. */
 export type NativeCurrencyPolicy = Readonly<{
+  issuerControls?: true;
+  preset?: NativeCurrencyPreset;
+} & ({
   kind: 'fixed-reserve-pool';
   priceUsdCentsPerUnit: string;
-  issuerControls?: true;
-}>;
+} | {
+  kind: 'constant-product-pool';
+  creatorQuantityMicro: string;
+  seedUsdCents: string;
+})>;
 
 export type NativeCurrencyState = Readonly<{
   policy: NativeCurrencyPolicy;
@@ -11,6 +25,7 @@ export type NativeCurrencyState = Readonly<{
   liquidityReserveUsdCents: string;
   liquidityReservePhiMicro: string;
   liquiditySettlementPhiMicro: string;
+  poolValuationUsdPerPhiMicrocents?: string;
   issuerAccountId?: string;
   governanceCharterSha256?: string;
   governanceSettingsHead?: string;
@@ -38,11 +53,23 @@ function record(value: unknown, fields: readonly string[]): Record<string, unkno
 }
 
 export function inspectNativeCurrencyPolicy(value: unknown): NativeCurrencyPolicy {
-  const controlled = !!value && typeof value === 'object' && Object.hasOwn(value, 'issuerControls');
-  const policy = record(value, ['kind', 'priceUsdCentsPerUnit', ...(controlled ? ['issuerControls'] : [])]);
-  if (policy.kind !== 'fixed-reserve-pool' || controlled && policy.issuerControls !== true) return fail('CURRENCY_INVALID');
-  return { kind: policy.kind, priceUsdCentsPerUnit: amount(policy.priceUsdCentsPerUnit, true).toString(),
-    ...(controlled ? { issuerControls: true } : {}) };
+  const input = value as Record<string, unknown> | null;
+  const controlled = !!input && Object.hasOwn(input, 'issuerControls');
+  const presetSpecified = !!input && Object.hasOwn(input, 'preset');
+  const pool = input?.kind === 'constant-product-pool';
+  const policy = record(value, ['kind', ...(pool ? ['creatorQuantityMicro', 'seedUsdCents'] : ['priceUsdCentsPerUnit']),
+    ...(controlled ? ['issuerControls'] : []), ...(presetSpecified ? ['preset'] : [])]);
+  if (controlled && policy.issuerControls !== true || presetSpecified && !isNativeCurrencyPreset(policy.preset)) return fail('CURRENCY_INVALID');
+  const extras = {
+    ...(controlled ? { issuerControls: true as const } : {}),
+    ...(isNativeCurrencyPreset(policy.preset) ? { preset: policy.preset } : {}),
+  };
+  if (policy.kind === 'constant-product-pool') return {
+    ...extras, kind: policy.kind, creatorQuantityMicro: amount(policy.creatorQuantityMicro).toString(),
+    seedUsdCents: amount(policy.seedUsdCents, true).toString(),
+  };
+  if (policy.kind !== 'fixed-reserve-pool') return fail('CURRENCY_INVALID');
+  return { ...extras, kind: policy.kind, priceUsdCentsPerUnit: amount(policy.priceUsdCentsPerUnit, true).toString() };
 }
 
 export function inspectNativeCurrencyChanges(value: unknown): NativeCurrencyChanges {
@@ -67,16 +94,54 @@ export function inspectNativeCurrencyManagement(value: unknown): NativeCurrencyM
   return inspectNativeCurrencyChanges(value);
 }
 
-export function nativeCurrencyCost(policy: NativeCurrencyPolicy, quantityMicro: bigint): bigint {
+export function assertNativeCurrencyQuantity(quantityMicro: bigint): void {
+  if (quantityMicro <= 0n || quantityMicro > MAX || quantityMicro % MICRO !== 0n) fail('DENOMINATION_PRECISION');
+}
+
+export function nativeCurrencyCost(policy: Extract<NativeCurrencyPolicy, {kind: 'fixed-reserve-pool'}>, quantityMicro: bigint): bigint {
+  assertNativeCurrencyQuantity(quantityMicro);
   const cents = amount(policy.priceUsdCentsPerUnit, true) * (quantityMicro / MICRO);
-  if (quantityMicro % MICRO !== 0n || cents > MAX) return fail('DENOMINATION_PRECISION');
+  if (cents > MAX) return fail('DENOMINATION_PRECISION');
   return cents;
+}
+
+export function nativeCurrencyLaunch(policy: NativeCurrencyPolicy, supplyMicro: string) {
+  const supply = amount(supplyMicro, true);
+  assertNativeCurrencyQuantity(supply);
+  if (policy.kind === 'fixed-reserve-pool') {
+    nativeCurrencyCost(policy, supply);
+    return { creatorQuantityMicro: '0', marketQuantityMicro: supplyMicro, seedUsdCents: '0' };
+  }
+  const retained = amount(policy.creatorQuantityMicro);
+  if (supply - retained < 2n * MICRO || retained % MICRO !== 0n) return fail('CURRENCY_ALLOCATION');
+  return { creatorQuantityMicro: policy.creatorQuantityMicro, marketQuantityMicro: (supply - retained).toString(), seedUsdCents: policy.seedUsdCents };
+}
+
+export function nativeCurrencyPoolWallet(currency: Pick<NativeCurrencyState, 'liquidityReserveUsdCents' | 'liquidityReservePhiMicro' | 'liquiditySettlementPhiMicro'>): BankNativeWalletAmounts {
+  return {
+    balancePhiMicro: (BigInt(currency.liquidityReservePhiMicro) + BigInt(currency.liquiditySettlementPhiMicro)).toString(),
+    reserveUsdCents: currency.liquidityReserveUsdCents,
+    reserveBackingPhiMicro: currency.liquidityReservePhiMicro,
+  };
+}
+
+export function nativeCurrencyPoolValue(wallet: BankNativeWalletAmounts, rate: string): bigint {
+  return amount(bankNativeWalletValue(wallet, rate).totalUsdCents, true);
+}
+
+export function nativeCurrencyPrice(currency: NativeCurrencyState): string {
+  if (currency.policy.kind === 'fixed-reserve-pool') return currency.policy.priceUsdCentsPerUnit;
+  const available = amount(currency.availableQuantityMicro, true);
+  const value = nativeCurrencyPoolValue(nativeCurrencyPoolWallet(currency), currency.poolValuationUsdPerPhiMicrocents!);
+  const price = value * MICRO / available;
+  return (price > 0n ? price : 1n).toString();
 }
 
 export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurrencyState {
   const policy = inspectNativeCurrencyPolicy((value as { policy?: unknown } | null)?.policy);
   const data = record(value, ['policy', 'availableQuantityMicro', 'liquidityReserveUsdCents', 'liquidityReservePhiMicro', 'liquiditySettlementPhiMicro',
     ...(policy.issuerControls ? ['issuerAccountId', 'salesPaused'] : []),
+    ...(policy.kind === 'constant-product-pool' ? ['poolValuationUsdPerPhiMicrocents'] : []),
     ...(value && typeof value === 'object' && Object.hasOwn(value, 'governanceCharterSha256') ? ['governanceCharterSha256'] : []),
     ...(value && typeof value === 'object' && Object.hasOwn(value, 'governanceSettingsHead') ? ['governanceSettingsHead'] : [])]);
   const { issuerAccountId, salesPaused, governanceCharterSha256, governanceSettingsHead } = data;
@@ -90,15 +155,22 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
   const available = amount(data.availableQuantityMicro);
   const pooledCents = amount(data.liquidityReserveUsdCents);
   const pooledPhi = amount(data.liquidityReservePhiMicro);
-  nativeCurrencyCost(policy, supply);
+  nativeCurrencyLaunch(policy, supply.toString());
   const outstanding = supply - available;
   const settlementPhi = amount(data.liquiditySettlementPhiMicro);
-  if (available > supply || available % MICRO !== 0n
-    || (pooledCents === 0n) !== (pooledPhi === 0n)
-    || (pooledPhi < pooledCents ? pooledPhi : pooledCents) + settlementPhi < outstanding / MICRO
+  if (available > supply || available % MICRO !== 0n || (pooledCents === 0n) !== (pooledPhi === 0n)) return fail('CURRENCY_INVALID');
+  const reserves = {
+    liquidityReserveUsdCents: pooledCents.toString(),
+    liquidityReservePhiMicro: pooledPhi.toString(),
+    liquiditySettlementPhiMicro: settlementPhi.toString(),
+  };
+  if (policy.kind === 'constant-product-pool') {
+    if (available === 0n) return fail('CURRENCY_INVALID');
+    nativeCurrencyPoolValue(nativeCurrencyPoolWallet(reserves), amount(data.poolValuationUsdPerPhiMicrocents, true).toString());
+  } else if ((pooledPhi < pooledCents ? pooledPhi : pooledCents) + settlementPhi < outstanding / MICRO
     || outstanding === 0n && (pooledPhi !== 0n || settlementPhi !== 0n)) return fail('CURRENCY_INVALID');
-  return { policy, availableQuantityMicro: available.toString(), liquidityReserveUsdCents: pooledCents.toString(),
-    liquidityReservePhiMicro: pooledPhi.toString(), liquiditySettlementPhiMicro: settlementPhi.toString(),
+  return { policy, availableQuantityMicro: available.toString(), ...reserves,
+    ...(policy.kind === 'constant-product-pool' ? { poolValuationUsdPerPhiMicrocents: data.poolValuationUsdPerPhiMicrocents as string } : {}),
     ...(policy.issuerControls ? { issuerAccountId: issuerAccountId as string, salesPaused: salesPaused as boolean } : {}),
     ...(typeof governanceCharterSha256 === 'string' ? { governanceCharterSha256 } : {}),
     ...(typeof governanceSettingsHead === 'string' ? { governanceSettingsHead } : {}) };

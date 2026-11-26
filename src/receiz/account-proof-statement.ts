@@ -89,7 +89,7 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
       if(r!==0n&&s!==0n){
         // Native Notes and assets may carry both admitted rails in one atomic
         // movement. The signed Source retains both backing components.
-        if(!complete||!["note-funded","note-funding-cancelled","note-deposited","asset-fund-asset","asset-redeem-asset","asset-buy-currency","asset-sell-currency"].includes(String(t.kind))||(r<0n)!==(s<0n)||(r<0n)!==(g<0n)||abs(s)>=abs(g)||(["note-funded","asset-fund-asset","asset-buy-currency"].includes(String(t.kind)))!==(g<0n))fail('HISTORY_INVALID');
+        if(!complete||!["note-funded","note-funding-cancelled","note-deposited","asset-fund-asset","asset-issue-currency","asset-redeem-asset","asset-buy-currency","asset-sell-currency"].includes(String(t.kind))||(r<0n)!==(s<0n)||(r<0n)!==(g<0n)||abs(s)>=abs(g)||(["note-funded","asset-fund-asset","asset-issue-currency","asset-buy-currency"].includes(String(t.kind)))!==(g<0n))fail('HISTORY_INVALID');
       }else if(r===0n&&t.settlementDeltaPhiMicro!==t.balanceDeltaPhiMicro)fail('HISTORY_INVALID');
       gross+=BigInt(t.balanceDeltaPhiMicro);if(gross<0n)fail('BALANCE_MISMATCH');
     }

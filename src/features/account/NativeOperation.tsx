@@ -1,3 +1,4 @@
+import { currencyPresets } from '../../receiz/currency-presets';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
@@ -17,6 +18,10 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     generation.current++; running.current = false; setReview(null); setResult(null); setBusy(false); setApproved(false); setError('');setFailure(null);
     return () => { generation.current++; if (held.current) api.current?.discard(held.current); held.current = null; api.current = null; };
   }, [identity, inputKey]);
+  const currencyReviewHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (review?.request.kind === 'issue-currency') currencyReviewHeading.current?.focus();
+  }, [review]);
   const prepare = async () => {
     if (running.current) return; const ticket = generation.current; running.current = true; setBusy(true); setError('');setFailure(null);
     try {
@@ -50,10 +55,18 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
   </section>;
   if (review) {
     const t = review.terms, request = review.request, rail = 'rail' in request ? request.rail : null;
-    return <section className="native-operation-review"><h1 className="sheet-hero">Review {title.toLowerCase()}.</h1>
+    const issuePolicy = request.kind === 'issue-currency' ? request.policy : null;
+    const creatorUnits = issuePolicy?.kind === 'constant-product-pool' ? issuePolicy.creatorQuantityMicro : '0';
+    return <section className="native-operation-review"><h1 className="sheet-hero" ref={issuePolicy ? currencyReviewHeading : undefined} tabIndex={issuePolicy ? -1 : undefined}>Review {title.toLowerCase()}.</h1>
       <div className="detail-list">
         {(request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
-        {request.kind==='issue-currency'&&<><div><span>Currency</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div><div><span>Purchase price per unit</span><strong>{formatMoney(request.policy.priceUsdCentsPerUnit)}</strong></div><div><span>Creator allocation</span><strong>0 units</strong></div><div><span>Price and sales control</span><strong>{request.policy.issuerControls?'Issuer-managed':'Fixed terms'}</strong></div></>}
+        {request.kind==='issue-currency'&&issuePolicy&&<>
+          <div><span>{currencyPresets[issuePolicy.preset ?? 'currency'].label}</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div>
+          <div><span>Pricing</span><strong>{issuePolicy.kind==='constant-product-pool'?'Market pool':formatMoney(issuePolicy.priceUsdCentsPerUnit)+' per unit'}</strong></div>
+          <div><span>Units you keep</span><strong>{formatUnits(creatorUnits)} {request.definition.symbol}</strong></div>
+          <div><span>Units in Market</span><strong>{formatUnits((BigInt(t.quantityMicro)-BigInt(creatorUnits)).toString())} {request.definition.symbol}</strong></div>
+          <div><span>Sales control</span><strong>{issuePolicy.issuerControls?'Issuer-managed':'Fixed terms'}</strong></div>
+        </>}
         {request.kind==='manage-currency'&&<>
           {request.changes.governanceCharterSha256&&<div><span>Community charter</span><strong className="proof-coordinate">{request.changes.governanceCharterSha256}</strong></div>}
           {request.changes.priceUsdCentsPerUnit!==undefined&&<div><span>New purchase price per unit</span><strong>{formatMoney(request.changes.priceUsdCentsPerUnit)}</strong></div>}
@@ -65,7 +78,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
         {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}
         {rail && !(request.kind==='sell-share'&&request.buyer==='currency-pool') && <div><span>Account</span><strong>{rail === 'reserve' ? 'Reserve' : 'Settlement'}</strong></div>}
         {t.recipient && <div><span>Recipient</span><strong>{t.recipient}</strong></div>}
-        {t.debitUsdCents !== '0' && <div><span>You pay</span><strong>{formatMoney(t.debitUsdCents)}</strong></div>}
+        {t.debitUsdCents !== '0' && <div><span>{issuePolicy?.kind==='constant-product-pool'?'Starting liquidity from your Wallet':'You pay'}</span><strong>{formatMoney(t.debitUsdCents)}</strong></div>}
         {t.debitPhiMicro !== '0' && <div><span>Exact value</span><strong>{formatUnits(t.debitPhiMicro)} Φ</strong></div>}
         {t.creditUsdCents !== '0' && <div><span>You receive</span><strong>{formatMoney(t.creditUsdCents)}</strong></div>}
         {t.creditPhiMicro !== '0' && <div><span>Exact received value</span><strong>{formatUnits(t.creditPhiMicro)} Φ</strong></div>}

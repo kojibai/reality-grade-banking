@@ -21,7 +21,7 @@ export async function buildVaultRuntime({write=false}={}){
   const bundled=await build(vaultBundleOptions(temporary));
   assert.ok(Object.values(bundled.metafile.outputs).every(v=>v.imports.length===0),'Vault verifier must be self-contained.');
   const bytes=bundled.outputFiles[0].contents;
-  if(write){await writeFile('public/native/vault.v1.mjs',bytes);manifest.moduleSha256=hash(bytes);manifest.bytes=bytes.length;await writeFile('public/native/vault.v1.manifest.json',JSON.stringify(manifest,null,2)+'\n');}
+  if(write){await writeFile('public/native/vault.v1.mjs',bytes);manifest.moduleSha256=hash(bytes);manifest.bytes=bytes.length;manifest.inputs=Object.keys(bundled.metafile.inputs).sort();await writeFile('public/native/vault.v1.manifest.json',JSON.stringify(manifest,null,2)+'\n');}
   else assert.equal(hash(bytes),manifest.moduleSha256,'Vault runtime rebuild differs.');
   return{bytes:bytes.length,inputs:Object.keys(bundled.metafile.inputs).length};
  }finally{await rm(temporary,{recursive:true,force:true});}

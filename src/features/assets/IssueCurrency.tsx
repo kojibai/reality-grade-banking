@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ImagePlus, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
-import { parseAmount } from '../../core/money';
+import { ArrowLeft, ArrowRight, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
+import { formatMoney, formatUnits, parseAmount } from '../../core/money';
 import { AmountInput } from '../../components/AmountInput';
 import { InlineOpening } from '../../components/InlineOpening';
 import { verifyNativeAssetSource, type NativeAssetPacket } from '../../receiz/native-asset';
@@ -9,20 +9,25 @@ import type { OpenIdentity } from '../../receiz/native-identity';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { validateAssetDefinition } from '../../receiz/asset-definition';
 import type { AssetComposerDraft } from '../../receiz/asset-composer';
-import { inspectNativeCurrencyPolicy, nativeCurrencyCost } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import { inspectNativeCurrencyPolicy, nativeCurrencyLaunch, nativeCurrencyPresets, nativeCurrencyPrice, type NativeCurrencyPreset } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { NativeOperation } from '../account/NativeOperation';
 import type { CurrencyVotingContext } from '../voting/VotingBoard';
+import { currencyPresets } from '../../receiz/currency-presets';
 import { AssetStudioPreview } from './AssetStudioPreview';
 import './asset-studio.css';
 import './issue-currency.css';
 
+const presetIcons = { currency: Coins, 'service-credit': Ticket, coupon: Tag, rewards: Gift };
 const VotingBoard = lazy(() => import('../voting/VotingBoard').then(module => ({ default: module.VotingBoard })));
 
 export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity; onRefresh(): void }) {
   const [step, setStep] = useState<'details' | 'terms'>('details');
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
+  const [preset, setPreset] = useState<NativeCurrencyPreset>('currency');
   const [units, setUnits] = useState('');
+  const [creatorUnits, setCreatorUnits] = useState('');
+  const [seed, setSeed] = useState('');
   const [price, setPrice] = useState('');
   const [issuerControls, setIssuerControls] = useState(false);
   const [description, setDescription] = useState('');
@@ -55,6 +60,18 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
     else if (returningFromGovernance.current) { returningFromGovernance.current = false; governanceButton.current?.focus(); }
   }, [governance]);
 
+  const pooled = creatorUnits.trim() !== '' && !/^0+$/u.test(creatorUnits.trim());
+  const countsEntered = /^\d+$/u.test(units.trim()) && /^\d*$/u.test(creatorUnits.trim());
+  const marketUnits = countsEntered ? BigInt(units.trim()) - BigInt(creatorUnits.trim() || '0') : null;
+  const marketShort = marketUnits !== null && pooled && marketUnits < 2n;
+  let openingPrice: string | null = null;
+  if (pooled && marketUnits !== null && !marketShort) {
+    try {
+      const cents = BigInt(bankOperationDollars(seed)) / marketUnits;
+      openingPrice = formatMoney((cents > 0n ? cents : 1n).toString());
+    } catch { /* The seed amount is still being entered. */ }
+  }
+
   async function openGovernance() {
     if (!issueSource || openingGovernance) return;
     setOpeningGovernance(true);
@@ -68,7 +85,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       setGovernance({
         name: receipt.review.request.definition.name, code: receipt.review.request.definition.symbol,
         accountUid: currency.issuerAccountId,
-        currency: { assetId: id, priceUsdCentsPerUnit: currency.policy.priceUsdCentsPerUnit, salesPaused: currency.salesPaused === true },
+        currency: { assetId: id, priceUsdCentsPerUnit: nativeCurrencyPrice(currency), ...(currency.policy.kind === 'constant-product-pool' ? { poolPricing: true } : {}), salesPaused: currency.salesPaused === true },
       });
     } catch {
       setGovernanceError('Could not open the signed issuance terms. You can open Currency settings from your currency in Market.');
@@ -98,6 +115,19 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       <AssetStudioPreview title={name} kind={artwork ? 'image' : 'moment'} currencyCode={symbol}
         artwork={artwork && artworkPreview?.file === artwork ? artworkPreview.url : undefined}
         artworkLabel="Selected currency artwork" filename={artwork?.name} />
+      <fieldset className="currency-creation-panel currency-controls">
+        <legend>Currency type</legend>
+        <div className="currency-control-options">
+          {nativeCurrencyPresets.map(value => {
+            const Icon = presetIcons[value];
+            return <label className="currency-control-option" key={value}>
+              <input type="radio" name={controlGroup + '-preset'} value={value} checked={preset === value} onChange={() => setPreset(value)} />
+              <Icon size={17} aria-hidden="true" />
+              <span><strong>{currencyPresets[value].label}</strong><small>{currencyPresets[value].use}</small></span>
+            </label>;
+          })}
+        </div>
+      </fieldset>
       <div className="currency-creation-pair currency-creation-identity">
         <label className="form-field"><span>Name</span>
           <input required pattern={'.*\\S.*'} value={name} maxLength={80} onChange={event => setName(event.target.value)} placeholder="Your currency name" />
@@ -109,7 +139,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       </div>
       <p className="small-copy currency-creation-hint" id={controlGroup + '-code'}>Use 2–8 letters or numbers, starting with a letter.</p>
       <label className="form-field"><span>What can people use it for?</span>
-        <textarea value={description} maxLength={2000} rows={2} onChange={event => setDescription(event.target.value)} placeholder="Optional" />
+        <textarea value={description} maxLength={2000} rows={2} onChange={event => setDescription(event.target.value)} placeholder={currencyPresets[preset].placeholder} />
       </label>
       <div className="currency-creation-artwork">
         <label className="back-link currency-artwork-picker"><ImagePlus size={17} aria-hidden="true" />
@@ -128,14 +158,19 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   return <div className="currency-creation">
     <div hidden={!!governance}>
       <NativeOperation identity={identity} title="Currency" confirmLabel="Issue currency" committedTitle="Currency issued." onRefresh={onRefresh}
-        inputKey={JSON.stringify([name, symbol, units, price, description, issuerControls])}
+        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls])}
         onResult={result => {
           if (result.status === 'committed' && 'nativeAssetSource' in result) setIssueSource(result.nativeAssetSource);
         }}
         input={() => {
           const asset = definition();
-          const policy = inspectNativeCurrencyPolicy({ kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price), ...(issuerControls ? { issuerControls: true } : {}) });
-          nativeCurrencyCost(policy, BigInt(parseAmount(asset.units)));
+          if (!/^\d*$/u.test(creatorUnits.trim())) throw Error('Enter a whole number of units to keep.');
+          if (marketShort) throw Error('Leave at least two units in the pool so it can quote a buy.');
+          const common = { preset, ...(issuerControls ? { issuerControls: true } : {}) };
+          const policy = inspectNativeCurrencyPolicy(pooled
+            ? { ...common, kind: 'constant-product-pool', creatorQuantityMicro: parseAmount(creatorUnits), seedUsdCents: bankOperationDollars(seed) }
+            : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price) });
+          nativeCurrencyLaunch(policy, parseAmount(asset.units));
           return { kind: 'issue-currency', definition: asset, policy };
         }}
         operations={async () => {
@@ -148,7 +183,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
         <button type="button" className="back-link" onClick={() => openStep('details')}><ArrowLeft size={16} />Edit currency details</button>
         <header className="creation-intro currency-terms-heading">
           <h1 ref={stepHeading} tabIndex={-1} className="sheet-hero">Set currency terms.</h1>
-          <p className="body-copy">{name.trim()} · {symbol}</p>
+          <p className="body-copy">{name.trim()} · {symbol} · {currencyPresets[preset].label}</p>
         </header>
         <section className="currency-creation-panel" aria-labelledby={controlGroup + '-supply'}>
           <h2 id={controlGroup + '-supply'}>Supply and pricing</h2>
@@ -159,29 +194,38 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
                 <span className="amount-suffix">units</span>
               </div>
             </label>
-            <AmountInput label="Purchase price per unit" value={price} onChange={setPrice} dollars />
+            <AmountInput label="Units you keep" value={creatorUnits} onChange={setCreatorUnits} suffix="units" />
           </div>
-          <p className="small-copy">All units start for sale. You receive 0 units. Purchases fund the pool for redemptions.</p>
+          {marketUnits !== null && marketUnits > 0n && !marketShort && <p className="small-copy">{formatUnits((marketUnits * 1_000_000n).toString())} {marketUnits === 1n ? 'unit goes' : 'units go'} to Market.</p>}
+          {marketShort && <p className="small-copy">Leave at least two units in the pool so it can quote a buy.</p>}
+          {pooled ? <>
+            <AmountInput label="Starting liquidity" value={seed} onChange={setSeed} dollars />
+            <p className="small-copy">Your Wallet funds the pool at launch. The ratio of pool funds to units sets the price. Buys raise it and sells lower it.</p>
+            {openingPrice && <p className="small-copy">Opening pool quote <strong>{openingPrice}</strong> per unit. Each trade has its own quote.</p>}
+          </> : <>
+            <AmountInput label="Purchase price per unit" value={price} onChange={setPrice} dollars />
+            <p className="small-copy">All units start for sale. Their purchases fund the pool for sell-backs.</p>
+          </>}
         </section>
         <fieldset className="currency-creation-panel currency-controls">
-          <legend>Price and sales control</legend>
+          <legend>{pooled ? 'Sales control' : 'Price and sales control'}</legend>
           <div className="currency-control-options">
             <label className="currency-control-option">
               <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => setIssuerControls(false)} />
               <LockKeyhole size={17} aria-hidden="true" />
-              <span><strong>Fixed terms</strong><small>Keep the opening price and sales terms.</small></span>
+              <span><strong>Fixed terms</strong><small>{pooled ? 'Keep sales open under the pool rules.' : 'Keep the opening price and sales terms.'}</small></span>
             </label>
             <label className="currency-control-option">
               <input type="radio" name={controlGroup} value="managed" checked={issuerControls} onChange={() => setIssuerControls(true)} />
               <SlidersHorizontal size={17} aria-hidden="true" />
-              <span><strong>Issuer-managed</strong><small>Change the price or pause new sales.</small></span>
+              <span><strong>Issuer-managed</strong><small>{pooled ? 'Pause or resume new sales.' : 'Change the price or pause new sales.'}</small></span>
             </label>
           </div>
         </fieldset>
         <section className="currency-creation-panel currency-governance-intro" aria-labelledby={controlGroup + '-governance'}>
           <Vote size={20} aria-hidden="true" />
           <div><h2 id={controlGroup + '-governance'}>Community governance</h2>
-            <p className="small-copy">{issuerControls ? 'After issuance, set voting membership and thresholds in a charter. Once founders ratify it, link it to let members vote on price and sales.' : 'Choose Issuer-managed to enable a community charter after issuance.'}</p>
+            <p className="small-copy">{issuerControls ? (pooled ? 'Create a charter after issuance to let members vote on pausing or resuming sales.' : 'Create a charter after issuance to let members vote on price and sales.') : 'Choose Issuer-managed to enable a community charter after issuance.'}</p>
           </div>
         </section>
       </NativeOperation>
@@ -190,7 +234,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           <Vote size={17} />{openingGovernance ? 'Opening governance…' : 'Set up voting and governance'}<ArrowRight size={17} />
         </button>
         {governanceError && <p className="error-message" role="status">{governanceError}</p>}
-        <p className="small-copy">Use Currency settings in Market to change the price, pause sales or link a charter after its founders ratify it.</p>
+        <p className="small-copy">Open Currency settings in Market to manage sales or link a ratified charter.</p>
       </section>}
     </div>
     {governance && <section className="currency-creation-charter">
@@ -199,7 +243,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
         setGovernance(null);
       }}><ArrowLeft size={16} />Back to issuance</button>
       <h1 ref={governanceHeading} tabIndex={-1} className="sheet-hero">{governance.name} · {governance.code}</h1>
-      <p className="body-copy">Create a charter to define who can vote and how votes can change this currency’s price and sales. Once founders ratify it, link it in Currency settings in Market.</p>
+      <p className="body-copy">{governance.currency.poolPricing ? 'Define who can vote on pausing and resuming sales. Once founders ratify the charter, link it in Currency settings.' : 'Define who can vote on price and sales. Once founders ratify the charter, link it in Currency settings.'}</p>
       <Suspense fallback={<InlineOpening label="Opening community governance" />}>
         <VotingBoard accountIdentity={identity} accountUid={governance.accountUid} currency={governance.currency} />
       </Suspense>

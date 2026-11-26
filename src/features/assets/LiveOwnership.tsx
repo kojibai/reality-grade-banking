@@ -1,3 +1,4 @@
+import {nativeCurrencyPrice} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { useState } from 'react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankOperationInput, BankRail } from '../../receiz/bank-operations';
@@ -25,8 +26,11 @@ export function LiveOwnership({ identity, mode = 'send', initialDigest = '', nat
 function TradeOwnership({ identity, mode, initialDigest, nativeAssetId, publicCurrency, onRefresh }: Omit<OwnershipProps, 'mode'> & { mode: 'sell' | 'buy' | 'redeem' }) {
   const { sources: held } = useHeldAssetSources(identity);
   const heldCurrency=held.find(source=>source.nativeAsset?.currency&&source.nativeAsset.assetId===nativeAssetId);
-  const currency=publicCurrency??(heldCurrency?.nativeAsset?.currency?{symbol:heldCurrency.nativeAsset.symbol,
-    supplyMicro:heldCurrency.nativeAsset.supplyMicro,priceUsdCentsPerUnit:heldCurrency.nativeAsset.currency.policy.priceUsdCentsPerUnit}:null);
+  const heldInstrument = heldCurrency?.nativeAsset;
+  const currency = publicCurrency ?? (heldInstrument?.currency ? {
+    symbol: heldInstrument.symbol, supplyMicro: heldInstrument.supplyMicro, priceUsdCentsPerUnit: nativeCurrencyPrice(heldInstrument.currency),
+    poolPricing: heldInstrument.currency.policy.kind === 'constant-product-pool',
+  } : null);
   const sources=held.filter(source=>!source.nativeAsset?.currency||source===heldCurrency);
   const [assetDigest, setDigest] = useState(initialDigest ?? ''), [quantity, setQuantity] = useState('1'), [rail, setRail] = useState<BankRail>('reserve'), [buyer, setBuyer] = useState<'bank' | 'market'>(nativeAssetId?'market':'bank');
   const title = currency && mode==='sell' ? 'sale to currency pool' : { sell: 'Sale', buy: 'Purchase', redeem: 'Redemption' }[mode];
@@ -44,7 +48,7 @@ function TradeOwnership({ identity, mode, initialDigest, nativeAssetId, publicCu
   };
   return <NativeOperation identity={identity} input={input} inputKey={JSON.stringify([mode, assetDigest, sources.find(source=>source.digest===assetDigest||source.nativeAsset?.assetId===(nativeAssetId??assetDigest))?.executionDigest, quantity, rail, buyer, currency])} title={title} confirmLabel={{ sell: 'Confirm sale', buy: 'Confirm purchase', redeem: 'Confirm redemption' }[mode]} onRefresh={onRefresh} ownership={heldCurrency&&currency?{title:heldCurrency.title,symbol:currency.symbol}:undefined}>
     <h1 className="sheet-hero">{{ sell: 'Unlock what you need.', buy: 'Make it yours.', redeem: 'Redeem your asset.' }[mode]}</h1>
-    <p className="body-copy">{currency ? mode==='sell'?'Return whole units for their share of the currency pool. Review the exact proceeds before selling.':`Purchase whole units at ${formatMoney(currency.priceUsdCentsPerUnit)} each from your available balance.` : mode === 'redeem' ? 'Review your ownership and the custodian’s release terms.' : 'Choose the exact ownership to move. Its original proof stays connected.'}</p>
+    <p className="body-copy">{currency ? currency.poolPricing ? 'The pool prices your whole-unit trade. Review the exact quote before approving.' : mode==='sell'?'Return whole units for their share of the currency pool. Review the exact proceeds before selling.':`Purchase whole units at ${formatMoney(currency.priceUsdCentsPerUnit)} each from your available balance.` : mode === 'redeem' ? 'Review your ownership and the custodian’s release terms.' : 'Choose the exact ownership to move. Its original proof stays connected.'}</p>
     {!nativeAssetId&&<label className="form-field"><span>Asset</span><select aria-label="Owned asset" value={assetDigest} onChange={event => setDigest(event.target.value)}><option value="">Choose an original source</option>{assetDigest && !sources.some(source => source.digest === assetDigest || source.nativeAsset?.assetId===(nativeAssetId??assetDigest)) && <option value={assetDigest}>Selected asset · {assetDigest.slice(0, 12)}…</option>}{sources.map(source => <option key={source.digest} value={source.nativeAsset?.assetId??source.digest}>{source.title}</option>)}</select></label>}
     {mode !== 'redeem' && <AmountInput label={currency ? mode==='sell'?'Whole units to return':'Whole units to buy' : { sell: 'Ownership to sell', buy: 'Ownership to buy' }[mode]} value={quantity} onChange={setQuantity} suffix={currency?.symbol??"units"} />}
     {mode === 'sell' && !nativeAssetId && <div className="segmented"><button className={buyer === 'bank' ? 'active' : ''} onClick={() => setBuyer('bank')}>Sell to bank</button><button className={buyer === 'market' ? 'active' : ''} onClick={() => setBuyer('market')}>Sell on Market</button></div>}

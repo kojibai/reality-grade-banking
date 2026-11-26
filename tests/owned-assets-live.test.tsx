@@ -58,7 +58,7 @@ it('shows units and their dollar value from the newest held price without anothe
   expect(balance()?.textContent).toBe('12 FIELD · $27.00');
   expect(balance()?.getAttribute('title')).toBe('At $2.25 per FIELD');
   await act(async()=>render([{...position,nativeAsset:{...asset,sourceKaiUPulse:'2000103',
-   currency:{...asset.currency!,policy:{...asset.currency!.policy,priceUsdCentsPerUnit:'150'}}}}]));
+   currency:{...asset.currency!,policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'150'}}}}]));
   expect(balance()?.textContent).toBe('12 FIELD · $18.00');
   await act(async()=>balance()?.closest('button')?.click());
   expect(onOpen).toHaveBeenCalledWith({kind:'asset',assetId});

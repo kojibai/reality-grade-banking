@@ -198,3 +198,37 @@ it('reviews creator changes against the exact admitted currency head', async()=>
   expect(review.input?.()).toEqual({kind:'manage-currency',assetDigest:head,changes:{priceUsdCentsPerUnit:'40',salesPaused:true}});
  } finally {await act(async()=>root.unmount());}
 });
+
+it.each(['service-credit', 'coupon', 'rewards'] as const)('issues the %s preset and requires pool funding when keeping units',async(preset)=>{
+ const host=document.createElement('div'),root=createRoot(host);
+ const identity={backedAssetPublication:vi.fn()} as unknown as OpenIdentity;
+ const click=(name:string)=>act(async()=>{
+  [...host.querySelectorAll('button')].find(button=>button.textContent?.trim()===name)!.click();
+  await vi.dynamicImportSettled();
+ });
+ document.body.append(host);
+ try {
+  await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  await act(async()=>{
+   [...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!.click();
+   await vi.dynamicImportSettled();
+  });
+  await act(async()=>host.querySelector<HTMLInputElement>(`input[value="${preset}"]`)!.click());
+  await act(async()=>{enter(host,'Name','Studio credit');enter(host,'Currency code','STUDIO');});
+  await click('Set currency terms');
+  await act(async()=>{enter(host,'Supply cap','10');enter(host,'Purchase price per unit','0.25');});
+  expect(review.input?.()).toMatchObject({policy:{kind:'fixed-reserve-pool',preset,priceUsdCentsPerUnit:'25'}});
+  await act(async()=>enter(host,'Units you keep','2'));
+  expect(host.querySelector('[aria-label="Purchase price per unit"]')).toBeNull();
+  expect(()=>review.input?.()).toThrow();
+  await act(async()=>enter(host,'Starting liquidity','6'));
+  expect(host.textContent).toContain('8 units go to Market');
+  expect(review.input?.()).toMatchObject({policy:{kind:'constant-product-pool',preset,creatorQuantityMicro:'2000000',seedUsdCents:'600'}});
+  expect((review.input?.() as Extract<BankOperationInput,{kind:'issue-currency'}>).policy).not.toHaveProperty('priceUsdCentsPerUnit');
+  await act(async()=>enter(host,'Units you keep','9'));
+  expect(()=>review.input?.()).toThrow(/at least two units/i);
+  await act(async()=>enter(host,'Units you keep','0'));
+  expect(review.input?.()).toMatchObject({policy:{kind:'fixed-reserve-pool',preset,priceUsdCentsPerUnit:'25'}});
+  expect(host.textContent).not.toContain('Starting liquidity');
+ } finally {await act(async()=>root.unmount());host.remove();}
+});

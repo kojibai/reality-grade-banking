@@ -15,3 +15,12 @@ it('rejects forward, cyclic, out-of-range and expanding references within the de
   const invalid=structuredClone(packet);mutate(invalid);const bytes=Buffer.from(JSON.stringify(invalid));expect(()=>decodeNavigationEnvelope({...encoded,decodedBytes:bytes.length,data:gzipSync(bytes).toString('base64url')})).toThrow();
  }
 });
+
+it('uses the smaller static encoding without changing the held document or runtime reader',()=>{
+ const navigation=fixture(),shared=sharedExampleMarkup([{html:[0,1,2,3],copy:literal}]);
+ const baseline=encodeNavigationEnvelope(navigation,shared);
+ const compressed=encodeNavigationEnvelope(navigation,shared,{preferSmaller:true});
+ expect(compressed.data.length).toBeLessThanOrEqual(baseline.data.length);
+ expect(compressed.format).toBe(baseline.format);
+ expect(decodeNavigationEnvelope(compressed)).toEqual(decodeNavigationEnvelope(baseline));
+});

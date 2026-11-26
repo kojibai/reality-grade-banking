@@ -122,7 +122,7 @@ for(const file of ['dist/feed/index.html','dist/discover/index.html']){
   const packet=JSON.parse(match.slice(match.indexOf('>')+1,-'</script>'.length));
   const opened=decodeNavigationEnvelope(packet),value=opened.navigation;
   value.pages['/legal/']={...navigation.pages['/legal/'],content:'',contentSha256:hash(navigation.pages['/legal/'].content)};
-  return packet.format==='bank.presentation-envelope.v1'?writeNavigationScript(value,opened.shared):'<script id="receiz-navigation" type="application/json">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>';
+  return packet.format==='bank.presentation-envelope.v1'?writeNavigationScript(value,opened.shared,{preferSmaller:file==='dist/discover/index.html'}):'<script id="receiz-navigation" type="application/json">'+JSON.stringify(value).replaceAll('<','\\u003c')+'</script>';
  }));
 }
 console.log(`Published GPLv3, ownership, policies and supplied notices for ${packages.length} production dependencies at /legal/.`);

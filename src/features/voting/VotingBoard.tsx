@@ -31,7 +31,7 @@ function navigateVoting(path:string){
 }
 
 type Screen='list'|'charter'|'proposal'|'detail'|'review'|'saved';
-export type CurrencyVotingContext={assetId:string;settingsHead?:string;charterDigest?:string;priceUsdCentsPerUnit:string;salesPaused:boolean;
+export type CurrencyVotingContext={assetId:string;settingsHead?:string;charterDigest?:string;priceUsdCentsPerUnit:string;salesPaused:boolean;poolPricing?:true;
   onApplied?:(asset:{headSourceSha256:string;currency?:import('../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency').NativeCurrencyState})=>void};
 
 type Props={currency?:CurrencyVotingContext;activeWorkspace?:boolean;accountIdentity?:OpenIdentity|null;accountUid?:string|null;initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};

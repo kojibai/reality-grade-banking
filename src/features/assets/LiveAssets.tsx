@@ -1,3 +1,4 @@
+import {nativeCurrencyPrice} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronRight, Coins, FileCheck2, Package, ShieldCheck } from 'lucide-react';
@@ -39,7 +40,7 @@ function useOpenedAssetSignatureRetry(identity:OpenIdentity,active:boolean,diges
 const IssueCurrencyNote=lazy(()=>import('../notes/CurrencyNotes').then(module=>({default:module.IssueCurrencyNote})));
 
 function CurrencyHoldingBalance({asset}: {asset:NonNullable<HeldDeposit['nativeAsset']>}) {
-  const heldPrice = asset.currency?.policy.priceUsdCentsPerUnit;
+  const heldPrice = asset.currency ? nativeCurrencyPrice(asset.currency) : undefined;
   const price = useSyncExternalStore(subscribeCurrencyPriceHistory, () => {
     const latest = heldCurrencyPriceHistory(asset.assetId,asset.symbol).at(-1);
     return latest && BigInt(latest.kaiUPulse) > BigInt(asset.sourceKaiUPulse) ? latest.usdCents : heldPrice;

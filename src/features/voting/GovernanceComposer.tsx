@@ -74,7 +74,9 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       let selectedExecution=execution;
       if(currency&&mode==='charter'){
         if(!identity?.governanceExecution)throw Error('Open your identity to create the currency charter.');
-        const min=bankOperationDollars(minimumPrice),max=bankOperationDollars(maximumPrice),price=BigInt(currency.priceUsdCentsPerUnit);
+        const price=BigInt(currency.priceUsdCentsPerUnit);
+        const min=currency.poolPricing?String(price):bankOperationDollars(minimumPrice);
+        const max=currency.poolPricing?String(price):bankOperationDollars(maximumPrice);
         if(BigInt(min)>price||BigInt(max)<price)throw Error('The current price must fit the charter’s price range.');
         setBuilding(true);
         const register=await (await identity.governanceExecution()).createRegister();
@@ -85,11 +87,11 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       let currencyChange;
       if(currency&&mode==='proposal'){
         if(!currency.settingsHead||charter?.digest!==currency.charterDigest)throw Error('This charter must be linked to the currency before proposing a change.');
-        const price=newPrice.trim()?bankOperationDollars(newPrice):undefined;
+        const price=!currency.poolPricing&&newPrice.trim()?bankOperationDollars(newPrice):undefined;
         const paused=saleStatus==='current'?undefined:saleStatus==='paused';
         const changes={...(price&&price!==currency.priceUsdCentsPerUnit?{priceUsdCentsPerUnit:price}:{}),
           ...(paused!==undefined&&paused!==currency.salesPaused?{salesPaused:paused}:{})};
-        if(!Object.keys(changes).length)throw Error('Choose a new purchase price or sales setting.');
+        if(!Object.keys(changes).length)throw Error(currency.poolPricing?'Choose a new sales setting.':'Choose a new purchase price or sales setting.');
         currencyChange={assetId:currency.assetId,expectedHead:currency.settingsHead,changes};
       }
       const terms=mode==='charter'?{kind:'charter',...(logo?{logo}:{}),rules:{...rules,...policyText,offices,articles,...(openRoll?{participation:'open-registration'}:{}),...(!openRoll&&selectedExecution?{execution:selectedExecution}:{}),...(!openRoll&&separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
@@ -119,7 +121,7 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         {election?<><label>Office<select required value={office} onChange={e=>{setOffice(e.target.value);setSelected([]);}}><option value="">Choose an elected office</option>{electiveOffices.map(o=><option key={o.name}>{o.name}</option>)}</select></label>
           {!electiveOffices.length&&<p>This charter lists no elected offices. Its amendment procedure describes how members can propose one.</p>}
           <fieldset className="gov-box"><legend>Candidate statements</legend>{candidates.map(c=><label className="gov-check" key={c.digest}><input type="checkbox" checked={selected.includes(c.digest)} onChange={e=>setSelected(v=>e.target.checked?[...v.filter(d=>candidates.find(x=>x.digest===d)?.document.author!==c.document.author),c.digest]:v.filter(d=>d!==c.digest))}/>{member?.(c.document.author)??c.document.author} · {c.document.terms.statement}</label>)}{!candidates.length&&<p>Candidates can submit their own statements from the charter.</p>}</fieldset></>:bindingBinary?<p>Ballot choices · Approve / Reject</p>:<label>Ballot choices <small>One choice per line.</small><textarea required value={options} onChange={e=>editProposal({options:e.target.value})}/></label>}
-        {currency&&<div className="gov-fields"><label>New purchase price (USD)<input inputMode="decimal" value={newPrice} onChange={e=>setNewPrice(e.target.value)}/></label>
+        {currency&&<div className="gov-fields">{!currency.poolPricing&&<label>New purchase price (USD)<input inputMode="decimal" value={newPrice} onChange={e=>setNewPrice(e.target.value)}/></label>}
           {charter?.document.terms.rules.execution?.currency?.allowSalesPause&&<label>New sales<select value={saleStatus} onChange={e=>setSaleStatus(e.target.value as typeof saleStatus)}>
             <option value="current">Keep current setting</option><option value="open">Open</option><option value="paused">Paused</option></select></label>}</div>}
         {decision==='Treasury'&&payment&&<PaymentFacts payment={payment}/>}
@@ -131,8 +133,8 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       <label className="gov-check"><input type="checkbox" checked={rules.allowMandates} onChange={e=>setRepresentation(e.target.checked)}/>Permit scoped representative mandates</label>
       {(Object.keys(ruleLabels) as (keyof typeof ruleLabels)[]).map(k=><label key={k}>{ruleLabels[k]}<textarea required maxLength={4000} value={rules[k]} onChange={e=>editRules({[k]:e.target.value})}/></label>)}
       {currency&&<fieldset className="gov-box gov-form"><legend>Currency rules</legend>
-        <label>Lowest purchase price (USD)<input required inputMode="decimal" value={minimumPrice} onChange={e=>setMinimumPrice(e.target.value)}/></label>
-        <label>Highest purchase price (USD)<input required inputMode="decimal" value={maximumPrice} onChange={e=>setMaximumPrice(e.target.value)}/></label>
+        {currency.poolPricing?<p>The pool sets prices. This charter governs new sales.</p>:<><label>Lowest purchase price (USD)<input required inputMode="decimal" value={minimumPrice} onChange={e=>setMinimumPrice(e.target.value)}/></label>
+        <label>Highest purchase price (USD)<input required inputMode="decimal" value={maximumPrice} onChange={e=>setMaximumPrice(e.target.value)}/></label></>}
         <label className="gov-check"><input type="checkbox" checked={allowSalesPause} onChange={e=>setAllowSalesPause(e.target.checked)}/>Allow votes to pause or reopen sales</label>
       </fieldset>}
       {!currency&&identity&&!openRoll&&<CharterExecutionFields identity={identity} owner={owner} value={execution} change={v=>setExecutions(all=>({...all,[template]:v}))}/>}

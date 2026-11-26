@@ -412,7 +412,7 @@
       "id": "bankeiz-composer-media-bankAssetContent",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
       "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
       "sourceCommit": "b974758ac"
     },
@@ -508,7 +508,7 @@
       "id": "bank-native-backed-publication",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
-      "sha256": "cf1f65ee7e5fbadf7304bdef3769de30ed7373186a0f04a58c8bf2ed8b2e9324",
+      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
     },
@@ -2652,7 +2652,7 @@
       "id": "bankeiz-native-currency-publication-v129",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
-      "sha256": "7abf5096f43c953776eb2d391d934d1510322b957dba084469e2bafbd07129b6",
+      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     },
     {
@@ -2672,7 +2672,7 @@
     {
       "id": "bankeiz-native-currency-publication-v129",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "0b656db582854758ff070ac684afd41ad47768ce08de39f4ffdbc908e4663c46",
+      "sha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     },
     {
@@ -2681,6 +2681,20 @@
       "baseSha256": "717900d04eac29fa388e143f9c864719f949d54ea12290e54c987e10754994fe",
       "sha256": "bf8178e3808019630b00ef81aa42631635efc0804a8caa35c2badb903675785e",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
+    },
+    {
+      "id": "bankeiz-native-currency-pool",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "7abf5096f43c953776eb2d391d934d1510322b957dba084469e2bafbd07129b6",
+      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
+      "purpose": "Verify pooled currency terms, preset identity and current pool quotes from the native asset Source."
+    },
+    {
+      "id": "bankeiz-native-currency-pool",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "baseSha256": "0b656db582854758ff070ac684afd41ad47768ce08de39f4ffdbc908e4663c46",
+      "sha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
+      "purpose": "Verify pooled currency terms, preset identity and current pool quotes from the native asset Source."
     }
   ]
 }

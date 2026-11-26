@@ -1,3 +1,4 @@
+import {currencyPresets} from '../../receiz/currency-presets';
 import {CurrencyPriceHistory} from './CurrencyPriceHistory';
 import {publicOriginalCheckoutUrl} from '../../receiz/public-original-purchase';
 import {OriginalPurchase} from './OriginalPurchase';
@@ -70,7 +71,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const creatorUsername=/^receiz_[a-z0-9]{17}$/.test(carriedCreatorUsername)?'':carriedCreatorUsername;
   const creatorName=creator?.displayName?.trim()&&creator.displayName!==carriedCreatorUsername?creator.displayName.trim():!carriedCreatorUsername?creator?.userId?.trim():undefined;
   const object=<OriginalEngagementContext.Provider value={engagement}><AssetObject rootRef={mediaRoot} key={item.id} label={item.title} front={media??(collectibleArtwork?<PublicCollectibleArtwork item={item} eager/>:item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/></OriginalEngagementContext.Provider>;
-  return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{currency?`${currency.symbol} · Currency`:standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
+  return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{currency?`${currency.symbol} · ${currencyPresets[currency.preset ?? "currency"].label}`:standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {publicImageOpen&&publicImage&&<PublicImageDialog item={item} title={item.title} url={publicImage} onClose={()=>setPublicImageOpen(false)}/>}
     {standalone&&owner&&profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)&&<a className="asset-profile-byline" href={profilePagePath(profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername))}><PublicOwnerAvatar item={admission?item:carried??item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
@@ -78,6 +79,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol} openLedger={!readOnly}
       opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
       <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
+      {currency.poolPricing&&<div><span>Pricing</span><strong>Market pool</strong></div>}
     </div></>:<>
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
@@ -91,7 +93,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
         onRefresh={currencyManagement.onRefresh} /></Suspense>}
     </details>}
     {!currency&&<OpenInvestment item={item}/>}
-    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>{currency?'Currency terms':'Ownership & payment'}</summary><p className="body-copy small-copy">{currency?currency.issuerControls?'The supply cap is fixed. The issuer or its ratified charter controls purchase terms. Review the current terms before buying.':'The purchase price and supply cap are fixed. Purchases use your available balance and fund the pool. Sell-back returns the units for a share of that pool.':'Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.'}</p></details>}
+    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>{currency?'Currency terms':'Ownership & payment'}</summary><p className="body-copy small-copy">{currency?currency.poolPricing?'Buy and sell quotes depend on the funds and units in the pool. Review the exact quote before trading.':currency.issuerControls?'The supply cap is fixed. The issuer or its ratified charter controls purchase terms. Review the current terms before buying.':'The purchase price and supply cap are fixed. Purchases use your available balance and fund the pool. Sell-back returns the units for a share of that pool.':'Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.'}</p></details>}
     {!standalone&&object}
     {purchase&&!offer?.locked&&purchase}
     <div className="asset-actions asset-source-links">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} strokeWidth={1.5} />Open public source</a>}{verifyUrl && <a href={verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={15} strokeWidth={1.5} />Inspect proof</a>}</div>

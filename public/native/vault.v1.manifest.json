@@ -180,7 +180,7 @@
     },
     {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
+      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
       "mode": 420
     },
     {
@@ -285,12 +285,17 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetBacking.ts",
-      "sha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e",
+      "sha256": "df560ec72d8d99b8bbaa121bb9c1743b0fb0a6b9d5ff8686c142dfc985492f16",
+      "mode": 420
+    },
+    {
+      "path": "app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "sha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
       "mode": 420
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetHolding.ts",
-      "sha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
+      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
       "mode": 420
     },
     {
@@ -764,6 +769,11 @@
       "mode": 420
     },
     {
+      "path": "packages/receiz-sdk/src/nativeWalletEconomics.ts",
+      "sha256": "cfcb1b2fb70ff76648f97177c4bb6fb7c93c4a763bf5f0899afa36ef60fac751",
+      "mode": 420
+    },
+    {
       "path": "packages/receiz-sdk/src/portableAsset.ts",
       "sha256": "c0d0d6b2be8360bc1a6885905fa4713257f536b8b465d074239d786159efb28c",
       "mode": 420
@@ -811,6 +821,11 @@
     {
       "path": "packages/receiz-sdk/src/releaseIdentity.ts",
       "sha256": "bb2bd2855e307bd030e257d9181a5a8ae0ca7992436f6640d49d1e6b0d8f0ade",
+      "mode": 420
+    },
+    {
+      "path": "packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
+      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
       "mode": 420
     },
     {
@@ -962,11 +977,6 @@
       "path": "packages/receiz-sdk/src/verifier/signatureV4.ts",
       "sha256": "9d384bdf2f62449009fcfbc7fc14d8b04c22d5169e571a95da30a9426886cf83",
       "mode": 420
-    },
-    {
-      "path": "packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
-      "sha256": "0af6702f10d996f27f11516f8f0d568a7eadfb5e87262a38053b558046d3c1a0",
-      "mode": 420
     }
   ],
   "links": [
@@ -1034,6 +1044,7 @@
     "app/lib/profile/longForm.ts",
     "app/lib/profile/originalStorage.ts",
     "app/lib/profile/profileIdentityCreationCoordinate.ts",
+    "app/lib/profile/receivingUsername.ts",
     "app/lib/profile/showcase/bankAssetContent.ts",
     "app/lib/profile/showcase/composerResources.ts",
     "app/lib/profile/showcase/importedSource.ts",
@@ -1056,6 +1067,7 @@
     "app/lib/transport/exactByteBlocks.ts",
     "app/lib/wallet/bankNotes/nativeAsset.ts",
     "app/lib/wallet/bankNotes/nativeAssetBacking.ts",
+    "app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
     "app/lib/wallet/bankNotes/nativeAssetHolding.ts",
     "app/lib/wallet/bankNotes/nativeAssetPublicArtifact.ts",
     "app/lib/wallet/bankVault/assetCapacity.ts",
@@ -1139,6 +1151,7 @@
     "packages/receiz-sdk/src/identity.ts",
     "packages/receiz-sdk/src/kaiSigilVerificationKey.ts",
     "packages/receiz-sdk/src/nativeCapture.ts",
+    "packages/receiz-sdk/src/nativeWalletEconomics.ts",
     "packages/receiz-sdk/src/portableAsset.ts",
     "packages/receiz-sdk/src/portableAssetReader.ts",
     "packages/receiz-sdk/src/portableStateSegments.ts",
@@ -1149,6 +1162,7 @@
     "packages/receiz-sdk/src/registryArtifact.ts",
     "packages/receiz-sdk/src/registryDiscovery.ts",
     "packages/receiz-sdk/src/releaseIdentity.ts",
+    "packages/receiz-sdk/src/sourceJsonDigestBasis.ts",
     "packages/receiz-sdk/src/v114Registry.generated.ts",
     "packages/receiz-sdk/src/v115Registry.generated.ts",
     "packages/receiz-sdk/src/v116Registry.generated.ts",
@@ -1169,6 +1183,7 @@
     "packages/receiz-sdk/src/v126Registry.generated.ts",
     "packages/receiz-sdk/src/v127Registry.generated.ts",
     "packages/receiz-sdk/src/verificationLimits.ts",
+    "packages/receiz-sdk/src/verifier/boundedInflate.ts",
     "packages/receiz-sdk/src/verifier/canonical.ts",
     "packages/receiz-sdk/src/verifier/canonicalImplementation.js",
     "packages/receiz-sdk/src/verifier/canonicalSyntax.ts",
@@ -1177,11 +1192,10 @@
     "packages/receiz-sdk/src/verifier/groth16.ts",
     "packages/receiz-sdk/src/verifier/index.ts",
     "packages/receiz-sdk/src/verifier/roots.ts",
-    "packages/receiz-sdk/src/verifier/signatureV4.ts",
-    "packages/receiz-sdk/src/sourceJsonDigestBasis.ts"
+    "packages/receiz-sdk/src/verifier/signatureV4.ts"
   ],
-  "moduleSha256": "a6c5e05df105a81ddc10e6f25d511c351eeef3b56337f05219ec3e4e49c8b6ad",
-  "bytes": 1868703,
+  "moduleSha256": "e7e6c37b95aafe32df6ca7628d16ac21aec958e3a3b9f10ee4950df809e4dead",
+  "bytes": 1874232,
   "applicationPatches": [
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",

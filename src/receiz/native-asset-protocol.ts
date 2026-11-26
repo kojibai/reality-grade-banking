@@ -1,4 +1,4 @@
-import {inspectNativeCurrencyPolicy,inspectNativeCurrencyManagement,type NativeCurrencyManagement,nativeCurrencyFields,type NativeCurrencyPolicy,type NativeCurrencyState} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import {nativeCurrencyLaunch,inspectNativeCurrencyPolicy,inspectNativeCurrencyManagement,type NativeCurrencyManagement,nativeCurrencyFields,type NativeCurrencyPolicy,type NativeCurrencyState} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
 import {inspectNativeAssetBacking,inspectNativeAssetFundingComponents,type NativeAssetFundingComponent} from './native-asset-backing';
 export {inspectNativeAssetFundingComponents} from './native-asset-backing';
@@ -44,7 +44,7 @@ export function inspectNativeAssetRequest(input:unknown):NativeAssetRequest{
  if(v.schema!=='bankeiz.operation-request.v1'||typeof v.applicationId!=='string'||!/^rc_[A-Za-z0-9_-]{1,128}$/u.test(v.applicationId)||typeof v.requestId!=='string'||!/^[A-Za-z0-9._:-]{8,120}$/u.test(v.requestId)||!text(v.actorReceizId,160)||! /^[A-Za-z0-9_@.-]+$/u.test(v.actorReceizId))throw Error('BANK_ASSET_REQUEST_INVALID');
  if('fundingRule'in v&&v.fundingRule!=='reserve-first-then-settlement'||'rail'in v&&!['reserve','settlement'].includes(String(v.rail))||'assetDigest'in v&&!assetHex(v.assetDigest)||'assetId'in v&&!assetHex(v.assetId)||'quantityMicro'in v&&!integer(v.quantityMicro,true)||'amountUsdCents'in v&&!integer(v.amountUsdCents,true)||'recipient'in v&&!(v.kind==='issue-currency-note'&&v.recipient===null)&&(!text(v.recipient,160)||! /^[A-Za-z0-9_@.-]+$/u.test(v.recipient))||'buyer'in v&&!['bank','market','currency-pool'].includes(String(v.buyer)))throw Error('BANK_ASSET_REQUEST_INVALID');
  if(v.kind==='sell-share'&&v.buyer==='currency-pool'&&v.rail!=='reserve')throw Error('BANK_ASSET_REQUEST_INVALID');
- if(v.kind==='issue-currency')inspectNativeCurrencyPolicy(v.policy);
+ if(v.kind==='issue-currency')nativeCurrencyLaunch(inspectNativeCurrencyPolicy(v.policy),nativeAssetSupplyMicro((v.definition as NativeAssetDefinition | null)?.units));
  if(v.kind==='manage-currency')inspectNativeCurrencyManagement(v.changes);
  if(v.kind==='issue-currency-note'&&(!assetHex(v.claimCommitment)||v.artworkSha256!==null&&!assetHex(v.artworkSha256))
    ||v.kind==='redeem-currency-note'&&!assetHex(v.claimSecret))throw Error('BANK_ASSET_CURRENCY_NOTE_INVALID');
@@ -52,16 +52,22 @@ export function inspectNativeAssetRequest(input:unknown):NativeAssetRequest{
 }
 export function inspectNativeAssetReview(input:unknown):NativeAssetReview{
  const v=record(input,['schema','request','keyId','planDigest','terms']);if(v.schema!=='receiz.bank.native-asset-review.v1'||!assetHex(v.keyId)||!assetHex(v.planDigest))throw Error('BANK_ASSET_REVIEW_INVALID');
- const request=inspectNativeAssetRequest(v.request),t=record(v.terms,['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro','feeUsdCents','quantityMicro','assetDigest','recipient','expiresAtKaiUPulse',...('fundingRule'in request||request.kind==='buy-currency'?['fundingComponents']:[]),...(request.kind==='sell-share'&&request.buyer==='currency-pool'?['payoutComponents']:[])]);
+ const request=inspectNativeAssetRequest(v.request);
+ const pooledIssue=request.kind==='issue-currency'&&request.policy.kind==='constant-product-pool';
+ const t=record(v.terms,['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro','feeUsdCents','quantityMicro','assetDigest','recipient','expiresAtKaiUPulse',...('fundingRule'in request||request.kind==='buy-currency'||pooledIssue?['fundingComponents']:[]),...(request.kind==='sell-share'&&request.buyer==='currency-pool'?['payoutComponents']:[])]);
  if(!['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro','feeUsdCents','quantityMicro'].every(k=>integer(t[k]))||!Number.isSafeInteger(t.expiresAtKaiUPulse)||Number(t.expiresAtKaiUPulse)<=0||t.assetDigest!==null&&!assetHex(t.assetDigest)||t.recipient!==null&&!text(t.recipient,160)||t.quantityMicro==='0'||t.feeUsdCents!=='0')throw Error('BANK_ASSET_REVIEW_INVALID');
  if('assetId'in request&&!assetHex(t.assetDigest)||'assetDigest'in request&&t.assetDigest!==request.assetDigest||'quantityMicro'in request&&t.quantityMicro!==request.quantityMicro||t.recipient!==(request.kind==='send-ownership'||request.kind==='issue-currency-note'?request.recipient:null))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(request.kind==='fund-asset'&&(t.assetDigest!==null||t.quantityMicro!==nativeAssetSupplyMicro(request.definition.units)||t.debitUsdCents!==request.amountUsdCents||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
- if(request.kind==='issue-currency'&&(t.assetDigest!==null||t.quantityMicro!==nativeAssetSupplyMicro(request.definition.units)))throw Error('BANK_ASSET_REVIEW_INVALID');
- if((request.kind==='issue-currency'||request.kind==='send-ownership'||request.kind==='manage-currency'||request.kind==='issue-currency-note'||request.kind==='redeem-currency-note')&&['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro'].some(k=>t[k]!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
+ if(request.kind==='issue-currency'){
+  const launch=nativeCurrencyLaunch(request.policy,nativeAssetSupplyMicro(request.definition.units));
+  if(t.assetDigest!==null||t.quantityMicro!==nativeAssetSupplyMicro(request.definition.units)||t.debitUsdCents!==launch.seedUsdCents
+    ||(pooledIssue?t.debitPhiMicro==='0':t.debitPhiMicro!=='0')||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0')throw Error('BANK_ASSET_REVIEW_INVALID');
+ }
+ if((request.kind==='send-ownership'||request.kind==='manage-currency'||request.kind==='issue-currency-note'||request.kind==='redeem-currency-note')&&['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro'].some(k=>t[k]!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(request.kind==='buy-currency'&&(t.debitUsdCents==='0'||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
  if((request.kind==='buy-shares'||request.kind==='exchange')&&(request.rail==='reserve'&&t.debitUsdCents==='0'||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'||request.kind==='exchange'&&BigInt(t.debitUsdCents as string)>BigInt(request.amountUsdCents)))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(['sell-share','redeem-asset'].includes(request.kind)&&(t.debitUsdCents!=='0'||t.debitPhiMicro!=='0'||t.creditPhiMicro==='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
- if('fundingRule'in request||request.kind==='buy-currency')inspectNativeAssetFundingComponents(t.fundingComponents,{amountUsdCents:t.debitUsdCents as string,amountPhiMicro:t.debitPhiMicro as string});
+ if('fundingRule'in request||request.kind==='buy-currency'||pooledIssue)inspectNativeAssetFundingComponents(t.fundingComponents,{amountUsdCents:t.debitUsdCents as string,amountPhiMicro:t.debitPhiMicro as string});
  if(request.kind==='sell-share'&&request.buyer==='currency-pool')inspectNativeAssetFundingComponents(t.payoutComponents,{amountUsdCents:t.creditUsdCents as string,amountPhiMicro:t.creditPhiMicro as string},false,true);
  return structuredClone(v) as NativeAssetReview;
 }
@@ -79,11 +85,17 @@ export function inspectNativeAssetReceipt(input:unknown):NativeAssetReceipt{
  if(asset.currency&&BigInt(asset.ownerQuantityMicro as string)+BigInt((asset.currency as NativeCurrencyState).availableQuantityMicro)>BigInt(asset.supplyMicro as string))throw Error('BANK_ASSET_RECEIPT_INVALID');
  if(review.request.kind==='issue-currency'){
   const currency=asset.currency as NativeCurrencyState;
-  if(asset.ownerQuantityMicro!=='0'||asset.supplyMicro!==review.terms.quantityMicro||currency.availableQuantityMicro!==asset.supplyMicro||!assetSame(currency.policy,review.request.policy))throw Error('BANK_ASSET_RECEIPT_INVALID');
+  const launch=nativeCurrencyLaunch(review.request.policy,review.terms.quantityMicro);
+  const funding=review.terms.fundingComponents;
+  const reserves=funding?.find(part=>part.rail==='reserve'),settlement=funding?.find(part=>part.rail==='settlement');
+  if(asset.ownerQuantityMicro!==launch.creatorQuantityMicro||asset.supplyMicro!==review.terms.quantityMicro
+    ||currency.availableQuantityMicro!==launch.marketQuantityMicro||!assetSame(currency.policy,review.request.policy)
+    ||currency.liquidityReserveUsdCents!==(reserves?.amountUsdCents??'0')||currency.liquidityReservePhiMicro!==(reserves?.amountPhiMicro??'0')
+    ||currency.liquiditySettlementPhiMicro!==(settlement?.amountPhiMicro??'0'))throw Error('BANK_ASSET_RECEIPT_INVALID');
  }else if(review.request.kind==='manage-currency'){
   const currency=asset.currency as NativeCurrencyState,changes=review.request.changes;
   if(!currency.policy.issuerControls||asset.supplyMicro!==review.terms.quantityMicro
-    ||changes.priceUsdCentsPerUnit!==undefined&&changes.priceUsdCentsPerUnit!==currency.policy.priceUsdCentsPerUnit
+    ||changes.priceUsdCentsPerUnit!==undefined&&(currency.policy.kind!=='fixed-reserve-pool'||changes.priceUsdCentsPerUnit!==currency.policy.priceUsdCentsPerUnit)
     ||changes.governanceCharterSha256!==undefined&&changes.governanceCharterSha256!==currency.governanceCharterSha256
     ||changes.salesPaused!==undefined&&changes.salesPaused!==currency.salesPaused)throw Error('BANK_ASSET_RECEIPT_INVALID');
  }else if(review.request.kind==='buy-currency'){
