@@ -410,12 +410,18 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
       if(!current())return;
       const wallet=await identity.fundedWallet!();
       if(!current())return;
-      const restored=await wallet.recoverWalletProof(bytes);
-      if(restored===null)throw Error('BANK_WALLET_RECOVERY_FILE_INVALID');
-      if(current()){
-        setStatus(restored>0?'Wallet history recovered.':'Wallet already holds this payment proof.');
-        onRefresh();
+      const restored=await wallet.restoreWalletRecoveryFile(bytes);
+      if(!restored)throw Error('BANK_WALLET_RECOVERY_FILE_INVALID');
+      if(!current())return;
+      if(restored.freshness==='older'){
+        setStatus('This file is older than the payment history on this device. Bankeiz kept the newer history.');
+      }else if(restored.freshness==='matches-held'){
+        setStatus('This file matches the payment history on this device.');
+      }else{
+        const result=restored.count>0?'Wallet history recovered.':'Wallet proof verified.';
+        setStatus(`${result} Bankeiz can’t confirm this is the latest copy.`);
       }
+      onRefresh();
     }catch(cause){
       if(!current())return;
       const code=cause instanceof Error?cause.message:'';

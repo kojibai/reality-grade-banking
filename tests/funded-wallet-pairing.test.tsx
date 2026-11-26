@@ -119,9 +119,10 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
   const originalCanShare=Object.getOwnPropertyDescriptor(navigator,'canShare');
   Object.defineProperty(navigator,'share',{configurable:true,value:share});
   Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
-  const recoverWalletProof=vi.fn(async()=>1),receive=vi.fn(),onRefresh=vi.fn();
+  const restoreWalletRecoveryFile=vi.fn(async (_bytes:Uint8Array):Promise<{count:number;freshness:string}>=>({count:1,freshness:'unconfirmed'}));
+  const receive=vi.fn(),onRefresh=vi.fn();
   const wallet={availableReceipt:async()=>null,receiptProofCount:async()=>0,
-    outgoing:async()=>({operationId:offer.conversationId,qr,recoveryProof:exact}),recoverWalletProof,receive};
+    outgoing:async()=>({operationId:offer.conversationId,qr,recoveryProof:exact}),restoreWalletRecoveryFile,receive};
   const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
   try{
     await act(async()=>root.render(<FundedWalletSend identity={identity} request={()=>({
@@ -139,10 +140,15 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
     expect(input).not.toBeNull();
     Object.defineProperty(input,'files',{configurable:true,value:[file]});
     await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
-    expect(recoverWalletProof).toHaveBeenCalledExactlyOnceWith(exact);
+    expect(restoreWalletRecoveryFile).toHaveBeenCalledExactlyOnceWith(exact);
     expect(receive).not.toHaveBeenCalled();
     expect(onRefresh).toHaveBeenCalledOnce();
-    expect(host.textContent).toContain('Wallet history recovered.');
+    expect(host.textContent).toContain('Wallet history recovered. Bankeiz can’t confirm this is the latest copy.');
+
+    restoreWalletRecoveryFile.mockResolvedValueOnce({count:0,freshness:'older'});
+    await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
+    expect(host.textContent).toContain('This file is older than the payment history on this device.');
+    expect(receive).not.toHaveBeenCalled();
   }finally{
     if(originalShare)Object.defineProperty(navigator,'share',originalShare);else Reflect.deleteProperty(navigator,'share');
     if(originalCanShare)Object.defineProperty(navigator,'canShare',originalCanShare);else Reflect.deleteProperty(navigator,'canShare');

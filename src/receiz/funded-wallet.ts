@@ -1,4 +1,4 @@
-import { createLocalFinancialSession, loadLocalFinancialRuntime, subscribeBrowserReconnect, type LocalFinancialSessionOptions } from './local-financial';
+import { createLocalFinancialSession, loadLocalFinancialRuntime, subscribeBrowserReconnect, type LocalFinancialSessionOptions, type WalletRecoveryFreshness } from './local-financial';
 import { createOpticalNoteFrames } from './optical-note-frames';
 import type { FinancialAction, WalletRecipient, WalletPaymentStage } from './local-financial-runtime';
 import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart, type WalletPaymentOpening } from './wallet-payment-bundle';
@@ -6,6 +6,15 @@ import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConver
 import { encodeNearbyWalletPayment, verifyNearbyWalletPayment, type NearbyWalletPayment, type NearbyWalletSplit } from './wallet-nearby-consent';
 
 type Session = Awaited<ReturnType<typeof createLocalFinancialSession>>;
+type WalletRecovery=Readonly<{count:number;freshness:WalletRecoveryFreshness}>;
+
+function mergeWalletRecovery(results:readonly (WalletRecovery|null)[]):WalletRecovery|null{
+  const accepted=results.filter(result=>result!==null);
+  if(!accepted.length)return null;
+  const freshness=accepted.some(result=>result.freshness==='older')?'older'
+    :results.every(result=>result?.freshness==='matches-held')?'matches-held':'unconfirmed';
+  return {count:accepted.reduce((sum,result)=>sum+result.count,0),freshness};
+}
 type Entry = Readonly<{ kind:'source'|'peer'; digest:string; allocationId:string; stalledSend?:HeldSend; receiptBundle?:string; splitPayment?:NearbyWalletPayment }>;
 export type WalletPairOffer=Readonly<{schema:'bankeiz.wallet.offer.v1';applicationId:string;sourceArtifactSha256:string;allocationId:string;
   conversationId:string;amountUsdCents:string;recipient:string;walletCounterMode?:'device'}>;
@@ -194,7 +203,12 @@ export function createFundedWallet(input:Options) {
     input.assertOpen();
     return exactCheckpoint(await input.read());
   }
-  async function recoverWalletOpening(proof:Uint8Array,state:Checkpoint,raw:unknown){
+  async function recoverWithSession(session:Session,proof:Uint8Array,checkFile:boolean):Promise<WalletRecovery|null>{
+    const count=await session.recoverWalletProof(proof);
+    if(count===null)return null;
+    return {count,freshness:checkFile?await session.walletRecoveryFreshness(proof,count):'unconfirmed'};
+  }
+  async function recoverWalletOpening(proof:Uint8Array,state:Checkpoint,raw:unknown,checkFile:boolean){
     const runtime=input.runtime??await loadLocalFinancialRuntime();
     const {sourceOriginal}=runtime.readReceizAccountFinancialWalletProof(proof);
     // A recipient's saved proof carries the exact funding Original. Admit
@@ -207,7 +221,7 @@ export function createFundedWallet(input:Options) {
     const {allocationId}=session.sourceReference();
     try{
       if(state.entries.some(entry=>entry.allocationId===allocationId))return null;
-      const recovered=await session.recoverWalletProof(proof);
+      const recovered=await recoverWithSession(session,proof,checkFile);
       if(recovered===null)return null;
       const digest=await retainExact('source',sourceOriginal);
       await input.save({...state,entries:[...state.entries,{kind:'source',digest,allocationId}]},raw);
@@ -217,22 +231,29 @@ export function createFundedWallet(input:Options) {
       return recovered;
     }finally{if(sessions.get(allocationId)!==session)session.dispose();}
   }
-  function recoverWalletProof(bytes:Uint8Array,allocationId?:string){
+  function recoverWalletProof(bytes:Uint8Array,allocationId?:string,checkFile=false){
     const proof=bytes.slice();
     return input.lock(async()=>{
       const raw=await input.read(),state=exactCheckpoint(raw),reopened=new Set<string>();
-      let recovered:number|null=null;
+      const results:WalletRecovery[]=[];
       for(const entry of state.entries){
         if(allocationId&&entry.allocationId!==allocationId)continue;
-        const session=await restore(entry),result=await session.recoverWalletProof(proof);
-        if(result===null)continue;
-        recovered=(recovered??0)+result;
+        const session=await restore(entry),result=await recoverWithSession(session,proof,checkFile);
+        if(!result)continue;
+        results.push(result);
         // Keep any recovered, accepted send available for its receipt.
-        if(result>0&&entry.stalledSend&&!await session.resolve(entry.stalledSend.id))reopened.add(entry.allocationId);
+        if(result.count>0&&entry.stalledSend&&!await session.resolve(entry.stalledSend.id))reopened.add(entry.allocationId);
       }
       if(reopened.size)await input.save({...state,entries:state.entries.map(entry=>reopened.has(entry.allocationId)?withoutStalledSend(entry):entry)},raw);
-      return recovered===null&&!allocationId?recoverWalletOpening(proof,state,raw):recovered;
+      return results.length||allocationId?mergeWalletRecovery(results):recoverWalletOpening(proof,state,raw,checkFile);
     });
+  }
+  async function recoverWalletCarrier(bytes:Uint8Array,checkFile=false){
+    const bundle=readWalletPaymentBundle(bytes);
+    if(!bundle)return recoverWalletProof(bytes,undefined,checkFile);
+    const results: (WalletRecovery|null)[]=[];
+    for(const proof of bundle.proofs)results.push(await recoverWalletProof(proof,undefined,checkFile));
+    return mergeWalletRecovery(results);
   }
   function scheduleRecovery(session:Session) {
     const find=input.findWalletRecovery;
@@ -614,14 +635,10 @@ export function createFundedWallet(input:Options) {
       });
     },
     async recoverWalletProof(bytes:Uint8Array){
-      const bundle=readWalletPaymentBundle(bytes);
-      if(!bundle)return recoverWalletProof(bytes);
-      let recovered:number|null=null;
-      for(const proof of bundle.proofs){
-        const count=await recoverWalletProof(proof);
-        if(count!==null)recovered=(recovered??0)+count;
-      }
-      return recovered;
+      return (await recoverWalletCarrier(bytes))?.count??null;
+    },
+    restoreWalletRecoveryFile(bytes:Uint8Array){
+      return recoverWalletCarrier(bytes,true);
     },
     async receiptQr(index=0){
       const digests=receiptDigests(await current()),digest=digests[digests.length-1-index];

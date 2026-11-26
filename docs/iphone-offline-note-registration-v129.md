@@ -76,6 +76,13 @@ requires the original Wallet signing credential. Save files before a restore
 and allow iCloud Drive to sync them if you plan to retrieve them on another
 installation.
 
+On import, Bankeiz compares the file's last signed debit with this device's
+accepted Wallet history. A held successor or custody release identifies
+an older file. A matching head confirms agreement with the history retained
+on this device. If recovery supplies the only available history, the PWA
+reports that it cannot confirm the file is the latest. The imported file
+proves its own signed history. It cannot establish that no later debit was made.
+
 File storage preserves proofs. Protected offline spending still requires the
 existing Receiz custody evidence, including a device-bound credential and
 advancing signed counters. The user's separate Home Screen PWA check on

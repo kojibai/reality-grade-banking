@@ -5,6 +5,7 @@ import type {WalletDebitWitness} from './wallet-debit-witness';
 export type {LocalFinancialRuntime} from './local-financial-runtime';
 type FinancialRuntime=LocalFinancialRuntime;
 type ExecutorOptions=FinancialExecutorOptions;
+export type WalletRecoveryFreshness='older'|'matches-held'|'unconfirmed';
 let loading:Promise<FinancialRuntime>|undefined;
 export function loadLocalFinancialRuntime():Promise<FinancialRuntime>{
  return loading??=import('./offline-notes').then(({loadBankNoteRuntime})=>loadBankNoteRuntime()).then(runtime=>runtime as unknown as FinancialRuntime).catch(error=>{loading=undefined;throw error;});
@@ -346,6 +347,21 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    open();
    if(recovered&&publicationStarted)nudge();
    return recovered;
+  },
+  async walletRecoveryFreshness(proof:Uint8Array,recovered:number):Promise<WalletRecoveryFreshness>{
+   // The file's last Original is only a locator. Compare it with the exact
+   // operation admitted by the SDK for this allocation.
+   const last=runtime.readReceizAccountFinancialWalletProof(proof).paymentOriginals.at(-1);
+   if(!last)return 'unconfirmed';
+   const locator=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(last));
+   if(locator.sourceArtifactSha256!==source.artifactSha256||typeof locator.operationId!=='string')return 'unconfirmed';
+   open();
+   const accepted=await executor.resolve(locator.operationId);
+   if(!accepted||accepted.operation.artifactSha256!==await (await loadReceiz()).sha256ReceizBytes(last))return 'unconfirmed';
+   const held=await executor.current();
+   open();
+   if(held.release||BigInt(held.state.sequence)>BigInt(accepted.operation.sequence))return 'older';
+   return recovered===0&&held.headArtifactSha256===accepted.operation.artifactSha256?'matches-held':'unconfirmed';
   },
   sourceReference(){open();return {allocationId:source.allocationId,artifactSha256:source.artifactSha256};},
   recoveryReference(){
