@@ -1,4 +1,5 @@
 import {currencyPresets} from '../../receiz/currency-presets';
+import {CurrencySalesDates} from '../assets/CurrencySalesDates';
 import {CurrencyPriceHistory} from './CurrencyPriceHistory';
 import {publicOriginalCheckoutUrl} from '../../receiz/public-original-purchase';
 import {OriginalPurchase} from './OriginalPurchase';
@@ -80,6 +81,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
       opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
       <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
       {currency.poolPricing&&<div><span>Pricing</span><strong>Market pool</strong></div>}
+      <CurrencySalesDates window={currency.salesWindow} />
     </div></>:<>
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
 import { formatMoney, formatUnits, parseAmount } from '../../core/money';
+import { microPulsesSinceGenesis } from '../../../native/receiz/app/utils/kai_pulse';
 import { AmountInput } from '../../components/AmountInput';
 import { CurrencyMark } from '../../components/CurrencyMark';
 import { InlineOpening } from '../../components/InlineOpening';
@@ -20,6 +21,14 @@ import './issue-currency.css';
 const presetIcons = { currency: Coins, 'service-credit': Ticket, coupon: Tag, rewards: Gift };
 const VotingBoard = lazy(() => import('../voting/VotingBoard').then(module => ({ default: module.VotingBoard })));
 
+function salesDateToKai(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) throw Error('Enter a valid sales date and time.');
+  const kai = microPulsesSinceGenesis(date);
+  if (kai <= 0n || kai > BigInt(Number.MAX_SAFE_INTEGER)) throw Error('Enter a sales date within the supported calendar.');
+  return kai.toString();
+}
+
 export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity; onRefresh(): void }) {
   const [step, setStep] = useState<'details' | 'terms'>('details');
   const [name, setName] = useState('');
@@ -30,6 +39,8 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [seed, setSeed] = useState('');
   const [price, setPrice] = useState('');
   const [issuerControls, setIssuerControls] = useState(false);
+  const [salesStart, setSalesStart] = useState('');
+  const [salesEnd, setSalesEnd] = useState('');
   const [description, setDescription] = useState('');
   const [artwork, setArtwork] = useState<File | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<{ file: File; url: string } | null>(null);
@@ -167,7 +178,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   return <div className="currency-creation">
     <div hidden={!!governance}>
       <NativeOperation identity={identity} title="Currency" confirmLabel="Issue currency" committedTitle="Currency issued." onRefresh={onRefresh}
-        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls])}
+        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, salesStart, salesEnd])}
         onResult={result => {
           if (result.status === 'committed' && 'nativeAssetSource' in result) setIssueSource(result.nativeAssetSource);
         }}
@@ -175,7 +186,15 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           const asset = definition();
           if (!/^\d*$/u.test(creatorUnits.trim())) throw Error('Enter a whole number of units to keep.');
           if (marketShort) throw Error('Leave at least two units in the pool so it can quote a buy.');
-          const common = { preset, ...(issuerControls ? { issuerControls: true } : {}) };
+          const opensAtKaiUPulse = salesStart ? salesDateToKai(salesStart) : undefined;
+          const closesAtKaiUPulse = salesEnd ? salesDateToKai(salesEnd) : undefined;
+          if (opensAtKaiUPulse && closesAtKaiUPulse && BigInt(opensAtKaiUPulse) >= BigInt(closesAtKaiUPulse)) {
+            throw Error('Enter an end date after the sales start.');
+          }
+          const salesWindow = opensAtKaiUPulse || closesAtKaiUPulse ? {
+            ...(opensAtKaiUPulse ? { opensAtKaiUPulse } : {}), ...(closesAtKaiUPulse ? { closesAtKaiUPulse } : {}),
+          } : undefined;
+          const common = { preset, ...(issuerControls ? { issuerControls: true } : {}), ...(salesWindow ? { salesWindow } : {}) };
           const policy = inspectNativeCurrencyPolicy(pooled
             ? { ...common, kind: 'constant-product-pool', creatorQuantityMicro: parseAmount(creatorUnits), seedUsdCents: bankOperationDollars(seed) }
             : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price) });
@@ -226,7 +245,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
               <label className="currency-control-option">
                 <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => setIssuerControls(false)} />
                 <LockKeyhole size={17} aria-hidden="true" />
-                <span><strong>Fixed terms</strong><small>{pooled ? 'Keep sales open under the pool rules.' : 'Keep the opening price and sales terms.'}</small></span>
+                <span><strong>Fixed terms</strong><small>{pooled ? 'Keep the signed sales terms.' : 'Keep the opening price and sales terms.'}</small></span>
               </label>
               <label className="currency-control-option">
                 <input type="radio" name={controlGroup} value="managed" checked={issuerControls} onChange={() => setIssuerControls(true)} />
@@ -234,6 +253,18 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
                 <span><strong>Issuer-managed</strong><small>{pooled ? 'Pause or resume new sales.' : 'Change the price or pause new sales.'}</small></span>
               </label>
             </div>
+          </fieldset>
+          <fieldset className="currency-sales-schedule">
+            <legend>Sales schedule</legend>
+            <div className="currency-creation-pair">
+              <label className="form-field"><span>Sales start</span>
+                <input type="datetime-local" value={salesStart} onChange={event => setSalesStart(event.target.value)} />
+              </label>
+              <label className="form-field"><span>Sales end</span>
+                <input type="datetime-local" value={salesEnd} onChange={event => setSalesEnd(event.target.value)} />
+              </label>
+            </div>
+            <p className="small-copy">Set either date in your local time. The schedule applies to new purchases and is fixed at issuance.</p>
           </fieldset>
           <section className="currency-governance-intro" aria-labelledby={controlGroup + '-governance'}>
             <Vote size={20} aria-hidden="true" />

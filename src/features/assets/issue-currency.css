@@ -105,6 +105,7 @@
 .currency-advanced > summary small { color: var(--bank-text-secondary, #52657b); margin-top: 3px; }
 .currency-advanced[open] > summary svg:last-child { transform: rotate(180deg); }
 .currency-advanced > fieldset { border: 0; padding: 0; margin: 16px 0 0; min-inline-size: 0; }
+.currency-sales-schedule input { width: 100%; min-width: 0; }
 .currency-advanced > fieldset legend { padding: 0 0 8px; }
 .currency-advanced > section { border-top: 1px solid var(--bank-line-subtle, #dce2eb); margin-top: 16px; padding-top: 14px; }
 .currency-governance-intro { display: flex; align-items: flex-start; gap: 10px; }

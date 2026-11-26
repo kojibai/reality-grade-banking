@@ -180,7 +180,7 @@
     },
     {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
+      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
       "mode": 420
     },
     {
@@ -290,7 +290,7 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
+      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
       "mode": 420
     },
     {
@@ -1194,8 +1194,8 @@
     "packages/receiz-sdk/src/verifier/roots.ts",
     "packages/receiz-sdk/src/verifier/signatureV4.ts"
   ],
-  "moduleSha256": "e7e6c37b95aafe32df6ca7628d16ac21aec958e3a3b9f10ee4950df809e4dead",
-  "bytes": 1874232,
+  "moduleSha256": "356c8127c7c36a356eaad8c486a1be150f999569f770fecba339812677d9ede0",
+  "bytes": 1874994,
   "applicationPatches": [
     {
       "id": "receiz-129-5-qualified-sdk-resource-compatibility",

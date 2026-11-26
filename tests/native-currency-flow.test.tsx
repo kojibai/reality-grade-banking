@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { LiveReceive } from '../src/features/account/LivePayments';
 import { openCurrencyNoteFile } from '../src/receiz/currency-notes';
+import { microPulsesSinceGenesis } from '../native/receiz/app/utils/kai_pulse';
 import { CreateAsset } from '../src/features/assets/CreateAsset';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
@@ -79,6 +80,18 @@ it('opens currency issue inside An asset, preserves the Original draft, and stag
   const optIn = host.querySelector<HTMLInputElement>('input[type=radio][value=managed]')!;
   await act(async()=>optIn.click());
   expect(review.input?.()).toMatchObject({policy:{issuerControls:true}});
+  const opens = '2027-05-01T09:30', closes = '2027-05-02T09:30';
+  await act(async()=>{
+   enter(host,'Sales start',opens);
+   enter(host,'Sales end',opens);
+  });
+  expect(()=>review.input?.()).toThrow('Enter an end date after the sales start.');
+  await act(async()=>enter(host,'Sales end',closes));
+  expect(review.input?.()).toMatchObject({policy:{salesWindow:{
+   opensAtKaiUPulse:microPulsesSinceGenesis(new Date(opens)).toString(),
+   closesAtKaiUPulse:microPulsesSinceGenesis(new Date(closes)).toString(),
+  }}});
+
   await review.operations?.();
   expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',
    definition:expect.objectContaining({units:'10'}),files:[{id:'currency-artwork',role:'primary',file:artwork}]}));

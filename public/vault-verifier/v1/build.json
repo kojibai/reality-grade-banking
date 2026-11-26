@@ -48,7 +48,7 @@
     },
     {
       "path": "native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e"
+      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e"
     },
     {
       "path": "native/receiz/app/utils/mime.ts",
@@ -1944,7 +1944,7 @@
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
-      "sha256": "e42e3ca917730675d30ca6319491f25e00c6025ebf9b4fc6cf09348b1e99f415"
+      "sha256": "08084b2a08c95143da577576345ac89b01a3c9429cf1b7340d1aeea6ffddc111"
     },
     {
       "path": "public/native/offline-notes.v129.mjs",
@@ -1960,11 +1960,11 @@
     },
     {
       "path": "public/native/vault.v1.manifest.json",
-      "sha256": "58039156ced68b3b3e6f4fcb61d4d48093547904bf83359322c03222ded6513d"
+      "sha256": "392bdfeca08efe2e27c442dd097bfc7f31a9efbbabd77a8802ab40e316f896d5"
     },
     {
       "path": "public/native/vault.v1.mjs",
-      "sha256": "e7e6c37b95aafe32df6ca7628d16ac21aec958e3a3b9f10ee4950df809e4dead"
+      "sha256": "356c8127c7c36a356eaad8c486a1be150f999569f770fecba339812677d9ede0"
     },
     {
       "path": "src/core/money.ts",
@@ -2277,20 +2277,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "606c92fbe6add2fddd62e990f6de22106353e95121775994cc08a28f8c7761b4",
-      "bytes": 11400112
+      "sha256": "384393e34d58f6533ee2c5347a2c2a075694407b343f2be4f8f3a92d6d12e94c",
+      "bytes": 11403168
     },
     "inspector.js.map": {
-      "sha256": "ebcf0157ea85a746a107f48b494f059204cdc90119d02a60c62fea1675f6a5a0",
-      "bytes": 30026026
+      "sha256": "577cbbdd60b290d61c68d7adb86ca00258449393971e3d3399c6e1b1564cc019",
+      "bytes": 30032868
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "3be2efaf16cffbf0d421b7f6ebaa8f03e6ad6f02cd3ab15fb320fef2434816c5",
-      "bytes": 11404962
+      "sha256": "5ddc383f649f9e8126c5a96b8fbab8d87e09fbbb368efb896a0d71fb944e1fb1",
+      "bytes": 11408018
     },
     "README.txt": {
       "sha256": "69230c971b734b723cf1af67da1e32c3f97129f78860af2e951c6f059fb09ffc",

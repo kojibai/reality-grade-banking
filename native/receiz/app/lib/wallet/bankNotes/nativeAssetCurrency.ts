@@ -1,4 +1,4 @@
-import { bankNativeWalletValue, type BankNativeWalletAmounts } from '../../../../packages/receiz-sdk/src/nativeWalletEconomics';
+import { bankNativeWalletValue, type BankNativeWalletAmounts } from '../../../../packages/receiz-sdk/src/nativeWalletEconomics.js';
 
 export const nativeCurrencyPresets = ['currency', 'service-credit', 'coupon', 'rewards'] as const;
 export type NativeCurrencyPreset = typeof nativeCurrencyPresets[number];
@@ -6,10 +6,13 @@ export function isNativeCurrencyPreset(value: unknown): value is NativeCurrencyP
   return nativeCurrencyPresets.some(preset => preset === value);
 }
 
+export type NativeCurrencySalesWindow = Readonly<{ opensAtKaiUPulse?: string; closesAtKaiUPulse?: string }>;
+
 /** The native asset Source retains launch terms and the two Wallet rails. */
 export type NativeCurrencyPolicy = Readonly<{
   issuerControls?: true;
   preset?: NativeCurrencyPreset;
+  salesWindow?: NativeCurrencySalesWindow;
 } & ({
   kind: 'fixed-reserve-pool';
   priceUsdCentsPerUnit: string;
@@ -52,17 +55,41 @@ function record(value: unknown, fields: readonly string[]): Record<string, unkno
   return value as Record<string, unknown>;
 }
 
+export function inspectNativeCurrencySalesWindow(value: unknown): NativeCurrencySalesWindow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fail('CURRENCY_INVALID');
+  const fields = Object.keys(value);
+  if (!fields.length || fields.some(field => field !== 'opensAtKaiUPulse' && field !== 'closesAtKaiUPulse')) return fail('CURRENCY_INVALID');
+  const window = value as Record<string, unknown>;
+  const opens = Object.hasOwn(window, 'opensAtKaiUPulse') ? amount(window.opensAtKaiUPulse, true) : undefined;
+  const closes = Object.hasOwn(window, 'closesAtKaiUPulse') ? amount(window.closesAtKaiUPulse, true) : undefined;
+  const maximumKai = BigInt(Number.MAX_SAFE_INTEGER);
+  if ((opens ?? 0n) > maximumKai || (closes ?? 0n) > maximumKai
+    || opens !== undefined && closes !== undefined && opens >= closes) return fail('CURRENCY_INVALID');
+  return { ...(opens === undefined ? {} : { opensAtKaiUPulse: opens.toString() }),
+    ...(closes === undefined ? {} : { closesAtKaiUPulse: closes.toString() }) };
+}
+
+/** Open is inclusive. Close is exclusive. The writer supplies the accepted transition coordinate. */
+export function assertNativeCurrencySaleOpen(currency: NativeCurrencyState, atKaiUPulse: bigint): void {
+  if (currency.salesPaused) fail('CURRENCY_SALES_PAUSED');
+  const window = currency.policy.salesWindow;
+  if (window?.opensAtKaiUPulse && atKaiUPulse < BigInt(window.opensAtKaiUPulse)) fail('CURRENCY_SALES_NOT_OPEN');
+  if (window?.closesAtKaiUPulse && atKaiUPulse >= BigInt(window.closesAtKaiUPulse)) fail('CURRENCY_SALES_CLOSED');
+}
+
 export function inspectNativeCurrencyPolicy(value: unknown): NativeCurrencyPolicy {
   const input = value as Record<string, unknown> | null;
   const controlled = !!input && Object.hasOwn(input, 'issuerControls');
   const presetSpecified = !!input && Object.hasOwn(input, 'preset');
+  const scheduled = !!input && Object.hasOwn(input, 'salesWindow');
   const pool = input?.kind === 'constant-product-pool';
   const policy = record(value, ['kind', ...(pool ? ['creatorQuantityMicro', 'seedUsdCents'] : ['priceUsdCentsPerUnit']),
-    ...(controlled ? ['issuerControls'] : []), ...(presetSpecified ? ['preset'] : [])]);
+    ...(controlled ? ['issuerControls'] : []), ...(presetSpecified ? ['preset'] : []), ...(scheduled ? ['salesWindow'] : [])]);
   if (controlled && policy.issuerControls !== true || presetSpecified && !isNativeCurrencyPreset(policy.preset)) return fail('CURRENCY_INVALID');
   const extras = {
     ...(controlled ? { issuerControls: true as const } : {}),
     ...(isNativeCurrencyPreset(policy.preset) ? { preset: policy.preset } : {}),
+    ...(scheduled ? { salesWindow: inspectNativeCurrencySalesWindow(policy.salesWindow) } : {}),
   };
   if (policy.kind === 'constant-product-pool') return {
     ...extras, kind: policy.kind, creatorQuantityMicro: amount(policy.creatorQuantityMicro).toString(),

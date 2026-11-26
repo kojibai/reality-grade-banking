@@ -7,6 +7,7 @@ import type { BankOperationResult } from '../../receiz/bank-operations';
 import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
+import { CurrencySalesDates } from '../assets/CurrencySalesDates';
 import { CurrencyTransferAmount, type CurrencyTransferDetails } from '../assets/CurrencyTransferAmount';
 import { shareCapitalizationUsdCents } from '../../receiz/market-share-inventory';
 
@@ -83,6 +84,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
           <div><span>Units you keep</span><strong>{formatUnits(creatorUnits)} {request.definition.symbol}</strong></div>
           <div><span>Units in Market</span><strong>{formatUnits((BigInt(t.quantityMicro)-BigInt(creatorUnits)).toString())} {request.definition.symbol}</strong></div>
           <div><span>Sales control</span><strong>{issuePolicy.issuerControls?'Issuer-managed':'Fixed terms'}</strong></div>
+          <CurrencySalesDates window={issuePolicy.salesWindow} />
         </>}
         {request.kind==='manage-currency'&&<>
           {request.changes.governanceCharterSha256&&<div><span>Community charter</span><strong className="proof-coordinate">{request.changes.governanceCharterSha256}</strong></div>}
