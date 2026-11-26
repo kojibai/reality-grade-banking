@@ -24,6 +24,21 @@ function networkPrefix(address: string) {
 
 const noStore = (status: number) => new Response(null, {status, headers: {'cache-control': 'no-store'}});
 
+async function isBodyless(request: Request) {
+  if (request.body === null) return true;
+  if (request.headers.get('content-length') !== '0') return false;
+  const reader = request.body.getReader();
+  try {
+    const {done} = await reader.read();
+    if (!done) void reader.cancel().catch(() => {});
+    return done;
+  } catch {
+    return false;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export function relayDiscoverVenueAudience(input: Readonly<{
   key?: string;
   platformTrusted: boolean;
@@ -34,14 +49,18 @@ export function relayDiscoverVenueAudience(input: Readonly<{
     if (request.method !== 'POST') return noStore(405);
     const url = new URL(request.url);
     const referrer = URL.parse(request.headers.get('referer') ?? '');
-    if (url.origin !== origin || url.pathname !== discoverVenueAudiencePath || url.search
+    // Vercel's Node adapter uses the HTTP listener for the Request URL and
+    // passes the public HTTPS origin separately in its forwarded headers.
+    const receivedAtVenue = url.origin === origin || input.platformTrusted && url.origin === 'http://bankeiz.com'
+      && request.headers.get('x-forwarded-host') === 'bankeiz.com' && request.headers.get('x-forwarded-proto') === 'https';
+    if (!receivedAtVenue || url.pathname !== discoverVenueAudiencePath || url.search
       || request.headers.get('origin') !== origin || referrer?.origin !== origin
       || (referrer.pathname !== '/discover' && referrer.pathname !== '/discover/' && referrer.pathname !== '/discover/index.html')
       || request.headers.get('sec-fetch-site') !== 'same-origin'
       || request.headers.get('sec-fetch-mode') !== 'same-origin'
       || request.headers.get('sec-fetch-dest') !== 'empty'
       || request.headers.get('sec-gpc') === '1' || request.headers.get('dnt') === '1'
-      || request.body !== null) return noStore(403);
+      || !await isBodyless(request)) return noStore(403);
     const key = input.key;
     if (!input.platformTrusted || !key || Buffer.byteLength(key) < 32) return noStore(503);
     // Vercel sets this header from its own ingress. Browser forwarded hints

@@ -25,3 +25,29 @@ it('relays one bounded, opaque venue sample only from Bankeiz Discover', async (
   });
   expect(new Headers(init?.headers).get('x-receiz-spotlight-mac')).toMatch(/^[a-f0-9]{64}$/u);
 });
+
+it('accepts the bodyless Discover POST through Vercel’s Web Request adapter', async () => {
+  const request = vi.fn<typeof fetch>(async () => new Response(null, {status: 204}));
+  const relay = relayDiscoverVenueAudience({key: 'collector-fixture-secret-with-32-bytes', platformTrusted: true, request});
+  const headers = {
+    origin: 'https://bankeiz.com', referer: 'https://bankeiz.com/discover/',
+    'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'same-origin', 'sec-fetch-dest': 'empty',
+    'x-vercel-forwarded-for': '203.0.113.11',
+    'x-forwarded-host': 'bankeiz.com', 'x-forwarded-proto': 'https', 'content-length': '0',
+  };
+  const forwarded = (fields: HeadersInit = headers, bytes?: Uint8Array) => new Request(
+    'http://bankeiz.com/api/bank/spotlight/in-view',
+    {method: 'POST', headers: fields, duplex: 'half', body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (bytes) controller.enqueue(bytes);
+        controller.close();
+      },
+    })} as RequestInit,
+  );
+  expect((await relay(forwarded({...headers, 'x-forwarded-proto':'http'}))).status).toBe(403);
+  expect((await relay(forwarded({...headers, 'x-forwarded-host':'other.example'}))).status).toBe(403);
+  expect((await relay(forwarded(headers, new Uint8Array([1])))).status).toBe(403);
+  expect(request).not.toHaveBeenCalled();
+  expect((await relay(forwarded())).status).toBe(204);
+  expect(request).toHaveBeenCalledTimes(1);
+});
