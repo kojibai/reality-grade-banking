@@ -182,11 +182,11 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
     || typeof governanceSettingsHead !== 'string' || !/^[a-f0-9]{64}$/u.test(governanceSettingsHead))) return fail('CURRENCY_INVALID');
   if (Object.hasOwn(data, 'adaptiveSupply') && (data.adaptiveSupply !== true || !governanceCharterSha256
     || policy.kind !== 'fixed-reserve-pool')) return fail('CURRENCY_INVALID');
-  const supply = amount(cap, true);
+  const supply = amount(cap);
   const available = amount(data.availableQuantityMicro);
   const pooledCents = amount(data.liquidityReserveUsdCents);
   const pooledPhi = amount(data.liquidityReservePhiMicro);
-  nativeCurrencyLaunch(policy, supply.toString());
+  if (supply > 0n || data.adaptiveSupply !== true) nativeCurrencyLaunch(policy, supply.toString());
   const outstanding = supply - available;
   const settlementPhi = amount(data.liquiditySettlementPhiMicro);
   if (available > supply || available % MICRO !== 0n || (pooledCents === 0n) !== (pooledPhi === 0n)) return fail('CURRENCY_INVALID');
@@ -210,7 +210,7 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
 
 export function matchesNativeCurrencySupply(currency: unknown, supply: string, initialSupply: string) {
   return supply===initialSupply
-    || (currency as NativeCurrencyState|null)?.adaptiveSupply===true && BigInt(supply)>=BigInt(initialSupply);
+    || (currency as NativeCurrencyState|null)?.adaptiveSupply===true && BigInt(supply)>=0n;
 }
 
 export function nativeCurrencyFields(asset: unknown): readonly string[] {

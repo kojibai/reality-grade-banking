@@ -3,6 +3,7 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import {heldCurrencyTrades,heldCurrencyPriceHistory} from '../src/receiz/currency-ledger-view';
 import {parsePublicNetworkPage} from '../src/receiz/public-network';
+import {ledgerRecordTitle} from '../src/receiz/ledger-payment-records';
 const f=vi.hoisted(()=>({held:null as unknown,read:vi.fn(),open:vi.fn(),retain:vi.fn(),load:vi.fn(),save:vi.fn(),custody:new WeakMap<object,unknown>()}));
 vi.mock('../src/receiz/public-network-cache',()=>({loadPublicNetworkCache:f.load,savePublicNetworkCache:f.save,savePublicLedgerDisplayCache:(_review:unknown,cache:unknown)=>f.save(cache)}));
 vi.mock('../src/receiz/public-ledger-proof',()=>({openPublicLedgerSource:f.open,heldPublicLedgerFile:(review:object)=>{if(!f.custody.has(review))throw Error('CUSTODY_REQUIRED');return f.custody.get(review);}}));
@@ -91,12 +92,16 @@ it('projects only accepted buys and sells and keeps every trade at a shared quot
    {...first,id:'quote',entryHash:'f'.repeat(64),kind:'asset.quote-currency',kaiUpulse:'1000003',currency:{
     assetId,symbol:'CASH',priceUsdCentsPerUnit:'250',
    }},
+   {...first,id:'placement',entryHash:'a'.repeat(64),kind:'asset.start-service-placement',kaiUpulse:'1000004',currency:{
+    ...currency,priceUsdCentsPerUnit:'250',
+   }},
   ]}};
  f.custody.set(held,{source:opening.source});
- await publicLedgerDisplayRows(held as never,[]);
+ const rows=await publicLedgerDisplayRows(held as never,[]);
+ expect(ledgerRecordTitle(rows.find(row=>row.sourceId==='placement')!)).toBe('Placement started');
  expect(heldCurrencyTrades(assetId,'CASH')).toEqual([
   expect.objectContaining({side:'sell',kaiUPulse:'1000002',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'190'}),
   expect.objectContaining({side:'buy',kaiUPulse:'1000000',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'246'}),
  ]);
- expect(heldCurrencyPriceHistory(assetId,'CASH').at(-1)?.usdCents).toBe('250');
+ expect(heldCurrencyPriceHistory(assetId,'CASH').at(-1)).toMatchObject({usdCents:'250',kaiUPulse:'1000003'});
 });

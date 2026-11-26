@@ -3,7 +3,7 @@ import {canonicalizeReceizV122,digestReceizCanonicalV122,deriveReceizIdentityKey
 import type {ReceizSignatureV4RootPublicKey} from '../../native/receiz/packages/receiz-sdk/src/verifier/signatureV4';
 export const PUBLIC_LEDGER_DOMAIN='receiz.public-action-ledger.root-signature.v1';
 export const PUBLIC_LEDGER_MAX_BYTES=16*1024*1024;
-const currencyActions = ['asset.issue-currency','asset.buy-currency','asset.sell-currency','asset.send-ownership','asset.manage-currency','asset.govern-currency','asset.quote-currency','asset.issue-currency-note','asset.redeem-currency-note'] as const;
+const currencyActions = ['asset.issue-currency','asset.buy-currency','asset.sell-currency','asset.send-ownership','asset.manage-currency','asset.govern-currency','asset.quote-currency','asset.reserve-service-placement','asset.cancel-service-placement','asset.expire-service-placement','asset.start-service-placement','asset.complete-service-placement','asset.issue-currency-note','asset.redeem-currency-note'] as const;
 
 export type PublicLedgerRecord=Readonly<{id:string;sequence:number;kind:string;kaiUpulse:string;entryHash:string;previousHash:string;amountUsdCents:string|null;currency?:PublicCurrencyActivity}>;
 export type PublicLedgerSnapshot=Readonly<{

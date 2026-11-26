@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { LiveReceive } from '../src/features/account/LivePayments';
 import { openCurrencyNoteFile } from '../src/receiz/currency-notes';
 import { microPulsesSinceGenesis } from '../native/receiz/app/utils/kai_pulse';
+import { inspectNativeCurrency, matchesNativeCurrencySupply } from '../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { CreateAsset } from '../src/features/assets/CreateAsset';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
@@ -29,6 +30,17 @@ function enter(host:HTMLElement,label:string,value:string) {
  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(field,value);
  field!.dispatchEvent(new Event('input',{bubbles:true}));
 }
+
+it('reads a governed currency with all currently issued units burned', () => {
+ const currency=inspectNativeCurrency({
+  policy:{kind:'fixed-reserve-pool',issuerControls:true,preset:'service-credit',priceUsdCentsPerUnit:'100'},
+  issuerAccountId:'33333333-3333-4333-8333-333333333333',governanceCharterSha256:'a'.repeat(64),
+  availableQuantityMicro:'0',liquidityReserveUsdCents:'0',liquidityReservePhiMicro:'0',liquiditySettlementPhiMicro:'0',
+  salesPaused:false,adaptiveSupply:true,
+ },'0');
+ expect(matchesNativeCurrencySupply(currency,'0','100000000')).toBe(true);
+ expect(matchesNativeCurrencySupply({},'0','100000000')).toBe(false);
+});
 
 it('opens currency issue inside An asset, preserves the Original draft, and stages an authored draft with the selected terms',async()=>{
  const host=document.createElement('div'),root=createRoot(host),operations=vi.fn((draft:AssetComposerDraft)=>({draft}));

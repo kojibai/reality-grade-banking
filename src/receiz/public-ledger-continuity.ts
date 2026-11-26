@@ -19,7 +19,12 @@ async function retainDisplay(review:PublicLedgerFileReview|null){
  const {loadPublicNetworkCache,savePublicLedgerDisplayCache}=await import('./public-network-cache'),cache=await loadPublicNetworkCache();
  const records=await publicLedgerDisplayRows(review,cache?.records??[]);
  let capturedAt=cache?.capturedAt??null;
- for(const row of records)if(row.time&&Number.isFinite(Date.parse(row.time))&&(!capturedAt||Date.parse(row.time)>Date.parse(capturedAt)))capturedAt=row.time;
+ let capturedMs=capturedAt?Date.parse(capturedAt):-Infinity;
+ for(const row of records){
+  if(!row.time)continue;
+  const time=Date.parse(row.time);
+  if(time>capturedMs){capturedAt=row.time;capturedMs=time;}
+ }
  // The original has already been retained independently. A display-cache
  // failure cannot undo that custody or manufacture successful verification.
  if(await savePublicLedgerDisplayCache(review,{...cache,records,capturedAt,coverage:cache?.coverage??[]})===false)throw Error('PUBLIC_LEDGER_DISPLAY_CACHE_UNAVAILABLE');
@@ -67,7 +72,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
   if(record.kaiUpulse.length>30||record.amountUsdCents!==null&&record.amountUsdCents.length>25)continue;
   const previous=existing.get(record.id),compatible=previous&&(!previous.evidence.entryHash||previous.evidence.entryHash===record.entryHash)?previous:undefined;
   let time:string|null=null;try{time=walletPointTime(record.kaiUpulse);}catch{/* The exact coordinate remains available. */}
-  if(prices&&time&&record.currency){
+  if(prices&&time&&record.currency&&!record.kind.endsWith('-service-placement')){
    const currency=record.currency,key=currency.assetId+':'+currency.symbol;
    const points=prices.get(key)??[];
    points.push({at:time,usdCents:currency.priceUsdCentsPerUnit,kaiUPulse:record.kaiUpulse});

@@ -18,6 +18,9 @@ const fundingTitles:Record<string,string>={
 const actionTitles:Record<string,string>={
  'asset.issue-currency':'Currency issued','asset.buy-currency':'Currency bought','asset.sell-currency':'Currency sold',
  'asset.manage-currency':'Currency terms updated','asset.govern-currency':'Currency vote applied','asset.quote-currency':'Venue quote updated',
+ 'asset.reserve-service-placement':'Placement reserved','asset.cancel-service-placement':'Placement cancelled',
+ 'asset.expire-service-placement':'Placement expired','asset.start-service-placement':'Placement started',
+ 'asset.complete-service-placement':'Placement delivered',
  'asset.issue-currency-note':'Currency note issued','asset.redeem-currency-note':'Currency note redeemed',
  'auth.login.receiz_id':'Signed In','auth.login.passkey':'Signed In','auth.login.receiz_key':'Signed In','auth.login.magic_link':'Signed In',
  'auth.login.receiz_id.create':'Account Created','auth.login.receiz_id.switch':'Account Switched','auth.logout':'Signed Out',
