@@ -11,11 +11,21 @@ async function seedRuntime(run){
 
 async function previousSeed(){try{return JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8'));}catch{return undefined;}}
 async function seedMembershipOnly(args,{buildMembershipOnlyPublicMarketState,readReceizPublicMarketSource,parsePublicMarket}){
- const local=name=>args.find(arg=>arg.startsWith('--'+name+'-file='))?.slice(name.length+8),read=(kind,file)=>file?readFile(file,'utf8').then(JSON.parse):readReceizPublicMarketSource(kind,undefined,{fresh:true});
+ const local=name=>args.find(arg=>arg.startsWith('--'+name+'-file='))?.slice(name.length+8);
+ const read=(kind,file,heldRevision)=>file?readFile(file,'utf8').then(JSON.parse):readReceizPublicMarketSource(kind,undefined,{fresh:true,...(heldRevision?{heldRevision}:{})});
  const held=name=>readFile(new URL('../public/receiz-public-'+name+'.json',import.meta.url),'utf8').then(JSON.parse);
- const selected=args.includes('--selected'),membershipWork=read('membership',local('membership'));
- const [membership,snapshot,previous,sports,capitalization,history,shareHistory]=await Promise.all([membershipWork,selected?membershipWork.then(input=>input.snapshot):read('quotes',local('quotes')),previousSeed(),held('sports'),held('capitalization'),held('chart-history'),held('share-chart-history')]);
+ const previous=await previousSeed();
  if(!previous)throw Error('PUBLIC_MARKET_HISTORY_PREFIX_REQUIRED');
+ const selected=args.includes('--selected'), heldMembership=previous.transport?.publicMembership;
+ const generation=selected&&previous.snapshot&&heldMembership?.isComplete===true
+   &&heldMembership.itemCount===previous.transport.publicOriginals?.length
+   &&/^[a-f0-9]{64}$/.test(heldMembership.revision)?heldMembership.revision:undefined;
+ const membershipWork=read('membership',local('membership'),generation);
+ const [membership,snapshot,sports,capitalization,history,shareHistory]=await Promise.all([membershipWork,selected?membershipWork.then(input=>input?.snapshot):read('quotes',local('quotes')),held('sports'),held('capitalization'),held('chart-history'),held('share-chart-history')]);
+ if(membership===null&&generation&&!local('membership')){
+  console.log('Receiz confirmed the held public selection '+generation+'.');
+  return;
+ }
  const state=await buildMembershipOnlyPublicMarketState({membership,snapshot,previous,sports,capitalization,history,shareHistory}),source=state.source,bytes=JSON.stringify(source),historyBytes=JSON.stringify(state.history),shareHistoryBytes=JSON.stringify(state.shareHistory),catalog=parsePublicMarket(source,source.snapshot);
  if([bytes,historyBytes,shareHistoryBytes].some(value=>Buffer.byteLength(value)>32*1024*1024))throw Error('PUBLIC_MARKET_RENDER_CAPACITY');
  await writeFile(new URL('../public/receiz-public-market.json',import.meta.url),bytes);

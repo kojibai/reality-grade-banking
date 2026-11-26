@@ -54,9 +54,15 @@ export function resolvePublicMarketTarget(requestUrl: string): URL | null {
   return (local.pathname===`${PREFIX}resource`?safeImportedSourceUrl(target.href,'media'):safeReceizPublicUrl(target.href,'original')) ? target : null;
 }
 interface CachedResponse { bytes: Uint8Array; type: string; etag: string | null; fetchedAt: number; profileHeads?:readonly unknown[]; }
+const membershipRefusals=new Set(['selection-unavailable','generation-unavailable','privacy-withdrawn','selection-changed','selected-read-failed']);
 export class PublicMarketSourceUnavailable extends Error {
  readonly code='PUBLIC_MARKET_SOURCE_UNAVAILABLE';
- constructor(readonly status:number){super(`Receiz public source returned ${status}.`);}
+ readonly reason?:string;
+ constructor(readonly status:number,reason?:string|null){
+  const admitted=reason&&membershipRefusals.has(reason)?reason:undefined;
+  super(`Receiz public source returned ${status}${admitted?' ('+admitted+')':''}.`);
+  this.reason=admitted;
+ }
  get transient(){return this.status===429||this.status>=500&&this.status<=599;}
 }
 class OriginalPurchaseRefusal extends Error {}
@@ -88,10 +94,15 @@ async function loadPublicResponse(target: URL,afterPublication?:string,ifNoneMat
   const attempt = (async () => {
     const conditional=ifNoneMatch??previous?.etag;
     const response = await fetch(target, { signal: AbortSignal.timeout(membership?300_000:90_000), credentials: 'omit', redirect: 'error', ...(afterPublication?{cache:'no-store' as const}:{}),headers: !afterPublication&&conditional ? { 'If-None-Match': conditional } : {} });
+    if(response.status===304&&ifNoneMatch&&target.searchParams.get('representation')==='selected'){
+      if(response.headers.get('etag')!==ifNoneMatch||response.headers.get('x-receiz-public-material-revision')!==ifNoneMatch.slice(1,-1))
+        throw Error('Receiz did not confirm the held selection.');
+      return {bytes:new Uint8Array(),type:'application/json',etag:ifNoneMatch,fetchedAt:Date.now()};
+    }
     if(response.status===304&&ifNoneMatch&&previous?.etag!==ifNoneMatch)return {bytes:new Uint8Array(),type:'application/json',etag:ifNoneMatch,fetchedAt:Date.now()};
     if (response.status === 304 && previous) { const current = { ...previous, fetchedAt: Date.now() }; if(epochs.get(key)===epoch)cache.set(key, current); return current; }
     if(response.status===402&&target.pathname==='/api/profile/originals/download'){await response.body?.cancel().catch(()=>{});throw new OriginalPurchaseRefusal();}
-    if (!response.ok) {void response.body?.cancel().catch(()=>{});throw new PublicMarketSourceUnavailable(response.status);}
+    if (!response.ok) {void response.body?.cancel().catch(()=>{});throw new PublicMarketSourceUnavailable(response.status,membership?response.headers.get('x-receiz-public-membership-refusal'):undefined);}
     let bytes = await readBounded(response);let profileHeads:readonly unknown[]|undefined;
     const type = response.headers.get('content-type') ?? 'application/octet-stream';
     if (!original) {
@@ -159,15 +170,23 @@ export async function publicMarketMiddleware(request: IncomingMessage, response:
   catch (cause) { const purchase=cause instanceof OriginalPurchaseRefusal;response.writeHead(purchase?402:503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ ok: false, error: purchase?'original_purchase_required':'Receiz public source is temporarily unavailable.' })); }
 }
 /** Build-time public discovery seed. Report-only projection, never a held account. */
-export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization',afterPublication?:string,options?:{fresh?:true;selectionKey?:string;onPublicProfileHeads?:(heads:readonly unknown[])=>void}): Promise<unknown> {
+export async function readReceizPublicMarketSource(kind: 'membership' | 'quotes' | 'sports' | 'capitalization',afterPublication?:string,options?:{fresh?:true;selectionKey?:string;heldRevision?:string;onPublicProfileHeads?:(heads:readonly unknown[])=>void}): Promise<unknown> {
   if(afterPublication!==undefined&&(kind!=='membership'||!/^[a-f0-9]{64}$/.test(afterPublication)))throw new Error('Unsupported publication freshness reference.');
   if(options?.selectionKey!==undefined&&!/^[a-f0-9]{64}$/.test(options.selectionKey))throw Error('Unsupported public preparation coordinate.');
+  const held=options?.heldRevision;
+  if(held!==undefined&&(kind!=='membership'||!options?.fresh||options.selectionKey||afterPublication||!/^[a-f0-9]{64}$/.test(held)))
+    throw Error('Unsupported held selection coordinate.');
   const target = resolvePublicMarketTarget(`${PREFIX}${kind}`); if (!target) throw new Error('Unsupported public source.');
   // Only write-side preparation asks for its selected material root. Ordinary
   // discovery and Ledger reuse native complete Showcase membership directly.
   if(kind==='membership'&&(options?.fresh||options?.selectionKey))target.searchParams.set('representation','selected');
   if(kind==='membership'&&options?.selectionKey)target.searchParams.set('generation',options.selectionKey);
-  const response=await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined));if(kind==='membership'&&response.profileHeads)options?.onPublicProfileHeads?.(response.profileHeads);return JSON.parse(new TextDecoder().decode(response.bytes));
+  const response=held
+    ?await loadPublicResponse(target,undefined,'"'+held+'"')
+    :await loadPublicResponse(target,afterPublication??(options?.fresh?'prepared-public-material:'+(options.selectionKey??'initial'):undefined));
+  if(held&&response.bytes.length===0)return null;
+  if(kind==='membership'&&response.profileHeads)options?.onPublicProfileHeads?.(response.profileHeads);
+  return JSON.parse(new TextDecoder().decode(response.bytes));
 }
 /** Only public fields used by the canonical display projector cross this boundary. */
 export function curatePublicCapitalization(input: Record<string, unknown>) {
