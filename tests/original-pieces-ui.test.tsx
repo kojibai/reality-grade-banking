@@ -84,6 +84,7 @@ it('selects a percentage of the Original from disjoint held ranges by exact byte
   try {
     await act(async()=>root.render(<SendOriginal identity={identity} held={{proofDigest:'a'.repeat(64),
       originalSha256:'b'.repeat(64),headDigest:'c'.repeat(64),filename:'Pieces',totalBytes:200,ownedBytes:20,percentage:'10%',ranges}} onRefresh={()=>{}}/>));
+    expect(host.querySelector<HTMLInputElement>('[aria-label="Percentage of Original"]')?.value).toBe('10');
     await act(async()=>{
       enter(host.querySelector('[placeholder="Original receiving address"]')!,address);
       enter(host.querySelector('[aria-label="Percentage of Original"]')!,'6');
@@ -104,18 +105,32 @@ it('opens the exact locally held Showcase source while all external reads are un
     bytes:{kind:'bytes',sha256:digest,byteLength:original.size,contentByteLength:original.size,height:0}}));
   const showcase={title:'Showcase-only Original',originalDigest:digest,originalUrl:coordinate.href} as PublicMarketItem;
   readHeld.mockResolvedValueOnce({source:{exactArtifact:original,descriptor:{filename:original.name}}});
-  const prepare=vi.fn(async(_input:{original:File})=>({recipient:address,command:{ranges:[{offset:0,byteLength:original.size}]}}));
+  const prepare=vi.fn(async(input:{original:File;ranges:readonly {offset:number;byteLength:number}[]})=>
+    ({recipient:address,command:{ranges:input.ranges}}));
   const holdProof=vi.fn(async()=>({digest}));
   const identity={holdProof,originalPieces:async()=>({pending:async()=>null,prepare})} as unknown as OpenIdentity;
   vi.stubGlobal('indexedDB',{});
   const fetch=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('external reads unavailable'));
+  const button=(label:string)=>[...host.querySelectorAll('button')].find(item=>item.textContent===label)!;
+  const percent=()=>host.querySelector<HTMLInputElement>('[aria-label="Percentage of Original"]')!;
   try {
     await act(async()=>{root.render(<SendOriginal identity={identity} showcase={showcase} onRefresh={()=>{}}/>);});
     await act(async()=>{await vi.dynamicImportSettled();});
     expect(host.textContent).toContain('Showcase-only Original');
+    expect(percent().value).toBe('100');
+    expect(host.textContent).toContain('100% of the Original selected.');
     expect(readHeld).not.toHaveBeenCalled();
-    await act(async()=>enter(host.querySelector('[placeholder="Original receiving address"]')!,address));
-    await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Review send')!.click());
+    await act(async()=>{
+      enter(host.querySelector('[placeholder="Original receiving address"]')!,address);
+      enter(percent(),'25');
+      button('Review send').click();
+    });
+    expect(prepare.mock.calls[0]?.[0].ranges).toEqual([{offset:0,byteLength:Math.floor(original.size/4)}]);
+    await act(async()=>button('Edit details').click());
+    await act(async()=>button('Whole Original').click());
+    expect(percent().value).toBe('100');
+    await act(async()=>button('Review send').click());
+    expect(prepare.mock.calls[1]?.[0].ranges).toEqual([{offset:0,byteLength:original.size}]);
     expect(readHeld).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
     const file=prepare.mock.calls[0]?.[0]?.original as File;

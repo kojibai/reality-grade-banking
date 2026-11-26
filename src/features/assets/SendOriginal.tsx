@@ -109,14 +109,18 @@ export function SendOriginal({identity, source, held, showcase, onRefresh}: {
   onRefresh(): void;
 }) {
   const [recipient, setRecipient] = useState(''), [rangeText, setRangeText] = useState('');
-  const [percentage, setPercentage] = useState('');
+  const [percentage, setPercentage] = useState<string | null>(null);
   const opened = useRef<{file:File;digest:string} | null>(null);
   const opening = useRef<AbortController | null>(null);
   const [review, setReview] = useState<Review | null>(null), [result, setResult] = useState<Result | null>(null);
   const [pending, setPending] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const active = useRef(true), running = useRef(false);
   const title = source?.title ?? showcase?.title ?? held?.filename ?? 'Original';
-  const length = held?.totalBytes ?? source?.bytes.length ?? opened.current?.file.size ?? 0;
+  const showcaseDigest = showcase?.originalDigest?.toLowerCase();
+  const length = held?.totalBytes ?? source?.bytes.length ?? opened.current?.file.size
+    ?? (showcaseDigest ? retainedAssetPublicationSource(showcaseDigest)?.size : undefined) ?? 0;
+  const heldPercentage = held?.percentage;
+  const allPercentage = heldPercentage ? (/^\d/u.test(heldPercentage) ? heldPercentage.slice(0, -1) : '') : '100';
 
   useEffect(() => {
     active.current = true;
@@ -173,7 +177,7 @@ export function SendOriginal({identity, source, held, showcase, onRefresh}: {
         : source ? new File([new Uint8Array(source.bytes)], source.filename) : await readShowcaseFile(showcase!);
       const bytes = original instanceof File ? original.size : held!.totalBytes;
       const available = held?.ranges ?? [{offset:0,byteLength:bytes}];
-      const ranges = rangeText.trim() ? rangesFromText(rangeText) : selectPercentage(percentage, bytes, available);
+      const ranges = rangeText.trim() ? rangesFromText(rangeText) : selectPercentage(percentage ?? '', bytes, available);
       const next = await api.prepare({original, recipient: recipient.trim(), ranges});
       if (active.current) setReview(next);
     });
@@ -212,10 +216,10 @@ export function SendOriginal({identity, source, held, showcase, onRefresh}: {
         ? `${held.ownedBytes.toLocaleString()} of ${length.toLocaleString()} bytes held · ${held.percentage}`
         : length ? `${length.toLocaleString()} bytes` : 'From your Showcase'}</p></div>
       <div className="ownership-send-amount">
-        <AmountInput label="Percentage of Original" value={percentage} onChange={value => {setPercentage(value);setRangeText('');}} suffix="%"/>
-        <button type="button" className="secondary-button" onClick={() => {setPercentage('');setRangeText('');}}>All held</button>
+        <AmountInput label="Percentage of Original" value={percentage ?? allPercentage} onChange={value => {setPercentage(value);setRangeText('');}} suffix="%"/>
+        <button type="button" className="secondary-button" onClick={() => {setPercentage(null);setRangeText('');}}>{held ? 'All held' : 'Whole Original'}</button>
       </div>
-      {!percentage && !rangeText && <p className="body-copy small-copy">All bytes you hold are selected.</p>}
+      {!percentage && !rangeText && <p className="body-copy small-copy">{held ? 'All bytes you hold are selected.' : '100% of the Original selected.'}</p>}
       <label className="form-field"><span>Recipient</span><input value={recipient} onChange={event => setRecipient(event.target.value)}
         placeholder="Original receiving address" maxLength={160}/></label>
       <details className="transaction-proof-details">
