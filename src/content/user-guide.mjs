@@ -34,7 +34,7 @@ export const guideTasks=Object.freeze([
     "slug": "funding",
     "title": "Add money or a Note",
     "why": "Bring the source you already hold into the account.",
-    "click": "Add → Add money for secure payment, or Settlement Note to open its original PNG.",
+    "click": "Add → Add money for secure payment, or Add → Notes to open an original settlement or currency Note.",
     "result": "Inspect the confirmed account credit. A card form or received-but-uncredited Note is a different state.",
     "evidence": "Keep the saved deposit reference, original Note and accepted deposit proof."
   },
@@ -64,8 +64,8 @@ export const guideTasks=Object.freeze([
     "slug": "ownership",
     "title": "Send ownership",
     "why": "Move exact ownership while its Original and history stay connected.",
-    "click": "Account → Send → Send ownership. Choose Asset, Ownership to send and Recipient → Review ownership transfer.",
-    "result": "Approve the displayed exact terms, then Send ownership. Transaction complete. identifies the accepted result.",
+    "click": "Account → Send → Send ownership. Choose what you hold, the amount or part to send, and review the recipient.",
+    "result": "Approve the exact transfer. For an Original, send all held bytes or select exact ranges under Advanced, then share the recorded transfer privately.",
     "evidence": "Retain the accepted transaction proof and source. Resolve an unknown request through its saved recovery."
   },
   {

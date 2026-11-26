@@ -1,63 +1,43 @@
 # Follow-up implementation queue
 
-Updated October 22, 2026 for the Reality-grade banking 3.0.0 release preparation.
-This queue identifies additional work, without assigning a version or delivery date.
+Reviewed for Bankeiz 9.0.0 on November 26, 2026. The
+[current capability map](../current-function-boundaries.md) describes what is
+implemented. The [qualification record](../releases/9.0.0-qualification.md)
+tracks evidence for the exact release.
 
-## Implemented foundation
+## Payment acceptance
 
-The [3.0.0 release](../releases/3.0.0.md) includes the complete account/profile,
-composer/publication, Investments, Ledger, media and communication foundation.
-Hosted checkout now supplies Card, Balance and all three Note rails through one
-reviewed payment, automatic device identity and exact funding/result recovery.
-Receive shares the same page through checkout links, website buttons and QR.
-The public conformance workspace exposes the open requirements, independent
-adapter tests and original evidence credentials.
+The hosted checkout accepts Card, Balance, and supported Notes through one
+review. Receive provides payment links, website buttons, and in-person QR.
+Counter creates fixed-total checkouts and shows the recorded payment. The
+portable order package binds an operator’s order, amount and receiving account,
+confirms the original receipt, and supports atomic fulfillment recovery in the
+operator’s application. See [Accept payments](../../institution/accept-payments.md)
+and the [portable package](../../integrations/payments/README.md).
 
-## Further merchant acceptance
+Further work covers platform-specific merchant adapters, provider-supported refunds
+and related reconciliation, and native Tap to Pay or card-present POS integrations
+using the processor’s actual device and terminal contracts. The operator retains
+responsibility for their fulfillment system and its production qualification.
 
-- Trusted order-fixed amounts, recipient/order binding, expiration and cancellation.
-- Once-only server-confirmed fulfillment, supported events/webhooks, refunds and
-  reconciliation against original accepted payment outcomes.
-- A merchant confirmation screen suited to a phone/tablet counter workflow.
-- Native card Tap to Pay or existing POS integration only through supported
-  processor, platform and terminal contracts. QR or NFC opening the hosted
-  checkout is already available and is not a native card terminal.
+## Other follow-up work
 
-The [payment integration guide](../../institution/accept-payments.md) distinguishes
-current editable requests from trusted order confirmation. Reuse existing Receiz
-contracts; do not introduce another balance, financial writer or identity system.
+- **Note claim/status locator.** Add a scannable locator to the Note engraving
+  with an appropriate public disclosure policy. The existing **Send Note nearby**
+  and **Receive nearby** QR flow hands a supported funded Note to its next holder.
+- **Persistent asset playback.** Extend retained playback to other asset audio or
+  video players across navigation. Feed music already retains its session and
+  compact player across supported in-app navigation.
+- **Balance display preferences.** Add supported fiat and major crypto reference
+  displays that use sourced, timestamped rates. Preserve exact Phi, Reserve
+  backing, and original receipt denominations. Issued currency holdings already
+  show their units and dollar value when a market quote is available.
+- **Legacy-bank withdrawals.** Integrate a supported payout operator and document
+  its account binding, fees, timing, status, cancellation and exact recovery.
+- **Further market depth.** Extend tapes or order books where genuine trade or
+  open-order sources exist. The issued currency market already displays its
+  carried trades, current prices, and applicable liquidity.
 
-## Other retained follow-up work
-
-- **Note QR:** a scannable claim/status locator in the engraving at creation,
-  bound to admitted Note sources and recipient authority. No private openings,
-  signing material or transferable bearer secret in a public status URL. Public
-  claimant disclosure needs its own supported identity/privacy boundary.
-- **Send to email:** verified email claim and existing/new Receiz identity using
-  supported host primitives, exact original intent and once-only claim/recovery.
-  Typing an email or landing on a link alone cannot authorize an existing account.
-- **Persistent asset media:** one user-started music/video session across app
-  navigation, a compact dismissible player, queue/search and retained native
-  media without duplicate players or new polling. Current asset playback persists
-  inside its mounted view, not across leaving it. Call lifetime is separate.
-- **Display currencies:** a restrained balance preference for supported fiat and
-  major crypto equivalents. Use one sourced, timestamped rate observation with
-  shared refresh; preserve exact Phi, Reserve backing and receipt denominations.
-  Displaying BTC is not BTC custody or executable foreign exchange. Historical
-  returns need corresponding historical rates. Inspect an existing reusable
-  Receiz source before selecting a rate integration.
-- **Legacy-bank withdrawals:** select a real payout operator and supported
-  account/settlement contract, then design truthful fees, timing, status,
-  cancellation and recovery. No available provider, fee schedule or executable
-  withdrawal is established by the existing Wire interface. Preserve supported
-  proof/history; do not claim that off-platform payment erases an earlier record.
-- **Further market depth:** recent trades or an order book only from genuine
-  public trade/open-order sources. Holdings, prices and a valuation do not create
-  a public tape, offer or liquidity.
-
-## Release and qualification
-
-Publish the reviewed v3 source under its exact tag and retain earlier versions.
-Follow the [release process](../release-process.md) for matching source,
-deployment evidence and capability-specific assessment. Preserve original custody
-and unresolved financial references through updates and rollback.
+[Send to email](../releases/5.0.0.md#receive-by-email-and-send-a-note-directly)
+is available through the recorded payment invitation. The existing recipient
+and exact Wallet result govern access and credit.

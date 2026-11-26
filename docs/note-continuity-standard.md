@@ -1,7 +1,7 @@
 # Note continuity standard
 
 **Application integration specification · Reality-Grade Banking · Receiz 129.0.0 · Ruleset 127.0.0**
-**Release status: development candidate. Financial qualification incomplete.**
+**Application continuity rules. See the [current capability map](current-function-boundaries.md) and [qualification record](releases/9.0.0-qualification.md) for implementation and deployed evidence.**
 
 This specification documents the Bankeiz application contract for Note
 continuity within the shared Reality-Grade Banking framework, beneath the
@@ -11,8 +11,9 @@ source, exact implementation scope and reproducible evidence.
 
 ## User contract
 
-Fund a Note from the regular balance while connected. Share the complete
-addressed original or use **Send Note nearby** when the Note offers it. The
+Fund a Note from the regular balance while connected. Leave it open to share
+its complete original image, or address it to a specific account. Use
+**Send Note nearby** when the Note offers the signed handoff. The
 next holder can scan it in **Receive nearby** and pass it on by the same
 steps. Only the final holder needs a connection to deposit into their balance.
 

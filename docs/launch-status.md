@@ -1,5 +1,7 @@
 # Bank launch checkpoint — October 14, 2026
 
+> Historical engineering record. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
 The user will push, merge and deploy this checkpoint. The task creates local commits only. The mobile console remains the same; the full banking product is unfinished. All Receiz packages remain pinned to 129.0.0.
 
 ## Available now

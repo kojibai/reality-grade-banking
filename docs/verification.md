@@ -1,5 +1,7 @@
 # Verification record
 
+> Historical verification record. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
 Verified locally on 13 October 2026. This is a reviewable Demo account frontend; the only real SDK operations are artifact verification and read-only public ledger access.
 
 ## Automated checks

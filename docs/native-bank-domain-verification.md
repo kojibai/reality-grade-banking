@@ -1,5 +1,7 @@
 # Native bank domain preparation — 2026-10-13
 
+> Historical engineering record. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
 The full live bank domain is unfinished. This change preserves the existing mobile console and adds source verification, conservation and execution recovery composition. It does not activate custody issuance, ownership transfers, sales or currencies.
 
 ## October 14 production qualification and account-source update

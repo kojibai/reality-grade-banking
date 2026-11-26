@@ -66,8 +66,10 @@ on a screenshot or another application's interpretation.
 
 - **One account.** Device-held Receiz ID opens the existing account. Everyday
   Send and Receive use one amount; funding details stay available underneath.
-- **Payments with history.** Find a recipient, review the amount, approve the
-  payment and retain its receipt. Sent and received activity remain distinct.
+- **Payments with history.** Find a recipient by account or email, review the
+  amount, and keep the receipt. Send nearby from your regular balance even
+  when you’re offline. The recipient can save the QR payment and connect to
+  confirm it. Supported Offline Cash can be used again before reconnecting.
 - **Get paid where you work.** Share a hosted checkout link, website button or
   in-person QR. Customers pay by card, Balance or any supported Note type on the
   same page, without a signup step. Keep Send links for addressed account payments.
@@ -80,9 +82,10 @@ on a screenshot or another application's interpretation.
 - **An invoice your client can open.** Create from Receive, retain the sealed
   PDF, send to the selected client or copy a link. The client chooses the
   existing exact payment review. Reading the invoice never charges them.
-- **Funded Notes.** Create from your available account while connected.
-  Receive and pass on a supported funded Note while everyone stays offline.
-  Only the final holder connects to deposit it. See the [Note guide](https://bankeiz.com/learn/notes/).
+- **Funded Notes.** Create an Open Note or address it to a specific account.
+  Pass a supported funded Note on by QR while offline. Use the same deposit
+  picker for settlement and currency Notes. The final holder connects to
+  deposit an ordinary funded Note. [Note guide](https://bankeiz.com/learn/notes/)
 - **Your public identity.** A complete profile at your username, with your
   existing Receiz portrait, banner, links and public collection. Edit the same
   identity in either application; open, share and experience its assets in place.
@@ -94,6 +97,14 @@ on a screenshot or another application's interpretation.
   Take cash actions. Each public asset has its own shareable page. Assets also
   brings together existing Receiz share holdings, current value, cost basis,
   unrealized return and trade history through one account-bound read.
+- **Send what you own.** Transfer Market shares or a whole Original. Choose
+  exact byte ranges under Advanced when you want to send only part of an
+  Original. Holders can see their ranges and reassemble the exact Original from
+  the complete matching set.
+- **Issue a currency.** Launch a currency, service credit, coupon, or reward.
+  Decide what to keep and what to offer, fund liquidity where required, and
+  link community voting to supported issuer decisions. Holders can see unit and
+  dollar values, transfer units, trade, or make redeemable currency Notes.
 - **Conversations and your agent.** Existing Receiz messages, groups and calls
   stay connected to the same ID. Agent access follows the account's actual
   entitlement; consequential actions retain their own approval.
@@ -173,9 +184,10 @@ required authority:
 
 | Situation | Execution boundary |
 | --- | --- |
-| Connected creation | Existing account authorization and once-only connected funding. Offline-custody enrollment is not required. |
-| Offline receipt | Verify and retain the complete, addressed original on the receiving device. Account credit reconciles on connection before it funds another payment or Note. |
-| Continuous offline creation and onward transfer | Requires the qualified protected custody, prepared resources and exact-head irreversible consumption defined by the native contract. |
+| Connected creation | Leave a funded Note open or bind it to a specific account. Existing account authorization and once-only funding apply without offline custody enrollment. |
+| Offline receipt and forwarding | Keep the complete original. Share an Open Note image or use the signed **Send Note nearby** handoff where offered. The final holder connects to confirm the first eligible account deposit. |
+| Fully offline creation and immediate use | Prepared funding and qualified protected custody allow supported offline creation and onward spending under the native exact-head consumption contract. |
+| Currency Notes | Create with units you already hold in an issued currency. Open its original through **Receive → Deposit a note** or **Add → Notes** for the matching redemption. |
 
 A copied image does not create additional money. Unknown outcomes retain the
 same signed intent and recover its existing result before another financial

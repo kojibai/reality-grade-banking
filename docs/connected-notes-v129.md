@@ -1,6 +1,6 @@
 # Connected Note execution · Receiz v129
 
-**Implementation candidate. Deployed financial qualification precedes v1.0.0.**
+**Connected Note contract used in Bankeiz 9.0.0. See the [qualification record](releases/9.0.0-qualification.md) for deployed financial evidence.**
 
 Connected creation is a separate consumption profile, `connected-account-v1`.
 It does not qualify a synced passkey, export protected custody, or change the

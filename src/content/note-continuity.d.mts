@@ -1,6 +1,6 @@
 type Description = Readonly<{title:string;body:string}>;
 export const noteContinuity: Readonly<{
-  connectedExecutionStatus:'integration-required';
+  connectedExecutionStatus:'qualification-required';
   connectedAvailability:string;
   platformRequest:string;
   platformContacts:readonly Readonly<{title:string;team:string;url:string;label:string}>[];

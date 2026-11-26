@@ -1,5 +1,5 @@
 export const docsOrigin='https://docs.bankeiz.com';
-export const docsEdition={reviewed:'2026-10-28',packages:'129.5.0',ruleset:'127.0.0',sourceRevision:'v4.0.0'};
+export const docsEdition={reviewed:'2026-11-26',packages:'129.5.0',ruleset:'127.0.0',sourceRevision:'v9.0.0'};
 export const source=(path,label,revision=docsEdition.sourceRevision)=>[label,`https://github.com/kojibai/reality-grade-banking/blob/${revision}/${path}`];
 export const p=text=>({type:'paragraph',text});
 export const list=(...items)=>({type:'list',items});

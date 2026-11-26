@@ -1,8 +1,9 @@
 # Live bank conversion — observed state
 
-**Current snapshot, 19 October 2026:** use the
-[v129 Bankeiz connection audit](receiz-v129-bankeiz-connection-audit.md) for the
-remaining work. Ordinary Wallet Send succeeded in the user's live check and
+> Historical engineering record. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
+**October 19, 2026 snapshot:** see the
+[v129 connection audit](receiz-v129-bankeiz-connection-audit.md) for that checkpoint. Ordinary Wallet Send succeeded in the user's live check and
 Send/Receive are treated as working. Public Ledger local Memory Crystal save/open
 is completed without a Crystal service. The dated entries below preserve earlier
 observations; their old “Send disabled” and “private additions not connected”

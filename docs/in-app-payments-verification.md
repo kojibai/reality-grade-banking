@@ -1,5 +1,7 @@
 # In-app flow qualification — 2026-10-13
 
+> Historical verification record. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
 The original bank UI/flow is the reference. No routed Deposit, Send or Receive opens receiz.com/wallet. No demo reducer or fabricated balance participates.
 
 ## Actual registration and observed shared read

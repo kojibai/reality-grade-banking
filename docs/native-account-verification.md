@@ -1,5 +1,7 @@
 # Native account verification — 2026-10-13
 
+> Historical verification record for the October 2026 checkpoint. See the [current capability map](current-function-boundaries.md) and [Bankeiz 9.0.0 release](releases/9.0.0.md) for the shipped application.
+
 ## Actual registration
 
 Created Receiz Bank in https://receiz.com/developers/connect after the user explicitly approved the prepared form at action time. Client **rc_QlCRCxBk8zyT4ajGLrIRPIQd** is active/public, token auth `none`, no client secret. Allowed scopes: openid, profile, receiz:wallet.read, receiz:settlement.read, receiz:reserve.read. Registered local callbacks: http://127.0.0.1:4173/auth/receiz/callback and http://127.0.0.1:5173/auth/receiz/callback. No production domain/deployment or financial write scopes were configured.
