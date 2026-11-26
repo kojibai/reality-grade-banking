@@ -29,8 +29,9 @@ function ProposalText({text}:{text:string}){
 export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:GovernanceTerms;practice?:boolean;member?:(id:string)=>string}){
   let facts:[string,string][]=[];
   switch(terms.kind){
-    case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',r.participation?'Open registration for advisory votes':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
-      if(r.execution)facts.push(['Binding closure','Every voting member attests the same evidence after the appeal deadline.'],['Custodian',member(r.execution.custodian)],['Governance register',r.execution.registerProofObjectId],['Register genesis head',r.execution.registerGenesisHead]);
+    case 'charter':{const r=terms.rules,roll=r.execution?.rule==='registered-roll-closure-v1'?r.execution:null;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',roll?(roll.eligibility?'Eligible currency holders register for each proposal':'Receiz identities register for each proposal'):r.participation?'Open registration for advisory votes':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
+      if(r.execution)facts.push(['Binding closure',roll?'The accepted voter roll and its ballots determine the binding outcome.':'Every voting member attests the same evidence after the appeal deadline.'],['Custodian',member(r.execution.custodian)],['Governance register',r.execution.registerProofObjectId],['Register genesis head',r.execution.registerGenesisHead]);
+      if(roll)facts.push(['Registration',roll.registrationDays+' days'],['Roll review',roll.rollReviewDays+' days'],['Quorum',roll.quorumPercent+'%']);
       const scope=r.execution?.currency;
       if(scope)facts.push(['Currency',scope.assetId],['Purchase price range (USD cents)',scope.maximumPriceUsdCents
         ?scope.minimumPriceUsdCents+'–'+scope.maximumPriceUsdCents:scope.minimumPriceUsdCents+' minimum'],
@@ -61,6 +62,7 @@ export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:Go
       break;
     }
     case 'candidacy':facts=[['Office',terms.office],['Candidate statement',terms.statement],['Charter Original',terms.charter]];break;
+    case 'registration':facts=[['Statement','I request inclusion in the voting roll for this proposal.'],['Charter Original',terms.charter],['Proposal Original',terms.proposal]];break;
     case 'closure':facts=[['Attestation','I have reviewed the complete list of evidence below for this decision.'],['Charter Original',terms.charter],['Proposal Original',terms.proposal],['Evidence manifest',terms.evidence.join('\n')]];break;
     case 'ballot':facts=[['Choice',member(terms.choice)],['Proposal Original',terms.proposal],['Charter Original',terms.charter],['Previous ballot',terms.previous??'First ballot']];break;
     case 'ratification':facts=[['Statement','I ratify the exact founding charter identified below.'],['Charter Original',terms.charter]];break;
@@ -85,7 +87,8 @@ export function GovernanceDetail({currencyDeliveryRows,onCurrencyApplied,row,row
   }
   const terms=row.document.terms,charter=ofKind(rows,'charter').find(item=>item.digest===(terms.kind==='charter'?row.digest:terms.charter)),ratified=charter?charterRatification(charter,rows):null;
   const authorized=Boolean(actor&&charter&&charterAdmitsMember(charter.document.terms.rules,actor)),proposal=ofKind([row],'proposal')[0];
-  const register=proposal&&charter?ballotRegister(proposal,charter,rows):null;
+  const registered=charter?.document.terms.rules.execution?.rule==='registered-roll-closure-v1';
+  const register=proposal&&charter&&!registered?ballotRegister(proposal,charter,rows):null;
   const founder=Boolean(actor&&charter?.document.terms.rules.founders.includes(actor));
   const offices=charter?.document.terms.rules.offices??[],candidateOffices=offices.filter(o=>o.selection==='Election'&&(o.eligibility==='Open'||authorized));
   const election=proposal&&offices.find(o=>o.name===proposal.document.terms.office);
@@ -122,7 +125,7 @@ export function GovernanceDetail({currencyDeliveryRows,onCurrencyApplied,row,row
       {founder&&!ratified.signed.has(actor!)&&<button className="gov-primary" onClick={()=>review({kind:'ratification',charter:row.digest})}><FileCheck2/>Review ratification</button>}
       {ratified.approvals.map(recordLink)}
     </section>}
-    {terms.kind==='charter'&&charterTab==='People'&&<><section><h3>Voting members</h3>{terms.rules.participation&&<p>Anyone with a Receiz identity may participate. Each binding decision has its own registered voter roll.</p>}<ul className="gov-members">{charterElectorate(terms.rules).map(id=><li key={id}>{member(id)}</li>)}</ul></section>
+    {terms.kind==='charter'&&charterTab==='People'&&<><section><h3>Voting members</h3>{registered?<p>Each proposal has its own accepted voter roll.</p>:<>{terms.rules.participation&&<p>Anyone with a Receiz identity may participate.</p>}<ul className="gov-members">{charterElectorate(terms.rules).map(id=><li key={id}>{member(id)}</li>)}</ul></>}</section>
       <section><h3>Offices</h3>{offices.length?offices.map(o=><div key={o.name}><strong>{o.name}</strong><p>{o.seats} {o.seats===1?'seat':'seats'} · {o.selection} · {o.term}</p></div>):<p>This charter has no offices.</p>}</section>
       {ofKind(related,'mandate').length>0&&<section><h3>Public mandates</h3>{ofKind(related,'mandate').map(recordLink)}</section>}
       {ofKind(related,'candidacy').length>0&&<section><h3>Candidate statements</h3>{ofKind(related,'candidacy').map(recordLink)}</section>}
@@ -132,7 +135,7 @@ export function GovernanceDetail({currencyDeliveryRows,onCurrencyApplied,row,row
       <label>Your public candidate statement<textarea required maxLength={4000} value={statement} onChange={e=>setStatement(e.target.value)}/></label><button>Review candidacy</button></form></details>}
     {terms.kind==='charter'?(charterTab==='Charter rules'&&<GovernanceFacts member={member} terms={terms}/>):
       terms.kind==='proposal'?<><ProposalText text={terms.text}/><details><summary>Proposal terms</summary><GovernanceFacts member={member} terms={terms}/></details></>:<GovernanceFacts member={member} terms={terms}/>}
-    {terms.kind==='ballot'&&<div className="gov-actions"><button onClick={()=>go(terms.proposal)}>Open proposal and tally</button>{terms.previous&&<button onClick={()=>go(terms.previous!)}>Previous ballot</button>}</div>}
+    {(terms.kind==='ballot'||terms.kind==='registration')&&<div className="gov-actions"><button onClick={()=>go(terms.proposal)}>Open proposal</button>{terms.kind==='ballot'&&terms.previous&&<button onClick={()=>go(terms.previous!)}>Previous ballot</button>}</div>}
     {charter&&terms.kind!=='charter'&&<button className="gov-link" onClick={()=>go(charter.digest)}>Read governing charter · {charter.document.terms.rules.name}</button>}
     {proposal?.document.terms.nominations&&<details><summary>Candidates ({proposal.document.terms.nominations.length})</summary>{proposal.document.terms.nominations.map(id=>{const candidate=rows.find(r=>r.digest===id);return candidate?recordLink(candidate):<button key={id} onClick={()=>go(id)}>Open candidate Original</button>;})}</details>}
     {proposal&&register&&<section className="gov-box"><div className="gov-voting-period"><strong>{votingTimeLeft(now,register.closes)}</strong><GovernanceTime pulse={register.closes} label={closed?undefined:'Closes'}/></div><h3>Observed public ballots</h3><ul className="gov-bars">{[...register.counts].map(([key,n])=><li key={key}><span>{member(key)}</span><strong>{n}</strong><meter aria-label={member(key)} min={0} max={Math.max(1,register.effective.size+register.represented.size)} value={n}/></li>)}</ul>

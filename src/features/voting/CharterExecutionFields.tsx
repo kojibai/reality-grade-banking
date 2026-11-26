@@ -10,7 +10,8 @@ const initialPayment:CharterPayment={budgetId:'',installment:'',sourceProofObjec
 export function PaymentFacts({payment}:{payment:CharterPayment}){
   return <dl className="gov-facts">{(Object.keys(paymentLabels) as (keyof CharterPayment)[]).map(k=><div key={k}><dt>{paymentLabels[k]}</dt><dd>{payment[k]}</dd></div>)}</dl>;
 }
-export function CharterExecutionFields({identity,owner,value,change}:{identity:OpenIdentity;owner:string;value:CharterExecution|undefined;change:(value:CharterExecution|undefined)=>void}){
+export function CharterExecutionFields({identity,owner,value:execution,change}:{identity:OpenIdentity;owner:string;value:CharterExecution|undefined;change:(value:CharterExecution|undefined)=>void}){
+  const value=execution?.rule==='unanimous-evidence-closure-v1'?execution:undefined;
   const picker=useRef<HTMLInputElement>(null),running=useRef(false);
   const [working,setWorking]=useState(false),[error,setError]=useState('');
   async function bind(file?:File){

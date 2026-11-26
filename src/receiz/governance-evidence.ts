@@ -23,9 +23,11 @@ export async function verifyGovernanceEvidence(digest:string,read:ReadOriginal,i
     const charter=await open(terms.charter,'Charter');
     if(charter.document.terms.kind!=='charter')return proof('The referenced document is outside the charter format.');
     if(terms.kind==='ratification')return proof(charter.document.terms.rules.founders.includes(original.document.author)?'A named founder signed this ratification of the exact charter.':'The signer is outside the charter’s named founders.');
-    if(terms.kind!=='ballot')return proof('The author signed these terms against the displayed charter Original.');
+    if(terms.kind!=='ballot'&&terms.kind!=='registration')return proof('The author signed these terms against the displayed charter Original.');
     const proposal=await open(terms.proposal,'Proposal');
-    if(proposal.document.terms.kind!=='proposal'||proposal.document.terms.charter!==charter.digest)return proof('The proposal and ballot refer to different charters.');
+    if(proposal.document.terms.kind!=='proposal'||proposal.document.terms.charter!==charter.digest)return proof('The statement names a proposal under a different charter.');
+    if(terms.kind==='registration')return proof('The author signed this registration request for the exact proposal. The accepted register determines inclusion.');
+    if(charter.document.terms.rules.execution?.rule==='registered-roll-closure-v1')return proof('The author signed this ballot for the exact proposal. The accepted register determines whether it counts.');
     if(!charterAdmitsMember(charter.document.terms.rules,original.document.author)||!proposal.document.terms.choices.includes(terms.choice))return proof('This signed statement falls outside the eligible electorate or ballot choices.');
     const nominations=proposal.document.terms.nominations??[];
     for(const nomination of nominations)await open(nomination,'Candidate statement');
@@ -68,6 +70,7 @@ export async function verifyGovernanceTally(id:string,read:ReadOriginal,index:re
   }
   const charter=ofKind(rows,'charter').find(r=>r.digest===terms.charter);
   if(!charter)throw Error('The founding Original is missing.');
+  if(charter.document.terms.rules.execution?.rule==='registered-roll-closure-v1')throw Error('Open the accepted voting register to verify this tally.');
   const tally=ballotRegister(ofKind(rows,'proposal')[0],charter,rows);
   if(!tally.admitted)throw Error('The evidence is insufficient to establish the proposal under this charter.');
   return {tally,originalCount:rows.length};

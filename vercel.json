@@ -63,9 +63,9 @@
   ],
   "rewrites": [
     {"source":"/vote/example-images/:digest([a-f0-9]{64}).png","destination":"/api/governance?example=harbor-tool-library&digest=:digest&image=1"},
-    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)/:digest([a-f0-9]{64})/og.png","destination":"/api/governance?section=:kind&digest=:digest&image=1"},
-    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)/:digest([a-f0-9]{64})","destination":"/api/governance?section=:kind&digest=:digest"},
-    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures)/:digest([a-f0-9]{64})/","destination":"/api/governance?section=:kind&digest=:digest"},
+    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures|registrations)/:digest([a-f0-9]{64})/og.png","destination":"/api/governance?section=:kind&digest=:digest&image=1"},
+    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures|registrations)/:digest([a-f0-9]{64})","destination":"/api/governance?section=:kind&digest=:digest"},
+    {"source":"/vote/:kind(charters|proposals|ballots|mandates|challenges|ratifications|candidates|closures|registrations)/:digest([a-f0-9]{64})/","destination":"/api/governance?section=:kind&digest=:digest"},
     {"source":"/vote/","has":[{"type":"query","key":"example","value":"harbor-tool-library"},{"type":"query","key":"record","value":"(?<exampleRecord>[0-9a-f]{64})"}],"destination":"/api/governance?example=harbor-tool-library&digest=:exampleRecord"},
     {"source":"/vote","destination":"/vote/index.html"},
     {"source":"/vote/","destination":"/vote/index.html"},

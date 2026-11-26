@@ -39,7 +39,7 @@ export async function reviewClosure(terms:Extract<GovernanceTerms,{kind:'closure
 function verifyManifest(terms:Extract<GovernanceTerms,{kind:'closure'}>,owner:string,pulse:string,files:GovernanceRow[]){
   const proposal=ofKind(files,'proposal').find(r=>r.digest===terms.proposal);
   const charter=ofKind(files,'charter').find(r=>r.digest===terms.charter);
-  if(!proposal||!charter||proposal.document.terms.charter!==charter.digest||!charter.document.terms.rules.execution||
+  if(!proposal||!charter||proposal.document.terms.charter!==charter.digest||charter.document.terms.rules.execution?.rule!=='unanimous-evidence-closure-v1'||
       !charterElectorate(charter.document.terms.rules).includes(owner))throw Error('This identity or charter cannot attest closure.');
   if(BigInt(pulse)<closureOpens(proposal,charter))throw Error('The charter’s vote and challenge periods are still open.');
   const termsOfProposal=proposal.document.terms;
@@ -52,7 +52,7 @@ function verifyManifest(terms:Extract<GovernanceTerms,{kind:'closure'}>,owner:st
       case 'candidacy':return !termsOfProposal.nominations?.includes(file.digest);
       case 'mandate':return t.scope!==termsOfProposal.decision;
       case 'ballot':case 'challenge':return t.proposal!==proposal.digest;
-      case 'closure':return true;
+      case 'closure':case 'registration':return true;
       case 'ratification':return false;
     }
   }))throw Error('The manifest contains records from another decision.');
@@ -69,7 +69,7 @@ function verifyManifest(terms:Extract<GovernanceTerms,{kind:'closure'}>,owner:st
 
 export async function collectClosedEvidence(proposal:Row<'proposal'>,rows:readonly GovernanceRow[],read:(id:string)=>Promise<GovernanceOriginal>){
   const charter=ofKind(rows,'charter').find(r=>r.digest===proposal.document.terms.charter);
-  if(!charter?.document.terms.rules.execution)throw Error('Open the charter that authorizes binding closure.');
+  if(charter?.document.terms.rules.execution?.rule!=='unanimous-evidence-closure-v1')throw Error('Open the charter that authorizes elector closure.');
   let manifest:readonly string[]|undefined;
   const members=new Set(charterElectorate(charter.document.terms.rules));
   const proofs=ofKind(rows,'closure').filter(r=>r.document.terms.charter===charter.digest&&r.document.terms.proposal===proposal.digest&&members.has(r.document.author));

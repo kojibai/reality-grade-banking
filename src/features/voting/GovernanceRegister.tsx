@@ -11,12 +11,12 @@ export function GovernanceHeading({title,eyebrow='Reality-grade governance',mark
     <div><small className="gov-kicker">{eyebrow}</small><h1>{title}</h1></div>
   </div>{children&&<div className="gov-actions">{children}</div>}</header>;
 }
-const tabs=['Charters','Proposals','Polls','Ballots','Mandates','Candidates','Challenges','Ratifications','Closures'] as const;
+const tabs=['Charters','Proposals','Polls','Ballots','Mandates','Candidates','Challenges','Ratifications','Closures','Registrations'] as const;
 type Tab=typeof tabs[number];
 function matches(row:GovernanceRow,tab:Tab){
   const t=row.document.terms;
   if(t.kind==='proposal')return t.decision==='Poll'?tab==='Polls':tab==='Proposals';
-  return ({charter:'Charters',ballot:'Ballots',mandate:'Mandates',candidacy:'Candidates',challenge:'Challenges',ratification:'Ratifications',closure:'Closures'} as const)[t.kind]===tab;
+  return ({charter:'Charters',ballot:'Ballots',mandate:'Mandates',candidacy:'Candidates',challenge:'Challenges',ratification:'Ratifications',closure:'Closures',registration:'Registrations'} as const)[t.kind]===tab;
 }
 export const governanceExamplePath='/vote/?example=harbor-tool-library';
 export function GovernanceRegister({rows,network,go,path,member,children,personal=false,initialActivity=personal}:{rows:readonly GovernanceRow[];network:readonly GovernanceRow[];go:(digest:string)=>void;path:(row:GovernanceRow)=>string|null;member?:(id:string)=>string;children?:ReactNode;personal?:boolean;initialActivity?:boolean}){

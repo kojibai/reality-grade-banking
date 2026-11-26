@@ -6,7 +6,7 @@ import {loadReceiz} from './client';
 
 export const governanceNamespace='bankeiz-voting';
 export const governanceSchema='receiz.app.bankeiz.governance.public-document.v1';
-export const governanceKinds=['charter','ratification','proposal','ballot','mandate','challenge','candidacy','closure'] as const;
+export const governanceKinds=['charter','ratification','proposal','ballot','mandate','challenge','candidacy','closure','registration'] as const;
 type Kind=typeof governanceKinds[number];
 export type CharterOffice=Readonly<{
   name:string; seats:number; selection:'Election'|'Custom'; eligibility:'Electorate'|'Open';
@@ -23,9 +23,14 @@ export type CharterCurrencyControl=Readonly<{
 export type CharterCurrencyChange=Readonly<{
   assetId:string;expectedHead:string;changes:NativeCurrencyChanges;
 }>;
-export type CharterExecution=Readonly<{
-  rule:'unanimous-evidence-closure-v1';custodian:string;registerProofObjectId:string;registerGenesisHead:string;treasury:CharterPayment|null;currency?:CharterCurrencyControl;
-}>;
+type RegisterBinding=Readonly<{custodian:string;registerProofObjectId:string;registerGenesisHead:string}>;
+export type CharterExecution=RegisterBinding & (Readonly<{
+  rule:'unanimous-evidence-closure-v1';treasury:CharterPayment|null;currency?:CharterCurrencyControl;
+}> | Readonly<{
+  rule:'registered-roll-closure-v1';treasury:null;currency:CharterCurrencyControl;
+  custodianKeyId:string;registrationDays:number;rollReviewDays:number;quorumPercent:number;
+  eligibility?:Readonly<{rule:'native-currency-holders-v1';minimumQuantityMicro:string}>;
+}>);
 export type CharterRules=Readonly<{
   participation?:'open-registration';execution?:CharterExecution;electorate?:readonly string[]; offices?:readonly CharterOffice[]; articles?:readonly CharterArticle[];
   name:string; purpose:string; founders:readonly string[]; membership:string;
@@ -40,6 +45,7 @@ export type GovernanceTerms=Readonly<{attachments?:readonly GovernanceAttachment
   | {kind:'candidacy';charter:string;office:string;statement:string}
   | {kind:'proposal';payment?:CharterPayment;currencyChange?:CharterCurrencyChange;office?:string;nominations?:readonly string[];charter:string;title:string;text:string;decision:DecisionKind;choices:readonly string[]}
   | {kind:'ballot';charter:string;proposal:string;choice:string;previous:string|null}
+  | {kind:'registration';charter:string;proposal:string}
   | {kind:'mandate';charter:string;delegate:string|null;scope:string;untilKaiPulse:string;previous:string|null}
   | {kind:'closure';charter:string;proposal:string;evidence:readonly string[]}
   | {kind:'challenge';charter:string;proposal:string;text:string});
@@ -58,6 +64,7 @@ function words(value:unknown,max=4000):string{
 }
 function subject(value:unknown):string{const id=words(value,256);if(/\s/u.test(id))return fail();return id;}
 function hash(value:unknown):string{if(typeof value!=='string'||!digest.test(value))return fail();return value;}
+function integer(n:unknown,min:number,max:number){if(typeof n!=='number'||!Number.isInteger(n)||n<min||n>max)return fail();return n;}
 function distinct(value:unknown,read:(v:unknown)=>string,max:number,min=1){
   if(!Array.isArray(value)||value.length<min||value.length>max)return fail();const list=value.map(read);
   if(new Set(list).size!==list.length)return fail();return Object.freeze(list);
@@ -65,7 +72,7 @@ function distinct(value:unknown,read:(v:unknown)=>string,max:number,min=1){
 const layout:Record<Kind,string[]>={
   charter:['rules'],candidacy:['charter','office','statement'],ratification:['charter'],proposal:['charter','title','text','decision','choices'],
   ballot:['charter','proposal','choice','previous'],mandate:['charter','delegate','scope','untilKaiPulse','previous'],
-  challenge:['charter','proposal','text'],closure:['charter','proposal','evidence'],
+  challenge:['charter','proposal','text'],closure:['charter','proposal','evidence'],registration:['charter','proposal'],
 };
 export const charterElectorate=(rules:CharterRules)=>rules.participation==='open-registration'?[]:rules.electorate??rules.founders;
 export const charterAdmitsMember=(rules:CharterRules,owner:string)=>Boolean(owner)&&(rules.participation==='open-registration'||charterElectorate(rules).includes(owner));
@@ -109,7 +116,22 @@ export function checkCharterCurrencyChange(control:CharterCurrencyControl|undefi
   return proposal;
 }
 function readExecution(value:unknown):CharterExecution{
-  const v=fields(value,['rule','custodian','registerProofObjectId','registerGenesisHead','treasury',...optionalFields(value,['currency'])]);
+  const keys=['rule','custodian','registerProofObjectId','registerGenesisHead','treasury'];
+  if((value as {rule?:unknown}|null)?.rule==='registered-roll-closure-v1'){
+    const v=fields(value,[...keys,'currency','custodianKeyId','registrationDays','rollReviewDays','quorumPercent',...optionalFields(value,['eligibility'])]);
+    if(v.treasury!==null)return fail();
+    let eligibility:Extract<CharterExecution,{rule:'registered-roll-closure-v1'}>['eligibility'];
+    if('eligibility' in v){
+      const e=fields(v.eligibility,['rule','minimumQuantityMicro']);
+      if(e.rule!=='native-currency-holders-v1'||typeof e.minimumQuantityMicro!=='string'||!/^[1-9][0-9]{0,18}$/u.test(e.minimumQuantityMicro))return fail();
+      eligibility=Object.freeze({rule:e.rule,minimumQuantityMicro:e.minimumQuantityMicro});
+    }
+    return Object.freeze({rule:'registered-roll-closure-v1',custodian:subject(v.custodian),registerProofObjectId:hash(v.registerProofObjectId),
+      registerGenesisHead:hash(v.registerGenesisHead),custodianKeyId:hash(v.custodianKeyId),treasury:null,currency:readCurrencyControl(v.currency),
+      registrationDays:integer(v.registrationDays,1,90),rollReviewDays:integer(v.rollReviewDays,1,90),quorumPercent:integer(v.quorumPercent,1,100),
+      ...(eligibility?{eligibility}:{})});
+  }
+  const v=fields(value,[...keys,...optionalFields(value,['currency'])]);
   if(v.rule!=='unanimous-evidence-closure-v1')return fail();
   return Object.freeze({rule:v.rule,custodian:subject(v.custodian),registerProofObjectId:subject(v.registerProofObjectId),registerGenesisHead:hash(v.registerGenesisHead),treasury:v.treasury===null?null:readPayment(v.treasury),...('currency' in v?{currency:readCurrencyControl(v.currency)}:{})});
 }
@@ -127,7 +149,6 @@ export function readGovernanceTerms(input:unknown):GovernanceTerms{
     const logo='logo' in v?words(v.logo,65536):undefined;
     if(logo&&!/^data:image\/(?:png|webp);base64,[A-Za-z0-9+/]+={0,2}$/u.test(logo))return fail();
     const r=fields(v.rules,['name','purpose','founders','membership','decisions','representation','amendments','appeals','treasury','approvalPercent','minimumSupportPercent','voteDays','appealDays','allowMandates',...optionalFields(v.rules,['electorate','offices','articles','execution','participation'])]);
-    const integer=(n:unknown,min:number,max:number)=>{if(typeof n!=='number'||!Number.isInteger(n)||n<min||n>max)return fail();return n;};
     if(typeof r.allowMandates!=='boolean')return fail();
     if('participation' in r&&(r.participation!=='open-registration'||'electorate' in r||'execution' in r))return fail();
     const rules={
@@ -137,10 +158,12 @@ export function readGovernanceTerms(input:unknown):GovernanceTerms{
       ...('offices' in r?{offices:boundedRows(r.offices,64,readOffice,o=>o.name)}:{}),
       ...('articles' in r?{articles:boundedRows(r.articles,128,value=>{const a=fields(value,['title','text']);return Object.freeze({title:words(a.title,160),text:words(a.text,16000)});},a=>a.title)}:{}),
       name:words(r.name,120),purpose:words(r.purpose),founders:distinct(r.founders,subject,256),membership:words(r.membership),decisions:words(r.decisions),representation:words(r.representation),amendments:words(r.amendments),appeals:words(r.appeals),treasury:words(r.treasury),approvalPercent:integer(r.approvalPercent,50,100),minimumSupportPercent:integer(r.minimumSupportPercent,0,100),voteDays:integer(r.voteDays,1,365),appealDays:integer(r.appealDays,1,90),allowMandates:r.allowMandates};
+    if(rules.execution?.rule==='registered-roll-closure-v1'&&(rules.electorate||rules.allowMandates||rules.founders.includes(rules.execution.custodian)))return fail();
     return Object.freeze({kind,...files,...(logo?{logo}:{}),rules:Object.freeze(rules)});
   }
   const charter=hash(v.charter);
   if(kind==='ratification')return Object.freeze({kind,charter});
+  if(kind==='registration')return Object.freeze({kind,charter,proposal:hash(v.proposal)});
   if(kind==='candidacy')return Object.freeze({kind,charter,...files,office:words(v.office,120),statement:words(v.statement)});
   if(kind==='proposal'){
     const decision=v.decision as DecisionKind;

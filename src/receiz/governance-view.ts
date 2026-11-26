@@ -88,6 +88,7 @@ export function governanceTitle(row:GovernanceRow){
     case 'ballot':return t.choice;
     case 'mandate':return t.delegate?'Representative mandate':'Mandate revocation';
     case 'closure':return 'Elector closure attestation';
+    case 'registration':return 'Voter registration';
     case 'challenge':return 'Public challenge';
   }
 }

@@ -1,7 +1,7 @@
 import type {GovernanceRow} from './governance-directory';
 import type {GovernanceTerms} from './governance-documents';
 export type GovernanceCard={title:string;kind:string;charter:string;description:string;digest:string;example:boolean};
-const labels:Record<GovernanceTerms['kind'],string>={charter:'Charter',proposal:'Proposal',ballot:'Ballot',ratification:'Ratification',mandate:'Representation',challenge:'Challenge',candidacy:'Candidate statement',closure:'Elector closure'};
+const labels:Record<GovernanceTerms['kind'],string>={charter:'Charter',proposal:'Proposal',ballot:'Ballot',ratification:'Ratification',mandate:'Representation',challenge:'Challenge',candidacy:'Candidate statement',closure:'Elector closure',registration:'Voter registration'};
 export function governanceCard(row:GovernanceRow,charterName='',example=false):GovernanceCard{
  const t=row.document.terms;
  let title:string,description:string;
@@ -14,6 +14,7 @@ export function governanceCard(row:GovernanceRow,charterName='',example=false):G
    case 'candidacy':title='Candidate for '+t.office;description=t.statement;break;
    case 'ratification':title='Founding ratification';description='Charter ratification by '+row.document.author;break;
    case 'closure':title='Elector closure';description='Signed evidence manifest for a charter decision.';break;
+   case 'registration':title='Voter registration';description='Signed request to join the voting roll for this proposal.';break;
  }
  return {title,description,kind:t.kind==='proposal'?t.decision:labels[t.kind],charter:charterName,digest:row.digest,example};
 }
