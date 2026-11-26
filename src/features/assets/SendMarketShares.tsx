@@ -15,7 +15,7 @@ const CertificateManager = lazy(() => import('../certificates/CertificateManager
 export function SendMarketShares({identity, position, marketItems, onRefresh}: {
   identity: OpenIdentity;
   position?: MarketPosition;
-  marketItems: PublicMarketItem[];
+  marketItems: readonly PublicMarketItem[];
   onRefresh(): void;
 }) {
   const [quantity, setQuantity] = useState('');

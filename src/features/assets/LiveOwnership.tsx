@@ -16,7 +16,7 @@ type OwnershipProps = {
   initialDigest?: string;
   nativeAssetId?: string;
   publicCurrency?: PublicCurrencyTerms;
-  marketItems?: PublicMarketItem[];
+  marketItems?: readonly PublicMarketItem[];
   showcase?: PublicMarketItem[];
   onRefresh(): void;
 };

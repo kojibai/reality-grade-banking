@@ -1,23 +1,21 @@
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { nativeCurrencyPrice } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { ChevronRight, FileCheck2, Layers, Search } from 'lucide-react';
 import { InlineOpening } from '../../components/InlineOpening';
 import { AmountInput } from '../../components/AmountInput';
 import { CurrencyMark } from '../../components/CurrencyMark';
 import { AssetsRowArtwork } from './AssetsRowArtwork';
-import { formatMoney, formatUnits } from '../../core/money';
+import { formatUnits } from '../../core/money';
 import { nativeAssetSupplyMicro } from '../../receiz/native-asset-protocol';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { MarketPosition } from '../../receiz/market-portfolio';
 import { readOpenPortfolio, subscribeOpenPortfolio } from '../../receiz/market-portfolio-presentation';
 import type { HeldDeposit } from '../../receiz/deposit-source';
-import { heldCurrencyPriceHistory, subscribeCurrencyPriceHistory } from '../../receiz/currency-ledger-view';
-import { shareCapitalizationUsdCents } from '../../receiz/market-share-inventory';
 import type { PublicMarketItem } from '../../receiz/public-market';
 import { RecipientInput } from '../account/RecipientInput';
 import { NativeOperation } from '../account/NativeOperation';
 import {useHeldOriginalPieces} from './useHeldOriginalPieces';
 import { useHeldAssetSources } from './useHeldAssetSources';
+import { CurrencySend } from './CurrencySend';
 import './ownership-send.css';
 
 type SendableHolding = HeldDeposit & {
@@ -35,13 +33,12 @@ const SendOriginal = lazy(() => import('./SendOriginal').then(module => ({defaul
 const categories = {shares: 'Shares', currencies: 'Currencies', originals: 'Originals'} as const;
 type Category = keyof typeof categories;
 const SendMarketShares = lazy(() => import('./SendMarketShares').then(module => ({default:module.SendMarketShares})));
-const IssueCurrencyNote = lazy(() => import('../notes/CurrencyNotes').then(module => ({default:module.IssueCurrencyNote})));
 const emptyItems: PublicMarketItem[] = [];
 
 export function SendHeldOwnership({ identity, initialDigest, marketItems = emptyItems, showcase = emptyItems, onRefresh }: {
   identity: OpenIdentity;
   initialDigest: string;
-  marketItems?: PublicMarketItem[];
+  marketItems?: readonly PublicMarketItem[];
   showcase?: PublicMarketItem[];
   onRefresh(): void;
 }) {
@@ -65,7 +62,7 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
   const portfolio = openPortfolio && openPortfolio.owner === identity.binding?.artifactSha256 ? openPortfolio.portfolio : identity.knownMarketPortfolio?.();
   const [marketShare, setMarketShare] = useState<MarketPosition | null>(null);
   const [recoverShare, setRecoverShare] = useState(false), [pendingShare, setPendingShare] = useState(false);
-  const [currencyNote, setCurrencyNote] = useState(false);
+  const [currencySelection, setCurrencySelection] = useState<SendableHolding | null>(null);
   useEffect(() => {
     if (!identity.pendingOwnershipShare) return;
     let current = true;
@@ -82,13 +79,17 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
   const selectedOriginal = pinned?.source ?? originals.find(source => source.digest === selectedId);
   const selectedShowcase = pinned?.showcase ?? showcaseOriginals.find(item => item.originalDigest?.toLowerCase() === selectedId);
   const selectedPiece = pinned ? pinned.piece : heldPieces.find(source => source.proofDigest === selectedId || source.originalSha256 === selectedId);
-  const asset = selected?.nativeAsset;
-  const heldPrice = asset?.currency ? nativeCurrencyPrice(asset.currency) : undefined;
-  const price = useSyncExternalStore(subscribeCurrencyPriceHistory, () => {
-    if (!asset?.currency) return undefined;
-    const latest = heldCurrencyPriceHistory(asset.assetId, asset.symbol).at(-1);
-    return latest && BigInt(latest.kaiUPulse) > BigInt(asset.sourceKaiUPulse) ? latest.usdCents : heldPrice;
-  }, () => heldPrice);
+  const selectedCurrency = selected?.nativeAsset.currency ? selected : null;
+  useEffect(() => {
+    if (selectedCurrency) setCurrencySelection(current =>
+      current?.nativeAsset.assetId === selectedCurrency.nativeAsset.assetId ? current : selectedCurrency);
+  }, [selectedCurrency]);
+
+  function currencyListing(assetId: string, symbol: string) {
+    const matches = (item: PublicMarketItem) => item.nativeAsset?.id === assetId && item.nativeAsset.currency?.symbol === symbol;
+    const market = marketItems.find(matches);
+    return market?.artworkUrl ? market : showcase.find(matches) ?? market;
+  }
 
   if (marketShare || recoverShare) return <>
     <button type="button" className="back-link" onClick={() => {setMarketShare(null);setRecoverShare(false);}}>All holdings</button>
@@ -104,20 +105,15 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
     </Suspense>
   </>;
 
-  if (selected && currencyNote) return <>
-    <button type="button" className="back-link" onClick={() => setCurrencyNote(false)}>Back to send</button>
-    <Suspense fallback={<InlineOpening label="Opening currency note"/>}>
-      <IssueCurrencyNote identity={identity} asset={selected} onRefresh={onRefresh}/>
-    </Suspense>
-  </>;
+  const currency = selectedCurrency ?? currencySelection;
+  if (currency) return <CurrencySend key={currency.nativeAsset.assetId} identity={identity} holding={selectedCurrency}
+    selected={currency} listing={currencyListing(currency.nativeAsset.assetId, currency.nativeAsset.symbol)}
+    onBack={() => {setSelectedId('');setCurrencySelection(null);setCategory('currencies');}} onRefresh={onRefresh}/>;
 
   if (selected) {
     const { nativeAsset, executionDigest, title } = selected;
     const available = formatUnits(nativeAsset.quantityMicro);
-    let estimate: string | undefined;
-    if (price && /^\d{1,16}$/u.test(quantity.trim()) && BigInt(quantity) > 0n && BigInt(quantity) * 1_000_000n <= BigInt(nativeAsset.quantityMicro))
-      estimate = shareCapitalizationUsdCents(price, (BigInt(quantity) * 1_000_000n).toString());
-    return <NativeOperation identity={identity} title="Ownership transfer" confirmLabel={nativeAsset.currency ? 'Send currency' : 'Send ownership'} onRefresh={onRefresh}
+    return <NativeOperation identity={identity} title="Ownership transfer" confirmLabel="Send ownership" onRefresh={onRefresh}
       ownership={{ title, symbol: nativeAsset.symbol }}
       inputKey={JSON.stringify([executionDigest, quantity, recipient, recipientUid])}
       input={() => {
@@ -125,10 +121,7 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
         try {
           quantityMicro = nativeAssetSupplyMicro(quantity.trim());
         } catch {
-          throw Error(nativeAsset.currency ? 'Enter a positive whole number of units.' : 'Enter a positive quantity with up to 6 decimal places.');
-        }
-        if (nativeAsset.currency && BigInt(quantityMicro) % 1_000_000n !== 0n) {
-          throw Error('Enter a positive whole number of units.');
+          throw Error('Enter a positive quantity with up to 6 decimal places.');
         }
         if (BigInt(quantityMicro) > BigInt(nativeAsset.quantityMicro)) {
           throw Error('Enter a quantity within your available units.');
@@ -137,20 +130,18 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
       }}>
       <button type="button" className="back-link" onClick={() => setSelectedId('')}>All holdings</button>
       <div className="holding-panel">
-        <span>{nativeAsset.currency ? 'Send currency' : 'Send ownership'}</span>
+        <span>Send ownership</span>
         <strong>{title}</strong>
         <p>{available} {nativeAsset.symbol} available</p>
         {nativeAsset.lockedQuantityMicro !== '0' && <p>{formatUnits(nativeAsset.lockedQuantityMicro)} {nativeAsset.symbol} committed to offers</p>}
       </div>
       <div className="ownership-send-amount">
-        <AmountInput label={nativeAsset.currency ? 'Whole units to send' : 'Ownership to send'} value={quantity} onChange={setQuantity} suffix={nativeAsset.symbol} />
+        <AmountInput label="Ownership to send" value={quantity} onChange={setQuantity} suffix={nativeAsset.symbol} />
         <button type="button" className="secondary-button" onClick={() => setQuantity(available)}>All</button>
       </div>
-      {estimate !== undefined && <p className="body-copy small-copy">Estimated market value {formatMoney(estimate)}</p>}
       <RecipientInput identity={identity} value={recipient} placeholder="Receiz ID or public username"
         onChange={value => {setRecipient(value);setRecipientUid('');}}
         onSelect={person => {setRecipient(person.username);setRecipientUid(person.userId);}}/>
-      {nativeAsset.currency && identity.currencyNotes && <button type="button" className="text-button" onClick={() => setCurrencyNote(true)}>Create currency note</button>}
     </NativeOperation>;
   }
 
@@ -178,7 +169,7 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
     <h1 className="sheet-hero">Send ownership.</h1>
     {pendingShare && <button type="button" className="text-button" onClick={() => setRecoverShare(true)}>Resume share transfer</button>}
     {available > 0 && <>
-      {offered.length > 1 && <div className="segmented" aria-label="Holding type" role="group">
+      {offered.length > 1 && <div className="segmented ownership-send-types" aria-label="Holding type" role="group">
         {offered.map(value => <button key={value} type="button" aria-pressed={visibleCategory === value}
           className={visibleCategory === value ? 'active' : ''} onClick={() => { setCategory(value); setLimit(pageSize); }}>
           {categories[value]}
@@ -189,10 +180,10 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
         onChange={event => { setSearch(event.target.value); setLimit(pageSize); }} /></label>
       <div className="rows-surface">{matching.slice(0, limit).map((source,index) => {
         const { assetId, quantityMicro, symbol, currency } = source.nativeAsset;
-        const listing = currency ? marketItems.find(item => item.nativeAsset?.id === assetId && item.nativeAsset.currency?.symbol === symbol) : undefined;
+        const listing = currency ? currencyListing(assetId, symbol) : undefined;
         return <button key={assetId} type="button" className="asset-row" onClick={() => {
           setSelectedId(assetId);
-          setCurrencyNote(false);
+          if (currency) setCurrencySelection(source);
           setRecipient('');
           setRecipientUid('');
           setQuantity(BigInt(quantityMicro) < 1_000_000n ? formatUnits(quantityMicro) : '1');

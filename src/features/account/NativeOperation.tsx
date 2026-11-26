@@ -7,15 +7,18 @@ import type { BankOperationResult } from '../../receiz/bank-operations';
 import { formatMoney, formatUnits } from '../../core/money';
 import { BankExecutionRecoveryPanel } from './BankExecutionRecoveryPanel';
 import { BankConnection } from './BankConnection';
+import { CurrencyTransferAmount, type CurrencyTransferDetails } from '../assets/CurrencyTransferAmount';
+import { shareCapitalizationUsdCents } from '../../receiz/market-share-inventory';
 
-export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership, committedTitle }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; committedTitle?: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
+export function NativeOperation({ identity, input, inputKey, title, confirmLabel, onRefresh, children, operations, onResult, ownership, currencyTransfer, committedTitle }: { identity?: OpenIdentity; input(): BankOperationInput | Promise<BankOperationInput>; inputKey: string; title: string; confirmLabel: string; committedTitle?: string; onRefresh(): void; children: ReactNode; ownership?: { title: string; symbol: string }; currencyTransfer?: {unitPriceUsdCents: string; onCommitted(details:CurrencyTransferDetails):void}; operations?():Promise<BankOperations>; onResult?(result:BankOperationResult):Promise<void>|void }) {
   const [review, setReview] = useState<BankOperationReview | null>(null), [result, setResult] = useState<BankOperationResult | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [reviewUnitPrice, setReviewUnitPrice] = useState<string>();
   const [failure,setFailure]=useState<(ReturnType<typeof bankOperationFailureDetails>&{phase:'Review'|'Submission'})|null>(null);
   const report=(cause:unknown,stage:'Review'|'Submission')=>{setError(bankOperationError(cause));setFailure({...bankOperationFailureDetails(cause),phase:stage});};
   const diagnostics=failure&&<details className="transaction-proof-details transaction-failure-details"><summary>Failure details</summary><p>{failure.phase}{failure.status!==null&&` · HTTP ${failure.status}`}</p><code>{failure.code}</code>{failure.stage&&<p>Stage: {failure.stage} · {failure.errorName}</p>}<p className="small-copy">These details contain no credentials or account data.</p></details>;
   const [approved, setApproved] = useState(false), generation = useRef(0), running = useRef(false), api = useRef<BankOperations | null>(null), held = useRef<BankOperationReview | null>(null);
   useEffect(() => {
-    generation.current++; running.current = false; setReview(null); setResult(null); setBusy(false); setApproved(false); setError('');setFailure(null);
+    generation.current++; running.current = false; setReview(null); setReviewUnitPrice(undefined); setResult(null); setBusy(false); setApproved(false); setError('');setFailure(null);
     return () => { generation.current++; if (held.current) api.current?.discard(held.current); held.current = null; api.current = null; };
   }, [identity, inputKey]);
   const currencyReviewHeading = useRef<HTMLHeadingElement>(null);
@@ -33,16 +36,29 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
       const next = await connected.prepare(request);
       if (ticket !== generation.current) { connected.discard(next); return; }
       if (!isBankOperationReview(next)) throw Error('BANK_OPERATION_SOURCE_MISMATCH');
-      held.current = next; setReview(next); setApproved(false);
+      held.current = next; setReview(next); setReviewUnitPrice(currencyTransfer?.unitPriceUsdCents); setApproved(false);
     } catch (cause) { if (ticket === generation.current) report(cause,'Review'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
   };
+  const currencySummary = currencyTransfer && review?.request.kind === 'send-ownership' ? {
+    quantityMicro: review.terms.quantityMicro,
+    recipient: review.terms.recipient,
+    feeUsdCents: review.terms.feeUsdCents,
+    estimatedUsdCents: reviewUnitPrice && reviewUnitPrice !== '0'
+      ? shareCapitalizationUsdCents(reviewUnitPrice, review.terms.quantityMicro) : undefined,
+  } : null;
   const execute = async () => {
     if (!review || !approved || running.current || !api.current) return;
     const ticket = generation.current; running.current = true; setBusy(true); setError('');setFailure(null);
     try {
       const next = await api.current.execute(review, review.confirmationDigest);if(ticket===generation.current)await onResult?.(next);
-      if (ticket === generation.current) { setResult(next); setReview(null); held.current = null; if (next.status === 'committed') onRefresh(); }
+      if (ticket === generation.current) {
+        setResult(next); setReview(null); held.current = null;
+        if (next.status === 'committed') {
+          if (currencySummary) currencyTransfer?.onCommitted({...currencySummary,retentionWarning:next.retentionWarning});
+          onRefresh();
+        }
+      }
     } catch (cause) { if (ticket === generation.current) report(cause,'Submission'); }
     finally { if (ticket === generation.current) { running.current = false; setBusy(false); } }
   };
@@ -58,8 +74,9 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     const issuePolicy = request.kind === 'issue-currency' ? request.policy : null;
     const creatorUnits = issuePolicy?.kind === 'constant-product-pool' ? issuePolicy.creatorQuantityMicro : '0';
     return <section className="native-operation-review"><h1 className="sheet-hero" ref={issuePolicy ? currencyReviewHeading : undefined} tabIndex={issuePolicy ? -1 : undefined}>Review {title.toLowerCase()}.</h1>
+      {currencySummary && ownership && <CurrencyTransferAmount {...currencySummary} symbol={ownership.symbol}/>}
       <div className="detail-list">
-        {(request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
+        {!currencySummary && (request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
         {request.kind==='issue-currency'&&issuePolicy&&<>
           <div><span>{currencyPresets[issuePolicy.preset ?? 'currency'].label}</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div>
           <div><span>Pricing</span><strong>{issuePolicy.kind==='constant-product-pool'?'Market pool':formatMoney(issuePolicy.priceUsdCentsPerUnit)+' per unit'}</strong></div>
@@ -82,7 +99,7 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
         {t.debitPhiMicro !== '0' && <div><span>Exact value</span><strong>{formatUnits(t.debitPhiMicro)} Φ</strong></div>}
         {t.creditUsdCents !== '0' && <div><span>You receive</span><strong>{formatMoney(t.creditUsdCents)}</strong></div>}
         {t.creditPhiMicro !== '0' && <div><span>Exact received value</span><strong>{formatUnits(t.creditPhiMicro)} Φ</strong></div>}
-        {t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : request.kind === 'issue-currency' ? 'Supply cap' : request.kind === 'buy-currency' ? 'Currency units' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}{request.kind === 'send-ownership' && ownership ? ' ' + ownership.symbol : ''}</strong></div>}
+        {!currencySummary && t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : request.kind === 'issue-currency' ? 'Supply cap' : request.kind === 'buy-currency' ? 'Currency units' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}{request.kind === 'send-ownership' && ownership ? ' ' + ownership.symbol : ''}</strong></div>}
         <div><span>Fee</span><strong>{formatMoney(t.feeUsdCents)}</strong></div>
         {t.debitUsdCents !== '0' && <div><span>Total debit</span><strong>{formatMoney((BigInt(t.debitUsdCents) + BigInt(t.feeUsdCents)).toString())}</strong></div>}
       </div>
@@ -93,5 +110,5 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
       {error && <><p className="error-message" role="status">{error}</p>{diagnostics}</>}
     </section>;
   }
-  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset><div className="note-box"><ShieldCheck size={18} /><p>Review verifies the available terms. Your final approval authorizes the transaction.</p></div><button className="primary-button" disabled={busy} onClick={() => void prepare()}>{busy ? 'Verifying transaction…' : `Review ${title.toLowerCase()}`}<ArrowRight size={17} /></button>{error && <><p className="error-message" role="status">{error}</p>{diagnostics}{identity && error.startsWith('Approve the required') && <BankConnection identity={identity} onRefresh={onRefresh} />}</>}</>;
+  return <><fieldset className="native-operation-fields" disabled={busy}>{children}</fieldset>{!currencyTransfer && <div className="note-box"><ShieldCheck size={18} /><p>Review verifies the available terms. Your final approval authorizes the transaction.</p></div>}<button className="primary-button" disabled={busy} onClick={() => void prepare()}>{busy ? 'Verifying transaction…' : `Review ${title.toLowerCase()}`}<ArrowRight size={17} /></button>{error && <><p className="error-message" role="status">{error}</p>{diagnostics}{identity && error.startsWith('Approve the required') && <BankConnection identity={identity} onRefresh={onRefresh} />}</>}</>;
 }

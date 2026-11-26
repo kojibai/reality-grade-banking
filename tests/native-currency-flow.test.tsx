@@ -190,6 +190,20 @@ it('sends whole currency units from the held source while preserving the Market 
   await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='All')!.click());
   expect(review.input?.()).toEqual({kind:'send-ownership',assetDigest:head,quantityMicro:'2000000',recipient:'@receiver'});
   expect(host.textContent).toContain('Estimated market value $0.50');
+  await click('USD');
+  const dollars = host.querySelector<HTMLInputElement>('[aria-label="Amount in USD"]')!;
+  expect(dollars.value).toBe('0.50');
+  await act(async()=>enter(host,'Amount in USD','0.49'));
+  expect(host.textContent).toContain('You send 1 FIELD');
+  expect(host.textContent).toContain('Rounded down to whole FIELD units.');
+  expect(review.input?.()).toEqual({kind:'send-ownership',assetDigest:head,quantityMicro:'1000000',recipient:'@receiver'});
+  await act(async()=>enter(host,'Amount in USD','0.24'));
+  expect(()=>review.input?.()).toThrow('Enter at least $0.25 for one FIELD.');
+  await act(async()=>enter(host,'Amount in USD','0.75'));
+  expect(()=>review.input?.()).toThrow('Enter a quantity within your available units.');
+  await act(async()=>enter(host,'Amount in USD','0.49'));
+  await act(async()=>host.querySelector<HTMLButtonElement>('.currency-send-denomination button')!.click());
+  expect(host.querySelector<HTMLInputElement>('[aria-label="Whole units to send"]')!.value).toBe('1');
   expect(marketPortfolio).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());}
 });

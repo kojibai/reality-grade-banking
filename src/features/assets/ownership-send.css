@@ -2,3 +2,5 @@
 .ownership-send-amount { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; margin: 14px 0; }
 .ownership-send-amount .form-field { margin: 0; }
 .ownership-send-amount > button { width: auto; min-width: 52px; }
+.segmented.ownership-send-types { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.segmented.send-ownership-mode { margin-top: 0; }

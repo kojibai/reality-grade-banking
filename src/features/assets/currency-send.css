@@ -1,0 +1,106 @@
+.currency-send-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 12px 0 19px;
+}
+.currency-send-identity .currency-mark {
+  --coin-rim: 4px;
+  --coin-inset: 2px;
+  width: 58px;
+  height: 58px;
+  font-size: .8rem;
+}
+.currency-send-identity strong {
+  display: block;
+  font-size: 21px;
+  line-height: 1.18;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+.currency-send-identity p {
+  margin: 5px 0 0;
+  color: var(--bank-text-secondary,#667386);
+  font-size: 13px;
+}
+.currency-send-amount,.currency-transfer-amount {
+  padding: 14px;
+  margin: 0 0 16px;
+  border: 1px solid var(--bank-field-line,#dde2eb);
+  border-radius: 15px;
+  background: var(--bank-surface-subtle,#f2f5fb);
+}
+.currency-send-amount-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--bank-text-secondary,#667386);
+  font-size: 13px;
+}
+.currency-send-denomination {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--bank-field-line,#dde2eb);
+  border-radius: 10px;
+  background: var(--bank-field,#fff);
+}
+.currency-send-denomination button {
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: inherit;
+  font-weight: 600;
+}
+.currency-send-denomination button[aria-pressed="true"] {
+  background: var(--bank-info-surface,#e5edff);
+  color: var(--blue);
+}
+.currency-send-amount .ownership-send-amount { margin: 9px 0 0; }
+.currency-send-amount .amount-input input {
+  font-size: clamp(25px,8vw,34px);
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.045em;
+}
+.currency-send-amount .amount-prefix,.currency-send-amount .amount-suffix {
+  color: var(--blue);
+  font-weight: 650;
+}
+.currency-send-amount .amount-suffix { flex-shrink: 0; }
+.currency-send-equivalent,.currency-send-estimate {
+  margin-top: 7px;
+  color: var(--bank-text-secondary,#667386);
+  font-size: 13px;
+}
+.currency-send-equivalent { color: var(--navy); font-weight: 650; }
+.currency-transfer-amount > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.currency-transfer-amount strong {
+  font-size: clamp(26px,10vw,42px);
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.045em;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.currency-transfer-amount span { color: var(--blue); font-size: 16px; font-weight: 650; }
+.currency-transfer-amount p { color: var(--bank-text-secondary,#667386); font-size: 13px; margin-top: 4px; }
+.currency-send .native-operation-review .transaction-proof-details { margin: 12px 0; }
+.currency-send .native-operation-review .consent-option { margin-top: 14px; }
+.currency-send-receipt-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+  font-size: 23px;
+  letter-spacing: -.025em;
+}
+.currency-send-receipt-title svg { color: var(--green); }
+.currency-send-receipt .body-copy { margin-top: 9px; }
+.currency-send-receipt > button { margin-top: 16px; }

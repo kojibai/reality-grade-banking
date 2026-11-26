@@ -124,7 +124,7 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
     setSendNote('');
   }
   if (noteMode && identity) return <OfflineNotes identity={identity} mode={noteMode} onBack={() => setNoteMode(null)} backLabel="Back to payment" onRefresh={onRefresh} onUseSendNearby={identity.nearbyWalletReceive?useSendNearby:undefined} />;
-  const choices = <>{identity && <button className="text-button note-action" onClick={() => setNoteMode('create')}>Create note</button>}<div className="segmented"><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send money</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
+  const choices = <>{identity && mode === 'value' && <button className="text-button note-action" onClick={() => setNoteMode('create')}>Create note</button>}<div className={mode === 'asset' ? 'segmented send-ownership-mode' : 'segmented'}><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send money</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
   if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} marketItems={marketItems} showcase={showcase} onRefresh={onRefresh} /></>;
   const request=()=>({amountUsdCents:bankOperationDollars(amount),recipient:recipientCoordinate,note:sendNote});
   const initialReview=fundedReview?.identity===identity?fundedReview?.review:undefined;
