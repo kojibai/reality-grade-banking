@@ -11,6 +11,8 @@ import {CharterOffices} from './CharterOffices';
 import type {GovernanceRow} from '../../receiz/governance-directory';
 import type {CurrencyVotingContext} from './VotingBoard';
 import {bankOperationDollars} from '../../receiz/bank-operations';
+import {inspectNativeCurrencyServicePricingTerms} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing';
+import {VenuePricingFields,emptyVenuePricingTerms} from './VenuePricingFields';
 import {eligibleCandidates,type Row} from '../../receiz/governance-view';
 
 type Props={currency?:CurrencyVotingContext;founding?:FoundingDraft|null;member?:(id:string)=>string;identity?:OpenIdentity;mode:'charter'|'proposal';owner:string;rows:readonly GovernanceRow[];charter?:Row<'charter'>;charters:readonly Row<'charter'>[];onCharter:(id:string)=>void;onFound:()=>void;onReview:(terms:GovernanceTerms)=>void;onCancel:()=>void};
@@ -37,6 +39,8 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const [office,setOffice]=useState(''),[selected,setSelected]=useState<string[]>([]);
   const [decision,setDecision]=useState<DecisionKind>('Policy'),[error,setError]=useState('');
   const [minimumPrice,setMinimumPrice]=useState(''),[maximumPrice,setMaximumPrice]=useState(''),[allowSalesPause,setAllowSalesPause]=useState(true);
+  const [venuePricing,setVenuePricing]=useState(false),[venueTerms,setVenueTerms]=useState(emptyVenuePricingTerms);
+  const proposalUsesVenuePricing=!!charter?.document.terms.rules.execution?.currency?.servicePricing;
   const [newPrice,setNewPrice]=useState(''),[saleStatus,setSaleStatus]=useState<'current'|'open'|'paused'>('current'),[building,setBuilding]=useState(false);
   const [startingPoints,setStartingPoints]=useState<Record<string,string>>({});
   const scope=JSON.stringify([charter?.digest,decision]);
@@ -76,22 +80,27 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         if(!identity?.governanceExecution)throw Error('Open your identity to create the currency charter.');
         const price=BigInt(currency.priceUsdCentsPerUnit);
         const min=currency.poolPricing?String(price):bankOperationDollars(minimumPrice);
-        const max=currency.poolPricing?String(price):bankOperationDollars(maximumPrice);
-        if(BigInt(min)>price||BigInt(max)<price)throw Error('The current price must fit the charter’s price range.');
+        const servicePricing=!currency.poolPricing&&venuePricing
+          ? inspectNativeCurrencyServicePricingTerms({
+            ...venueTerms, venues: [...venueTerms.venues].sort((left,right)=>left.id<right.id?-1:left.id>right.id?1:0),
+          }) : undefined;
+        const max=currency.poolPricing?String(price):servicePricing&&!maximumPrice.trim()?undefined:bankOperationDollars(maximumPrice);
+        if(BigInt(min)>price||max!==undefined&&BigInt(max)<price)throw Error('The current price must fit the charter’s price range.');
         setBuilding(true);
         const register=await (await identity.governanceExecution()).createRegister();
         selectedExecution={rule:'unanimous-evidence-closure-v1',custodian:register.custodian,
           registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,
-          currency:{assetId:currency.assetId,minimumPriceUsdCents:min,maximumPriceUsdCents:max,allowSalesPause}};
+          currency:{assetId:currency.assetId,minimumPriceUsdCents:min,...(max===undefined?{}:{maximumPriceUsdCents:max}),allowSalesPause,
+            ...(servicePricing?{servicePricing}:{})}};
       }
       let currencyChange;
       if(currency&&mode==='proposal'){
         if(!currency.settingsHead||charter?.digest!==currency.charterDigest)throw Error('This charter must be linked to the currency before proposing a change.');
-        const price=!currency.poolPricing&&newPrice.trim()?bankOperationDollars(newPrice):undefined;
+        const price=!currency.poolPricing&&!proposalUsesVenuePricing&&newPrice.trim()?bankOperationDollars(newPrice):undefined;
         const paused=saleStatus==='current'?undefined:saleStatus==='paused';
         const changes={...(price&&price!==currency.priceUsdCentsPerUnit?{priceUsdCentsPerUnit:price}:{}),
           ...(paused!==undefined&&paused!==currency.salesPaused?{salesPaused:paused}:{})};
-        if(!Object.keys(changes).length)throw Error(currency.poolPricing?'Choose a new sales setting.':'Choose a new purchase price or sales setting.');
+        if(!Object.keys(changes).length)throw Error(currency.poolPricing||proposalUsesVenuePricing?'Choose a new sales setting.':'Choose a new purchase price or sales setting.');
         currencyChange={assetId:currency.assetId,expectedHead:currency.settingsHead,changes};
       }
       const terms=mode==='charter'?{kind:'charter',...(logo?{logo}:{}),rules:{...rules,...policyText,offices,articles,...(openRoll?{participation:'open-registration'}:{}),...(!openRoll&&selectedExecution?{execution:selectedExecution}:{}),...(!openRoll&&separate?{electorate:electorate.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)}:{}),name:organization.trim(),purpose:rules.purpose.trim(),founders:[...new Set([owner,...founders.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)])]}}:
@@ -104,7 +113,7 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   return <form className="gov-form" onSubmit={event=>void submit(event)}>
     <button type="button" className="gov-link" onClick={()=>step===2?setStep(1):onCancel()}><ArrowLeft size={16}/>Back</button>
     <h2>{mode==='proposal'?'Create proposal':step===1?'Found an organization':'Set the charter rules'}</h2>
-    {mode==='proposal'&&<><label>Governing charter<select required value={charter?.digest??''} onChange={e=>{setOffice('');setSelected([]);setError('');onCharter(e.target.value);}}><option value="">Choose a charter</option>{charters.map(c=><option key={c.digest} value={c.digest}>{c.document.terms.rules.name}</option>)}</select></label>
+    {mode==='proposal'&&<><label>Governing charter<select required value={charter?.digest??''} onChange={e=>{setOffice('');setSelected([]);setNewPrice('');setError('');onCharter(e.target.value);}}><option value="">Choose a charter</option>{charters.map(c=><option key={c.digest} value={c.digest}>{c.document.terms.rules.name}</option>)}</select></label>
       {!charters.length&&!currency&&<div><p>You can propose in a ratified charter that lists you as a voting member.</p><button type="button" onClick={onFound}>Create charter</button></div>}</>}
     {step===1&&(mode==='charter'||charter)&&<>
       {mode==='charter'?<label>Starting point<select value={template} onChange={e=>{setTemplate(e.target.value);setError('');}}>{Object.keys(templates).map(k=><option key={k}>{k}</option>)}</select></label>:
@@ -115,13 +124,13 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       <label>{mode==='charter'?'Organization name':'Proposal title'}<input required maxLength={mode==='charter'?120:160} value={mode==='charter'?organization:title} onChange={e=>mode==='charter'?setOrganization(e.target.value):editProposal({title:e.target.value})}/></label>
       <label>{mode==='charter'?'Purpose and scope':'What should members decide?'}<textarea required rows={4} maxLength={4000} value={mode==='charter'?rules.purpose:body} onChange={e=>mode==='charter'?editRules({purpose:e.target.value}):editProposal({text:e.target.value})}/></label>
       {mode==='charter'?<><CharterLogoPicker logo={logo} change={setLogo} busy={setLogoBusy}/><p>Founding member <strong>{member?.(owner)??owner}</strong></p><label>Additional founders <small>One Receiz owner ID per line. Each founder ratifies the charter.</small><textarea value={founders} onChange={e=>setFounders(e.target.value)}/></label>
-        {!currency&&<label className="gov-check"><input type="checkbox" checked={openRoll} onChange={e=>setOpenRoll(e.target.checked)}/>Open participation with registration for binding votes</label>}
+        {!currency&&<label className="gov-check"><input type="checkbox" checked={openRoll} onChange={e=>setOpenRoll(e.target.checked)}/>Open participation for advisory votes</label>}
         {!openRoll&&<label className="gov-check"><input type="checkbox" checked={separate} onChange={e=>setSeparate(e.target.checked)}/>Choose a separate voting membership</label>}
         {!openRoll&&separate&&<label>Voting members <small>One Receiz owner ID per line. Only these members may propose and vote.</small><textarea required value={electorate} onChange={e=>setElectorate(e.target.value)}/></label>}</>:<>
         {election?<><label>Office<select required value={office} onChange={e=>{setOffice(e.target.value);setSelected([]);}}><option value="">Choose an elected office</option>{electiveOffices.map(o=><option key={o.name}>{o.name}</option>)}</select></label>
           {!electiveOffices.length&&<p>This charter lists no elected offices. Its amendment procedure describes how members can propose one.</p>}
           <fieldset className="gov-box"><legend>Candidate statements</legend>{candidates.map(c=><label className="gov-check" key={c.digest}><input type="checkbox" checked={selected.includes(c.digest)} onChange={e=>setSelected(v=>e.target.checked?[...v.filter(d=>candidates.find(x=>x.digest===d)?.document.author!==c.document.author),c.digest]:v.filter(d=>d!==c.digest))}/>{member?.(c.document.author)??c.document.author} · {c.document.terms.statement}</label>)}{!candidates.length&&<p>Candidates can submit their own statements from the charter.</p>}</fieldset></>:bindingBinary?<p>Ballot choices · Approve / Reject</p>:<label>Ballot choices <small>One choice per line.</small><textarea required value={options} onChange={e=>editProposal({options:e.target.value})}/></label>}
-        {currency&&<div className="gov-fields">{!currency.poolPricing&&<label>New purchase price (USD)<input inputMode="decimal" value={newPrice} onChange={e=>setNewPrice(e.target.value)}/></label>}
+        {currency&&<div className="gov-fields">{!currency.poolPricing&&!proposalUsesVenuePricing&&<label>New purchase price (USD)<input inputMode="decimal" value={newPrice} onChange={e=>setNewPrice(e.target.value)}/></label>}
           {charter?.document.terms.rules.execution?.currency?.allowSalesPause&&<label>New sales<select value={saleStatus} onChange={e=>setSaleStatus(e.target.value as typeof saleStatus)}>
             <option value="current">Keep current setting</option><option value="open">Open</option><option value="paused">Paused</option></select></label>}</div>}
         {decision==='Treasury'&&payment&&<PaymentFacts payment={payment}/>}
@@ -134,7 +143,9 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       {(Object.keys(ruleLabels) as (keyof typeof ruleLabels)[]).map(k=><label key={k}>{ruleLabels[k]}<textarea required maxLength={4000} value={rules[k]} onChange={e=>editRules({[k]:e.target.value})}/></label>)}
       {currency&&<fieldset className="gov-box gov-form"><legend>Currency rules</legend>
         {currency.poolPricing?<p>The pool sets prices. This charter governs new sales.</p>:<><label>Lowest purchase price (USD)<input required inputMode="decimal" value={minimumPrice} onChange={e=>setMinimumPrice(e.target.value)}/></label>
-        <label>Highest purchase price (USD)<input required inputMode="decimal" value={maximumPrice} onChange={e=>setMaximumPrice(e.target.value)}/></label></>}
+        <label>{venuePricing?'Maximum purchase price (optional, USD)':'Highest purchase price (USD)'}<input required={!venuePricing} inputMode="decimal" value={maximumPrice} onChange={e=>setMaximumPrice(e.target.value)}/></label>
+        <label className="gov-check"><input type="checkbox" checked={venuePricing} onChange={e=>setVenuePricing(e.target.checked)}/>Set the purchase price from verified venue traffic</label>
+        {venuePricing&&<VenuePricingFields value={venueTerms} onChange={setVenueTerms}/>}</>}
         <label className="gov-check"><input type="checkbox" checked={allowSalesPause} onChange={e=>setAllowSalesPause(e.target.checked)}/>Allow votes to pause or reopen sales</label>
       </fieldset>}
       {!currency&&identity&&!openRoll&&<CharterExecutionFields identity={identity} owner={owner} value={execution} change={v=>setExecutions(all=>({...all,[template]:v}))}/>}

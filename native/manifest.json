@@ -7700,8 +7700,8 @@
     },
     {
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
-      "bytes": 6275,
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
+      "bytes": 6361,
       "mode": 420
     },
     {
@@ -8373,12 +8373,17 @@
     {
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
       "mode": 420,
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e"
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d"
+    },
+    {
+      "path": "receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing.ts",
+      "mode": 420,
+      "sha256": "940134968bf8ee3813d519abb5b2960f3d1c2a7ec1cdcda29542db4890c4740c"
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
-      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
-      "bytes": 8758,
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
+      "bytes": 9354,
       "mode": 420
     },
     {
@@ -16621,8 +16626,8 @@
     },
     {
       "path": "vault/app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
-      "bytes": 6275,
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
+      "bytes": 6361,
       "mode": 420
     },
     {
@@ -16753,8 +16758,8 @@
     },
     {
       "path": "vault/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
-      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
-      "bytes": 9208,
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
+      "bytes": 9354,
       "mode": 420
     },
     {
@@ -17569,7 +17574,7 @@
     },
     {
       "path": "vault/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
       "mode": 420
     },
     {
@@ -18903,7 +18908,7 @@
       "id": "bankeiz-composer-media-bankAssetContent",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "9518202993382698f6f1f543e884fe5654396b2a74232ba8abcad534642b10b9",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
       "sourceCommit": "b974758ac"
     },
@@ -18999,7 +19004,7 @@
       "id": "bank-native-backed-publication",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "92055238b1c04f7fec73d5d3bce9904938c70f6a5c3f1c278d2dd6b8f38e4f03",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
     },
@@ -19071,7 +19076,7 @@
       "id": "bank-native-backed-publication",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
       "baseSha256": null,
-      "sha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
       "purpose": "Compose optional authored-source native backing and a closed public certificate through existing canonical source custody and publication. Receiz UI, SDK pins and financial roots unchanged.",
       "sourceCommit": "ec6c438e9"
     },
@@ -21143,14 +21148,14 @@
       "id": "bankeiz-native-currency-publication-v129",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     },
     {
       "id": "bankeiz-native-currency-publication-v129",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
       "baseSha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
-      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     },
     {
@@ -21163,7 +21168,7 @@
     {
       "id": "bankeiz-native-currency-publication-v129",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
       "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     },
     {
@@ -21177,21 +21182,21 @@
       "id": "bankeiz-native-currency-pool",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "7abf5096f43c953776eb2d391d934d1510322b957dba084469e2bafbd07129b6",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Verify pooled currency terms, preset identity and current pool quotes from the native asset Source."
     },
     {
       "id": "bankeiz-native-currency-pool",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
       "baseSha256": "0b656db582854758ff070ac684afd41ad47768ce08de39f4ffdbc908e4663c46",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
       "purpose": "Verify pooled currency terms, preset identity and current pool quotes from the native asset Source."
     },
     {
       "id": "bankeiz-native-currency-sales-window",
       "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Read signed currency sales windows from the native asset Source and retain the dates in its public projection.",
       "sourceCommit": "a7ba26401"
     },
@@ -21199,7 +21204,7 @@
       "id": "bankeiz-native-currency-sales-window",
       "path": "vault/app/lib/profile/showcase/bankAssetContent.ts",
       "baseSha256": "c569e1399f7e663f2d530e4575a98099c06fb674c56dc71e43fb26ad29301035",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
       "purpose": "Read signed currency sales windows from the native asset Source and retain the dates in its public projection.",
       "sourceCommit": "a7ba26401"
     },
@@ -21207,7 +21212,7 @@
       "id": "bankeiz-native-currency-sales-window",
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
       "baseSha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
       "purpose": "Read signed currency sales windows from the native asset Source and retain the dates in its public projection.",
       "sourceCommit": "72cf8c846"
     },
@@ -21215,9 +21220,64 @@
       "id": "bankeiz-native-currency-sales-window",
       "path": "vault/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
       "baseSha256": "32f30cab86569c17c2eb750f0be226454b3227a8d3ba2b02671d429d7829f41e",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
       "purpose": "Read signed currency sales windows from the native asset Source and retain the dates in its public projection.",
       "sourceCommit": "72cf8c846"
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "baseSha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing.ts",
+      "sha256": "940134968bf8ee3813d519abb5b2960f3d1c2a7ec1cdcda29542db4890c4740c",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+      "baseSha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "vault/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642",
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "vault/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+      "baseSha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
+    },
+    {
+      "id": "bankeiz-venue-pricing-and-capacity-issuance",
+      "path": "vault/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "baseSha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e",
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d",
+      "sourceCommit": "629323a72",
+      "purpose": "Read the verified venue pricing policy and retain governed adaptive supply in native currency projections."
     }
   ],
   "historicalValuation": {
@@ -21850,7 +21910,7 @@
     },
     {
       "path": "app/lib/profile/showcase/bankAssetContent.ts",
-      "sha256": "3b947aed19f00841c986f7301119e1497b0c3c8e2ac5f37142e1314b04d32642"
+      "sha256": "ef732687e26709187e17d85f332baec2e9c24f58f03f8ee6d60b20f75c657cdc"
     },
     {
       "path": "app/lib/profile/showcase/boundedEdgeVault.ts",
@@ -22222,11 +22282,11 @@
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
-      "sha256": "47f28708bafaf6c2263699d0672ac6675ece8c844a39f0d4d1628a76c614576e"
+      "sha256": "742048bf52fc25e2bae9d3698e99d325970c978b51ddcbc8812ec727c0fb447d"
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetHolding.ts",
-      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf"
+      "sha256": "d8a8c46981c8d8c2b29c24938f9e4436eff330668364f528ab00382891ab46d3"
     },
     {
       "path": "app/lib/wallet/bankNotes/nativeAssetPublicArtifact.ts",

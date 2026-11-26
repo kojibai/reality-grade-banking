@@ -79,7 +79,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {standalone&&<div className="public-asset-media">{object}</div>}
     {currency?<><CurrencyPriceHistory key={item.nativeAsset!.id} assetId={item.nativeAsset!.id} symbol={currency.symbol} openLedger={!readOnly}
       opening={{priceUsdCentsPerUnit:currency.priceUsdCentsPerUnit,at:item.sealedAt}}/><div className="detail-list">
-      <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
+      <div><span>{currency.adaptiveSupply?'Current supply':'Supply cap'}</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
       {currency.poolPricing&&<div><span>Pricing</span><strong>Market pool</strong></div>}
       <CurrencySalesDates window={currency.salesWindow} />
     </div></>:<>

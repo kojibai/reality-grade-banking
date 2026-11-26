@@ -132,6 +132,14 @@ it('opens the issued currency charter editor from the admitted source without re
   await click('Continue');
   expect(host.textContent).toContain('Lowest purchase price (USD)');
   expect(host.textContent).toContain('Approval threshold (%)');
+  const venuePricing = [...host.querySelectorAll('label')].find(label=>label.textContent?.includes('Set the purchase price from verified venue traffic'))!;
+  expect(host.textContent).not.toContain('Observation signer’s Receiz ID');
+  await act(async()=>venuePricing.querySelector('input')!.click());
+  expect(host.textContent).toContain('Maximum purchase price (optional, USD)');
+  expect(host.textContent).toContain('Issue new credits into Market when verified capacity is available');
+  expect(host.textContent).toContain('Observation signer’s Receiz ID');
+  await act(async()=>enter(host,'Venue identifier','discover'));
+  expect(host.querySelector('fieldset legend')?.textContent).toBeTruthy();
  } finally {await act(async()=>root.unmount());host.remove();verifier.mockRestore();load.mockRestore();}
 });
 

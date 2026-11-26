@@ -17,7 +17,7 @@ const fundingTitles:Record<string,string>={
 // Display names only. Preserve the exact kind, summary and original evidence.
 const actionTitles:Record<string,string>={
  'asset.issue-currency':'Currency issued','asset.buy-currency':'Currency bought','asset.sell-currency':'Currency sold',
- 'asset.manage-currency':'Currency terms updated','asset.govern-currency':'Currency vote applied',
+ 'asset.manage-currency':'Currency terms updated','asset.govern-currency':'Currency vote applied','asset.quote-currency':'Venue quote updated',
  'asset.issue-currency-note':'Currency note issued','asset.redeem-currency-note':'Currency note redeemed',
  'auth.login.receiz_id':'Signed In','auth.login.passkey':'Signed In','auth.login.receiz_key':'Signed In','auth.login.magic_link':'Signed In',
  'auth.login.receiz_id.create':'Account Created','auth.login.receiz_id.switch':'Account Switched','auth.logout':'Signed Out',

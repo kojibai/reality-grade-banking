@@ -1,3 +1,4 @@
+import { inspectNativeCurrencyServicePricingTerms, type NativeCurrencyServicePricingTerms } from '../../native/receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing.js';
 import { inspectNativeCurrencyChanges, type NativeCurrencyChanges } from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import type {OpenIdentity} from './native-identity';
 import {openCanonicalProofFile} from './proof-capture';
@@ -17,7 +18,7 @@ export type CharterPayment=Readonly<{
   destinationSubjectId:string;expectedDestinationHead:string;amountPhiMicro:string;installment:string;
 }>;
 export type CharterCurrencyControl=Readonly<{
-  assetId:string;minimumPriceUsdCents:string;maximumPriceUsdCents:string;allowSalesPause:boolean;
+  assetId:string;minimumPriceUsdCents:string;maximumPriceUsdCents?:string;allowSalesPause:boolean;servicePricing?:NativeCurrencyServicePricingTerms;
 }>;
 export type CharterCurrencyChange=Readonly<{
   assetId:string;expectedHead:string;changes:NativeCurrencyChanges;
@@ -88,11 +89,13 @@ function readPayment(value:unknown):CharterPayment{
   return Object.freeze({budgetId:subject(v.budgetId),sourceProofObjectId:subject(v.sourceProofObjectId),sourceValueHead:hash(v.sourceValueHead),destinationSubjectId:v.destinationSubjectId,expectedDestinationHead:hash(v.expectedDestinationHead),amountPhiMicro:v.amountPhiMicro,installment:subject(v.installment)});
 }
 function readCurrencyControl(value:unknown):CharterCurrencyControl{
-  const r=fields(value,['assetId','minimumPriceUsdCents','maximumPriceUsdCents','allowSalesPause']);
+  const r=fields(value,['assetId','minimumPriceUsdCents','allowSalesPause',...optionalFields(value,['maximumPriceUsdCents','servicePricing'])]);
   const minimum=inspectNativeCurrencyChanges({priceUsdCentsPerUnit:r.minimumPriceUsdCents}).priceUsdCentsPerUnit!;
-  const maximum=inspectNativeCurrencyChanges({priceUsdCentsPerUnit:r.maximumPriceUsdCents}).priceUsdCentsPerUnit!;
-  if(BigInt(minimum)>BigInt(maximum)||typeof r.allowSalesPause!=='boolean')return fail();
-  return Object.freeze({assetId:hash(r.assetId),minimumPriceUsdCents:minimum,maximumPriceUsdCents:maximum,allowSalesPause:r.allowSalesPause});
+  const maximum='maximumPriceUsdCents'in r?inspectNativeCurrencyChanges({priceUsdCentsPerUnit:r.maximumPriceUsdCents}).priceUsdCentsPerUnit:undefined;
+  const servicePricing='servicePricing'in r?inspectNativeCurrencyServicePricingTerms(r.servicePricing):undefined;
+  if((maximum===undefined?!servicePricing:BigInt(minimum)>BigInt(maximum))||typeof r.allowSalesPause!=='boolean')return fail();
+  return Object.freeze({assetId:hash(r.assetId),minimumPriceUsdCents:minimum,...(maximum?{maximumPriceUsdCents:maximum}:{}),
+    allowSalesPause:r.allowSalesPause,...(servicePricing?{servicePricing}:{})});
 }
 function readCurrencyChange(value:unknown):CharterCurrencyChange{
   const r=fields(value,['assetId','expectedHead','changes']);
@@ -101,7 +104,7 @@ function readCurrencyChange(value:unknown):CharterCurrencyChange{
 export function checkCharterCurrencyChange(control:CharterCurrencyControl|undefined,proposal:CharterCurrencyChange) {
   if(!control||proposal.assetId!==control.assetId)throw Error('GOVERNANCE_CURRENCY_SCOPE_MISMATCH');
   const {priceUsdCentsPerUnit:price,salesPaused}=proposal.changes;
-  if(price&&(BigInt(price)<BigInt(control.minimumPriceUsdCents)||BigInt(price)>BigInt(control.maximumPriceUsdCents))
+  if(price&&(control.servicePricing||BigInt(price)<BigInt(control.minimumPriceUsdCents)||control.maximumPriceUsdCents!==undefined&&BigInt(price)>BigInt(control.maximumPriceUsdCents))
     ||salesPaused!==undefined&&!control.allowSalesPause)throw Error('GOVERNANCE_CURRENCY_SCOPE_MISMATCH');
   return proposal;
 }

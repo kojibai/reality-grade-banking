@@ -29,11 +29,24 @@ function ProposalText({text}:{text:string}){
 export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:GovernanceTerms;practice?:boolean;member?:(id:string)=>string}){
   let facts:[string,string][]=[];
   switch(terms.kind){
-    case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',r.participation?'Open registration for each binding vote':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
+    case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',r.participation?'Open registration for advisory votes':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
       if(r.execution)facts.push(['Binding closure','Every voting member attests the same evidence after the appeal deadline.'],['Custodian',member(r.execution.custodian)],['Governance register',r.execution.registerProofObjectId],['Register genesis head',r.execution.registerGenesisHead]);
       const scope=r.execution?.currency;
-      if(scope)facts.push(['Currency',scope.assetId],['Purchase price range (USD cents)',scope.minimumPriceUsdCents+'–'+scope.maximumPriceUsdCents],
+      if(scope)facts.push(['Currency',scope.assetId],['Purchase price range (USD cents)',scope.maximumPriceUsdCents
+        ?scope.minimumPriceUsdCents+'–'+scope.maximumPriceUsdCents:scope.minimumPriceUsdCents+' minimum'],
         ['Votes can change new sales',scope.allowSalesPause?'Yes':'No']);
+      if(scope?.servicePricing)facts.push(
+        ['Pricing','Verified venue observations'],
+        ['Benchmark (USD cents per thousand)',scope.servicePricing.benchmarkUsdCentsPerThousandImpressions],
+        ['Credit cost per placement',scope.servicePricing.unitsPerPlacement],
+        ['Visibility budget per placement',scope.servicePricing.viewsPerPlacement],
+        ['Audience capacity (basis points)',scope.servicePricing.capacityBasisPoints],
+        ['Booking window',scope.servicePricing.bookingWindowDays+' days'],
+        ['New issuance',scope.servicePricing.automaticIssuance?'Automatic within verified available capacity':'Fixed supply'],
+        ['Observation window',scope.servicePricing.windowLengthKai+' Kai pulses'],
+        ['Maximum observation age',scope.servicePricing.maximumAgeKai+' Kai pulses'],
+        ['Venue observers',scope.servicePricing.venues.map(venue=>venue.id+' · '+member(venue.observerReceizId)+' · '+venue.dailyEligibleViewsLimit+' eligible views per day').join('\n')],
+      );
       for(const o of r.offices??[])facts.push([o.name,o.seats+' seat(s) · '+o.selection+' · '+(o.eligibility==='Open'?'Open eligibility':'Voting members')+'\n'+[o.powers,o.term,o.procedure,o.recall].join('\n')]);
       for(const a of r.articles??[])facts.push([a.title,a.text]);break;}
     case 'proposal': {

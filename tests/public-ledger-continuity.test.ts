@@ -88,6 +88,9 @@ it('projects only accepted buys and sells and keeps every trade at a shared quot
    {...first,id:'buy',kind:'asset.buy-currency',currency:{...currency,tradeUsdCents:'246'}},
    {...first,id:'send',entryHash:'c'.repeat(64),kind:'asset.send-ownership',kaiUpulse:'1000001',currency},
    {...first,id:'sell',entryHash:'d'.repeat(64),kind:'asset.sell-currency',kaiUpulse:'1000002',currency:{...currency,tradeUsdCents:'190'}},
+   {...first,id:'quote',entryHash:'f'.repeat(64),kind:'asset.quote-currency',kaiUpulse:'1000003',currency:{
+    assetId,symbol:'CASH',priceUsdCentsPerUnit:'250',
+   }},
   ]}};
  f.custody.set(held,{source:opening.source});
  await publicLedgerDisplayRows(held as never,[]);
@@ -95,5 +98,5 @@ it('projects only accepted buys and sells and keeps every trade at a shared quot
   expect.objectContaining({side:'sell',kaiUPulse:'1000002',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'190'}),
   expect.objectContaining({side:'buy',kaiUPulse:'1000000',quantityMicro:'2000000',priceUsdCentsPerUnit:'123',tradeUsdCents:'246'}),
  ]);
- expect(heldCurrencyPriceHistory(assetId,'CASH').at(-1)?.usdCents).toBe('123');
+ expect(heldCurrencyPriceHistory(assetId,'CASH').at(-1)?.usdCents).toBe('250');
 });

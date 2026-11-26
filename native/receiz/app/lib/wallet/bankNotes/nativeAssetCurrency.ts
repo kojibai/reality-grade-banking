@@ -33,6 +33,7 @@ export type NativeCurrencyState = Readonly<{
   governanceCharterSha256?: string;
   governanceSettingsHead?: string;
   salesPaused?: boolean;
+  adaptiveSupply?: true;
 }>;
 export type NativeCurrencyChanges = Readonly<{ priceUsdCentsPerUnit?: string; salesPaused?: boolean }>;
 
@@ -170,7 +171,8 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
     ...(policy.issuerControls ? ['issuerAccountId', 'salesPaused'] : []),
     ...(policy.kind === 'constant-product-pool' ? ['poolValuationUsdPerPhiMicrocents'] : []),
     ...(value && typeof value === 'object' && Object.hasOwn(value, 'governanceCharterSha256') ? ['governanceCharterSha256'] : []),
-    ...(value && typeof value === 'object' && Object.hasOwn(value, 'governanceSettingsHead') ? ['governanceSettingsHead'] : [])]);
+    ...(value && typeof value === 'object' && Object.hasOwn(value, 'governanceSettingsHead') ? ['governanceSettingsHead'] : []),
+    ...(value && typeof value === 'object' && Object.hasOwn(value, 'adaptiveSupply') ? ['adaptiveSupply'] : [])]);
   const { issuerAccountId, salesPaused, governanceCharterSha256, governanceSettingsHead } = data;
   if (Object.hasOwn(data, 'governanceCharterSha256') && (!policy.issuerControls
     || typeof governanceCharterSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(governanceCharterSha256))) return fail('CURRENCY_INVALID');
@@ -178,6 +180,8 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
     || typeof salesPaused !== 'boolean')) return fail('CURRENCY_INVALID');
   if (Object.hasOwn(data, 'governanceSettingsHead') && (!governanceCharterSha256
     || typeof governanceSettingsHead !== 'string' || !/^[a-f0-9]{64}$/u.test(governanceSettingsHead))) return fail('CURRENCY_INVALID');
+  if (Object.hasOwn(data, 'adaptiveSupply') && (data.adaptiveSupply !== true || !governanceCharterSha256
+    || policy.kind !== 'fixed-reserve-pool')) return fail('CURRENCY_INVALID');
   const supply = amount(cap, true);
   const available = amount(data.availableQuantityMicro);
   const pooledCents = amount(data.liquidityReserveUsdCents);
@@ -197,10 +201,16 @@ export function inspectNativeCurrency(value: unknown, cap: unknown): NativeCurre
   } else if ((pooledPhi < pooledCents ? pooledPhi : pooledCents) + settlementPhi < outstanding / MICRO
     || outstanding === 0n && (pooledPhi !== 0n || settlementPhi !== 0n)) return fail('CURRENCY_INVALID');
   return { policy, availableQuantityMicro: available.toString(), ...reserves,
+    ...(data.adaptiveSupply===true?{adaptiveSupply:true as const}:{}),
     ...(policy.kind === 'constant-product-pool' ? { poolValuationUsdPerPhiMicrocents: data.poolValuationUsdPerPhiMicrocents as string } : {}),
     ...(policy.issuerControls ? { issuerAccountId: issuerAccountId as string, salesPaused: salesPaused as boolean } : {}),
     ...(typeof governanceCharterSha256 === 'string' ? { governanceCharterSha256 } : {}),
     ...(typeof governanceSettingsHead === 'string' ? { governanceSettingsHead } : {}) };
+}
+
+export function matchesNativeCurrencySupply(currency: unknown, supply: string, initialSupply: string) {
+  return supply===initialSupply
+    || (currency as NativeCurrencyState|null)?.adaptiveSupply===true && BigInt(supply)>=BigInt(initialSupply);
 }
 
 export function nativeCurrencyFields(asset: unknown): readonly string[] {

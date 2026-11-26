@@ -2,14 +2,15 @@ import {inspectNativeCurrencySalesWindow,type NativeCurrencyPreset,type NativeCu
 import {currencyPresets} from './currency-presets.js';
 /** Public routing facts only. Existing native execution reopens the accepted
  * asset head and funded offers before authorizing any transition. */
-export type PublicCurrencyTerms=Readonly<{symbol:string;supplyMicro:string;priceUsdCentsPerUnit:string;preset?:NativeCurrencyPreset;poolPricing?:true;issuerControls?:true;salesWindow?:NativeCurrencySalesWindow}>;
+export type PublicCurrencyTerms=Readonly<{symbol:string;supplyMicro:string;priceUsdCentsPerUnit:string;preset?:NativeCurrencyPreset;poolPricing?:true;issuerControls?:true;adaptiveSupply?:true;salesWindow?:NativeCurrencySalesWindow}>;
 export type PublicNativeAssetBinding=Readonly<{id:string;issuanceSourceSha256:string;headSourceSha256:string;publicCertificateSha256:string;currency?:PublicCurrencyTerms}>;
 export function publicNativeAssetBinding(value:unknown):PublicNativeAssetBinding|undefined{
  if(!value||typeof value!=='object'||Array.isArray(value))return;const v=value as Record<string,unknown>,fields=['id','issuanceSourceSha256','headSourceSha256','publicCertificateSha256'];if(Object.keys(v).length!==(Object.hasOwn(v,'currency')?5:4)||!fields.every(key=>typeof v[key]==='string'&&/^[a-f0-9]{64}$/.test(v[key] as string)))return;
  if(!Object.hasOwn(v,'currency'))return Object.freeze({...v}) as PublicNativeAssetBinding;
  const currency=v.currency as Record<string,unknown>|null;
- if(!currency||typeof currency!=='object'||Array.isArray(currency)||Object.keys(currency).some(key=>!['symbol','supplyMicro','priceUsdCentsPerUnit','issuerControls','preset','poolPricing','salesWindow'].includes(key))
+ if(!currency||typeof currency!=='object'||Array.isArray(currency)||Object.keys(currency).some(key=>!['symbol','supplyMicro','priceUsdCentsPerUnit','issuerControls','preset','poolPricing','salesWindow','adaptiveSupply'].includes(key))
   ||Object.hasOwn(currency,'issuerControls')&&currency.issuerControls!==true
+  ||Object.hasOwn(currency,'adaptiveSupply')&&(currency.adaptiveSupply!==true||currency.issuerControls!==true||currency.poolPricing===true)
   ||Object.hasOwn(currency,'poolPricing')&&currency.poolPricing!==true
   ||Object.hasOwn(currency,'preset')&&(typeof currency.preset!=='string'||!Object.hasOwn(currencyPresets,currency.preset))
   ||typeof currency.symbol!=='string'||! /^[A-Z][A-Z0-9]{1,7}$/.test(currency.symbol)
