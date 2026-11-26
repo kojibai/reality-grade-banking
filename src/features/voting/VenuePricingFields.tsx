@@ -1,5 +1,12 @@
 import type { NativeCurrencyServicePricingTerms } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing';
 
+const emptyLiveDuration = { referenceImpressions: '', minimumPulsesPerUnit: '', maximumPulsesPerUnit: '' };
+const liveDurationFields = [
+  ['referenceImpressions', 'Reference impressions'],
+  ['minimumPulsesPerUnit', 'Minimum Kai pulses per credit'],
+  ['maximumPulsesPerUnit', 'Maximum Kai pulses per credit'],
+] as const;
+
 const emptyVenue = { id: '', observerReceizId: '', dailyEligibleViewsLimit: '' };
 export const emptyVenuePricingTerms: NativeCurrencyServicePricingTerms = {
   unitsPerPlacement: '100', viewsPerPlacement: '1000', capacityBasisPoints: '8000',
@@ -21,6 +28,8 @@ export function VenuePricingFields({ value, onChange }: {
   value: NativeCurrencyServicePricingTerms;
   onChange(value: NativeCurrencyServicePricingTerms): void;
 }) {
+  const duration = value.placementDuration;
+  const live = duration?.live;
   return <fieldset className="gov-box gov-form">
     <legend>Venue pricing</legend>
     <p>Each approved observer supplies a signed observation. New purchases require a current quote.</p>
@@ -35,6 +44,35 @@ export function VenuePricingFields({ value, onChange }: {
           onChange={event => onChange({ ...value, [key]: event.target.value })} />
       </label>)}
     </div>
+    <fieldset className="gov-box gov-form">
+      <legend>Placement duration</legend>
+      <label>How credits book time
+        <select value={live ? 'live' : duration ? 'fixed' : 'slots'} onChange={event => {
+          const mode = event.currentTarget.value;
+          const { placementDuration, ...terms } = value;
+          if (mode === 'slots') onChange(terms);
+          else onChange({ ...terms, placementDuration: {
+            pulsesPerUnit: placementDuration?.pulsesPerUnit ?? '',
+            ...(mode === 'live' ? { live: placementDuration?.live ?? emptyLiveDuration } : {}),
+          } });
+        }}>
+          <option value="slots">Fixed booking slots</option>
+          <option value="fixed">Fixed time per credit</option>
+          <option value="live">Live time per credit</option>
+        </select>
+      </label>
+      {duration && <div className="gov-fields">
+        <label>{live ? 'Base Kai pulses per credit' : 'Kai pulses per credit'}
+          <input required value={duration.pulsesPerUnit} inputMode="numeric" pattern="[1-9][0-9]*" maxLength={19}
+            onChange={event => onChange({ ...value, placementDuration: { ...duration, pulsesPerUnit: event.currentTarget.value } })} />
+        </label>
+        {live && liveDurationFields.map(([key, label]) => <label key={key}>{label}
+          <input required value={live[key]} inputMode="numeric" pattern="[1-9][0-9]*" maxLength={19}
+            onChange={event => onChange({ ...value, placementDuration: { ...duration, live: { ...live, [key]: event.currentTarget.value } } })} />
+        </label>)}
+      </div>}
+      {live && <p>Verified venue traffic sets the time each credit buys within these limits.</p>}
+    </fieldset>
     {value.venues.map((venue, index) => {
       const fields = [
         ['id', 'Venue identifier', '[a-z0-9][a-z0-9\\-]*', 64],

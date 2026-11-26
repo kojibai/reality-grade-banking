@@ -7,6 +7,7 @@ import { openCurrencyNoteFile } from '../src/receiz/currency-notes';
 import { microPulsesSinceGenesis } from '../native/receiz/app/utils/kai_pulse';
 import { inspectNativeCurrency, matchesNativeCurrencySupply } from '../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { CreateAsset } from '../src/features/assets/CreateAsset';
+import { IssueCurrency } from '../src/features/assets/IssueCurrency';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
 import { LiveOwnership } from '../src/features/assets/LiveOwnership';
@@ -107,6 +108,40 @@ it('opens currency issue inside An asset, preserves the Original draft, and stag
   await review.operations?.();
   expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',
    definition:expect.objectContaining({units:'10'}),files:[{id:'currency-artwork',role:'primary',file:artwork}]}));
+ } finally {await act(async()=>root.unmount());host.remove();}
+});
+
+it('opts issuer-managed service credits into thousandth-unit increments at issuance',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),identity={} as OpenIdentity;
+ const button=(label:string)=>[...host.querySelectorAll('button')].find(item=>item.textContent?.trim()===label)!;
+ document.body.append(host);
+ const increment=()=>[...host.querySelectorAll('select')].find(item=>item.closest('label')?.textContent?.startsWith('Smallest service-credit amount'));
+ try {
+  await act(async()=>root.render(<IssueCurrency identity={identity} onRefresh={vi.fn()}/>));
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value="service-credit"]')!.click());
+  await act(async()=>{
+   enter(host,'Name','Studio time');
+   enter(host,'Currency code','STUDIO');
+  });
+  await act(async()=>button('Set currency terms').click());
+  await act(async()=>{
+   enter(host,'Supply cap','10');
+   enter(host,'Purchase price per unit','1.00');
+  });
+  expect(increment()).toBeUndefined();
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value=managed]')!.click());
+  expect(increment()?.value).toBe('1000000');
+  expect(review.input?.()).toMatchObject({policy:{kind:'fixed-reserve-pool',preset:'service-credit',issuerControls:true}});
+  expect(review.input?.()).not.toMatchObject({policy:{quantityIncrementMicro:expect.anything()}});
+  await act(async()=>{
+   const field=increment()!;
+   field.value='1000';
+   field.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  expect(review.input?.()).toMatchObject({policy:{quantityIncrementMicro:'1000'}});
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value=fixed]')!.click());
+  expect(increment()).toBeUndefined();
+  expect(review.input?.()).not.toMatchObject({policy:{quantityIncrementMicro:expect.anything()}});
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 

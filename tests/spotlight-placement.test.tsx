@@ -48,7 +48,7 @@ it('loads the schedule on entry to the booking panel and reviews the exact Origi
 
 it('refuses an offer that changes the selected credits before opening native review',async()=>{
  const identity={currencyGovernance:async()=>({assetDigest,placement:{...placement,terms:{...placement.terms,quantityMicro:'101000000'}}})} as unknown as OpenIdentity;
- await expect(preparePlacementOffer(identity,assetId,originalId,slot)).rejects.toThrow('PLACEMENT_SOURCE_INVALID');
+ await expect(preparePlacementOffer(identity,assetId,originalId,slot,assetDigest)).rejects.toThrow('PLACEMENT_SOURCE_INVALID');
 });
 
 it('takes an active Spotlight reservation and its removal from the existing selected membership',async()=>{

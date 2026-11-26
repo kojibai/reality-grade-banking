@@ -39,6 +39,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [seed, setSeed] = useState('');
   const [price, setPrice] = useState('');
   const [issuerControls, setIssuerControls] = useState(false);
+  const [fractionalCredits, setFractionalCredits] = useState(false);
   const [salesStart, setSalesStart] = useState('');
   const [salesEnd, setSalesEnd] = useState('');
   const [description, setDescription] = useState('');
@@ -72,6 +73,8 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   }, [governance]);
 
   const pooled = creatorUnits.trim() !== '' && !/^0+$/u.test(creatorUnits.trim());
+  const canIssueFractionalCredits = !pooled && issuerControls && preset === 'service-credit';
+  const quantityIncrementMicro = canIssueFractionalCredits && fractionalCredits ? '1000' : undefined;
   const countsEntered = /^\d+$/u.test(units.trim()) && /^\d*$/u.test(creatorUnits.trim());
   const marketUnits = countsEntered ? BigInt(units.trim()) - BigInt(creatorUnits.trim() || '0') : null;
   const marketShort = marketUnits !== null && pooled && marketUnits < 2n;
@@ -178,7 +181,10 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   return <div className="currency-creation">
     <div hidden={!!governance}>
       <NativeOperation identity={identity} title="Currency" confirmLabel="Issue currency" committedTitle="Currency issued." onRefresh={onRefresh}
-        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, salesStart, salesEnd])}
+        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, quantityIncrementMicro, salesStart, salesEnd])}
+        reviewDetails={quantityIncrementMicro && <div className="detail-list">
+          <div><span>Smallest service-credit amount</span><strong>{formatUnits(quantityIncrementMicro)} {symbol}</strong></div>
+        </div>}
         onResult={result => {
           if (result.status === 'committed' && 'nativeAssetSource' in result) setIssueSource(result.nativeAssetSource);
         }}
@@ -197,7 +203,8 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           const common = { preset, ...(issuerControls ? { issuerControls: true } : {}), ...(salesWindow ? { salesWindow } : {}) };
           const policy = inspectNativeCurrencyPolicy(pooled
             ? { ...common, kind: 'constant-product-pool', creatorQuantityMicro: parseAmount(creatorUnits), seedUsdCents: bankOperationDollars(seed) }
-            : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price) });
+            : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price),
+              ...(quantityIncrementMicro ? { quantityIncrementMicro } : {}) });
           nativeCurrencyLaunch(policy, parseAmount(asset.units));
           return { kind: 'issue-currency', definition: asset, policy };
         }}
@@ -254,6 +261,12 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
               </label>
             </div>
           </fieldset>
+          {canIssueFractionalCredits && <label className="form-field"><span>Smallest service-credit amount</span>
+            <select value={quantityIncrementMicro ?? '1000000'} onChange={event => setFractionalCredits(event.currentTarget.value === '1000')}>
+              <option value="1000000">Whole units (1)</option>
+              <option value="1000">Thousandths (0.001)</option>
+            </select>
+          </label>}
           <fieldset className="currency-sales-schedule">
             <legend>Sales schedule</legend>
             <div className="currency-creation-pair">
