@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, Download, Minus, Plus, QrCode, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
+import type { WalletRecoveryFile } from '../../receiz/local-financial';
 import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type FundedWalletSendResult, type WalletOffer } from '../../receiz/funded-wallet';
 import { createOpticalNoteFrames, isOpticalNoteFrame, opticalNotePayloadLimit, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
@@ -350,8 +351,18 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
   const panelId=useId();
   const [expanded,setExpanded]=useState(offline||!!linkedPayment);
   const [savedLink,setSavedLink]=useState<string>();
+  const [recoveryCopies,setRecoveryCopies]=useState<{identity:OpenIdentity;files:readonly WalletRecoveryFile[]}>();
+  const recoveryFiles=recoveryCopies?.identity===identity?recoveryCopies.files:[];
   const paymentToAccept=linkedPayment&&linkedPayment!==savedLink?linkedPayment:undefined;
   useEffect(()=>{if(offline||linkedPayment)setExpanded(true);},[offline,linkedPayment]);
+  useEffect(()=>{
+    if(!expanded||!identity.fundedWallet)return;
+    let current=true;
+    void identity.fundedWallet().then(wallet=>wallet.latestRecoveryFiles?.()).then(files=>{
+      if(current&&files)setRecoveryCopies({identity,files});
+    }).catch(()=>{});
+    return()=>{current=false;};
+  },[identity,expanded]);
   const reader=useRef(readOpticalNoteFrames('wallet'));
   const [status,setStatus]=useState(''),[error,setError]=useState('');
   const [noteHandoff,setNoteHandoff]=useState<BankReceivedNoteDeposit|BankForwardedNote>();
@@ -422,6 +433,9 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
         setStatus(`${result} Bankeiz can’t confirm this is the latest copy.`);
       }
       onRefresh();
+      void wallet.latestRecoveryFiles?.().then(files=>{
+        if(current())setRecoveryCopies({identity,files});
+      }).catch(()=>{});
     }catch(cause){
       if(!current())return;
       const code=cause instanceof Error?cause.message:'';
@@ -588,6 +602,13 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
                 const file=event.target.files?.[0];event.target.value='';if(file)void restoreFromFile(file);
               }}/>
             </label>
+            {recoveryFiles.map(file=><button key={file.operationId} className="text-button" type="button" disabled={busy} onClick={()=>{
+              setError('');
+              void saveWalletRecoveryFile(file.recoveryProof,file.operationId).catch(()=>{
+                if(active.current&&activeIdentity.current===identity)setError('The recovery file couldn’t be saved. Try saving it again.');
+              });
+            }}><Download size={16}/>{recoveryFiles.length===1?'Save latest recovery file':`Save ${formatMoney(file.amountUsdCents)} recovery file`}</button>)}
+            {recoveryFiles.length>0&&<p className="body-copy small-copy">Keep this file private. In iPhone Files, save it to iCloud Drive and use Keep Downloaded for offline access.</p>}
             {identity.offlineNotes&&<button className="text-button" type="button" disabled={busy} onClick={()=>void showNoteReceivingQr()}>Show Note receiving QR</button>}</>}
         {noteHandoff&&<ForwardNoteHandoff key={noteHandoff.noteId} identity={identity} note={noteHandoff} onForwarded={value=>{setNoteHandoff(value);setStatus('Note ready to hand off.');onRefresh();}}/>}
       </>}

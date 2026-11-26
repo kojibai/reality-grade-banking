@@ -120,8 +120,9 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
   Object.defineProperty(navigator,'share',{configurable:true,value:share});
   Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
   const restoreWalletRecoveryFile=vi.fn(async (_bytes:Uint8Array):Promise<{count:number;freshness:string}>=>({count:1,freshness:'unconfirmed'}));
-  const receive=vi.fn(),onRefresh=vi.fn();
-  const wallet={availableReceipt:async()=>null,receiptProofCount:async()=>0,
+  const receive=vi.fn(),onRefresh=vi.fn(),completeOutgoing=vi.fn(async()=>{});
+  const latestRecoveryFiles=vi.fn(async()=>[{operationId:offer.conversationId,amountUsdCents:'100',recoveryProof:exact}]);
+  const wallet={availableReceipt:async()=>null,receiptProofCount:async()=>0,completeOutgoing,latestRecoveryFiles,
     outgoing:async()=>({operationId:offer.conversationId,qr,recoveryProof:exact}),restoreWalletRecoveryFile,receive};
   const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
   try{
@@ -135,7 +136,12 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
     expect(new Uint8Array(await file!.arrayBuffer())).toEqual(exact);
     expect(host.textContent).toContain('after it syncs');
 
+    await click(host,'Send another payment');
+    expect(completeOutgoing).toHaveBeenCalledExactlyOnceWith(offer.conversationId);
     await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
+    await click(host,'Save latest recovery file');
+    expect(share).toHaveBeenCalledTimes(2);
+    expect(new Uint8Array(await share.mock.calls[1]![0].files![0]!.arrayBuffer())).toEqual(exact);
     const input=host.querySelector<HTMLInputElement>('[aria-label="Restore Wallet from file"]');
     expect(input).not.toBeNull();
     Object.defineProperty(input,'files',{configurable:true,value:[file]});

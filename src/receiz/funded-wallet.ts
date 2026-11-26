@@ -1,4 +1,4 @@
-import { createLocalFinancialSession, loadLocalFinancialRuntime, subscribeBrowserReconnect, type LocalFinancialSessionOptions, type WalletRecoveryFreshness } from './local-financial';
+import { createLocalFinancialSession, loadLocalFinancialRuntime, subscribeBrowserReconnect, type LocalFinancialSessionOptions, type WalletRecoveryFreshness, type WalletRecoveryFile } from './local-financial';
 import { createOpticalNoteFrames } from './optical-note-frames';
 import type { FinancialAction, WalletRecipient, WalletPaymentStage } from './local-financial-runtime';
 import { encodeWalletPaymentBundle, readWalletPaymentBundle, walletPaymentConversation, walletPaymentHash, walletPaymentBundleFits, type WalletPaymentPart, type WalletPaymentOpening } from './wallet-payment-bundle';
@@ -639,6 +639,16 @@ export function createFundedWallet(input:Options) {
     },
     restoreWalletRecoveryFile(bytes:Uint8Array){
       return recoverWalletCarrier(bytes,true);
+    },
+    latestRecoveryFiles(){
+      return input.lock(async()=>{
+        const files:WalletRecoveryFile[]=[];
+        for(const entry of (await current()).entries){
+          const file=await (await restore(entry)).latestRecoveryFile();
+          if(file)files.push(file);
+        }
+        return files;
+      });
     },
     async receiptQr(index=0){
       const digests=receiptDigests(await current()),digest=digests[digests.length-1-index];

@@ -61,10 +61,19 @@ accepted commits. Recovery still requires the retained archive key, device
 signer and files. Existing Wallets keep their original journal and credentials.
 
 After making a signed nearby Wallet payment, choose **Save recovery file** on
-the payment QR screen. On iPhone, choose **Save to Files** and select **iCloud
-Drive**. The file contains the exact signed Wallet proof carried by the QR.
-It contains private payment details and should be kept private. Bankeiz does
-not receive iCloud Drive sync status from the Files picker.
+the payment QR screen. You can also reopen **Receive nearby** and choose
+**Save latest recovery file** after closing the payment screen. Bankeiz offers
+one file for each held Wallet allocation whose current head is an exportable
+signed nearby debit. The file contains the exact signed Wallet proof and
+private payment details.
+
+On iPhone, choose **Save to Files** and select **iCloud Drive**. Allow the
+copy to sync before relying on it to survive a restore. After restore, make
+the file available on the iPhone using **Keep Downloaded** in Files before
+going offline. A copy on storage outside the restored phone can also be
+opened through Files when the storage is available offline. Bankeiz does not
+receive iCloud Drive sync status from the Files picker. See
+[Apple's guide to keeping files downloaded](https://support.apple.com/en-au/guide/iphone/iphe9aff429a/27/ios/27).
 
 When the file is available on the phone, open the same Receiz ID and choose
 **Receive nearby → Restore Wallet from file**. The existing Receiz verifier

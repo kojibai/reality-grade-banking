@@ -6,6 +6,7 @@ export type {LocalFinancialRuntime} from './local-financial-runtime';
 type FinancialRuntime=LocalFinancialRuntime;
 type ExecutorOptions=FinancialExecutorOptions;
 export type WalletRecoveryFreshness='older'|'matches-held'|'unconfirmed';
+export type WalletRecoveryFile=Readonly<{operationId:string;amountUsdCents:string;recoveryProof:Uint8Array}>;
 let loading:Promise<FinancialRuntime>|undefined;
 export function loadLocalFinancialRuntime():Promise<FinancialRuntime>{
  return loading??=import('./offline-notes').then(({loadBankNoteRuntime})=>loadBankNoteRuntime()).then(runtime=>runtime as unknown as FinancialRuntime).catch(error=>{loading=undefined;throw error;});
@@ -386,6 +387,18 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   },
   refreshPublication(){open();nudge();},
   walletPaymentBytes,
+  async latestRecoveryFile():Promise<WalletRecoveryFile|null>{
+   open();
+   if(!protectedWallet)return null;
+   const {headArtifactSha256,state,release}=await executor.current();
+   if(release||state.sequence==='0')return null;
+   const [commit]=await executor.pending(String(BigInt(state.sequence)-1n),1);
+   open();
+   if(!commit||commit.operation.artifactSha256!==headArtifactSha256)return null;
+   const {operationId,action}=commit.operation;
+   if(action.kind!=='send'||!action.nearby)return null;
+   return {operationId,amountUsdCents:action.amountUsdCents,recoveryProof:runtime.exportReceizAccountFinancialWalletProof(source,commit)};
+  },
   async walletQr(operationId:string){
    const proof=await walletPaymentBytes(operationId);
    return proof?createOpticalNoteFrames('wallet',proof):null;
