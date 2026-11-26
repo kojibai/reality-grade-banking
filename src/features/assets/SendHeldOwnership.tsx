@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useSyncExternalStore } from 'react';
-import { ChevronRight, Layers, Search } from 'lucide-react';
+import { ChevronRight, Coins, Layers, Search } from 'lucide-react';
 import { InlineOpening } from '../../components/InlineOpening';
 import { AmountInput } from '../../components/AmountInput';
 import { formatUnits } from '../../core/money';
@@ -37,6 +37,7 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
   const [selectedId, setSelectedId] = useState(initialDigest), [search, setSearch] = useState('');
   const [limit, setLimit] = useState(pageSize), [quantity, setQuantity] = useState('1');
   const [recipient, setRecipient] = useState('');
+  const [category, setCategory] = useState<'shares' | 'currencies' | null>(null);
   const positions = sources.filter(isSendableHolding);
   const selected = positions.find(source => source.nativeAsset.assetId === selectedId || source.digest === selectedId);
 
@@ -55,7 +56,10 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
         try {
           quantityMicro = nativeAssetSupplyMicro(quantity.trim());
         } catch {
-          throw Error('Enter a positive quantity with up to 6 decimal places.');
+          throw Error(nativeAsset.currency ? 'Enter a positive whole number of units.' : 'Enter a positive quantity with up to 6 decimal places.');
+        }
+        if (nativeAsset.currency && BigInt(quantityMicro) % 1_000_000n !== 0n) {
+          throw Error('Enter a positive whole number of units.');
         }
         if (BigInt(quantityMicro) > BigInt(nativeAsset.quantityMicro)) {
           throw Error('Enter a quantity within your available units.');
@@ -70,7 +74,7 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
         {nativeAsset.lockedQuantityMicro !== '0' && <p>{formatUnits(nativeAsset.lockedQuantityMicro)} {nativeAsset.symbol} committed to offers</p>}
       </div>
       <div className="ownership-send-amount">
-        <AmountInput label="Ownership to send" value={quantity} onChange={setQuantity} suffix={nativeAsset.symbol} />
+        <AmountInput label={nativeAsset.currency ? 'Whole units to send' : 'Ownership to send'} value={quantity} onChange={setQuantity} suffix={nativeAsset.symbol} />
         <button type="button" className="secondary-button" onClick={() => setQuantity(available)}>All</button>
       </div>
       <label className="form-field"><span>Recipient</span><input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="Receiz ID or public username" maxLength={160} /></label>
@@ -78,17 +82,25 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
   }
 
   const query = search.trim().toLowerCase();
-  const matching = positions.filter(source => [source.title, source.nativeAsset.symbol, source.nativeAsset.assetId]
-    .some(value => value.toLowerCase().includes(query)));
-
   const marketPositions = identity.vaults ? portfolio?.positions ?? [] : [];
-  const matchingMarket = marketPositions.filter(position => [position.title, position.marketItemId]
+  const hasCurrencies = positions.some(source => source.nativeAsset.currency);
+  const hasShares = marketPositions.length > 0 || positions.some(source => !source.nativeAsset.currency);
+  const visibleCategory = hasCurrencies && (!hasShares || category === 'currencies') ? 'currencies' : 'shares';
+  const matching = positions.filter(source => Boolean(source.nativeAsset.currency) === (visibleCategory === 'currencies')
+    && [source.title, source.nativeAsset.symbol, source.nativeAsset.assetId].some(value => value.toLowerCase().includes(query)));
+  const matchingMarket = visibleCategory === 'currencies' ? [] : marketPositions.filter(position => [position.title, position.marketItemId]
     .some(value => value.toLowerCase().includes(query)));
   const available = positions.length + marketPositions.length;
 
   return <section>
     <h1 className="sheet-hero">Send ownership.</h1>
     {available > 0 && <>
+      {hasCurrencies && hasShares && <div className="segmented" aria-label="Holding type" role="group">
+        {(['shares', 'currencies'] as const).map(value => <button key={value} type="button" aria-pressed={visibleCategory === value}
+          className={visibleCategory === value ? 'active' : ''} onClick={() => { setCategory(value); setLimit(pageSize); }}>
+          {value === 'shares' ? 'Shares' : 'Currencies'}
+        </button>)}
+      </div>}
       <label className="search-field ownership-send-search"><Search size={17} aria-hidden="true" /><input
         type="search" aria-label="Search holdings" placeholder="Search holdings" value={search}
         onChange={event => { setSearch(event.target.value); setLimit(pageSize); }} /></label>
@@ -98,7 +110,7 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
           setSelectedId(assetId);
           setQuantity(BigInt(quantityMicro) < 1_000_000n ? formatUnits(quantityMicro) : '1');
         }}>
-          <span className="asset-mark"><Layers size={20} aria-hidden="true" /></span>
+          <span className="asset-mark">{source.nativeAsset.currency ? <Coins size={20} aria-hidden="true" /> : <Layers size={20} aria-hidden="true" />}</span>
           <span className="row-copy"><strong>{source.title}</strong><span>{formatUnits(quantityMicro)} {symbol} available</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>;

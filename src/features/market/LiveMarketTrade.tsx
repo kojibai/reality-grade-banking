@@ -70,4 +70,4 @@ function GenericMarketTrade({identity,marketItemId,side,onRefresh,initialBudget=
   <p className="body-copy small-copy">Review the estimated shares and proceeds before approving. The final price is determined at execution.</p><button className="primary-button" disabled={busy||!ready} onClick={()=>void run('prepare')}>{busy?'Checking Market…':'Review trade'}</button>{diagnostics}</>;
 }
 
-export function LiveMarketTrade(props:Parameters<typeof GenericMarketTrade>[0]){const native=retainedPublicAsset(props.marketItemId)?.nativeAsset;return native?<LiveOwnership identity={props.identity} mode={props.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} onRefresh={props.onRefresh}/>:<GenericMarketTrade {...props}/>;}
+export function LiveMarketTrade(props:Parameters<typeof GenericMarketTrade>[0]){const native=retainedPublicAsset(props.marketItemId)?.nativeAsset;return native?<LiveOwnership identity={props.identity} mode={props.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} publicCurrency={native.currency} onRefresh={props.onRefresh}/>:<GenericMarketTrade {...props}/>;}

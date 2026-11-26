@@ -5,6 +5,7 @@ import {AssetMark} from '../../components/AssetMark';
 import {MomentCard} from '../media/MomentCard';
 import {ProofPdfPreview} from '../media/ProofPdfPreview';
 import {publicDocumentReaderUrl} from '../../receiz/public-document';
+import {formatMoney} from '../../core/money';
 import {formatPublicPrice,type PublicMarketItem} from '../../receiz/public-market';
 import {marketContentLabel} from '../../receiz/market-categories';
 import {observeOriginalImpression,publicOriginalEngagement} from '../../receiz/public-engagement';
@@ -34,6 +35,6 @@ export function PublicObjectRow({item,onOpen,eagerArtwork=true,artwork,trackImpr
  useEffect(()=>{
   if(row.current&&username&&receizId)return observeOriginalImpression(row.current,{username,receizId,mediaKind},'bankeiz_market_collection');
  },[username,receizId,mediaKind]);
- const change=item.changePct;
- return <button className="asset-row" ref={row} onClick={()=>onOpen(item)}>{artwork??<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/>}<span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
+ const currency=item.nativeAsset?.currency,change=currency?null:item.changePct;
+ return <button className="asset-row" ref={row} onClick={()=>onOpen(item)}>{artwork??<PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={eagerArtwork}/>}<span className="row-copy"><strong>{item.title}</strong><span>{marketContentLabel(item)}</span><PublicObjectProvenance item={item}/></span><span className="price-stack"><strong>{currency?formatMoney(currency.priceUsdCentsPerUnit):formatPublicPrice(item.priceUsd)}</strong>{change!==null&&<span title={item.localValuationPulse!==undefined?'Change compared with the retained source quote':'Source price change'} className={change>=0?'positive':'negative'} style={{display:'inline-flex',alignItems:'center',gap:2}}>{change>0?<ArrowUpRight size={12}/>:change<0?<ArrowDownRight size={12}/>:null}{change>0?'+':''}{percent.format(change)}%</span>}</span></button>;
 }

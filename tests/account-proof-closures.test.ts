@@ -39,3 +39,24 @@ describe('account source closures',()=>{
   expect(await verify(v,'rc_test',new Map())).toBeNull();
  });
 });
+
+it('reopens one accepted currency event per mixed debit or credit and preserves each rail', () => {
+ const events = [
+  ['deposit', '2', '0', '5'], ['payment-received', '0', '3', '3'],
+  ['asset-buy-currency', '-2', '-3', '-8'], ['asset-sell-currency', '2', '3', '8'],
+ ];
+ const digests = ['c','1','2','3','4'].map(h);
+ const transactions = events.map(([kind,reserveDeltaUsdCents,settlementDeltaPhiMicro,balanceDeltaPhiMicro],index) => ({
+  sequence:index+1,transactionId:`transaction-${index}`,eventDigest:digests[index+1],previousEventDigest:digests[index],kaiUPulse:String(index+1),
+  kind,description:'Accepted paired rail movement.',reserveDeltaUsdCents,settlementDeltaPhiMicro,balanceDeltaPhiMicro,
+ }));
+ const v = source(), head = digests.at(-1)!;
+ const statement = {...v,transactions,checkpoint:{...v.checkpoint,transactionCount:transactions.length,historyHead:head,reserveUsdCents:'2',settlementPhiMicro:'3',balancePhiMicro:'8'},
+  sourceFrontier:{...v.sourceFrontier,accountHistoryHead:head}};
+ expect(inspectAccountStatement(statement,'rc_test').transactions).toEqual(transactions);
+ for (const delta of [{kind:'asset-sell-currency'},{settlementDeltaPhiMicro:'3'},{balanceDeltaPhiMicro:'-3'}]) {
+  const invalid = structuredClone(statement);
+  Object.assign(invalid.transactions[2],delta);
+  expect(() => inspectAccountStatement(invalid,'rc_test')).toThrow(/HISTORY_INVALID/);
+ }
+});

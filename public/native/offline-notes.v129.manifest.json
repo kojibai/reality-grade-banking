@@ -2647,6 +2647,40 @@
       "baseSha256": "ffb4fabef7a3548733f6a7354020f97aa8b32dd4cc351aafc737a3868305271e",
       "sha256": "936cb865254364b2384510affc091f2ca603241b32594bd17872f24d4dabcc1e",
       "purpose": "Expose the existing exact Wallet release admission in the Bankeiz browser runtime."
+    },
+    {
+      "id": "bankeiz-native-currency-publication-v129",
+      "path": "receiz/app/lib/profile/showcase/bankAssetContent.ts",
+      "baseSha256": "9ad9c6f2d11847b188472e11e8d48b31338b40abb286971d5ad1719256939209",
+      "sha256": "0e449a413f83e117f7271d627f3edc186a64543f485f4ae90bcc4ef428d131d4",
+      "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
+    },
+    {
+      "id": "bankeiz-native-currency-publication-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
+      "baseSha256": "3bc065e6c2bfbd4e68153803e88b3d0e3c59658af1036a1726d87d6512e949ec",
+      "sha256": "fd255f9256b418f188a9888232665bb445d9d4555c0c8131733e8d44c96b5ecf",
+      "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
+    },
+    {
+      "id": "bankeiz-native-currency-publication-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetBacking.ts",
+      "baseSha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e",
+      "sha256": "df560ec72d8d99b8bbaa121bb9c1743b0fb0a6b9d5ff8686c142dfc985492f16",
+      "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
+    },
+    {
+      "id": "bankeiz-native-currency-publication-v129",
+      "path": "receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "sha256": "04fec921b606414cf9b72b80bba741d55f7c193f6eeda81108e264dcc9ee039c",
+      "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
+    },
+    {
+      "id": "bankeiz-native-currency-publication-v129",
+      "path": "receiz/app/lib/profile/types.ts",
+      "baseSha256": "717900d04eac29fa388e143f9c864719f949d54ea12290e54c987e10754994fe",
+      "sha256": "bf8178e3808019630b00ef81aa42631635efc0804a8caa35c2badb903675785e",
+      "purpose": "Verify native currency certificates and carry their sealed terms with the authored Original."
     }
   ]
 }

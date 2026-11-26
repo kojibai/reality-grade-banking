@@ -1,4 +1,5 @@
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
+import {inspectNativeCurrencyPolicy,type NativeCurrencyPolicy} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {inspectNativeAssetFundingComponents} from './native-asset-backing';
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from './config';
@@ -12,10 +13,12 @@ import { parseAmount } from '../core/money';
 export type BankRail = 'reserve' | 'settlement';
 export type BankOperationInput =
   | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string; authoredSource?: ImportedProofSourceReference }
+  | { kind: 'issue-currency'; definition: AssetDefinition; policy: NativeCurrencyPolicy; authoredSource?: ImportedProofSourceReference }
+  | ({assetDigest:string}|{assetId:string}) & { kind:'buy-currency'; quantityMicro:string }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
-  | ({assetDigest:string}|{assetId:string}) & { kind: 'sell-share'; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' }
+  | ({assetDigest:string}|{assetId:string}) & { kind: 'sell-share'; quantityMicro: string; rail: BankRail; buyer: 'bank' | 'market' | 'currency-pool' }
   | ({assetDigest:string}|{assetId:string}) & { kind: 'buy-shares'; quantityMicro: string; rail: BankRail }
   | { kind: 'redeem-asset'; assetDigest: string }
   | { kind: 'fund-asset'; definition: AssetDefinition; rail: BankRail; amountUsdCents: string; authoredSource?: ImportedProofSourceReference };
@@ -24,6 +27,7 @@ export interface BankOperationTerms {
   debitUsdCents: string; debitPhiMicro: string; creditUsdCents: string; creditPhiMicro: string;
   feeUsdCents: string; quantityMicro: string; assetDigest: string | null; recipient: string | null;
   expiresAtKaiUPulse: number; fundingComponents?: readonly import('./native-asset-backing').NativeAssetFundingComponent[];
+  payoutComponents?: readonly import('./native-asset-backing').NativeAssetFundingComponent[];
 }
 export interface BankOperationReview { request: Readonly<BankOperationRequest>; terms: Readonly<BankOperationTerms>; confirmationDigest: string; }
 export type BankOperationResult = (BankExecutionResult | import('./native-payment').NativePaymentResult | import('./native-asset').NativeAssetResult) & { retentionWarning?: string };
@@ -47,6 +51,7 @@ export function bankOperationDollars(value: string): string {
 function inputRequest(value: BankOperationInput): BankOperationInput {
   const input = structuredClone(value), r = record(input);
   const fields: Record<BankOperationInput['kind'], string[]> = {
+    'issue-currency': ['definition', 'policy', ...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])], 'buy-currency': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro'],
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
     'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail', 'buyer'],
     'buy-shares': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
@@ -66,8 +71,13 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
     // keep every byte; do not rewrite punctuation into a different username.
     if(/^@?[a-z0-9_]{3,24}(?:\.receiz\.id)?$/iu.test(input.recipient))input.recipient=input.recipient.toLowerCase();
   }
-  if (input.kind === 'sell-share' && !['bank', 'market'].includes(input.buyer)) fail();
-  if(input.kind==='fund-asset'){input.definition=validateAssetDefinition(input.definition);if(input.authoredSource){input.authoredSource=parseImportedProofSourceReference(input.authoredSource);if(input.definition.linkedProofDigest!==input.authoredSource.artifactSha256)fail();}else if(input.definition.linkedProofDigest!==null)fail();}
+  if (input.kind === 'sell-share' && (!['bank', 'market', 'currency-pool'].includes(input.buyer)
+    || input.buyer === 'currency-pool' && input.rail !== 'reserve')) fail();
+  if (input.kind === 'issue-currency') {
+    if(!input.authoredSource)fail();
+    input.policy=inspectNativeCurrencyPolicy(input.policy);
+  }
+  if(input.kind==='fund-asset'||input.kind==='issue-currency'){input.definition=validateAssetDefinition(input.definition);if(input.authoredSource){input.authoredSource=parseImportedProofSourceReference(input.authoredSource);if(input.definition.linkedProofDigest!==input.authoredSource.artifactSha256)fail();}else if(input.definition.linkedProofDigest!==null)fail();}
   return input;
 }
 function termsFor(value: unknown, request: BankOperationRequest): Readonly<BankOperationTerms> {
@@ -107,6 +117,7 @@ export function createBankOperations(input: {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
       if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
+      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
       if('fundingRule'in value)throw Error('BANK_ASSET_AUTOMATIC_RUNTIME_REQUIRED');
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {

@@ -1,3 +1,4 @@
+import type {NativeCurrencyState} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {inspectNativeAssetBacking,type NativeAssetFundingComponent} from './native-asset-backing';
 // Strict public projection inspection only; no financial admission or proof authority.
 export interface AccountProofTransaction {
@@ -12,7 +13,7 @@ export interface AccountSourceFrontier {
 export interface AccountProofComponents {
   lawfulValues: readonly {membershipId:string;admissionDigest:string;valueHeadDigest:string|null;settlementPhiMicro:string}[];
   assets: readonly {assetId:string;name:string;symbol:string;description:string;linkedProofDigest:string|null;supplyMicro:string;quantityMicro:string;
-    backingRail:'reserve'|'settlement'|'composite';backingComponents?:readonly NativeAssetFundingComponent[];backingPhiMicro:string;backingUsdCents:string;status:'active'|'redeemed';issuanceSourceSha256:string;headSourceSha256:string}[];
+    backingRail:'reserve'|'settlement'|'composite';backingComponents?:readonly NativeAssetFundingComponent[];currency?:NativeCurrencyState;backingPhiMicro:string;backingUsdCents:string;status:'active'|'redeemed';issuanceSourceSha256:string;headSourceSha256:string}[];
   assetOffers: readonly {offerId:string;assetId:string;side:'ask'|'bid';remainingQuantityMicro:string;lockedPhiMicro:string;lockedUsdCents:string;headSourceSha256:string}[];
   artifactIntrinsicPhiMicro:string; offlineLockedPhiMicro:string; offlineLockedUsdCents:string;
 }
@@ -68,7 +69,7 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
       text(r.name,80)&&text(r.symbol,16)&&typeof r.description==='string'&&r.description.length<=2000&&!/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(r.description)&&(r.linkedProofDigest===null||digest(r.linkedProofDigest))
       &&[r.supplyMicro,r.quantityMicro,r.backingPhiMicro,r.backingUsdCents].every(unsigned)&&(BigInt(r.supplyMicro as string)>0n||r.status==='redeemed'&&r.quantityMicro==='0'&&r.backingPhiMicro==='0'&&r.backingUsdCents==='0')&&BigInt(r.quantityMicro as string)<=BigInt(r.supplyMicro as string)
       &&['reserve','settlement','composite'].includes(String(r.backingRail))&&(inspectNativeAssetBacking(r),true)&&['active','redeemed'].includes(String(r.status))&&digest(r.issuanceSourceSha256)&&digest(r.headSourceSha256)
-      &&heads.get(r.assetId as string)===r.headSourceSha256,['backingComponents']);
+      &&heads.get(r.assetId as string)===r.headSourceSha256,['backingComponents','currency']);
     unique(p.assetOffers,'offerId',['offerId','assetId','side','remainingQuantityMicro','lockedPhiMicro','lockedUsdCents','headSourceSha256'],r=>text(r.assetId,256)&&heads.has(r.assetId as string)&&['ask','bid'].includes(String(r.side))&&[r.remainingQuantityMicro,r.lockedPhiMicro,r.lockedUsdCents].every(unsigned)&&digest(r.headSourceSha256));
   }
   if (!Array.isArray(v.transactions) || v.transactions.length > 100_000 || c.transactionCount !== v.transactions.length) fail('HISTORY_INCOMPLETE');
@@ -86,9 +87,9 @@ export function inspectAccountStatement(input: unknown, applicationId: string): 
       if(!signed(t.balanceDeltaPhiMicro))fail('HISTORY_INVALID');
       const r=BigInt(t.reserveDeltaUsdCents),s=BigInt(t.settlementDeltaPhiMicro),g=BigInt(t.balanceDeltaPhiMicro),abs=(n:bigint)=>n<0n?-n:n;
       if(r!==0n&&s!==0n){
-        // A complete native Note may carry both admitted rails in one atomic
-        // movement. Its signed source retains the exact original backing.
-        if(!complete||!["note-funded","note-funding-cancelled","note-deposited","asset-fund-asset","asset-redeem-asset"].includes(String(t.kind))||(r<0n)!==(s<0n)||(r<0n)!==(g<0n)||abs(s)>=abs(g)||(["note-funded","asset-fund-asset"].includes(String(t.kind)))!==(g<0n))fail('HISTORY_INVALID');
+        // Native Notes and assets may carry both admitted rails in one atomic
+        // movement. The signed Source retains both backing components.
+        if(!complete||!["note-funded","note-funding-cancelled","note-deposited","asset-fund-asset","asset-redeem-asset","asset-buy-currency","asset-sell-currency"].includes(String(t.kind))||(r<0n)!==(s<0n)||(r<0n)!==(g<0n)||abs(s)>=abs(g)||(["note-funded","asset-fund-asset","asset-buy-currency"].includes(String(t.kind)))!==(g<0n))fail('HISTORY_INVALID');
       }else if(r===0n&&t.settlementDeltaPhiMicro!==t.balanceDeltaPhiMicro)fail('HISTORY_INVALID');
       gross+=BigInt(t.balanceDeltaPhiMicro);if(gross<0n)fail('BALANCE_MISMATCH');
     }

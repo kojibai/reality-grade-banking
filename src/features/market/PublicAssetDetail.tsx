@@ -7,7 +7,7 @@ import {useContext,useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import {PublicObjectArtwork} from './PublicObjectRow';
 import {OpenInvestment} from '../assets/OpenInvestment';
-import {formatMoney} from '../../core/money';
+import {formatMoney,formatUnits} from '../../core/money';
 import {compatibleShareInventory,marketCapitalizationQuantity,shareCapitalizationUsdCents} from '../../receiz/market-share-inventory';
 import {ShareInventory} from './ShareInventory';
 import {PublicAssetChart} from './PublicAssetChart';
@@ -46,6 +46,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const readingUrl=local&&verifyUrl===local.verifyUrl?local.readingUrl:item.readingUrl;
   const [publicDetails,setPublicDetails]=useState<{source:string;details:PublicCardDetails}|null>(null);
   useEffect(()=>{if(item.category!=='sports'||!item.sourceUrl||item.sealedCopies?.length)return;const controller=new AbortController();void fetchPublicCardDetails(item,controller.signal).then(details=>{if(!controller.signal.aborted)setPublicDetails({source:item.sourceUrl!,details});}).catch(()=>{});return()=>controller.abort();},[item.category,item.assetId,item.sourceUrl,item.sealedCopies]);
+  const currency=item.nativeAsset?.currency;
   const canReviewTrade=!!onTrade&&!item.id.startsWith('sports:');
   const details=!item.sealedCopies?.length&&publicDetails?.source===item.sourceUrl?publicDetails.details:item;
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
@@ -63,17 +64,22 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const creatorUsername=/^receiz_[a-z0-9]{17}$/.test(carriedCreatorUsername)?'':carriedCreatorUsername;
   const creatorName=creator?.displayName?.trim()&&creator.displayName!==carriedCreatorUsername?creator.displayName.trim():!carriedCreatorUsername?creator?.userId?.trim():undefined;
   const object=<OriginalEngagementContext.Provider value={engagement}><AssetObject rootRef={mediaRoot} key={item.id} label={item.title} front={media??(collectibleArtwork?<PublicCollectibleArtwork item={item} eager/>:item.mediaKind==='moment'?<div className="public-collectible-moment"><MomentCard item={item}/></div>:<div className="public-collectible-face"><span>{marketContentLabel(item)}</span><h2>{item.title}</h2><p>{item.summary}</p><code>{item.assetId}</code><small>Public source presentation</small></div>)} renderBack={()=> <AssetProofBack item={item}/>}/></OriginalEngagementContext.Provider>;
-  return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
+  return <><div className="asset-detail-heading"><PublicObjectArtwork item={item} artworkUrl={item.artworkUrl}/><div><h1>{item.title}</h1><p>{currency?`${currency.symbol} · Currency`:standalone?'Source. Ownership. Continuity.':'Public source'}</p></div></div>
     {publicImageOpen&&publicImage&&<PublicImageDialog item={item} title={item.title} url={publicImage} onClose={()=>setPublicImageOpen(false)}/>}
     {standalone&&owner&&profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)&&<a className="asset-profile-byline" href={profilePagePath(profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername))}><PublicOwnerAvatar item={admission?item:carried??item} src={ownerAvatar} name={item.ownerDisplayName??owner} eager/><span>Owner<span>@{profileUsernameLabel(owner,profile?.receivingUsername??item.ownerReceivingUsername)}</span></span><ExternalLink size={13}/></a>}
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
+    {currency?<div className="detail-list">
+      <div><span>Purchase price</span><strong>{formatMoney(currency.priceUsdCentsPerUnit)} per {currency.symbol}</strong></div>
+      <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
+    </div>:<>
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>
     {!periods&&item.changePct !== null && <div className={`price-change ${item.changePct >= 0 ? 'positive' : 'negative'}`}>{item.changePct > 0 ? '+' : ''}{item.changePct}%</div>}
     <PublicAssetChart periods={periods} fallback={item.chart} item={item} inventory={item.category==='sports'?undefined:inventory} metric={metric} onMetricChange={setMetric}/><ShareInventory item={item} priceUsd={price}/>
-    {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('buy', item.id); }}>Buy ownership</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('sell', item.id); }}>Take cash</button></div>}
-    <OpenInvestment item={item}/>
-    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>Ownership &amp; payment</summary><p className="body-copy small-copy">Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.</p></details>}
+    </>}
+    {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('buy', item.id); }}>{currency?`Buy ${currency.symbol}`:'Buy ownership'}</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('sell', item.id); }}>{currency?`Sell ${currency.symbol}`:'Take cash'}</button></div>}
+    {!currency&&<OpenInvestment item={item}/>}
+    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>{currency?'Currency terms':'Ownership & payment'}</summary><p className="body-copy small-copy">{currency?'The purchase price and supply cap are fixed. Purchases use your available balance and fund the pool. Sell-back returns the units for a share of that pool.':'Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.'}</p></details>}
     {!standalone&&object}
     {purchase&&!offer?.locked&&purchase}
     <div className="asset-actions asset-source-links">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} strokeWidth={1.5} />Open public source</a>}{verifyUrl && <a href={verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={15} strokeWidth={1.5} />Inspect proof</a>}</div>
@@ -81,6 +87,6 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {(creatorUsername||creatorName)&&<div className="detail-list"><div><span>Creator</span><strong>{creatorUsername?<AccountProfileLink username={creator!.username}>@{creatorUsername}</AccountProfileLink>:creatorName}</strong></div></div>}
     <div className="detail-list"><div><span>Owner</span><strong>{multipleCopies ? 'Varies by copy · open public source' : details.ownerUsername ? <AccountProfileLink username={details.ownerUsername} receivingUsername={details.ownerUsername===item.ownerUsername?item.ownerReceivingUsername:undefined}>@{profileUsernameLabel(details.ownerUsername,details.ownerUsername===item.ownerUsername?item.ownerReceivingUsername:undefined)}</AccountProfileLink> : details.ownerDisplayName ?? 'Not supplied by the public source'}</strong></div><div><span>Object</span><strong className="proof-coordinate">{item.assetId}</strong></div><div><span>Sealed</span><strong>{multipleCopies ? 'Varies by copy' : details.sealedAt ? new Date(details.sealedAt).toLocaleString(format?.locale,{timeZone:format?.timeZone}) : 'Not supplied'}</strong></div>{item.pulse && <div><span>☤KAI</span><strong>{item.pulse}</strong></div>}</div>
     {multipleCopies&&item.sealedCopies?.length&&<details className="market-copy-details"><summary>{item.sealedCopies.length.toLocaleString()} sealed copies · owners and times</summary>{item.sealedCopies.map(copy=><div className="detail-list" key={`${copy.collectibleId}:${copy.claimHash}`}><div><span>Owner</span><strong>{copy.ownerUsername?<AccountProfileLink username={copy.ownerUsername}>@{profileUsernameLabel(copy.ownerUsername)}</AccountProfileLink>:copy.ownerDisplayName??'Not supplied'}</strong></div><div><span>Sealed</span><strong>{new Date(copy.sealedAt).toLocaleString(format?.locale,{timeZone:format?.timeZone})}</strong></div><div><span>Copy</span><strong className="proof-coordinate">{copy.collectibleId}</strong></div></div>)}</details>}
-    <p className="body-copy small-copy">{readOnly?'Values follow the public object’s pricing inputs. Open its original source to inspect the carried evidence.':'Explore public asset values here. Review the current quote, budget or quantity before approving a live Market trade.'}</p>
+    {!currency&&<p className="body-copy small-copy">{readOnly?'Values follow the public object’s pricing inputs. Open its original source to inspect the carried evidence.':'Explore public asset values here. Review the current quote, budget or quantity before approving a live Market trade.'}</p>}
   </>;
 }

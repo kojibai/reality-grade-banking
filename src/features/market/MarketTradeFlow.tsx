@@ -18,7 +18,7 @@ export function MarketTradeFlow({intent,identity,wallet,onRefresh}:{intent:Publi
  const [step,setStep]=useState<'fund'|'trade'>(()=>!intent.resumeTradeReview&&intent.side==='buy'&&(Boolean(intent.resumeSessionId)||wallet?.totalUsdCents==='0')?'fund':'trade'),[budget,setBudget]=useState(intent.initialBudget??'');
  const purchaseApproval=useRef<FundedPurchaseApproval|null>(null),[approvedPurchase,setApprovedPurchase]=useState<FundedPurchaseApproval|undefined>();
  const native=retainedPublicAsset(intent.itemId)?.nativeAsset;
- if(native&&!intent.certificateToken)return <LiveOwnership identity={identity} mode={intent.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} onRefresh={onRefresh}/>;
+ if(native&&!intent.certificateToken)return <LiveOwnership identity={identity} mode={intent.side} initialDigest={native.headSourceSha256} nativeAssetId={native.id} publicCurrency={native.currency} onRefresh={onRefresh}/>;
  const funding=intent.side==='buy'&&step==='fund';
  if(funding)return <LiveDeposit identity={identity} onRefresh={onRefresh} onClose={()=>setStep('trade')} resumeSessionId={intent.resumeSessionId} funding={{initialAmount:budget,purchase:{itemId:intent.itemId,title:intent.title},onBack:amount=>{setBudget(amount);setStep('trade');},onCheckout:checkout=>{purchaseApproval.current=null;retainPublicPurchase({...intent,initialBudget:budget},checkout,'deposit');},onPurchaseApproved:checkout=>{if(!intent.certificateToken)purchaseApproval.current=approveFundedPurchase(identity,intent.itemId,checkout);},onCredited:checkout=>{
   if(purchaseApproval.current){confirmPurchaseFunding(purchaseApproval.current,identity,checkout);setApprovedPurchase(purchaseApproval.current);}

@@ -1,6 +1,6 @@
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Building2, Check, ChevronRight, CircleDollarSign, FileCheck2, Package, ShieldCheck, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Building2, Check, ChevronRight, CircleDollarSign, Coins, FileCheck2, Package, ShieldCheck, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { HeldDeposit } from '../../receiz/deposit-source';
 import type { CardCheckout, CardDepositStatus } from '../../receiz/card-deposit';
@@ -14,6 +14,7 @@ import { BuyAmountPresets } from '../market/TradeAmountPresets';
 import './deposit.css';
 import {UnfinishedCheckouts} from '../../components/UnfinishedCheckouts';
 
+const IssueCurrency=lazy(()=>import('../assets/IssueCurrency').then(module=>({default:module.IssueCurrency})));
 const ReceivedOriginal=lazy(()=>import('./ReceivedOriginal').then(module=>({default:module.ReceivedOriginal})));
 
 function OriginalsValueLink(){
@@ -21,7 +22,7 @@ function OriginalsValueLink(){
 }
 
 export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onResumeConsumed, funding, onCreateAsset, onAssetBack, initialKind='choose' }: { onAssetBack?:()=>void;initialKind?:'choose'|'asset'; onCreateAsset?:()=>void;resumeSessionId?:string|null;onResumeConsumed?:()=>void;identity: OpenIdentity; onClose: () => void; onRefresh: () => void; funding?:{purchase?:{itemId:string;title:string};purpose?:'purchase'|'payment';initialAmount?:string;onBack?(amount:string):void;onCheckout?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onPurchaseApproved?(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void;onCredited(checkout:Pick<CardCheckout,'sessionId'|'amountUsdCents'>):void} }) {
-  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note'>(funding?'dollars':initialKind);
+  const [kind, setKind] = useState<'choose' | 'asset' | 'dollars' | 'note' | 'issue-currency'>(funding?'dollars':initialKind);
   const [amount, setAmount] = useState(funding?.initialAmount??'');
   const [deposit, setDeposit] = useState<HeldDeposit | null>(null), [checkout, setCheckout] = useState<CardCheckout | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [cardStatus, setCardStatus] = useState('');
@@ -56,9 +57,11 @@ export function LiveDeposit({ identity, onClose, onRefresh, resumeSessionId, onR
     {kind !== 'choose' && !funding?.purchase && <button className="back-link" aria-label={kind==='asset'&&onAssetBack?'Back to creating':undefined} disabled={busy} onClick={() => { if(kind==='asset'&&onAssetBack){onAssetBack();return;}if(funding){funding.onBack?.(amount);return;}setKind('choose'); setDeposit(null); setAmount(''); setCheckout(null); setCardStatus(''); setError(''); }}><ArrowLeft size={16} />{kind==='asset'&&onAssetBack?'Back to creating':funding?(funding.purpose==='payment'?'Back to payment':'Back to purchase'):'All options'}</button>}
     {kind === 'choose' && <><header className="deposit-intro"><div><h1 className="sheet-hero">Add money to<br/>your account.</h1><p className="body-copy">Money and assets.<br/>One account.</p></div><img src="/art/proof-assets-384.webp" width="1024" height="896" alt="" decoding="async"/></header><p className="deposit-choice-label">Choose what you’re adding.</p><div className="deposit-options">
       <button className="deposit-money-choice" onClick={() => setKind('dollars')}><span className="choice-icon green"><CircleDollarSign /></span><span><strong>Add money</strong><small>Secure payment checkout</small></span><ChevronRight size={20} /></button>
+      {!!identity.backedAssetPublication&&<button onClick={() => setKind('issue-currency')}><span className="choice-icon blue"><Coins /></span><span><strong>Issue a currency</strong><small>Set the supply and purchase terms</small></span><ChevronRight size={20} /></button>}
       <button onClick={() => onCreateAsset?onCreateAsset():setKind('asset')}><span className="choice-icon blue"><Building2 /></span><span><strong>An asset</strong><small>Create or upload its original proof object</small></span><ChevronRight size={20} /></button>
       <button onClick={() => setKind('note')}><span className="choice-icon green"><FileCheck2 /></span><span><strong>Settlement Note</strong><small>Deposit your Note</small></span><ChevronRight size={20} /></button>
     </div><p className="trust-line"><ShieldCheck size={18} />Your source and history stay connected.</p><details className="deposit-consent-details"><summary>Details</summary><p className="body-copy small-copy">Adding funds brings money into your proof-native account. Its Original carries the value and proof. A completed Note can travel directly between people, including offline. Bankeiz provides convenient tools; any receiving implementation preserves the exact value, ownership and history.</p></details><OriginalsValueLink/></>}
+    {kind==='issue-currency'&&<Suspense fallback={<InlineOpening label="Opening currency issue"/>}><IssueCurrency identity={identity} onRefresh={onRefresh}/></Suspense>}
     {deposit && <><div className={`status-icon ${deposit.kind === 'proof' ? 'success' : ''}`}>{deposit.kind === 'proof' ? <Check size={34} /> : <Package size={31} />}</div><h1 className="sheet-hero">{deposit.kind === 'intake' ? 'Your deposit request is saved.' : 'Your proof is in your account.'}</h1><p className="body-copy">{deposit.kind === 'intake' ? `${deposit.title} stays yours while custody, ownership terms and funding are verified.` : 'The complete original proof is verified and held privately on this device.'}</p>
       <div className="detail-list"><div><span>Asset</span><strong>{deposit.title}</strong></div>{deposit.intake && <div><span>Quantity</span><strong>{deposit.intake.quantity}</strong></div>}<div><span>Status</span><strong>{deposit.kind === 'intake' ? deposit.delivery ? 'Awaiting verified receipt' : 'Awaiting custody instructions' : 'Original proof held'}</strong></div>{deposit.pulse && <div><span>☤KAI</span><strong>{deposit.pulse}</strong></div>}</div>
       {deposit.delivery && <CustodyDelivery instructions={deposit.delivery} />}

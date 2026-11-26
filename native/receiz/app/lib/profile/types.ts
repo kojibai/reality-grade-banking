@@ -152,7 +152,7 @@ export type ProfileIdentityArtifactBinding = Readonly<{
 export type ProfileOriginal = {
   /** Authored title retained beneath the verified original, separate from caption. */
   assetTitle?: string;
-  nativeAsset?: Readonly<{id:string;issuanceSourceSha256:string;headSourceSha256:string;publicCertificateSha256:string}>;
+  nativeAsset?: Readonly<{id:string;issuanceSourceSha256:string;headSourceSha256:string;publicCertificateSha256:string;currency?:import('./showcase/bankAssetContent').PublicCurrencyTerms}>;
   /** Exact imported source beneath owner-authorized Showcase possession. */
   importedSource?: Readonly<{
     reference: import("./showcase/importedSource").ImportedProofSourceReference;

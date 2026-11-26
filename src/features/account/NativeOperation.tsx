@@ -50,19 +50,22 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
     const t = review.terms, request = review.request, rail = 'rail' in request ? request.rail : null;
     return <section className="native-operation-review"><h1 className="sheet-hero">Review {title.toLowerCase()}.</h1>
       <div className="detail-list">
-        {request.kind === 'send-ownership' && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
+        {(request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
+        {request.kind==='issue-currency'&&<><div><span>Currency</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div><div><span>Purchase price per unit</span><strong>{formatMoney(request.policy.priceUsdCentsPerUnit)}</strong></div><div><span>Creator allocation</span><strong>0 units</strong></div></>}
+        {request.kind==='buy-currency'&&<div><span>Payment destination</span><strong>Currency pool</strong></div>}
+        {request.kind==='sell-share'&&request.buyer==='currency-pool'&&<div><span>Payment source</span><strong>Currency pool</strong></div>}
         {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}
-        {rail && <div><span>Account</span><strong>{rail === 'reserve' ? 'Reserve' : 'Settlement'}</strong></div>}
+        {rail && !(request.kind==='sell-share'&&request.buyer==='currency-pool') && <div><span>Account</span><strong>{rail === 'reserve' ? 'Reserve' : 'Settlement'}</strong></div>}
         {t.recipient && <div><span>Recipient</span><strong>{t.recipient}</strong></div>}
         {t.debitUsdCents !== '0' && <div><span>You pay</span><strong>{formatMoney(t.debitUsdCents)}</strong></div>}
         {t.debitPhiMicro !== '0' && <div><span>Exact value</span><strong>{formatUnits(t.debitPhiMicro)} Φ</strong></div>}
         {t.creditUsdCents !== '0' && <div><span>You receive</span><strong>{formatMoney(t.creditUsdCents)}</strong></div>}
         {t.creditPhiMicro !== '0' && <div><span>Exact received value</span><strong>{formatUnits(t.creditPhiMicro)} Φ</strong></div>}
-        {t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}{request.kind === 'send-ownership' && ownership ? ' ' + ownership.symbol : ''}</strong></div>}
+        {t.quantityMicro !== '0' && <div><span>{request.kind === 'send-ownership' || request.kind === 'sell-share' ? 'Ownership' : request.kind === 'issue-currency' ? 'Supply cap' : request.kind === 'buy-currency' ? 'Currency units' : 'Asset units'}</span><strong>{formatUnits(t.quantityMicro)}{request.kind === 'send-ownership' && ownership ? ' ' + ownership.symbol : ''}</strong></div>}
         <div><span>Fee</span><strong>{formatMoney(t.feeUsdCents)}</strong></div>
         {t.debitUsdCents !== '0' && <div><span>Total debit</span><strong>{formatMoney((BigInt(t.debitUsdCents) + BigInt(t.feeUsdCents)).toString())}</strong></div>}
       </div>
-      <details className="transaction-proof-details"><summary>Transaction proof</summary>{t.fundingComponents&&<div className="detail-list">{t.fundingComponents.map(part=><div key={part.rail}><span>{part.rail==='reserve'?'Reserve':'Settlement'}</span><strong>{formatMoney(part.amountUsdCents)} · {formatUnits(part.amountPhiMicro)} Φ</strong></div>)}</div>}{t.assetDigest && <p className="proof-coordinate">Asset: {t.assetDigest}</p>}<p className="proof-coordinate">Review: {review.confirmationDigest}</p><p className="small-copy">Terms expire at ☤µKAI {t.expiresAtKaiUPulse}.</p></details>
+      <details className="transaction-proof-details"><summary>Transaction proof</summary>{(t.fundingComponents||t.payoutComponents)&&<div className="detail-list">{(t.fundingComponents??t.payoutComponents)?.map(part=><div key={part.rail}><span>{part.rail==='reserve'?'Reserve':'Settlement'}</span><strong>{formatMoney(part.amountUsdCents)} · {formatUnits(part.amountPhiMicro)} Φ</strong></div>)}</div>}{t.assetDigest && <p className="proof-coordinate">Asset: {t.assetDigest}</p>}<p className="proof-coordinate">Review: {review.confirmationDigest}</p><p className="small-copy">Terms expire at ☤µKAI {t.expiresAtKaiUPulse}.</p></details>
       <label className="consent-option"><input type="checkbox" checked={approved} disabled={busy} onChange={event => setApproved(event.target.checked)} /><span>I approve this exact transaction and its displayed terms.</span></label>
       <button className="primary-button" disabled={busy || !approved} onClick={() => void execute()}>{busy ? 'Confirming transaction…' : confirmLabel}<ArrowRight size={17} /></button>
       <button className="secondary-button" disabled={busy} onClick={() => { api.current?.discard(review); held.current = null; setReview(null); setApproved(false); }}>Edit details</button>
