@@ -7,6 +7,7 @@ import { formatMoney, parseAmount } from '../../core/money';
 import { AmountInput } from '../../components/AmountInput';
 import { NativeOperation } from '../account/NativeOperation';
 import { SendHeldOwnership } from './SendHeldOwnership';
+import type { PublicMarketItem } from '../../receiz/public-market';
 import { useHeldAssetSources } from './useHeldAssetSources';
 
 type OwnershipProps = {
@@ -15,11 +16,13 @@ type OwnershipProps = {
   initialDigest?: string;
   nativeAssetId?: string;
   publicCurrency?: PublicCurrencyTerms;
+  marketItems?: PublicMarketItem[];
+  showcase?: PublicMarketItem[];
   onRefresh(): void;
 };
 
-export function LiveOwnership({ identity, mode = 'send', initialDigest = '', nativeAssetId, publicCurrency, onRefresh }: OwnershipProps) {
-  if (mode === 'send') return <SendHeldOwnership key={JSON.stringify([identity.binding?.artifactSha256, initialDigest])} identity={identity} initialDigest={initialDigest} onRefresh={onRefresh} />;
+export function LiveOwnership({ identity, mode = 'send', initialDigest = '', nativeAssetId, publicCurrency, marketItems, showcase, onRefresh }: OwnershipProps) {
+  if (mode === 'send') return <SendHeldOwnership key={JSON.stringify([identity.binding?.artifactSha256, initialDigest])} identity={identity} initialDigest={initialDigest} marketItems={marketItems} showcase={showcase} onRefresh={onRefresh} />;
   return <TradeOwnership identity={identity} mode={mode} initialDigest={initialDigest} nativeAssetId={nativeAssetId} publicCurrency={publicCurrency} onRefresh={onRefresh} />;
 }
 

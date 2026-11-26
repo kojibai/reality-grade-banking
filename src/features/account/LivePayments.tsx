@@ -12,6 +12,7 @@ import { paymentQr, paymentQrPath } from '../../receiz/payment-qr';
 import { verifyPaymentTag, type BankNfcConstructor } from '../../receiz/payment-nfc';
 import { OfflineNotes } from '../notes/OfflineNotes';
 import { WalletSendOperation } from './WalletSendOperation';
+import type { PublicMarketItem } from '../../receiz/public-market';
 import { LiveOwnership } from '../assets/LiveOwnership';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { PaymentScanner } from './PaymentScanner';
@@ -80,7 +81,7 @@ export function LiveReceive({ identity, onRefresh = () => {}, active = true, ini
     <PaymentTools username={canonical} amount={amount} initialMode={initialToolsMode}/>{notice && <p className="body-copy" role="status">{notice}</p>}<div className="note-box"><ShieldCheck size={18} /><p>Scanning or tapping opens your selected payment page. The payer reviews and approves the recipient and amount.</p></div></div>;
 }
 
-export function LiveSend({ identity, active = true, onRefresh = () => {}, initialRequest, initialRecipient, initialMemo='', initialNearbyGuide, onClose: _onClose }: { identity?: OpenIdentity; active?: boolean; onRefresh?: () => void; wallet: SharedWallet | null; initialRequest?: PaymentRequest | null;initialMemo?:string; initialNearbyGuide?:{amount?:string}; initialRecipient?: {userId:string;username:string;displayName?:string}; onClose: () => void }) {
+export function LiveSend({ identity, active = true, onRefresh = () => {}, initialRequest, initialRecipient, initialMemo='', initialNearbyGuide, marketItems, showcase, onClose: _onClose }: { identity?: OpenIdentity; active?: boolean; onRefresh?: () => void; wallet: SharedWallet | null; marketItems?: PublicMarketItem[]; showcase?: PublicMarketItem[]; initialRequest?: PaymentRequest | null;initialMemo?:string; initialNearbyGuide?:{amount?:string}; initialRecipient?: {userId:string;username:string;displayName?:string}; onClose: () => void }) {
   const offline=useSyncExternalStore(subscribeConnection,deviceOffline,()=>false);
   const [nearby,setNearby]=useState(!!initialRequest?.nearbyRecipient),[keepOffline,setKeepOffline]=useState(false);
   const [fundedReview,setFundedReview]=useState<{identity:OpenIdentity;review:FundedWalletReview}>();
@@ -124,7 +125,7 @@ export function LiveSend({ identity, active = true, onRefresh = () => {}, initia
   }
   if (noteMode && identity) return <OfflineNotes identity={identity} mode={noteMode} onBack={() => setNoteMode(null)} backLabel="Back to payment" onRefresh={onRefresh} onUseSendNearby={identity.nearbyWalletReceive?useSendNearby:undefined} />;
   const choices = <>{identity && <button className="text-button note-action" onClick={() => setNoteMode('create')}>Create note</button>}<div className="segmented"><button className={mode === 'value' ? 'active' : ''} onClick={() => setMode('value')}>Send money</button><button className={mode === 'asset' ? 'active' : ''} onClick={() => setMode('asset')}>Send ownership</button></div></>;
-  if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} onRefresh={onRefresh} /></>;
+  if (mode === 'asset' && identity) return <>{choices}<LiveOwnership identity={identity} marketItems={marketItems} showcase={showcase} onRefresh={onRefresh} /></>;
   const request=()=>({amountUsdCents:bankOperationDollars(amount),recipient:recipientCoordinate,note:sendNote});
   const initialReview=fundedReview?.identity===identity?fundedReview?.review:undefined;
   const useFunded=active&&!!identity?.fundedWallet&&(offline||keepOffline||!!initialReview);

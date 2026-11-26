@@ -32,7 +32,7 @@ export interface OriginalPieces {
   inspect(file:File):Promise<OriginalPieceDelivery>;
   receive(file:File):Promise<HeldOriginalPiece>;
   reopen(proofDigest:string):Promise<HeldOriginalPiece>;
-  list():Promise<readonly OriginalPieceSummary[]>;
+  list(options?:{includeTransferred?: boolean}):Promise<readonly OriginalPieceSummary[]>;
 }
 
 export function createOriginalPieces(input:{binding:OriginalPieceIdentity&Pick<OriginalPieceKey,'alg'|'publicKeyRawB64u'>;assertOpen():void;
@@ -189,7 +189,7 @@ export function createOriginalPieces(input:{binding:OriginalPieceIdentity&Pick<O
     inspect,
     async receive(file:File){const delivery=await inspect(file),digest=await retainPacket(file);return {file,delivery,proofDigest:digest};},
     async reopen(digest:string){const result=await readArchived(digest);if(!holdsOriginalPieceDelivery(result.delivery,binding))return fail('OWNER_MISMATCH');return result;},
-    async list(){
+    async list({includeTransferred=false} = {}){
       const sources=await input.archive(),facts=[] as HeldOriginalPiece[];
       for(const source of sources)if(source.kind==='original-piece'){
         const file=new File([new Uint8Array(source.bytes)],source.filename,{type:packetType});
@@ -200,20 +200,22 @@ export function createOriginalPieces(input:{binding:OriginalPieceIdentity&Pick<O
       const summaries=new Map<string,OriginalPieceSummary>();
       facts.sort((a,b)=>b.delivery.head.revision-a.delivery.head.revision);
       for(const {delivery,proofDigest} of facts){
-        if(!holdsOriginalPieceDelivery(delivery,binding))continue;
+        const held=holdsOriginalPieceDelivery(delivery,binding);
+        const sender=delivery.head.command.senderReceizId;
+        if(!held&&!(includeTransferred&&delivery.head.command.senderKeyId===binding.keyId&&ownerIds.includes(sender)))continue;
         const successors=[...heads.values()].filter(candidate=>candidate.ancestry.some(revision=>revision.headDigest===delivery.headDigest));
         if(successors.length!==1)continue;
         const current=successors[0];
-        const {totalBytes,ranges:owned}=projectOriginalPieceOwnership(current.head.layout,delivery.ownerReceizId);
-        const ranges=owned.flatMap(range=>delivery.pieces.flatMap(piece=>{
+        const {totalBytes,ranges:owned}=projectOriginalPieceOwnership(current.head.layout,held ? delivery.ownerReceizId : sender);
+        const ranges=(held ? owned : []).flatMap(range=>delivery.pieces.flatMap(piece=>{
           const offset=Math.max(piece.offset,range.offset),end=Math.min(piece.offset+piece.byteLength,range.offset+range.byteLength);
           return end>offset?[{offset,byteLength:end-offset}]:[];
         }));
-        if(!ranges.length)continue;
+        if(!ranges.length&&(!includeTransferred||owned.length))continue;
         const ownedBytes=ranges.reduce((sum,range)=>sum+range.byteLength,0);
         const hundredths=BigInt(ownedBytes)*10_000n/BigInt(totalBytes);
         const decimals=(hundredths%100n).toString().padStart(2,'0').replace(/0+$/u,'');
-        const percentage=hundredths===0n?'<0.01%':`${hundredths/100n}${decimals?'.'+decimals:''}%`;
+        const percentage=ownedBytes===0?'0%':hundredths===0n?'<0.01%':`${hundredths/100n}${decimals?'.'+decimals:''}%`;
         const key=`${current.headDigest}:${pieceCanonical(ranges)}`;
         if(!summaries.has(key))summaries.set(key,{proofDigest,filename:delivery.head.filename,originalSha256:delivery.head.command.originalSha256,
           headDigest:current.headDigest,ownedBytes,totalBytes,percentage,ranges});

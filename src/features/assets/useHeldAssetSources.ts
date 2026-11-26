@@ -7,13 +7,13 @@ function heldFrame(identity: OpenIdentity) {
   return { identity, sources: known ?? [] as readonly HeldDeposit[], error: '', busy: known == null };
 }
 
-export function useHeldAssetSources(identity: OpenIdentity, active = true, revision = 0): Omit<ReturnType<typeof heldFrame>, 'identity'> {
+export function useHeldAssetSources(identity: OpenIdentity, active = true, revision = 0, readSources = identity.listDeposits): Omit<ReturnType<typeof heldFrame>, 'identity'> {
   const [view, setView] = useState(() => heldFrame(identity));
   useEffect(() => {
     if (!active) return;
     let alive = true;
     const read = () => {
-      void identity.listDeposits().then(sources => {
+      void readSources().then(sources => {
         if (alive) setView({ identity, sources, error: '', busy: false });
       }).catch(() => {
         if (alive) setView(previous => ({
@@ -30,7 +30,7 @@ export function useHeldAssetSources(identity: OpenIdentity, active = true, revis
       alive = false;
       removeEventListener('bankeiz:asset-sources', read);
     };
-  }, [identity, active, revision]);
+  }, [identity, active, revision, readSources]);
 
   return view.identity === identity ? view : heldFrame(identity);
 }

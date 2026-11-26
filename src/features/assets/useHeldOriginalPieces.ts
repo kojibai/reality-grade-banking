@@ -2,14 +2,15 @@ import {useEffect, useState} from 'react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {OriginalPieceSummary} from '../../receiz/original-pieces';
 
-export function useHeldOriginalPieces(identity: OpenIdentity, active = true) {
+export function useHeldOriginalPieces(identity: OpenIdentity, active = true, includeTransferred = false) {
   const [held, setHeld] = useState<{identity: OpenIdentity; pieces: readonly OriginalPieceSummary[]} | null>(null);
   useEffect(() => {
     if (!active || !identity.originalPieces) return;
-    let current = true;
+    let current = true, revision = 0;
     const read = () => {
-      void identity.originalPieces?.().then(api => api.list()).then(pieces => {
-        if (current) setHeld({identity, pieces});
+      const selected = ++revision;
+      void identity.originalPieces?.().then(api => api.list({includeTransferred})).then(pieces => {
+        if (current && selected === revision) setHeld({identity, pieces});
       }).catch(() => {});
     };
     read();
@@ -18,6 +19,6 @@ export function useHeldOriginalPieces(identity: OpenIdentity, active = true) {
       current = false;
       removeEventListener('bankeiz:original-pieces', read);
     };
-  }, [active, identity]);
+  }, [active, identity, includeTransferred]);
   return held?.identity === identity ? held.pieces : [];
 }

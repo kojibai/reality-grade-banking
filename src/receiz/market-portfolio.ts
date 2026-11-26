@@ -83,6 +83,19 @@ export function createMarketPortfolio(input:{accountUid:string;initial?:MarketPo
   /** Display only: the caller has already retained and admitted this original.
    * Its absolute position updates every open surface before background sync. */
   adoptRecorded(raw:unknown){input.assertOpen();const {portfolio:next,timingOnly}=recordedPortfolio(current,raw,input.accountUid);if(next===current)return;if(!timingOnly){revision++;dirty=true;}current=next;for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});},
+  /** An already admitted in-kind split changes holdings, not trade history.
+   * The before-position comparison prevents a late receipt replacing a newer
+   * observation. Current balance/ownership execution never trusts this view. */
+  adoptTransferred(beforeInput:unknown,remainingInput:unknown){
+   input.assertOpen();const before=object(beforeInput),remaining=object(remainingInput);
+   if(before.accountId!==input.accountUid||remaining.accountId!==input.accountUid)throw Error('MARKET_PORTFOLIO_ACCOUNT_MISMATCH');
+   if(before.positionId!==remaining.positionId||before.marketItemId!==remaining.marketItemId||!exact(remaining.shareQuantityMicro)||!exact(remaining.costBasisUsdCents))throw Error('MARKET_PORTFOLIO_POSITION_INVALID');
+   const held=current?.positions.find(row=>row.id===before.positionId&&row.marketItemId===before.marketItemId);if(!current||!held)return false;
+   if(held.shareQuantityMicro===remaining.shareQuantityMicro&&held.costBasisUsdCents===remaining.costBasisUsdCents)return true;
+   if(held.shareQuantityMicro!==before.shareQuantityMicro||held.costBasisUsdCents!==before.costBasisUsdCents)return false;
+   const updated={...held,shareQuantityMicro:String(remaining.shareQuantityMicro),costBasisUsdCents:String(remaining.costBasisUsdCents)},next={...current,observedAt:new Date().toISOString(),positions:current.positions.flatMap(row=>row!==held?[row]:remaining.shareQuantityMicro==='0'?[]:[updated])};
+   revision++;dirty=false;observed=Date.now();current=next;for(const listener of listeners)listener();saving=saving.catch(()=>{}).then(async()=>{input.assertOpen();await input.save?.(next);}).catch(()=>{});return true;
+  },
   invalidate(){revision++;dirty=true;if(!pending)void refresh(true).catch(()=>{});}};
 }
 export type MarketPortfolioClient=ReturnType<typeof createMarketPortfolio>;

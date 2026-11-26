@@ -1,13 +1,20 @@
-import { lazy, Suspense, useState, useSyncExternalStore } from 'react';
-import { ChevronRight, Coins, FileCheck2, Layers, Search } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { nativeCurrencyPrice } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import { ChevronRight, FileCheck2, Layers, Search } from 'lucide-react';
 import { InlineOpening } from '../../components/InlineOpening';
 import { AmountInput } from '../../components/AmountInput';
-import { formatUnits } from '../../core/money';
+import { CurrencyMark } from '../../components/CurrencyMark';
+import { AssetsRowArtwork } from './AssetsRowArtwork';
+import { formatMoney, formatUnits } from '../../core/money';
 import { nativeAssetSupplyMicro } from '../../receiz/native-asset-protocol';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { MarketPosition } from '../../receiz/market-portfolio';
 import { readOpenPortfolio, subscribeOpenPortfolio } from '../../receiz/market-portfolio-presentation';
 import type { HeldDeposit } from '../../receiz/deposit-source';
+import { heldCurrencyPriceHistory, subscribeCurrencyPriceHistory } from '../../receiz/currency-ledger-view';
+import { shareCapitalizationUsdCents } from '../../receiz/market-share-inventory';
+import type { PublicMarketItem } from '../../receiz/public-market';
+import { RecipientInput } from '../account/RecipientInput';
 import { NativeOperation } from '../account/NativeOperation';
 import {useHeldOriginalPieces} from './useHeldOriginalPieces';
 import { useHeldAssetSources } from './useHeldAssetSources';
@@ -27,49 +34,92 @@ const pageSize = 24;
 const SendOriginal = lazy(() => import('./SendOriginal').then(module => ({default: module.SendOriginal})));
 const categories = {shares: 'Shares', currencies: 'Currencies', originals: 'Originals'} as const;
 type Category = keyof typeof categories;
-const MarketShareVault = lazy(() => import('../vault/LegacyVaultExperience').then(module => ({ default: module.VaultExperience })));
+const SendMarketShares = lazy(() => import('./SendMarketShares').then(module => ({default:module.SendMarketShares})));
+const IssueCurrencyNote = lazy(() => import('../notes/CurrencyNotes').then(module => ({default:module.IssueCurrencyNote})));
+const emptyItems: PublicMarketItem[] = [];
 
-export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
+export function SendHeldOwnership({ identity, initialDigest, marketItems = emptyItems, showcase = emptyItems, onRefresh }: {
   identity: OpenIdentity;
   initialDigest: string;
+  marketItems?: PublicMarketItem[];
+  showcase?: PublicMarketItem[];
   onRefresh(): void;
 }) {
-  const { sources, busy, error } = useHeldAssetSources(identity);
-  const heldPieces = useHeldOriginalPieces(identity);
-  const pieceDigests = new Set(heldPieces.map(piece => piece.originalSha256));
+  const { sources, busy, error } = useHeldAssetSources(identity, true, 0, identity.readHeldDeposits);
+  const retainedPieces = useHeldOriginalPieces(identity, true, true);
+  const heldPieces = retainedPieces.filter(piece => piece.ownedBytes > 0);
+  const pieceDigests = new Set(retainedPieces.map(piece => piece.originalSha256));
   const wholeSources = identity.originalPieces ? sources.filter(source => source.kind === 'proof' && !source.nativeAsset
     && source.bytes?.length) : [];
   const originals = wholeSources.filter(source=>!pieceDigests.has(source.digest));
+  const knownDigests = new Set([...pieceDigests, ...originals.map(source => source.digest)]);
+  const accountUid = identity.walletReceivingAddress?.() ?? identity.knownWallet?.()?.wallet.userId;
+  const showcaseOriginals = identity.originalPieces ? showcase.filter(item => {
+    const owner = item.admittedOwnerUserId ?? item.ownerIdentity?.userId;
+    const digest = item.originalDigest?.toLowerCase();
+    if (!digest || !/^[a-f0-9]{64}$/u.test(digest) || knownDigests.has(digest) || (owner && accountUid && owner !== accountUid)) return false;
+    knownDigests.add(digest);
+    return true;
+  }) : [];
   const openPortfolio = useSyncExternalStore(subscribeOpenPortfolio, readOpenPortfolio, () => null);
   const portfolio = openPortfolio && openPortfolio.owner === identity.binding?.artifactSha256 ? openPortfolio.portfolio : identity.knownMarketPortfolio?.();
   const [marketShare, setMarketShare] = useState<MarketPosition | null>(null);
+  const [recoverShare, setRecoverShare] = useState(false), [pendingShare, setPendingShare] = useState(false);
+  const [currencyNote, setCurrencyNote] = useState(false);
+  useEffect(() => {
+    if (!identity.pendingOwnershipShare) return;
+    let current = true;
+    void identity.pendingOwnershipShare().then(pending => { if (current) setPendingShare(pending); }).catch(() => {});
+    return () => { current = false; };
+  }, [identity, marketShare, recoverShare]);
   const [selectedId, setSelectedId] = useState(initialDigest), [search, setSearch] = useState('');
   const [limit, setLimit] = useState(pageSize), [quantity, setQuantity] = useState('1');
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState(''), [recipientUid, setRecipientUid] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
-  const [pinnedPiece, setPinnedPiece] = useState<(typeof heldPieces)[number] | null>(null);
+  const [pinned, setPinned] = useState<{source?:HeldDeposit; showcase?:PublicMarketItem; piece?:(typeof heldPieces)[number]} | null>(null);
   const positions = sources.filter(isSendableHolding);
   const selected = positions.find(source => source.nativeAsset.assetId === selectedId || source.digest === selectedId);
-  const selectedOriginal = wholeSources.find(source => source.digest === selectedId);
-  const selectedPiece = pinnedPiece ?? heldPieces.find(source => source.proofDigest === selectedId);
+  const selectedOriginal = pinned?.source ?? originals.find(source => source.digest === selectedId);
+  const selectedShowcase = pinned?.showcase ?? showcaseOriginals.find(item => item.originalDigest?.toLowerCase() === selectedId);
+  const selectedPiece = pinned ? pinned.piece : heldPieces.find(source => source.proofDigest === selectedId || source.originalSha256 === selectedId);
+  const asset = selected?.nativeAsset;
+  const heldPrice = asset?.currency ? nativeCurrencyPrice(asset.currency) : undefined;
+  const price = useSyncExternalStore(subscribeCurrencyPriceHistory, () => {
+    if (!asset?.currency) return undefined;
+    const latest = heldCurrencyPriceHistory(asset.assetId, asset.symbol).at(-1);
+    return latest && BigInt(latest.kaiUPulse) > BigInt(asset.sourceKaiUPulse) ? latest.usdCents : heldPrice;
+  }, () => heldPrice);
 
-  if (marketShare) return <Suspense fallback={<InlineOpening label="Opening your vaults" />}>
-    <MarketShareVault identity={identity} allowCreate={false} initialInvestment={marketShare} onClose={() => setMarketShare(null)} onRefresh={onRefresh}/>
-  </Suspense>;
+  if (marketShare || recoverShare) return <>
+    <button type="button" className="back-link" onClick={() => {setMarketShare(null);setRecoverShare(false);}}>All holdings</button>
+    <Suspense fallback={<InlineOpening label="Opening share transfer"/>}>
+      <SendMarketShares identity={identity} position={portfolio?.positions.find(position => position.id === marketShare?.id) ?? marketShare ?? undefined} marketItems={marketItems} onRefresh={onRefresh}/>
+    </Suspense>
+  </>;
 
-  if (selectedOriginal || selectedPiece) return <>
-    <button type="button" className="back-link" onClick={() => {setSelectedId('');setPinnedPiece(null);}}>All holdings</button>
+  if (selectedOriginal || selectedPiece || selectedShowcase) return <>
+    <button type="button" className="back-link" onClick={() => {setSelectedId('');setPinned(null);}}>All holdings</button>
     <Suspense fallback={<InlineOpening label="Opening your Original"/>}>
-      <SendOriginal key={selectedId} identity={identity} source={selectedOriginal} held={selectedPiece} onRefresh={onRefresh}/>
+      <SendOriginal key={selectedId} identity={identity} source={selectedOriginal} held={selectedPiece} showcase={selectedShowcase} onRefresh={onRefresh}/>
+    </Suspense>
+  </>;
+
+  if (selected && currencyNote) return <>
+    <button type="button" className="back-link" onClick={() => setCurrencyNote(false)}>Back to send</button>
+    <Suspense fallback={<InlineOpening label="Opening currency note"/>}>
+      <IssueCurrencyNote identity={identity} asset={selected} onRefresh={onRefresh}/>
     </Suspense>
   </>;
 
   if (selected) {
     const { nativeAsset, executionDigest, title } = selected;
     const available = formatUnits(nativeAsset.quantityMicro);
-    return <NativeOperation identity={identity} title="Ownership transfer" confirmLabel="Send ownership" onRefresh={onRefresh}
+    let estimate: string | undefined;
+    if (price && /^\d{1,16}$/u.test(quantity.trim()) && BigInt(quantity) > 0n && BigInt(quantity) * 1_000_000n <= BigInt(nativeAsset.quantityMicro))
+      estimate = shareCapitalizationUsdCents(price, (BigInt(quantity) * 1_000_000n).toString());
+    return <NativeOperation identity={identity} title="Ownership transfer" confirmLabel={nativeAsset.currency ? 'Send currency' : 'Send ownership'} onRefresh={onRefresh}
       ownership={{ title, symbol: nativeAsset.symbol }}
-      inputKey={JSON.stringify([executionDigest, quantity, recipient])}
+      inputKey={JSON.stringify([executionDigest, quantity, recipient, recipientUid])}
       input={() => {
         let quantityMicro: string;
         try {
@@ -83,11 +133,11 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
         if (BigInt(quantityMicro) > BigInt(nativeAsset.quantityMicro)) {
           throw Error('Enter a quantity within your available units.');
         }
-        return { kind: 'send-ownership', assetDigest: executionDigest, quantityMicro, recipient };
+        return { kind: 'send-ownership', assetDigest: executionDigest, quantityMicro, recipient: recipientUid || recipient };
       }}>
       <button type="button" className="back-link" onClick={() => setSelectedId('')}>All holdings</button>
       <div className="holding-panel">
-        <span>Send ownership</span>
+        <span>{nativeAsset.currency ? 'Send currency' : 'Send ownership'}</span>
         <strong>{title}</strong>
         <p>{available} {nativeAsset.symbol} available</p>
         {nativeAsset.lockedQuantityMicro !== '0' && <p>{formatUnits(nativeAsset.lockedQuantityMicro)} {nativeAsset.symbol} committed to offers</p>}
@@ -96,16 +146,20 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
         <AmountInput label={nativeAsset.currency ? 'Whole units to send' : 'Ownership to send'} value={quantity} onChange={setQuantity} suffix={nativeAsset.symbol} />
         <button type="button" className="secondary-button" onClick={() => setQuantity(available)}>All</button>
       </div>
-      <label className="form-field"><span>Recipient</span><input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="Receiz ID or public username" maxLength={160} /></label>
+      {estimate !== undefined && <p className="body-copy small-copy">Estimated market value {formatMoney(estimate)}</p>}
+      <RecipientInput identity={identity} value={recipient} placeholder="Receiz ID or public username"
+        onChange={value => {setRecipient(value);setRecipientUid('');}}
+        onSelect={person => {setRecipient(person.username);setRecipientUid(person.userId);}}/>
+      {nativeAsset.currency && identity.currencyNotes && <button type="button" className="text-button" onClick={() => setCurrencyNote(true)}>Create currency note</button>}
     </NativeOperation>;
   }
 
   const query = search.trim().toLowerCase();
-  const marketPositions = identity.vaults ? portfolio?.positions ?? [] : [];
+  const marketPositions = identity.ownershipShares ? portfolio?.positions ?? [] : [];
   const offered: Category[] = [];
   if (marketPositions.length || positions.some(source => !source.nativeAsset.currency)) offered.push('shares');
+  if (originals.length || heldPieces.length || showcaseOriginals.length) offered.push('originals');
   if (positions.some(source => source.nativeAsset.currency)) offered.push('currencies');
-  if (originals.length || heldPieces.length) offered.push('originals');
   const visibleCategory = category && offered.includes(category) ? category : offered[0];
   const matching = visibleCategory === 'originals' ? [] : positions.filter(source =>
     Boolean(source.nativeAsset.currency) === (visibleCategory === 'currencies')
@@ -114,13 +168,15 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
     .some(value => value.toLowerCase().includes(query)));
   const matchingOriginals = visibleCategory !== 'originals' ? [] : [
     ...originals.map(source => ({id: source.digest, title: source.title, detail: 'Whole Original'})),
+    ...showcaseOriginals.map(item => ({id: item.originalDigest!.toLowerCase(), title: item.title, detail: 'From your Showcase'})),
     ...heldPieces.map(piece => ({id: piece.proofDigest, title: piece.filename, detail: `${piece.percentage} of Original · ${piece.ownedBytes.toLocaleString()} bytes`})),
   ].filter(original => [original.title, original.id].some(value => value.toLowerCase().includes(query)));
   const matchCount = matching.length + matchingMarket.length + matchingOriginals.length;
-  const available = positions.length + marketPositions.length + originals.length + heldPieces.length;
+  const available = positions.length + marketPositions.length + originals.length + heldPieces.length + showcaseOriginals.length;
 
   return <section>
     <h1 className="sheet-hero">Send ownership.</h1>
+    {pendingShare && <button type="button" className="text-button" onClick={() => setRecoverShare(true)}>Resume share transfer</button>}
     {available > 0 && <>
       {offered.length > 1 && <div className="segmented" aria-label="Holding type" role="group">
         {offered.map(value => <button key={value} type="button" aria-pressed={visibleCategory === value}
@@ -131,13 +187,19 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
       <label className="search-field ownership-send-search"><Search size={17} aria-hidden="true" /><input
         type="search" aria-label="Search holdings" placeholder="Search holdings" value={search}
         onChange={event => { setSearch(event.target.value); setLimit(pageSize); }} /></label>
-      <div className="rows-surface">{matching.slice(0, limit).map(source => {
-        const { assetId, quantityMicro, symbol } = source.nativeAsset;
+      <div className="rows-surface">{matching.slice(0, limit).map((source,index) => {
+        const { assetId, quantityMicro, symbol, currency } = source.nativeAsset;
+        const listing = currency ? marketItems.find(item => item.nativeAsset?.id === assetId && item.nativeAsset.currency?.symbol === symbol) : undefined;
         return <button key={assetId} type="button" className="asset-row" onClick={() => {
           setSelectedId(assetId);
+          setCurrencyNote(false);
+          setRecipient('');
+          setRecipientUid('');
           setQuantity(BigInt(quantityMicro) < 1_000_000n ? formatUnits(quantityMicro) : '1');
         }}>
-          <span className="asset-mark">{source.nativeAsset.currency ? <Coins size={20} aria-hidden="true" /> : <Layers size={20} aria-hidden="true" />}</span>
+          {listing ? <AssetsRowArtwork item={listing} initiallyNear={index < 8}/>
+            : currency ? <CurrencyMark symbol={symbol}/>
+            : <span className="asset-mark"><Layers size={20} aria-hidden="true"/></span>}
           <span className="row-copy"><strong>{source.title}</strong><span>{formatUnits(quantityMicro)} {symbol} available</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>;
@@ -147,7 +209,7 @@ export function SendHeldOwnership({ identity, initialDigest, onRefresh }: {
           <span className="row-copy"><strong>{position.title}</strong><span>{formatUnits(position.shareQuantityMicro)} Market shares</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>
-      ))}{matchingOriginals.slice(0, limit).map(original => <button key={original.id} type="button" className="asset-row" onClick={() => {setSelectedId(original.id);setPinnedPiece(heldPieces.find(piece=>piece.proofDigest===original.id)??null);}}>
+      ))}{matchingOriginals.slice(0, limit).map(original => <button key={original.id} type="button" className="asset-row" onClick={() => {setSelectedId(original.id);setPinned({source:originals.find(source=>source.digest===original.id), showcase:showcaseOriginals.find(item=>item.originalDigest?.toLowerCase()===original.id), piece:heldPieces.find(piece=>piece.proofDigest===original.id)});}}>
         <span className="asset-mark"><FileCheck2 size={20} aria-hidden="true"/></span>
         <span className="row-copy"><strong>{original.title}</strong><span>{original.detail}</span></span>
         <ChevronRight size={17} aria-hidden="true"/>

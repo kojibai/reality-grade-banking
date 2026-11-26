@@ -17,7 +17,7 @@ async function noteRemovalGuard(saved: SavedIdentity) {
   const db = await database();
   const rows: {key:string;row:PrivateBankOperation|undefined}[]=[];
   try {
-    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','wallet-deferred-sends','wallet-nearby-receipts','funded-wallet-witness','market-trades','share-certificates','received-proof','twin-credit-purchase']) {
+    for (const family of ['hosted-checkouts','offline-notes','prepared-notes','connected-notes','asset-publication','backed-asset-publication','received-note-deposits','native-payments','native-assets','wallet-sends','wallet-deferred-sends','wallet-nearby-receipts','funded-wallet-witness','market-trades','share-certificates','ownership-share-transfers','received-proof','twin-credit-purchase']) {
       const key=`${family}|${BANK_STORAGE_APPLICATION_ID}|${digest}`;
       const row=await new Promise<PrivateBankOperation|undefined>((resolve,reject)=>{const read=db.transaction('operations').objectStore('operations').get(key);read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
       rows.push({key,row});
@@ -34,6 +34,11 @@ async function noteRemovalGuard(saved: SavedIdentity) {
         const resolved = Array.isArray(state) && state.length <= 1000 && state.every(entry =>
           family==='wallet-deferred-sends' ? entry?.status==='recorded'||entry?.status==='not-sent' : entry?.original!=null);
         if(!resolved)throw Error('Keep this Identity Record while nearby payments are awaiting confirmation. Open Send or Receive to check their status.');
+        continue;
+      }
+      if(family==='ownership-share-transfers'){
+        const checkpoint=(await import('./ownership-share-transfer')).readOwnershipShareCheckpoint(state,digest);
+        if(checkpoint?.current.status==='submitted')throw Error('Keep this ID until its ownership transfer is confirmed. Reopen Send ownership to recover the exact request.');
         continue;
       }
       if(family==='share-certificates'){
@@ -730,7 +735,7 @@ async function saveNoteState(binding: { artifactSha256: string; keyId?: string }
     }
     const wallet = family === 'funded-wallet' || family.startsWith('funded-wallet-') || family.startsWith('wallet-assertion:');
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(['identity', 'operations'], 'readwrite', (wallet || family === 'original-piece-send') ? { durability: 'strict' } : undefined), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
+      const tx = db.transaction(['identity', 'operations'], 'readwrite', (wallet || family === 'original-piece-send' || family === 'ownership-share-transfers') ? { durability: 'strict' } : undefined), identities = tx.objectStore('identity'), operations = tx.objectStore('operations'), read = identities.get('current');
       read.onsuccess = () => {
         const current = read.result as SavedIdentity | undefined;
         if (!current || !equal(current.bytes, saved.bytes) || !equal(current.iv, saved.iv)) { tx.abort(); return; }
@@ -1102,6 +1107,9 @@ export const loadMoneyWorkspaceState=(binding:{artifactSha256:string})=>loadNote
 export const saveMoneyWorkspaceState=(binding:{artifactSha256:string},value:import('./money-workspace').MoneyState,expected:unknown)=>saveNoteState(binding,'money-workspace',value,expected);
 export const loadMoneyConversationState=(binding:{artifactSha256:string})=>loadNoteState(binding,'money-conversation');
 export const saveMoneyConversationState=(binding:{artifactSha256:string},value:import('./money-conversation-retention').MoneyConversationState,expected:unknown)=>saveNoteState(binding,'money-conversation',value,expected);
+
+export const loadOwnershipShareState=(binding:{artifactSha256:string})=>loadNoteState(binding,'ownership-share-transfers');
+export const saveOwnershipShareState=(binding:{artifactSha256:string},value:import('./ownership-share-transfer').OwnershipShareCheckpoint,expected:unknown)=>saveNoteState(binding,'ownership-share-transfers',value,expected);
 
 export const loadShareCertificateState=(binding:{artifactSha256:string})=>loadNoteState(binding,'share-certificates');
 export const saveShareCertificateState=(binding:{artifactSha256:string},value:import('./share-certificates').ShareCertificateCheckpoint,expected:unknown)=>saveNoteState(binding,'share-certificates',value,expected);

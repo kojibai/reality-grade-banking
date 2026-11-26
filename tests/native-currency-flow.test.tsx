@@ -171,7 +171,7 @@ it('sends whole currency units from the held source while preserving the Market 
    currency:{policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'25'},availableQuantityMicro:'8000000',liquidityReserveUsdCents:'50',liquidityReservePhiMicro:'200000',liquiditySettlementPhiMicro:'0'}}};
  const marketPortfolio=vi.fn();
  const identity={binding:{artifactSha256:'d'.repeat(64)},knownDeposits:()=>[held],listDeposits:async()=>[held],
-  knownMarketPortfolio:()=>({positions:[{id:'position',marketItemId:'asset:held',title:'Held Market share',shareQuantityMicro:'1000000'}]}),marketPortfolio,vaults:async()=>({list:async()=>[]})} as unknown as OpenIdentity;
+  knownMarketPortfolio:()=>({positions:[{id:'position',marketItemId:'asset:held',title:'Held Market share',shareQuantityMicro:'1000000'}]}),marketPortfolio,ownershipShares:vi.fn()} as unknown as OpenIdentity;
  const click=(label:string)=>act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(label))!.click());
  try{
   await act(async()=>root.render(<LiveOwnership identity={identity} onRefresh={()=>{}}/>));
@@ -189,6 +189,7 @@ it('sends whole currency units from the held source while preserving the Market 
   expect(()=>review.input?.()).toThrow('Enter a positive whole number of units.');
   await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='All')!.click());
   expect(review.input?.()).toEqual({kind:'send-ownership',assetDigest:head,quantityMicro:'2000000',recipient:'@receiver'});
+  expect(host.textContent).toContain('Estimated market value $0.50');
   expect(marketPortfolio).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());}
 });

@@ -6,6 +6,7 @@ import {LiveAssetDetail} from '../src/features/assets/LiveAssets';
 import {LiveOwnership} from '../src/features/assets/LiveOwnership';
 import type {OpenIdentity} from '../src/receiz/native-identity';
 import type {HeldDeposit} from '../src/receiz/deposit-source';
+import type {PublicMarketItem} from '../src/receiz/public-market';
 import type {BankOperationInput} from '../src/receiz/bank-operations';
 
 const p=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefined,inputKey:''}));
@@ -68,22 +69,62 @@ it('opens Send ownership from held native positions while the shared read is pen
  }finally{await act(async()=>root.unmount());}
 });
 
-it('opens the existing Vault handoff for a known Market share without refreshing the portfolio',async()=>{
- const position={id:'market-position',marketItemId:'asset:market-original',title:'Market Original',shareQuantityMicro:'1500000'};
- const marketPortfolio=vi.fn();
- const list=vi.fn(async()=>[]);
+it('sends a known Market share from its amount and recipient form without opening Vault or rereading holdings',async()=>{
+ const position={id:'market-position',marketItemId:'asset:market-original',title:'Market Original',shareQuantityMicro:'1500000',lastPriceUsdCents:'250'};
+ const review={quantityMicro:'1500000',recipient:'buyer.receiz.id',title:position.title};
+ const prepare=vi.fn(async()=>review),execute=vi.fn(async()=>({...review,status:'committed'})),onRefresh=vi.fn();
+ const marketPortfolio=vi.fn(),vaults=vi.fn();
  const identity={
   binding:{artifactSha256:'d'.repeat(64)},listDeposits:async()=>[],
-  knownMarketPortfolio:()=>({positions:[position]}),marketPortfolio,vaults:async()=>({list}),
+  knownMarketPortfolio:()=>({positions:[position]}),marketPortfolio,vaults,
+  ownershipShares:async()=>({prepare,execute,pending:async()=>null}),
  } as unknown as OpenIdentity;
  const host=document.createElement('div'),root=createRoot(host);
+ const button=(label:string)=>[...host.querySelectorAll('button')].find(node=>node.textContent===label)!;
  try{
-  await act(async()=>root.render(<LiveOwnership identity={identity} onRefresh={()=>{}}/>));
+  await act(async()=>root.render(<LiveOwnership identity={identity} onRefresh={onRefresh}/>));
   const selected=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Market Original'))!;
   expect(selected.textContent).toContain('1.5 Market shares');
   await act(async()=>{selected.click();await vi.dynamicImportSettled();});
-  expect(host.textContent).toContain('Open a vault to send these shares');
-  expect(list).toHaveBeenCalledOnce();
+  expect(host.querySelector('[aria-label="Shares to send"]')).not.toBeNull();
+  const input=host.querySelector<HTMLInputElement>('[role="combobox"]')!;
+  await act(async()=>{
+   button('All').click();
+   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,'@buyer');
+   input.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  expect(host.textContent).toContain('$3.75');
+  await act(async()=>button('Review send').click());
+  expect(prepare).toHaveBeenCalledExactlyOnceWith({positionId:position.id,marketItemId:position.marketItemId,quantityMicro:'1500000',recipient:'@buyer'});
+  expect(execute).not.toHaveBeenCalled();
+  await act(async()=>button('Send shares').click());
+  expect(execute).toHaveBeenCalledExactlyOnceWith(review);
+  expect(host.textContent).toContain('Shares sent.');
+  expect(onRefresh).toHaveBeenCalledOnce();
+  expect(vaults).not.toHaveBeenCalled();
   expect(marketPortfolio).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());}
+});
+
+it('lists a Showcase-only Original without waiting for a network read and suppresses fully transferred Originals',async()=>{
+ const showcase=[
+  {id:'public-1',title:'Showcase proof',originalDigest:'b'.repeat(64),admittedOwnerUserId:'owner'},
+  {id:'public-2',title:'Transferred proof',originalDigest:'c'.repeat(64),admittedOwnerUserId:'owner'},
+  {id:'public-3',title:'A different owner',originalDigest:'d'.repeat(64),admittedOwnerUserId:'someone-else'},
+ ] as PublicMarketItem[];
+ const listDeposits=vi.fn(async()=>[]),readHeldDeposits=vi.fn(async()=>[]);
+ const identity={walletReceivingAddress:()=> 'owner',listDeposits,readHeldDeposits, originalPieces:async()=>({
+  list:async()=>[{originalSha256:'c'.repeat(64),ownedBytes:0}],
+ })} as unknown as OpenIdentity;
+ const host=document.createElement('div'),root=createRoot(host);
+ const fetch=vi.spyOn(globalThis,'fetch');
+ try {
+  await act(async()=>root.render(<LiveOwnership identity={identity} showcase={showcase} onRefresh={()=>{}}/>));
+  expect(host.textContent).toContain('Showcase proof');
+  expect(host.textContent).not.toContain('Transferred proof');
+  expect(host.textContent).not.toContain('A different owner');
+  expect(fetch).not.toHaveBeenCalled();
+  expect(listDeposits).not.toHaveBeenCalled();
+  expect(readHeldDeposits).toHaveBeenCalledOnce();
+ } finally {fetch.mockRestore();await act(async()=>root.unmount());}
 });

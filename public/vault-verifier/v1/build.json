@@ -2240,7 +2240,7 @@
     },
     {
       "path": "src/receiz/vault/market.ts",
-      "sha256": "20afb0c9a52a00235fe21a63191ab6affdeb77f8c810e726a0587b26ff494cb6"
+      "sha256": "78c8d5defe91d1abff1981785e90275d667622730fa51d7775752535b5ef0e5e"
     },
     {
       "path": "src/receiz/vault/money-public.ts",
@@ -2277,20 +2277,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "bcab46fd87831c28bf644429cb7228abefc05af4b7f9bbb8231be4b6f521b72c",
-      "bytes": 11399581
+      "sha256": "606c92fbe6add2fddd62e990f6de22106353e95121775994cc08a28f8c7761b4",
+      "bytes": 11400112
     },
     "inspector.js.map": {
-      "sha256": "9a14ecf0c946ad9daf8f698606bea388dfd2be22815f613c1c2e85458fc0289b",
-      "bytes": 30023768
+      "sha256": "ebcf0157ea85a746a107f48b494f059204cdc90119d02a60c62fea1675f6a5a0",
+      "bytes": 30026026
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "553d5be004ed92e9de866f0a35c3955eae5834daaa38c5bbd892e168393719b7",
-      "bytes": 11404431
+      "sha256": "3be2efaf16cffbf0d421b7f6ebaa8f03e6ad6f02cd3ab15fb320fef2434816c5",
+      "bytes": 11404962
     },
     "README.txt": {
       "sha256": "69230c971b734b723cf1af67da1e32c3f97129f78860af2e951c6f059fb09ffc",
