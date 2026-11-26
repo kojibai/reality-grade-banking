@@ -1,5 +1,5 @@
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync,readFileSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
+import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {expect,it} from 'vitest';
@@ -19,8 +19,8 @@ it('starts both Vercel npm commands without obsolete npm cache config, preservin
   expect(JSON.parse(line)).toEqual({cache:f.env.npm_config_cache,pnpm:f.env.pnpm_config_cache_dir,kept:'kept',invalid:[]});
  }finally{f.close();}
 });
-it('preserves a failing build exit status instead of hiding failures',()=>{
- const f=fixture("node -e 'process.exit(17)'");try{expect(f.run('build').status).toBe(17);}finally{f.close();}
+it('preserves a failing production build exit status',()=>{
+ const f=fixture("node -e 'process.exit(17)'");try{f.env.VERCEL_ENV='production';expect(f.run('build').status).toBe(17);}finally{f.close();}
 });
 it('rejects unsupported runner tasks',()=>{
  const f=fixture();try{const r=f.run('publish');expect(r.status).toBe(1);expect(r.stderr).toContain('Unsupported Vercel npm task');}finally{f.close();}
@@ -33,18 +33,18 @@ it('approves only the reviewed locked esbuild lifecycle version',()=>{
  const pkg=JSON.parse(readFileSync('package.json','utf8')),lock=JSON.parse(readFileSync('package-lock.json','utf8'));
  expect(pkg.allowScripts).toEqual({'esbuild@0.28.2':true});expect(lock.packages['node_modules/esbuild'].version).toBe('0.28.2');
 });
-it('retries a transient production capture failure without changing held files before running the real build',()=>{
- const f=fixture();try{
+it('builds production from the held catalog without attempting a Source capture',()=>{
+ const f=fixture("node -e 'console.log(require(\"node:fs\").readFileSync(\"public/receiz-public-market.json\",\"utf8\"))'");
+ try{
+  f.env.VERCEL_ENV='production';
   mkdirSync(join(f.directory,'scripts'));mkdirSync(join(f.directory,'public'));
-  writeFileSync(join(f.directory,'scripts/seed-public-market.mjs'),"import {existsSync,writeFileSync} from 'node:fs';const done=existsSync('attempt');writeFileSync('attempt','once');process.exit(done?0:75)");
-  const seed='exact held public bytes';writeFileSync(join(f.directory,'public/receiz-public-market.json'),seed);f.env.VERCEL_ENV='production';
-  const result=f.run('build');expect(result.status,result.stderr).toBe(0);expect(result.stderr).toContain('retrying the same public selection');expect(readFileSync(join(f.directory,'public/receiz-public-market.json'),'utf8')).toBe(seed);
- }finally{f.close();}
-});
-it('keeps persistent Source unavailability and non-transient capture failures visible',()=>{
- const f=fixture();try{
-  mkdirSync(join(f.directory,'scripts'));f.env.VERCEL_ENV='production';const script=join(f.directory,'scripts/seed-public-market.mjs');
-  writeFileSync(script,'process.exit(75)');expect(f.run('build').status).toBe(75);
-  writeFileSync(script,'process.exit(17)');expect(f.run('build').status).toBe(17);
+  writeFileSync(join(f.directory,'scripts/seed-public-market.mjs'),"import {writeFileSync} from 'node:fs';writeFileSync('source-attempted','1');process.exit(75)");
+  const catalog=join(f.directory,'public/receiz-public-market.json'),seed='{"catalog":"exact held public bytes"}';
+  writeFileSync(catalog,seed);
+  const result=f.run('build');
+  expect(result.status,result.stderr).toBe(0);
+  expect(result.stdout).toContain(seed);
+  expect(readFileSync(catalog,'utf8')).toBe(seed);
+  expect(existsSync(join(f.directory,'source-attempted'))).toBe(false);
  }finally{f.close();}
 });
