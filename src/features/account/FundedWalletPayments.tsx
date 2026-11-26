@@ -18,18 +18,27 @@ import {ForwardNoteHandoff} from '../notes/ForwardNoteHandoff';
 import type {BankForwardedNote,BankNoteDepositResult,BankNoteImage,BankReceivedNoteDeposit} from '../../receiz/offline-notes';
 import {OfflineCashOptions} from './OfflineCashOptions';
 
+function walletRecoveryFile(bytes:Uint8Array,operationId:string){
+  return new File([new Uint8Array(bytes)],`bankeiz-wallet-${operationId}.receiz`,{type:'application/octet-stream'});
+}
+
+function downloadWalletRecoveryFile(file:File){
+  const url=URL.createObjectURL(file),link=document.createElement('a');
+  link.href=url;link.download=file.name;
+  document.body.append(link);
+  try{link.click();}
+  finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);}
+}
+
 async function saveWalletRecoveryFile(bytes:Uint8Array,operationId:string){
-  const file=new File([new Uint8Array(bytes)],`bankeiz-wallet-${operationId}.receiz`,{type:'application/octet-stream'});
+  const file=walletRecoveryFile(bytes,operationId);
   try{
     if(navigator.share&&navigator.canShare?.({files:[file]})){
       await navigator.share({title:'Wallet recovery file',files:[file]});
       return;
     }
   }catch(cause){if((cause instanceof DOMException||cause instanceof Error)&&cause.name==='AbortError')return;}
-  const url=URL.createObjectURL(file),link=document.createElement('a');
-  link.href=url;link.download=file.name;
-  document.body.append(link);link.click();link.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  downloadWalletRecoveryFile(file);
 }
 
 const walletError=(cause:unknown)=>{
@@ -182,19 +191,33 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   const [pendingBundle,setPendingBundle]=useState<string|null>(null);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[approved,setApproved]=useState(false);
   const running=useRef(false);
+  const activeIdentity=useRef<OpenIdentity|null>(null);
+  const automaticRecoveryDownload=(navigator as Navigator&{standalone?:boolean}).standalone===true;
   useEffect(()=>{
     let current=true;
+    activeIdentity.current=identity;
     void identity.fundedWallet!().then(async wallet=>{
       const saved=await wallet.outgoing();
       const pending=saved?null:await wallet.pendingBundle?.();
       if(current){if(saved)setResult(saved);setPendingBundle(pending??null);}
     }).catch(cause=>{if(current&&!fundedWalletUnavailable(cause))setError(walletError(cause));});
-    return()=>{current=false;};
+    return()=>{current=false;activeIdentity.current=null;};
   },[identity]);
   async function act(work:()=>Promise<void>){
     if(running.current)return;
     running.current=true;setError('');setBusy(true);
     try{await work();}catch(error){setError(walletError(error));}finally{running.current=false;setBusy(false);}
+  }
+  function showConfirmedPayment(payment:FundedWalletSendResult){
+    if(activeIdentity.current!==identity)return;
+    if(automaticRecoveryDownload&&payment.recoveryProof){
+      // Files is an extra recovery copy. A download request gives no
+      // assurance of persistence and cannot change the retained payment.
+      try{downloadWalletRecoveryFile(walletRecoveryFile(payment.recoveryProof,payment.operationId));}
+      catch{/* The manual save remains available with the exact same proof. */}
+    }
+    setResult(payment);
+    onRefresh();
   }
   const errors=error&&<p className="error-message" role="alert">{error}</p>;
   async function scanReply(bytes:Uint8Array){
@@ -225,7 +248,9 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
       <p className="body-copy">Wallet will deliver the signed payment when this device reconnects.</p>}
     {recoveryProof&&<>
       <button className="text-button" type="button" disabled={busy} onClick={()=>void act(()=>saveWalletRecoveryFile(recoveryProof,result.operationId))}><Download size={16}/>Save recovery file</button>
-      <p className="body-copy small-copy">On iPhone, choose Save to Files, then iCloud Drive. Keep this file private. It can help recover the payment after it syncs.</p>
+      <p className="body-copy small-copy">{automaticRecoveryDownload
+        ?'Look for your private recovery file in Files under Downloads. To reopen it offline, choose Restore Wallet from file under Receive nearby.'
+        :'On iPhone, choose Save to Files. Keep this file private. If you save it in iCloud Drive, it can help recover the payment after it syncs.'}</p>
     </>}
     <button className="secondary-button" disabled={busy} onClick={()=>void act(async()=>{
       const wallet=await identity.fundedWallet!();await wallet.completeOutgoing(result.operationId);
@@ -238,7 +263,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
     <p className="body-copy">{formatMoney(pendingBundle)} is saved for this recipient.</p>
     <button type="button" className="primary-button" disabled={busy} onClick={()=>void act(async()=>{
       const wallet=await identity.fundedWallet!();
-      try{setResult(await wallet.resumeBundle());onRefresh();}
+      try{showConfirmedPayment(await wallet.resumeBundle());}
       finally{setPendingBundle(await wallet.pendingBundle());}
     })}>Continue payment</button>{errors}
   </section>;
@@ -276,7 +301,8 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
     });}}>{errors}</WalletPaymentReview>;
   if(review)return <WalletPaymentReview offline review={review} busy={busy} approved={approved} onApprove={setApproved}
     onEdit={()=>{setReview(null);setApproved(false);onEdit?.();}}
-    onSend={()=>{if(approved)void act(async()=>{const wallet=await identity.fundedWallet!();setResult(await wallet.confirm(review));onRefresh();});}}>
+    onSend={()=>{if(approved)void act(async()=>{const wallet=await identity.fundedWallet!();showConfirmedPayment(await wallet.confirm(review));});}}>
+    {automaticRecoveryDownload&&<p className="body-copy small-copy">For payments by QR, Bankeiz requests a private recovery download.</p>}
     {errors}
   </WalletPaymentReview>;
   if(pairing)return <section className="native-operation-result">
@@ -598,8 +624,9 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
           : <><p className="body-copy small-copy">Scan the sender’s payment QR or use a photo of it. For a moving QR, keep the camera on the code until all frames are scanned.</p>
             <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
             <label className="text-button qr-upload"><Upload size={16}/>Restore Wallet from file
-              <input type="file" accept=".receiz,application/octet-stream" aria-label="Restore Wallet from file" disabled={busy} onChange={event=>{
-                const file=event.target.files?.[0];event.target.value='';if(file)void restoreFromFile(file);
+              <input type="file" aria-label="Restore Wallet from file" disabled={busy} onChange={event=>{
+                const picker=event.currentTarget,file=picker.files?.[0];
+                if(file)void restoreFromFile(file).finally(()=>{picker.value='';});
               }}/>
             </label>
             {recoveryFiles.map(file=><button key={file.operationId} className="text-button" type="button" disabled={busy} onClick={()=>{

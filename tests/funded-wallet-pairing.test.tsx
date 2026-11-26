@@ -110,6 +110,62 @@ test('Wallet opens the recipient’s retained proof and scans the same proof for
   }finally{await act(async()=>root.unmount());host.remove();}
 });
 
+test.each([
+  {entry:'confirm',standalone:true,blocked:false},
+  {entry:'confirm',standalone:true,blocked:true},
+  {entry:'confirm',standalone:false,blocked:false},
+  {entry:'resume',standalone:true,blocked:false},
+  {entry:'reopen',standalone:true,blocked:false},
+])('starts a recovery download only for newly completed iPhone payments ($entry, standalone $standalone, blocked $blocked)',async({entry,standalone,blocked})=>{
+  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+  const previousStandalone=Object.getOwnPropertyDescriptor(navigator,'standalone');
+  Object.defineProperty(navigator,'standalone',{configurable:true,value:standalone});
+  const exact=Uint8Array.of(11,22,33);
+  const qr=await createOpticalNoteFrames('wallet',exact);
+  const result={operationId:offer.conversationId,qr,recoveryProof:exact};
+  const review={recipientLabel:'Recipient',amountUsdCents:'100',
+    quote:{amountPhiMicro:'500000',settledUsdCents:'100',ecosystemUsdCents:'0'}};
+  const wallet={outgoing:async()=>entry==='reopen'?result:null,
+    pendingBundle:async()=>entry==='resume'?'100':null,
+    confirm:vi.fn(async()=>result),resumeBundle:vi.fn(async()=>result)};
+  const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
+  const createUrl=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:wallet-recovery');
+  const downloads:{filename:string;qrVisible:boolean}[]=[];
+  const download=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(this:HTMLAnchorElement){
+    downloads.push({filename:this.download,qrVisible:host.textContent?.includes('Wallet payment QR')??false});
+    if(blocked)throw new DOMException('Download denied','NotAllowedError');
+  });
+  try{
+    await act(async()=>root.render(<FundedWalletSend identity={identity} request={()=>({
+      recipient:offer.recipient,amountUsdCents:'100',nearby:true,
+    })} initialReview={entry==='confirm'?review:undefined} onRefresh={()=>{}} onNext={()=>{}}>Payment fields</FundedWalletSend>));
+    if(entry==='confirm'){
+      await act(async()=>host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+      await click(host,'Send payment');
+      expect(wallet.confirm).toHaveBeenCalledExactlyOnceWith(review);
+    }else if(entry==='resume'){
+      await click(host,'Continue payment');
+      expect(wallet.resumeBundle).toHaveBeenCalledOnce();
+    }
+    expect(downloads).toEqual(standalone&&entry!=='reopen'?[{
+      filename:`bankeiz-wallet-${result.operationId}.receiz`,qrVisible:false,
+    }]:[]);
+    if(downloads.length){
+      const file=createUrl.mock.calls[0]![0];
+      if(!(file instanceof File))throw Error('Expected a Wallet recovery file');
+      expect(new Uint8Array(await file.arrayBuffer())).toEqual(exact);
+    }
+    expect(host.textContent).toContain('Wallet payment QR');
+    expect(host.textContent).toContain('Save recovery file');
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  }finally{
+    createUrl.mockRestore();download.mockRestore();
+    if(previousStandalone)Object.defineProperty(navigator,'standalone',previousStandalone);
+    else Reflect.deleteProperty(navigator,'standalone');
+    await act(async()=>root.unmount());host.remove();
+  }
+});
+
 test('saves the sender’s exact Wallet recovery file and imports it without the recipient',async()=>{
   const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
   const exact=Uint8Array.of(11,22,33);
@@ -144,6 +200,7 @@ test('saves the sender’s exact Wallet recovery file and imports it without the
     expect(new Uint8Array(await share.mock.calls[1]![0].files![0]!.arrayBuffer())).toEqual(exact);
     const input=host.querySelector<HTMLInputElement>('[aria-label="Restore Wallet from file"]');
     expect(input).not.toBeNull();
+    expect(input!.hasAttribute('accept')).toBe(false);
     Object.defineProperty(input,'files',{configurable:true,value:[file]});
     await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
     expect(restoreWalletRecoveryFile).toHaveBeenCalledExactlyOnceWith(exact);
