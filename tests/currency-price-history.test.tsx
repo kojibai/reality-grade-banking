@@ -44,10 +44,13 @@ it('renders a held currency immediately and follows the shared signed ledger wit
   expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('LOCAL cumulative volume, from 3 to 5');
   await act(async()=>button('Price').click());
   expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('from 1.25 to 2');
-  await act(async()=>button('Buys').click());
+  expect([...host.querySelectorAll('.currency-trade-filters button')].map(filter=>filter.textContent)).toEqual(['All','Buy','Sell']);
+  expect([...table.querySelectorAll('.currency-trade-side')].map(label=>label.getAttribute('data-side'))).toEqual(['sell','buy']);
+  await act(async()=>button('Buy').click());
+  expect(button('Buy').getAttribute('aria-pressed')).toBe('true');
   expect(table.textContent).toContain('Buy · 3 LOCAL');
   expect(table.textContent).not.toContain('Sell · 2 LOCAL');
-  await act(async()=>button('Sells').click());
+  await act(async()=>button('Sell').click());
   expect(table.textContent).toContain('Sell · 2 LOCAL');
   expect(table.textContent).not.toContain('Buy · 3 LOCAL');
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['first'],artifact:'older'},new Map([

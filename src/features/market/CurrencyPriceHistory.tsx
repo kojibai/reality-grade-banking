@@ -90,15 +90,15 @@ export function CurrencyPriceHistory({assetId, symbol, opening, openLedger = fal
     </dl>}
     {trades.length>0&&<section className="currency-trade-tape" aria-label={`${symbol} recent trades`}>
       <div className="section-heading"><h2>Recent trades</h2></div>
-      <div className="segmented" role="group" aria-label="Trade direction">
-        {(['all','buy','sell'] as const).map(value=><button type="button" key={value} aria-pressed={side===value}
+      <div className="segmented currency-trade-filters" role="group" aria-label="Trade direction">
+        {(['all','buy','sell'] as const).map(value=><button type="button" key={value} data-side={value} aria-pressed={side===value}
           className={side===value?'active':''} onClick={()=>{setSide(value);setShown(8);}}>
-          {value==='all'?'All':value==='buy'?'Buys':'Sells'}</button>)}
+          {value==='all'?'All':value==='buy'?'Buy':'Sell'}</button>)}
       </div>
       <table>
         <thead><tr><th scope="col">Trade</th><th scope="col">Unit quote</th><th scope="col">Total</th></tr></thead>
         <tbody>{activity.slice(0,shown).map(trade=><tr key={trade.id}>
-          <td><strong>{trade.side==='buy'?'Buy':'Sell'} · {formatUnits(trade.quantityMicro)} {symbol}</strong>
+          <td><strong><span className="currency-trade-side" data-side={trade.side}>{trade.side==='buy'?'Buy':'Sell'}</span> · {formatUnits(trade.quantityMicro)} {symbol}</strong>
             <time dateTime={trade.at} title={`Kai ${trade.kaiUPulse}`}>{time.format(new Date(trade.at))}</time></td>
           <td>{formatMoney(trade.priceUsdCentsPerUnit)}</td>
           <td>{trade.tradeUsdCents===undefined?'—':formatMoney(trade.tradeUsdCents)}</td>

@@ -14,7 +14,24 @@
 @media(prefers-reduced-motion:reduce){.market-explorer-tools{transition:none}}
 
 .currency-trade-tape { margin-block: 24px 12px; }
-.currency-trade-tape .segmented { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.currency-trade-tape .currency-trade-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.currency-trade-filters button { min-width: 0; white-space: nowrap; font-weight: 650; }
+.currency-trade-tape [data-side="buy"] {
+  --trade-accent: var(--bank-positive, #176047);
+  --trade-accent-surface: var(--bank-positive-surface, #e7f4ec);
+  --trade-accent-line: var(--bank-positive-line, #a7d1bc);
+}
+.currency-trade-tape [data-side="sell"] {
+  --trade-accent: var(--bank-danger, #a32c42);
+  --trade-accent-surface: var(--bank-danger-surface, #faedf0);
+  --trade-accent-line: var(--bank-danger-line, #e5b6bf);
+}
+.currency-trade-tape .currency-trade-side,
+.currency-trade-tape .currency-trade-filters button[data-side]:not([data-side="all"]) { color: var(--trade-accent); }
+.currency-trade-tape .currency-trade-filters button[aria-pressed="true"]:not([data-side="all"]) {
+  background: var(--trade-accent-surface);
+  box-shadow: inset 0 0 0 1px var(--trade-accent-line);
+}
 .currency-trade-tape table { width: 100%; table-layout: fixed; margin-top: 10px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .currency-trade-tape th, .currency-trade-tape td { padding: 9px 6px; text-align: right; vertical-align: top; }
 .currency-trade-tape th:first-child { width: 49%; }
