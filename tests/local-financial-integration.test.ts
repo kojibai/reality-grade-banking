@@ -276,7 +276,10 @@ it('reopens the exact nearby debit after restoring the Wallet journal before the
   sequence='1';
   return 1;
  });
- const execute=vi.fn(async()=>{
+ const executionHeads:string[]=[];
+ const execute=vi.fn(async(request:{operationId:string})=>{
+  executionHeads.push(sequence);
+  if(request.operationId!==operationId)return {status:'not-committed',operationId:request.operationId};
   sequence='1';
   return commit;
  });
@@ -300,6 +303,10 @@ it('reopens the exact nearby debit after restoring the Wallet journal before the
  const original=await load();
  await original.execute({operationId,action});
  expect(witness.read(source.allocationId)?.sequence).toBe('1');
+ // An already-open Wallet must use the accepted debit before a new signer is invoked.
+ sequence='0';
+ await original.execute({operationId:'12345678-1234-4234-8234-123456789abd',action});
+ expect(executionHeads).toEqual(['0','1']);
  original.dispose();
  sequence='0';
  const restored=await load();
@@ -307,8 +314,8 @@ it('reopens the exact nearby debit after restoring the Wallet journal before the
   expect((await restored.current()).state.wallet.availableUsdCents).toBe('800');
   expect(await restored.resolve(operationId)).toEqual(commit);
   expect(await restored.walletPaymentBytes(operationId)).toEqual(proof);
-  expect(recovered).toHaveBeenCalledOnce();
-  expect(execute).toHaveBeenCalledOnce();
+  expect(recovered).toHaveBeenCalledTimes(2);
+  expect(execute).toHaveBeenCalledTimes(2);
   expect(network).not.toHaveBeenCalled();
  }finally{restored.dispose();}
 });

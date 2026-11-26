@@ -109,17 +109,20 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  }
  const executor=await runtime.createReceizAccountFinancialExecutor({source,store,originals:input.originals,signOwner:input.signOwner,signRecord:input.signRecord,assertWalletCustody,assertAndroidWalletCustody,readWalletCounterEvents:input.readWalletCounterEvents,kai});
  const witness=protectedWallet&&!designatedWitness&&executor.recoverWalletProof?input.walletDebitWitness:undefined;
- if(witness){
+ async function recoverRetainedWalletDebit(currentSequence?:string){
+  if(!witness||!executor.recoverWalletProof)return false;
   try{
    const held=witness.read(source.allocationId);
-   if(held&&BigInt(held.sequence)>BigInt((await executor.current()).state.sequence)){
+   if(held&&BigInt(held.sequence)>BigInt(currentSequence??(await executor.current()).state.sequence)){
     const proof=await input.originals.read(held.proofRef);
     input.assertOpen();
     if(proof&&await (await loadReceiz()).sha256ReceizBytes(proof)===held.proofRef)
-     await executor.recoverWalletProof!(proof);
+     return (await executor.recoverWalletProof(proof)??0)>0;
    }
-  }catch{/* Existing protected custody and proof QR recovery remain available. */}
+  }catch{/* A locator cannot replace the SDK's admitted head or custody checks. */}
+  return false;
  }
+ await recoverRetainedWalletDebit();
  input.assertOpen();
  const publisher=incoming&&!publishExactPayments?null:await runtime.createReceizAccountFinancialPublisher({
   source,executor,store,originals:input.originals,...(protectedWallet?{batchSize:1}:{}),
@@ -261,6 +264,23 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    witness.record(source.allocationId,{sequence,proofRef});
   }catch{/* The qualified commit remains available even when a second recovery copy cannot be saved. */}
  }
+ async function latestNearbyWalletCommit(){
+  if(!protectedWallet)return null;
+  const {headArtifactSha256,state,release}=await executor.current();
+  if(release||state.sequence==='0')return null;
+  const [commit]=await executor.pending(String(BigInt(state.sequence)-1n),1);
+  open();
+  if(!commit||commit.operation.artifactSha256!==headArtifactSha256)return null;
+  const {action}=commit.operation;
+  return action.kind==='send'&&action.nearby?{commit,amountUsdCents:action.amountUsdCents}:null;
+ }
+ async function retainRecoveredWalletDebit(){
+  if(!witness)return;
+  try{
+   const latest=await latestNearbyWalletCommit();
+   if(latest)await retainWalletDebit(latest.commit);
+  }catch{/* The accepted Originals remain in the SDK journal. */}
+ }
  async function walletPaymentBytes(operationId:string){
   open();
   const commit=await executor.resolve(operationId);
@@ -273,12 +293,19 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
  }
  return Object.freeze({
   async preview(action:FinancialAction){
-   open();const current=await executor.current(),at=kai();open();
+   open();
+   let current=await executor.current();
+   if(await recoverRetainedWalletDebit(current.state.sequence))current=await executor.current();
+   const at=kai();
+   open();
    if(action.kind==='send'&&action.scannedRecipient)await runtime.prepareReceizScannedWalletRecipient?.(source,action,at);
    open();return runtime.projectReceizAccountFinancialAction(source,current.state,action,at);
   },
   async execute(request:Parameters<typeof executor.execute>[0]){
-   open();const result=await executor.execute(request);
+   open();
+   await recoverRetainedWalletDebit();
+   open();
+   const result=await executor.execute(request);
    if(result.status==='committed'){
     await retainWalletDebit(result);
     // Optional presentation and delivery are subsequent to the SDK's durable
@@ -346,7 +373,11 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
    if(!protectedWallet||!executor.recoverWalletProof)return null;
    const recovered=await executor.recoverWalletProof(proof,designatedWitness??undefined);
    open();
-   if(recovered&&publicationStarted)nudge();
+   if(recovered){
+    await retainRecoveredWalletDebit();
+    open();
+    if(publicationStarted)nudge();
+   }
    return recovered;
   },
   async walletRecoveryFreshness(proof:Uint8Array,recovered:number):Promise<WalletRecoveryFreshness>{
@@ -378,6 +409,8 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   async stageWalletPayment(request:Parameters<typeof executor.execute>[0]){
    open();
    if(!executor.stageWalletPayment||!runtime.commitReceizAccountFinancialWalletPaymentBatch)throw Error('BANK_WALLET_BATCH_UNAVAILABLE');
+   await recoverRetainedWalletDebit();
+   open();
    return executor.stageWalletPayment(request);
   },
   async commitWalletPaymentBatch(stages:readonly WalletPaymentStage[]){
@@ -389,22 +422,21 @@ export async function createLocalFinancialSession(input:LocalFinancialSessionOpt
   walletPaymentBytes,
   async latestRecoveryFile():Promise<WalletRecoveryFile|null>{
    open();
-   if(!protectedWallet)return null;
-   const {headArtifactSha256,state,release}=await executor.current();
-   if(release||state.sequence==='0')return null;
-   const [commit]=await executor.pending(String(BigInt(state.sequence)-1n),1);
-   open();
-   if(!commit||commit.operation.artifactSha256!==headArtifactSha256)return null;
-   const {operationId,action}=commit.operation;
-   if(action.kind!=='send'||!action.nearby)return null;
-   return {operationId,amountUsdCents:action.amountUsdCents,recoveryProof:runtime.exportReceizAccountFinancialWalletProof(source,commit)};
+   const latest=await latestNearbyWalletCommit();
+   if(!latest)return null;
+   const {commit,amountUsdCents}=latest;
+   return {operationId:commit.operation.operationId,amountUsdCents,recoveryProof:runtime.exportReceizAccountFinancialWalletProof(source,commit)};
   },
   async walletQr(operationId:string){
    const proof=await walletPaymentBytes(operationId);
    return proof?createOpticalNoteFrames('wallet',proof):null;
   },
   async releaseOriginal(){
-   open();const release=await executor.release();open();
+   open();
+   await recoverRetainedWalletDebit();
+   open();
+   const release=await executor.release();
+   open();
    const original=runtime.exportReceizAccountFinancialRelease(release);
    nudge();
    return original;

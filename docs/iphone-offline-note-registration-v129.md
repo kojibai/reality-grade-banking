@@ -92,6 +92,15 @@ on this device. If recovery supplies the only available history, the PWA
 reports that it cannot confirm the file is the latest. The imported file
 proves its own signed history. It cannot establish that no later debit was made.
 
+When a newer signed debit is already retained on this device, Bankeiz
+reopens and admits it before reviewing, signing or releasing Wallet value.
+This also works in a Wallet that was already open when the newer proof
+became available. The recovery locator can only find the exact Original.
+The SDK verifies the account, signatures and predecessor before it advances
+the balance. An imported debit that advances the head can also refresh the
+local recovery copy for the next reopen. These operations require no backup
+prompt or online lookup.
+
 File storage preserves proofs. Protected offline spending still requires the
 existing Receiz custody evidence, including a device-bound credential and
 advancing signed counters. The user's separate Home Screen PWA check on
