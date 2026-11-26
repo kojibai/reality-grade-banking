@@ -158,7 +158,8 @@ quantity moved, and the purchase price in force at that event. It excludes
 bearer claim secrets, private artwork, and account identifiers.
 
 The Market and Ledger chart the recorded purchase price in dollars per
-unit. The chart reuses accepted currency events already loaded by the shared
+unit. **Assets → Currencies** shows your units beside their dollar value at
+the latest verified unit price Bankeiz holds. The chart reuses accepted currency events already loaded by the shared
 Ledger, without a separate request. The listing’s carried price is visible
 when no Ledger history has been loaded. A sell-back review
 shows the exact available proceeds from the liquidity pool.

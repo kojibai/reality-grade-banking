@@ -1,5 +1,5 @@
 import {InlineOpening} from '../../components/InlineOpening';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronRight, Coins, FileCheck2, Package, ShieldCheck } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { HeldDeposit } from '../../receiz/deposit-source';
@@ -18,6 +18,8 @@ import type {InvestmentHistory} from '../../receiz/market-projection/investment-
 import { LiveOwnership } from './LiveOwnership';
 import { useHeldAssetSources } from './useHeldAssetSources';
 import {formatUnits,formatMoney} from '../../core/money';
+import {heldCurrencyPriceHistory,subscribeCurrencyPriceHistory} from '../../receiz/currency-ledger-view';
+import {shareCapitalizationUsdCents} from '../../receiz/market-share-inventory';
 import { CustodyDelivery } from '../deposit/CustodyDelivery';
 import {projectHeldCollectibles} from '../../receiz/collectibles';
 import {CollectiblesIcon} from '../collectibles/CollectiblesIcon';
@@ -33,6 +35,18 @@ function useOpenedAssetSignatureRetry(identity:OpenIdentity,active:boolean,diges
  },[identity,active,digest,canInspect,originalUrl]);
 }
 const IssueCurrencyNote=lazy(()=>import('../notes/CurrencyNotes').then(module=>({default:module.IssueCurrencyNote})));
+
+function CurrencyHoldingBalance({asset}: {asset:NonNullable<HeldDeposit['nativeAsset']>}) {
+  const heldPrice = asset.currency?.policy.priceUsdCentsPerUnit;
+  const price = useSyncExternalStore(subscribeCurrencyPriceHistory, () => {
+    const latest = heldCurrencyPriceHistory(asset.assetId,asset.symbol).at(-1);
+    return latest && BigInt(latest.kaiUPulse) > BigInt(asset.sourceKaiUPulse) ? latest.usdCents : heldPrice;
+  }, () => heldPrice);
+  const units = `${formatUnits(asset.quantityMicro)} ${asset.symbol}`;
+  return <span title={price ? `At ${formatMoney(price)} per ${asset.symbol}` : undefined}>
+    {units}{price && ` · ${formatMoney(shareCapitalizationUsdCents(price,asset.quantityMicro))}`}
+  </span>;
+}
 
 export function LiveAssets({ identity, active, revision, showcase = [], showcaseBusy = false, investments, investmentHistory=null,marketItems=[],historyItems=marketItems,pulse=0,onOpen,source }: { source?:ReturnType<typeof useHeldAssetSources>; identity: OpenIdentity; active: boolean; revision: number; showcase?: PublicMarketItem[]; showcaseBusy?: boolean; investments?:{data:MarketPortfolio|null;busy:boolean;error:boolean};investmentHistory?:InvestmentHistory|null;marketItems?:PublicMarketItem[];historyItems?:PublicMarketItem[];pulse?:number; onOpen: (action: UIAction) => void }) {
   const [selectedId,setSelectedId]=useState<string|null>(null),[shown, setShown] = useState(50);
@@ -70,7 +84,7 @@ export function LiveAssets({ identity, active, revision, showcase = [], showcase
         const item = showcaseByDigest.get(source.digest);
         return <button className="asset-row" key={asset.assetId} onClick={() => onOpen({ kind: 'asset', assetId: asset.assetId })}>
           {item ? <AssetsRowArtwork item={item} initiallyNear={index < 8} /> : <span className="asset-mark"><Coins size={23} aria-hidden="true" /></span>}
-          <span className="row-copy"><strong>{source.title}</strong><span>{formatUnits(asset.quantityMicro)} {asset.symbol}</span></span>
+          <span className="row-copy"><strong>{source.title}</strong><CurrencyHoldingBalance asset={asset}/></span>
           <ChevronRight size={18} aria-hidden="true" />
         </button>;
       })}</div>

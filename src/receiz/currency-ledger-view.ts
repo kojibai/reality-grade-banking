@@ -13,8 +13,8 @@ export function readPublicCurrencyActivity(value:unknown):PublicCurrencyActivity
  return Object.freeze({assetId:value.assetId,symbol:value.symbol,priceUsdCentsPerUnit:value.priceUsdCentsPerUnit,...(typeof value.quantityMicro==='string'?{quantityMicro:value.quantityMicro}:{}),...(typeof value.tradeUsdCents==='string'?{tradeUsdCents:value.tradeUsdCents}:{})});
 }
 
-type PricePoint = Readonly<{at:string;usdCents:string}>;
-type PriceHistory = readonly PricePoint[];
+export type CurrencyPricePoint = Readonly<{at:string;usdCents:string;kaiUPulse:string}>;
+type PriceHistory = readonly CurrencyPricePoint[];
 const empty:PriceHistory = Object.freeze([]);
 let activeLedger:{id:string;length:number;head:string;artifact:string}|undefined;
 let prices = new Map<string,PriceHistory>();
@@ -42,7 +42,7 @@ export function retainCurrencyPriceHistory(
   for(const [key,points] of next) {
     const previous=prices.get(key);
     if(previous?.length===points.length&&previous.every((point,index)=>
-      point.at===points[index].at&&point.usdCents===points[index].usdCents))continue;
+      point.kaiUPulse===points[index].kaiUPulse&&point.at===points[index].at&&point.usdCents===points[index].usdCents))continue;
     prices.set(key,points);
     changed = true;
   }

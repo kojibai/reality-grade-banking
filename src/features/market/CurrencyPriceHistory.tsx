@@ -15,7 +15,7 @@ export function CurrencyPriceHistory({assetId, symbol, opening}: {
   const [period, setPeriod] = useState<ChartPeriod>('ALL');
   const recorded = useSyncExternalStore(subscribeCurrencyPriceHistory,
     ()=>heldCurrencyPriceHistory(assetId,symbol),emptyCurrencyPriceHistory);
-  const points = recorded.length ? recorded : opening?.at && Number.isFinite(Date.parse(opening.at))
+  const points: readonly {at:string;usdCents:string}[] = recorded.length ? recorded : opening?.at && Number.isFinite(Date.parse(opening.at))
     ? [{at:opening.at,usdCents:opening.priceUsdCentsPerUnit}] : [];
   const latest = points.at(-1)?.usdCents ?? opening?.priceUsdCentsPerUnit;
   if (!latest) return null;

@@ -1,4 +1,4 @@
-import {currencyPricesAlreadySelected,retainCurrencyPriceHistory} from './currency-ledger-view';
+import {currencyPricesAlreadySelected,retainCurrencyPriceHistory,type CurrencyPricePoint} from './currency-ledger-view';
 import type {PublicLedgerFileReview} from './public-ledger-proof';
 import type {PublicLedgerSource} from './public-ledger-statement';
 import {readPublicLedgerBytes} from './public-ledger-transfer';
@@ -59,7 +59,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
  if(!review.snapshot)return [...known];
  const existing=new Map(known.filter(row=>row.source==='actions').map(row=>[row.sourceId,row]));
  const incoming:PublicRecord[]=[];
- const prices=currencyPricesAlreadySelected(review.artifactSha256)?null:new Map<string,{at:string;usdCents:string}[]>();
+ const prices=currencyPricesAlreadySelected(review.artifactSha256)?null:new Map<string,CurrencyPricePoint[]>();
  for(const record of review.snapshot.records){
   // The retained original may support coordinates larger than this UI cache.
   // Such records remain in the original rather than being truncated or coerced.
@@ -69,7 +69,7 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
   if(prices&&time&&record.currency){
    const currency=record.currency,key=currency.assetId+':'+currency.symbol;
    const points=prices.get(key)??[];
-   points.push({at:time,usdCents:currency.priceUsdCentsPerUnit});
+   points.push({at:time,usdCents:currency.priceUsdCentsPerUnit,kaiUPulse:record.kaiUpulse});
    prices.set(key,points);
   }
   incoming.push({...compatible,id:`actions:${record.id}`,sourceId:record.id,source:'actions',kind:record.kind,
@@ -80,7 +80,10 @@ export async function publicLedgerDisplayRows(review:PublicLedgerFileReview,know
  }
  if(prices){
   for(const [key,points] of prices){
-   points.sort((a,b)=>a.at.localeCompare(b.at));
+   points.sort((a,b)=>{
+    const left=BigInt(a.kaiUPulse),right=BigInt(b.kaiUPulse);
+    return left<right?-1:left>right?1:0;
+   });
    prices.set(key,points.filter((point,index)=>index===0||index===points.length-1||point.usdCents!==points[index-1].usdCents));
   }
   const {ledgerId,sourceHistory}=review.snapshot;

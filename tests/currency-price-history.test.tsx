@@ -16,14 +16,14 @@ it('renders a held currency immediately and follows the shared signed ledger wit
     opening={{priceUsdCentsPerUnit:'100',at}}/>));
   expect(host.textContent).toContain('$1.00');
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['first','second'],artifact:'current'},new Map([
-   [assetId+':LOCAL',[{at,usdCents:'125'},{at:later,usdCents:'200'}]],
-   ['b'.repeat(64)+':LOCAL',[{at:later,usdCents:'999'}]],
+   [assetId+':LOCAL',[{at,usdCents:'125',kaiUPulse:'1000000'},{at:later,usdCents:'200',kaiUPulse:'2000000'}]],
+   ['b'.repeat(64)+':LOCAL',[{at:later,usdCents:'999',kaiUPulse:'2000000'}]],
   ])));
   expect(host.textContent).toContain('$2.00');
   expect(host.querySelector('svg')?.getAttribute('aria-label')).toContain('from 1.25 to 2');
   expect(host.textContent).not.toContain('$9.99');
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['first'],artifact:'older'},new Map([
-   [assetId+':LOCAL',[{at,usdCents:'125'}]],
+   [assetId+':LOCAL',[{at,usdCents:'125',kaiUPulse:'1000000'}]],
   ])));
   expect(host.textContent).toContain('$2.00');
   expect(network).not.toHaveBeenCalled();
