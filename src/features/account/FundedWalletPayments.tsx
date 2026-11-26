@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Minus, Plus, QrCode } from 'lucide-react';
+import { ChevronDown, Download, Minus, Plus, QrCode, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type WalletOffer } from '../../receiz/funded-wallet';
-import { createOpticalNoteFrames, isOpticalNoteFrame, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
+import { readWalletPairing, WALLET_RECEIPT_RETENTION_REQUIRED, WALLET_STALE_ALLOCATION, type FundedWalletReview, type FundedWalletSendResult, type WalletOffer } from '../../receiz/funded-wallet';
+import { createOpticalNoteFrames, isOpticalNoteFrame, opticalNotePayloadLimit, readOpticalNoteFrames } from '../../receiz/optical-note-frames';
 import { formatMoney } from '../../core/money';
 import type { DeferredWalletSendEntry, DeferredWalletSendReview } from '../../receiz/wallet-send-deferred';
 import { AmountInput } from '../../components/AmountInput';
@@ -16,6 +16,20 @@ import { walletBalanceNotice, type WalletBalanceNotice } from './wallet-balance-
 import {ForwardNoteHandoff} from '../notes/ForwardNoteHandoff';
 import type {BankForwardedNote,BankNoteDepositResult,BankNoteImage,BankReceivedNoteDeposit} from '../../receiz/offline-notes';
 import {OfflineCashOptions} from './OfflineCashOptions';
+
+async function saveWalletRecoveryFile(bytes:Uint8Array,operationId:string){
+  const file=new File([new Uint8Array(bytes)],`bankeiz-wallet-${operationId}.receiz`,{type:'application/octet-stream'});
+  try{
+    if(navigator.share&&navigator.canShare?.({files:[file]})){
+      await navigator.share({title:'Wallet recovery file',files:[file]});
+      return;
+    }
+  }catch(cause){if((cause instanceof DOMException||cause instanceof Error)&&cause.name==='AbortError')return;}
+  const url=URL.createObjectURL(file),link=document.createElement('a');
+  link.href=url;link.download=file.name;
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
 
 const walletError=(cause:unknown)=>{
   if(cause instanceof Error){
@@ -156,7 +170,7 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
   identity:OpenIdentity; request:()=>{recipient:string;amountUsdCents:string;note?:string;nearby:boolean};
   recipientLabel?:string;onRefresh:()=>void;onNext:()=>void;initialReview?:FundedWalletReview;onEdit?:()=>void;preferNearby?:boolean;children:ReactNode;
 }){
-  const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<{qr:OpticalFrames|null;operationId:string}|null>(null);
+  const [review,setReview]=useState<FundedWalletReview|null>(initialReview??null),[result,setResult]=useState<FundedWalletSendResult|null>(null);
   const [deferredReview,setDeferredReview]=useState<DeferredWalletSendReview|null>(null);
   const [deferredAmount,setDeferredAmount]=useState<string|null>(null);
   const [nearbyCode,setNearbyCode]=useState<NearbyPaymentCode|null>(null);
@@ -202,11 +216,16 @@ export function FundedWalletSend({identity,request,recipientLabel,onRefresh,onNe
     }catch(cause){setError(walletError(cause));}
     pairReader.current=readOpticalNoteFrames('wallet');return true;
   }
+  const recoveryProof=result?.recoveryProof;
   if(result)return <section className="native-operation-result" aria-live="polite">
     <h1 className="sheet-hero">{result.qr?'Show payment QR.':'Payment kept on this device.'}</h1>
     {result.qr?<><p className="body-copy small-copy">Ask the recipient to scan this code in Bankeiz under Receive nearby.</p>
       <WalletPaymentCode frames={result.qr} label="Wallet payment QR" onError={cause=>setError(walletError(cause))}/></>:
       <p className="body-copy">Wallet will deliver the signed payment when this device reconnects.</p>}
+    {recoveryProof&&<>
+      <button className="text-button" type="button" disabled={busy} onClick={()=>void act(()=>saveWalletRecoveryFile(recoveryProof,result.operationId))}><Download size={16}/>Save recovery file</button>
+      <p className="body-copy small-copy">On iPhone, choose Save to Files, then iCloud Drive. Keep this file private. It can help recover the payment after it syncs.</p>
+    </>}
     <button className="secondary-button" disabled={busy} onClick={()=>void act(async()=>{
       const wallet=await identity.fundedWallet!();await wallet.completeOutgoing(result.operationId);
       setResult(null);setPendingBundle(null);setReview(null);setApproved(false);onNext();
@@ -358,6 +377,8 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
   const [offer,setOffer]=useState<WalletOffer|null>(null);
   const [busy,setBusy]=useState(false);
   const active=useRef(true);
+  const activeIdentity=useRef(identity);
+  activeIdentity.current=identity;
   useEffect(()=>{
     let current=true;
     active.current=true;
@@ -378,6 +399,30 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
     setError('');
     setStatus(entry.original?'Payment already confirmed.':'Payment saved on this device.');
     void inbox.resume().catch(()=>{});
+  }
+  async function restoreFromFile(file:File){
+    if(busy)return;
+    const current=()=>active.current&&activeIdentity.current===identity;
+    setBusy(true);setError('');setStatus('');
+    try{
+      if(!file.size||file.size>opticalNotePayloadLimit)throw Error('BANK_WALLET_RECOVERY_FILE_INVALID');
+      const bytes=new Uint8Array(await file.arrayBuffer());
+      if(!current())return;
+      const wallet=await identity.fundedWallet!();
+      if(!current())return;
+      const restored=await wallet.recoverWalletProof(bytes);
+      if(restored===null)throw Error('BANK_WALLET_RECOVERY_FILE_INVALID');
+      if(current()){
+        setStatus(restored>0?'Wallet history recovered.':'Wallet already holds this payment proof.');
+        onRefresh();
+      }
+    }catch(cause){
+      if(!current())return;
+      const code=cause instanceof Error?cause.message:'';
+      setError(code==='BANK_WALLET_DEVICE_REQUIRED'||code==='BANK_WALLET_DEVICE_MISMATCH'
+        ?'Keep this recovery file. This phone needs the original Wallet signing credential to reopen the payment.'
+        :'This file could not be verified for this Wallet. Open the matching Receiz ID and choose the original recovery file.');
+    }finally{if(current())setBusy(false);}
   }
   async function acceptLink(){
     if(!paymentToAccept||busy)return;
@@ -532,6 +577,11 @@ export function FundedWalletReceive({identity,offline,onRefresh,linkedPayment,on
           <button className="text-button" type="button" onClick={()=>setNoteReceivingQr(undefined)}>Scan their Note QR</button></>
           : <><p className="body-copy small-copy">Scan the sender’s payment QR or use a photo of it. For a moving QR, keep the camera on the code until all frames are scanned.</p>
             <PaymentScanner imageLabel="Use QR image" onBytes={scan}/>
+            <label className="text-button qr-upload"><Upload size={16}/>Restore Wallet from file
+              <input type="file" accept=".receiz,application/octet-stream" aria-label="Restore Wallet from file" disabled={busy} onChange={event=>{
+                const file=event.target.files?.[0];event.target.value='';if(file)void restoreFromFile(file);
+              }}/>
+            </label>
             {identity.offlineNotes&&<button className="text-button" type="button" disabled={busy} onClick={()=>void showNoteReceivingQr()}>Show Note receiving QR</button>}</>}
         {noteHandoff&&<ForwardNoteHandoff key={noteHandoff.noteId} identity={identity} note={noteHandoff} onForwarded={value=>{setNoteHandoff(value);setStatus('Note ready to hand off.');onRefresh();}}/>}
       </>}

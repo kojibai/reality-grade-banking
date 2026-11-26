@@ -110,6 +110,46 @@ test('Wallet opens the recipient’s retained proof and scans the same proof for
   }finally{await act(async()=>root.unmount());host.remove();}
 });
 
+test('saves the sender’s exact Wallet recovery file and imports it without the recipient',async()=>{
+  const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
+  const exact=Uint8Array.of(11,22,33);
+  const qr=await createOpticalNoteFrames('wallet',exact);
+  const share=vi.fn(async (_data:ShareData)=>{});
+  const originalShare=Object.getOwnPropertyDescriptor(navigator,'share');
+  const originalCanShare=Object.getOwnPropertyDescriptor(navigator,'canShare');
+  Object.defineProperty(navigator,'share',{configurable:true,value:share});
+  Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});
+  const recoverWalletProof=vi.fn(async()=>1),receive=vi.fn(),onRefresh=vi.fn();
+  const wallet={availableReceipt:async()=>null,receiptProofCount:async()=>0,
+    outgoing:async()=>({operationId:offer.conversationId,qr,recoveryProof:exact}),recoverWalletProof,receive};
+  const identity={fundedWallet:async()=>wallet} as unknown as OpenIdentity;
+  try{
+    await act(async()=>root.render(<FundedWalletSend identity={identity} request={()=>({
+      recipient:offer.recipient,amountUsdCents:'100',nearby:true,
+    })} onRefresh={onRefresh} onNext={()=>{}}>Payment fields</FundedWalletSend>));
+    await click(host,'Save recovery file');
+    expect(share).toHaveBeenCalledOnce();
+    const file=share.mock.calls[0]![0].files?.[0];
+    expect(file?.name).toMatch(/\.receiz$/);
+    expect(new Uint8Array(await file!.arrayBuffer())).toEqual(exact);
+    expect(host.textContent).toContain('after it syncs');
+
+    await act(async()=>root.render(<FundedWalletReceive offline identity={identity} onRefresh={onRefresh}/>));
+    const input=host.querySelector<HTMLInputElement>('[aria-label="Restore Wallet from file"]');
+    expect(input).not.toBeNull();
+    Object.defineProperty(input,'files',{configurable:true,value:[file]});
+    await act(async()=>input!.dispatchEvent(new Event('change',{bubbles:true})));
+    expect(recoverWalletProof).toHaveBeenCalledExactlyOnceWith(exact);
+    expect(receive).not.toHaveBeenCalled();
+    expect(onRefresh).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain('Wallet history recovered.');
+  }finally{
+    if(originalShare)Object.defineProperty(navigator,'share',originalShare);else Reflect.deleteProperty(navigator,'share');
+    if(originalCanShare)Object.defineProperty(navigator,'canShare',originalCanShare);else Reflect.deleteProperty(navigator,'canShare');
+    await act(async()=>root.unmount());host.remove();
+  }
+});
+
 test('Receive asks for a rescan and waits for a readable recovery copy before reporting value available',async()=>{
   const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
   const receive=vi.fn(async()=>({allocationId:'a'.repeat(64),wallet:{availableUsdCents:'40'}}));

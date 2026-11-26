@@ -99,6 +99,9 @@ type Options=Omit<LocalFinancialSessionOptions,'sourceBytes'|'receivedWallet'|'p
   acceptRemainder?(payment:NearbyWalletPayment):Promise<void>;
   abandonRemainder?(conversationId:string):Promise<void>;
 };
+export type FundedWalletSendResult=Readonly<{
+  operationId:string;qr:Awaited<ReturnType<typeof createOpticalNoteFrames>>|null;recoveryProof?:Uint8Array;
+}>;
 export type FundedWalletReview=Readonly<{
   recipientLabel:string; amountUsdCents:string; note?:string; connectUsdCents?:string;
   quote:Readonly<{amountPhiMicro:string;settledUsdCents:string;ecosystemUsdCents:string}>;
@@ -350,7 +353,8 @@ export function createFundedWallet(input:Options) {
       if(!proof)return null;
       proofs.push(proof);
     }
-    return {operationId:bundle.offer.conversationId,qr:await createOpticalNoteFrames('wallet',encodeWalletPaymentBundle(bundle.offer.nonce,proofs,await checkedRemainder(bundle)))};
+    const recoveryProof=encodeWalletPaymentBundle(bundle.offer.nonce,proofs,await checkedRemainder(bundle));
+    return {operationId:bundle.offer.conversationId,qr:await createOpticalNoteFrames('wallet',recoveryProof),recoveryProof};
   }
   async function executeBundle(state:Checkpoint,bundle:HeldBundle){
     const stages:WalletPaymentStage[]=[], participants:Session[]=[];
@@ -445,6 +449,11 @@ export function createFundedWallet(input:Options) {
     }finally{
       for(const {session} of staged)if(sessions.get(session.sourceReference().allocationId)!==session)session.dispose();
     }
+  }
+  async function sendResult(session:Session,send:HeldSend):Promise<FundedWalletSendResult>{
+    const proof=send.action.nearby?await session.walletPaymentBytes(send.id):null;
+    return proof?{operationId:send.id,qr:await createOpticalNoteFrames('wallet',proof),recoveryProof:proof}
+      :{operationId:send.id,qr:null};
   }
   function receiptDigests(state:Checkpoint){
     return [...new Set(state.entries.filter(entry=>entry.kind==='peer').map(entry=>entry.receiptBundle??entry.digest))];
@@ -643,7 +652,7 @@ export function createFundedWallet(input:Options) {
         if(!send)continue;
         const entry=state.entries.find(row=>row.allocationId===send.allocationId)!;
         const session=await restore(entry),commit=await session.resolve(send.id);
-        if(commit)return {operationId:send.id,qr:send.action.nearby?await session.walletQr(send.id):null};
+        if(commit)return sendResult(session,send);
       }
       return null;
     },
@@ -796,9 +805,9 @@ export function createFundedWallet(input:Options) {
           throw error;
         }
         if(result.status!=='committed')throw Error('BANK_WALLET_PREVIOUS_SEND_PENDING');
-        const qr=held.action.nearby?await held.session.walletQr(send.id):null;
+        const completed=await sendResult(held.session,send);
         reviews.delete(review);
-        return {qr,operationId:send.id};
+        return completed;
       });
     },
     async release(allocationId:string) {

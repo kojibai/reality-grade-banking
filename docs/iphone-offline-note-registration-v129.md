@@ -60,6 +60,22 @@ ID. The existing Receiz admission runtime reopens those Originals and their
 accepted commits. Recovery still requires the retained archive key, device
 signer and files. Existing Wallets keep their original journal and credentials.
 
+After making a signed nearby Wallet payment, choose **Save recovery file** on
+the payment QR screen. On iPhone, choose **Save to Files** and select **iCloud
+Drive**. The file contains the exact signed Wallet proof carried by the QR.
+It contains private payment details and should be kept private. Bankeiz does
+not receive iCloud Drive sync status from the Files picker.
+
+When the file is available on the phone, open the same Receiz ID and choose
+**Receive nearby → Restore Wallet from file**. The existing Receiz verifier
+checks the proof and restores accepted Wallet history without the original
+recipient or a network request. A proof from directly funded Wallet value
+carries its opening Original. For value received from another Wallet, the
+previous receiving proof must already be held by the Wallet. Recovery still
+requires the original Wallet signing credential. Save files before a restore
+and allow iCloud Drive to sync them if you plan to retrieve them on another
+installation.
+
 File storage preserves proofs. Protected offline spending still requires the
 existing Receiz custody evidence, including a device-bound credential and
 advancing signed counters. The user's separate Home Screen PWA check on

@@ -459,6 +459,8 @@ test('a split Wallet QR retains the protected credit and recovers the signed rem
     let exact:Uint8Array|undefined;
     for(let index=0;index<result.qr!.count;index++)exact=(await frames.push(result.qr!.frame(index)))?.bytes;
     expect(exact).toBeDefined();
+    expect(result.recoveryProof).toEqual(exact);
+    expect((await sender.outgoing())?.recoveryProof).toEqual(exact);
     const bundle=readWalletPaymentBundle(exact!)!;
     const modified=JSON.parse(new TextDecoder().decode(bundle.remainder));
     modified.amountUsdCents='9999';
