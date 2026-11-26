@@ -1,3 +1,5 @@
+import type {PublicSpotlightPlacement} from './public-ledger-statement.js';
+
 /** Internal immutable display representation. These locators grant no Source,
  * visibility, proof or financial authority. Existing selected public DTOs and
  * existing financial/history point shapes remain the referenced byte bodies. */
@@ -89,6 +91,8 @@ export interface PreparedPublicMaterialReferences {
  /** Existing financial-only preparedLedger packet, not a new financial format. */
  readonly preparedLedger:PublicMaterialGeneration|null;
  readonly ledgerHeads?:PublicMaterialLedgerHeads;
+ /** Display rows projected from the signed Ledger head selected with this root. */
+ readonly spotlight?:readonly PublicSpotlightPlacement[];
 }
 /** Display-only continuation bound to the exact selected ordered index. A
  * window seed MUST remain complete:false and separately carry sourceCount,

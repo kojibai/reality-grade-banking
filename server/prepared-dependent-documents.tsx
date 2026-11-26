@@ -18,15 +18,17 @@ import {Discover} from '../src/public-discover/Discover';
 import {feedSequenceItems,orderFeedItems} from '../src/public-feed/feed-items';
 import {orderDiscoveryItems} from '../src/public-discover/discovery-index';
 import {publicMarketDocumentSeedScript} from '../src/receiz/public-market-document-seed';
+import {readPublicSpotlightPlacements} from '../src/receiz/spotlight-placement-view';
+import {discoverSpotlightSeedScript,selectDiscoverSeed} from '../src/public-discover/spotlight-seed';
 type Input={material:string;generation:string;path:string;template:string;renderBuild?:string;exploreFrame?:Awaited<ReturnType<typeof preparedExploreFrame>>;collectibleCatalog?:ReturnType<typeof parsePublicMarket>};
 type Prepared={readSports:()=>Promise<unknown>;catalog:ReturnType<typeof parsePublicMarket>;snapshot:PublicNetworkCache;packets:readonly PublicLedgerCompressedSnapshot[]};
 const prepared=new Map<string,Promise<Prepared>>(),history=new Map<string,{snapshot:PublicNetworkCache;packet:PublicLedgerCompressedSnapshot}>();
-const discoveryCatalogs=new Map<string,{catalog:ReturnType<typeof parsePublicMarket>;asOfPulse:number}>();
+const discoveryCatalogs=new Map<string,{catalog:ReturnType<typeof parsePublicMarket>;asOfPulse:number;spotlight?:ReturnType<typeof readPublicSpotlightPlacements>}>();
 async function discoveryCatalog(material:string,generation:string){
  const cached=discoveryCatalogs.get(generation);if(cached)return cached;
- const input=JSON.parse(material);if(input.schema==='bank.public-market.render-material.refs.v1'){const {catalog,asOfPulse}=await prepareSelectedPublicReferenceCatalog({material,generation},false);const value={catalog,asOfPulse};discoveryCatalogs.set(generation,value);return value;}const catalog=parsePublicMarket(input.membership,input.snapshot),asOfPulse=input.marketPrepared?.asOfPulse;
+ const input=JSON.parse(material);if(input.schema==='bank.public-market.render-material.refs.v1'){const {catalog,asOfPulse,spotlight}=await prepareSelectedPublicReferenceCatalog({material,generation},false);const value={catalog,asOfPulse,spotlight};discoveryCatalogs.set(generation,value);return value;}const catalog=parsePublicMarket(input.membership,input.snapshot),asOfPulse=input.marketPrepared?.asOfPulse;
  if(!catalog.complete||catalog.items.length>10000||input.marketPrepared?.schema!=='bank.public-market.prepared.v1'||!Number.isSafeInteger(asOfPulse)||asOfPulse<0||asOfPulse>1e10)throw Error('PUBLIC_DISCOVERY_COMPLETE_CATALOG_REQUIRED');
- const value={catalog,asOfPulse};discoveryCatalogs.set(generation,value);while(discoveryCatalogs.size>2)discoveryCatalogs.delete(discoveryCatalogs.keys().next().value!);return value;
+ const value={catalog,asOfPulse,spotlight:catalog.spotlight};discoveryCatalogs.set(generation,value);while(discoveryCatalogs.size>2)discoveryCatalogs.delete(discoveryCatalogs.keys().next().value!);return value;
 }
 function packed(snapshot:PublicNetworkCache):PublicLedgerCompressedSnapshot{const wire=Buffer.from(JSON.stringify(publicNetworkCacheWire(snapshot)));if(wire.length>64*1024*1024)throw Error('PUBLIC_LEDGER_DOCUMENT_CAPACITY');const compressed=gzipSync(wire,{level:6});if(compressed.length>12*1024*1024)throw Error('PUBLIC_LEDGER_DOCUMENT_CAPACITY');return {gzipB64u:compressed.toString('base64url'),bytes:wire.length};}
 
@@ -79,16 +81,17 @@ export async function renderPreparedDependentDocument({material,generation,path,
  if(!['ledger','ledger/proofs','observatory','feed','discover'].includes(path))throw Error('PUBLIC_DEPENDENT_RENDER_PATH_UNSUPPORTED');
  if(Buffer.byteLength(material)>32*1024*1024||!/^[a-f0-9]{64}$/.test(generation)||createHash('sha256').update(material).digest('hex')!==generation)throw Error('PUBLIC_DEPENDENT_RENDER_INPUT_INVALID');
  if(path==='feed'||path==='discover'){
-  const {catalog,asOfPulse}=await discoveryCatalog(material,generation);
-  const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),visibleCount=Math.min(path==='feed'?8:12,ordered.length),seed=ordered.slice(0,visibleCount),format=new Intl.DateTimeFormat().resolvedOptions();
+  const {catalog,asOfPulse,spotlight}=await discoveryCatalog(material,generation);
+  const ordered=path==='feed'?orderFeedItems(feedSequenceItems(catalog.items)):orderDiscoveryItems(catalog.items),renderedAt=Date.now();
+  const seed=path==='feed'?ordered.slice(0,8):selectDiscoverSeed(ordered,12,spotlight,renderedAt),visibleCount=seed.length,format=new Intl.DateTimeFormat().resolvedOptions();
   const seedHeads=path==='discover'?(catalog.publicProfileHeadRefusals??[]).filter(policy=>seed.some(row=>row.ownerUsername===policy.profile.username&&row.ownerIdentity?.userId===policy.profile.userId)).map(policy=>({...policy,stats:{}})):[];
-  const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} seedHeads={seedHeads} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
+  const content=renderToString(path==='feed'?<PublicFeed seed={seed} active={false} completeCatalog/>:<Discover seed={seed} seedHeads={seedHeads} seedSpotlight={spotlight} spotlightRenderedAt={renderedAt} active={false}/>,{identifierPrefix:path==='feed'?'public-feed-':'public-discover-'});
   const compressed=compressedCatalog(catalog);
-  const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`+(seedHeads.length?`<script id="public-discovery-heads" type="application/json">${JSON.stringify(seedHeads).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:''):compressed.large?`<script id="public-feed-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';
+  const legacySeed=path==='discover'?`<script id="public-discovery-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`+(seedHeads.length?`<script id="public-discovery-heads" type="application/json">${JSON.stringify(seedHeads).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'')+discoverSpotlightSeedScript(spotlight,renderedAt):compressed.large?`<script id="public-feed-seed" type="application/json">${JSON.stringify(seed).replaceAll('<','\\u003c').replaceAll('>','\\u003e').replaceAll('&','\\u0026')}</script>`:'';
   const script=publicMarketDocumentSeedScript({schema:'bank.public-market.document.v1',generation,path,catalog,visibleCount,asOfPulse,format:{locale:format.locale,timeZone:format.timeZone}},compressed.large?compressed.packet:undefined);
   // Keep each exact first frame interactive from its bounded carried seed.
   // A large complete cohort stays outside React and decodes through its existing reader.
-  const clean=template.replace(/<script id="public-(?:feed-seed|discovery-(?:seed|heads))" type="application\/json">[\s\S]*?<\/script>/g,'');let replaced=false;
+  const clean=template.replace(/<script id="public-(?:market-seed|feed-seed|discovery-(?:seed|heads|spotlight))" type="application\/json"(?: data-rendered-at="\d+")?>[\s\S]*?<\/script>/g,'');let replaced=false;
   let html=clean.replace(new RegExp(`(<div id="public-${path}-root"[^>]*>)[\\s\\S]*?(<\\/div>\\s*(?:<noscript>[\\s\\S]*?<\\/noscript>\\s*)?<script id="receiz-navigation")`),(_all,start,end)=>{replaced=true;return start+content+(path==='feed'&&!compressed.large?script:'')+end;});
   if(!replaced)throw Error('PUBLIC_DISCOVERY_PREPARED_TEMPLATE_INVALID');
   if(path==='discover'||path==='feed'&&compressed.large)html=html.replace('<script id="receiz-navigation"',()=>legacySeed+script+'<script id="receiz-navigation"');

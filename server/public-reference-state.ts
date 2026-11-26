@@ -8,6 +8,7 @@ import {readPublicProfileHeader} from '../src/receiz/public-profile-header.js';
 import {parsePublicMarket} from '../src/receiz/public-market.js';
 import {parseMarketCapSource} from '../src/receiz/market-projection/source.js';
 import {mergePublicSports} from '../src/receiz/public-sports.js';
+import {readPublicSpotlightPlacements} from '../src/receiz/spotlight-placement-view.js';
 const empty=Object.freeze({}),parsedRows=new WeakMap<object,WeakMap<object,{basis:string;item:ReturnType<typeof parsePublicMarket>['items'][number];base:ReturnType<typeof parsePublicMarket>['items'][number]}>>();
 function parseRow(row:Record<string,unknown>,quote:Record<string,unknown>|undefined,head:unknown){
  const q=quote??empty,header=readPublicProfileHeader(head),selected=header?.userId===row.ownerUserId?header:null,basis=selected?JSON.stringify([selected.userId,selected.username,selected.displayName,selected.avatarUrl,selected.createdAt]):'';
@@ -52,7 +53,7 @@ export async function prepareSelectedPublicReferenceCatalog(input:ReferenceInput
   }
   const [base,sports]=await Promise.all([held,includeSports&&reader.root.sports?reader.readPart(reader.root.sports):Promise.resolve(null)]),catalog=sports?mergePublicSports(base,sports):base;
   if(catalog.items.length!==reader.root.membership.count+(includeSports?reader.root.sportsCount:0))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
-  return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader};
+  return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader,spotlight:readPublicSpotlightPlacements(reader.root.spotlight)};
  }
  // Existing app seeds carry the full current cohort. Open its immutable rows
  // once in the write-side renderer; never combine the unrelated financial
@@ -65,7 +66,7 @@ export async function prepareSelectedPublicReferenceCatalog(input:ReferenceInput
  const base=await catalogFromRows(reader,rows,quotes,heads);
  const sports=includeSports&&reader.root.sports?await reader.readPart(reader.root.sports):null,catalog=sports?mergePublicSports(base,sports):base;
  if(catalog.items.length!==reader.root.membership.count+(includeSports?reader.root.sportsCount:0))throw Error('PUBLIC_MATERIAL_COMPLETE_DISPLAY_REQUIRED');
- return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader};
+ return{catalog,asOfPulse:reader.root.marketPrepared.asOfPulse,reader,spotlight:readPublicSpotlightPlacements(reader.root.spotlight)};
 }
 export async function prepareSelectedPublicReferenceState(input:ReferenceInput){
  const {catalog,asOfPulse,reader}=await prepareSelectedPublicReferenceCatalog(input),[history,capitalization]=await Promise.all([readPublicReferenceHistory(reader),reader.root.capitalization?reader.readPart(reader.root.capitalization).then(parseMarketCapSource):Promise.resolve(null)]);

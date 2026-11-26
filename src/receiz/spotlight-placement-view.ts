@@ -1,7 +1,6 @@
 import type { PublicSpotlightPlacement, PublicLedgerSnapshot } from './public-ledger-statement';
 
-const empty:readonly PublicSpotlightPlacement[]=Object.freeze([]);
-let placements=empty;
+let placements:readonly PublicSpotlightPlacement[]|undefined;
 let accepted:{ledgerId:string;last:string;length:number;artifact:string}|undefined;
 const listeners=new Set<()=>void>();
 export function readPublicSpotlightPlacements(value:unknown):readonly PublicSpotlightPlacement[]|undefined{
@@ -20,7 +19,6 @@ export function readPublicSpotlightPlacements(value:unknown):readonly PublicSpot
 }
 
 export const heldSpotlightPlacements=()=>placements;
-export const emptySpotlightPlacements=()=>empty;
 export function subscribeSpotlightPlacements(listener:()=>void){
   listeners.add(listener);
   return ()=>{listeners.delete(listener);};
@@ -39,8 +37,9 @@ export function projectSpotlightPlacements(snapshot:PublicLedgerSnapshot,artifac
   }
   accepted={ledgerId:snapshot.ledgerId,last:history.at(-1)!,length:history.length,artifact};
   const next=[...current.values()];
-  if(next.length===placements.length&&next.every((item,index)=>Object.keys(item).every(key=>
-    item[key as keyof PublicSpotlightPlacement]===placements[index][key as keyof PublicSpotlightPlacement])))return;
+  const previous=placements;
+  if(previous&&next.length===previous.length&&next.every((item,index)=>Object.keys(item).every(key=>
+    item[key as keyof PublicSpotlightPlacement]===previous[index][key as keyof PublicSpotlightPlacement])))return;
   placements=Object.freeze(next);
   for(const listener of listeners)listener();
 }

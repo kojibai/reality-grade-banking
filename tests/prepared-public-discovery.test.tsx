@@ -10,6 +10,8 @@ import {orderFeedItems} from '../src/public-feed/feed-items';
 import {orderDiscoveryItems} from '../src/public-discover/discovery-index';
 import {readPreparedFeedCatalog,prepareFeedItems} from '../src/public-feed/feed-source';
 import {preparePublicMarketSeedText} from '../src/receiz/public-market-document-seed';
+import {marketUPulseTime} from '../src/receiz/market-projection/coordinates';
+import {readDiscoverSpotlightSeed} from '../src/public-discover/spotlight-seed';
 import {profileFixture} from './fixtures/public-profile';
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const row=(id:string,title:string)=>({id:'profile:example:'+id,receizId:id,title,summary:title+' exact claim.',visibility:'public',ownerUsername:'example',profileOriginal:{media:null}});
@@ -27,6 +29,58 @@ for(const path of ['feed','discover'] as const)it(`prepares current ${path} HTML
   expect(seed.catalog.complete).toBe(true);expect(seed.catalog.items.map((item:{assetId:string})=>item.assetId)).toEqual(['new','held']);expect(fetcher).not.toHaveBeenCalled();
   const withdrawn=await renderPreparedDependentDocument(input(path,[row('new','New accepted Original')]));expect(withdrawn).not.toContain('Existing public Original');
  }finally{fetcher.mockRestore();}
+});
+
+it('renders and retires a carried subsecond Spotlight booking with public APIs unavailable',async()=>{
+ const start=18_500_000_000_000n,end=start+165_000n,originalSha256='a'.repeat(64),booking={
+  id:'66666666-6666-4666-8666-666666666666',venueId:'bankeiz-discover',originalSha256,
+  startKaiUPulse:String(start),endKaiUPulse:String(end),status:'reserved',
+ };
+ const value=input('discover',Array.from({length:13},(_,index)=>row('ordinary-'+index,'Ordinary '+index)).concat(row('spotlight','Exact booked Original'))),body=JSON.parse(value.material);
+ Object.assign(body.membership.transport.publicMembership,{selection:{provider:'b'.repeat(64),sequence:'00000000000000000002'}});
+ body.membership.transport.publicOriginals.at(-1).profileOriginal.media={originalDownloadSha256Hex:originalSha256};
+ body.membership.transport.spotlight=[booking];
+ const prepared=(template:string)=>{
+  const material=JSON.stringify(body),generation=createHash('sha256').update(material).digest('hex');
+  return renderPreparedDependentDocument({...value,material,generation,template});
+ };
+ const fetcher=vi.spyOn(globalThis,'fetch').mockImplementation(()=>new Promise(()=>{}));
+ vi.useFakeTimers({toFake:['Date','setTimeout','clearTimeout']});
+ const begins=marketUPulseTime(String(start));
+ vi.setSystemTime(begins-150);
+ let root:ReturnType<typeof hydrateRoot>|undefined;
+ try{
+  const html=await prepared(value.template);
+  document.body.innerHTML=new DOMParser().parseFromString(html,'text/html').body.innerHTML;
+  const host=document.getElementById('public-discover-root')!,first=host.firstElementChild;
+  const seed=JSON.parse(document.getElementById('public-discovery-seed')!.textContent!);
+  const carrier=readDiscoverSpotlightSeed(document.getElementById('public-discovery-spotlight'));
+  expect(carrier).toEqual({placements:[booking],renderedAt:begins-150});
+  expect(host.querySelector('[data-spotlight-booking]')).toBeNull();
+  await act(async()=>{root=hydrateRoot(host,<Discover seed={seed} seedSpotlight={carrier?.placements} spotlightRenderedAt={carrier?.renderedAt} active/>,{identifierPrefix:'public-discover-'});});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(200);});
+  const promoted=host.querySelector('[aria-label="Spotlight"] [data-spotlight-booking]');
+  expect(promoted?.getAttribute('data-spotlight-booking')).toBe(booking.id);
+  expect(promoted?.getAttribute('data-spotlight-original')).toBe(originalSha256);
+  expect(host.querySelectorAll('[aria-label="Open Exact booked Original"]')).toHaveLength(1);
+
+  const opened=new DOMParser().parseFromString(await prepared(value.template),'text/html');
+  expect(opened.querySelector('[aria-label="Spotlight"] [data-spotlight-booking]')?.getAttribute('data-spotlight-booking')).toBe(booking.id);
+  const navigation=JSON.parse(opened.getElementById('receiz-navigation')!.textContent!);
+  expect(navigation.pages['/discover/'].content).toContain('public-discovery-spotlight');
+
+  await act(async()=>{await vi.advanceTimersByTimeAsync(900);});
+  expect(host.querySelector('[data-spotlight-booking]')).toBeNull();
+  expect(host.firstElementChild).toBe(first);
+  expect(fetcher.mock.calls.every(([url])=>/^\/api\/bank\/public-(?:profile-directory|market\/membership)/.test(String(url)))).toBe(true);
+
+  body.membership.transport.spotlight=[];
+  const successor=new DOMParser().parseFromString(await prepared(opened.documentElement.outerHTML),'text/html');
+  expect(successor.querySelectorAll('#public-discovery-spotlight')).toHaveLength(1);
+  expect(readDiscoverSpotlightSeed(successor.getElementById('public-discovery-spotlight'))?.placements).toEqual([]);
+  expect(successor.querySelector('[data-spotlight-booking]')).toBeNull();
+  expect(successor.getElementById('public-discover-root')?.textContent).toContain('Ordinary 0');
+ }finally{if(root)await act(()=>root!.unmount());vi.useRealTimers();fetcher.mockRestore();document.body.innerHTML='';}
 });
 it('refuses an unsupported prepared-state schema even when its display pulse and catalog are well formed',async()=>{
  const value=input('feed'),body=JSON.parse(value.material);body.marketPrepared.schema='unsupported-state';const material=JSON.stringify(body);

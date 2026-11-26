@@ -42,3 +42,19 @@ it('retains an admitted zero-Original profile in the full family without a profi
  expect(catalog.publicProfileHeads?.find(h=>h.profile.userId==='new-owner')?.profile.username).toBe('new_owner');
  const {selectHeldPublicProfile}=await import('../src/receiz/public-profile'),profile=selectHeldPublicProfile('new_owner',catalog);expect(profile?.stats.originals).toBe(0);expect(profile?.items).toEqual([]);
 });
+
+it('carries Spotlight directly from the exact selected reference root without opening the Ledger',async()=>{
+ const f=fixture(rows),booking={id:'66666666-6666-4666-8666-666666666666',venueId:'bankeiz-discover',
+  originalSha256:'a'.repeat(64),startKaiUPulse:'18500000000000',endKaiUPulse:'18500000001000',status:'reserved'};
+ const read=async(spotlight:unknown)=>{
+  const material=JSON.stringify({...f.root,spotlight,preparedLedger:f.neverRead});
+  return prepareSelectedPublicReferenceCatalog({material,generation:createHash('sha256').update(material).digest('hex'),readPart:f.readPart},false);
+ };
+ const reserved=await read([booking]),retired=await read([]),invalid=await read([{...booking,venueId:'other'}]);
+ expect(reserved.catalog.selection).toBeUndefined();
+ expect(reserved.spotlight).toEqual([booking]);
+ expect(retired.spotlight).toEqual([]);
+ expect(invalid.spotlight).toBeUndefined();
+ expect(reserved.catalog.items[0]).toBe(retired.catalog.items[0]);
+ expect(f.reads.has(f.neverRead)).toBe(false);
+});

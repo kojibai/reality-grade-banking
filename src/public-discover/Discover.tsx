@@ -21,8 +21,9 @@ import {preparedBankCatalogState,subscribePreparedBankCatalog} from '../receiz/p
 import {completeFeedItems,prepareFeedItems,prepareFeedCollectibles,readHeldFeedCatalog} from '../public-feed/feed-source';
 import {buildDiscoveryIndex,searchDiscovery,discoveryOwnerName,type DiscoveryFilter,type DiscoveryPerson} from './discovery-index';
 import {observePublicProfileDirectory,publicProfileDirectoryIsLive,receivePublicProfileForDiscovery,subscribePublicProfileDirectory} from '../receiz/public-profile-directory';
-import {emptySpotlightPlacements,heldSpotlightPlacements,subscribeSpotlightPlacements} from '../receiz/spotlight-placement-view';
+import {heldSpotlightPlacements,subscribeSpotlightPlacements} from '../receiz/spotlight-placement-view';
 import {marketUPulseTime} from '../receiz/market-projection/coordinates';
+import type {PublicSpotlightPlacement} from '../receiz/public-ledger-statement';
 import './discover.css';
 const Document=lazy(()=>import('../public-feed/FeedDocument'));
 const categories:[DiscoveryFilter,string][]=[['All','All'],['audio','Music'],['video','Videos'],['book','Books'],['image','Images'],['essay','Essays'],['moment','Moments'],['document','Documents'],['collectible','Collectibles'],['People','People']];
@@ -46,12 +47,14 @@ function Work({item,onOpen,eager,active,measureAudience,spotlightBooking}:{item:
  {kind==='collectible'&&image?<PublicCollectibleArtwork item={item} eager={eager}/>:kind==='video'?<DiscoveryVideo item={item} active={active&&visible}/>:kind==='document'&&visible?<Suspense fallback={<span className="discover-cover-title">{item.title}</span>}><Document item={item}/></Suspense>:knownImage?<img src={image??undefined} alt="" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'low'} decoding="async" referrerPolicy="no-referrer" crossOrigin={image?.includes('/api/proof-material/packages/')?'anonymous':undefined}/>:<div className="discover-text-work"><span>{kind==='moment'?'This happened':kind==='essay'?'Essay':kind==='book'?'Book':'Original'}</span><p>{feedText(item).slice(0,240)}</p></div>}
  <span className="discover-kind" aria-label={categories.find(([key])=>key===kind)?.[1]??kind}><Icon size={17} strokeWidth={1.6}/></span></div><strong className="discover-work-title">{item.title}</strong><span className="discover-work-owner">{discoveryOwnerName(item)}</span></button>;
 }
-export function Discover({seed,seedHeads,active=true}:{seed:PublicMarketItem[];seedHeads?:PublicMarketCatalog['publicProfileHeads'];active?:boolean}){
+const emptySpotlightPlacements:readonly PublicSpotlightPlacement[]=Object.freeze([]);
+const noHeldSpotlight=()=>undefined;
+export function Discover({seed,seedHeads,seedSpotlight,spotlightRenderedAt,active=true}:{seed:PublicMarketItem[];seedHeads?:PublicMarketCatalog['publicProfileHeads'];seedSpotlight?:readonly PublicSpotlightPlacement[];spotlightRenderedAt?:number;active?:boolean}){
  const [catalog,setCatalog]=useState<PublicMarketCatalog|null>(null);
- const heldPlacements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,emptySpotlightPlacements);
- const placements=catalog?.spotlight??heldPlacements;
+ const heldPlacements=useSyncExternalStore(subscribeSpotlightPlacements,heldSpotlightPlacements,noHeldSpotlight);
+ const placements=catalog?.spotlight??heldPlacements??seedSpotlight??emptySpotlightPlacements;
  const windows=useMemo(()=>placements.map(row=>({id:row.id,digest:row.originalSha256,start:marketUPulseTime(row.startKaiUPulse),end:marketUPulseTime(row.endKaiUPulse)})),[placements]);
- const [placementTime,setPlacementTime]=useState(Date.now);
+ const [placementTime,setPlacementTime]=useState(()=>spotlightRenderedAt??Date.now());
  useEffect(()=>{
   if(!active||!windows.length)return;
   let timer:ReturnType<typeof setTimeout>|undefined;
