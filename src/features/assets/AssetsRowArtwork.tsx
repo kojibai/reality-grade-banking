@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PublicMarketItem } from '../../receiz/public-market';
 import { PublicObjectArtwork } from '../market/PublicObjectRow';
+import { CurrencyMark } from '../../components/CurrencyMark';
 
 const visibility = new WeakMap<Element, (near: boolean) => void>();
 let observer: IntersectionObserver | undefined;
@@ -40,7 +41,9 @@ export function AssetsRowArtwork({ item, initiallyNear }: { item: PublicMarketIt
     if(node)return observeArtwork(node.closest('.original-unlock-row')??node.closest('.asset-row')??node,setNear);
   }, [canObserve]);
 
-  return <span ref={frame} className="asset-mark proof" aria-hidden="true">
-    {near && <PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={canObserve || initiallyNear} />}
+  const currency = item.nativeAsset?.currency;
+  return <span ref={frame} className={currency ? undefined : 'asset-mark proof'} aria-hidden="true">
+    {near ? <PublicObjectArtwork item={item} artworkUrl={item.artworkUrl} eager={canObserve || initiallyNear} />
+      : currency && <CurrencyMark symbol={currency.symbol} />}
   </span>;
 }

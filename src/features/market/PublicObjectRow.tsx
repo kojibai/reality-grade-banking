@@ -2,6 +2,7 @@ import {useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {PublicDocumentFormatContext} from '../../core/public-document-format';
 import {ArrowDownRight,ArrowUpRight} from 'lucide-react';
 import {AssetMark} from '../../components/AssetMark';
+import {CurrencyMark} from '../../components/CurrencyMark';
 import {MomentCard} from '../media/MomentCard';
 import {ProofPdfPreview} from '../media/ProofPdfPreview';
 import {publicDocumentReaderUrl} from '../../receiz/public-document';
@@ -15,9 +16,11 @@ const percent=new Intl.NumberFormat(undefined,{maximumFractionDigits:2});
 export function PublicObjectArtwork({artworkUrl,item,eager=true,children}:{artworkUrl:PublicMarketItem['artworkUrl'];item?:PublicMarketItem;eager?:boolean;children?:(url:string|null|undefined)=>ReactNode}){
  const [failedArtwork,setFailedArtwork]=useState<string|null>(null),safeArtwork=usePublicObjectArtwork(artworkUrl,item),artwork=safeArtwork!==failedArtwork?safeArtwork:null;
  if(children)return children(artwork);
+ const currency=item?.nativeAsset?.currency;
+ if(currency)return <CurrencyMark symbol={currency.symbol} artwork={artwork} eager={eager} onArtworkError={()=>setFailedArtwork(artwork??null)}/>;
  const document=item?.mediaKind==='pdf'&&item.documentUrl&&(!artwork||new URL(artwork).pathname==='/api/receiz/download')?publicDocumentReaderUrl(item.documentUrl,item.assetId):null;
  if(document&&item)return <span className="asset-mark market-object-document"><ProofPdfPreview key={document+':'+item.originalDigest} url={document} title={item.title} cacheKey={'market:'+item.id+':'+(item.originalDigest??document)}/></span>;
- return artwork||artwork===undefined&&!!artworkUrl?<span className="asset-mark market-object-artwork"><img src={artwork??undefined} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork?.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork??null)}/></span>:item?.nativeAsset?.currency?<span className="asset-mark currency-mark" aria-hidden="true">{item.nativeAsset.currency.symbol.slice(0,3)}</span>:item?.mediaKind==='moment'?<span className="asset-mark market-object-moment"><MomentCard item={item} thumbnail/></span>:<AssetMark kind="proof"/>;
+ return artwork||artwork===undefined&&!!artworkUrl?<span className="asset-mark market-object-artwork"><img src={artwork??undefined} alt="" loading={eager?'eager':'lazy'} decoding="async" referrerPolicy="no-referrer" crossOrigin={artwork?.includes('/api/proof-material/packages/')?'anonymous':undefined} onError={()=>setFailedArtwork(artwork??null)}/></span>:item?.mediaKind==='moment'?<span className="asset-mark market-object-moment"><MomentCard item={item} thumbnail/></span>:<AssetMark kind="proof"/>;
 }
 function PublicObjectProvenance({item}:{item:PublicMarketItem}){
  const format=useContext(PublicDocumentFormatContext),locale=format?.locale,options=format?{timeZone:format.timeZone}:undefined;

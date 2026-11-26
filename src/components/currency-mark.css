@@ -1,0 +1,45 @@
+.asset-mark.currency-mark, .currency-mark.currency-preview-coin {
+  --coin-rim: 2px;
+  --coin-inset: 1px;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  border: var(--coin-rim) solid transparent;
+  border-radius: 50%;
+  background:
+    linear-gradient(132deg, transparent 43%, #fff9 43% 52%, transparent 52%) padding-box,
+    radial-gradient(ellipse at 20% 19%, #fff 4%, #deedf8 35%, #b9c8ea 72%, #a5dbe0) padding-box,
+    conic-gradient(from 40deg, #f0fcff, #829cc3 20%, #e6faff 38%, #a5afe3 57%, #7595bd 74%, #f0fcff) border-box;
+  color: #23365b;
+  box-shadow: 0 0 0 1px #6a85ad80, 0 2px 6px #193d6426;
+  font-size: .65rem;
+  font-weight: 750;
+  letter-spacing: .035em;
+}
+.currency-mark::after {
+  content: "";
+  position: absolute;
+  inset: var(--coin-inset);
+  border: 1px solid #f3fdffb3;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.currency-mark > img {
+  position: absolute;
+  inset: var(--coin-inset);
+  width: calc(100% - 2 * var(--coin-inset));
+  height: calc(100% - 2 * var(--coin-inset));
+  border-radius: inherit;
+  object-fit: cover;
+}
+.currency-mark.currency-preview-coin {
+  --coin-rim: 5px;
+  --coin-inset: 3px;
+  inline-size: clamp(86px, 26vw, 116px);
+  aspect-ratio: 1;
+  box-shadow: 0 0 0 1px #6a85ad80, 0 8px 24px #1b3d643b;
+  font-size: .8rem;
+  letter-spacing: .08em;
+}

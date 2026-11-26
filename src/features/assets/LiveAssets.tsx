@@ -1,7 +1,7 @@
 import {nativeCurrencyPrice} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {InlineOpening} from '../../components/InlineOpening';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ChevronRight, Coins, FileCheck2, Package, ShieldCheck } from 'lucide-react';
+import { ChevronRight, FileCheck2, Package, ShieldCheck } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { HeldDeposit } from '../../receiz/deposit-source';
 import type { UIAction } from '../../core/useBank';
@@ -10,6 +10,7 @@ import {hasObservedAssetPublicationSignature,readAdmittedAssetSignatureHash} fro
 import { PublicAssetDetail } from '../market/PublicAssetDetail';
 import { PublicObjectRow } from '../market/PublicObjectRow';
 import { AssetsRowArtwork } from './AssetsRowArtwork';
+import { CurrencyMark } from '../../components/CurrencyMark';
 import {OriginalSigning} from './OriginalSigning';
 import {ProofMedia} from '../media/ProofMedia';
 import { Sheet } from '../../components/Sheet';
@@ -72,6 +73,16 @@ export function LiveAssets({ identity, active, revision, showcase = [], showcase
     showcaseByDigest:new Map(showcase.map(item=>[item.originalDigest,item])),
     objectCount:sources.length+showcase.reduce((count,item)=>count+Number(!item.originalDigest||!heldByDigest.has(item.originalDigest)),0),
   }),[showcase,heldByDigest,sources.length]);
+  const currencyListings = useMemo(() => {
+    const byAssetId = new Map<string, PublicMarketItem>();
+    for (const item of marketItems) {
+      if (item.nativeAsset?.currency) byAssetId.set(item.nativeAsset.id, item);
+    }
+    for (const item of showcase) {
+      if (item.nativeAsset?.currency && !byAssetId.has(item.nativeAsset.id)) byAssetId.set(item.nativeAsset.id, item);
+    }
+    return byAssetId;
+  }, [marketItems, showcase]);
   let selectedDigest=selected?.originalDigest??null;
   if(selectedDigest&&selected?.hasPbiSignature){
     // A locally verified signature can already appear in this catalog while
@@ -86,9 +97,12 @@ export function LiveAssets({ identity, active, revision, showcase = [], showcase
       <div className="section-heading"><h2 id="held-currencies-heading">Currencies</h2></div>
       <div className="rows-surface">{currencies.map((source, index) => {
         const asset = source.nativeAsset!;
-        const item = showcaseByDigest.get(source.digest);
+        const ownListing = showcaseByDigest.get(source.digest);
+        const item = ownListing?.nativeAsset?.id === asset.assetId ? ownListing : currencyListings.get(asset.assetId);
         return <button className="asset-row" key={asset.assetId} onClick={() => onOpen({ kind: 'asset', assetId: asset.assetId })}>
-          {item ? <AssetsRowArtwork item={item} initiallyNear={index < 8} /> : <span className="asset-mark"><Coins size={23} aria-hidden="true" /></span>}
+          {item?.nativeAsset?.currency?.symbol === asset.symbol
+            ? <AssetsRowArtwork item={item} initiallyNear={index < 8} />
+            : <CurrencyMark symbol={asset.symbol} />}
           <span className="row-copy"><strong>{source.title}</strong><CurrencyHoldingBalance asset={asset}/></span>
           <ChevronRight size={18} aria-hidden="true" />
         </button>;

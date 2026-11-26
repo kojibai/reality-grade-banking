@@ -122,6 +122,17 @@ try{
    await page.clock.setFixedTime(new Date('2026-11-24T17:20:30Z'));
    await afterCap(liveCap);
    assert.deepEqual(documents,[from],'Collection repricing reuses the already-open document');
+   // Check the header from the settled entrance, before the trade controls
+   // scroll into view and their expanding rows alter the scroll anchor.
+   await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo({top:0,behavior:'instant'});});
+   await page.waitForFunction(()=>scrollY===0&&!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
+   const topbar=scope.locator('.obs-topbar[data-tucked]');
+   await page.evaluate(()=>window.scrollTo({top:900,behavior:'instant'}));
+   await topbar.waitFor({state:'attached'});
+   assert.equal(await page.evaluate(()=>scrollY),900);
+   await page.evaluate(()=>window.scrollTo({top:800,behavior:'instant'}));
+   await topbar.waitFor({state:'detached'});
+   assert.equal(await page.evaluate(()=>scrollY),800);
    const row=scope.locator('#obs-assets tbody tr').first(),inspect=row.getByRole('button',{name:/^Inspect/});
    await inspect.click();
    assert.equal(await inspect.getAttribute('aria-expanded'),'true');
@@ -145,12 +156,6 @@ try{
    assert.ok(await tape.evaluate(el=>el.scrollWidth<=el.clientWidth+1));await inspectTrade.click();assert.equal(await drawer.count(),0);
    await tape.getByRole('button',{name:'Previous page'}).click();assert.equal(await tradeRows.first().innerText(),latest);
    assert.ok(await scope.locator('#obs-profiles table').evaluate(table=>getComputedStyle(table.tHead.rows[0].cells[1]).textAlign===getComputedStyle(table.tBodies[0].rows[0].cells[1]).textAlign));
-   await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo({top:0,behavior:'instant'});return new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())));});
-   await page.waitForFunction(()=>scrollY===0&&!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
-   await page.evaluate(()=>window.scrollTo(0,900));
-   await page.waitForFunction(()=>document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
-   await page.evaluate(()=>window.scrollTo(0,800));
-   await page.waitForFunction(()=>!document.querySelector('.obs-topbar')?.hasAttribute('data-tucked'));
    assert.deepEqual(errors,[]);results.push({page:from+' to Analytics',completeBeforeRuntime:true,retainedDOM:true,documentReads:documents.length-1,inlineAssetProof:true});
   }finally{releaseEntry();await ctx.close();}
  }

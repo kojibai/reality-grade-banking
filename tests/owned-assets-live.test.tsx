@@ -24,7 +24,7 @@ it('updates owned rows and an open object with supplied live prices without rere
 });
 
 
-it('shows units and their dollar value from the newest held price without another read', async () => {
+it('shows the issuer artwork, units and newest held value without another source read', async () => {
  const assetId='a'.repeat(64), at='2026-01-01T00:00:00.000Z';
  const asset:NonNullable<HeldDeposit['nativeAsset']>={
   assetId,symbol:'FIELD',quantityMicro:'12000000',lockedQuantityMicro:'0',supplyMicro:'50000000',
@@ -33,20 +33,29 @@ it('shows units and their dollar value from the newest held price without anothe
   currency:{policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'125'},availableQuantityMicro:'38000000',
    liquidityReserveUsdCents:'1500',liquidityReservePhiMicro:'1000000',liquiditySettlementPhiMicro:'0'},
  };
- const position:HeldDeposit={title:'Field credits',digest:'a'.repeat(64),filename:'field.receiz',status:'held-proof',kind:'proof',
+ const position:HeldDeposit={title:'Field credits',digest:'c'.repeat(64),filename:'field.receiz',status:'held-proof',kind:'proof',
   nativeAsset:asset,bytes:new Uint8Array([1]),pulse:'2'};
  const listDeposits=vi.fn(async()=>[]), identity={binding:{keyId:'synthetic-owner'},listDeposits} as unknown as OpenIdentity;
  const onOpen=vi.fn(), host=document.createElement('div'), root=createRoot(host);
  const network=vi.fn();
  vi.stubGlobal('fetch',network);
+ const base=parsePublicMarket({ok:true,transport:{publicOriginals:[{id:'field',receizId:'field',title:'Field credits',ownerUsername:'alice'}]}}).items[0];
+ const artworkUrl='https://receiz.com/field-credit.png';
+ const listing={...base,originalDigest:'d'.repeat(64),artworkUrl,nativeAsset:{
+  id:assetId,issuanceSourceSha256:'d'.repeat(64),headSourceSha256:'e'.repeat(64),publicCertificateSha256:'f'.repeat(64),
+  currency:{symbol:'FIELD',supplyMicro:asset.supplyMicro,priceUsdCentsPerUnit:'125'},
+ }};
+ const unrelated={...listing,id:'unrelated',originalDigest:'9'.repeat(64),artworkUrl:'https://receiz.com/other-field.png',
+  nativeAsset:{...listing.nativeAsset,id:'b'.repeat(64)}};
  const render=(sources:HeldDeposit[])=>root.render(<LiveAssets identity={identity} active revision={0}
-   source={{sources,busy:false,error:''}} onOpen={onOpen}/>);
+   source={{sources,busy:false,error:''}} marketItems={[listing,unrelated]} onOpen={onOpen}/>);
  const balance=()=>host.querySelector('#held-currencies-heading')?.closest('section')?.querySelector('.row-copy span');
  try {
   await act(async()=>render([]));
   expect(host.querySelector('#held-currencies-heading')).toBeNull();
   await act(async()=>render([position]));
   expect(balance()?.textContent).toBe('12 FIELD · $15.00');
+  expect(balance()?.closest('button')?.querySelector('.currency-mark img')?.getAttribute('src')).toBe(artworkUrl);
   await act(async()=>retainCurrencyPriceHistory({id:'fixture',history:['initial'],artifact:'old'},new Map([
    [assetId+':FIELD',[{at,usdCents:'50',kaiUPulse:'2000100'}]],
   ])));

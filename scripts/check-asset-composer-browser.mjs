@@ -46,14 +46,55 @@ try {
     const clean = () => { assert.deepEqual(forbidden, [], 'Fixture attempted a service request'); assert.deepEqual(errors, [], 'Browser errors are never suppressed'); };
     return {page, context, clean};
   }
-  async function fullscreen(page, width) {
-    const bounds = await page.locator('dialog.sheet--asset-studio').evaluate(element => {
+  async function fullscreen(page, width, dialog = page.getByRole('dialog', {name: 'New original', exact: true})) {
+    const bounds = await dialog.evaluate(element => {
       const box = element.getBoundingClientRect(), style = getComputedStyle(element);
       return {x: box.x, y: box.y, width: box.width, height: box.height, viewportWidth: innerWidth, viewportHeight: innerHeight, radius: style.borderRadius, overflow: document.documentElement.scrollWidth};
     });
     assert.ok(Math.abs(bounds.x) <= 1 && Math.abs(bounds.y) <= 1 && Math.abs(bounds.width - bounds.viewportWidth) <= 1 && Math.abs(bounds.height - bounds.viewportHeight) <= 1, `Creation sheet must fill ${width}px viewport: ${JSON.stringify(bounds)}`);
     assert.equal(bounds.radius, '0px');
     assert.ok(bounds.overflow <= bounds.viewportWidth + 1, `No horizontal overflow at ${width}px`);
+  }
+
+  for (const width of [320, 390, 1280]) {
+    const {page, context, clean} = await pageFor(width, true);
+    try {
+      await page.goto(origin + '/tests/browser/asset-composer.html');
+      const original = page.getByRole('dialog', {name: 'New original', exact: true});
+      const title = original.getByLabel('Title', {exact: true});
+      const issue = original.getByRole('button', {name: 'Issue a currency', exact: true});
+      await title.fill('Original draft');
+      await issue.click();
+
+      const currency = page.getByRole('dialog', {name: 'Issue a currency', exact: true});
+      await currency.getByRole('heading', {name: 'Create a currency.', exact: true}).waitFor();
+      await fullscreen(page, width, currency);
+      await currency.getByRole('textbox', {name: 'Name', exact: true}).fill('Field credit');
+      await currency.getByRole('textbox', {name: 'Currency code', exact: true}).fill('FIELD');
+      const preview = currency.getByRole('region', {name: 'Your currency preview', exact: true});
+      const coin = preview.locator('.currency-preview-coin');
+      assert.equal(await coin.textContent(), 'FIELD');
+      const face = await coin.evaluate(element => {
+        const {width, height} = element.getBoundingClientRect();
+        return {width, height, radius: getComputedStyle(element).borderRadius};
+      });
+      assert.ok(Math.abs(face.width - face.height) <= 1 && face.radius === '50%', 'Currency mark is round');
+      await currency.getByLabel('Add artwork', {exact: true}).setInputFiles({name: 'field.png', mimeType: 'image/png', buffer: png});
+      const artwork = coin.getByRole('img', {name: 'Selected currency artwork', exact: true});
+      await artwork.evaluate(image => image.decode());
+      assert.equal(await artwork.evaluate(image => getComputedStyle(image).objectFit), 'cover');
+      const artworkSrc = await artwork.getAttribute('src');
+      await currency.getByRole('button', {name: 'Set currency terms', exact: true}).click();
+      await currency.getByRole('heading', {name: 'Set currency terms.', exact: true}).waitFor();
+      assert.equal(await artwork.getAttribute('src'), artworkSrc);
+      await fullscreen(page, width, currency);
+      await currency.getByRole('button', {name: 'Go back', exact: true}).click();
+      await currency.waitFor({state: 'detached'});
+      assert.equal(await title.inputValue(), 'Original draft');
+      await fullscreen(page, width);
+      clean();
+      console.log(`PASS fullscreen issuance, circular artwork carried into terms, and Original draft retained on return: ${width}px`);
+    } finally { await context.close(); }
   }
 
   for (const reducedMotion of ['no-preference', 'reduce']) {

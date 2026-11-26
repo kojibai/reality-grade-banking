@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
 import { formatMoney, formatUnits, parseAmount } from '../../core/money';
 import { AmountInput } from '../../components/AmountInput';
+import { CurrencyMark } from '../../components/CurrencyMark';
 import { InlineOpening } from '../../components/InlineOpening';
 import { verifyNativeAssetSource, type NativeAssetPacket } from '../../receiz/native-asset';
 import { assetHex } from '../../receiz/native-asset-protocol';
@@ -13,7 +14,6 @@ import { inspectNativeCurrencyPolicy, nativeCurrencyLaunch, nativeCurrencyPreset
 import { NativeOperation } from '../account/NativeOperation';
 import type { CurrencyVotingContext } from '../voting/VotingBoard';
 import { currencyPresets } from '../../receiz/currency-presets';
-import { AssetStudioPreview } from './AssetStudioPreview';
 import './asset-studio.css';
 import './issue-currency.css';
 
@@ -104,6 +104,27 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
     return validateAssetDefinition({ name, symbol, units, description, linkedProofDigest: null });
   }
 
+  const PreviewIcon = presetIcons[preset];
+  const previewArtwork = artwork && artworkPreview?.file === artwork ? artworkPreview.url : undefined;
+  const currencyPreview = (editable: boolean) => <section className="currency-preview" aria-label="Your currency preview">
+    <CurrencyMark preview symbol={symbol} artwork={previewArtwork} placeholder={<PreviewIcon size={28} strokeWidth={1.5} />} />
+    <div className="currency-preview-label">
+      <small>{currencyPresets[preset].label}{symbol && <> · {symbol}</>}</small>
+      <strong>{name.trim() || 'Your currency'}</strong>
+      {editable && <div className="currency-creation-artwork">
+        <label className="back-link currency-artwork-picker"><ImagePlus size={17} aria-hidden="true" />
+          <span>{artwork ? 'Replace artwork' : 'Add artwork'}</span>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => {
+            const file = event.target.files?.[0];
+            if (file) setArtwork(file);
+            event.target.value = '';
+          }} />
+        </label>
+        {artwork && <button type="button" className="back-link" aria-label="Remove artwork" title="Remove artwork" onClick={() => setArtwork(null)}><X size={17} aria-hidden="true" /></button>}
+      </div>}
+    </div>
+  </section>;
+
   if (step === 'details') return <div className="currency-creation">
     <form onSubmit={event => {
       event.preventDefault();
@@ -112,9 +133,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       <header className="creation-intro">
         <h1 ref={stepHeading} tabIndex={-1} className="sheet-hero">Create a currency.</h1>
       </header>
-      <AssetStudioPreview title={name} kind={artwork ? 'image' : 'moment'} currencyCode={symbol}
-        artwork={artwork && artworkPreview?.file === artwork ? artworkPreview.url : undefined}
-        artworkLabel="Selected currency artwork" filename={artwork?.name} />
+      {currencyPreview(true)}
       <fieldset className="currency-creation-panel currency-controls">
         <legend>Currency type</legend>
         <div className="currency-control-options">
@@ -141,16 +160,6 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       <label className="form-field"><span>What can people use it for?</span>
         <textarea value={description} maxLength={2000} rows={2} onChange={event => setDescription(event.target.value)} placeholder={currencyPresets[preset].placeholder} />
       </label>
-      <div className="currency-creation-artwork">
-        <label className="back-link currency-artwork-picker"><ImagePlus size={17} aria-hidden="true" />
-          <span>{artwork ? 'Replace artwork' : 'Add artwork'}</span>
-          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => {
-            setArtwork(event.target.files?.[0] ?? null);
-            event.target.value = '';
-          }} />
-        </label>
-        {artwork && <button type="button" className="back-link" onClick={() => setArtwork(null)}><X size={16} aria-hidden="true" />Remove artwork</button>}
-      </div>
       <button className="primary-button">Set currency terms<ArrowRight size={17} /></button>
     </form>
   </div>;
@@ -183,8 +192,8 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
         <button type="button" className="back-link" onClick={() => openStep('details')}><ArrowLeft size={16} />Edit currency details</button>
         <header className="creation-intro currency-terms-heading">
           <h1 ref={stepHeading} tabIndex={-1} className="sheet-hero">Set currency terms.</h1>
-          <p className="body-copy">{name.trim()} · {symbol} · {currencyPresets[preset].label}</p>
         </header>
+        {currencyPreview(false)}
         <section className="currency-creation-panel" aria-labelledby={controlGroup + '-supply'}>
           <h2 id={controlGroup + '-supply'}>Supply and pricing</h2>
           <div className="currency-creation-pair">
