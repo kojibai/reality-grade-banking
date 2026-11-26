@@ -76,40 +76,28 @@ export function IssueCurrencyNote({ identity, asset, onRefresh }: {
   </>;
 }
 
-export function RedeemCurrencyNote({ identity, initialFile, onRefresh }: {
-  identity: OpenIdentity; initialFile?: File; onRefresh(): void;
+export function CurrencyNoteReview({ identity, file, onRefresh }: {
+  identity: OpenIdentity; file: File; onRefresh(): void;
 }) {
-  const [note, setNote] = useState<Awaited<ReturnType<typeof openCurrencyNoteFile>> | null>(null);
+  const [result, setResult] = useState<{file:File;note:Awaited<ReturnType<typeof openCurrencyNoteFile>>|null}>();
   const [files, setFiles] = useState<Saved>([]);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const note = result?.file===file ? result.note : undefined;
   useEffect(() => {
     let active = true;
-    if (initialFile) {
-      setBusy(true);
-      void openCurrencyNoteFile(initialFile).then(result=>{if(active)setNote(result);},()=>{
-        if(active)setError('This file does not contain a verified currency note.');
-      }).finally(()=>{if(active)setBusy(false);});
-    }
+    void openCurrencyNoteFile(file).then(note=>{
+      if(active)setResult({file,note});
+    },()=>{
+      if(active)setResult({file,note:null});
+    });
     void identity.currencyNotes?.().then(controller=>controller.files()).then(result=>{
       if(active)setFiles(result);
     }).catch(()=>{});
     return () => {active=false;};
-  }, [identity, initialFile]);
-  async function open(file?: File) {
-    if (!file || busy) return;
-    setBusy(true);setNote(null);setError('');
-    try {setNote(await openCurrencyNoteFile(file));}
-    catch {setError('This file does not contain a verified currency note.');}
-    finally {setBusy(false);}
-  }
+  }, [identity, file]);
   return <>
-    <h1 className="sheet-hero">Redeem a currency note.</h1>
-    <label className="form-field">Choose a currency note<input type="file" accept=".receizcurrency,application/json" disabled={busy}
-      onChange={event=>{void open(event.target.files?.[0]);event.target.value='';}}/></label>
-    {busy&&<p role="status">Checking the signed note…</p>}
-    {error&&<p className="error-message" role="alert">{error}</p>}
-    {note&&<NativeOperation identity={identity} title="Currency note redemption" confirmLabel="Redeem note"
+    {note===undefined&&<p role="status">Checking the signed note…</p>}
+    {note===null&&<p className="error-message" role="alert">This file does not contain a verified currency note.</p>}
+    {note&&<NativeOperation identity={identity} title="Currency note deposit" confirmLabel="Deposit note"
       inputKey={note.claimCommitment} onRefresh={onRefresh}
       input={()=>({kind:'redeem-currency-note',assetId:note.assetId,quantityMicro:note.quantityMicro,claimSecret:note.claimSecret})}>
       {note.artwork&&<img className="currency-note-artwork" alt="Custom currency note artwork"

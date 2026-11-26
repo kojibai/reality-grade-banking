@@ -1,7 +1,7 @@
 import {RecipientInput} from '../account/RecipientInput';
 import {InlineOpening} from '../../components/InlineOpening';
 import {sameNoteFundingParts} from '../../receiz/note-funding';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Check, Download, FileDown, ShieldCheck, Upload } from 'lucide-react';
 import type { OpenIdentity } from '../../receiz/native-identity';
 import type { BankNoteReview, BankNoteRail, BankNoteImage, BankNoteInspection, BankNoteDepositResult, BankNotePending, BankOfflineNotes } from '../../receiz/offline-notes';
@@ -19,6 +19,7 @@ import {walletBalanceNotice,type WalletBalanceNotice} from '../account/wallet-ba
 import {noteTitle} from '../../receiz/note-design';
 import {NOTE_ARTWORK_TYPES, validateNoteArtworkFile} from '../../receiz/note-artwork';
 import {captureNoteDepositProof,readNoteProofImport} from '../../receiz/note-proof-portability';
+const CurrencyNoteReview=lazy(()=>import('./CurrencyNotes').then(module=>({default:module.CurrencyNoteReview})));
 function download(bytes: Uint8Array, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type })), link = document.createElement('a');
   link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 3000);
@@ -35,7 +36,10 @@ function exactPhi(value?: string): string {
   const [whole, fraction] = formatUnits(value).split('.');
   return `${new Intl.NumberFormat('en-US').format(BigInt(whole))}${fraction ? `.${fraction}` : ''}`;
 }
-export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, initialReview=false,onCreated,onUseSendNearby }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string;initialReview?:boolean;onCreated?:(note:BankNoteImage)=>Promise<void>;onUseSendNearby?:(amount:string)=>void }) {
+export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, initialReview=false,onCreated,onUseSendNearby,allowCurrencyNotes=false }: { identity: OpenIdentity; mode: 'create' | 'deposit'; onBack: () => void; onRefresh: () => void; backLabel?:string;initialReview?:boolean;allowCurrencyNotes?:boolean;onCreated?:(note:BankNoteImage)=>Promise<void>;onUseSendNearby?:(amount:string)=>void }) {
+  const acceptsCurrencyNotes = mode === 'deposit' && allowCurrencyNotes && !!identity.currencyNotes;
+  const [selectedCurrencyNote,setSelectedCurrencyNote] = useState<{identity:OpenIdentity;file:File}>();
+  const currencyFile = acceptsCurrencyNotes && selectedCurrencyNote?.identity===identity ? selectedCurrencyNote.file : undefined;
   const [rail, setRail] = useState<BankNoteRail>(()=>identity.knownWallet?.()?.wallet.reserveUsdCents==='0'?'settlement':'reserve');
   const [specificRecipient,setSpecificRecipient]=useState(false),[recipient,setRecipient]=useState(''),[selectedRecipient,setSelectedRecipient]=useState<{userId:string;username:string}|null>(null);
   const [addressedCreationByDefault,setAddressedCreationByDefault]=useState(false);
@@ -159,7 +163,27 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       }
     } finally { running.current = false; if (alive.current) setBusy(false); }
   };
-  const inspect = (file?: File) => { if (!file || running.current) return; setImage(null); setInspection(null); setDeposited(null); void run(async () => { if (file.size > 32 * 1024 * 1024) throw new Error('This original exceeds the supported Note proof capacity.'); const prepared=notes().then(value=>({value}),error=>({error})),bytes = await readNoteProofImport(file),runtime=await prepared;if('error' in runtime)throw runtime.error;const result = await runtime.value.inspect(bytes); if (alive.current) { setImage(bytes); setInspection(result); } }); };
+  function inspect(file?: File) {
+    if (!file || running.current) return;
+    setImage(null); setInspection(null); setDeposited(null);
+    if (acceptsCurrencyNotes && /\.receizcurrency$/iu.test(file.name)) {
+      setError('');
+      setSelectedCurrencyNote({identity,file});
+      return;
+    }
+    setSelectedCurrencyNote(undefined);
+    void run(async () => {
+      if (file.size > 32 * 1024 * 1024) throw new Error('This original exceeds the supported Note proof capacity.');
+      const prepared = notes().then(value=>({value}),error=>({error}));
+      const bytes = await readNoteProofImport(file), runtime = await prepared;
+      if ('error' in runtime) throw runtime.error;
+      const result = await runtime.value.inspect(bytes);
+      if (alive.current && currentIdentity.current===identity) {
+        setImage(bytes);
+        setInspection(result);
+      }
+    });
+  }
   const downloadNativeRequest = () => run(async () => {
     const runtime = await notes();
     if (!runtime.nativeReceivingRequest) return;
@@ -284,7 +308,8 @@ export function OfflineNotes({ identity, mode, onBack, onRefresh, backLabel, ini
       {!created.selfDeposit&&!created.transferred&&!created.transferPending&&created.consumption==='connection-required'&&<p className="body-copy small-copy">Save and send the original PNG. {created.recipientUserId?'The chosen account receives it first.':'Anyone holding it can deposit its value once.'} Its complete proof travels with it.</p>}
 
     </>}
-    {mode === 'deposit' && !deposited && !created && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">{api.current?.nativeReceivingRequest ? 'Open the original Note image to review it.' : 'Open the original Note image to add it to your account.'}</p>{api.current?.nativeReceivingRequest&&<button className="secondary-button" disabled={busy} onClick={() => void downloadNativeRequest()}><Download size={17} />Get a Note receiving request</button>}<label className="file-drop"><Upload size={30} /><strong>{<>Choose note image{busy&&<InlineOpening compact label="Preparing your note"/>}</>}</strong><span>Original note PNG or deposit proof</span><input type="file" accept="image/png,.png,application/json,.json" disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
+    {mode === 'deposit' && !deposited && !created && <><h1 className="sheet-hero">Deposit a note.</h1><p className="body-copy">{acceptsCurrencyNotes ? 'Open the original Note image or currency note file to review it.' : api.current?.nativeReceivingRequest ? 'Open the original Note image to review it.' : 'Open the original Note image to add it to your account.'}</p>{api.current?.nativeReceivingRequest&&<button className="secondary-button" disabled={busy} onClick={() => void downloadNativeRequest()}><Download size={17} />Get a Note receiving request</button>}<label className="file-drop"><Upload size={30} /><strong>{<>{acceptsCurrencyNotes?'Choose note file':'Choose note image'}{busy&&<InlineOpening compact label="Preparing your note"/>}</>}</strong><span>{acceptsCurrencyNotes?'Note image, deposit proof or currency note file':'Original note PNG or deposit proof'}</span><input type="file" accept={'image/png,.png,application/json,.json'+(acceptsCurrencyNotes?',.receizcurrency':'')} disabled={busy} onChange={event => inspect(event.target.files?.[0])} /></label>
+      {currencyFile&&<Suspense fallback={<InlineOpening label="Opening currency note"/>}><CurrencyNoteReview identity={identity} file={currencyFile} onRefresh={onRefresh}/></Suspense>}
       {inspection && <><div className="detail-list"><div><span>{inspection.rail==='reserve'?'Note value':'Value at creation'}</span><strong>{formatMoney(inspection.amountUsdCents)}</strong></div><div><span>Into</span><strong>{inspection.nativeHandoff ? 'Your saved Notes' : 'Your account'}</strong></div></div><button className="primary-button" disabled={busy} onClick={() => void depositReviewedNote()}><FileDown size={17} />{inspection.nativeHandoff ? 'Accept Note' : busy ? 'Depositing your note…' : 'Deposit note'}</button><p className="body-copy small-copy">{inspection.nativeHandoff ? 'Your Note is ready to pass on offline once you accept it.' : 'Deposit adds the Note’s exact funded value to your account once. Its complete proof stays with the receipt.'}</p><details className="note-value-details"><summary>Note details</summary><p>{noteTitle(inspection.rail)} · Exact funded units and complete source proof stay intact.</p>{inspection.rail==='settlement'&&<p>{exactPhi(inspection.amountPhiMicro)} Φ · Dollar reference at creation; deposit preserves these exact units.</p>}{inspection.fundingParts&&<div className="detail-list"><div><span>Reserve source</span><strong>{formatMoney(inspection.fundingParts.reserve.amountUsdCents)}</strong></div><div><span>Settlement source</span><strong>{exactPhi(inspection.fundingParts.settlement.amountPhiMicro)} Φ</strong></div></div>}</details></>}
 
       {received.length>0&&<div className="retained-deposits"><p className="body-copy small-copy">Saved deposits</p>{received.map(note=><button className="asset-row" key={note.noteId} onClick={()=>setDeposited(note)}><span className="row-copy"><strong>{formatMoney(note.amountUsdCents)}</strong><span>{note.status==='received'?'Received · proof saved on this device':note.status==='forwarded'?'Passed on · QR saved':'Deposited · proof confirmed'}</span></span><Download size={18}/></button>)}</div>}

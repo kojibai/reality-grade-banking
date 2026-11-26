@@ -2,6 +2,8 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
+import { LiveReceive } from '../src/features/account/LivePayments';
+import { openCurrencyNoteFile } from '../src/receiz/currency-notes';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
 import { CurrencySettings } from '../src/features/assets/CurrencySettings';
 import { LiveOwnership } from '../src/features/assets/LiveOwnership';
@@ -14,6 +16,9 @@ const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefi
 vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{input:()=>BankOperationInput;operations?:()=>Promise<unknown>;children:React.ReactNode})=>{
  review.input=props.input;review.operations=props.operations;return props.children;
 }}));
+vi.mock('../src/receiz/currency-notes', async importOriginal => ({
+ ...(await importOriginal<typeof import('../src/receiz/currency-notes')>()), openCurrencyNoteFile:vi.fn(),
+}));
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 function enter(host:HTMLElement,label:string,value:string) {
  const field=[...host.querySelectorAll('label')].find(element=>element.textContent?.startsWith(label))?.querySelector('input');
@@ -24,9 +29,12 @@ function enter(host:HTMLElement,label:string,value:string) {
 
 it('opens currency issue from Add and stages an authored draft with the selected terms',async()=>{
  const host=document.createElement('div'),root=createRoot(host),operations=vi.fn((draft:AssetComposerDraft)=>({draft}));
- const identity={backedAssetPublication:async()=>({operations})} as unknown as OpenIdentity;
+ const identity={backedAssetPublication:async()=>({operations}),currencyNotes:vi.fn()} as unknown as OpenIdentity;
  try {
   await act(async()=>root.render(<LiveDeposit identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  expect([...host.querySelectorAll('.deposit-options button strong')].map(label=>label.textContent)).toEqual([
+   'Add money','Issue a currency','An asset','Settlement Note',
+  ]);
   const issue=[...host.querySelectorAll('button')].find(button=>button.textContent?.includes('Issue a currency'))!;
   await act(async()=>{issue.click();await vi.dynamicImportSettled();});
   await act(async()=>{
@@ -42,6 +50,31 @@ it('opens currency issue from Add and stages an authored draft with the selected
   expect(review.input?.()).toMatchObject({policy:{issuerControls:true}});
   await review.operations?.();
   expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',definition:expect.objectContaining({units:'10'})}));
+ } finally {await act(async()=>root.unmount());}
+});
+
+it('reviews a currency note through the same Receive deposit picker',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),inspect=vi.fn();
+ const identity={username:'recipient',binding:{artifactSha256:'b'.repeat(64)},offlineNotes:async()=>({receivedNotes:async()=>[],inspect}),
+  currencyNotes:async()=>({files:async()=>[]})} as unknown as OpenIdentity;
+ const note={assetId:'a'.repeat(64),issuedBy:'issuer.receiz.id',quantityMicro:'2000000',recipient:null,
+  claimCommitment:'c'.repeat(64),claimSecret:'d'.repeat(64),artwork:null};
+ vi.mocked(openCurrencyNoteFile).mockResolvedValueOnce(note);
+ try {
+  await act(async()=>root.render(<LiveReceive identity={identity}/>));
+  await act(async()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Deposit note')!.click());
+  const picker=host.querySelector<HTMLInputElement>('input[type="file"]')!;
+  expect(host.querySelectorAll('input[type="file"]')).toHaveLength(1);
+  expect(picker.accept).toContain('.png');
+  expect(picker.accept).toContain('.receizcurrency');
+  const file=new File(['fixture'],'field.receizcurrency',{type:'application/json'});
+  Object.defineProperty(picker,'files',{value:[file]});
+  await act(async()=>picker.dispatchEvent(new Event('change',{bubbles:true})));
+  await act(async()=>{await vi.dynamicImportSettled();});
+  expect(host.querySelectorAll('input[type="file"]')).toHaveLength(1);
+  expect(openCurrencyNoteFile).toHaveBeenCalledExactlyOnceWith(file);
+  expect(inspect).not.toHaveBeenCalled();
+  expect(review.input?.()).toEqual({kind:'redeem-currency-note',assetId:note.assetId,quantityMicro:note.quantityMicro,claimSecret:note.claimSecret});
  } finally {await act(async()=>root.unmount());}
 });
 

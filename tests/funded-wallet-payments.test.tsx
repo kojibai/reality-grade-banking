@@ -251,6 +251,45 @@ test('regular Receive includes the Wallet QR scanner and keeps the existing Note
   }
 });
 
+test('Receive replaces its scanner when switching to Note deposit repeatedly', async () => {
+  let resolveAddress!:(address:string)=>void;
+  const identity = {
+    username: 'recipient', binding: { artifactSha256: 'b'.repeat(64) },
+    fundedWallet: async () => ({ availableReceipt: async () => null }),
+    witnessedWallet: vi.fn(),
+    prepareReceivingUsername: () => new Promise(resolve=>{resolveAddress=resolve;}),
+    offlineNotes: async () => ({ receivedNotes: async () => [] }),
+  } as unknown as OpenIdentity;
+  const host = document.createElement('div'), root = createRoot(host);
+  document.body.append(host);
+  try {
+    await act(async () => root.render(<LiveReceive identity={identity}/>));
+    expect(host.querySelector('.receive-payment-link')).toBeNull();
+    await act(async () => resolveAddress('recipient.receiz.id'));
+    expect(host.querySelector('.receive-payment-link')).not.toBeNull();
+    for (let redraw = 0; redraw < 12; redraw++) {
+      await act(async () => root.render(<LiveReceive identity={identity} onRefresh={()=>{}}/>));
+      expect(host.querySelectorAll('.receive-nearby-toggle')).toHaveLength(1);
+    }
+    for (let i = 0; i < 4; i++) {
+      expect(host.querySelectorAll('.receive-nearby-toggle')).toHaveLength(1);
+      await click(host, 'Receive nearby');
+      expect(host.querySelector('[aria-label="Scan QR"]')).not.toBeNull();
+      await click(host, 'Deposit note');
+      expect(host.querySelectorAll('.receive-nearby-toggle')).toHaveLength(0);
+      expect(host.textContent).toContain('Deposit a note.');
+      await click(host, 'All receive options');
+      await click(host, 'Checkout link');
+      expect(host.querySelectorAll('.receive-nearby-toggle')).toHaveLength(1);
+      await click(host, 'Send link');
+    }
+    expect(host.querySelectorAll('.receive-nearby-toggle')).toHaveLength(1);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
 test('regular Receive displays its held signed address on cold open offline', async () => {
   const prior = Object.getOwnPropertyDescriptor(navigator, 'onLine');
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
