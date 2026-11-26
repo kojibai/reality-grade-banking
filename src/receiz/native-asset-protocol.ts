@@ -1,4 +1,4 @@
-import {inspectNativeCurrencyPolicy,nativeCurrencyFields,type NativeCurrencyPolicy,type NativeCurrencyState} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import {inspectNativeCurrencyPolicy,inspectNativeCurrencyManagement,type NativeCurrencyManagement,nativeCurrencyFields,type NativeCurrencyPolicy,type NativeCurrencyState} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
 import {inspectNativeAssetBacking,inspectNativeAssetFundingComponents,type NativeAssetFundingComponent} from './native-asset-backing';
 export {inspectNativeAssetFundingComponents} from './native-asset-backing';
@@ -11,6 +11,7 @@ export type NativeAssetInput=
  |Readonly<{kind:'fund-asset';rail:'reserve'|'settlement';amountUsdCents:string;definition:NativeAssetDefinition;authoredSource?:ImportedProofSourceReference}>
  |Readonly<{kind:'issue-currency';definition:NativeAssetDefinition;policy:NativeCurrencyPolicy;authoredSource:ImportedProofSourceReference}>
  |Readonly<({assetDigest:string}|{assetId:string})&{kind:'buy-currency';quantityMicro:string}>
+ |Readonly<{kind:'manage-currency';assetDigest:string;changes:NativeCurrencyManagement}>
  |Readonly<{kind:'send-ownership';assetDigest:string;quantityMicro:string;recipient:string}>
  |Readonly<({assetDigest:string}|{assetId:string})&{kind:'buy-shares';quantityMicro:string;rail:'reserve'|'settlement'}>
  |Readonly<({assetDigest:string}|{assetId:string})&{kind:'sell-share';quantityMicro:string;rail:'reserve'|'settlement';buyer:'bank'|'market'|'currency-pool'}>
@@ -36,12 +37,13 @@ export function inspectNativeAssetDefinition(input:unknown):NativeAssetDefinitio
 }
 export function inspectNativeAssetRequest(input:unknown):NativeAssetRequest{
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('BANK_ASSET_REQUEST_INVALID');const v=input as Record<string,unknown>;
- const fields:Record<string,readonly string[]>={'fund-asset':[Object.hasOwn(v,'fundingRule')?'fundingRule':'rail','amountUsdCents','definition',...(Object.hasOwn(v,'authoredSource')?['authoredSource']:[])],'issue-currency':['definition','policy','authoredSource'],'buy-currency':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro'],'send-ownership':['assetDigest','quantityMicro','recipient'],'buy-shares':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro','rail'],'sell-share':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro','rail','buyer'],exchange:['assetDigest','amountUsdCents','rail'],'redeem-asset':['assetDigest']};
+ const fields:Record<string,readonly string[]>={'fund-asset':[Object.hasOwn(v,'fundingRule')?'fundingRule':'rail','amountUsdCents','definition',...(Object.hasOwn(v,'authoredSource')?['authoredSource']:[])],'issue-currency':['definition','policy','authoredSource'],'buy-currency':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro'],'manage-currency':['assetDigest','changes'],'send-ownership':['assetDigest','quantityMicro','recipient'],'buy-shares':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro','rail'],'sell-share':[Object.hasOwn(v,'assetId')?'assetId':'assetDigest','quantityMicro','rail','buyer'],exchange:['assetDigest','amountUsdCents','rail'],'redeem-asset':['assetDigest']};
  if(typeof v.kind!=='string'||!Object.hasOwn(fields,v.kind))throw Error('BANK_ASSET_REQUEST_INVALID');record(v,['schema','applicationId','requestId','actorReceizId','kind',...fields[v.kind]]);
  if(v.schema!=='bankeiz.operation-request.v1'||typeof v.applicationId!=='string'||!/^rc_[A-Za-z0-9_-]{1,128}$/u.test(v.applicationId)||typeof v.requestId!=='string'||!/^[A-Za-z0-9._:-]{8,120}$/u.test(v.requestId)||!text(v.actorReceizId,160)||! /^[A-Za-z0-9_@.-]+$/u.test(v.actorReceizId))throw Error('BANK_ASSET_REQUEST_INVALID');
  if('fundingRule'in v&&v.fundingRule!=='reserve-first-then-settlement'||'rail'in v&&!['reserve','settlement'].includes(String(v.rail))||'assetDigest'in v&&!assetHex(v.assetDigest)||'assetId'in v&&!assetHex(v.assetId)||'quantityMicro'in v&&!integer(v.quantityMicro,true)||'amountUsdCents'in v&&!integer(v.amountUsdCents,true)||'recipient'in v&&(!text(v.recipient,160)||! /^[A-Za-z0-9_@.-]+$/u.test(v.recipient))||'buyer'in v&&!['bank','market','currency-pool'].includes(String(v.buyer)))throw Error('BANK_ASSET_REQUEST_INVALID');
  if(v.kind==='sell-share'&&v.buyer==='currency-pool'&&v.rail!=='reserve')throw Error('BANK_ASSET_REQUEST_INVALID');
  if(v.kind==='issue-currency')inspectNativeCurrencyPolicy(v.policy);
+ if(v.kind==='manage-currency')inspectNativeCurrencyManagement(v.changes);
  if(v.kind==='fund-asset'||v.kind==='issue-currency'){const definition=inspectNativeAssetDefinition(v.definition);if(Object.hasOwn(v,'authoredSource')){const source=parseImportedProofSourceReference(v.authoredSource as ImportedProofSourceReference);if(definition.linkedProofDigest!==source.artifactSha256)throw Error('BANK_ASSET_AUTHORED_SOURCE_MISMATCH');}else if(definition.linkedProofDigest!==null)throw Error('BANK_ASSET_AUTHORED_SOURCE_REQUIRED');}return structuredClone(v) as NativeAssetRequest;
 }
 export function inspectNativeAssetReview(input:unknown):NativeAssetReview{
@@ -51,7 +53,7 @@ export function inspectNativeAssetReview(input:unknown):NativeAssetReview{
  if('assetId'in request&&!assetHex(t.assetDigest)||'assetDigest'in request&&t.assetDigest!==request.assetDigest||'quantityMicro'in request&&t.quantityMicro!==request.quantityMicro||t.recipient!==(request.kind==='send-ownership'?request.recipient:null))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(request.kind==='fund-asset'&&(t.assetDigest!==null||t.quantityMicro!==nativeAssetSupplyMicro(request.definition.units)||t.debitUsdCents!==request.amountUsdCents||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(request.kind==='issue-currency'&&(t.assetDigest!==null||t.quantityMicro!==nativeAssetSupplyMicro(request.definition.units)))throw Error('BANK_ASSET_REVIEW_INVALID');
- if((request.kind==='issue-currency'||request.kind==='send-ownership')&&['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro'].some(k=>t[k]!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
+ if((request.kind==='issue-currency'||request.kind==='send-ownership'||request.kind==='manage-currency')&&['debitUsdCents','debitPhiMicro','creditUsdCents','creditPhiMicro'].some(k=>t[k]!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(request.kind==='buy-currency'&&(t.debitUsdCents==='0'||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
  if((request.kind==='buy-shares'||request.kind==='exchange')&&(request.rail==='reserve'&&t.debitUsdCents==='0'||t.debitPhiMicro==='0'||t.creditUsdCents!=='0'||t.creditPhiMicro!=='0'||request.kind==='exchange'&&BigInt(t.debitUsdCents as string)>BigInt(request.amountUsdCents)))throw Error('BANK_ASSET_REVIEW_INVALID');
  if(['sell-share','redeem-asset'].includes(request.kind)&&(t.debitUsdCents!=='0'||t.debitPhiMicro!=='0'||t.creditPhiMicro==='0'))throw Error('BANK_ASSET_REVIEW_INVALID');
@@ -68,12 +70,18 @@ export function inspectNativeAssetReceipt(input:unknown):NativeAssetReceipt{
  if(v.schema!=='receiz.bank.native-asset-receipt.v1'||v.domain!==ASSET_DOMAIN||!text(v.issuerRootKid,256)||!assetHex(v.nativeAssetSourceSha256)||!integer(v.kaiUPulse)||!integer(v.issuedAtKaiUPulse)||BigInt(v.issuedAtKaiUPulse)<BigInt(v.kaiUPulse)||!text(v.transactionId,128))throw Error('BANK_ASSET_RECEIPT_INVALID');const review=inspectNativeAssetReview(v.review);
  const a=record(v.actorAfter,['balancePhiMicro','reserveUsdCents','reserveBackingPhiMicro']),asset=record(v.assetAfter,['id','sourceSha256','supplyMicro','ownerQuantityMicro','backingRail','backingPhiMicro','backingUsdCents','status',...(v.assetAfter&&typeof v.assetAfter==='object'&&Object.hasOwn(v.assetAfter,'backingComponents')?['backingComponents']:[]),...nativeCurrencyFields(v.assetAfter)]),signature=record(v.rootSignature,['kid','alg','sig']);
  if(!Object.values(a).every(x=>integer(x))||BigInt(a.reserveBackingPhiMicro as string)>BigInt(a.balancePhiMicro as string)||!text(asset.id,128)||!assetHex(asset.sourceSha256)||!['supplyMicro','ownerQuantityMicro','backingPhiMicro','backingUsdCents'].every(k=>integer(asset[k]))||BigInt(asset.ownerQuantityMicro as string)>BigInt(asset.supplyMicro as string)||!['reserve','settlement','composite'].includes(String(asset.backingRail))||!['active','redeemed'].includes(String(asset.status))||asset.status==='redeemed'&&['supplyMicro','backingPhiMicro','backingUsdCents'].some(k=>asset[k]!=='0')||signature.kid!==v.issuerRootKid||signature.alg!=='Ed25519'||typeof signature.sig!=='string'||!/^[A-Za-z0-9_-]{86}$/u.test(signature.sig))throw Error('BANK_ASSET_RECEIPT_INVALID');inspectNativeAssetBacking(asset);
- const expectsCurrency=review.request.kind==='issue-currency'||review.request.kind==='buy-currency'||(review.request.kind==='sell-share'&&review.request.buyer==='currency-pool');
+ const expectsCurrency=review.request.kind==='issue-currency'||review.request.kind==='buy-currency'||review.request.kind==='manage-currency'||(review.request.kind==='sell-share'&&review.request.buyer==='currency-pool');
  if(expectsCurrency&&!Object.hasOwn(asset,'currency')||Object.hasOwn(asset,'currency')&&!expectsCurrency&&review.request.kind!=='send-ownership')throw Error('BANK_ASSET_RECEIPT_INVALID');
  if(asset.currency&&BigInt(asset.ownerQuantityMicro as string)+BigInt((asset.currency as NativeCurrencyState).availableQuantityMicro)>BigInt(asset.supplyMicro as string))throw Error('BANK_ASSET_RECEIPT_INVALID');
  if(review.request.kind==='issue-currency'){
   const currency=asset.currency as NativeCurrencyState;
   if(asset.ownerQuantityMicro!=='0'||asset.supplyMicro!==review.terms.quantityMicro||currency.availableQuantityMicro!==asset.supplyMicro||!assetSame(currency.policy,review.request.policy))throw Error('BANK_ASSET_RECEIPT_INVALID');
+ }else if(review.request.kind==='manage-currency'){
+  const currency=asset.currency as NativeCurrencyState,changes=review.request.changes;
+  if(!currency.policy.issuerControls||asset.supplyMicro!==review.terms.quantityMicro
+    ||changes.priceUsdCentsPerUnit!==undefined&&changes.priceUsdCentsPerUnit!==currency.policy.priceUsdCentsPerUnit
+    ||changes.governanceCharterSha256!==undefined&&changes.governanceCharterSha256!==currency.governanceCharterSha256
+    ||changes.salesPaused!==undefined&&changes.salesPaused!==currency.salesPaused)throw Error('BANK_ASSET_RECEIPT_INVALID');
  }else if(review.request.kind==='buy-currency'){
   const currency=asset.currency as NativeCurrencyState;
   if(BigInt(asset.ownerQuantityMicro as string)<BigInt(review.terms.quantityMicro)||BigInt(currency.liquidityReservePhiMicro)+BigInt(currency.liquiditySettlementPhiMicro)<BigInt(review.terms.debitPhiMicro))throw Error('BANK_ASSET_RECEIPT_INVALID');

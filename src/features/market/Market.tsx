@@ -12,7 +12,7 @@ import { type PublicMarketItem } from '../../receiz/public-market';
 import {PublicObjectRow} from './PublicObjectRow';
 import {AssetsRowArtwork} from '../assets/AssetsRowArtwork';
 import { MarketOverview } from './MarketOverview';
-import { PublicAssetDetail } from './PublicAssetDetail';
+import { PublicAssetDetail, type CurrencyManagementContext } from './PublicAssetDetail';
 import {MARKET_CONTENT_FILTERS,matchesMarketContent,type MarketContentFilter} from '../../receiz/market-categories';
 import {beginPublicAssetTrade} from '../../receiz/public-asset-trade';
 import {PublicAssetTradeHost} from '../../public-explorer/PublicAssetTradeHost';
@@ -24,10 +24,10 @@ function selectedObject(prefix:string): string | null { try { return location.ha
 const MarketCollectionRow=memo(function MarketCollectionRow({item,firstFrame,active,onOpen}:{item:PublicMarketItem;firstFrame:boolean;active:boolean;onOpen:(item:PublicMarketItem)=>void}){
  return <PublicObjectRow item={item} onOpen={onOpen} trackImpression={active} artwork={<AssetsRowArtwork item={item} initiallyNear={firstFrame}/>}/>;
 });
-type MarketProps = { initialVisibleCount?:number; initialHistory?:MarketHistorySnapshot; overview?:ReactNode; mode?:'market'|'explorer';active?: boolean; onAction?: (action: UIAction) => void; source?: ReturnType<typeof usePublicMarket>;publicCategory?:{label:string;description:string};overviewOnly?:boolean;sourceActive?:boolean };
+type MarketProps = { currencyManagement?:CurrencyManagementContext; initialVisibleCount?:number; initialHistory?:MarketHistorySnapshot; overview?:ReactNode; mode?:'market'|'explorer';active?: boolean; onAction?: (action: UIAction) => void; source?: ReturnType<typeof usePublicMarket>;publicCategory?:{label:string;description:string};overviewOnly?:boolean;sourceActive?:boolean };
 export function Market(props: MarketProps) { return props.source ? <MarketView {...props} source={props.source} /> : <ConnectedMarket {...props} />; }
 function ConnectedMarket(props: MarketProps) { const source = usePublicMarket(props.active); return <MarketView {...props} source={source} />; }
-function MarketView({ initialVisibleCount, initialHistory, mode='market',active = true, sourceActive=active, onAction, source,publicCategory,overviewOnly=false,overview }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
+function MarketView({ initialVisibleCount, initialHistory, mode='market',active = true, sourceActive=active, onAction, source,publicCategory,overviewOnly=false,overview,currencyManagement }: MarketProps & { source: ReturnType<typeof usePublicMarket> }) {
   const explorer=mode==='explorer',prefix=explorer?'#object/':'#market/public/';
   const initialCapabilities=useContext(PublicDocumentCapabilitiesContext),intersectionObserver=initialCapabilities?.intersectionObserver??typeof IntersectionObserver!=='undefined';
   const scrollTools=useScrollReveal(active&&!overviewOnly,'.market-explorer-tools .search-field');
@@ -68,7 +68,7 @@ function MarketView({ initialVisibleCount, initialHistory, mode='market',active 
     {!explorer&&<div className="market-actions"><button className="primary-button navy-button" onClick={() => open({ kind: 'currency' })}><Plus size={19} />Create an asset</button></div>}</div>
     {!overviewOnly&&<section id="market-explore" ref={collection}><div className="section-heading"><h2>{explorer?'Public collection':'Explore'}</h2><div className="market-collection-tools"><a className="market-feed-entry" href="/discover/" aria-label="Discover people and their work" title="Discover"><Search size={18} strokeWidth={1.5}/></a><span className="muted result-count">{assets.length.toLocaleString()} assets</span>{<button className="market-feed-entry" title="Open feed" aria-label="Open feed" disabled={!catalog} onClick={()=>{feedMounted.current=true;setFeedOpen(true);}}><GalleryVerticalEnd size={18} strokeWidth={1.5}/></button>}</div></div><div className="market-rows">{assets.slice(0, shown).map((asset,index) => <MarketCollectionRow key={asset.id} item={asset} firstFrame={index<6} active={active} onOpen={view}/>)}{!assets.length && <div className="empty-state">{catalog ? 'No matching public assets. Try another search.' : status === 'loading' ? 'Loading public proof objects…' : 'The public collection is temporarily unavailable.'}</div>}</div><div ref={loadMore} className="public-market-sentinel" aria-hidden="true" />{assets.length > shown && !intersectionObserver && <button className="text-button public-market-more" onClick={() => setShown(count => count + 50)}>Show more assets</button>}</section>}</div>
     {feedMounted.current&&catalog&&<MarketFeed items={catalog.items} active={active&&feedOpen} paused={!!selectedId} onClose={()=>setFeedOpen(false)} onAsset={view} onBuy={item=>{if(explorer)beginPublicAssetTrade({itemId:item.id,side:'buy',title:item.title});else open({kind:'market-trade',marketItemId:item.id,side:'buy'});}} onPay={explorer?undefined:item=>{if(item.ownerUsername){open({kind:'send',paymentRequest:{recipient:item.ownerUsername}});}}}/>}
-    {active && selectedId && <Sheet title="Public asset" onClose={close}>{selected ? <PublicAssetDetail key={selected.id} item={selected} onTrade={(side, marketItemId) => {if(explorer)beginPublicAssetTrade({itemId:marketItemId,side,title:selected.title});else open({kind:'market-trade',marketItemId,side});}} /> : <p className="body-copy">{catalog ? 'This object is no longer in the public collection.' : 'Loading the public source…'}</p>}</Sheet>}
+    {active && selectedId && <Sheet title="Public asset" onClose={close}>{selected ? <PublicAssetDetail key={selected.id} item={selected} currencyManagement={currencyManagement} onTrade={(side, marketItemId) => {if(explorer)beginPublicAssetTrade({itemId:marketItemId,side,title:selected.title});else open({kind:'market-trade',marketItemId,side});}} /> : <p className="body-copy">{catalog ? 'This object is no longer in the public collection.' : 'Loading the public source…'}</p>}</Sheet>}
     {active&&explorer&&<PublicAssetTradeHost/>}
   </section>;
 }

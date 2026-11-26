@@ -1,6 +1,7 @@
 import {afterPublicNavigationReady} from '../core/public-document-entry.js';
 export interface PublicAssetTradeIntent {certificateToken?:string;certificateAction?:'manage';itemId: string; side: 'buy' | 'sell'; title: string; initialBudget?: string; resumeSessionId?: string; resumeTradeReview?: boolean;}
-export interface PublicAssetTradeRequest extends PublicAssetTradeIntent {id: number; pathname: string; slot: HTMLElement | null; connected: boolean;}
+type PublicCurrencyGovernanceIntent = {title: string; currencyAssetId: string; certificateAction?: never};
+export type PublicAssetTradeRequest = (PublicAssetTradeIntent | PublicCurrencyGovernanceIntent) & {id: number; pathname: string; slot: HTMLElement | null; connected: boolean;}
 let current: PublicAssetTradeRequest | null = null, sequence = 0;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach(listener => listener());
@@ -11,6 +12,13 @@ export const subscribePublicAssetTrade = (listener: () => void) => {listeners.ad
 export function beginPublicAssetTrade(intent: PublicAssetTradeIntent): boolean {
   if(intent.certificateToken!==undefined&&!/^[A-Za-z0-9._:-]{16,200}$/.test(intent.certificateToken)||intent.certificateAction!==undefined&&(!intent.certificateToken||intent.certificateAction!=='manage'))return false;
   if (!intent.itemId || intent.itemId.length > 256 || /[\x00-\x1f\x7f]/.test(intent.itemId) || intent.itemId.startsWith('sports:') || !['buy', 'sell'].includes(intent.side) || intent.resumeSessionId !== undefined && !/^cs_[a-zA-Z0-9_]{8,200}$/.test(intent.resumeSessionId)) return false;
+  return openPanel(intent);
+}
+export function beginPublicCurrencyGovernance(intent: PublicCurrencyGovernanceIntent): boolean {
+  if (!/^[a-f0-9]{64}$/u.test(intent.currencyAssetId)) return false;
+  return openPanel(intent);
+}
+function openPanel(intent: PublicAssetTradeIntent | PublicCurrencyGovernanceIntent): boolean {
   current = {...intent, title: intent.title.slice(0, 4096), id: ++sequence, pathname: location.pathname, slot: null, connected: false};
   notify(); return true;
 }

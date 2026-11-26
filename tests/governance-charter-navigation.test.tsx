@@ -7,6 +7,13 @@ import {GovernanceDetail} from '../src/features/voting/GovernanceDetail';
 import {rows} from '../src/features/voting/example/collection';
 import {proposalEvidence} from '../src/receiz/governance-closure';
 import {ofKind} from '../src/receiz/governance-view';
+import {CurrencyDecisionApplication} from '../src/features/voting/CurrencyDecisionApplication';
+import {charterElectorate} from '../src/receiz/governance-documents';
+import type {OpenIdentity} from '../src/receiz/native-identity';
+
+const { applyCurrencyDecision } = vi.hoisted(()=>({applyCurrencyDecision:vi.fn()}));
+vi.mock('../src/receiz/currency-governance',()=>({applyCurrencyDecision}));
+
 
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 const charter=ofKind(rows,'charter')[0],poll=ofKind(rows,'proposal').find(r=>r.document.terms.decision==='Poll')!;
@@ -35,4 +42,30 @@ it('keeps an unsigned directory addition from another charter or a nonmember out
  const expected=proposalEvidence(poll,rows);
  expect(expected).toContain(ballot.digest);
  expect(proposalEvidence(poll,[...rows,late,foreign,other])).toEqual(expected);
+});
+
+it('applies a signed currency decision in place when the final elector’s closure arrives',async()=>{
+ const host=document.createElement('div'),root=createRoot(host),navigate=vi.spyOn(history,'pushState');
+ const onApplied=vi.fn(),read=vi.fn(),before=location.href;
+ const proposal={...poll,document:{...poll.document,terms:{...poll.document.terms,decision:'Policy' as const,
+   currencyChange:{assetId:'a'.repeat(64),expectedHead:'b'.repeat(64),changes:{priceUsdCentsPerUnit:'75'}}}}};
+ const members=charterElectorate(charter.document.terms.rules);
+ const closures=members.map((author,index)=>({digest:String(index).padStart(64,'0'),pulse:'99999999',profileUid:null,
+  document:{...charter.document,author,terms:{kind:'closure' as const,charter:charter.digest,proposal:proposal.digest,evidence:[]}}}));
+ const identity={currencyGovernance:vi.fn()} as unknown as OpenIdentity;
+ const asset={headSourceSha256:'c'.repeat(64)};
+ applyCurrencyDecision.mockResolvedValue({status:'applied',asset,sourceSha256:asset.headSourceSha256});
+ const render=(complete:boolean)=>act(async()=>root.render(<CurrencyDecisionApplication {...{proposal,charter,read,identity,onApplied}}
+  rows={[...rows,...(complete?closures:closures.slice(1))]}/>));
+ try{
+  await render(false);
+  expect(applyCurrencyDecision).not.toHaveBeenCalled();
+  await render(true);
+  expect(applyCurrencyDecision).toHaveBeenCalledTimes(1);
+  expect(onApplied).toHaveBeenCalledWith(asset);
+  expect(host.textContent).toContain('The currency change was applied.');
+  expect(host.querySelectorAll('button')).toHaveLength(0);
+  expect(location.href).toBe(before);
+  expect(navigate).not.toHaveBeenCalled();
+ }finally{navigate.mockRestore();await act(async()=>root.unmount());}
 });

@@ -39,6 +39,10 @@
       "sha256": "c9171469d7b0940a45abe34be260b62f60524faa50d4ee5a70f5ab9e000c3d29"
     },
     {
+      "path": "native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency.ts",
+      "sha256": "0b656db582854758ff070ac684afd41ad47768ce08de39f4ffdbc908e4663c46"
+    },
+    {
       "path": "native/receiz/app/utils/mime.ts",
       "sha256": "1d40b9eec57eba1978e7a1f73b90adf82a9b243209f940a03eb19f6bc555d822"
     },
@@ -1928,11 +1932,11 @@
     },
     {
       "path": "public/native/offline-notes.v129.manifest.json",
-      "sha256": "c310de1ac8509e7627a5d49dc4232bd6909f16263b70fe3d4ccf993e1901c90c"
+      "sha256": "e7e8b3c07e24aa60e0fd702e1832d2e166cecae676aacb34c9492661471a6101"
     },
     {
       "path": "public/native/offline-notes.v129.mjs",
-      "sha256": "d3fd024e66a6d09e6bb423a861006d864aca0a18f105a3dca08af96e696b5736"
+      "sha256": "d3bb9cc6289af61b9ac93ccb19aa6eaf04fb7f8b52dcbd602d517f413eb534e5"
     },
     {
       "path": "public/native/receiver-verifier.v129.manifest.json",
@@ -1968,7 +1972,7 @@
     },
     {
       "path": "src/receiz/account-proof-statement.ts",
-      "sha256": "6f85bc77960cc24b353ceb0c222ab35422ea9664efb05a707b7701531a74efad"
+      "sha256": "07d84056195f2e52e418879e57ee9b1d5f8df31ad447757939d63577b1e0d131"
     },
     {
       "path": "src/receiz/account-proof.ts",
@@ -2012,7 +2016,7 @@
     },
     {
       "path": "src/receiz/deposit-source.ts",
-      "sha256": "d4e71b32242c6c28d15eb7eddeb6b61088360cb46d6f128bd201ad7b536789a0"
+      "sha256": "da940769a7ee4ce5b756cb8a190203d70badba962772af3eb0854c024b3595f8"
     },
     {
       "path": "src/receiz/governance-cursor.ts",
@@ -2036,19 +2040,19 @@
     },
     {
       "path": "src/receiz/native-asset-backing.ts",
-      "sha256": "2072541adec6d020a27b2ccd3892907282c68bf69a1a65b982f0fd633d59c70e"
+      "sha256": "9d8394571d5e02390a3a24f751a3ab30942ea2de33e33710279841edbdca62aa"
     },
     {
       "path": "src/receiz/native-asset-holding-protocol.ts",
-      "sha256": "8ff75f011d94133d54675107b34bfb59161add1e4aee667390a9d7540b1360d2"
+      "sha256": "878f013b2d3c83256814b329b8fdfae049630bfde80421e5ecd56c9249f522bd"
     },
     {
       "path": "src/receiz/native-asset-holding.ts",
-      "sha256": "064264d0156793e56da5c2e1e65a38deaf99ee955339bf64b41914f431231ebe"
+      "sha256": "a1bf3dbbc2e0462c3a53951208d2b5514e99fe3114eef6f7efdf335f60fb30c1"
     },
     {
       "path": "src/receiz/native-asset-protocol.ts",
-      "sha256": "64087c47862257e916c312451c17ad4ef34f6adc5979aeab7be2de992d4f140e"
+      "sha256": "c44a0a1ae4a36565d8886c18e61b758296466ac21d9fa1f0eb248cc4bd285c05"
     },
     {
       "path": "src/receiz/native-asset-signature.ts",
@@ -2253,20 +2257,20 @@
   ],
   "files": {
     "inspector.js": {
-      "sha256": "5fbfe6f257387be2486d1d9263ba0d9898ad68f5e46b514c2f42eb619c110712",
-      "bytes": 11356639
+      "sha256": "12d7accdcb24e65750c5212ac04567257c080a39af21dc2e80e81f075ecaaa09",
+      "bytes": 11373724
     },
     "inspector.js.map": {
-      "sha256": "9e0bb860b974afaf2af8bf15570cb3a6626f59888f843f496be567bba79aa180",
-      "bytes": 29892005
+      "sha256": "b4260da60b7db36d40e2f59029435e87079d0087d83593ed441829de51c2b568",
+      "bytes": 29933900
     },
     "verify.mjs": {
       "sha256": "5919018a1272cd6eebab55988cd22a02a6e7e4397947cd8e51c6cf37e4eefc5e",
       "bytes": 1635
     },
     "verify.html": {
-      "sha256": "8f1015bea1104bf0b6de74e88900d7ab64ffcc11d22e2d8b26e828bb88995b64",
-      "bytes": 11361489
+      "sha256": "603219a91dc156df6a75d1d4ecae0b8f8cc449ddd5af713f1ed568cf7f0bfcf6",
+      "bytes": 11378574
     },
     "README.txt": {
       "sha256": "69230c971b734b723cf1af67da1e32c3f97129f78860af2e951c6f059fb09ffc",

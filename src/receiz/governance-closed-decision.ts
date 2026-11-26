@@ -1,5 +1,5 @@
 import {canonicalizeReceizV122} from '@receiz/sdk';
-import {charterElectorate} from './governance-documents';
+import {charterElectorate,checkCharterCurrencyChange} from './governance-documents';
 import {closureOpens,proposalEvidence} from './governance-closure';
 import {ofKind,ballotRegister,observedSeats} from './governance-view';
 import type {GovernanceRow} from './governance-directory';
@@ -34,7 +34,8 @@ export function projectClosedGovernanceDecision(proposal:string,inputRows:readon
  }
  if(kind==='Treasury'&&(!terms.payment||!authority.treasury||!same(terms.payment,authority.treasury)))throw Error('The installment differs from the ratified treasury authority.');
  const closedAtKai=closures.reduce((last,row)=>BigInt(row.pulse)>last?BigInt(row.pulse):last,0n).toString();
- const decision:GovernanceDecision={closedAtKai,schema:'bankeiz.governance.decision.v1',charter:c.digest,proposal:p.digest,decision:kind,
+ const currencyChange=terms.currencyChange&&checkCharterCurrencyChange(authority.currency,terms.currencyChange);
+ const decision:GovernanceDecision={...(approved&&currencyChange?{currencyChange}:{}),closedAtKai,schema:'bankeiz.governance.decision.v1',charter:c.digest,proposal:p.digest,decision:kind,
   approved,office,seated,payment:kind==='Treasury'&&approved?terms.payment!:null,evidence,closures:closures.map(r=>r.digest),counts:[...votes.counts].map(([choice,count])=>({choice,count}))};
  return {decision,authority};
 }

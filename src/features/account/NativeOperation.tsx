@@ -52,6 +52,11 @@ export function NativeOperation({ identity, input, inputKey, title, confirmLabel
       <div className="detail-list">
         {(request.kind === 'send-ownership' || request.kind === 'sell-share' && request.buyer === 'currency-pool') && ownership && <div><span>Asset</span><strong>{ownership.title}</strong></div>}
         {request.kind==='issue-currency'&&<><div><span>Currency</span><strong>{request.definition.name} · {request.definition.symbol}</strong></div><div><span>Purchase price per unit</span><strong>{formatMoney(request.policy.priceUsdCentsPerUnit)}</strong></div><div><span>Creator allocation</span><strong>0 units</strong></div></>}
+        {request.kind==='manage-currency'&&<>
+          {request.changes.governanceCharterSha256&&<div><span>Community charter</span><strong className="proof-coordinate">{request.changes.governanceCharterSha256}</strong></div>}
+          {request.changes.priceUsdCentsPerUnit!==undefined&&<div><span>New purchase price per unit</span><strong>{formatMoney(request.changes.priceUsdCentsPerUnit)}</strong></div>}
+          {request.changes.salesPaused!==undefined&&<div><span>New sales</span><strong>{request.changes.salesPaused?'Paused':'Open'}</strong></div>}
+        </>}
         {request.kind==='buy-currency'&&<div><span>Payment destination</span><strong>Currency pool</strong></div>}
         {request.kind==='sell-share'&&request.buyer==='currency-pool'&&<div><span>Payment source</span><strong>Currency pool</strong></div>}
         {request.kind==='fund-asset'&&<div><span>Asset</span><strong>{request.definition.name}</strong></div>}

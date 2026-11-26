@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { LiveDeposit } from '../src/features/deposit/LiveDeposit';
+import { CurrencySettings } from '../src/features/assets/CurrencySettings';
 import { LiveOwnership } from '../src/features/assets/LiveOwnership';
 import type { OpenIdentity } from '../src/receiz/native-identity';
 import type { BankOperationInput } from '../src/receiz/bank-operations';
@@ -36,6 +37,9 @@ it('opens currency issue from Add and stages an authored draft with the selected
   });
   const selected=review.input?.();
   expect(selected).toMatchObject({kind:'issue-currency',definition:{name:'Field credit',symbol:'FIELD',units:'10'},policy:{priceUsdCentsPerUnit:'25'}});
+  const optIn = host.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+  await act(async()=>optIn.click());
+  expect(review.input?.()).toMatchObject({policy:{issuerControls:true}});
   await review.operations?.();
   expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',definition:expect.objectContaining({units:'10'})}));
  } finally {await act(async()=>root.unmount());}
@@ -80,4 +84,23 @@ it('sends whole currency units from the held source while preserving the Market 
   expect(review.input?.()).toEqual({kind:'send-ownership',assetDigest:head,quantityMicro:'2000000',recipient:'@receiver'});
   expect(marketPortfolio).not.toHaveBeenCalled();
  }finally{await act(async()=>root.unmount());}
+});
+
+it('reviews creator changes against the exact admitted currency head', async()=>{
+ const host=document.createElement('div'),root=createRoot(host),assetId='a'.repeat(64),head='b'.repeat(64),creator='00000000-0000-4000-8000-000000000001';
+ const asset={id:assetId,headSourceSha256:head,currency:{
+  policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'25',issuerControls:true},
+  issuerAccountId:creator,salesPaused:false,availableQuantityMicro:'1000000',liquidityReserveUsdCents:'0',
+  liquidityReservePhiMicro:'0',liquiditySettlementPhiMicro:'0',
+ }};
+ const identity={backedAssetPublication:async()=>({readPublicAsset:async()=>({asset})})} as unknown as OpenIdentity;
+ try {
+  await act(async()=>root.render(<CurrencySettings identity={identity} accountUid={creator} assetId={assetId} onRefresh={()=>{}}/>));
+  expect(host.textContent).toContain('Current purchase price $0.25');
+  await act(async()=>{
+   enter(host,'New purchase price per unit','0.40');
+   host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click();
+  });
+  expect(review.input?.()).toEqual({kind:'manage-currency',assetDigest:head,changes:{priceUsdCentsPerUnit:'40',salesPaused:true}});
+ } finally {await act(async()=>root.unmount());}
 });

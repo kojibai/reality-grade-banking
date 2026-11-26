@@ -18,9 +18,17 @@ A signed creation first remains with its issuing identity. The holder can save t
 
 ## Binding decisions
 
-The optional unanimous-evidence-closure-v1 rule binds a fixed electorate, a register Original and genesis head, and a named custodian. After both voting and challenges close, every voting member must sign the same list of exact evidence. A missing signer, conflicting manifest or unresolved timely member challenge prevents certification. Each reader can reopen and recount the enclosure. The custodian reviews the exact plan, signs the register append and submits it through the native governance adapter. A committed decision carries the accepted successor head. Historical inspection reopens the committed checkpoint at its signed time.
+The optional unanimous-evidence-closure-v1 rule binds a fixed electorate, a register Original and genesis head, and a named custodian. After both voting and challenges close, every voting member must sign the same list of exact evidence. A missing signer, conflicting manifest or unresolved timely member challenge prevents certification. Each reader can reopen and recount the enclosure. For a register decision, the custodian reviews the exact plan, signs the register append and submits it through the native governance adapter. A committed decision carries the accepted successor head. Historical inspection reopens the committed checkpoint at its signed time.
 
 The registered reducer handles binary policy decisions, seating qualifying candidates in an elected office, and authorizing a single exact treasury installment. Ties do not award a contested seat. An occupied office requires a supported succession transition before another holder can be seated. Text alone cannot change a membership list, override a challenge, move a treasury, or perform a recall.
+
+## Currency governance
+
+A currency issued with editable terms can link a ratified charter from its own asset page. The charter names the exact currency, sets an allowed purchase-price range and specifies whether voters can pause or reopen sales. All named founders ratify the charter. The issuer signs the link once. From that point, the charter governs those settings.
+
+Voting members can propose changes and vote from the currency page. Each proposal binds the exact settings it would replace. Buys, sells and transfers can continue during voting. A previously approved settings change supersedes proposals written against its predecessor.
+
+After the vote and challenge periods, every eligible voter signs the same evidence list. Bankeiz submits the complete approved proof when the signed closure is available. The native currency writer reopens the charter, ratifications, proposal, ballots and closure Originals and applies an eligible change once. No second issuer or custodian signature is required for the currency change. A rejected proposal or a proof outside the charter’s authority leaves the settings as they were.
 
 ## Treasury
 

@@ -1,5 +1,5 @@
 import {parseImportedProofSourceReference,type ImportedProofSourceReference} from '../../native/receiz/app/lib/profile/showcase/importedSourceReference';
-import {inspectNativeCurrencyPolicy,type NativeCurrencyPolicy} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import {inspectNativeCurrencyPolicy,inspectNativeCurrencyManagement,type NativeCurrencyManagement,type NativeCurrencyPolicy} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import {inspectNativeAssetFundingComponents} from './native-asset-backing';
 import type { ReceizClient, ReceizAuthoritySessionV124, ReceizOperationPlanV124, ReceizPortableExecutionTransitionSetV124 } from '@receiz/sdk';
 import { BANK_APPLICATION_ID } from './config';
@@ -15,6 +15,7 @@ export type BankOperationInput =
   | { kind: 'fund-asset'; definition: AssetDefinition; fundingRule: 'reserve-first-then-settlement'; amountUsdCents: string; authoredSource?: ImportedProofSourceReference }
   | { kind: 'issue-currency'; definition: AssetDefinition; policy: NativeCurrencyPolicy; authoredSource?: ImportedProofSourceReference }
   | ({assetDigest:string}|{assetId:string}) & { kind:'buy-currency'; quantityMicro:string }
+  | { kind: 'manage-currency'; assetDigest: string; changes: NativeCurrencyManagement }
   | { kind: 'send-value'; rail: BankRail; amountUsdCents: string; recipient: string }
   | { kind: 'exchange'; rail: BankRail; amountUsdCents: string; assetDigest: string }
   | { kind: 'send-ownership'; assetDigest: string; quantityMicro: string; recipient: string }
@@ -52,6 +53,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   const input = structuredClone(value), r = record(input);
   const fields: Record<BankOperationInput['kind'], string[]> = {
     'issue-currency': ['definition', 'policy', ...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])], 'buy-currency': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro'],
+    'manage-currency': ['assetDigest', 'changes'],
     'send-value': ['rail', 'amountUsdCents', 'recipient'], exchange: ['rail', 'amountUsdCents', 'assetDigest'],
     'send-ownership': ['assetDigest', 'quantityMicro', 'recipient'], 'sell-share': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail', 'buyer'],
     'buy-shares': [Object.hasOwn(r,'assetId')?'assetId':'assetDigest', 'quantityMicro', 'rail'], 'redeem-asset': ['assetDigest'], 'fund-asset': ['definition', Object.hasOwn(r,'fundingRule')?'fundingRule':'rail', 'amountUsdCents',...(Object.hasOwn(r,'authoredSource')?['authoredSource']:[])],
@@ -73,6 +75,7 @@ function inputRequest(value: BankOperationInput): BankOperationInput {
   }
   if (input.kind === 'sell-share' && (!['bank', 'market', 'currency-pool'].includes(input.buyer)
     || input.buyer === 'currency-pool' && input.rail !== 'reserve')) fail();
+  if (input.kind === 'manage-currency') input.changes=inspectNativeCurrencyManagement(input.changes);
   if (input.kind === 'issue-currency') {
     if(!input.authoredSource)fail();
     input.policy=inspectNativeCurrencyPolicy(input.policy);
@@ -117,7 +120,7 @@ export function createBankOperations(input: {
       input.assertOpen();
       if(value.kind === 'send-value' && input.payments){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.payments.prepare(inputRequest(value));nativeReviews.add(review);held.add(review);return review;}
       if(value.kind !== 'send-value' && input.assets){const pending=await input.store.load();input.assertOpen();if(pending&&['prepared','unknown'].includes(pending.state))throw Error('BANK_EXECUTION_PENDING');const review=await input.assets.prepare(inputRequest(value));nativeAssetReviews.add(review);held.add(review);return review;}
-      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
+      if (value.kind === 'issue-currency' || value.kind === 'buy-currency' || value.kind === 'manage-currency' || (value.kind === 'sell-share' && value.buyer === 'currency-pool')) throw Error('BANK_OPERATION_RUNTIME_UNAVAILABLE');
       if('fundingRule'in value)throw Error('BANK_ASSET_AUTOMATIC_RUNTIME_REQUIRED');
       assertBankOperationQualified(); if (preparing) throw Error('BANK_OPERATION_IN_PROGRESS'); preparing = true;
       try {

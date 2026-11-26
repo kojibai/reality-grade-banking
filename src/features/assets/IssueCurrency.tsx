@@ -13,6 +13,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [symbol, setSymbol] = useState('');
   const [units, setUnits] = useState('');
   const [price, setPrice] = useState('');
+  const [issuerControls, setIssuerControls] = useState(false);
   const [description, setDescription] = useState('');
   const [artwork, setArtwork] = useState<File | null>(null);
   const [artworkRevision, setArtworkRevision] = useState(0);
@@ -23,10 +24,10 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   }
 
   return <NativeOperation identity={identity} title="currency issue" confirmLabel="Issue currency" onRefresh={onRefresh}
-    inputKey={JSON.stringify([name, symbol, units, price, description, artworkRevision])}
+    inputKey={JSON.stringify([name, symbol, units, price, description, artworkRevision, issuerControls])}
     input={() => {
       const asset = definition();
-      const policy = inspectNativeCurrencyPolicy({kind:'fixed-reserve-pool',priceUsdCentsPerUnit:bankOperationDollars(price)});
+      const policy = inspectNativeCurrencyPolicy({kind:'fixed-reserve-pool',priceUsdCentsPerUnit:bankOperationDollars(price),...(issuerControls?{issuerControls:true}:{})});
       nativeCurrencyCost(policy, BigInt(parseAmount(asset.units)));
       return {kind:'issue-currency',definition:asset,policy};
     }}
@@ -48,6 +49,9 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       setArtwork(event.target.files?.[0] ?? null);
       setArtworkRevision(revision => revision + 1);
     }} /></label>
+    <label className="consent-option"><input type="checkbox" checked={issuerControls} onChange={event=>setIssuerControls(event.target.checked)} />
+      <span>Allow the issuer to change the price or pause new sales after issuance.</span>
+    </label>
     <p className="body-copy small-copy">Issuance gives you zero units and leaves your balance unchanged.</p>
   </NativeOperation>;
 }

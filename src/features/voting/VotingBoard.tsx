@@ -31,15 +31,19 @@ function navigateVoting(path:string){
 }
 
 type Screen='list'|'charter'|'proposal'|'detail'|'review'|'saved';
-type Props={activeWorkspace?:boolean;accountIdentity?:OpenIdentity|null;accountUid?:string|null;initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
+export type CurrencyVotingContext={assetId:string;settingsHead?:string;charterDigest?:string;priceUsdCentsPerUnit:string;salesPaused:boolean;
+  onApplied?:(asset:{headSourceSha256:string;currency?:import('../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency').NativeCurrencyState})=>void};
+
+type Props={currency?:CurrencyVotingContext;activeWorkspace?:boolean;accountIdentity?:OpenIdentity|null;accountUid?:string|null;initialDraft?:FoundingOrganization;profile?:{uid:string;name:string;username?:string;publicName?:string;ownerIdentity:OpenIdentity|null};initialDigest?:string};
 const closedSessionKey='bank.voting.session.closed';
 function closedVotingSession(){try{return sessionStorage.getItem(closedSessionKey)==='1';}catch{return false;}}
 const blank=Object.freeze([]) as readonly GovernanceRow[];
 const asRow=(o:GovernanceOriginal):GovernanceRow=>({digest:o.digest,document:o.document,pulse:o.pulse,profileUid:null});
 function save(file:File){const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 
-export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,accountUid,activeWorkspace=true}:Props){
+export function VotingBoard({currency,profile,initialDigest,initialDraft,accountIdentity,accountUid,activeWorkspace=true}:Props){
   const publicRows=useSyncExternalStore(subscribeGovernance,governanceRows,()=>blank);
+  const embedded=Boolean(currency);
   const [privateSources,setPrivateSources]=useState<GovernanceOriginal[]>([]),[outbox,setOutbox]=useState<PendingOriginal[]>([]);
   const [identity,setIdentity]=useState<OpenIdentity|null>(profile?.ownerIdentity??accountIdentity??null),[screen,setScreen]=useState<Screen>(initialDigest?'detail':'list');
   const [selected,select]=useState(initialDigest??''),[mode,setMode]=useState<'charter'|'proposal'>('charter'),[terms,setTerms]=useState<GovernanceTerms|null>(null);
@@ -54,7 +58,8 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
   const session=useRef<ReturnType<typeof checkoutIdentitySession>|null>(null),fileInput=useRef<HTMLInputElement>(null),active=useRef(true),acting=useRef(false),currentIdentity=useRef(identity);
   const access=()=>session.current??=checkoutIdentitySession();
   const rows=useMemo(()=>{const published=new Set(publicRows.map(r=>r.digest));return [...publicRows,...privateSources.filter(o=>!published.has(o.digest)).map(asRow)];},[publicRows,privateSources]);
-  const chosen=rows.find(r=>r.digest===selected),charters=ofKind(rows,'charter'),actor=identity?.binding.artifactOwnerReceizId??null;
+  const chosen=rows.find(r=>r.digest===selected),charters=ofKind(rows,'charter').filter(r=>!currency
+    ||r.document.terms.rules.execution?.currency?.assetId===currency.assetId&&(!currency.charterDigest||r.digest===currency.charterDigest)),actor=identity?.binding.artifactOwnerReceizId??null;
   const eligibleCharters=charters.filter(c=>actor&&charterAdmitsMember(c.document.terms.rules,actor)&&charterRatification(c,rows).complete);
   const publicProfile=Boolean(profile&&!profile.ownerIdentity);
   const [personal,setPersonal]=useState(Boolean(profile?.ownerIdentity));
@@ -75,11 +80,16 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
   const uid=accountUid??identity?.walletReceivingAddress?.();
   const accountUsername=identity?.knownProfile?.()?.username??identity?.confirmedAccountUsername?.()??undefined;
   const viewRows=useMemo(()=>{
+    if(currency){
+      const related=new Set(ofKind(rows,'charter').filter(row=>row.document.terms.rules.execution?.currency?.assetId===currency.assetId
+        &&(!currency.charterDigest||row.digest===currency.charterDigest)).map(row=>row.digest));
+      return rows.filter(row=>row.document.terms.kind==='charter'?related.has(row.digest):related.has(row.document.terms.charter));
+    }
     if(profile&&publicProfile)return publicRows.filter(r=>governanceRowOnProfile(r,profile));
     const personalProfile=profile??(uid?{uid,username:accountUsername}:null);
     if(personal)return rows.filter(r=>r.document.author===actor||Boolean(personalProfile&&governanceRowOnProfile(r,personalProfile)));
     return publicRows;
-  },[publicRows,rows,publicProfile,personal,actor,profile,uid,accountUsername]);
+  },[publicRows,rows,publicProfile,personal,actor,profile,uid,accountUsername,currency]);
   const exact=(digest:string)=>{const local=privateSources.find(o=>o.digest===digest);return local?Promise.resolve(local):heldGovernanceOriginal(digest);};
   const check=(who:OpenIdentity|null)=>{if(!active.current||currentIdentity.current!==who)throw Error('The open identity changed.');};
   const setOwner=useCallback((who:OpenIdentity|null)=>{currentIdentity.current=who;setIdentity(who);setFiles([]);setAttachments([]);setWriting(false);setFounding(null);setEditionSource('');setTerms(null);setScreen(prev=>prev==='detail'?prev:'list');setPrivateSources([]);setSaved(null);setOutbox([]);setPreparedName(null);},[]);
@@ -129,7 +139,7 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
     return()=>{live=false;};
   },[screen,selected,Boolean(chosen)]);
   useEffect(()=>{
-    if(profile)return;
+    if(profile||embedded)return;
     function navigate(){
       if(!/^\/vote(?:\/|$)/.test(location.pathname))return;
       const id=governanceLocation(new URL(location.href));
@@ -138,26 +148,26 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
     }
     window.addEventListener('popstate',navigate);window.addEventListener('receiz-bank:surface',navigate);
     return()=>{window.removeEventListener('popstate',navigate);window.removeEventListener('receiz-bank:surface',navigate);};
-  },[Boolean(profile)]);
+  },[Boolean(profile),embedded]);
   useEffect(()=>{
-    if(profile||!activeWorkspace||!/^\/vote(?:\/|$)/.test(location.pathname)||screen!=='detail'||!chosen)return;
+    if(profile||embedded||!activeWorkspace||!/^\/vote(?:\/|$)/.test(location.pathname)||screen!=='detail'||!chosen)return;
     document.title=governanceTitle(chosen)+' · Public voting';
     const path=governancePath(chosen.document.terms.kind,chosen.digest);
     if(publicDigests.has(chosen.digest)&&location.pathname+location.search!==path){
       linkedRecord.current=chosen.digest;history.replaceState(history.state,'',path);
     }
-  },[Boolean(profile),activeWorkspace,screen,chosen?.digest,Boolean(chosen&&publicDigests.has(chosen.digest))]);
+  },[Boolean(profile),embedded,activeWorkspace,screen,chosen?.digest,Boolean(chosen&&publicDigests.has(chosen.digest))]);
   function go(digest:string){
     if(screen==='detail'&&selected&&selected!==digest)trail.current.push(selected);
     const next=rows.find(r=>r.digest===digest);
-    if(!profile&&next&&publicDigests.has(digest)){linkedRecord.current=digest;const path=governancePath(next.document.terms.kind,digest);if(location.pathname!==path)navigateVoting(path);}
-    if(!profile&&!next){linkedRecord.current=digest;navigateVoting('/vote/?original='+encodeURIComponent(digest));}
+    if(!profile&&!embedded&&next&&publicDigests.has(digest)){linkedRecord.current=digest;const path=governancePath(next.document.terms.kind,digest);if(location.pathname!==path)navigateVoting(path);}
+    if(!profile&&!embedded&&!next){linkedRecord.current=digest;navigateVoting('/vote/?original='+encodeURIComponent(digest));}
     select(digest);setScreen('detail');setError('');
   }
-  function browse(){if(!profile){if(linkedRecord.current){linkedRecord.current=null;navigateVoting('/vote/');}document.title='Public voting · Bankeiz';}setScreen('list');setError('');}
+  function browse(){if(!profile&&!embedded){if(linkedRecord.current){linkedRecord.current=null;navigateVoting('/vote/');}document.title='Public voting · Bankeiz';}setScreen('list');setError('');}
   function backFromDetail(){
     const previous=trail.current.pop();
-    if(previous){select(previous);setError('');const row=rows.find(r=>r.digest===previous);if(!profile&&row&&publicDigests.has(previous)){linkedRecord.current=previous;history.replaceState(history.state,'',governancePath(row.document.terms.kind,previous));}}
+    if(previous){select(previous);setError('');const row=rows.find(r=>r.digest===previous);if(!profile&&!embedded&&row&&publicDigests.has(previous)){linkedRecord.current=previous;history.replaceState(history.state,'',governancePath(row.document.terms.kind,previous));}}
     else browse();
   }
   function addAttachment(file:GovernanceAttachment){
@@ -284,24 +294,24 @@ export function VotingBoard({profile,initialDigest,initialDraft,accountIdentity,
   }
   return <div className="voting-board" aria-label="Voting">
     {screen==='list'&&<>
-      <GovernanceHeading mark={!profile} eyebrow={profile&&!publicProfile?(publicId?'@'+publicId:undefined):profile?.name} title={profile&&!publicProfile?profile.name:publicProfile?'Public voting record':actor?'Voting dashboard':'Public voting'}>
-        {!publicProfile&&<button disabled={busy||entryBusy} className="gov-primary" onClick={()=>start('charter')}><BookOpen size={16}/>Create charter</button>}
+      <GovernanceHeading mark={!profile&&!embedded} eyebrow={profile&&!publicProfile?(publicId?'@'+publicId:undefined):profile?.name} title={embedded?'Community governance':profile&&!publicProfile?profile.name:publicProfile?'Public voting record':actor?'Voting dashboard':'Public voting'}>
+        {!publicProfile&&!currency?.charterDigest&&<button disabled={busy||entryBusy} className="gov-primary" onClick={()=>start('charter')}><BookOpen size={16}/>Create charter</button>}
       </GovernanceHeading>
       <div className="gov-account-bar">
       {!profile&&!actor&&entry}
-      {actor&&<div className="gov-scope"><button aria-pressed={!personal} onClick={()=>setPersonal(false)}>Network</button><button aria-pressed={personal} onClick={()=>setPersonal(true)}>My activity</button></div>}
+      {actor&&!embedded&&<div className="gov-scope"><button aria-pressed={!personal} onClick={()=>setPersonal(false)}>Network</button><button aria-pressed={personal} onClick={()=>setPersonal(true)}>My activity</button></div>}
       {!profile&&actor&&publicId&&<span className="gov-session-name">@{publicId}</span>}
       {!profile&&!accountIdentity&&actor&&<button className="gov-icon gov-logout" type="button" aria-label="Log out of voting" title="Log out of voting" disabled={busy||entryBusy} onClick={closeVotingSession}><LogOut size={18} strokeWidth={1.6}/></button>}
       </div>
-      {!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
-      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} initialActivity={personal&&!profile} rows={viewRows} network={rows} go={go} path={r=>publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
+      {!embedded&&!publicProfile&&(initialDraft||isFoundingSigner(identity?.binding))&&<div className="gov-actions">{(initialDraft?[initialDraft]:['Receiz','Bankeiz'] as const).map(name=><button type="button" key={name} disabled={busy||entryBusy} onClick={()=>openFounding(name)}>Review {name} founding draft</button>)}</div>}
+      <GovernanceRegister member={member} key={String(personal)+String(publicProfile)} personal={personal||publicProfile} initialActivity={personal&&!profile} rows={viewRows} network={embedded?viewRows:rows} go={go} path={r=>!embedded&&publicDigests.has(r.digest)?governancePath(r.document.terms.kind,r.digest):null}/>
       <div className="gov-actions gov-tools" role="group" aria-label="Governance records"><button className="gov-link" aria-label="Open governance Original" onClick={()=>fileInput.current?.click()}><Upload size={16} aria-hidden="true"/>Open Original</button><button className="gov-link" disabled={syncing} aria-busy={syncing} onClick={()=>void refreshByRequest()}><RefreshCw size={16} aria-hidden="true"/>Refresh records</button></div>
-      {actor&&identity&&<details><summary>My Receiz ID</summary>{publicId&&<p>@{publicId}</p>}<div className="gov-proof-owner"><small>Proof owner ID</small><code>{actor}</code></div><button onClick={()=>saveIdentityRecord(identity)}><Download size={15}/>Save Identity Record</button></details>}
-      {outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}
+      {actor&&identity&&!embedded&&<details><summary>My Receiz ID</summary>{publicId&&<p>@{publicId}</p>}<div className="gov-proof-owner"><small>Proof owner ID</small><code>{actor}</code></div><button onClick={()=>saveIdentityRecord(identity)}><Download size={15}/>Save Identity Record</button></details>}
+      {!embedded&&outbox.length>0&&<section><h3>Held on this device</h3>{outbox.map(item=><button className="gov-row" key={item.digest} onClick={()=>void run(async()=>{if(!identity)return;const o=await reopenPendingGovernance(identity,item);check(identity);setSaved(o);setPrivateSources(prev=>[...prev.filter(r=>r.digest!==o.digest),o]);setScreen('saved');})}><strong>{item.title}</strong><small>Open Original and delivery</small></button>)}</section>}
     </>}
-    {!profile&&screen!=='list'&&<GovernanceHeading title="Public voting" eyebrow={publicId?'@'+publicId:undefined}/>}
-    {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer founding={founding} member={member} identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId+(founding?.name??'')} charters={eligibleCharters} onCharter={id=>{select(id);setFiles([]);setAttachments([]);}} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
-    {screen==='detail'&&(chosen?<><GovernanceDetail memberName={member} identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!publicProfile&&!entryBusy&&!busy} compose={id=>start('proposal',id)} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
+    {!profile&&!embedded&&screen!=='list'&&<GovernanceHeading title="Public voting" eyebrow={publicId?'@'+publicId:undefined}/>}
+    {composing&&identity&&<div hidden={screen==='review'}><GovernanceComposer currency={currency} founding={founding} member={member} identity={identity} rows={rows} key={mode+identity.binding.artifactOwnerReceizId+(founding?.name??'')} charters={eligibleCharters} onCharter={id=>{select(id);setFiles([]);setAttachments([]);}} onFound={()=>start('charter')} mode={mode} owner={identity.binding.artifactOwnerReceizId} charter={eligibleCharters.find(r=>r.digest===selected)} onCancel={()=>setScreen(mode==='proposal'&&selected?'detail':'list')} onReview={review}/></div>}
+    {screen==='detail'&&(chosen?<><GovernanceDetail onCurrencyApplied={currency?.onApplied} memberName={member} identity={publicProfile?null:identity} published={publicDigests.has(chosen.digest)} read={exact} key={chosen.digest} row={chosen} rows={rows} actor={publicProfile?null:actor} go={go} back={backFromDetail} review={review} allowEntry={!embedded&&!publicProfile&&!entryBusy&&!busy} compose={!currency||currency.charterDigest===chosen.digest?id=>start('proposal',id):undefined} download={r=>void run(async()=>save((await exact(r.digest)).file))}/>{!identity&&!publicProfile&&entry}</>:<div className="gov-stack"><h2>Selected Original</h2><p>The selected Original is not held here yet. Open its exact file or check for public additions.</p><button onClick={()=>fileInput.current?.click()}>Open Original</button><button onClick={browse}>Browse public records</button></div>)}
     {screen==='review'&&terms&&<section className="gov-stack"><h2>Review {terms.kind}</h2><p>Your Receiz owner ID and these terms will be visible in the Original. You can save it on this device and choose when to publish it.</p><GovernanceFacts member={member} terms={terms}/>{founding&&!editionSource&&<div className="gov-box"><a href="/vote/constitution-zero/" target="_blank" rel="noreferrer">Read Constitution Zero</a><button type="button" disabled={busy||writing} onClick={()=>void run(createEdition)}>Create Constitution Original</button></div>}
       {attachments.length>0&&<GovernanceFileList files={attachments} remove={source=>{if(source===editionSource)setEditionSource('');setAttachments(all=>all.filter(item=>item.source!==source));}}/>}
       {identity&&['charter','proposal','mandate','challenge','candidacy'].includes(terms.kind)&&<GovernanceFilePicker identity={identity} attach={addAttachment} onEditing={setWriting} files={files} disabled={busy} change={setFiles}/>} <div className="gov-actions"><button disabled={busy||writing||Boolean(founding&&!editionSource)} className="gov-primary" onClick={()=>void run(confirm)}><FileCheck2 size={16}/>{busy?'Sealing…':'Seal Original'}</button><button disabled={busy||writing} onClick={()=>setScreen(terms.kind==='charter'?'charter':terms.kind==='proposal'?'proposal':'detail')}>{terms.kind==='charter'||terms.kind==='proposal'?'Edit details':'Back'}</button></div></section>}

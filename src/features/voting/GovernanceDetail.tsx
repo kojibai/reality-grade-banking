@@ -1,4 +1,6 @@
 import {closureOpens,proposalEvidence} from '../../receiz/governance-closure';
+import {CurrencyDecisionApplication} from './CurrencyDecisionApplication';
+import type {CurrencyVotingContext} from './VotingBoard';
 import {GovernanceCertification} from './GovernanceCertification';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import {PaymentFacts} from './CharterExecutionFields';
@@ -29,9 +31,22 @@ export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:Go
   switch(terms.kind){
     case 'charter':{const r=terms.rules;facts=[['Organization',r.name],['Purpose',r.purpose],['Founders',r.founders.map(member).join('\n')],['Voting membership',r.participation?'Open registration for each binding vote':charterElectorate(r).map(member).join('\n')],['Membership',r.membership],['Decisions',r.decisions],['Threshold',r.approvalPercent+'% approval · '+r.minimumSupportPercent+'% minimum affirmative electorate'],['Voting period',r.voteDays+' days'],['Representation',r.representation],['Scoped mandates',r.allowMandates?'Permitted':'Disabled'],['Amendments',r.amendments],['Appeals',r.appeals],['Challenge period',r.appealDays+' days'],['Treasury',r.treasury]];
       if(r.execution)facts.push(['Binding closure','Every voting member attests the same evidence after the appeal deadline.'],['Custodian',member(r.execution.custodian)],['Governance register',r.execution.registerProofObjectId],['Register genesis head',r.execution.registerGenesisHead]);
+      const scope=r.execution?.currency;
+      if(scope)facts.push(['Currency',scope.assetId],['Purchase price range (USD cents)',scope.minimumPriceUsdCents+'–'+scope.maximumPriceUsdCents],
+        ['Votes can change new sales',scope.allowSalesPause?'Yes':'No']);
       for(const o of r.offices??[])facts.push([o.name,o.seats+' seat(s) · '+o.selection+' · '+(o.eligibility==='Open'?'Open eligibility':'Voting members')+'\n'+[o.powers,o.term,o.procedure,o.recall].join('\n')]);
       for(const a of r.articles??[])facts.push([a.title,a.text]);break;}
-    case 'proposal':facts=[['Decision',terms.decision],['Title',terms.title],['Text',terms.text],['Choices',terms.choices.map(member).join(' / ')],['Charter Original',terms.charter]];if(terms.office)facts.push(['Office',terms.office],['Candidate Originals',terms.nominations!.join('\n')]);break;
+    case 'proposal': {
+      facts=[['Decision',terms.decision],['Title',terms.title],['Text',terms.text],['Choices',terms.choices.map(member).join(' / ')]];
+      const change=terms.currencyChange;
+      if(change){
+        facts.push(['Currency',change.assetId],['Settings source',change.expectedHead]);
+        if(change.changes.priceUsdCentsPerUnit!==undefined)facts.push(['Purchase price (USD cents)',change.changes.priceUsdCentsPerUnit]);
+        if(change.changes.salesPaused!==undefined)facts.push(['New sales',change.changes.salesPaused?'Paused':'Open']);
+      }
+      if(terms.office)facts.push(['Office',terms.office]);
+      break;
+    }
     case 'candidacy':facts=[['Office',terms.office],['Candidate statement',terms.statement],['Charter Original',terms.charter]];break;
     case 'closure':facts=[['Attestation','I have reviewed the complete list of evidence below for this decision.'],['Charter Original',terms.charter],['Proposal Original',terms.proposal],['Evidence manifest',terms.evidence.join('\n')]];break;
     case 'ballot':facts=[['Choice',member(terms.choice)],['Proposal Original',terms.proposal],['Charter Original',terms.charter],['Previous ballot',terms.previous??'First ballot']];break;
@@ -43,8 +58,8 @@ export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:Go
   return <>{terms.kind==='charter'&&terms.logo&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}{terms.attachments?.length?<GovernanceFileList files={terms.attachments}/>:null}<dl className="gov-facts gov-document-facts">{facts.map(([label,text],i)=><div key={i}><dt>{practice&&label==='Charter Original'?'Governing charter':practice&&label==='Candidate Originals'?'Candidate statements':label}</dt><dd>{text}</dd></div>)}</dl>{payment&&<PaymentFacts payment={payment}/>}</>;
 }
 type ExampleRecord={member:(owner:string)=>string;path:(row:GovernanceRow)=>string;file:(digest:string)=>string|null};
-type Props={memberName?:(owner:string)=>string;practicePanel?:(panel:'People'|'Charter rules'|'Decisions'|'Proposal')=>ReactNode;allowEntry?:boolean;identity?:OpenIdentity|null;example?:ExampleRecord;published:boolean;read?:(digest:string)=>Promise<GovernanceOriginal>;row:GovernanceRow;rows:readonly GovernanceRow[];actor:string|null;go:(digest:string)=>void;back:()=>void;review:(terms:GovernanceTerms)=>void;compose:(charter:string)=>void;download:(row:GovernanceRow)=>void};
-export function GovernanceDetail({row,rows,actor,go,back,review,compose,download,read,published,example,memberName,practicePanel,identity=null,allowEntry=false}:Props){
+type Props={onCurrencyApplied?:CurrencyVotingContext['onApplied'];memberName?:(owner:string)=>string;practicePanel?:(panel:'People'|'Charter rules'|'Decisions'|'Proposal')=>ReactNode;allowEntry?:boolean;identity?:OpenIdentity|null;example?:ExampleRecord;published:boolean;read?:(digest:string)=>Promise<GovernanceOriginal>;row:GovernanceRow;rows:readonly GovernanceRow[];actor:string|null;go:(digest:string)=>void;back:()=>void;review:(terms:GovernanceTerms)=>void;compose?:(charter:string)=>void;download:(row:GovernanceRow)=>void};
+export function GovernanceDetail({onCurrencyApplied,row,rows,actor,go,back,review,compose,download,read,published,example,memberName,practicePanel,identity=null,allowEntry=false}:Props){
   const [choice,setChoice]=useState(''),[text,setText]=useState(''),[delegate,setDelegate]=useState(''),[scope,setScope]=useState(''),[expiry,setExpiry]=useState(''),[officeName,setOfficeName]=useState(''),[statement,setStatement]=useState('');
   const [charterTab,setCharterTab]=useState<'Decisions'|'People'|'Charter rules'>('Decisions');
   const [audit,setAudit]=useState<{at:readonly GovernanceRow[];message:string}|null>(null),[checking,setChecking]=useState(false);
@@ -86,7 +101,7 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     {terms.kind==='charter'&&<>{terms.logo&&charterTab!=='Charter rules'&&<img className="gov-logo" src={terms.logo} alt="Charter logo"/>}<p>{terms.rules.purpose}</p><nav className="gov-tabs" aria-label="Charter sections">{(['Decisions','People','Charter rules'] as const).map(name=><button key={name} aria-current={charterTab===name?'page':undefined} onClick={()=>setCharterTab(name)}>{name}</button>)}</nav></>}
     {terms.kind==='charter'&&practicePanel?.(charterTab)}
     {terms.kind==='charter'&&charterTab==='Decisions'&&<section className="gov-charter-decisions">
-      {ratified?.complete&&(authorized||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}
+      {compose&&ratified?.complete&&(authorized||!actor&&allowEntry)&&<button className="gov-primary" onClick={()=>compose(row.digest)}>Create proposal</button>}
       {(['Proposals','Polls'] as const).map(group=>{const list=decisions.filter(r=>(r.document.terms.decision==='Poll')===(group==='Polls'));return <section key={group}><div className="gov-section-heading"><h3>{group}</h3><small>{list.length}</small></div>
         {list.length?list.map(item=><div className="gov-list-item" key={item.digest}><button className="gov-row" onClick={()=>go(item.digest)}><span className="gov-meta">{item.document.terms.decision}</span><strong>{governanceTitle(item)}</strong><GovernanceTime pulse={item.pulse} label="Proposed"/></button></div>):<p>No {group.toLowerCase()} held for this charter.</p>}</section>;})}
     </section>}
@@ -125,7 +140,8 @@ export function GovernanceDetail({row,rows,actor,go,back,review,compose,download
     {proposal&&['Policy','Treasury','Election'].includes(proposal.document.terms.decision)&&charter?.document.terms.rules.execution&&register&&<section className="gov-box gov-stack"><h3>Binding closure</h3>
       <p>All {charterElectorate(charter.document.terms.rules).length} voters must attest to the same evidence.</p><GovernanceTime pulse={closureOpens(proposal,charter)} label="Challenge period ends"/>
       {ofKind(related,'closure').length>0&&<details><summary>Closure Originals</summary>{ofKind(related,'closure').map(recordLink)}</details>}
-      {read&&<GovernanceCertification key={proposal.digest+actor} {...{proposal,charter,rows,read,identity}}/>}
+      {read&&(proposal.document.terms.currencyChange?<CurrencyDecisionApplication key={proposal.digest+actor} {...{proposal,charter,rows,read,identity}} onApplied={onCurrencyApplied}/>
+        :<GovernanceCertification key={proposal.digest+actor} {...{proposal,charter,rows,read,identity}}/>)}
       {authorized&&!ofKind(related,'closure').some(r=>r.document.author===actor)&&now>=closureOpens(proposal,charter)&&<button onClick={()=>review({kind:'closure',charter:charter.digest,proposal:proposal.digest,evidence:proposalEvidence(proposal,rows)})}>Review evidence for closure</button>}
     </section>}
     {proposal&&practicePanel?.('Proposal')}

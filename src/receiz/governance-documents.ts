@@ -1,3 +1,4 @@
+import { inspectNativeCurrencyChanges, type NativeCurrencyChanges } from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import type {OpenIdentity} from './native-identity';
 import {openCanonicalProofFile} from './proof-capture';
 import {loadReceiz} from './client';
@@ -15,8 +16,14 @@ export type CharterPayment=Readonly<{
   budgetId:string;sourceProofObjectId:string;sourceValueHead:string;
   destinationSubjectId:string;expectedDestinationHead:string;amountPhiMicro:string;installment:string;
 }>;
+export type CharterCurrencyControl=Readonly<{
+  assetId:string;minimumPriceUsdCents:string;maximumPriceUsdCents:string;allowSalesPause:boolean;
+}>;
+export type CharterCurrencyChange=Readonly<{
+  assetId:string;expectedHead:string;changes:NativeCurrencyChanges;
+}>;
 export type CharterExecution=Readonly<{
-  rule:'unanimous-evidence-closure-v1';custodian:string;registerProofObjectId:string;registerGenesisHead:string;treasury:CharterPayment|null;
+  rule:'unanimous-evidence-closure-v1';custodian:string;registerProofObjectId:string;registerGenesisHead:string;treasury:CharterPayment|null;currency?:CharterCurrencyControl;
 }>;
 export type CharterRules=Readonly<{
   participation?:'open-registration';execution?:CharterExecution;electorate?:readonly string[]; offices?:readonly CharterOffice[]; articles?:readonly CharterArticle[];
@@ -30,7 +37,7 @@ export type GovernanceTerms=Readonly<{attachments?:readonly GovernanceAttachment
   | {kind:'charter';rules:CharterRules;logo?:string}
   | {kind:'ratification';charter:string}
   | {kind:'candidacy';charter:string;office:string;statement:string}
-  | {kind:'proposal';payment?:CharterPayment;office?:string;nominations?:readonly string[];charter:string;title:string;text:string;decision:DecisionKind;choices:readonly string[]}
+  | {kind:'proposal';payment?:CharterPayment;currencyChange?:CharterCurrencyChange;office?:string;nominations?:readonly string[];charter:string;title:string;text:string;decision:DecisionKind;choices:readonly string[]}
   | {kind:'ballot';charter:string;proposal:string;choice:string;previous:string|null}
   | {kind:'mandate';charter:string;delegate:string|null;scope:string;untilKaiPulse:string;previous:string|null}
   | {kind:'closure';charter:string;proposal:string;evidence:readonly string[]}
@@ -80,16 +87,34 @@ function readPayment(value:unknown):CharterPayment{
      typeof v.amountPhiMicro!=='string'||!/^[1-9][0-9]{0,17}$/.test(v.amountPhiMicro))return fail();
   return Object.freeze({budgetId:subject(v.budgetId),sourceProofObjectId:subject(v.sourceProofObjectId),sourceValueHead:hash(v.sourceValueHead),destinationSubjectId:v.destinationSubjectId,expectedDestinationHead:hash(v.expectedDestinationHead),amountPhiMicro:v.amountPhiMicro,installment:subject(v.installment)});
 }
+function readCurrencyControl(value:unknown):CharterCurrencyControl{
+  const r=fields(value,['assetId','minimumPriceUsdCents','maximumPriceUsdCents','allowSalesPause']);
+  const minimum=inspectNativeCurrencyChanges({priceUsdCentsPerUnit:r.minimumPriceUsdCents}).priceUsdCentsPerUnit!;
+  const maximum=inspectNativeCurrencyChanges({priceUsdCentsPerUnit:r.maximumPriceUsdCents}).priceUsdCentsPerUnit!;
+  if(BigInt(minimum)>BigInt(maximum)||typeof r.allowSalesPause!=='boolean')return fail();
+  return Object.freeze({assetId:hash(r.assetId),minimumPriceUsdCents:minimum,maximumPriceUsdCents:maximum,allowSalesPause:r.allowSalesPause});
+}
+function readCurrencyChange(value:unknown):CharterCurrencyChange{
+  const r=fields(value,['assetId','expectedHead','changes']);
+  return Object.freeze({assetId:hash(r.assetId),expectedHead:hash(r.expectedHead),changes:Object.freeze(inspectNativeCurrencyChanges(r.changes))});
+}
+export function checkCharterCurrencyChange(control:CharterCurrencyControl|undefined,proposal:CharterCurrencyChange) {
+  if(!control||proposal.assetId!==control.assetId)throw Error('GOVERNANCE_CURRENCY_SCOPE_MISMATCH');
+  const {priceUsdCentsPerUnit:price,salesPaused}=proposal.changes;
+  if(price&&(BigInt(price)<BigInt(control.minimumPriceUsdCents)||BigInt(price)>BigInt(control.maximumPriceUsdCents))
+    ||salesPaused!==undefined&&!control.allowSalesPause)throw Error('GOVERNANCE_CURRENCY_SCOPE_MISMATCH');
+  return proposal;
+}
 function readExecution(value:unknown):CharterExecution{
-  const v=fields(value,['rule','custodian','registerProofObjectId','registerGenesisHead','treasury']);
+  const v=fields(value,['rule','custodian','registerProofObjectId','registerGenesisHead','treasury',...optionalFields(value,['currency'])]);
   if(v.rule!=='unanimous-evidence-closure-v1')return fail();
-  return Object.freeze({rule:v.rule,custodian:subject(v.custodian),registerProofObjectId:subject(v.registerProofObjectId),registerGenesisHead:hash(v.registerGenesisHead),treasury:v.treasury===null?null:readPayment(v.treasury)});
+  return Object.freeze({rule:v.rule,custodian:subject(v.custodian),registerProofObjectId:subject(v.registerProofObjectId),registerGenesisHead:hash(v.registerGenesisHead),treasury:v.treasury===null?null:readPayment(v.treasury),...('currency' in v?{currency:readCurrencyControl(v.currency)}:{})});
 }
 export function readGovernanceTerms(input:unknown):GovernanceTerms{
   const kind=(input as {kind?:Kind}|null)?.kind;
   if(!kind||!governanceKinds.includes(kind))return fail();
   const acceptsFiles=['charter','proposal','mandate','challenge','candidacy'].includes(kind);
-  const v=fields(input,['kind',...layout[kind],...optionalFields(input,[...(acceptsFiles?['attachments']:[]),...(kind==='charter'?['logo']:[])]),...(kind==='proposal'?optionalFields(input,['office','nominations','payment']):[])]);
+  const v=fields(input,['kind',...layout[kind],...optionalFields(input,[...(acceptsFiles?['attachments']:[]),...(kind==='charter'?['logo']:[])]),...(kind==='proposal'?optionalFields(input,['office','nominations','payment','currencyChange']):[])]);
   const files='attachments' in v?{attachments:boundedRows(v.attachments,256,value=>{
     const file=fields(value,['name','source']),name=words(file.name,240),source=words(file.source,4096);
     if(/[\/\\\u0000-\u001f]/u.test(name)||!/^https:\/\/receiz\.com\/v\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/[0-9]+#material=(?:rmc[12](?::|%3A))[a-f0-9]{64}$/u.test(source))return fail();
@@ -123,7 +148,8 @@ export function readGovernanceTerms(input:unknown):GovernanceTerms{
     const choices=distinct(v.choices,x=>words(x,256),256,contest?1:2);
     if(contest&&nominations.length!==choices.length)return fail();
     if('payment' in v&&(decision!=='Treasury'||choices.length!==2||choices[0]!=='Approve'||choices[1]!=='Reject'))return fail();
-    return Object.freeze({kind,charter,...files,...('payment' in v?{payment:readPayment(v.payment)}:{}),...(contest?{office:words(v.office,120),nominations}:{}),title:words(v.title,160),text:words(v.text),decision,choices});
+    if('currencyChange' in v&&(decision!=='Policy'||choices.length!==2||choices[0]!=='Approve'||choices[1]!=='Reject'))return fail();
+    return Object.freeze({kind,charter,...files,...('currencyChange' in v?{currencyChange:readCurrencyChange(v.currencyChange)}:{}),...('payment' in v?{payment:readPayment(v.payment)}:{}),...(contest?{office:words(v.office,120),nominations}:{}),title:words(v.title,160),text:words(v.text),decision,choices});
   }
   if(kind==='closure'){
     const proposal=hash(v.proposal),evidence=distinct(v.evidence,hash,4096,2);

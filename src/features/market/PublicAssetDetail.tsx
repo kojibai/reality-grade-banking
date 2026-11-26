@@ -3,7 +3,7 @@ import {OriginalPurchase} from './OriginalPurchase';
 import {PublicDocumentFormatContext,PublicDocumentPulseContext} from '../../core/public-document-format';
 import {profileUsernameLabel} from '../../receiz/account-name';
 import {retainPublicAsset} from '../../receiz/public-asset-page';
-import {useContext,useEffect,useRef,useState,useSyncExternalStore} from 'react';
+import {lazy, Suspense, useContext,useEffect,useRef,useState,useSyncExternalStore} from 'react';
 import { ExternalLink, FileCheck2 } from 'lucide-react';
 import {PublicObjectArtwork} from './PublicObjectRow';
 import {OpenInvestment} from '../assets/OpenInvestment';
@@ -29,7 +29,10 @@ import {PublicCollectibleArtwork} from '../collectibles/PublicCollectibleArtwork
 import {OriginalEngagementContext,useOriginalEngagement} from '../../receiz/usePublicEngagement';
 import {admittedAssetPublicationItem} from '../../receiz/asset-publication-adoption';
 
-export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false }: { item: PublicMarketItem; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
+export type CurrencyManagementContext={identity:import('../../receiz/native-identity').OpenIdentity;accountUid:string|null;onRefresh():void};
+const CurrencySettings=lazy(()=>import('../assets/CurrencySettings').then(module=>({default:module.CurrencySettings})));
+
+export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=false,currencyManagement }: { item: PublicMarketItem;currencyManagement?:CurrencyManagementContext; onTrade?: (mode: 'buy' | 'sell', digest: string) => void;readOnly?:boolean;standalone?:boolean }) {
   const mediaRoot=useRef<HTMLElement>(null);
   const engagement=useOriginalEngagement(item,!readOnly,'bankeiz_asset_detail',mediaRoot);
   const format=useContext(PublicDocumentFormatContext),firstFrame=useContext(PublicDocumentPulseContext)!==undefined;
@@ -47,6 +50,8 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
   const [publicDetails,setPublicDetails]=useState<{source:string;details:PublicCardDetails}|null>(null);
   useEffect(()=>{if(item.category!=='sports'||!item.sourceUrl||item.sealedCopies?.length)return;const controller=new AbortController();void fetchPublicCardDetails(item,controller.signal).then(details=>{if(!controller.signal.aborted)setPublicDetails({source:item.sourceUrl!,details});}).catch(()=>{});return()=>controller.abort();},[item.category,item.assetId,item.sourceUrl,item.sealedCopies]);
   const currency=item.nativeAsset?.currency;
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  const canOpenCurrencySettings=!!(currency?.issuerControls&&currencyManagement?.accountUid);
   const canReviewTrade=!!onTrade&&!item.id.startsWith('sports:');
   const details=!item.sealedCopies?.length&&publicDetails?.source===item.sourceUrl?publicDetails.details:item;
   const multipleCopies=item.category==='sports'&&(item.circulationCount??1)>1;
@@ -70,7 +75,7 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     {!standalone&&<AssetPageLinks item={item}/>}
     {standalone&&<div className="public-asset-media">{object}</div>}
     {currency?<div className="detail-list">
-      <div><span>Purchase price</span><strong>{formatMoney(currency.priceUsdCentsPerUnit)} per {currency.symbol}</strong></div>
+      <div><span>{currency.issuerControls?'Price when published':'Purchase price'}</span><strong>{formatMoney(currency.priceUsdCentsPerUnit)} per {currency.symbol}</strong></div>
       <div><span>Supply cap</span><strong>{formatUnits(currency.supplyMicro)} {currency.symbol}</strong></div>
     </div>:<>
     <div className="asset-price public-asset-price"><strong className="asset-price-amount" style={{fontSize:`min(35px, calc((100cqw - 92px) / ${Math.max(1,headline.length*.55)}))`}}>{headline}</strong><span>{showCap?'Market cap':'Market Value'}</span></div>
@@ -78,8 +83,14 @@ export function PublicAssetDetail({ item, onTrade,readOnly=false,standalone=fals
     <PublicAssetChart periods={periods} fallback={item.chart} item={item} inventory={item.category==='sports'?undefined:inventory} metric={metric} onMetricChange={setMetric}/><ShareInventory item={item} priceUsd={price}/>
     </>}
     {!readOnly&&<div className="dual-actions"><button className="primary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('buy', item.id); }}>{currency?`Buy ${currency.symbol}`:'Buy ownership'}</button><button className="secondary-button" disabled={!canReviewTrade} onClick={() => { retainPublicAsset(item);onTrade?.('sell', item.id); }}>{currency?`Sell ${currency.symbol}`:'Take cash'}</button></div>}
+    {canOpenCurrencySettings&&currencyManagement?.accountUid&&<details className="transaction-proof-details" onToggle={event=>setSettingsOpen(event.currentTarget.open)}>
+      <summary>{currencyManagement.accountUid===ownerUid?'Manage currency':'Currency governance'}</summary>
+      {settingsOpen&&<Suspense fallback={<p role="status">Opening currency settings…</p>}><CurrencySettings
+        identity={currencyManagement.identity} accountUid={currencyManagement.accountUid} assetId={item.nativeAsset!.id}
+        onRefresh={currencyManagement.onRefresh} /></Suspense>}
+    </details>}
     {!currency&&<OpenInvestment item={item}/>}
-    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>{currency?'Currency terms':'Ownership & payment'}</summary><p className="body-copy small-copy">{currency?'The purchase price and supply cap are fixed. Purchases use your available balance and fund the pool. Sell-back returns the units for a share of that pool.':'Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.'}</p></details>}
+    {!readOnly&&<details className="transaction-proof-details asset-trade-terms"><summary>{currency?'Currency terms':'Ownership & payment'}</summary><p className="body-copy small-copy">{currency?currency.issuerControls?'The supply cap is fixed. The issuer or its ratified charter controls purchase terms. Review the current terms before buying.':'The purchase price and supply cap are fixed. Purchases use your available balance and fund the pool. Sell-back returns the units for a share of that pool.':'Inspect the Original for what is included and any use or delivery terms. Your approved trade records the ownership units bought or sold. A completed sale credits the seller’s proceeds to their account; the source and ownership history stay connected.'}</p></details>}
     {!standalone&&object}
     {purchase&&!offer?.locked&&purchase}
     <div className="asset-actions asset-source-links">{item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} strokeWidth={1.5} />Open public source</a>}{verifyUrl && <a href={verifyUrl} target="_blank" rel="noreferrer"><FileCheck2 size={15} strokeWidth={1.5} />Inspect proof</a>}</div>
