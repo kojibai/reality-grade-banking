@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { ChevronRight, FileCheck2, Layers, Search } from 'lucide-react';
 import { InlineOpening } from '../../components/InlineOpening';
 import { AmountInput } from '../../components/AmountInput';
@@ -34,6 +34,7 @@ const categories = {shares: 'Shares', currencies: 'Currencies', originals: 'Orig
 type Category = keyof typeof categories;
 const SendMarketShares = lazy(() => import('./SendMarketShares').then(module => ({default:module.SendMarketShares})));
 const emptyItems: PublicMarketItem[] = [];
+const originalDigestPattern = /^[a-f0-9]{64}$/u;
 
 export function SendHeldOwnership({ identity, initialDigest, marketItems = emptyItems, showcase = emptyItems, onRefresh }: {
   identity: OpenIdentity;
@@ -44,20 +45,24 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
 }) {
   const { sources, busy, error } = useHeldAssetSources(identity, true, 0, identity.readHeldDeposits);
   const retainedPieces = useHeldOriginalPieces(identity, true, true);
-  const heldPieces = retainedPieces.filter(piece => piece.ownedBytes > 0);
-  const pieceDigests = new Set(retainedPieces.map(piece => piece.originalSha256));
-  const wholeSources = identity.originalPieces ? sources.filter(source => source.kind === 'proof' && !source.nativeAsset
-    && source.bytes?.length) : [];
-  const originals = wholeSources.filter(source=>!pieceDigests.has(source.digest));
-  const knownDigests = new Set([...pieceDigests, ...originals.map(source => source.digest)]);
+  const canSendOriginals = Boolean(identity.originalPieces);
   const accountUid = identity.walletReceivingAddress?.() ?? identity.knownWallet?.()?.wallet.userId;
-  const showcaseOriginals = identity.originalPieces ? showcase.filter(item => {
-    const owner = item.admittedOwnerUserId ?? item.ownerIdentity?.userId;
-    const digest = item.originalDigest?.toLowerCase();
-    if (!digest || !/^[a-f0-9]{64}$/u.test(digest) || knownDigests.has(digest) || (owner && accountUid && owner !== accountUid)) return false;
-    knownDigests.add(digest);
-    return true;
-  }) : [];
+  const {heldPieces, originals, showcaseOriginals} = useMemo(() => {
+    const heldPieces = retainedPieces.filter(piece => piece.ownedBytes > 0);
+    const knownDigests = new Set(retainedPieces.map(piece => piece.originalSha256));
+    const originals = canSendOriginals ? sources.filter(source => source.kind === 'proof' && !source.nativeAsset
+      && source.bytes?.length && !knownDigests.has(source.digest)) : [];
+    for (const source of originals) knownDigests.add(source.digest);
+    const showcaseOriginals = canSendOriginals ? showcase.filter(item => {
+      const owner = item.admittedOwnerUserId ?? item.ownerIdentity?.userId;
+      const digest = item.originalDigest?.toLowerCase();
+      if (!digest || !originalDigestPattern.test(digest) || knownDigests.has(digest)
+        || (owner && accountUid && owner !== accountUid)) return false;
+      knownDigests.add(digest);
+      return true;
+    }) : [];
+    return {heldPieces, originals, showcaseOriginals};
+  }, [accountUid, canSendOriginals, retainedPieces, showcase, sources]);
   const openPortfolio = useSyncExternalStore(subscribeOpenPortfolio, readOpenPortfolio, () => null);
   const portfolio = openPortfolio && openPortfolio.owner === identity.binding?.artifactSha256 ? openPortfolio.portfolio : identity.knownMarketPortfolio?.();
   const [marketShare, setMarketShare] = useState<MarketPosition | null>(null);
@@ -74,11 +79,12 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
   const [recipient, setRecipient] = useState(''), [recipientUid, setRecipientUid] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
   const [pinned, setPinned] = useState<{source?:HeldDeposit; showcase?:PublicMarketItem; piece?:(typeof heldPieces)[number]} | null>(null);
-  const positions = sources.filter(isSendableHolding);
-  const selected = positions.find(source => source.nativeAsset.assetId === selectedId || source.digest === selectedId);
-  const selectedOriginal = pinned?.source ?? originals.find(source => source.digest === selectedId);
-  const selectedShowcase = pinned?.showcase ?? showcaseOriginals.find(item => item.originalDigest?.toLowerCase() === selectedId);
-  const selectedPiece = pinned ? pinned.piece : heldPieces.find(source => source.proofDigest === selectedId || source.originalSha256 === selectedId);
+  const positions = useMemo(() => sources.filter(isSendableHolding), [sources]);
+  const selected = selectedId ? positions.find(source => source.nativeAsset.assetId === selectedId || source.digest === selectedId) : undefined;
+  const selectedOriginal = pinned?.source ?? (selectedId ? originals.find(source => source.digest === selectedId) : undefined);
+  const selectedShowcase = pinned?.showcase ?? (selectedId ? showcaseOriginals.find(item => item.originalDigest?.toLowerCase() === selectedId) : undefined);
+  const selectedPiece = pinned ? pinned.piece : selectedId
+    ? heldPieces.find(source => source.proofDigest === selectedId || source.originalSha256 === selectedId) : undefined;
   const selectedCurrency = selected?.nativeAsset.currency ? selected : null;
   useEffect(() => {
     if (selectedCurrency) setCurrencySelection(current =>
@@ -154,14 +160,14 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
   const visibleCategory = category && offered.includes(category) ? category : offered[0];
   const matching = visibleCategory === 'originals' ? [] : positions.filter(source =>
     Boolean(source.nativeAsset.currency) === (visibleCategory === 'currencies')
-    && [source.title, source.nativeAsset.symbol, source.nativeAsset.assetId].some(value => value.toLowerCase().includes(query)));
-  const matchingMarket = visibleCategory !== 'shares' ? [] : marketPositions.filter(position => [position.title, position.marketItemId]
-    .some(value => value.toLowerCase().includes(query)));
+    && (!query || [source.title, source.nativeAsset.symbol, source.nativeAsset.assetId].some(value => value.toLowerCase().includes(query))));
+  const matchingMarket = visibleCategory !== 'shares' ? [] : query
+    ? marketPositions.filter(position => [position.title, position.marketItemId].some(value => value.toLowerCase().includes(query))) : marketPositions;
   const matchingOriginals = visibleCategory !== 'originals' ? [] : [
-    ...originals.map(source => ({id: source.digest, title: source.title, detail: 'Whole Original'})),
-    ...showcaseOriginals.map(item => ({id: item.originalDigest!.toLowerCase(), title: item.title, detail: 'From your Showcase'})),
-    ...heldPieces.map(piece => ({id: piece.proofDigest, title: piece.filename, detail: `${piece.percentage} of Original · ${piece.ownedBytes.toLocaleString()} bytes`})),
-  ].filter(original => [original.title, original.id].some(value => value.toLowerCase().includes(query)));
+    ...originals.map(source => ({id: source.digest, title: source.title, source})),
+    ...showcaseOriginals.map(item => ({id: item.originalDigest!.toLowerCase(), title: item.title, showcase: item})),
+    ...heldPieces.map(piece => ({id: piece.proofDigest, title: piece.filename, piece})),
+  ].filter(original => !query || original.title.toLowerCase().includes(query) || original.id.toLowerCase().includes(query));
   const matchCount = matching.length + matchingMarket.length + matchingOriginals.length;
   const available = positions.length + marketPositions.length + originals.length + heldPieces.length + showcaseOriginals.length;
 
@@ -200,9 +206,11 @@ export function SendHeldOwnership({ identity, initialDigest, marketItems = empty
           <span className="row-copy"><strong>{position.title}</strong><span>{formatUnits(position.shareQuantityMicro)} Market shares</span></span>
           <ChevronRight size={17} aria-hidden="true" />
         </button>
-      ))}{matchingOriginals.slice(0, limit).map(original => <button key={original.id} type="button" className="asset-row" onClick={() => {setSelectedId(original.id);setPinned({source:originals.find(source=>source.digest===original.id), showcase:showcaseOriginals.find(item=>item.originalDigest?.toLowerCase()===original.id), piece:heldPieces.find(piece=>piece.proofDigest===original.id)});}}>
+      ))}{matchingOriginals.slice(0, limit).map(original => <button key={original.id} type="button" className="asset-row" onClick={() => {setSelectedId(original.id);setPinned(original);}}>
         <span className="asset-mark"><FileCheck2 size={20} aria-hidden="true"/></span>
-        <span className="row-copy"><strong>{original.title}</strong><span>{original.detail}</span></span>
+        <span className="row-copy"><strong>{original.title}</strong><span>{'piece' in original
+          ? `${original.piece.percentage} of Original · ${original.piece.ownedBytes.toLocaleString()} bytes`
+          : 'source' in original ? 'Whole Original' : 'From your Showcase'}</span></span>
         <ChevronRight size={17} aria-hidden="true"/>
       </button>)}</div>
       {!matchCount && <p role="status" className="body-copy">No holdings match your search.</p>}

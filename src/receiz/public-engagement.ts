@@ -24,27 +24,97 @@ let pending: Event[] = [];
 let timer: ReturnType<typeof setTimeout> | undefined;
 const impressions = new Set<string>();
 let impressionObserver: IntersectionObserver | undefined;
-const impressionEntries = new WeakMap<Element, () => void>();
+type Impression = {venue: boolean; report(venue: boolean): void};
+const impressionEntries = new WeakMap<Element, Impression>();
+const venueCandidates = new Map<Element, {impression: Impression; since: number}>();
 const impressionKey = (subject: EngagementSubject) => subject.username + ':' + subject.receizId;
+let venueTimer: ReturnType<typeof setTimeout> | undefined;
+let venueSampled = false;
+const venueDwellMs = 1_000;
+const permitsEngagement = () => !(navigator as Navigator & {globalPrivacyControl?: boolean}).globalPrivacyControl
+  && navigator.doNotTrack !== '1';
 
-export function observeOriginalImpression(element: Element, subject: EngagementSubject | undefined, source: string) {
-  if (!subject || impressions.has(impressionKey(subject)) || typeof IntersectionObserver === 'undefined') return;
-  impressionObserver ??= new IntersectionObserver(entries => {
-    if (document.visibilityState === 'hidden') return;
-    for (const entry of entries) {
-      if (entry.isIntersecting && entry.intersectionRatio >= .48) impressionEntries.get(entry.target)?.();
+function clearVenueTimer() {
+  clearTimeout(venueTimer);
+  venueTimer = undefined;
+  document.removeEventListener('visibilitychange', closeVenueCandidates);
+}
+
+function closeVenueCandidates() {
+  if (document.visibilityState === 'visible' && !venueSampled) return;
+  clearVenueTimer();
+  for (const {impression} of venueCandidates.values()) impression.report(false);
+}
+
+function observeImpressionEntries(entries: readonly IntersectionObserverEntry[]) {
+  if (document.visibilityState !== 'visible') return;
+  for (const {target, isIntersecting, intersectionRatio} of entries) {
+    const impression = impressionEntries.get(target);
+    if (!impression) continue;
+    if (impression.venue && !venueSampled && isIntersecting && intersectionRatio >= .5) {
+      if (!venueCandidates.has(target)) venueCandidates.set(target, {impression, since: performance.now()});
+    } else if (venueCandidates.has(target) || isIntersecting && intersectionRatio >= .48) {
+      impression.report(false);
     }
-  }, {threshold: .48});
+  }
+}
+
+function scheduleVenueSample() {
+  if (venueTimer !== undefined || venueCandidates.size === 0) return;
+  const earliest = venueCandidates.values().next().value!;
+  document.addEventListener('visibilitychange', closeVenueCandidates);
+  venueTimer = setTimeout(() => {
+    venueTimer = undefined;
+    observeImpressionEntries(impressionObserver?.takeRecords() ?? []);
+    if (document.visibilityState !== 'visible') return closeVenueCandidates();
+    const now = performance.now();
+    for (const [element, {impression, since}] of venueCandidates) {
+      if (!element.isConnected || !permitsEngagement()) {
+        impression.report(false);
+      } else if (now - since >= venueDwellMs) {
+        impression.report(true);
+        if (venueSampled) return closeVenueCandidates();
+      }
+    }
+    scheduleVenueSample();
+  }, Math.max(1, Math.ceil(venueDwellMs - (performance.now() - earliest.since))));
+}
+
+export function observeOriginalImpression(element: Element, subject: EngagementSubject | undefined, source: string, venue = false) {
+  if (!subject || impressions.has(impressionKey(subject)) || typeof IntersectionObserver === 'undefined' || !permitsEngagement()) return;
+  impressionObserver ??= new IntersectionObserver(entries => {
+    observeImpressionEntries(entries);
+    scheduleVenueSample();
+  }, {threshold: [.48, .5]});
   const stop = () => {
     impressionObserver?.unobserve(element);
     impressionEntries.delete(element);
+    if (venueCandidates.delete(element) && venueCandidates.size === 0) clearVenueTimer();
   };
-  impressionEntries.set(element, () => {
-    stop();
-    trackPublicEngagement(subject, 'original_impression', source);
-  });
+  const impression: Impression = {
+    venue,
+    report(inView) {
+      stop();
+      const sample = inView && !impressions.has(impressionKey(subject)) && !sessionAlreadySaw(subject);
+      if (sample) venueSampled = true;
+      trackPublicEngagement(subject, 'original_impression', source, undefined, sample ? {spotlightVenueInView: true} : undefined);
+    },
+  };
+  impressionEntries.set(element, impression);
   impressionObserver.observe(element);
-  return stop;
+  return () => {
+    if (venueCandidates.has(element)) impression.report(false);
+    else stop();
+  };
+}
+
+function sessionImpressionKey(subject: EngagementSubject) {
+  return 'receiz.profile.analytics.once.impression:' + impressionKey(subject);
+}
+
+function sessionAlreadySaw(subject: EngagementSubject) {
+  try { return Boolean(sessionStorage.getItem(sessionImpressionKey(subject))); }
+  catch { return false; }
 }
 const newId = () => crypto.randomUUID();
 function storageId(key: string, storage: 'localStorage' | 'sessionStorage') {
@@ -72,7 +142,7 @@ function sendPending() {
     const {username, receizId, mediaKind} = subject;
     if (data.event === 'original_impression') {
       try {
-        const key = 'receiz.profile.analytics.once.impression:' + impressionKey(subject);
+        const key = sessionImpressionKey(subject);
         if (sessionStorage.getItem(key)) continue;
         sessionStorage.setItem(key, '1');
       } catch { /* The current document still deduplicates impressions. */ }
@@ -81,13 +151,14 @@ function sendPending() {
       meta: {...meta, mediaKind: mediaKind ?? null, attributionSource: 'bankeiz.com', attributionType: 'referrer'}});
     // A plain-text JSON body uses the existing receiver without a preflight.
     // Analytics has no credentials and the response is never needed by the UI.
-    void fetch(endpoint, {method: 'POST', body, mode: 'no-cors', credentials: 'omit', referrerPolicy: 'no-referrer', keepalive: true}).catch(() => {});
+    void fetch(endpoint, {method: 'POST', body, mode: 'no-cors', credentials: 'omit',
+      referrerPolicy: meta?.spotlightVenueInView === true ? 'origin' : 'no-referrer', keepalive: true}).catch(() => {});
   }
 }
 
 export function trackPublicEngagement(subject: EngagementSubject | undefined, event: EventName, source: string, durationSeconds?: number, meta?: Meta) {
   if (!subject || !usernamePattern.test(subject.username) || typeof window === 'undefined') return;
-  if ((navigator as Navigator & {globalPrivacyControl?: boolean}).globalPrivacyControl || navigator.doNotTrack === '1') return;
+  if (!permitsEngagement()) return;
   if (event === 'original_impression') {
     const key = impressionKey(subject);
     if (impressions.has(key)) return;
