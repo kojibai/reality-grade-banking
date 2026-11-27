@@ -55,14 +55,20 @@ export async function retainRatifiedCurrencyCharter(identity: OpenIdentity, char
   const ratification = charterRatification(charter, rows);
   if (!ratification.complete) throw Error('All founders must ratify this charter before linking it.');
   const originals = await Promise.all([charter, ...ratification.approvals].map(row => read(row.digest)));
+  const authority = charter.document.terms.rules.execution;
   let sources: Record<string, unknown>;
-  if (charter.document.terms.rules.execution?.rule === 'registered-roll-closure-v1') {
+  if (authority?.rule === 'registered-roll-closure-v1') {
     const authorize = identity.authorizeGovernanceOriginal;
     if (!authorize || originals.some(original => original.document.author !== identity.binding.artifactOwnerReceizId)) {
       throw Error('Linking this charter requires the exact authorization of each founder.');
     }
-    const [signedCharter, ...ratifications] = await Promise.all(originals.map(original => authorize(original)));
-    sources = { schema: 'bankeiz.governance.open-currency-charter-sources.v1', charter: signedCharter, ratifications };
+    const [[signedCharter, ...ratifications], registerGenesis] = await Promise.all([
+      Promise.all(originals.map(original => authorize(original))),
+      authority.custody === 'founder-custodian-v1' && authority.custodian === identity.binding.artifactOwnerReceizId &&
+        identity.governanceExecution?.().then(device => device.transportHeldRegisterGenesis(authority.registerProofObjectId, authority.registerGenesisHead)),
+    ]);
+    sources = { schema: 'bankeiz.governance.open-currency-charter-sources.v1', charter: signedCharter, ratifications,
+      ...(registerGenesis ? { registerGenesis } : {}) };
   } else {
     sources = { schema: 'bankeiz.governance.currency-charter-sources.v1',
       charter: charter.digest, originals: await transportGovernanceOriginals(originals) };

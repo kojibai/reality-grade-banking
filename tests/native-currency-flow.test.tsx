@@ -17,8 +17,12 @@ import type { BankOperationResult, BankOperationInput } from '../src/receiz/bank
 import type { AssetComposerDraft } from '../src/receiz/asset-composer';
 import type { HeldDeposit } from '../src/receiz/deposit-source';
 import { publicNativeAssetBinding } from '../src/receiz/native-asset-public-binding';
+import * as governanceDirectory from '../src/receiz/governance-directory';
+import * as currencyGovernance from '../src/receiz/currency-governance';
+import { governanceSchema } from '../src/receiz/governance-documents';
+import { charterTemplates } from '../src/features/voting/governance-templates';
 
-const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput)|undefined,operations:undefined as (()=>Promise<unknown>)|undefined,onResult:undefined as ((result:BankOperationResult)=>void)|undefined}));
+const review=vi.hoisted(()=>({input:undefined as (()=>BankOperationInput|Promise<BankOperationInput>)|undefined,operations:undefined as (()=>Promise<unknown>)|undefined,onResult:undefined as ((result:BankOperationResult)=>void|Promise<void>)|undefined}));
 vi.mock('../src/features/account/NativeOperation',()=>({NativeOperation:(props:{input:()=>BankOperationInput;operations?:()=>Promise<unknown>;onResult?:(result:BankOperationResult)=>void;children:React.ReactNode})=>{
  review.input=props.input;review.operations=props.operations;review.onResult=props.onResult;return props.children;
 }}));
@@ -167,18 +171,29 @@ it.each(['currency','service-credit','coupon','rewards'] as const)('opts %s into
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 
-it('opens the issued currency charter editor from the admitted source without rereading Market', async()=>{
+it.each([false,true])('opens the issued currency charter editor from the admitted source without rereading Market (set up during issuance: %s)', async(setUpDuringIssuance)=>{
  const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64),issuer='issuer.receiz.id';
- const actor={artifactSha256:'c'.repeat(64),artifactOwnerReceizId:issuer};
+ const actor={artifactSha256:'c'.repeat(64),artifactOwnerReceizId:issuer,keyId:'e'.repeat(64)};
  const readPublicAsset=vi.fn();
- const identity={binding:actor,backedAssetPublication:async()=>({pending:async()=>null,readPublicAsset})} as unknown as OpenIdentity;
+ const register={custodian:issuer,registerProofObjectId:'1'.repeat(64),registerGenesisHead:'2'.repeat(64),head:'2'.repeat(64)};
+ const createRegister=vi.fn(async()=>register),exportHeldRegister=vi.fn();
+ const identity={binding:actor,backedAssetPublication:async()=>({pending:async()=>null,readPublicAsset}),
+  governanceExecution:async()=>({createRegister,exportHeldRegister})} as unknown as OpenIdentity;
  const packet={schema:'receiz.bank.native-asset-result.v1',status:'committed',source:{
   filename:'native-asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:'f'.repeat(64),exactBytesB64u:'e30',
  }}as const;
  const receipt={schema:'receiz.bank.native-asset-receipt.v1',review:{request:{kind:'issue-currency',actorReceizId:issuer,definition:{name:'Field credit',symbol:'FIELD'}}},
-  assetAfter:{id,currency:{policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'25',issuerControls:true},issuerAccountId:'00000000-0000-4000-8000-000000000001'}}};
+  assetAfter:{id,sourceSha256:'b'.repeat(64),currency:{policy:{kind:'fixed-reserve-pool',priceUsdCentsPerUnit:'25',issuerControls:true},issuerAccountId:'00000000-0000-4000-8000-000000000001'}}};
  const verifier=vi.spyOn(nativeAsset,'verifyNativeAssetSource').mockResolvedValue({packet,receipt} as unknown as Awaited<ReturnType<typeof nativeAsset.verifyNativeAssetSource>>);
  const load=vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('Public governance reads unavailable'));
+ let rows:readonly governanceDirectory.GovernanceRow[]=[];
+ const listeners=new Set<()=>void>();
+ const readRows=vi.spyOn(governanceDirectory,'governanceRows').mockImplementation(()=>rows);
+ const subscribe=vi.spyOn(governanceDirectory,'subscribeGovernance').mockImplementation(listener=>{
+  listeners.add(listener);return ()=>{listeners.delete(listener);};
+ });
+ const digest='3'.repeat(64),changes={governanceCharterSha256:digest,governanceEvidenceSha256:'4'.repeat(64)};
+ const retain=vi.spyOn(currencyGovernance,'retainRatifiedCurrencyCharter').mockResolvedValue(changes);
  const findButton=(text:string)=>[...host.querySelectorAll('button')].find(button=>button.textContent?.includes(text));
  const click=(text:string)=>act(async()=>{findButton(text)!.click();await vi.dynamicImportSettled();});
  document.body.append(host);
@@ -188,14 +203,19 @@ it('opens the issued currency charter editor from the admitted source without re
   await act(async()=>{enter(host,'Name','Field credit');enter(host,'Currency code','FIELD');});
   await click('Set currency terms');
   await act(async()=>host.querySelector<HTMLInputElement>('input[value=managed]')!.click());
+  if(setUpDuringIssuance) {
+   const option=[...host.querySelectorAll('label')].find(label=>label.textContent?.includes('Set up governance during issuance'));
+   expect(option).toBeDefined();
+   await act(async()=>option!.querySelector('input')!.click());
+  }
   expect(findButton('Set up voting and governance')).toBeUndefined();
   await act(async()=>review.onResult?.({status:'committed',nativeAssetSource:packet}));
-  await click('Set up voting and governance');
+  if(!setUpDuringIssuance) await click('Set up voting and governance');
   await act(async()=>{await vi.dynamicImportSettled();});
   expect(verifier).toHaveBeenCalledExactlyOnceWith(packet);
   expect(readPublicAsset).not.toHaveBeenCalled();
   expect(host.textContent).toContain('Field credit · FIELD');
-  await click('Create charter');
+  if(!setUpDuringIssuance) await click('Create charter');
   expect(host.textContent).toContain('Choose a separate voting membership');
   await act(async()=>enter(host,'Organization name','Field credit members'));
   await click('Continue');
@@ -209,7 +229,49 @@ it('opens the issued currency charter editor from the admitted source without re
   expect(host.textContent).toContain('Observation signer’s Receiz ID');
   await act(async()=>enter(host,'Venue identifier','discover'));
   expect(host.querySelector('fieldset legend')?.textContent).toBeTruthy();
- } finally {await act(async()=>root.unmount());host.remove();verifier.mockRestore();load.mockRestore();}
+  if(setUpDuringIssuance) {
+   await act(async()=>{
+    venuePricing.querySelector('input')!.click();
+    enter(host,'Lowest purchase price (USD)','0.25');
+    enter(host,'Highest purchase price (USD)','1.00');
+    for (const caption of ['Open voting to currency holders','Serve as the founding custodian']) {
+     const option=[...host.querySelectorAll('label')].find(label=>label.textContent===caption);
+     option!.querySelector('input')!.click();
+     await Promise.resolve();
+    }
+   });
+   await click('Review Original');
+   expect(findButton('Seal and publish charter')).toBeDefined();
+   expect(createRegister).toHaveBeenCalledOnce();
+   expect(exportHeldRegister).not.toHaveBeenCalled();
+   const base={schema:governanceSchema,visibility:'public',author:issuer,accountUid:null} as const;
+   const charter:governanceDirectory.GovernanceRow={digest,profileUid:null,pulse:'100',document:{...base,terms:{
+    kind:'charter',rules:{...charterTemplates['Member association'],name:'Field credit members',founders:[issuer],
+     execution:{...register,rule:'registered-roll-closure-v1',custody:'founder-custodian-v1',custodianKeyId:actor.keyId,treasury:null,
+      registrationDays:7,rollReviewDays:1,quorumPercent:20,
+      currency:{assetId:id,minimumPriceUsdCents:'25',maximumPriceUsdCents:'100',allowSalesPause:true}}},
+   }}};
+   await act(async()=>{rows=[charter];listeners.forEach(listener=>listener());});
+   expect(host.querySelector('[aria-label="Link community charter"]')).toBeNull();
+   await act(async()=>{
+    rows=[charter,{digest:'5'.repeat(64),profileUid:null,pulse:'101',document:{...base,terms:{kind:'ratification',charter:digest}}}];
+    listeners.forEach(listener=>listener());
+   });
+   expect(host.querySelector('[aria-label="Link community charter"]')).not.toBeNull();
+   const request=await review.input?.();
+   expect(request).toEqual({kind:'manage-currency',assetDigest:receipt.assetAfter.sourceSha256,changes});
+   expect(retain).toHaveBeenCalledExactlyOnceWith(identity,charter,rows,governanceDirectory.heldGovernanceOriginal);
+   verifier.mockResolvedValueOnce({packet,receipt:{...receipt,review:{request},
+    assetAfter:{...receipt.assetAfter,sourceSha256:'6'.repeat(64),currency:{...receipt.assetAfter.currency,governanceCharterSha256:digest}},
+   }} as Awaited<ReturnType<typeof nativeAsset.verifyNativeAssetSource>>);
+   await act(async()=>review.onResult?.({status:'committed',nativeAssetSource:packet}));
+   expect(host.querySelector('.currency-creation-charter [role="status"]')?.textContent).toBe('Community governance is active.');
+   expect(readPublicAsset).not.toHaveBeenCalled();
+  }
+ } finally {
+  await act(async()=>root.unmount());host.remove();
+  for(const spy of [verifier,load,readRows,subscribe,retain])spy.mockRestore();
+ }
 });
 
 it.each(['Receive','Add'] as const)('reviews a currency note through the shared %s deposit picker',async(entry)=>{

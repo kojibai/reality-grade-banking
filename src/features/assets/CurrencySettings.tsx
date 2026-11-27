@@ -1,33 +1,26 @@
-import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AmountInput } from '../../components/AmountInput';
 import { InlineOpening } from '../../components/InlineOpening';
 import { formatMoney } from '../../core/money';
 import { bankOperationDollars } from '../../receiz/bank-operations';
 import { verifyNativeAssetSource } from '../../receiz/native-asset';
 import type { OpenIdentity } from '../../receiz/native-identity';
-import { nativeCurrencyPrice, type NativeCurrencyState } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
+import { nativeCurrencyPrice } from '../../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import { NativeOperation } from '../account/NativeOperation';
-import { governanceRows, heldGovernanceOriginal, subscribeGovernance, type GovernanceRow } from '../../receiz/governance-directory';
-import { retainRatifiedCurrencyCharter } from '../../receiz/currency-governance';
-import { charterRatification, ofKind } from '../../receiz/governance-view';
+import { CurrencyCharterLink, type CurrencySettingsHead } from './CurrencyCharterLink';
 
-const emptyRows: readonly GovernanceRow[] = [];
 const VotingBoard = lazy(() => import('../voting/VotingBoard').then(module => ({ default: module.VotingBoard })));
 
 
 export function CurrencySettings({ identity, accountUid, assetId, onRefresh, communityInitiallyOpen = false }: {
   identity: OpenIdentity; accountUid: string; assetId: string; onRefresh(): void; communityInitiallyOpen?: boolean;
 }) {
-  const [head, setHead] = useState<{ digest: string; currency: NativeCurrencyState } | null>(null);
+  const [head, setHead] = useState<CurrencySettingsHead | null>(null);
   const [price, setPrice] = useState('');
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [communityOpen, setCommunityOpen] = useState(communityInitiallyOpen);
-  const [selectedCharter, setSelectedCharter] = useState('');
-  const [link, setLink] = useState<{governanceCharterSha256: string; governanceEvidenceSha256: string} | null>(null);
-  const [linkMessage, setLinkMessage] = useState('');
-  const rows = useSyncExternalStore(subscribeGovernance, governanceRows, () => emptyRows);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -49,14 +42,6 @@ export function CurrencySettings({ identity, accountUid, assetId, onRefresh, com
   const pooled = head.currency.policy.kind === 'constant-product-pool';
   const currentPrice = nativeCurrencyPrice(head.currency);
   const charter = head.currency.governanceCharterSha256;
-  const choices = ofKind(rows, 'charter').filter(row => row.document.terms.rules.execution?.currency?.assetId === assetId && charterRatification(row, rows).complete);
-  async function selectCharter(digest: string) {
-    setSelectedCharter(digest); setLink(null); setLinkMessage('');
-    const choice = choices.find(row => row.digest === digest);
-    if (!choice) return;
-    try {setLink(await retainRatifiedCurrencyCharter(identity, choice, rows, heldGovernanceOriginal));}
-    catch (error) {setLinkMessage(error instanceof Error ? error.message : 'The charter could not be opened.');}
-  }
   return <>
   {saved&&<p role="status">Currency settings saved.</p>}
   {issuer&&!charter&&<NativeOperation identity={identity} title="Currency settings" confirmLabel="Save currency settings"
@@ -90,24 +75,8 @@ export function CurrencySettings({ identity, accountUid, assetId, onRefresh, com
     {communityOpen&&<>
       {charter?<p className="body-copy">{pooled ? 'Voting members can pause or resume sales under the charter.' : 'Voting members can change price and sales under the charter.'}</p>
         :<p className="body-copy">Create a charter for this currency. Once the founders ratify it, you can give its members control of the terms it covers.</p>}
-      {issuer&&!charter&&choices.length>0&&<>
-        <label>Ratified charter<select value={selectedCharter} onChange={event=>void selectCharter(event.target.value)}>
-          <option value="">Choose a charter</option>{choices.map(row=><option key={row.digest} value={row.digest}>{row.document.terms.rules.name}</option>)}
-        </select></label>
-        {linkMessage&&<p role="status">{linkMessage}</p>}
-        {link&&link.governanceCharterSha256===selectedCharter&&<NativeOperation identity={identity} title="Link community charter" confirmLabel="Link charter"
-          inputKey={JSON.stringify([head.digest,link])} input={()=>({kind:'manage-currency',assetDigest:head.digest,changes:link})}
-          onRefresh={onRefresh} onResult={async result=>{
-            if(result.status!=='committed'||!('nativeAssetSource'in result))return;
-            const {receipt}=await verifyNativeAssetSource(result.nativeAssetSource);
-            if(receipt.schema==='receiz.bank.native-asset-receipt.v1'&&receipt.assetAfter.id===assetId&&receipt.assetAfter.currency?.governanceCharterSha256===selectedCharter){
-              const currency={...receipt.assetAfter.currency,governanceSettingsHead:receipt.assetAfter.sourceSha256};
-              setHead({digest:receipt.assetAfter.sourceSha256,currency});
-            }
-          }}>
-          <p className="body-copy">Once linked, the community controls these settings through signed votes. This choice is permanent.</p>
-        </NativeOperation>}
-      </>}
+      {issuer&&!charter&&<CurrencyCharterLink identity={identity} assetId={assetId} digest={head.digest}
+        onRefresh={onRefresh} onLinked={setHead} />}
       <Suspense fallback={<InlineOpening label="Opening community governance" />}>
         <VotingBoard accountIdentity={identity} accountUid={accountUid} currency={{
           assetId, charterDigest:charter, settingsHead:head.currency.governanceSettingsHead,

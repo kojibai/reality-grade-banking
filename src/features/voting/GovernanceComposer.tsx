@@ -14,6 +14,8 @@ import {bankOperationDollars} from '../../receiz/bank-operations';
 import {inspectNativeCurrencyServicePricingTerms} from '../../../native/receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing';
 import {VenuePricingFields,emptyVenuePricingTerms} from './VenuePricingFields';
 import {eligibleCandidates,type Row} from '../../receiz/governance-view';
+import type {GovernanceExecution} from '../../receiz/governance-execution';
+import type {GovernanceExecutionRegister} from '../../receiz/governance-execution-register';
 
 type Props={currency?:CurrencyVotingContext;founding?:FoundingDraft|null;member?:(id:string)=>string;identity?:OpenIdentity;mode:'charter'|'proposal';owner:string;rows:readonly GovernanceRow[];charter?:Row<'charter'>;charters:readonly Row<'charter'>[];onCharter:(id:string)=>void;onFound:()=>void;onReview:(terms:GovernanceTerms)=>void;onCancel:()=>void};
 export function GovernanceComposer({currency,founding,member,identity,mode,owner,charter,charters,onCharter,onFound,rows,onReview,onCancel}:Props){
@@ -29,6 +31,7 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const [custodian,setCustodian]=useState(''),[custodianKey,setCustodianKey]=useState('');
   const [registerOriginal,setRegisterOriginal]=useState<File|null>(null);
   const [founderRegisterOriginal,setFounderRegisterOriginal]=useState<File|null>(null);
+  const [createdFounderRegister,setCreatedFounderRegister]=useState<GovernanceExecutionRegister|null>(null);
   const [registrationDays,setRegistrationDays]=useState(7),[rollReviewDays,setRollReviewDays]=useState(1);
   const [quorum,setQuorum]=useState(20);
   type CharterDraft = (typeof charterTemplates)[string];
@@ -73,6 +76,12 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const electiveOffices=charter?.document.terms.rules.offices?.filter(o=>o.selection==='Election')??[];
   const election=mode==='proposal'&&decision==='Election';
   const bindingBinary=Boolean(charter?.document.terms.rules.execution&&(decision==='Policy'||decision==='Treasury'&&payment));
+  async function ensureFounderRegister(device:GovernanceExecution){
+    if(createdFounderRegister)return createdFounderRegister;
+    const register=await device.createRegister();
+    setCreatedFounderRegister(register);
+    return register;
+  }
   async function saveFounderRegister(){
     if(!identity?.governanceExecution)return;
     setBuilding(true);setError('');
@@ -80,9 +89,8 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       let file=founderRegisterOriginal;
       if(!file){
         const device=await identity.governanceExecution();
-        const created=await device.createRegister();
+        const created=await ensureFounderRegister(device);
         file=await device.exportHeldRegister(created.registerProofObjectId);
-        setFounderRegisterOriginal(file);
       }
       const url=URL.createObjectURL(file),link=document.createElement('a');
       link.href=url;link.download=file.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
@@ -121,9 +129,11 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
           if(founders.trim())throw Error('Use one founder to link this open holder charter from Bankeiz.');
           if(!/^[a-f0-9]{64}$/u.test(signerKey)||!registerOwner||(!founderCustody&&registerOwner===owner))
             throw Error('Select founder custody or enter an independent custodian’s Receiz ID and public key ID.');
-          if(!file)throw Error('Create or choose the custodian’s starting register Original.');
-          const {openGovernanceRegister}=await import('../../receiz/governance-execution-register');
-          const {register}=await openGovernanceRegister(file,registerOwner);
+          if(!file&&!founderCustody)throw Error('Choose the custodian’s starting register Original.');
+          const register=file
+            ? founderCustody?await (await identity.governanceExecution()).selectRegister(file)
+              :(await (await import('../../receiz/governance-execution-register')).openGovernanceRegister(file,registerOwner)).register
+            : await ensureFounderRegister(await identity.governanceExecution());
           if(register.head!==register.registerGenesisHead)throw Error('Choose the custodian’s starting register Original.');
           selectedExecution={rule:'registered-roll-closure-v1',custodian:register.custodian,
             registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,currency:terms,
@@ -195,8 +205,9 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
           <label className="gov-check"><input type="checkbox" checked={founderCustody} onChange={e=>setFounderCustody(e.target.checked)}/>Serve as the founding custodian</label>
           {founderCustody?<div className="gov-stack">
             <label>Custodian public key ID <small>Use a key admitted to your Receiz account.</small><input required pattern="[a-f0-9]{64}" value={founderKeyId} onChange={e=>setFounderKey(e.target.value)}/></label>
-            <label>Founder’s starting register Original<input type="file" disabled={building} onChange={e=>setFounderRegisterOriginal(e.target.files?.[0]??null)}/></label>
-            <button type="button" disabled={building} onClick={()=>void saveFounderRegister()}>{founderRegisterOriginal?'Save register Original':'Create and save register Original'}</button>
+            <p className="small-copy">Bankeiz creates and keeps the starting register when you review the charter. You can also use an existing register.</p>
+            <label>Use an existing starting register Original<input type="file" disabled={building} onChange={e=>setFounderRegisterOriginal(e.target.files?.[0]??null)}/></label>
+            {(founderRegisterOriginal||createdFounderRegister)&&<button type="button" disabled={building} onClick={()=>void saveFounderRegister()}>Save register Original</button>}
           </div>:<>
             <label>Custodian Receiz ID<input required value={custodian} onChange={e=>setCustodian(e.target.value)}/></label>
             <label>Custodian public key ID<input required pattern="[a-f0-9]{64}" value={custodianKey} onChange={e=>setCustodianKey(e.target.value)}/></label>

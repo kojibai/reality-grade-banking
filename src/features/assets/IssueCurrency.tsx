@@ -20,6 +20,7 @@ import './issue-currency.css';
 
 const presetIcons = { currency: Coins, 'service-credit': Ticket, coupon: Tag, rewards: Gift };
 const VotingBoard = lazy(() => import('../voting/VotingBoard').then(module => ({ default: module.VotingBoard })));
+const CurrencyCharterLink = lazy(() => import('./CurrencyCharterLink').then(module => ({ default: module.CurrencyCharterLink })));
 
 function salesDateToKai(value: string): string {
   const date = new Date(value);
@@ -39,6 +40,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [seed, setSeed] = useState('');
   const [price, setPrice] = useState('');
   const [issuerControls, setIssuerControls] = useState(false);
+  const [includeGovernance, setIncludeGovernance] = useState(false);
   const [fractionalUnits, setFractionalUnits] = useState(false);
   const [salesStart, setSalesStart] = useState('');
   const [salesEnd, setSalesEnd] = useState('');
@@ -50,7 +52,8 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   }), [artwork, description, name]);
   const [artworkPreview, setArtworkPreview] = useState<{ file: File; url: string } | null>(null);
   const [issueSource, setIssueSource] = useState<NativeAssetPacket | null>(null);
-  const [governance, setGovernance] = useState<{ name: string; code: string; accountUid: string; currency: CurrencyVotingContext } | null>(null);
+  const [governance, setGovernance] = useState<{ name: string; code: string; accountUid: string; digest: string; currency: CurrencyVotingContext } | null>(null);
+  const [linkedCharter, setLinkedCharter] = useState<string>();
   const [openingGovernance, setOpeningGovernance] = useState(false);
   const [governanceError, setGovernanceError] = useState('');
   const governanceButton = useRef<HTMLButtonElement>(null);
@@ -92,19 +95,20 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
     } catch { /* The seed amount is still being entered. */ }
   }
 
-  async function openGovernance() {
-    if (!issueSource || openingGovernance) return;
+  async function openGovernance(source: NativeAssetPacket) {
+    if (openingGovernance) return;
     setOpeningGovernance(true);
     setGovernanceError('');
     try {
-      const { receipt } = await verifyNativeAssetSource(issueSource);
+      const { receipt } = await verifyNativeAssetSource(source);
       if (receipt.schema !== 'receiz.bank.native-asset-receipt.v1' || receipt.review.request.kind !== 'issue-currency'
         || receipt.review.request.actorReceizId !== identity.binding.artifactOwnerReceizId) throw new Error('CURRENCY_ISSUE_SOURCE_MISMATCH');
-      const { id, currency } = receipt.assetAfter;
-      if (!assetHex(id) || !currency?.policy.issuerControls || !currency.issuerAccountId) throw new Error('CURRENCY_GOVERNANCE_UNAVAILABLE');
+      const { id, currency, sourceSha256 } = receipt.assetAfter;
+      if (!assetHex(id) || !assetHex(sourceSha256) || !currency?.policy.issuerControls || !currency.issuerAccountId) throw new Error('CURRENCY_GOVERNANCE_UNAVAILABLE');
       setGovernance({
         name: receipt.review.request.definition.name, code: receipt.review.request.definition.symbol,
         accountUid: currency.issuerAccountId,
+        digest: sourceSha256,
         currency: { assetId: id, priceUsdCentsPerUnit: nativeCurrencyPrice(currency), ...(currency.policy.kind === 'constant-product-pool' ? { poolPricing: true } : {}), salesPaused: currency.salesPaused === true },
       });
     } catch {
@@ -187,12 +191,15 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   return <div className="currency-creation">
     <div hidden={!!governance}>
       <NativeOperation identity={identity} title="Currency" confirmLabel="Issue currency" committedTitle="Currency issued." onRefresh={onRefresh}
-        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, quantityIncrementMicro, salesStart, salesEnd])}
-        reviewDetails={quantityIncrementMicro && <div className="detail-list">
-          <div><span>Smallest transferable amount</span><strong>{formatUnits(quantityIncrementMicro)} {symbol}</strong></div>
+        inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, includeGovernance, quantityIncrementMicro, salesStart, salesEnd])}
+        reviewDetails={(quantityIncrementMicro || includeGovernance) && <div className="detail-list">
+          {quantityIncrementMicro && <div><span>Smallest transferable amount</span><strong>{formatUnits(quantityIncrementMicro)} {symbol}</strong></div>}
+          {includeGovernance && <div><span>Community governance</span><strong>Charter setup follows issuance</strong></div>}
         </div>}
-        onResult={result => {
-          if (result.status === 'committed' && 'nativeAssetSource' in result) setIssueSource(result.nativeAssetSource);
+        onResult={async result => {
+          if (result.status !== 'committed' || !('nativeAssetSource' in result)) return;
+          setIssueSource(result.nativeAssetSource);
+          if (includeGovernance) await openGovernance(result.nativeAssetSource);
         }}
         input={() => {
           const asset = definition();
@@ -254,7 +261,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
             <legend>{pooled ? 'Sales control' : 'Price and sales control'}</legend>
             <div className="currency-control-options">
               <label className="currency-control-option">
-                <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => setIssuerControls(false)} />
+                <input type="radio" name={controlGroup} value="fixed" checked={!issuerControls} onChange={() => { setIssuerControls(false); setIncludeGovernance(false); }} />
                 <LockKeyhole size={17} aria-hidden="true" />
                 <span><strong>Fixed terms</strong><small>{pooled ? 'Keep the signed sales terms.' : 'Keep the opening price and sales terms.'}</small></span>
               </label>
@@ -286,17 +293,23 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           <section className="currency-governance-intro" aria-labelledby={controlGroup + '-governance'}>
             <Vote size={20} aria-hidden="true" />
             <div><h2 id={controlGroup + '-governance'}>Community governance</h2>
-              <p className="small-copy">{issuerControls ? (pooled ? 'Create a charter after issuance to let members vote on pausing or resuming sales.' : 'Create a charter after issuance to let members vote on price and sales.') : 'Choose Issuer-managed to enable a community charter after issuance.'}</p>
+              {issuerControls ? <>
+                <label className="consent-option">
+                  <input type="checkbox" checked={includeGovernance} onChange={event => setIncludeGovernance(event.target.checked)} />
+                  <span>Set up governance during issuance</span>
+                </label>
+                <p className="small-copy">Review, ratify and link your charter here, or add one later in Currency settings.</p>
+              </> : <p className="small-copy">Choose Issuer-managed to enable community governance.</p>}
             </div>
           </section>
         </details>
       </NativeOperation>
       {issueSource && issuerControls && <section className="currency-creation-launch" aria-label="Configure currency governance">
-        <button ref={governanceButton} type="button" className="primary-button" disabled={openingGovernance} onClick={() => void openGovernance()}>
+        {!linkedCharter && <button ref={governanceButton} type="button" className="primary-button" disabled={openingGovernance} onClick={() => void openGovernance(issueSource)}>
           <Vote size={17} />{openingGovernance ? 'Opening governance…' : 'Set up voting and governance'}<ArrowRight size={17} />
-        </button>
+        </button>}
+        {linkedCharter && <p role="status">Community governance is active.</p>}
         {governanceError && <p className="error-message" role="status">{governanceError}</p>}
-        <p className="small-copy">Open Currency settings in Market to manage sales or link a ratified charter.</p>
       </section>}
     </div>
     {governance && <section className="currency-creation-charter">
@@ -305,10 +318,15 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
         setGovernance(null);
       }}><ArrowLeft size={16} />Back to issuance</button>
       <h1 ref={governanceHeading} tabIndex={-1} className="sheet-hero">{governance.name} · {governance.code}</h1>
-      <p className="body-copy">{governance.currency.poolPricing ? 'Define who can vote on pausing and resuming sales. Once founders ratify the charter, link it in Currency settings.' : 'Define who can vote on price and sales. Once founders ratify the charter, link it in Currency settings.'}</p>
-      <Suspense fallback={<InlineOpening label="Opening community governance" />}>
-        <VotingBoard accountIdentity={identity} accountUid={governance.accountUid} currency={governance.currency} />
-      </Suspense>
+      {linkedCharter ? <p role="status">Community governance is active.</p> : <>
+        <p className="body-copy">Your currency is issued. {governance.currency.poolPricing ? 'Set who can vote on new sales.' : 'Set who can vote on price and sales.'} Once the founders ratify the charter, link it here.</p>
+        <Suspense fallback={<InlineOpening label="Opening community governance" />}>
+          <CurrencyCharterLink identity={identity} assetId={governance.currency.assetId} digest={governance.digest}
+            inIssuance onRefresh={onRefresh} onLinked={({ currency }) => setLinkedCharter(currency.governanceCharterSha256)} />
+          <VotingBoard accountIdentity={identity} accountUid={governance.accountUid} currency={governance.currency}
+            inCurrencyIssuance={includeGovernance} />
+        </Suspense>
+      </>}
     </section>}
   </div>;
 }

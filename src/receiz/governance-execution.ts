@@ -177,6 +177,18 @@ export function createGovernanceExecution(input:GovernanceExecutionPorts){
   async exportRegister(proposal:string){const saved=await retained(proposal);if(!saved)throw Error('A committed register Original is required.');return saved.source;},
   async exportSelectedRegister(){const selected=await selectedRegister();if(!selected)throw Error('Select a register first.');return (await held(selected.registerProofObjectId)).source;},
   async exportHeldRegister(registerProofObjectId:string){input.assertOpen();return (await held(registerProofObjectId)).source;},
+  async transportHeldRegisterGenesis(registerProofObjectId:string,registerGenesisHead:string){
+   input.assertOpen();
+   const ref=await input.read(key('register',registerProofObjectId)) as HeldFile|null;
+   if(!ref)return null;
+   const {register,history,admission}=await openGovernanceRegister(await file(ref),input.owner);
+   if(register.registerProofObjectId!==registerProofObjectId||register.registerGenesisHead!==registerGenesisHead)
+    throw Error('The selected register Original differs from its coordinate.');
+   if(register.head!==registerGenesisHead||history.nodes.length!==1)return null;
+   const artifact=admission.openedArtifact.sealedArtifact;
+   if(artifact.kind!=='receiz.native-record-seal')throw Error('Select the enclosing register Original.');
+   return (await loadReceiz()).transportReceizSealedArtifactV124(artifact);
+  },
  });
 }
 export type GovernanceExecution=ReturnType<typeof createGovernanceExecution>;

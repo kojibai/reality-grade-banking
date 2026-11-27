@@ -59,6 +59,10 @@ it('opens the pinned genesis offline, retains the exact Original on cold reopen 
  const restarted=createGovernanceExecution(ports);
  expect(await restarted.selectedRegister()).toEqual(first);
  const copy=await restarted.exportSelectedRegister();expect(await installed.sha256ReceizBytes(new Uint8Array(await copy.arrayBuffer()))).toBe(fixture.register.artifactSha256);
+ expect(await restarted.transportHeldRegisterGenesis(first.registerProofObjectId,first.registerGenesisHead)).toMatchObject({
+  artifactSha256:fixture.register.artifactSha256,exactBytesB64u:fixture.register.exactBytesB64u,
+ });
+ await expect(restarted.transportHeldRegisterGenesis(first.registerProofObjectId,'f'.repeat(64))).rejects.toThrow(/coordinate/);
  const review=await restarted.prepare(input);expect(review.registerHead).toBe(first.head);expect(review.decision.seated).toHaveLength(1);
  await expect(restarted.execute({...review},review.exactPlanDigest)).rejects.toThrow(/exact governance plan/);
  await expect(restarted.execute(review,'wrong')).rejects.toThrow(/exact governance plan/);
