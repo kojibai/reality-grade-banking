@@ -200,7 +200,8 @@ export function usePublicMarket(active = true, displayActive = active, selectedI
     latestQuotes.current=null;
     const quotesAttempt=refreshQuotes(pendingMarketChange.current);
     const previousMembership=readPublicCatalog();
-    const membershipRead=previousMembership?.complete&&/^[a-f0-9]{64}$/.test(previousMembership.revision)
+    // The selected generation and the native fallback both share the directory's conditional read.
+    const membershipRead=previousMembership?.complete&&/^(?:[a-f0-9]{64}|\d+:[a-f0-9]{16})$/.test(previousMembership.revision)
       ?observePublicMarketMembership(previousMembership.revision,previousMembership.publicProfileHeadsRevision).then(next=>next??previousMembership)
       :fetchPublicMarket(controller.signal);
     const membershipAttempt = membershipRead.then(value=>({value,error:null}),cause=>({value:null,error:cause instanceof Error?cause.message:'The public Market could not be refreshed.'})).then(membership=>{

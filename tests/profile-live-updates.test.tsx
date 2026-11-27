@@ -45,6 +45,43 @@ it('keeps the shared stream connected while another subscriber uses the same cat
  const {subscribePublicProfileDirectory}=await import('../src/receiz/public-profile-directory'),read=()=>({items:[],complete:true,revision,observedAt:null,sourceCount:0}),first=subscribePublicProfileDirectory(read),second=subscribePublicProfileDirectory(read);
  try{first();expect(aborted).toBe(false);}finally{second();}expect(aborted).toBe(true);
 });
+it('shares the pending native membership read between Market Refresh and the profile directory',async()=>{
+ vi.resetModules();history.replaceState(null,'','/');localStorage.clear();
+ const revision='1:21b129a474850ca4',headsRevision='b'.repeat(64),etag='"receiz-market-'+revision+'-heads-'+headsRevision+'"';
+ const original={id:'held',receizId:'held',title:'Held Original',valueUsd:10};
+ const input={ok:true,transport:{publicOriginals:[original],publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:1,revision},publicProfileHeadsRevision:headsRevision}};
+ localStorage.setItem('receiz-bank-public-discovery-v2',JSON.stringify(input));
+ let finish!:()=>void;
+ const stalled=new Promise<void>(resolve=>{finish=resolve;}),membershipReads:(string|null)[]=[];
+ vi.stubGlobal('fetch',vi.fn<typeof fetch>(async (request,init)=>{
+  const path=String(request);
+  if(path==='/api/bank/public-market/membership'){
+   membershipReads.push(new Headers(init?.headers).get('If-None-Match'));
+   if(membershipReads.length===1)return Response.json(input,{headers:{etag}});
+   await stalled;
+   return new Response(null,{status:304,headers:{etag}});
+  }
+  if(path==='/api/bank/public-profile-directory')return Response.json({ok:true,schema:'bank.public-profile-directory.v1',profiles:[],publicProfileHeads:[],nextCursor:null});
+  if(path==='/api/bank/public-profile-directory/stream')return new Response(new ReadableStream(),{headers:{'content-type':'text/event-stream'}});
+  if(path==='/api/bank/public-market/quotes')return Response.json({ok:true,data:{schema:'receiz.market.public-snapshot.v1',liveMarkets:[]}});
+  return new Response(null,{status:503});
+ }));
+ const {usePublicMarket}=await import('../src/receiz/usePublicMarket'),{observePublicProfileDirectory}=await import('../src/receiz/public-profile-directory'),{Market}=await import('../src/features/market/Market');
+ const host=document.createElement('div'),root=createRoot(host);
+ function Probe(){return <Market source={usePublicMarket()} overview={<span/>}/>;}
+ try{
+  await act(async()=>root.render(<Probe/>));
+  const row=host.querySelector('.asset-row');
+  expect(row?.textContent).toContain('Held Original');
+  expect(membershipReads).toEqual([null]);
+  let directoryRead!:Promise<void>;
+  await act(()=>{directoryRead=observePublicProfileDirectory(true);host.querySelector<HTMLButtonElement>('[aria-label="Refresh public Market"]')!.click();});
+  expect(membershipReads).toEqual([null,etag]);
+  expect(host.querySelector('.asset-row')).toBe(row);
+  await act(async()=>{finish();await directoryRead;});
+  expect(host.querySelector('.asset-row')).toBe(row);
+ }finally{finish();await act(async()=>root.unmount());}
+});
 it('updates a standalone Feed from the selected public successor before any Market runtime has mounted',async()=>{
  vi.resetModules();localStorage.clear();const {parsePublicMarket}=await import('../src/receiz/public-market'),{publishDiscoveredPublicCatalog}=await import('../src/receiz/asset-publication-adoption'),feed=await import('../src/public-feed/feed-source');
  const input=(ids:string[])=>({ok:true,transport:{publicOriginals:ids.map(id=>({id,receizId:id,title:id})),publicMembership:{version:1,scope:'whole-market-visible-showcase',source:'canonical-complete',isComplete:true,itemCount:ids.length,revision:ids.join(':')}}}),old=parsePublicMarket(input(['withdrawn','held'])),next=parsePublicMarket(input(['held','new']));
