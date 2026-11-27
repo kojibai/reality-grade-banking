@@ -47,12 +47,20 @@ it('keeps an earlier generic execution pending before entering the asset adapter
  const api=createBankOperations({ownerReceizId:'sender.receiz.id',assertOpen(){},store:{load:async()=>({state:'unknown'}) as never,saveNew:async()=>{},replace:async()=>{}},context:async()=>{throw Error('MUST_NOT_CONNECT');},lock:async fn=>fn(),assets:{prepare,execute:async()=>{throw Error('MUST_NOT_EXECUTE');},discard(){}}});
  await expect(api.prepare({kind:'fund-asset',rail:'reserve',amountUsdCents:'100',definition:{name:'Funded unit',symbol:'UNIT',units:'1',description:'Funded units.',linkedProofDigest:null}})).rejects.toThrow('BANK_EXECUTION_PENDING');expect(prepare).not.toHaveBeenCalled();
 });
-it('permits the current app portfolio source read through the actual Bank gateway',async()=>{
- const {permittedNativePath}=await import('../src/receiz/native-transport');const {nativeRequestPath}=await import('../server/native-account');
- const path=`/api/connect/bank/assets/portfolio?applicationId=${BANK_APPLICATION_ID}`;
- expect(permittedNativePath(path,'POST')).toBe(true);expect(nativeRequestPath(`/api/bank/native${path}`,'POST')).toBe(path);
- for(const bad of [path+'&accountId=foreign',path.replace(BANK_APPLICATION_ID,'rc_foreign'),path+`&applicationId=${BANK_APPLICATION_ID}`])expect(permittedNativePath(bad,'POST')).toBe(false);
- expect(permittedNativePath(path,'GET')).toBe(false);
+it('permits current-app portfolio and governance requests through the actual Bank gateway',async()=>{
+ const {permittedNativePath}=await import('../src/receiz/native-transport');
+ const {nativeRequestPath}=await import('../server/native-account');
+ for(const action of ['portfolio','governance']){
+  const path=`/api/connect/bank/assets/${action}?applicationId=${BANK_APPLICATION_ID}`;
+  expect(permittedNativePath(path,'POST')).toBe(true);
+  expect(nativeRequestPath(`/api/bank/native${path}`,'POST')).toBe(path);
+  for(const bad of [path+'&accountId=foreign',path.replace(BANK_APPLICATION_ID,'rc_foreign'),path+`&applicationId=${BANK_APPLICATION_ID}`]){
+   expect(permittedNativePath(bad,'POST')).toBe(false);
+   expect(nativeRequestPath(`/api/bank/native${bad}`,'POST')).toBeNull();
+  }
+  expect(permittedNativePath(path,'GET')).toBe(false);
+  expect(nativeRequestPath(`/api/bank/native${path}`,'GET')).toBeNull();
+ }
 });
 
 it('binds the authored source to the displayed immutable review before signing',async()=>{
