@@ -176,6 +176,7 @@ export function createGovernanceExecution(input:GovernanceExecutionPorts){
    return selectRegister(new File([artifact.artifact],artifact.filename,{type:artifact.mimeType}));},
   async exportRegister(proposal:string){const saved=await retained(proposal);if(!saved)throw Error('A committed register Original is required.');return saved.source;},
   async exportSelectedRegister(){const selected=await selectedRegister();if(!selected)throw Error('Select a register first.');return (await held(selected.registerProofObjectId)).source;},
+  async exportHeldRegister(registerProofObjectId:string){input.assertOpen();return (await held(registerProofObjectId)).source;},
  });
 }
 export type GovernanceExecution=ReturnType<typeof createGovernanceExecution>;

@@ -28,6 +28,7 @@ export type CharterExecution=RegisterBinding & (Readonly<{
   rule:'unanimous-evidence-closure-v1';treasury:CharterPayment|null;currency?:CharterCurrencyControl;
 }> | Readonly<{
   rule:'registered-roll-closure-v1';treasury:null;currency:CharterCurrencyControl;
+  custody?:'founder-custodian-v1';
   custodianKeyId:string;registrationDays:number;rollReviewDays:number;quorumPercent:number;
   eligibility?:Readonly<{rule:'native-currency-holders-v1';minimumQuantityMicro:string}>;
 }>);
@@ -118,8 +119,8 @@ export function checkCharterCurrencyChange(control:CharterCurrencyControl|undefi
 function readExecution(value:unknown):CharterExecution{
   const keys=['rule','custodian','registerProofObjectId','registerGenesisHead','treasury'];
   if((value as {rule?:unknown}|null)?.rule==='registered-roll-closure-v1'){
-    const v=fields(value,[...keys,'currency','custodianKeyId','registrationDays','rollReviewDays','quorumPercent',...optionalFields(value,['eligibility'])]);
-    if(v.treasury!==null)return fail();
+    const v=fields(value,[...keys,'currency','custodianKeyId','registrationDays','rollReviewDays','quorumPercent',...optionalFields(value,['eligibility','custody'])]);
+    if(v.treasury!==null||'custody' in v&&v.custody!=='founder-custodian-v1')return fail();
     let eligibility:Extract<CharterExecution,{rule:'registered-roll-closure-v1'}>['eligibility'];
     if('eligibility' in v){
       const e=fields(v.eligibility,['rule','minimumQuantityMicro']);
@@ -129,7 +130,7 @@ function readExecution(value:unknown):CharterExecution{
     return Object.freeze({rule:'registered-roll-closure-v1',custodian:subject(v.custodian),registerProofObjectId:hash(v.registerProofObjectId),
       registerGenesisHead:hash(v.registerGenesisHead),custodianKeyId:hash(v.custodianKeyId),treasury:null,currency:readCurrencyControl(v.currency),
       registrationDays:integer(v.registrationDays,1,90),rollReviewDays:integer(v.rollReviewDays,1,90),quorumPercent:integer(v.quorumPercent,1,100),
-      ...(eligibility?{eligibility}:{})});
+      ...(v.custody==='founder-custodian-v1'?{custody:v.custody}:{}),...(eligibility?{eligibility}:{})});
   }
   const v=fields(value,[...keys,...optionalFields(value,['currency'])]);
   if(v.rule!=='unanimous-evidence-closure-v1')return fail();
@@ -158,7 +159,10 @@ export function readGovernanceTerms(input:unknown):GovernanceTerms{
       ...('offices' in r?{offices:boundedRows(r.offices,64,readOffice,o=>o.name)}:{}),
       ...('articles' in r?{articles:boundedRows(r.articles,128,value=>{const a=fields(value,['title','text']);return Object.freeze({title:words(a.title,160),text:words(a.text,16000)});},a=>a.title)}:{}),
       name:words(r.name,120),purpose:words(r.purpose),founders:distinct(r.founders,subject,256),membership:words(r.membership),decisions:words(r.decisions),representation:words(r.representation),amendments:words(r.amendments),appeals:words(r.appeals),treasury:words(r.treasury),approvalPercent:integer(r.approvalPercent,50,100),minimumSupportPercent:integer(r.minimumSupportPercent,0,100),voteDays:integer(r.voteDays,1,365),appealDays:integer(r.appealDays,1,90),allowMandates:r.allowMandates};
-    if(rules.execution?.rule==='registered-roll-closure-v1'&&(rules.electorate||rules.allowMandates||rules.founders.includes(rules.execution.custodian)))return fail();
+    if(rules.execution?.rule==='registered-roll-closure-v1'){
+      const founderCustodian=rules.founders.includes(rules.execution.custodian);
+      if(rules.electorate||rules.allowMandates||founderCustodian!==(rules.execution.custody==='founder-custodian-v1'))return fail();
+    }
     return Object.freeze({kind,...files,...(logo?{logo}:{}),rules:Object.freeze(rules)});
   }
   const charter=hash(v.charter);

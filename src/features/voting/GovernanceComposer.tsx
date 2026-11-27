@@ -23,8 +23,12 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const [template,setTemplate]=useState<string>(founding?.name??'Member association');
   const [openRoll,setOpenRoll]=useState(Boolean(founding));
   const [holderVoting,setHolderVoting]=useState(false);
+  const [founderCustody,setFounderCustody]=useState(false);
+  const [founderKey,setFounderKey]=useState<string>();
+  const founderKeyId=founderKey??identity?.binding.keyId??'';
   const [custodian,setCustodian]=useState(''),[custodianKey,setCustodianKey]=useState('');
   const [registerOriginal,setRegisterOriginal]=useState<File|null>(null);
+  const [founderRegisterOriginal,setFounderRegisterOriginal]=useState<File|null>(null);
   const [registrationDays,setRegistrationDays]=useState(7),[rollReviewDays,setRollReviewDays]=useState(1);
   const [quorum,setQuorum]=useState(20);
   type CharterDraft = (typeof charterTemplates)[string];
@@ -69,6 +73,22 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const electiveOffices=charter?.document.terms.rules.offices?.filter(o=>o.selection==='Election')??[];
   const election=mode==='proposal'&&decision==='Election';
   const bindingBinary=Boolean(charter?.document.terms.rules.execution&&(decision==='Policy'||decision==='Treasury'&&payment));
+  async function saveFounderRegister(){
+    if(!identity?.governanceExecution)return;
+    setBuilding(true);setError('');
+    try{
+      let file=founderRegisterOriginal;
+      if(!file){
+        const device=await identity.governanceExecution();
+        const created=await device.createRegister();
+        file=await device.exportHeldRegister(created.registerProofObjectId);
+        setFounderRegisterOriginal(file);
+      }
+      const url=URL.createObjectURL(file),link=document.createElement('a');
+      link.href=url;link.download=file.name;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+    }catch(e){setError(e instanceof Error?e.message:'The register Original could not be saved.');}
+    finally{setBuilding(false);}
+  }
   async function submit(e:FormEvent){
     e.preventDefault();setError('');
     if(mode==='proposal'&&!charter){setError('Choose a governing charter before writing a proposal.');return;}
@@ -95,17 +115,20 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         const terms={assetId:currency.assetId,minimumPriceUsdCents:min,...(max===undefined?{}:{maximumPriceUsdCents:max}),
           allowSalesPause,...(servicePricing?{servicePricing}:{})};
         if(holderVoting){
-          const registerOwner=custodian.trim();
+          const registerOwner=founderCustody?owner:custodian.trim();
+          const signerKey=(founderCustody?founderKeyId:custodianKey).trim();
+          const file=founderCustody?founderRegisterOriginal:registerOriginal;
           if(founders.trim())throw Error('Use one founder to link this open holder charter from Bankeiz.');
-          if(!registerOriginal||!registerOwner||registerOwner===owner||!/^[a-f0-9]{64}$/u.test(custodianKey.trim())){
-            throw Error('Choose the independent custodian’s register Original and enter its public key ID.');
-          }
+          if(!/^[a-f0-9]{64}$/u.test(signerKey)||!registerOwner||(!founderCustody&&registerOwner===owner))
+            throw Error('Select founder custody or enter an independent custodian’s Receiz ID and public key ID.');
+          if(!file)throw Error('Create or choose the custodian’s starting register Original.');
           const {openGovernanceRegister}=await import('../../receiz/governance-execution-register');
-          const {register}=await openGovernanceRegister(registerOriginal,registerOwner);
+          const {register}=await openGovernanceRegister(file,registerOwner);
           if(register.head!==register.registerGenesisHead)throw Error('Choose the custodian’s starting register Original.');
           selectedExecution={rule:'registered-roll-closure-v1',custodian:register.custodian,
             registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,currency:terms,
-            custodianKeyId:custodianKey.trim(),registrationDays,rollReviewDays,quorumPercent:quorum,
+            ...(founderCustody?{custody:'founder-custodian-v1' as const}:{}),
+            custodianKeyId:signerKey,registrationDays,rollReviewDays,quorumPercent:quorum,
             eligibility:{rule:'native-currency-holders-v1',minimumQuantityMicro:'1'}};
         }else{
           const register=await (await identity.governanceExecution()).createRegister();
@@ -169,9 +192,16 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         <label className="gov-check"><input type="checkbox" checked={allowSalesPause} onChange={e=>setAllowSalesPause(e.target.checked)}/>Allow votes to pause or reopen sales</label>
         <label className="gov-check"><input type="checkbox" checked={holderVoting} onChange={e=>setHolderVoting(e.target.checked)}/>Open voting to currency holders</label>
         {holderVoting&&<div className="gov-fields">
-          <label>Custodian Receiz ID<input required value={custodian} onChange={e=>setCustodian(e.target.value)}/></label>
-          <label>Custodian public key ID<input required pattern="[a-f0-9]{64}" value={custodianKey} onChange={e=>setCustodianKey(e.target.value)}/></label>
-          <label>Custodian register Original<input type="file" required onChange={e=>setRegisterOriginal(e.target.files?.[0]??null)}/></label>
+          <label className="gov-check"><input type="checkbox" checked={founderCustody} onChange={e=>setFounderCustody(e.target.checked)}/>Serve as the founding custodian</label>
+          {founderCustody?<div className="gov-stack">
+            <label>Custodian public key ID <small>Use a key admitted to your Receiz account.</small><input required pattern="[a-f0-9]{64}" value={founderKeyId} onChange={e=>setFounderKey(e.target.value)}/></label>
+            <label>Founder’s starting register Original<input type="file" disabled={building} onChange={e=>setFounderRegisterOriginal(e.target.files?.[0]??null)}/></label>
+            <button type="button" disabled={building} onClick={()=>void saveFounderRegister()}>{founderRegisterOriginal?'Save register Original':'Create and save register Original'}</button>
+          </div>:<>
+            <label>Custodian Receiz ID<input required value={custodian} onChange={e=>setCustodian(e.target.value)}/></label>
+            <label>Custodian public key ID<input required pattern="[a-f0-9]{64}" value={custodianKey} onChange={e=>setCustodianKey(e.target.value)}/></label>
+            <label>Custodian register Original<input type="file" required onChange={e=>setRegisterOriginal(e.target.files?.[0]??null)}/></label>
+          </>}
           <label>Registration period (days)<input type="number" value={registrationDays} required min={1} max={90} onChange={e=>setRegistrationDays(Number(e.target.value))}/></label>
           <label>Roll review period (days)<input type="number" value={rollReviewDays} required min={1} max={90} onChange={e=>setRollReviewDays(Number(e.target.value))}/></label>
           <label>Quorum (%)<input type="number" value={quorum} required min={1} max={100} onChange={e=>setQuorum(Number(e.target.value))}/></label>

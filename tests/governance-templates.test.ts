@@ -4,6 +4,20 @@ import {charterTemplates,proposalDraft,proposalTemplates} from '../src/features/
 
 const id='c9'.repeat(32);
 const rules={...charterTemplates.Cooperative,name:'Workshop assembly',founders:['test.member']};
+it('preserves independent charter terms and requires an explicit founder custody term',()=>{
+  const execution={
+    rule:'registered-roll-closure-v1',custodian:'test.custodian',registerProofObjectId:id,registerGenesisHead:id,
+    treasury:null,currency:{assetId:id,minimumPriceUsdCents:'1',maximumPriceUsdCents:'10',allowSalesPause:true},
+    custodianKeyId:id,registrationDays:7,rollReviewDays:1,quorumPercent:20,
+  };
+  const charter=(e:unknown)=>({kind:'charter',rules:{...rules,allowMandates:false,execution:e}});
+  expect(readGovernanceTerms(charter(execution))).toEqual(charter(execution));
+  const founder={...execution,custodian:rules.founders[0],custody:'founder-custodian-v1'};
+  expect(readGovernanceTerms(charter(founder))).toEqual(charter(founder));
+  expect(()=>readGovernanceTerms(charter({...execution,custodian:rules.founders[0]}))).toThrow();
+  expect(()=>readGovernanceTerms(charter({...founder,custody:'unknown'}))).toThrow();
+  expect(()=>readGovernanceTerms(charter({...founder,custodian:'test.unrelated'}))).toThrow();
+});
 it('each populated starting charter can be reviewed with only the actual organization name and founding member',()=>{
   for(const [label,draft] of Object.entries(charterTemplates)){
     if(label==='Custom')continue;
