@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
-import { formatMoney, formatUnits, parseAmount } from '../../core/money';
+import { formatMoney, formatUnits, parseAmount, SCALE } from '../../core/money';
 import { microPulsesSinceGenesis } from '../../../native/receiz/app/utils/kai_pulse';
 import { AmountInput } from '../../components/AmountInput';
 import { CurrencyMark } from '../../components/CurrencyMark';
@@ -39,7 +39,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [seed, setSeed] = useState('');
   const [price, setPrice] = useState('');
   const [issuerControls, setIssuerControls] = useState(false);
-  const [fractionalCredits, setFractionalCredits] = useState(false);
+  const [fractionalUnits, setFractionalUnits] = useState(false);
   const [salesStart, setSalesStart] = useState('');
   const [salesEnd, setSalesEnd] = useState('');
   const [description, setDescription] = useState('');
@@ -76,16 +76,18 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
     else if (returningFromGovernance.current) { returningFromGovernance.current = false; governanceButton.current?.focus(); }
   }, [governance]);
 
-  const pooled = creatorUnits.trim() !== '' && !/^0+$/u.test(creatorUnits.trim());
-  const canIssueFractionalCredits = !pooled && issuerControls && preset === 'service-credit';
-  const quantityIncrementMicro = canIssueFractionalCredits && fractionalCredits ? '1000' : undefined;
-  const countsEntered = /^\d+$/u.test(units.trim()) && /^\d*$/u.test(creatorUnits.trim());
-  const marketUnits = countsEntered ? BigInt(units.trim()) - BigInt(creatorUnits.trim() || '0') : null;
-  const marketShort = marketUnits !== null && pooled && marketUnits < 2n;
+  const quantityIncrementMicro = fractionalUnits ? '1000' : undefined;
+  const increment = BigInt(quantityIncrementMicro ?? SCALE);
+  const readUnits = (value: string) => /^\d{1,18}(?:\.\d{1,6})?$/u.test(value.trim()) ? BigInt(parseAmount(value)) : null;
+  const supplyQuantityMicro = readUnits(units);
+  const creatorQuantityMicro = creatorUnits.trim() ? readUnits(creatorUnits) : 0n;
+  const pooled = creatorQuantityMicro !== null && creatorQuantityMicro > 0n;
+  const marketUnits = supplyQuantityMicro !== null && creatorQuantityMicro !== null ? supplyQuantityMicro - creatorQuantityMicro : null;
+  const marketShort = marketUnits !== null && pooled && marketUnits < 2n * SCALE;
   let openingPrice: string | null = null;
   if (pooled && marketUnits !== null && !marketShort) {
     try {
-      const cents = BigInt(bankOperationDollars(seed)) / marketUnits;
+      const cents = BigInt(bankOperationDollars(seed)) * SCALE / marketUnits;
       openingPrice = formatMoney((cents > 0n ? cents : 1n).toString());
     } catch { /* The seed amount is still being entered. */ }
   }
@@ -187,14 +189,18 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
       <NativeOperation identity={identity} title="Currency" confirmLabel="Issue currency" committedTitle="Currency issued." onRefresh={onRefresh}
         inputKey={JSON.stringify([name, symbol, preset, units, creatorUnits, seed, price, description, issuerControls, quantityIncrementMicro, salesStart, salesEnd])}
         reviewDetails={quantityIncrementMicro && <div className="detail-list">
-          <div><span>Smallest service-credit amount</span><strong>{formatUnits(quantityIncrementMicro)} {symbol}</strong></div>
+          <div><span>Smallest transferable amount</span><strong>{formatUnits(quantityIncrementMicro)} {symbol}</strong></div>
         </div>}
         onResult={result => {
           if (result.status === 'committed' && 'nativeAssetSource' in result) setIssueSource(result.nativeAssetSource);
         }}
         input={() => {
           const asset = definition();
-          if (!/^\d*$/u.test(creatorUnits.trim())) throw Error('Enter a whole number of units to keep.');
+          const supply = parseAmount(asset.units);
+          if (creatorQuantityMicro === null) throw Error('Enter a valid amount for units you keep.');
+          if (creatorQuantityMicro % increment !== 0n || BigInt(supply) % increment !== 0n) {
+            throw Error(fractionalUnits ? 'Enter units in increments of 0.001.' : 'Enter whole units or choose thousandths in Advanced terms.');
+          }
           if (marketShort) throw Error('Leave at least two units in the pool so it can quote a buy.');
           const opensAtKaiUPulse = salesStart ? salesDateToKai(salesStart) : undefined;
           const closesAtKaiUPulse = salesEnd ? salesDateToKai(salesEnd) : undefined;
@@ -204,12 +210,12 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           const salesWindow = opensAtKaiUPulse || closesAtKaiUPulse ? {
             ...(opensAtKaiUPulse ? { opensAtKaiUPulse } : {}), ...(closesAtKaiUPulse ? { closesAtKaiUPulse } : {}),
           } : undefined;
-          const common = { preset, ...(issuerControls ? { issuerControls: true } : {}), ...(salesWindow ? { salesWindow } : {}) };
+          const common = { preset, ...(issuerControls ? { issuerControls: true } : {}), ...(salesWindow ? { salesWindow } : {}),
+            ...(quantityIncrementMicro ? { quantityIncrementMicro } : {}) };
           const policy = inspectNativeCurrencyPolicy(pooled
-            ? { ...common, kind: 'constant-product-pool', creatorQuantityMicro: parseAmount(creatorUnits), seedUsdCents: bankOperationDollars(seed) }
-            : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price),
-              ...(quantityIncrementMicro ? { quantityIncrementMicro } : {}) });
-          nativeCurrencyLaunch(policy, parseAmount(asset.units));
+            ? { ...common, kind: 'constant-product-pool', creatorQuantityMicro: creatorQuantityMicro.toString(), seedUsdCents: bankOperationDollars(seed) }
+            : { ...common, kind: 'fixed-reserve-pool', priceUsdCentsPerUnit: bankOperationDollars(price) });
+          nativeCurrencyLaunch(policy, supply);
           return { kind: 'issue-currency', definition: asset, policy };
         }}
         operations={async () => (await identity.backedAssetPublication()).operations(draft)}>
@@ -223,13 +229,13 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           <div className="currency-creation-pair">
             <label className="form-field"><span>Supply cap</span>
               <div className="amount-input">
-                <input value={units} onChange={event => setUnits(event.target.value)} inputMode="numeric" autoComplete="off" placeholder="0" aria-label="Supply cap" />
+                <input value={units} onChange={event => setUnits(event.target.value)} inputMode={fractionalUnits ? 'decimal' : 'numeric'} autoComplete="off" placeholder="0" aria-label="Supply cap" />
                 <span className="amount-suffix">units</span>
               </div>
             </label>
             <AmountInput label="Units you keep" value={creatorUnits} onChange={setCreatorUnits} suffix="units" />
           </div>
-          {marketUnits !== null && marketUnits > 0n && !marketShort && <p className="small-copy">{formatUnits((marketUnits * 1_000_000n).toString())} {marketUnits === 1n ? 'unit goes' : 'units go'} to Market.</p>}
+          {marketUnits !== null && marketUnits > 0n && !marketShort && <p className="small-copy">{formatUnits(marketUnits.toString())} {marketUnits === SCALE ? 'unit goes' : 'units go'} to Market.</p>}
           {marketShort && <p className="small-copy">Leave at least two units in the pool so it can quote a buy.</p>}
           {pooled ? <>
             <AmountInput label="Starting liquidity" value={seed} onChange={setSeed} dollars />
@@ -259,12 +265,12 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
               </label>
             </div>
           </fieldset>
-          {canIssueFractionalCredits && <label className="form-field"><span>Smallest service-credit amount</span>
-            <select value={quantityIncrementMicro ?? '1000000'} onChange={event => setFractionalCredits(event.currentTarget.value === '1000')}>
+          <label className="form-field"><span>Smallest transferable amount</span>
+            <select value={quantityIncrementMicro ?? '1000000'} onChange={event => setFractionalUnits(event.currentTarget.value === '1000')}>
               <option value="1000000">Whole units (1)</option>
               <option value="1000">Thousandths (0.001)</option>
             </select>
-          </label>}
+          </label>
           <fieldset className="currency-sales-schedule">
             <legend>Sales schedule</legend>
             <div className="currency-creation-pair">

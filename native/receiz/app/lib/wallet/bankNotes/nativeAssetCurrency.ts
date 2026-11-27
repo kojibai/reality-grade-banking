@@ -12,11 +12,11 @@ export type NativeCurrencySalesWindow = Readonly<{ opensAtKaiUPulse?: string; cl
 export type NativeCurrencyPolicy = Readonly<{
   issuerControls?: true;
   preset?: NativeCurrencyPreset;
+  quantityIncrementMicro?: '1000';
   salesWindow?: NativeCurrencySalesWindow;
 } & ({
   kind: 'fixed-reserve-pool';
   priceUsdCentsPerUnit: string;
-  quantityIncrementMicro?: '1000';
 } | {
   kind: 'constant-product-pool';
   creatorQuantityMicro: string;
@@ -90,11 +90,11 @@ export function inspectNativeCurrencyPolicy(value: unknown): NativeCurrencyPolic
     ...(controlled ? ['issuerControls'] : []), ...(presetSpecified ? ['preset'] : []), ...(scheduled ? ['salesWindow'] : []),
     ...(fractional ? ['quantityIncrementMicro'] : [])]);
   if (controlled && policy.issuerControls !== true || presetSpecified && !isNativeCurrencyPreset(policy.preset)) return fail('CURRENCY_INVALID');
-  if (fractional && (policy.kind !== 'fixed-reserve-pool' || policy.preset !== 'service-credit'
-    || policy.quantityIncrementMicro !== '1000')) return fail('CURRENCY_INVALID');
+  if (fractional && policy.quantityIncrementMicro !== '1000') return fail('CURRENCY_INVALID');
   const extras = {
     ...(controlled ? { issuerControls: true as const } : {}),
     ...(isNativeCurrencyPreset(policy.preset) ? { preset: policy.preset } : {}),
+    ...(fractional ? { quantityIncrementMicro: '1000' as const } : {}),
     ...(scheduled ? { salesWindow: inspectNativeCurrencySalesWindow(policy.salesWindow) } : {}),
   };
   if (policy.kind === 'constant-product-pool') return {
@@ -102,8 +102,7 @@ export function inspectNativeCurrencyPolicy(value: unknown): NativeCurrencyPolic
     seedUsdCents: amount(policy.seedUsdCents, true).toString(),
   };
   if (policy.kind !== 'fixed-reserve-pool') return fail('CURRENCY_INVALID');
-  return { ...extras, kind: policy.kind, priceUsdCentsPerUnit: amount(policy.priceUsdCentsPerUnit, true).toString(),
-    ...(fractional ? { quantityIncrementMicro: '1000' as const } : {}) };
+  return { ...extras, kind: policy.kind, priceUsdCentsPerUnit: amount(policy.priceUsdCentsPerUnit, true).toString() };
 }
 
 export function inspectNativeCurrencyChanges(value: unknown): NativeCurrencyChanges {
@@ -129,7 +128,7 @@ export function inspectNativeCurrencyManagement(value: unknown): NativeCurrencyM
 }
 
 export function nativeCurrencyQuantityIncrement(policy?: NativeCurrencyPolicy): bigint {
-  return policy?.kind === 'fixed-reserve-pool' && policy.quantityIncrementMicro === '1000' ? 1_000n : MICRO;
+  return policy?.quantityIncrementMicro === '1000' ? 1_000n : MICRO;
 }
 
 export function assertNativeCurrencyQuantity(quantityMicro: bigint, policy?: NativeCurrencyPolicy): void {
@@ -152,7 +151,7 @@ export function nativeCurrencyLaunch(policy: NativeCurrencyPolicy, supplyMicro: 
     return { creatorQuantityMicro: '0', marketQuantityMicro: supplyMicro, seedUsdCents: '0' };
   }
   const retained = amount(policy.creatorQuantityMicro);
-  if (supply - retained < 2n * MICRO || retained % MICRO !== 0n) return fail('CURRENCY_ALLOCATION');
+  if (supply - retained < 2n * MICRO || retained % nativeCurrencyQuantityIncrement(policy) !== 0n) return fail('CURRENCY_ALLOCATION');
   return { creatorQuantityMicro: policy.creatorQuantityMicro, marketQuantityMicro: (supply - retained).toString(), seedUsdCents: policy.seedUsdCents };
 }
 

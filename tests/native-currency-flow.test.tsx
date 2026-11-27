@@ -132,14 +132,14 @@ it('reopens a held currency draft as issuance without rebuilding its artwork', a
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 
-it('opts issuer-managed service credits into thousandth-unit increments at issuance',async()=>{
+it.each(['currency','service-credit','coupon','rewards'] as const)('opts %s into thousandth-unit increments at issuance',async(preset)=>{
  const host=document.createElement('div'),root=createRoot(host),identity={} as OpenIdentity;
  const button=(label:string)=>[...host.querySelectorAll('button')].find(item=>item.textContent?.trim()===label)!;
  document.body.append(host);
- const increment=()=>[...host.querySelectorAll('select')].find(item=>item.closest('label')?.textContent?.startsWith('Smallest service-credit amount'));
+ const increment=()=>[...host.querySelectorAll('select')].find(item=>item.closest('label')?.textContent?.startsWith('Smallest transferable amount'));
  try {
   await act(async()=>root.render(<IssueCurrency identity={identity} onRefresh={vi.fn()}/>));
-  await act(async()=>host.querySelector<HTMLInputElement>('input[value="service-credit"]')!.click());
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value="'+preset+'"]')!.click());
   await act(async()=>{
    enter(host,'Name','Studio time');
    enter(host,'Currency code','STUDIO');
@@ -149,10 +149,8 @@ it('opts issuer-managed service credits into thousandth-unit increments at issua
    enter(host,'Supply cap','10');
    enter(host,'Purchase price per unit','1.00');
   });
-  expect(increment()).toBeUndefined();
-  await act(async()=>host.querySelector<HTMLInputElement>('input[value=managed]')!.click());
   expect(increment()?.value).toBe('1000000');
-  expect(review.input?.()).toMatchObject({policy:{kind:'fixed-reserve-pool',preset:'service-credit',issuerControls:true}});
+  expect(review.input?.()).toMatchObject({policy:{kind:'fixed-reserve-pool',preset}});
   expect(review.input?.()).not.toMatchObject({policy:{quantityIncrementMicro:expect.anything()}});
   await act(async()=>{
    const field=increment()!;
@@ -160,9 +158,12 @@ it('opts issuer-managed service credits into thousandth-unit increments at issua
    field.dispatchEvent(new Event('change',{bubbles:true}));
   });
   expect(review.input?.()).toMatchObject({policy:{quantityIncrementMicro:'1000'}});
-  await act(async()=>host.querySelector<HTMLInputElement>('input[value=fixed]')!.click());
-  expect(increment()).toBeUndefined();
-  expect(review.input?.()).not.toMatchObject({policy:{quantityIncrementMicro:expect.anything()}});
+  await act(async()=>host.querySelector<HTMLInputElement>('input[value=managed]')!.click());
+  expect(review.input?.()).toMatchObject({policy:{issuerControls:true,quantityIncrementMicro:'1000'}});
+  await act(async()=>enter(host,'Units you keep','1.001'));
+  await act(async()=>enter(host,'Starting liquidity','10.00'));
+  expect(review.input?.()).toMatchObject({policy:{kind:'constant-product-pool',preset,creatorQuantityMicro:'1001000',quantityIncrementMicro:'1000'}});
+  expect(increment()?.value).toBe('1000');
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 
@@ -257,13 +258,14 @@ it('uses one available balance when purchasing a public currency by stable asset
  } finally {await act(async()=>root.unmount());}
 });
 
-it('keeps fractional service credits in the public Market and buys the signed minimum', async () => {
+it.each(['currency','service-credit','coupon','rewards'] as const)('keeps fractional %s in the public Market and buys the signed minimum', async (preset) => {
  const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64);
  const identity={listDeposits:async()=>[]} as unknown as OpenIdentity;
  const binding={id,issuanceSourceSha256:'b'.repeat(64),headSourceSha256:'c'.repeat(64),publicCertificateSha256:'d'.repeat(64)};
- const currency={symbol:'FIELD',supplyMicro:'1999000',priceUsdCentsPerUnit:'25',preset:'service-credit'} as const;
+ const currency={symbol:'FIELD',supplyMicro:'1999000',priceUsdCentsPerUnit:'25',preset} as const;
  expect(publicNativeAssetBinding({...binding,currency})).toBeUndefined();
  const admitted=publicNativeAssetBinding({...binding,currency:{...currency,quantityIncrementMicro:'1000'}});
+ expect(publicNativeAssetBinding({...binding,currency:{...currency,quantityIncrementMicro:'1000',poolPricing:true}})?.currency?.poolPricing).toBe(true);
  expect(admitted?.currency?.supplyMicro).toBe('1999000');
  try {
   await act(async()=>root.render(<LiveOwnership identity={identity} mode="buy" nativeAssetId={id}

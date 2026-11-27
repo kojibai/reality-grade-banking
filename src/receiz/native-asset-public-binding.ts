@@ -11,7 +11,7 @@ export function publicNativeAssetBinding(value:unknown):PublicNativeAssetBinding
  if(!currency||typeof currency!=='object'||Array.isArray(currency)||Object.keys(currency).some(key=>!['symbol','supplyMicro','priceUsdCentsPerUnit','issuerControls','preset','poolPricing','salesWindow','adaptiveSupply','quantityIncrementMicro'].includes(key))
   ||Object.hasOwn(currency,'issuerControls')&&currency.issuerControls!==true
   ||Object.hasOwn(currency,'adaptiveSupply')&&(currency.adaptiveSupply!==true||currency.issuerControls!==true||currency.poolPricing===true)
-  ||Object.hasOwn(currency,'quantityIncrementMicro')&&(currency.quantityIncrementMicro!=='1000'||currency.preset!=='service-credit'||currency.poolPricing===true)
+  ||Object.hasOwn(currency,'quantityIncrementMicro')&&currency.quantityIncrementMicro!=='1000'
   ||Object.hasOwn(currency,'poolPricing')&&currency.poolPricing!==true
   ||Object.hasOwn(currency,'preset')&&(typeof currency.preset!=='string'||!Object.hasOwn(currencyPresets,currency.preset))
   ||typeof currency.symbol!=='string'||! /^[A-Z][A-Z0-9]{1,7}$/.test(currency.symbol)
