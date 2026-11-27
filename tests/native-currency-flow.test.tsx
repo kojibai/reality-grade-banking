@@ -108,7 +108,27 @@ it('opens currency issue inside An asset, preserves the Original draft, and stag
 
   await review.operations?.();
   expect(operations).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({title:'Field credit',
-   definition:expect.objectContaining({units:'10'}),files:[{id:'currency-artwork',role:'primary',file:artwork}]}));
+   files:[{id:'currency-artwork',role:'primary',file:artwork}]}));
+  await review.operations?.();
+  expect(operations.mock.calls[1][0]).toBe(operations.mock.calls[0][0]);
+ } finally {await act(async()=>root.unmount());host.remove();}
+});
+
+it('reopens a held currency draft as issuance without rebuilding its artwork', async () => {
+ const host=document.createElement('div'),root=createRoot(host);
+ const definition={name:'Spotlight',symbol:'SPT',units:'1',description:'Feature an Original',linkedProofDigest:null};
+ const policy={kind:'fixed-reserve-pool',preset:'currency',priceUsdCentsPerUnit:'1',issuerControls:true};
+ const operations=vi.fn();
+ const identity={backedAssetPublication:async()=>({operations,pending:async()=>({deposit:null,state:{
+  stage:'source-held',intentDigest:'a'.repeat(64),intent:{definition,currencyPolicy:policy},
+ }})})} as unknown as OpenIdentity;
+ document.body.append(host);
+ try {
+  await act(async()=>root.render(<CreateAsset identity={identity} onClose={()=>{}} onRefresh={()=>{}}/>));
+  expect(host.textContent).toContain('Continue your currency.');
+  expect(review.input?.()).toEqual({kind:'issue-currency',definition,policy});
+  await review.operations?.();
+  expect(operations).toHaveBeenCalledExactlyOnceWith();
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 

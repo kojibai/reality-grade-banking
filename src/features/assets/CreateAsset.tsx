@@ -18,6 +18,7 @@ import {createSealTimeEstimator,type AssetDeliveryTiming} from './asset-progress
 import './asset-studio.css';
 import './asset-creation-studio.css';
 import type {BackedPublicationState} from '../../receiz/backed-asset-publication';
+import type {BackedAssetPublicationIntent} from '../../receiz/backed-asset-client';
 import {assetPublicationDeliveryTiming,isAssetPublicationDeliveryActive,subscribeAssetPublicationDeliveries,retainAssetPublicationDelivery,type AssetPublicationAttempt} from '../../receiz/asset-publication';
 const ImportOriginal=lazy(()=>import('../deposit/LiveDeposit').then(module=>({default:module.LiveDeposit})));
 const IssueCurrency=lazy(()=>import('./IssueCurrency').then(module=>({default:module.IssueCurrency})));
@@ -103,7 +104,20 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true,mark
  async function adoptBacked(completed?:HeldDeposit|null){const current=await(await identity.backedAssetPublication()).pending(!completed);if(active.current){setResultBacked(true);setBackedState(current.state);if(completed??current.deposit){setResult(previous=>retainCreatedAssetResult(previous,(completed??current.deposit)!));onRefresh();}}}
  async function resumeBacked(){if(running.current)return;running.current=true;setBusy(true);setError('');try{const completed=await(await identity.backedAssetPublication()).resume();await adoptBacked(completed);onRefresh();}catch(cause){if(active.current)setError(cause instanceof Error?cause.message:'Your original creation remains saved. Try again when connected.');}finally{running.current=false;if(active.current)setBusy(false);}}
  if(backedState&&!result&&backedState.stage!=='published'){
-  if(backedState.stage==='source-held'){const saved=backedState.intent as {definition:ReturnType<typeof composerDefinition>;amountUsdCents:string};return <><NativeOperation identity={identity} operations={async()=>(await identity.backedAssetPublication()).operations()} input={()=>({kind:'fund-asset',definition:saved.definition,fundingRule:'reserve-first-then-settlement',amountUsdCents:saved.amountUsdCents})} inputKey={backedState.intentDigest} title="Asset creation" confirmLabel="Create funded asset" onRefresh={onRefresh} onResult={()=>adoptBacked()}><h1 className="sheet-hero">Continue your asset.</h1><p className="body-copy">{saved.definition.name}. Your original and selected files are saved. Review its backing to continue.</p></NativeOperation><button className="secondary-button" onClick={()=>void identity.backedAssetPublication().then(api=>api.cancel()).then(()=>{setBackedState(null);setResultBacked(false);})}>Cancel creation</button></>;}
+  if(backedState.stage==='source-held'){
+   const saved=backedState.intent as BackedAssetPublicationIntent;
+   const currency='currencyPolicy' in saved;
+   return <><NativeOperation identity={identity} operations={async()=>(await identity.backedAssetPublication()).operations()}
+    input={()=>currency?{kind:'issue-currency',definition:saved.definition,policy:saved.currencyPolicy}
+     :{kind:'fund-asset',definition:saved.definition,fundingRule:'reserve-first-then-settlement',amountUsdCents:saved.amountUsdCents}}
+    inputKey={backedState.intentDigest} title={currency?'Currency':'Asset creation'} confirmLabel={currency?'Issue currency':'Create funded asset'}
+    committedTitle={currency?'Currency issued.':undefined} onRefresh={onRefresh} onResult={()=>adoptBacked()}>
+     <h1 className="sheet-hero">{currency?'Continue your currency.':'Continue your asset.'}</h1>
+     <p className="body-copy">{saved.definition.name}. {currency?'Your artwork and terms are saved. Review them to continue.':'Your original and selected files are saved. Review its backing to continue.'}</p>
+    </NativeOperation>
+    <button className="secondary-button" onClick={()=>void identity.backedAssetPublication().then(api=>api.cancel()).then(()=>{setBackedState(null);setResultBacked(false);})}>Cancel creation</button>
+   </>;
+  }
   return <><h1 className="sheet-hero">Confirming your asset.</h1><p className="body-copy">Your original creation is saved. Check its recorded outcome to continue.</p><button className="primary-button" disabled={busy} onClick={()=>void resumeBacked()}>{busy?'Checking your creation…':'Continue creation'}</button>{error&&<p className="error-message" role="alert">{error}</p>}<button className="secondary-button" onClick={onClose}>Done</button></>;
  }
 

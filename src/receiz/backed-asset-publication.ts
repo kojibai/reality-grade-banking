@@ -28,7 +28,9 @@ export function createBackedAssetPublication(d:Dependencies){
   return state;
  }
  return{status:()=>d.lock(read),async prepare(intent?:unknown){return d.lock(async()=>{
-  let s=await read();const selected=intent??s?.intent;if(selected===undefined)throw Error('BANK_BACKED_PUBLICATION_SOURCE_REQUIRED');const intentDigest=await digest(selected);
+  const [retained,inputDigest]=await Promise.all([read(),intent==null?null:digest(intent)]);
+  let s=retained;const selected=intent??s?.intent,intentDigest=inputDigest??s?.intentDigest;
+  if(selected===undefined||!intentDigest)throw Error('BANK_BACKED_PUBLICATION_SOURCE_REQUIRED');
   if(s&&s.stage!=='published'&&s.intentDigest!==intentDigest&&!(s.stage==='source-held'&&editableIntent===s.intentDigest))throw Error('BANK_BACKED_PUBLICATION_PENDING');
   if(!s||(s.stage==='published'||s.stage==='source-held'&&editableIntent===s.intentDigest)&&s.intentDigest!==intentDigest){const source=await d.prepareSource(selected);if(!hex(source.digest))throw Error('BANK_BACKED_PUBLICATION_SOURCE_INVALID');s=await write({schema:'bank.backed-asset-publication.v1',ownerReceizId:d.ownerReceizId,intentDigest,intent:selected,source,stage:'source-held'},s);}
   if(s.stage!=='source-held')throw Error('BANK_BACKED_PUBLICATION_PENDING');const review=await d.prepareFunding(s.intent,s.source) as {request?:{requestId?:unknown}};d.assertOpen();if(!review||typeof review.request?.requestId!=='string'||!review.request.requestId)throw Error('BANK_BACKED_PUBLICATION_REVIEW_INVALID');reviews=new WeakMap();editableIntent=undefined;reviews.set(review,{state:s,operationId:review.request.requestId});return review;

@@ -2,6 +2,40 @@ import {expect,it,vi} from 'vitest';
 import {createBackedAssetClient} from '../src/receiz/backed-asset-client';
 import type {AssetComposerDraft} from '../src/receiz/asset-composer';
 
+it('retries a currency review with the exact artwork Source when preparation of terms fails', async () => {
+ let state:unknown=null;
+ const definition={name:'Spotlight',symbol:'SPT',units:'1',description:'Feature an Original',linkedProofDigest:null};
+ const draft:AssetComposerDraft={title:definition.name,description:definition.description,kind:'image',longForm:'',
+  files:[{id:'currency-artwork',role:'primary',file:new File(['artwork'],'spotlight.png',{type:'image/png'})}]};
+ const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,
+  filename:'authored.receizbundle',mimeType:'application/vnd.receiz.bundle+json',
+  bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}};
+ const prepareDraft=vi.fn(async (selected:AssetComposerDraft)=>{
+  const file=new File(['sealed artwork '+prepareDraft.mock.calls.length],'spotlight.png',{type:'image/png'});
+  return {...selected,files:[{id:'currency-artwork',role:'primary' as const,file}]};
+ });
+ const prepareContent=vi.fn(async (selected:AssetComposerDraft)=>({
+  schema:'receiz.bank.asset-content.v2',ownerReceizId:'artist.receiz.id',...selected,
+  files:[{id:'currency-artwork',role:'primary',name:selected.files[0].file.name,mime:'image/png',
+   size:selected.files[0].file.size,sha256:(prepareDraft.mock.calls.length===1?'c':'d').repeat(64),
+   bytes:{...reference.bytes,byteLength:selected.files[0].file.size,contentByteLength:selected.files[0].file.size}}],
+ }));
+ const prepare=vi.fn().mockRejectedValueOnce(Error('HTTP_503')).mockResolvedValueOnce({request:{requestId:'currency-review'}});
+ const stage=vi.fn(async()=>reference);
+ const client=createBackedAssetClient({ownerReceizId:'artist.receiz.id',assertOpen(){},lock:async run=>run(),
+  read:async()=>state,write:async next=>{state=next;},prepareDraft,
+  runtime:async()=>({prepareContent,stage,sealContent:async()=>({artifact:new File(['{}'],reference.filename,{type:reference.mimeType}),reference})})as never,
+  retain:async()=>({digest:reference.artifactSha256})as never,restore:async()=>{throw Error('NO_DELIVERY');},
+  operations:async()=>({prepare})as never,recoverFunding:async()=>null,publicProjection:async()=>{throw Error('NO_FUNDING_EXECUTION');}});
+ const operation={kind:'issue-currency',definition,policy:{kind:'fixed-reserve-pool',preset:'currency',priceUsdCentsPerUnit:'1'}} as const;
+ await expect(client.operations(draft).prepare(operation)).rejects.toThrow('HTTP_503');
+ await expect(client.operations(draft).prepare(operation)).resolves.toEqual({request:{requestId:'currency-review'}});
+ expect(prepareDraft).toHaveBeenCalledOnce();
+ expect(prepareContent).toHaveBeenCalledOnce();
+ expect(stage).toHaveBeenCalledOnce();
+ expect(prepare.mock.calls[1][0]).toEqual(prepare.mock.calls[0][0]);
+});
+
 it.each(['cancel','edit'] as const)('uses the new artwork after %s without reusing the previous publisher',async action=>{
  let state:unknown=null;
  const reference={schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'authored.receizbundle',mimeType:'application/vnd.receiz.bundle+json',bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}};

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, Coins, Gift, ImagePlus, Tag, Ticket, LockKeyhole, SlidersHorizontal, Vote, X } from 'lucide-react';
 import { formatMoney, formatUnits, parseAmount } from '../../core/money';
 import { microPulsesSinceGenesis } from '../../../native/receiz/app/utils/kai_pulse';
@@ -44,6 +44,10 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
   const [salesEnd, setSalesEnd] = useState('');
   const [description, setDescription] = useState('');
   const [artwork, setArtwork] = useState<File | null>(null);
+  const draft = useMemo<AssetComposerDraft>(() => ({
+    title: name, description, kind: artwork ? 'image' : 'moment', longForm: '',
+    files: artwork ? [{ id: 'currency-artwork', role: 'primary', file: artwork }] : [],
+  }), [artwork, description, name]);
   const [artworkPreview, setArtworkPreview] = useState<{ file: File; url: string } | null>(null);
   const [issueSource, setIssueSource] = useState<NativeAssetPacket | null>(null);
   const [governance, setGovernance] = useState<{ name: string; code: string; accountUid: string; currency: CurrencyVotingContext } | null>(null);
@@ -208,13 +212,7 @@ export function IssueCurrency({ identity, onRefresh }: { identity: OpenIdentity;
           nativeCurrencyLaunch(policy, parseAmount(asset.units));
           return { kind: 'issue-currency', definition: asset, policy };
         }}
-        operations={async () => {
-          const asset = definition();
-          const draft: AssetComposerDraft = { definition: asset, title: asset.name, description: asset.description,
-            kind: artwork ? 'image' : 'moment', longForm: '',
-            files: artwork ? [{ id: 'currency-artwork', role: 'primary', file: artwork }] : [] };
-          return (await identity.backedAssetPublication()).operations(draft);
-        }}>
+        operations={async () => (await identity.backedAssetPublication()).operations(draft)}>
         <button type="button" className="back-link" onClick={() => openStep('details')}><ArrowLeft size={16} />Edit currency details</button>
         <header className="creation-intro currency-terms-heading">
           <h1 ref={stepHeading} tabIndex={-1} className="sheet-hero">Set currency terms.</h1>
