@@ -63,6 +63,17 @@ it('opens the pinned genesis offline, retains the exact Original on cold reopen 
   artifactSha256:fixture.register.artifactSha256,exactBytesB64u:fixture.register.exactBytesB64u,
  });
  await expect(restarted.transportHeldRegisterGenesis(first.registerProofObjectId,'f'.repeat(64))).rejects.toThrow(/coordinate/);
+ const issuerRecords=new Map<string,unknown>();
+ const issuerPorts={...ports,owner:'issuer.receiz.id',read:async(slot:string)=>issuerRecords.get(slot)??null,
+  write:async(slot:string,next:unknown,previous:unknown)=>{expect(issuerRecords.get(slot)??null).toEqual(previous);issuerRecords.set(slot,structuredClone(next));}};
+ const issuer=createGovernanceExecution(issuerPorts);
+ await expect(issuer.retainCustodianRegisterGenesis(source,'other.receiz.id')).rejects.toThrow();
+ expect(await issuer.retainCustodianRegisterGenesis(source,authority.custodian)).toEqual(first);
+ expect(await issuer.selectedRegister()).toBeNull();
+ const reopenedIssuer=createGovernanceExecution(issuerPorts);
+ expect(await reopenedIssuer.transportHeldRegisterGenesis(first.registerProofObjectId,first.registerGenesisHead,authority.custodian)).toMatchObject({
+  artifactSha256:fixture.register.artifactSha256,exactBytesB64u:fixture.register.exactBytesB64u,
+ });
  const review=await restarted.prepare(input);expect(review.registerHead).toBe(first.head);expect(review.decision.seated).toHaveLength(1);
  await expect(restarted.execute({...review},review.exactPlanDigest)).rejects.toThrow(/exact governance plan/);
  await expect(restarted.execute(review,'wrong')).rejects.toThrow(/exact governance plan/);

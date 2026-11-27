@@ -1,4 +1,4 @@
-import {useState,type FormEvent} from 'react';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {ArrowLeft,ArrowRight,Check} from 'lucide-react';
 import type {GovernanceTerms,DecisionKind,CharterExecution} from '../../receiz/governance-documents';
 import {readGovernanceTerms} from '../../receiz/governance-documents';
@@ -25,7 +25,12 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
   const [template,setTemplate]=useState<string>(founding?.name??'Member association');
   const [openRoll,setOpenRoll]=useState(Boolean(founding));
   const [holderVoting,setHolderVoting]=useState(false);
-  const [founderCustody,setFounderCustody]=useState(false);
+  const [custody,setCustody]=useState<'existing'|'founder'|'managed'>('existing');
+  const founderCustody=custody==='founder';
+  const [managed,setManaged]=useState<{keyId:string;register:GovernanceExecutionRegister}|null>(null);
+  const [workerPreparing,setWorkerPreparing]=useState(false);
+  const setupWorker=useRef<AbortController|null>(null);
+  useEffect(()=>()=>setupWorker.current?.abort(),[]);
   const [founderKey,setFounderKey]=useState<string>();
   const founderKeyId=founderKey??identity?.binding.keyId??'';
   const [custodian,setCustodian]=useState(''),[custodianKey,setCustodianKey]=useState('');
@@ -97,6 +102,37 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
     }catch(e){setError(e instanceof Error?e.message:'The register Original could not be saved.');}
     finally{setBuilding(false);}
   }
+  async function createManagedWorker(){
+    if(!currency||!identity?.currencyGovernance||!identity.governanceExecution||setupWorker.current)return;
+    const controller=new AbortController();
+    setupWorker.current=controller;setWorkerPreparing(true);setError('');
+    try{
+      for(let attempt=0;attempt<45;attempt++){
+        controller.signal.throwIfAborted();
+        const result=await identity.currencyGovernance({schema:'receiz.bank.managed-currency-worker.v1',assetId:currency.assetId}) as {
+          status?:string;custodian?:string;keyId?:string;register?:Parameters<typeof import('../../receiz/governance-execution-register').exactRegisterFile>[0];
+        };
+        controller.signal.throwIfAborted();
+        if(result?.status==='ready'){
+          if(!result.custodian||result.custodian===owner||!result.keyId||!/^[a-f0-9]{64}$/u.test(result.keyId)||!result.register)
+            throw Error('Receiz did not return a verified worker register.');
+          const [{exactRegisterFile},device]=await Promise.all([import('../../receiz/governance-execution-register'),identity.governanceExecution()]);
+          const register=await device.retainCustodianRegisterGenesis(await exactRegisterFile(result.register),result.custodian);
+          controller.signal.throwIfAborted();
+          setManaged({keyId:result.keyId,register});
+          return;
+        }
+        if(result?.status!=='preparing')throw Error('Worker setup was interrupted. Try again to resume.');
+        await new Promise(resolve=>setTimeout(resolve,2000));
+      }
+      throw Error('The worker is still preparing. Select Create worker again to resume.');
+    }catch(error){
+      if(!controller.signal.aborted)setError(error instanceof Error?error.message:'Worker setup is temporarily unavailable.');
+    }finally{
+      setupWorker.current=null;
+      if(!controller.signal.aborted)setWorkerPreparing(false);
+    }
+  }
   async function submit(e:FormEvent){
     e.preventDefault();setError('');
     if(mode==='proposal'&&!charter){setError('Choose a governing charter before writing a proposal.');return;}
@@ -123,18 +159,18 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         const terms={assetId:currency.assetId,minimumPriceUsdCents:min,...(max===undefined?{}:{maximumPriceUsdCents:max}),
           allowSalesPause,...(servicePricing?{servicePricing}:{})};
         if(holderVoting){
-          const registerOwner=founderCustody?owner:custodian.trim();
-          const signerKey=(founderCustody?founderKeyId:custodianKey).trim();
+          const registerOwner=founderCustody?owner:custody==='managed'?managed?.register.custodian:custodian.trim();
+          const signerKey=(founderCustody?founderKeyId:custody==='managed'?managed?.keyId??'':custodianKey).trim();
           const file=founderCustody?founderRegisterOriginal:registerOriginal;
           if(founders.trim())throw Error('Use one founder to link this open holder charter from Bankeiz.');
           if(!/^[a-f0-9]{64}$/u.test(signerKey)||!registerOwner||(!founderCustody&&registerOwner===owner))
             throw Error('Select founder custody or enter an independent custodian’s Receiz ID and public key ID.');
-          if(!file&&!founderCustody)throw Error('Choose the custodian’s starting register Original.');
-          const register=file
+          if(!file&&custody==='existing')throw Error('Choose the custodian’s starting register Original.');
+          const register=custody==='managed'?managed?.register:file
             ? founderCustody?await (await identity.governanceExecution()).selectRegister(file)
-              :(await (await import('../../receiz/governance-execution-register')).openGovernanceRegister(file,registerOwner)).register
+              :await (await identity.governanceExecution()).retainCustodianRegisterGenesis(file,registerOwner)
             : await ensureFounderRegister(await identity.governanceExecution());
-          if(register.head!==register.registerGenesisHead)throw Error('Choose the custodian’s starting register Original.');
+          if(!register||register.head!==register.registerGenesisHead)throw Error('Choose the custodian’s starting register Original.');
           selectedExecution={rule:'registered-roll-closure-v1',custodian:register.custodian,
             registerProofObjectId:register.registerProofObjectId,registerGenesisHead:register.registerGenesisHead,treasury:null,currency:terms,
             ...(founderCustody?{custody:'founder-custodian-v1' as const}:{}),
@@ -202,8 +238,17 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
         <label className="gov-check"><input type="checkbox" checked={allowSalesPause} onChange={e=>setAllowSalesPause(e.target.checked)}/>Allow votes to pause or reopen sales</label>
         <label className="gov-check"><input type="checkbox" checked={holderVoting} onChange={e=>setHolderVoting(e.target.checked)}/>Open voting to currency holders</label>
         {holderVoting&&<div className="gov-fields">
-          <label className="gov-check"><input type="checkbox" checked={founderCustody} onChange={e=>setFounderCustody(e.target.checked)}/>Serve as the founding custodian</label>
-          {founderCustody?<div className="gov-stack">
+          <fieldset disabled={workerPreparing||building}>
+            <legend>Voting custodian</legend>
+            <label className="gov-check"><input type="radio" name="voting-custodian" checked={custody==='existing'} onChange={()=>setCustody('existing')}/>Use an existing custodian</label>
+            <label className="gov-check"><input type="radio" name="voting-custodian" checked={founderCustody} onChange={()=>setCustody('founder')}/>Serve as the founding custodian</label>
+            {identity?.currencyGovernance&&<label className="gov-check"><input type="radio" name="voting-custodian" checked={custody==='managed'} onChange={()=>setCustody('managed')}/>Create a managed worker</label>}
+          </fieldset>
+          {custody==='managed'?<div className="gov-stack">
+            <p className="small-copy">Receiz keeps the worker’s key and starting register. The worker can process holder votes after you sign and link the charter.</p>
+            {managed?<p role="status">Worker ready · {managed.register.custodian}</p>
+              :<button type="button" disabled={workerPreparing||building} onClick={()=>void createManagedWorker()}>{workerPreparing?'Preparing worker…':'Create worker'}</button>}
+          </div>:founderCustody?<div className="gov-stack">
             <label>Custodian public key ID <small>Use a key admitted to your Receiz account.</small><input required pattern="[a-f0-9]{64}" value={founderKeyId} onChange={e=>setFounderKey(e.target.value)}/></label>
             <p className="small-copy">Bankeiz creates and keeps the starting register when you review the charter. You can also use an existing register.</p>
             <label>Use an existing starting register Original<input type="file" disabled={building} onChange={e=>setFounderRegisterOriginal(e.target.files?.[0]??null)}/></label>
@@ -223,6 +268,6 @@ export function GovernanceComposer({currency,founding,member,identity,mode,owner
       <div className="gov-fields">{([['Approval threshold (%)','approvalPercent',50,100],['Minimum affirmative electorate (%)','minimumSupportPercent',0,100],['Voting period (days)','voteDays',1,365],['Challenge period (days)','appealDays',1,90]] as const).map(([label,key,min,max])=><label key={key}>{label}<input type="number" min={min} max={max} required value={rules[key]} onChange={e=>editRules({[key]:Number(e.target.value)})}/></label>)}</div>
     </>}
     {error&&<p role="alert">{error}</p>}
-    <button className="gov-primary" type="submit" disabled={logoBusy||building||mode==='proposal'&&(!charter||election&&(!office||!selected.length))}>{mode==='charter'&&step===1?<><ArrowRight size={16}/>Continue</>:<><Check size={16}/>{identity?'Review Original':'Review draft'}</>}</button>
+    <button className="gov-primary" type="submit" disabled={logoBusy||building||workerPreparing||Boolean(currency&&step===2&&holderVoting&&custody==='managed'&&!managed)||mode==='proposal'&&(!charter||election&&(!office||!selected.length))}>{mode==='charter'&&step===1?<><ArrowRight size={16}/>Continue</>:<><Check size={16}/>{identity?'Review Original':'Review draft'}</>}</button>
   </form>;
 }

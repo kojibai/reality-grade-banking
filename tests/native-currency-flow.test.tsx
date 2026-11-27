@@ -171,14 +171,22 @@ it.each(['currency','service-credit','coupon','rewards'] as const)('opts %s into
  } finally {await act(async()=>root.unmount());host.remove();}
 });
 
-it.each([false,true])('opens the issued currency charter editor from the admitted source without rereading Market (set up during issuance: %s)', async(setUpDuringIssuance)=>{
+it.each(['later','founder','managed'] as const)('opens the issued currency charter editor from the admitted source without rereading Market (%s custody)', async(custodyMode)=>{
+ const setUpDuringIssuance=custodyMode!=='later';
  const host=document.createElement('div'),root=createRoot(host),id='a'.repeat(64),issuer='issuer.receiz.id';
  const actor={artifactSha256:'c'.repeat(64),artifactOwnerReceizId:issuer,keyId:'e'.repeat(64)};
  const readPublicAsset=vi.fn();
- const register={custodian:issuer,registerProofObjectId:'1'.repeat(64),registerGenesisHead:'2'.repeat(64),head:'2'.repeat(64)};
+ const register={custodian:custodyMode==='managed'?'worker.receiz.id':issuer,registerProofObjectId:'1'.repeat(64),registerGenesisHead:'2'.repeat(64),head:'2'.repeat(64)};
  const createRegister=vi.fn(async()=>register),exportHeldRegister=vi.fn();
+ const workerKey='7'.repeat(64);
+ const retainCustodianRegisterGenesis=vi.fn(async()=>register);
+ const currencyGovernanceRequest=vi.fn(async()=>({status:'ready',custodian:register.custodian,keyId:workerKey,register:{
+  filename:'register.receizbundle',mimeType:'application/vnd.receiz.bundle+json',
+  artifactSha256:'44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',exactBytesB64u:'e30',
+ }}));
  const identity={binding:actor,backedAssetPublication:async()=>({pending:async()=>null,readPublicAsset}),
-  governanceExecution:async()=>({createRegister,exportHeldRegister})} as unknown as OpenIdentity;
+  governanceExecution:async()=>({createRegister,exportHeldRegister,retainCustodianRegisterGenesis}),
+  ...(custodyMode==='managed'?{currencyGovernance:currencyGovernanceRequest}:{})} as unknown as OpenIdentity;
  const packet={schema:'receiz.bank.native-asset-result.v1',status:'committed',source:{
   filename:'native-asset.receizbundle',mimeType:'application/vnd.receiz.bundle+json',artifactSha256:'f'.repeat(64),exactBytesB64u:'e30',
  }}as const;
@@ -234,20 +242,27 @@ it.each([false,true])('opens the issued currency charter editor from the admitte
     venuePricing.querySelector('input')!.click();
     enter(host,'Lowest purchase price (USD)','0.25');
     enter(host,'Highest purchase price (USD)','1.00');
-    for (const caption of ['Open voting to currency holders','Serve as the founding custodian']) {
+    for (const caption of ['Open voting to currency holders',custodyMode==='managed'?'Create a managed worker':'Serve as the founding custodian']) {
      const option=[...host.querySelectorAll('label')].find(label=>label.textContent===caption);
      option!.querySelector('input')!.click();
      await Promise.resolve();
     }
    });
+   if(custodyMode==='managed'){
+    expect(findButton('Review Original')?.disabled).toBe(true);
+    await click('Create worker');
+    await vi.waitFor(()=>expect(host.textContent).toContain('Worker ready · worker.receiz.id'));
+    expect(currencyGovernanceRequest).toHaveBeenCalledExactlyOnceWith({schema:'receiz.bank.managed-currency-worker.v1',assetId:id});
+    expect(retainCustodianRegisterGenesis).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({name:'register.receizbundle'}),register.custodian);
+   }
    await click('Review Original');
    expect(findButton('Seal and publish charter')).toBeDefined();
-   expect(createRegister).toHaveBeenCalledOnce();
+   expect(createRegister).toHaveBeenCalledTimes(custodyMode==='managed'?0:1);
    expect(exportHeldRegister).not.toHaveBeenCalled();
    const base={schema:governanceSchema,visibility:'public',author:issuer,accountUid:null} as const;
    const charter:governanceDirectory.GovernanceRow={digest,profileUid:null,pulse:'100',document:{...base,terms:{
     kind:'charter',rules:{...charterTemplates['Member association'],name:'Field credit members',founders:[issuer],
-     execution:{...register,rule:'registered-roll-closure-v1',custody:'founder-custodian-v1',custodianKeyId:actor.keyId,treasury:null,
+     execution:{...register,rule:'registered-roll-closure-v1',...(custodyMode==='founder'?{custody:'founder-custodian-v1'}:{}),custodianKeyId:custodyMode==='managed'?workerKey:actor.keyId,treasury:null,
       registrationDays:7,rollReviewDays:1,quorumPercent:20,
       currency:{assetId:id,minimumPriceUsdCents:'25',maximumPriceUsdCents:'100',allowSalesPause:true}}},
    }}};

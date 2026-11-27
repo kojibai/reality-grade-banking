@@ -64,8 +64,9 @@ export async function retainRatifiedCurrencyCharter(identity: OpenIdentity, char
     }
     const [[signedCharter, ...ratifications], registerGenesis] = await Promise.all([
       Promise.all(originals.map(original => authorize(original))),
-      authority.custody === 'founder-custodian-v1' && authority.custodian === identity.binding.artifactOwnerReceizId &&
-        identity.governanceExecution?.().then(device => device.transportHeldRegisterGenesis(authority.registerProofObjectId, authority.registerGenesisHead)),
+      identity.governanceExecution?.().then(device => device.transportHeldRegisterGenesis(
+        authority.registerProofObjectId, authority.registerGenesisHead, authority.custodian,
+      )),
     ]);
     sources = { schema: 'bankeiz.governance.open-currency-charter-sources.v1', charter: signedCharter, ratifications,
       ...(registerGenesis ? { registerGenesis } : {}) };

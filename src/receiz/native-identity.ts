@@ -589,7 +589,10 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
     });
   }
   async function currencyGovernance(input:Record<string,unknown>){
-    const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);
+    const setup=input.schema==='receiz.bank.managed-currency-worker.v1';
+    const current=await connectClient(setup?[...BANK_READ_SCOPES,'receiz:domains.write']:BANK_READ_SCOPES,setup
+      ?'Create a dedicated Receiz identity and starting voting register for the currency I issued. The worker can act only in the role named by my signed charter.'
+      :BANK_READ_CONSENT);
     noteOpen();
     return current.request(`/api/connect/bank/assets/governance?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:input});
   }

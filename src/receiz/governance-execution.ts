@@ -177,11 +177,22 @@ export function createGovernanceExecution(input:GovernanceExecutionPorts){
   async exportRegister(proposal:string){const saved=await retained(proposal);if(!saved)throw Error('A committed register Original is required.');return saved.source;},
   async exportSelectedRegister(){const selected=await selectedRegister();if(!selected)throw Error('Select a register first.');return (await held(selected.registerProofObjectId)).source;},
   async exportHeldRegister(registerProofObjectId:string){input.assertOpen();return (await held(registerProofObjectId)).source;},
-  async transportHeldRegisterGenesis(registerProofObjectId:string,registerGenesisHead:string){
+  async retainCustodianRegisterGenesis(source:File,custodian:string){
    input.assertOpen();
-   const ref=await input.read(key('register',registerProofObjectId)) as HeldFile|null;
+   const {register,history}=await openGovernanceRegister(source,custodian);
+   if(register.head!==register.registerGenesisHead||history.nodes.length!==1)throw Error('Choose the custodian’s starting register Original.');
+   const slot=key('custodian-register-genesis',register.registerProofObjectId);
+   if(!await input.read(slot)){
+    const ref=await saveFile(source);input.assertOpen();await input.write(slot,ref,null);
+   }
+   return register;
+  },
+  async transportHeldRegisterGenesis(registerProofObjectId:string,registerGenesisHead:string,custodian=input.owner){
+   input.assertOpen();
+   const slot=key(custodian===input.owner?'register':'custodian-register-genesis',registerProofObjectId);
+   const ref=await input.read(slot) as HeldFile|null;
    if(!ref)return null;
-   const {register,history,admission}=await openGovernanceRegister(await file(ref),input.owner);
+   const {register,history,admission}=await openGovernanceRegister(await file(ref),custodian);
    if(register.registerProofObjectId!==registerProofObjectId||register.registerGenesisHead!==registerGenesisHead)
     throw Error('The selected register Original differs from its coordinate.');
    if(register.head!==registerGenesisHead||history.nodes.length!==1)return null;
