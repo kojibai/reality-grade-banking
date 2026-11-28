@@ -1,6 +1,6 @@
 import {canonicalizeReceizV122} from '@receiz/sdk';
 import {createBackedAssetPublication,type BackedPublicationState,type BackedPublicationSource} from './backed-asset-publication';
-import {readComposerAssetContent,readComposerCapacity,validateComposerAssetDraft,type AssetComposerDraft,type ComposerAssetContent} from './asset-composer';
+import {readComposerAssetContent,readComposerCapacity,validateComposerAssetDraft,type AssetComposerDraft,type ComposerAssetContent,type ComposerAssetFile} from './asset-composer';
 import type {BankOperations,BankOperationInput,BankOperationReview,BankOperationResult} from './bank-operations';
 import type {NativeCurrencyPolicy} from '../../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import type {HeldDeposit} from './deposit-source';
@@ -17,6 +17,17 @@ export type BackedAssetPublicationIntent={definition:Extract<BankOperationInput,
 type Intent=BackedAssetPublicationIntent;
 type Input={ownerReceizId:string;assertOpen():void;lock<T>(run:()=>Promise<T>):Promise<T>;read():Promise<unknown>;write(next:BackedPublicationState|null,previous:unknown):Promise<void>;runtime(artwork?:Blob):Promise<Runtime>;prepareDraft?(draft:AssetComposerDraft):Promise<AssetComposerDraft>;operations():Promise<BankOperations>;retain(file:File):Promise<HeldDeposit>;restore(digest:string,filename:string,mimeType:string):Promise<File>;recoverFunding(nonce:string):Promise<BankOperationResult|{status:'not-started'}|null>;publicProjection(assetId:string):Promise<unknown>};
 export type BackedAssetClient=ReturnType<typeof createBackedAssetClient>;
+
+/** The pending currency card reads its admitted artwork from local byte custody. */
+export async function readHeldCurrencyArtwork(file:ComposerAssetFile):Promise<Blob>{
+ const [{reconstructExactByteBlocks},{loadAssetPublicationRuntime},sdk]=await Promise.all([
+  import('../../native/receiz/packages/receiz-sdk/src/exactByteBlocks'),import('./asset-publication-runtime'),loadReceiz(),
+ ]);
+ const runtime=await loadAssetPublicationRuntime();
+ const bytes=await reconstructExactByteBlocks(file.bytes,runtime.resolveComposerBlock,{component:'Held currency artwork',maxContentBytes:file.size,maxBlockReads:131072});
+ if(bytes.length!==file.size||await sdk.sha256ReceizBytes(bytes)!==file.sha256)throw Error('BANK_CURRENCY_ARTWORK_SOURCE_MISMATCH');
+ return new Blob([bytes.buffer as ArrayBuffer],{type:file.mime});
+}
 export function createBackedAssetClient(d:Input){
  let runtime:Promise<Runtime>|undefined,artwork:Blob|undefined,lastFunding:BankOperationResult|undefined;
  let preparedCurrency:{draft:AssetComposerDraft;definition:string;content:Promise<ComposerAssetContent>}|undefined;

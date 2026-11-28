@@ -1,10 +1,28 @@
 import {expect,it,vi} from 'vitest';
 import {canonicalizeReceizV122,sha256ReceizBytes} from '@receiz/sdk';
-import {createBackedAssetClient} from '../src/receiz/backed-asset-client';
+import {createBackedAssetClient,readHeldCurrencyArtwork} from '../src/receiz/backed-asset-client';
 import type {BackedPublicationState} from '../src/receiz/backed-asset-publication';
 import * as publicAsset from '../src/receiz/native-asset-public';
+import * as publicationRuntime from '../src/receiz/asset-publication-runtime';
+import {writeExactByteBlocks} from '../native/receiz/packages/receiz-sdk/src/exactByteBlocks';
 import {inspectNativeCurrencyPolicy} from '../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import type {AssetComposerDraft} from '../src/receiz/asset-composer';
+
+it('reopens the exact currency artwork using only its retained blocks',async()=>{
+ const image=new Uint8Array([137,80,78,71,13,10,26,10]);
+ const blocks=new Map<string,Uint8Array>();
+ const bytes=await writeExactByteBlocks(new Blob([image]),async(ref,data)=>{blocks.set(ref.sha256,data);});
+ const resolveComposerBlock=vi.fn(async(ref:typeof bytes)=>blocks.get(ref.sha256)!);
+ const runtime=vi.spyOn(publicationRuntime,'loadAssetPublicationRuntime').mockResolvedValue({resolveComposerBlock} as never);
+ const file={id:'currency-artwork',role:'primary' as const,name:'coin.png',mime:'image/png',size:image.length,sha256:await sha256ReceizBytes(image),bytes};
+ try{
+  const artwork=await readHeldCurrencyArtwork(file);
+  expect(artwork.type).toBe(file.mime);
+  expect(new Uint8Array(await artwork.arrayBuffer())).toEqual(image);
+  expect(resolveComposerBlock).toHaveBeenCalledExactlyOnceWith(bytes);
+  await expect(readHeldCurrencyArtwork({...file,sha256:'a'.repeat(64)})).rejects.toThrow('BANK_CURRENCY_ARTWORK_SOURCE_MISMATCH');
+ }finally{runtime.mockRestore();}
+});
 
 it.each([false,true])('resumes one issued currency from its canonical public certificate (changed price=%s)',async changed=>{
  const ownerReceizId='artist.receiz.id',type='application/vnd.receiz.bundle+json';

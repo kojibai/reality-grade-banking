@@ -4,7 +4,7 @@ import {Sheet} from '../../components/Sheet';
 import {ArrowRight,ChevronRight,Landmark,ShieldCheck} from 'lucide-react';
 import type {OpenIdentity} from '../../receiz/native-identity';
 import type {HeldDeposit} from '../../receiz/deposit-source';
-import {composerDefinition,composerDraftWithLink,type AssetComposerDraft} from '../../receiz/asset-composer';
+import {composerDefinition,composerDraftWithLink,type AssetComposerDraft,type ComposerAssetFile} from '../../receiz/asset-composer';
 import {AmountInput} from '../../components/AmountInput';
 import {NativeOperation} from '../account/NativeOperation';
 import {bankOperationDollars} from '../../receiz/bank-operations';
@@ -84,6 +84,18 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true,mark
   finally{if(savingOriginal.current===attempt)savingOriginal.current=null;}
  }
  const publicItem=result&&username?(admittedAssetPublicationItem(result.digest,username,accountUid??undefined)??(!accountUid||heldProfile?.userId===accountUid?heldProfile?.items.find(item=>item.originalDigest===result.digest):null)??createdAssetHeldItem(result,marketItems,username,accountUid)):null;
+ const pendingIntent=visible&&result&&resultBacked&&!publicItem?.artworkUrl ? backedState?.intent as BackedAssetPublicationIntent|undefined : undefined;
+ const artworkFile=pendingIntent&&'currencyPolicy' in pendingIntent
+  ? pendingIntent.content.files.find(file=>file.role==='primary'&&['image/png','image/jpeg','image/webp'].includes(file.mime)) : undefined;
+ const [heldArtwork,setHeldArtwork]=useState<{file:ComposerAssetFile;url:string}|null>(null);
+ useEffect(()=>{
+  if(!artworkFile)return;
+  let current=true,url:string|undefined;
+  void import('../../receiz/backed-asset-client').then(api=>api.readHeldCurrencyArtwork(artworkFile)).then(blob=>{
+   if(current){url=URL.createObjectURL(blob);setHeldArtwork({file:artworkFile,url});}
+  }).catch(()=>{/* The saved proof and public delivery do not depend on its preview. */});
+  return()=>{current=false;if(url)URL.revokeObjectURL(url);};
+ },[artworkFile]);
  const heldSigned=!!result&&createdAssetHasHeldSignature(result,publicItem,username,accountUid);
  useEffect(()=>{if(heldSigned)setResult(current=>current&&!current.pbiSigned?{...current,pbiSigned:true}:current);},[heldSigned,result?.digest]);
  const shownResult=result&&heldSigned&&!result.pbiSigned?{...result,pbiSigned:true}:result;
@@ -100,7 +112,7 @@ export function CreateAsset({identity,onRefresh,onClose,active:visible=true,mark
  },[visible,shownResult?.digest,shownResult?.pbiSigned,shownResult?.publication?.status,shownResult?.marketPublication?.status,resultBacked,marketItems,username,accountUid]);
  const delivering=!!result&&(busy||(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.active:!!identity.binding&&isAssetPublicationDeliveryActive(identity.binding.artifactOwnerReceizId,result.digest)));
  const sourceTiming=result?(deliveryAttempt?.sourceDigest===result.digest?deliveryAttempt.timing:identity.binding?assetPublicationDeliveryTiming(identity.binding.artifactOwnerReceizId,result.digest):undefined):undefined;
- if(result)return <CreatedAssetResult result={shownResult!} settings={settings} busy={signing} deliveryActive={delivering} deliveryTiming={result.pbiSigned?signatureTiming.current:sourceTiming} allowLocalSigning={!resultBacked} error={error} username={username} publicItem={publicItem} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
+ if(result)return <CreatedAssetResult result={shownResult!} settings={settings} busy={signing} deliveryActive={delivering} deliveryTiming={result.pbiSigned?signatureTiming.current:sourceTiming} allowLocalSigning={!resultBacked} error={error} username={username} publicItem={publicItem} heldArtwork={heldArtwork?.file===artworkFile?heldArtwork?.url:undefined} onRetryDelivery={create} onPublishMarket={publishMarket} onOpenAsset={()=>{if(publicItem)retainPublicAsset(publicItem);}} onSave={save} onClose={onClose}/>;
  async function adoptBacked(completed?:HeldDeposit|null){const current=await(await identity.backedAssetPublication()).pending(!completed);if(active.current){setResultBacked(true);setBackedState(current.state);if(completed??current.deposit){setResult(previous=>retainCreatedAssetResult(previous,(completed??current.deposit)!));onRefresh();}}}
  async function resumeBacked(){if(running.current)return;running.current=true;setBusy(true);setError('');try{const completed=await(await identity.backedAssetPublication()).resume();await adoptBacked(completed);onRefresh();}catch(cause){if(active.current)setError(cause instanceof Error?cause.message:'Your original creation remains saved. Try again when connected.');}finally{running.current=false;if(active.current)setBusy(false);}}
  if(backedState&&!result&&backedState.stage!=='published'){
