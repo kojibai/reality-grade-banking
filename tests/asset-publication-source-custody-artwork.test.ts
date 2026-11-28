@@ -7,7 +7,7 @@ import {createRoot,hydrateRoot} from 'react-dom/client';
 import {renderToStaticMarkup,renderToString} from 'react-dom/server';
 import {Window} from 'happy-dom';
 import {parsePublicMarket} from '../src/receiz/public-market';
-import {IDBFactory} from 'fake-indexeddb';
+import {IDBFactory,IDBObjectStore} from 'fake-indexeddb';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {conformanceOfflineFixture} from './helpers/conformance-offline-sealer';
 import * as adoption from '../src/receiz/asset-publication-adoption';
@@ -20,10 +20,17 @@ vi.mock('../src/receiz/ledger-offline-proof',()=>({loadOfflineProofVerifier:asyn
  return{report:{schema:'bankeiz.offline-proof-inspection.v1',sdk:'129.0.0',artifactSha256:source.descriptor.artifactSha256,payloadSha256:source.projection.payloadSha256,verification:source.verification},payload:{bytes:new Uint8Array(await source.sourcePayload.arrayBuffer()),filename:source.projection.payloadFilename,mimeType:source.sourcePayload.type,sha256:source.projection.payloadSha256}};
 }})}));
 vi.mock('../src/receiz/asset-publication-runtime',()=>({loadAssetPublicationRuntime:async()=>({...ports.native.connectedComposer,createImportedProofSourceCustody:ports.native.createImportedProofSourceCustody,retainMountedMaterial:(...args:any[])=>{ports.mounts++;const release=ports.native.connectedComposer.retainMountedMaterial(...args);return()=>{ports.releases++;release();};},readHeldImportedProfileOriginalMaterial:(...args:any[])=>{ports.calls++;return ports.work=ports.native.connectedComposer.readHeldImportedProfileOriginalMaterial(...args);}})}));
-afterEach(()=>{adoption.forgetAssetPublicationAdmissions();vi.unstubAllGlobals();});
+afterEach(()=>{adoption.forgetAssetPublicationAdmissions();vi.unstubAllGlobals();vi.restoreAllMocks();});
 it('renders the oldest exact Source artwork after 33 creations with no remote prerequisite',async()=>{
  const storage=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
  const f=await conformanceOfflineFixture({composer:true,account:true}),r=f.runtime;vi.stubGlobal('indexedDB',new IDBFactory());
+ const put=IDBObjectStore.prototype.put;
+ vi.spyOn(IDBObjectStore.prototype,'put').mockImplementation(function(this:IDBObjectStore,value,key){
+  if(this.transaction.db.name==='receiz-imported-source-custody-v1'&&this.name==='segments'&&value.blob instanceof Blob) {
+   throw new DOMException('Error preparing Blob/File data to be stored in object store','UnknownError');
+  }
+  return put.call(this,value,key);
+ });
  const actor=await r.createReceizArtifactAdmissionEngine()(await r.verifyReceizArtifact(new File([new Uint8Array(f.identity.bytes)],'identity.png')),{profile:'identity',identityPassphrase:f.identity.phrase});
  const identity=await r.readReceizIdentityPublicBinding(actor),identityDigest=await r.sha256ReceizBytes(f.identity.bytes),owner=identity.artifactOwnerReceizId,uid='13c41d48-d844-414f-9f72-efae2db63325',username='fixture_creator';
  await saveDeviceIdentity(new Uint8Array(f.identity.bytes),'identity.png',f.identity.phrase,true);
@@ -50,7 +57,7 @@ it('renders the oldest exact Source artwork after 33 creations with no remote pr
   const directory=process.env.BANK_SOURCE_CUSTODY_BROWSER_EVIDENCE;mkdirSync(directory,{recursive:true});
   const database=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('receiz-imported-source-custody-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
   const rows=async(store:string)=>new Promise<any[]>((resolve,reject)=>{const request=database.transaction(store).objectStore(store).getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
-  try{const sources=await rows('sources'),segments=await Promise.all((await rows('segments')).map(async row=>({sha256:row.sha256,byteLength:row.byteLength,bytes:Buffer.from(await row.blob.arrayBuffer()).toString('base64')})));writeFileSync(directory+'/public-source-fixture.json',JSON.stringify({roots:f.roots,oldest,oldestReference,originalRows,sources,segments,display:storage.get('bankeiz-admitted-public-assets-v1'),png:png.toString('base64')}));}finally{database.close();}
+  try{const sources=await rows('sources'),segments=(await rows('segments')).map(row=>({sha256:row.sha256,byteLength:row.byteLength,bytes:Buffer.from(row.exactBytes).toString('base64')}));writeFileSync(directory+'/public-source-fixture.json',JSON.stringify({roots:f.roots,oldest,oldestReference,originalRows,sources,segments,display:storage.get('bankeiz-admitted-public-assets-v1'),png:png.toString('base64')}));}finally{database.close();}
  }
  const saved=storage.get('bankeiz-admitted-public-assets-v1')!;adoption.forgetAssetPublicationAdmissions();storage.set('bankeiz-admitted-public-assets-v1',saved);vi.resetModules();
  ports.native=await f.reloadRuntime();vi.stubGlobal('fetch',forbidden);

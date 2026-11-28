@@ -452,7 +452,7 @@
       "id": "bankeiz-composer-media-importedSourceCustody.client",
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "baseSha256": "2b9292dee19c54d369c5b007ad8ca3c0172fbd80ad7b1efd057fbea1192b3072",
-      "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
       "purpose": "Compose the approved typed asset source, exact resource closure, canonical custody and media projection with unchanged v129 verifier roots and financial authority. No Receiz UI components.",
       "sourceCommit": "b974758ac"
     },
@@ -1964,7 +1964,7 @@
       "id": "bankeiz-held-source-resource-transport-labels",
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "baseSha256": "2f975473841ccbda2da3613835dab256edace7e2010efd4b037ee6da73b44367",
-      "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
       "purpose": "Reuse exact existing Source block-root custody before transport filename/MIME metadata; retain canonical enclosing Source, digest/length, public resource role and private/unknown-resource refusals."
     },
     {
@@ -2120,7 +2120,7 @@
       "id": "bankeiz-accepted-original-pbi-append",
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "baseSha256": "59d0f5dd275bb8fc82702eafd66637a935a63e99dfcd536a3061f77ee3da7ca8",
-      "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
       "purpose": "Reuse the admitted Showcase membership and exact accepted Original for PBI authorship. Recover older delivery locators from the sealed predecessor and retain only the new receipt and append."
     },
     {
@@ -2141,7 +2141,7 @@
       "id": "bankeiz-retained-original-pbi-replay",
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "baseSha256": "c803b593f60d122fd8ad920c46e6414c1e6f14d8a0acb05b1ad4b9b3d0ec3ef4",
-      "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
       "purpose": "Replay the exact retained PBI receipt on the existing accepted Original using the canonical Source reference and owner append."
     },
     {
@@ -2414,7 +2414,7 @@
       "id": "bankeiz-held-original-local-pbi",
       "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
       "baseSha256": "b71d7dd4fb470854c30b60e07a8d3f917bb6b60203d5d5a18fea0138bbff57d4",
-      "sha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
       "purpose": "Recover exact admitted local Original authorship before opening public delivery. Preserve canonical membership checks for the public append."
     },
     {
@@ -2798,6 +2798,14 @@
       "sha256": "9c18ea9c996017fed310e52be5fd6a74a90ed36f51b55b8e72652da716182b1e",
       "sourceCommit": "b33652c9e",
       "purpose": "Verify current native adaptive currency supply after approved issuance or service burn."
+    },
+    {
+      "id": "bankeiz-imported-source-exact-byte-storage",
+      "path": "receiz/app/lib/profile/showcase/importedSourceCustody.client.ts",
+      "baseSha256": "081552dcefe81fa57c896e72fa1c8d12e2f3e48f8404bf4ee93ac3aaae76260a",
+      "sha256": "6d9389bc54ea15f17837e12ce00b5f3aa0c342824b28ededecf651a225cf832c",
+      "purpose": "Persist exact bounded source segments without IndexedDB Blob/File preparation. Keep legacy Blob segments readable with their original digest checks.",
+      "sourceCommit": "33bc306162d44cc16b87c869db177fd814935fc7"
     }
   ]
 }

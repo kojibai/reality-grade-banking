@@ -58,18 +58,21 @@ async function writeRecord(store: string, value: unknown): Promise<void> {
     await completion;
   } finally { database.close(); }
 }
-async function readSegment(descriptor: Segment): Promise<Blob> {
+async function readSegment(descriptor: Segment): Promise<Uint8Array<ArrayBuffer>> {
   if (!descriptor || !/^[0-9a-f]{64}$/.test(descriptor.sha256)
     || !Number.isSafeInteger(descriptor.byteLength) || descriptor.byteLength <= 0
     || descriptor.byteLength > EXACT_BYTE_BLOCK_MAX_BYTES) throw new TypeError(`${PREFIX}_SEGMENT_INVALID`);
-  const value = await readRecord("segments", descriptor.sha256) as { sha256?: unknown; byteLength?: unknown; blob?: unknown } | undefined;
+  const value = await readRecord("segments", descriptor.sha256) as { sha256?: unknown; byteLength?: unknown; exactBytes?: unknown; blob?: unknown } | undefined;
   if (!value) throw new TypeError(`${PREFIX}_SEGMENT_MISSING`);
+  const buffer = value.exactBytes instanceof ArrayBuffer ? value.exactBytes
+    : value.exactBytes === undefined && value.blob instanceof Blob ? await value.blob.arrayBuffer() : null;
   if (value.sha256 !== descriptor.sha256 || value.byteLength !== descriptor.byteLength
-    || !(value.blob instanceof Blob) || value.blob.size !== descriptor.byteLength
-    || bytesToHex(sha256(new Uint8Array(await value.blob.arrayBuffer()))) !== descriptor.sha256) {
+    || buffer?.byteLength !== descriptor.byteLength) {
     throw new TypeError(`${PREFIX}_SEGMENT_INVALID`);
   }
-  return value.blob;
+  const bytes = new Uint8Array(buffer);
+  if (bytesToHex(sha256(bytes)) !== descriptor.sha256) throw new TypeError(`${PREFIX}_SEGMENT_INVALID`);
+  return bytes;
 }
 
 /** Explicit browser composition; generic/server source readers never import IDB.
@@ -89,12 +92,15 @@ export function createImportedProofSourceCustody() {
     const segments: Segment[] = [];
     return {
       async writeSegment(blob) {
-        const bytes = new Uint8Array(await blob.arrayBuffer());
+        // IndexedDB may refuse Blob/File writes in Safari Private. Persist the
+        // same exact bytes directly and keep Blob as the spool's reader shape.
+        const exactBytes = await blob.arrayBuffer();
+        const bytes = new Uint8Array(exactBytes);
         const segment = Object.freeze({ sha256: bytesToHex(sha256(bytes)), byteLength: bytes.byteLength });
-        await writeRecord("segments", { ...segment, blob });
+        await writeRecord("segments", { ...segment, exactBytes });
         const stored = await readSegment(segment);
         segments.push(segment);
-        return stored;
+        return new Blob([stored]);
       },
       async complete(reference) {
         const key = sourceKey(reference);
@@ -125,7 +131,7 @@ export function createImportedProofSourceCustody() {
     async writeBlock(reference:ExactByteBlockReference,bytes:Uint8Array){
       reference=parseExactByteBlockReference(reference);
       if(bytes.length!==reference.byteLength||bytes.length===0||bytes.length>EXACT_BYTE_BLOCK_MAX_BYTES||bytesToHex(sha256(bytes))!==reference.sha256)throw new TypeError(`${PREFIX}_SEGMENT_INVALID`);
-      await writeRecord("segments",{sha256:reference.sha256,byteLength:reference.byteLength,blob:new Blob([bytes.slice().buffer as ArrayBuffer])});
+      await writeRecord("segments", { sha256: reference.sha256, byteLength: reference.byteLength, exactBytes: bytes.slice().buffer });
     },
     createColdSpool,
     /** Initial selected-source admission already verified the enclosing proof.
@@ -137,7 +143,7 @@ export function createImportedProofSourceCustody() {
       const segments: Segment[] = [];
       const reference = await writeImportedProofSourceReference(source, async (ref, bytes) => {
         const segment = { sha256: ref.sha256, byteLength: ref.byteLength };
-        await writeRecord("segments", { ...segment, blob: new Blob([bytes.slice().buffer as ArrayBuffer]) });
+        await writeRecord("segments", { ...segment, exactBytes: bytes.slice().buffer });
         await readSegment(segment);
         if (ref.kind === "bytes") segments.push(segment);
       });
@@ -150,7 +156,7 @@ export function createImportedProofSourceCustody() {
       }
       const payload = await writeExactByteBlocks(source.payload, async (ref, bytes) => {
         await writeRecord("segments", { sha256: ref.sha256, byteLength: ref.byteLength,
-          blob: new Blob([bytes.slice().buffer as ArrayBuffer]) });
+          exactBytes: bytes.slice().buffer });
       });
       await writeRecord("sources", { key: sourceKey(reference), reference, segments, nested, resources,
         presentation: { payload, payloadSha256: source.projection.payloadSha256,
@@ -184,9 +190,9 @@ export function createImportedProofSourceCustody() {
         if (root.contentByteLength !== expectedBytes) throw new TypeError(`${PREFIX}_EXACT_BINDING_MISMATCH`);
         const blobs: Blob[] = []; const hash = sha256.create();
         for await (const bytes of readExactByteBlocks(root, async ref => {
-          const blob = await readSegment(ref);
-          if (ref.kind === "bytes") blobs.push(blob);
-          return new Uint8Array(await blob.arrayBuffer());
+          const bytes = await readSegment(ref);
+          if (ref.kind === "bytes") blobs.push(new Blob([bytes]));
+          return bytes;
         }, { component: "admitted imported source presentation", maxContentBytes: expectedBytes, maxBlockReads: 131_072 })) {
           hash.update(bytes);
         }
@@ -200,7 +206,7 @@ export function createImportedProofSourceCustody() {
     /** Export only the exact closure referenced by an admitted public source.
      * Missing held blocks fail; remote bytes never silently fill local custody. */
     async resolveBlock(ref: ExactByteBlockReference): Promise<Uint8Array> {
-      return new Uint8Array(await (await readSegment(ref)).arrayBuffer());
+      return readSegment(ref);
     },
     async exportBlocks(value: ImportedProofSourceReference, write: ExactByteBlockWriter) {
       const pending = [parseImportedProofSourceReference(value)];
@@ -214,8 +220,7 @@ export function createImportedProofSourceCustody() {
       pending.push(...(stored?.nested ?? []).map(parseImportedProofSourceReference));
       for(const root of [reference.bytes,...(stored?.resources??[]).map(parseExactByteBlockReference)])
       for await (const _bytes of readExactByteBlocks(root, async ref => {
-        const blob = await readSegment(ref);
-        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const bytes = await readSegment(ref);
         await write(ref, bytes);
         return bytes;
       }, { component: "imported source export", maxContentBytes: Math.max(reference.byteLength,64*1024*1024), maxBlockReads: 131_072 })) { void _bytes; /* Complete exact closure before the caller publishes its root. */ }
@@ -267,11 +272,11 @@ export function createImportedProofSourceCustody() {
       let byteLength = 0;
       const hash = sha256.create();
       for (const segment of record.segments) {
-        const blob = await readSegment(segment);
-        byteLength += blob.size;
+        const bytes = await readSegment(segment);
+        byteLength += bytes.byteLength;
         if (byteLength > reference.byteLength) throw new TypeError(`${PREFIX}_RECORD_INVALID`);
-        hash.update(new Uint8Array(await blob.arrayBuffer()));
-        blobs.push(blob);
+        hash.update(bytes);
+        blobs.push(new Blob([bytes]));
       }
       if (byteLength !== reference.byteLength || bytesToHex(hash.digest()) !== reference.artifactSha256) throw new TypeError(`${PREFIX}_EXACT_BINDING_MISMATCH`);
       const opened = await openImportedProofSource(new File(blobs, reference.filename, { type: reference.mimeType }), {
