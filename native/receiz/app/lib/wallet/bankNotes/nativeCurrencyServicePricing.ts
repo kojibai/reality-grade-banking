@@ -10,6 +10,7 @@ export type NativeCurrencyPlacementDuration = Readonly<{
 }>;
 
 export type NativeCurrencyServicePricingTerms = Readonly<{
+  pricingBasis?: 'paid-bookings';
   automaticIssuance?: true;
   placementDuration?: NativeCurrencyPlacementDuration;
   unitsPerPlacement: string;
@@ -51,14 +52,17 @@ function inspectPlacementDuration(input: unknown): NativeCurrencyPlacementDurati
 }
 
 export function inspectNativeCurrencyServicePricingTerms(input: unknown): NativeCurrencyServicePricingTerms {
+  const hasPricingBasis = !!input && typeof input === 'object' && Object.hasOwn(input, 'pricingBasis');
   const hasDuration = !!input && typeof input === 'object' && Object.hasOwn(input, 'placementDuration');
   const automaticIssuance = !!input && typeof input === 'object' && Object.hasOwn(input, 'automaticIssuance');
   const value = exact(input, [
     'unitsPerPlacement', 'viewsPerPlacement', 'capacityBasisPoints', 'bookingWindowDays',
     'benchmarkUsdCentsPerThousandImpressions', 'windowLengthKai', 'maximumAgeKai', 'venues', ...(automaticIssuance ? ['automaticIssuance'] : []),
-    ...(hasDuration ? ['placementDuration'] : []),
+    ...(hasDuration ? ['placementDuration'] : []), ...(hasPricingBasis ? ['pricingBasis'] : []),
   ]);
   if (automaticIssuance && value.automaticIssuance !== true) return fail();
+  const duration = hasDuration ? inspectPlacementDuration(value.placementDuration) : undefined;
+  if (hasPricingBasis && (value.pricingBasis !== 'paid-bookings' || !automaticIssuance || !duration || duration.live)) return fail();
   if (!Array.isArray(value.venues) || !value.venues.length || value.venues.length > 32) return fail();
   const venues = value.venues.map(entry => {
     const venue = exact(entry, ['id', 'observerReceizId', 'dailyEligibleViewsLimit']);
@@ -77,7 +81,8 @@ export function inspectNativeCurrencyServicePricingTerms(input: unknown): Native
     || BigInt(windowLengthKai) > 31n * 17_492n || BigInt(maximumAgeKai) > 31n * 17_492n) return fail();
   return Object.freeze({
     ...(automaticIssuance ? { automaticIssuance: true as const } : {}),
-    ...(hasDuration ? { placementDuration: inspectPlacementDuration(value.placementDuration) } : {}),
+    ...(duration ? { placementDuration: duration } : {}),
+    ...(hasPricingBasis ? { pricingBasis: 'paid-bookings' as const } : {}),
     unitsPerPlacement: positive(value.unitsPerPlacement), viewsPerPlacement: positive(value.viewsPerPlacement),
     capacityBasisPoints, bookingWindowDays, benchmarkUsdCentsPerThousandImpressions: positive(value.benchmarkUsdCentsPerThousandImpressions),
     windowLengthKai, maximumAgeKai, venues: Object.freeze(venues),

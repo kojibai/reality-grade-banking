@@ -40,11 +40,13 @@ export function GovernanceFacts({terms,practice=false,member=(id)=>id}:{terms:Go
         ?scope.minimumPriceUsdCents+'–'+scope.maximumPriceUsdCents:scope.minimumPriceUsdCents+' minimum'],
         ['Votes can change new sales',scope.allowSalesPause?'Yes':'No']);
       if(scope?.servicePricing)facts.push(
-        ['Pricing','Verified venue observations'],
-        ['Benchmark (USD cents per thousand)',scope.servicePricing.benchmarkUsdCentsPerThousandImpressions],
-        ['Credit cost per placement',scope.servicePricing.unitsPerPlacement],
-        ['Visibility budget per placement',scope.servicePricing.viewsPerPlacement],
-        ['Audience capacity (basis points)',scope.servicePricing.capacityBasisPoints],
+        ['Pricing',scope.servicePricing.pricingBasis==='paid-bookings'?'Verified paid bookings':'Verified venue observations'],
+        ['Reference CPM (USD cents per thousand)',scope.servicePricing.benchmarkUsdCentsPerThousandImpressions],
+        ...(scope.servicePricing.pricingBasis==='paid-bookings'
+          ? [['Kai pulses per unit',scope.servicePricing.placementDuration?.pulsesPerUnit??'']] as [string,string][]
+          : [['Credit cost per placement',scope.servicePricing.unitsPerPlacement],
+            ['Visibility budget per placement',scope.servicePricing.viewsPerPlacement],
+            ['Audience capacity (basis points)',scope.servicePricing.capacityBasisPoints]] as [string,string][]),
         ['Booking window',scope.servicePricing.bookingWindowDays+' days'],
         ['New issuance',scope.servicePricing.automaticIssuance?'Automatic within verified available capacity':'Fixed supply'],
         ['Observation window',scope.servicePricing.windowLengthKai+' Kai pulses'],

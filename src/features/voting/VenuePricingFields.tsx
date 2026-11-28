@@ -30,23 +30,35 @@ export function VenuePricingFields({ value, onChange }: {
 }) {
   const duration = value.placementDuration;
   const live = duration?.live;
+  const paidBookings = value.pricingBasis === 'paid-bookings';
   return <fieldset className="gov-box gov-form">
     <legend>Venue pricing</legend>
-    <p>Each approved observer supplies a signed observation. New purchases require a current quote.</p>
-    <label className="gov-check"><input type="checkbox" checked={value.automaticIssuance===true}
+    <label>What sets price and supply
+      <select value={paidBookings ? 'paid-bookings' : 'audience'} onChange={event => {
+        const {pricingBasis, ...terms} = value;
+        onChange(event.currentTarget.value === 'paid-bookings' ? {...terms, pricingBasis: 'paid-bookings',
+          automaticIssuance: true, placementDuration: {pulsesPerUnit: duration?.pulsesPerUnit || '165'}} : terms);
+      }}>
+        <option value="audience">Audience and booking demand</option>
+        <option value="paid-bookings">Released time and paid bookings</option>
+      </select>
+    </label>
+    <p>{paidBookings ? 'Released placement time backs new units. Verified paid starts move the quote from the charter’s minimum price. CPM is a comparison metric.'
+      : 'Each approved observer supplies a signed observation. New purchases require a current quote.'}</p>
+    {!paidBookings && <label className="gov-check"><input type="checkbox" checked={value.automaticIssuance===true}
       onChange={() => {
         const {automaticIssuance,...terms}=value;
         onChange(automaticIssuance ? terms : { ...terms, automaticIssuance:true });
-      }} />Issue new credits into Market when verified capacity is available</label>
+      }} />Issue new credits into Market when verified capacity is available</label>}
     <div className="gov-fields">
-      {numericFields.map(([key, label]) => <label key={key}>{label}
+      {numericFields.filter(([key]) => !paidBookings || !['unitsPerPlacement','viewsPerPlacement','capacityBasisPoints'].includes(key)).map(([key, label]) => <label key={key}>{paidBookings && key === 'benchmarkUsdCentsPerThousandImpressions' ? 'Reference CPM (USD cents per thousand)' : label}
         <input required value={value[key]} inputMode="numeric" pattern="[1-9][0-9]*" maxLength={19}
           onChange={event => onChange({ ...value, [key]: event.target.value })} />
       </label>)}
     </div>
     <fieldset className="gov-box gov-form">
       <legend>Placement duration</legend>
-      <label>How credits book time
+      {!paidBookings && <label>How credits book time
         <select value={live ? 'live' : duration ? 'fixed' : 'slots'} onChange={event => {
           const mode = event.currentTarget.value;
           const { placementDuration, ...terms } = value;
@@ -60,7 +72,7 @@ export function VenuePricingFields({ value, onChange }: {
           <option value="fixed">Fixed time per credit</option>
           <option value="live">Live time per credit</option>
         </select>
-      </label>
+      </label>}
       {duration && <div className="gov-fields">
         <label>{live ? 'Base Kai pulses per credit' : 'Kai pulses per credit'}
           <input required value={duration.pulsesPerUnit} inputMode="numeric" pattern="[1-9][0-9]*" maxLength={19}

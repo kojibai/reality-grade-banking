@@ -8378,7 +8378,7 @@
     {
       "path": "receiz/app/lib/wallet/bankNotes/nativeCurrencyServicePricing.ts",
       "mode": 420,
-      "sha256": "02aa8b6b2b8cd42f6bb0c9b5742ec5eaaaed19b4ee8289cdf740f958e2d66cf1"
+      "sha256": "41fb27a21cf3a4c9bf312a47d78f07d71c7e595234378034c2dd8b644a5f27ea"
     },
     {
       "path": "receiz/app/lib/wallet/bankNotes/nativeAssetHolding.ts",
