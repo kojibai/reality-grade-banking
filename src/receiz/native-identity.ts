@@ -2162,7 +2162,12 @@ async function openIdentity(bytes: Uint8Array, phrase: string, filename: string,
       lock:async run=>await navigator.locks.request(`receiz-bank-backed-publication:${binding.artifactSha256}`,{signal:lifetime.signal},async()=>await run()),
       read:()=>vault.loadBackedAssetPublicationState(binding),write:(next,previous)=>vault.saveBackedAssetPublicationState(binding,next,previous),
       runtime:openAssetPublicationRuntime,prepareDraft:async draft=>{const {prepareCreatedAssetPrimary}=await import('./created-asset-file');return prepareCreatedAssetPrimary({draft,profileIdentity:accountUid??knownWallet?.wallet.userId,assertCurrent:noteOpen,seal:async source=>(await ownedSealer()).seal(source)});},operations,retain:holdProof,
-      restore:async(digest,filename,mimeType)=>{for(const source of await loadDepositSources(binding))if(await sdk.sha256ReceizBytes(source.bytes)===digest)return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});throw Error('BANK_BACKED_PUBLICATION_SOURCE_UNAVAILABLE');},
+      restore:async(digest,filename,mimeType)=>{
+        const [source]=await loadDepositSources(binding,{digests:[digest],requireComplete:true});
+        noteOpen();
+        if(!source||await sdk.sha256ReceizBytes(source.bytes)!==digest)throw Error('BANK_BACKED_PUBLICATION_SOURCE_UNAVAILABLE');
+        return new File([new Uint8Array(source.bytes)],filename,{type:mimeType});
+      },
       recoverFunding:async nonce=>(await nativeAssets()).recoverOperation(nonce),
       publicProjection:async assetId=>{const current=await connectClient(BANK_READ_SCOPES,BANK_READ_CONSENT);noteOpen();return current.request(`/api/connect/bank/assets/public-projection?applicationId=${BANK_APPLICATION_ID}`,{method:'POST',body:{assetId}});},
     });
