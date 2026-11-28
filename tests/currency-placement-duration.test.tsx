@@ -149,7 +149,8 @@ it('authors fixed and live placement durations in the existing venue terms',asyn
   const field=(label:string)=>[...host.querySelectorAll('label')].find(item=>item.textContent===label)?.querySelector('input');
   try {
     await act(async()=>root.render(<Editor/>));
-    const mode=host.querySelector('select');
+    const mode=[...host.querySelectorAll('select')].find(select=>
+      select.closest('label')?.firstChild?.textContent?.trim()==='How credits book time');
     expect(mode?.value).toBe('slots');
     await act(async()=>choose(mode!,'fixed'));
     await act(async()=>changeInput(field('Kai pulses per credit')!,'2000'));
