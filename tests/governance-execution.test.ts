@@ -1,12 +1,14 @@
 import {readFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
 import {build} from 'esbuild';
-import {beforeAll,expect,it,vi} from 'vitest';
+import {afterEach,beforeAll,expect,it,vi} from 'vitest';
+import {IDBFactory} from 'fake-indexeddb';
 import * as installed from '@receiz/sdk';
 import {createGovernanceExecution,type GovernanceExecutionPorts} from '../src/receiz/governance-execution';
 import {openGovernanceOriginal} from '../src/receiz/governance-documents';
 import {readGovernanceDecision} from '../src/receiz/governance-execution-plan';
 import {openGovernanceRegister,exactRegisterFile} from '../src/receiz/governance-execution-register';
+import {loadGovernanceExecution,saveDeviceIdentity,saveGovernanceExecution} from '../src/receiz/identity-vault';
 import type {ReceizPortableSealedArtifactV124} from '@receiz/sdk';
 
 type Sources={proposal:string;originals:ReceizPortableSealedArtifactV124[]};
@@ -28,6 +30,7 @@ beforeAll(async()=>{
  const runtime=await fixtureRuntime(fixture.roots,"export {createReceizClient,verifyReceizArtifact,createReceizArtifactAdmissionEngine} from '@receiz/sdk';");
  testSdk.module={...installed,...runtime};
 });
+afterEach(()=>vi.unstubAllGlobals());
 async function inputs(source:Sources){
  return {proposal:source.proposal,originals:await Promise.all(source.originals.map(async wire=>openGovernanceOriginal(await exactRegisterFile(wire))))};
 }
@@ -63,9 +66,13 @@ it('opens the pinned genesis offline, retains the exact Original on cold reopen 
   artifactSha256:fixture.register.artifactSha256,exactBytesB64u:fixture.register.exactBytesB64u,
  });
  await expect(restarted.transportHeldRegisterGenesis(first.registerProofObjectId,'f'.repeat(64))).rejects.toThrow(/coordinate/);
- const issuerRecords=new Map<string,unknown>();
- const issuerPorts={...ports,owner:'issuer.receiz.id',read:async(slot:string)=>issuerRecords.get(slot)??null,
-  write:async(slot:string,next:unknown,previous:unknown)=>{expect(issuerRecords.get(slot)??null).toEqual(previous);issuerRecords.set(slot,structuredClone(next));}};
+ vi.stubGlobal('indexedDB',new IDBFactory());
+ const issuerIdentity=new TextEncoder().encode('governance-issuer-test-custody');
+ const binding={artifactSha256:await installed.sha256ReceizBytes(issuerIdentity)};
+ await saveDeviceIdentity(issuerIdentity,'issuer-test.bin','issuer-test-phrase',true);
+ const issuerPorts={...ports,owner:'issuer.receiz.id',read:(slot:string)=>loadGovernanceExecution(binding,slot),
+  write:(slot:string,next:unknown,previous:unknown)=>saveGovernanceExecution(binding,slot,next,previous)};
+ expect(()=>loadGovernanceExecution(binding,'custodian-register-genesis:bad')).toThrow('GOVERNANCE_EXECUTION_SLOT_INVALID');
  const issuer=createGovernanceExecution(issuerPorts);
  await expect(issuer.retainCustodianRegisterGenesis(source,'other.receiz.id')).rejects.toThrow();
  expect(await issuer.retainCustodianRegisterGenesis(source,authority.custodian)).toEqual(first);

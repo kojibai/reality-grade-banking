@@ -1,6 +1,43 @@
 import {expect,it,vi} from 'vitest';
+import {canonicalizeReceizV122,sha256ReceizBytes} from '@receiz/sdk';
 import {createBackedAssetClient} from '../src/receiz/backed-asset-client';
+import type {BackedPublicationState} from '../src/receiz/backed-asset-publication';
+import * as publicAsset from '../src/receiz/native-asset-public';
+import {inspectNativeCurrencyPolicy} from '../native/receiz/app/lib/wallet/bankNotes/nativeAssetCurrency';
 import type {AssetComposerDraft} from '../src/receiz/asset-composer';
+
+it.each([false,true])('resumes one issued currency from its canonical public certificate (changed price=%s)',async changed=>{
+ const ownerReceizId='artist.receiz.id',type='application/vnd.receiz.bundle+json';
+ const definition={name:'Spotlight',symbol:'SPT',units:'1',description:'Feature an Original',linkedProofDigest:null};
+ const currencyPolicy=inspectNativeCurrencyPolicy({kind:'fixed-reserve-pool',preset:'currency',issuerControls:true,quantityIncrementMicro:'1000',priceUsdCentsPerUnit:'3'});
+ const intent={definition,currencyPolicy,content:{schema:'receiz.bank.asset-content.v2',ownerReceizId,title:definition.name,description:definition.description,kind:'moment',longForm:'',files:[]}};
+ const source={digest:'a'.repeat(64),filename:'authored.receizbundle',mimeType:type,reference:{schema:'receiz.imported-proof-source.v1',artifactSha256:'a'.repeat(64),byteLength:2,filename:'authored.receizbundle',mimeType:type,bytes:{kind:'bytes',sha256:'b'.repeat(64),byteLength:2,contentByteLength:2,height:0}}};
+ const assetId='c'.repeat(64),issuanceSourceSha256='d'.repeat(64),artifactSha256='e'.repeat(64),packageSha256='f'.repeat(64);
+ let state:BackedPublicationState|null={schema:'bank.backed-asset-publication.v1',ownerReceizId,intent,intentDigest:await sha256ReceizBytes(new TextEncoder().encode(canonicalizeReceizV122(intent))),source,stage:'funded',operationId:'existing-issuance',assetId,issuanceSourceSha256};
+ const policy=JSON.parse(canonicalizeReceizV122({...currencyPolicy,...(changed?{priceUsdCentsPerUnit:'4'}:{})}));
+ // Stand in for the boundary that has already verified the exact native certificate.
+ const verified=vi.spyOn(publicAsset,'openNativeAssetPublic').mockResolvedValue({artifactSha256,certificate:{asset:{id:assetId,definition:{linkedProofDigest:source.digest},issuanceSourceSha256,currency:{policy}}}} as never);
+ const artifact=new File(['signed package'],'spotlight.receizbundle',{type});
+ const sealContent=vi.fn(async()=>({artifact,reference:{artifactSha256:packageSha256}}));
+ const publish=vi.fn(async()=>({status:'published',artifactDigest:packageSha256,operationCount:1,visibleChildCount:1}));
+ const operations=vi.fn(async()=>{throw Error('REISSUE_FORBIDDEN');});
+ try{
+  const client=createBackedAssetClient({ownerReceizId,assertOpen(){},lock:async run=>run(),read:async()=>state,
+   write:async next=>{state=next;},runtime:async()=>({sealContent,publish}) as never,operations,
+   retain:async()=>({digest:packageSha256}) as never,restore:async()=>artifact,recoverFunding:async()=>null,
+   publicProjection:async()=>({artifactSha256,exactBytesB64u:'e30'})});
+  if(changed){
+   await expect(client.resume()).rejects.toThrow('BANK_NATIVE_ASSET_PUBLIC_MISMATCH');
+   expect(sealContent).not.toHaveBeenCalled();expect(publish).not.toHaveBeenCalled();
+  }else{
+   await expect(client.resume()).resolves.toMatchObject({publication:{status:'published',showcaseArtifactDigest:packageSha256}});
+   expect(state).toMatchObject({stage:'published',operationId:'existing-issuance',assetId});
+   expect(sealContent).toHaveBeenCalledWith(expect.objectContaining({nativeAsset:expect.objectContaining({publicCertificateSha256:artifactSha256})}));
+   expect(publish).toHaveBeenCalledExactlyOnceWith(artifact);
+  }
+  expect(operations).not.toHaveBeenCalled();
+ }finally{verified.mockRestore();}
+});
 
 it('retries a currency review with the exact artwork Source when preparation of terms fails', async () => {
  let state:unknown=null;

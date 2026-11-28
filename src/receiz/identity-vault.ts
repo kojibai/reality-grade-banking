@@ -1122,7 +1122,7 @@ export const saveMeetingCapture=(binding:{artifactSha256:string},id:string,value
 
 // Local export references only; immutable bytes use existing encrypted blob custody.
 const governanceExecutionFamily=(key:string)=>{
- if(key!=='selected'&&!/^(?:register|decision|accepted|signed|settlement):[a-f0-9]{64}$/.test(key))throw Error('GOVERNANCE_EXECUTION_SLOT_INVALID');
+ if(key!=='selected'&&!/^(?:register|custodian-register-genesis|decision|accepted|signed|settlement):[a-f0-9]{64}$/.test(key))throw Error('GOVERNANCE_EXECUTION_SLOT_INVALID');
  return 'governance-execution:'+key;
 };
 export const loadGovernanceExecution=(binding:{artifactSha256:string},key:string)=>loadNoteState(binding,governanceExecutionFamily(key));

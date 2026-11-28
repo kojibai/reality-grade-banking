@@ -1,3 +1,4 @@
+import {canonicalizeReceizV122} from '@receiz/sdk';
 import {createBackedAssetPublication,type BackedPublicationState,type BackedPublicationSource} from './backed-asset-publication';
 import {readComposerAssetContent,readComposerCapacity,validateComposerAssetDraft,type AssetComposerDraft,type ComposerAssetContent} from './asset-composer';
 import type {BankOperations,BankOperationInput,BankOperationReview,BankOperationResult} from './bank-operations';
@@ -62,7 +63,10 @@ export function createBackedAssetClient(d:Input){
   recoverFunding:async nonce=>facts(await d.recoverFunding(nonce)),
   makePackage:async state=>{const {packet,asset:a}=await readPublicAsset(state.assetId!);
    if(a.issuanceSourceSha256!==state.issuanceSourceSha256||a.definition.linkedProofDigest!==state.source.digest)throw Error('BANK_NATIVE_ASSET_PUBLIC_MISMATCH');
-   const intent=state.intent as Intent;if('currencyPolicy' in intent?(JSON.stringify(a.currency?.policy)!==JSON.stringify(intent.currencyPolicy)):!!a.currency)throw Error('BANK_NATIVE_ASSET_PUBLIC_MISMATCH');
+   const intent=state.intent as Intent;
+   if('currencyPolicy' in intent
+     ? !a.currency||canonicalizeReceizV122(a.currency.policy)!==canonicalizeReceizV122(intent.currencyPolicy)
+     : !!a.currency)throw Error('BANK_NATIVE_ASSET_PUBLIC_MISMATCH');
    const content=readComposerAssetContent(intent.content,d.ownerReceizId),prepared=await(await publisher()).sealContent({...content,nativeAsset:{authoredSource:parseImportedProofSourceReference(state.source.reference as never),publicCertificateB64u:packet.exactBytesB64u,publicCertificateSha256:packet.artifactSha256}}),held=await d.retain(prepared.artifact);if(held.digest!==prepared.reference.artifactSha256)throw Error('BANK_BACKED_PUBLICATION_PACKAGE_INVALID');retainAssetPublicationSource(held.digest,prepared.artifact);return{digest:held.digest,filename:prepared.artifact.name,mimeType:prepared.artifact.type,reference:prepared.reference};},
   publish:async source=>{const receipt=await(await publisher()).publish(await restore(source));d.assertOpen();acknowledgeAssetPublication(source.digest,receipt);if(receipt.status==='published'){void refreshAssetPublicationCatalog(source.digest);resetPublisher();}return receipt;},
  });
