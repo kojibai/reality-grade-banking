@@ -88,7 +88,7 @@ export function permittedNativePath(path: string, method: string): boolean {
     if(keys.length===2)return url.searchParams.getAll('clientNonce').length===1&&url.searchParams.getAll('transferId').length===1&&/^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'')&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(url.searchParams.get('transferId')??'');
     return keys.length===1 && (url.searchParams.has('clientNonce') ? /^[A-Za-z0-9._:-]{8,120}$/.test(url.searchParams.get('clientNonce')??'') : /^\d{1,18}\.\d{2}$/.test(url.searchParams.get('amountUsd')??''));
   }
-  if (/^\/api\/connect\/bank\/(?:payments\/(?:prepare|execute|recover)|assets\/(?:prepare|execute|recover|portfolio|governance))$/.test(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.getAll('applicationId').length === 1 && (url.pathname.endsWith('/recover') ? isBankNativeApplicationId(url.searchParams.get('applicationId')) : url.searchParams.get('applicationId') === BANK_APPLICATION_ID);
+  if (/^\/api\/connect\/bank\/(?:payments\/(?:prepare|execute|recover)|assets\/(?:prepare|execute|recover|portfolio|governance|public-projection))$/.test(url.pathname)) return method.toUpperCase() === 'POST' && [...url.searchParams.keys()].length === 1 && url.searchParams.getAll('applicationId').length === 1 && (url.pathname.endsWith('/recover') ? isBankNativeApplicationId(url.searchParams.get('applicationId')) : url.searchParams.get('applicationId') === BANK_APPLICATION_ID);
   if (url.pathname === '/api/connect/bank/original-pieces') {
     return method.toUpperCase() === 'POST' && url.searchParams.size === 1 && url.searchParams.get('applicationId') === BANK_APPLICATION_ID;
   }

@@ -36,7 +36,8 @@ it('retains the exact approved intent before submission and uses only read-only 
 
 it('admits only exact scoped asset POST paths, never account selectors or alternate origins',async()=>{
  const {permittedNativePath}=await import('../src/receiz/native-transport');
- for(const action of ['prepare','execute','recover']){const path=`/api/connect/bank/assets/${action}?applicationId=${BANK_APPLICATION_ID}`;expect(permittedNativePath(path,'POST')).toBe(true);for(const p of [path+'&accountId=foreign',path+`&applicationId=${BANK_APPLICATION_ID}`,path.replace(BANK_APPLICATION_ID,'rc_other'),'https://other.test'+path])expect(permittedNativePath(p,'POST')).toBe(false);expect(permittedNativePath(path,'GET')).toBe(false);}
+ const {nativeRequestPath}=await import('../server/native-account');
+ for(const action of ['prepare','execute','recover','public-projection']){const path=`/api/connect/bank/assets/${action}?applicationId=${BANK_APPLICATION_ID}`;expect(permittedNativePath(path,'POST')).toBe(true);expect(nativeRequestPath('/api/bank/native'+path,'POST')).toBe(path);for(const p of [path+'&accountId=foreign',path+`&applicationId=${BANK_APPLICATION_ID}`,path.replace(BANK_APPLICATION_ID,'rc_other'),'https://other.test'+path])expect(permittedNativePath(p,'POST')).toBe(false);expect(permittedNativePath(path,'GET')).toBe(false);}
 });
 it('never treats a fabricated financial success as a v129 source',async()=>{
  const {verifyNativeAssetSource}=await import('../src/receiz/native-asset');
