@@ -68,3 +68,9 @@ it('follows a public Ledger record selection after the retained surface receives
  expect(readPublicLedgerSelection('https://bankeiz.com/ledger/#record=wallet%3Atransfer-27')).toEqual({key:'wallet:transfer-27',search:'transfer-27'});
  expect(readPublicLedgerSelection('https://bankeiz.com/ledger/#record=private%3Asecret')).toBeNull();
 });
+
+it('finds currency issuance by its action kind while its details are being delivered',()=>{
+ const common={source:'actions' as const,amountUsdCents:null};
+ expect(activityCategory({...common,kind:'asset.issue-currency'})).toBe('currencies');
+ expect(activityCategory({...common,kind:'asset.send-ownership'})).toBe('transfers');
+});

@@ -307,4 +307,5 @@ export const assetCategories=[
  ['Moments','moments','Sealed moments with an explicit claim and context. Examine what was recorded and the evidence the source actually establishes.'],
  ['Collectibles','collectibles','Sports cards, signal cards and other collectible originals. Inspect supported live value, opening coordinates and ownership history.'],
  ['Documents','documents','Document sources and their inspectable records. Check authorship, integrity, rights and the evidence carried by the original.'],
+ ['Currencies','currencies','Explore issued currencies and inspect their supply, pricing and carried terms.'],
 ].map(([label,slug,description])=>({label,slug,description,path:`/explore/${slug}/`}));

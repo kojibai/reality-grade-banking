@@ -1,3 +1,5 @@
+export const publicCurrencyActionKinds = ['asset.issue-currency','asset.buy-currency','asset.sell-currency','asset.send-ownership','asset.manage-currency','asset.govern-currency','asset.quote-currency','asset.reserve-service-placement','asset.cancel-service-placement','asset.expire-service-placement','asset.start-service-placement','asset.complete-service-placement','asset.issue-currency-note','asset.redeem-currency-note'] as const;
+
 export type PublicCurrencyActivity = Readonly<{ assetId:string; symbol:string; priceUsdCentsPerUnit:string; pulsesPerUnit?:string; quantityMicro?:string; tradeUsdCents?:string }>;
 const object = (value:unknown):value is Record<string,unknown> => !!value&&typeof value==='object'&&!Array.isArray(value);
 const exact = (value:Record<string,unknown>,keys:readonly string[]) => keys.length===Object.keys(value).length&&keys.every(key=>Object.hasOwn(value,key));

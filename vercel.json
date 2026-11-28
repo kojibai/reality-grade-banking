@@ -146,6 +146,10 @@
       "destination": "/__bank_static_entry/explore/documents/index.html"
     },
     {
+      "source": "/explore/currencies/index.html",
+      "destination": "/__bank_static_entry/explore/currencies/index.html"
+    },
+    {
       "source": "/market-cap/index.html",
       "destination": "/__bank_static_entry/market-cap/index.html"
     },
@@ -254,8 +258,16 @@
       "destination": "/__bank_static_entry/explore/documents/index.html"
     },
     {
+      "source": "/explore/currencies",
+      "destination": "/__bank_static_entry/explore/currencies/index.html"
+    },
+    {
       "source": "/explore/documents/",
       "destination": "/__bank_static_entry/explore/documents/index.html"
+    },
+    {
+      "source": "/explore/currencies/",
+      "destination": "/__bank_static_entry/explore/currencies/index.html"
     },
     {
       "source": "/market-cap",

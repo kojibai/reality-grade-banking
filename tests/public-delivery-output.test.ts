@@ -1,9 +1,9 @@
 import{it,expect}from'vitest';import{mkdtemp,mkdir,writeFile,readFile,access,rm}from'node:fs/promises';import{tmpdir}from'node:os';import{join}from'node:path';import{readFileSync}from'node:fs';
 it('stages byte-identical immutable documents outside canonical prepared routes without changing private build templates',async()=>{
  const root=await mkdtemp(join(tmpdir(),'bank-delivery-')),source=join(root,'dist'),output=join(root,'dist-public');
- try{for(const[path,body]of Object.entries({'index.html':'<html>Exact bank</html>','explore/index.html':'<html>Historical explore</html>','explore/images/index.html':'<html>Historical images</html>','ledger/index.html':'<html>Historical Ledger</html>','ledger/proofs/index.html':'<html>Settled Proofs</html>','analytics/index.html':'<html>Saved Analytics</html>','feed/index.html':'<html>Historical Feed</html>','discover/index.html':'<html>Historical Discover</html>','assets/app.js':'unchanged app','learn/index.html':'unchanged guide'})){await mkdir(join(source,path,'..'),{recursive:true});await writeFile(join(source,path),body);}
+ try{for(const[path,body]of Object.entries({'index.html':'<html>Exact bank</html>','explore/index.html':'<html>Historical explore</html>','explore/images/index.html':'<html>Historical images</html>','explore/currencies/index.html':'<html>Held currencies</html>','ledger/index.html':'<html>Historical Ledger</html>','ledger/proofs/index.html':'<html>Settled Proofs</html>','analytics/index.html':'<html>Saved Analytics</html>','feed/index.html':'<html>Historical Feed</html>','discover/index.html':'<html>Historical Discover</html>','assets/app.js':'unchanged app','learn/index.html':'unchanged guide'})){await mkdir(join(source,path,'..'),{recursive:true});await writeFile(join(source,path),body);}
  const module=await import('../scripts/build-public-delivery-output.mjs');await module.buildPublicDeliveryOutput({source,output});
- for(const path of['index.html','explore/index.html','explore/images/index.html','ledger/index.html','ledger/proofs/index.html','analytics/index.html','feed/index.html','discover/index.html']){await expect(access(join(output,path))).rejects.toThrow();const name=path==='index.html'?'bank/index.html':path;expect(await readFile(join(output,'__bank_static_entry',name),'utf8')).toBe(await readFile(join(source,path),'utf8'));}
+ for(const path of['index.html','explore/index.html','explore/images/index.html','explore/currencies/index.html','ledger/index.html','ledger/proofs/index.html','analytics/index.html','feed/index.html','discover/index.html']){await expect(access(join(output,path))).rejects.toThrow();const name=path==='index.html'?'bank/index.html':path;expect(await readFile(join(output,'__bank_static_entry',name),'utf8')).toBe(await readFile(join(source,path),'utf8'));}
  expect(await readFile(join(output,'assets/app.js'),'utf8')).toBe('unchanged app');expect(await readFile(join(output,'learn/index.html'),'utf8')).toBe('unchanged guide');
  await writeFile(join(source,'assets/app.js'),'next build');expect(await readFile(join(output,'assets/app.js'),'utf8')).toBe('unchanged app');await writeFile(join(output,'learn/index.html'),'delivery edit');expect(await readFile(join(source,'learn/index.html'),'utf8')).toBe('unchanged guide');
  }finally{await rm(root,{recursive:true,force:true});}
@@ -26,4 +26,14 @@ it('serves both canonical Discover links from the existing static alias without 
  const config=JSON.parse(readFileSync('vercel.json','utf8'));
  for(const path of ['/discover','/discover/'])expect(config.rewrites.find((route:{source:string})=>route.source===path).destination).toBe('/__bank_static_entry/discover/index.html');
  expect(config.functions['api/explore.ts'].includeFiles).toContain('discover');
+});
+
+it('serves the Currencies category and its saved entry through the Explorer route family',async()=>{
+ const {assetCategories}=await import('../src/content/learning-pages.mjs'),{publicMarketPreparedPath}=await import('../src/receiz/prepared-public-page-path');
+ expect(assetCategories.find(category=>category.slug==='currencies')?.path).toBe('/explore/currencies/');
+ expect(publicMarketPreparedPath('explore/currencies')).toBe('explore/currencies');
+ const v=JSON.parse(readFileSync('vercel.json','utf8'));
+ for(const path of ['/explore/currencies','/explore/currencies/','/explore/currencies/index.html']){
+  expect(v.rewrites.find((route:{source:string})=>route.source===path)?.destination).toBe('/__bank_static_entry/explore/currencies/index.html');
+ }
 });

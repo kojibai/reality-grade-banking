@@ -1,4 +1,4 @@
-export const PUBLIC_MARKET_PREPARED_PATHS=['explore','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','market-cap'] as const;
+export const PUBLIC_MARKET_PREPARED_PATHS=['explore','explore/music','explore/images','explore/videos','explore/books','explore/essays','explore/moments','explore/collectibles','explore/documents','explore/currencies','market-cap'] as const;
 export function publicMarketPreparedPath(input:unknown):string|null{
  return typeof input==='string'&&(PUBLIC_MARKET_PREPARED_PATHS as readonly string[]).includes(input)?input:null;
 }

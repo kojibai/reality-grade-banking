@@ -1,3 +1,4 @@
+import {publicCurrencyActionKinds} from './currency-ledger-view';
 import {isCertificateMovement} from './ledger-share-certificate';
 import {readLedgerFundingContext,compactLedgerFundingContext} from './ledger-funding-context';
 import type {PublicRecord} from './public-network';
@@ -10,7 +11,7 @@ import {ledgerAssetTradeSide,ledgerAssetTrade} from './ledger-asset-trade';
 export const ACTIVITY_FILTERS=['all','transactions','transfers','currencies','actions','proofs'] as const;
 export type ActivityCategory=typeof ACTIVITY_FILTERS[number];
 export function activityCategory(record:Pick<PublicRecord,'source'|'kind'|'amountUsdCents'|'details'>):Exclude<ActivityCategory,'all'>{
- if(record.source==='actions'&&record.details?.currency)return 'currencies';
+ if(record.source==='actions'&&(record.details?.currency||publicCurrencyActionKinds.some(kind=>kind!=='asset.send-ownership'&&kind===record.kind)))return 'currencies';
  if(/transfer|send|payment_sent|payment_received/i.test(record.kind))return 'transfers';
  if(ledgerAssetTradeSide(record)||isCertificateMovement(record.kind))return 'transactions';
  if(record.source==='wallet'||/purchase|sale|trade|exchange|note_(mint|claim)|reserve_credit|deposit|withdraw/i.test(record.kind))return 'transactions';
