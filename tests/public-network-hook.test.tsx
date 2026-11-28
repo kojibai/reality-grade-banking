@@ -528,20 +528,44 @@ it('shows a newer dated head in the held document before gap repair, and reopens
    await act(async()=>root.render(<Probe active/>));
    expect(network.read.mock.calls.map(([source,cursor])=>[source,cursor])).toEqual([['actions',undefined]]);
    await act(async()=>acceptHead(head));
-   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),busy:true,complete:false});
+   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),historyObservedAt:Date.parse(previous),busy:true,complete:false});
    expect(state.records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['today','old']));
    expect(network.read.mock.calls.map(([source,cursor])=>[source,cursor])).toEqual([['actions',undefined],['actions','gap']]);
    await act(async()=>failGap(Error('Offline')));
-   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),complete:false,status:'stale'});
+   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),historyObservedAt:Date.parse(previous),complete:false,status:'stale'});
    expect(originals.sync).not.toHaveBeenCalled();expect(cache.seed).not.toHaveBeenCalled();
  }finally{act(()=>root.unmount());}
  const saved=structuredClone(cache.save.mock.calls.at(-1)![0]);cache.load.mockResolvedValue(saved);network.read.mockClear();
  const reopened=createRoot(document.createElement('div'));
  try{
    await act(async()=>reopened.render(<Probe active={false}/>));
-   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),complete:false});
+   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),historyObservedAt:Date.parse(previous),complete:false});
    expect(state.records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['today','old']));expect(network.read).not.toHaveBeenCalled();
  }finally{act(()=>reopened.unmount());}
+});
+
+it('advances the chart observation together with the missing actions from the held history gap',async()=>{
+ const previous='2026-11-07T01:47:06.078Z',observed='2026-11-18T20:41:42.000Z';
+ const sources=['actions','wallet','graph','proofs'] as const;
+ const snapshot={records:page('actions',['old']).records,capturedAt:previous,inspectionVersion:5,
+   coverage:sources.map(source=>({source,complete:true,observedAt:source==='actions'?Date.parse(previous):Date.now()}))};
+ let fillGap!:(value:ReturnType<typeof page>)=>void;
+ network.read.mockImplementation(async(_source:PublicSource,cursor?:string)=>cursor
+   ?new Promise(resolve=>{fillGap=resolve;})
+   :{...page('actions',['head'],'gap'),observedAt:observed});
+ let state!:ReturnType<typeof usePublicNetwork>;
+ function Probe(){state=usePublicNetwork(true,snapshot,true);return null;}
+ const root=createRoot(document.createElement('div'));
+ try{
+   await act(async()=>root.render(<Probe/>));
+   expect(state.sources.actions.historyObservedAt).toBe(Date.parse(previous));
+   expect(state.records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['head','old']));
+   await act(async()=>fillGap(page('actions',['between','old'])));
+   expect(state.sources.actions).toMatchObject({observedAt:Date.parse(observed),complete:true,busy:false});
+   expect(state.sources.actions.historyObservedAt).toBeUndefined();
+   expect(state.records.map(row=>row.sourceId)).toEqual(expect.arrayContaining(['head','between','old']));
+   expect(network.read).toHaveBeenCalledTimes(2);
+ }finally{act(()=>root.unmount());}
 });
 
 it('projects the shared selected Showcase successor into Ledger without a display-clock freshness veto',async()=>{

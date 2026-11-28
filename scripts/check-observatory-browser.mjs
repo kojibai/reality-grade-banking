@@ -158,11 +158,11 @@ try{
   assert.ok(await page.locator('.obs-bars [data-occupied]').count()>1,'Graph history spans multiple dated intervals');
   const selectedOriginals=JSON.parse(await readFile(new URL('../public/receiz-public-market.json',import.meta.url),'utf8')).transport.publicOriginals;
   const graphPulses=new Map(ledgerSeed.records.filter(row=>row.source==='graph'&&row.kind==='market-asset').map(row=>[row.sourceId,row.pulse]));
-  assert.equal(graphPulses.size,selectedOriginals.length);
+  // The retained financial graph can include publications newer than the shipped catalog.
   for(const original of selectedOriginals)assert.equal(graphPulses.get('market-asset-'+original.id),String(original.livePulseSeed.claimPulse));
   await kindFilter.selectOption('market-asset');
   assert.match(await historyLink.getAttribute('href'),/graph%3Amarket-asset/,'The selected graph record replaces the transfer');
-  assert.equal(await page.locator('.obs-chart-head p b').innerText(),trafficText(selectedOriginals.length),'The offline graph plots every selected Original on its issuance date');
+  assert.equal(await page.locator('.obs-chart-head p b').innerText(),trafficText(graphPulses.size),'The offline graph plots every retained market asset on its issuance date');
 
   const walletTab=streams.getByRole('button',{name:'Wallet records',exact:true});
   await walletTab.click();
@@ -196,7 +196,8 @@ try{
     if(name==='Assets in circulation'){
       assert.equal(await dialog.getByRole('img').count(),1);
       assert.equal(await dialog.getByRole('button',{name:/^Inventory on/}).count(),0);
-      assert.equal(await dialog.locator('.obs-headline-reading small').innerText(),'Dated issuance');
+      assert.equal(await dialog.locator('.obs-headline-reading small').innerText(),'Published inventory');
+      assert.equal(await dialog.locator('.obs-headline-reading strong').innerText(),await trigger.locator('strong').innerText());
       for(const range of ['1H','24H','7D','30D','90D','1Y','All time']){
         await dialog.getByRole('button',{name:range,exact:true}).click();
         const extent=await dialog.locator('.obs-headline-line').evaluate(path=>{const box=path.getBBox();return [box.x,box.x+box.width];});
@@ -214,7 +215,7 @@ try{
     }
     if(name==='Assets in circulation'||name==='Witnessed hours'){
       const commands=await dialog.locator('.obs-headline-line').getAttribute('d');
-      assert.equal((commands.match(/V/g)??[]).length,Number(await dialog.getByRole('slider').getAttribute('max')),'Each dated change is drawn');
+      assert.equal((commands.match(/V/g)??[]).length,Number(await dialog.getByRole('slider').getAttribute('max'))-(name==='Assets in circulation'?1:0),'Each dated change is drawn. The current inventory observation has no inferred issuance date.');
     }
     await dialog.getByRole('button',{name:'7D',exact:true}).click();
     await dialog.getByRole('button',{name:'All time'}).click();
@@ -265,7 +266,9 @@ try{
   assert.equal(await slider.getAttribute('aria-valuenow'),'1');
   if(await historyPanel.count()){
     assert.match(await historyLink.getAttribute('href'),/actions%3A/);
-    assert.match(await historyPanel.locator('output').innerText(),/^Record 1 of /);
+    const recordPosition=historyPanel.locator('output');
+    if(await recordPosition.count()) assert.match(await recordPosition.innerText(),/^Record 1 of /);
+    else await historyPanel.getByRole('heading').waitFor();
   }
   await graphTab.click();
   await page.locator('.obs-period').getByRole('button',{name:'All',exact:true}).click();
@@ -353,7 +356,7 @@ try{
   assert.equal(await accepted.count(),1);
   const connectedLabel=page.locator('.obs-status-small');
   await page.setViewportSize({width:320,height:568});
-  await page.waitForFunction(()=>document.querySelector('.obs-status.connected .obs-status-small')?.textContent==='Showing public records');
+  await page.waitForFunction(()=>document.querySelector('.obs-status.has-records .obs-status-small')?.textContent==='Showing public records');
   assert.equal(await connectedLabel.evaluate(label=>label.getClientRects().length),1);
   await page.setViewportSize(launch.viewport);
   const countActions=async()=>Number((await page.locator('.obs-breakdown button').first().locator('strong').innerText()).replaceAll(',',''));

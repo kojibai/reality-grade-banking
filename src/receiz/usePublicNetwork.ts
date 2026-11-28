@@ -13,7 +13,7 @@ import type {PublicLedgerFileReview} from './public-ledger-proof';
 import type {PublicNetworkCache} from './public-network-cache';
 import type {PublicMarketCatalog} from './public-market';
 
-export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; }
+export interface PublicSourceState { status: 'loading' | 'live' | 'stale' | 'error'; cursor: string | null; complete: boolean; busy: boolean; error: string | null; observedAt?: number; historyObservedAt?: number; }
 type Sources = Record<PublicSource, PublicSourceState>;
 const refreshInterval=60_000;
 function initialSources(): Sources { return Object.fromEntries(PUBLIC_SOURCES.map(source => [source, { status: 'loading', cursor: null, complete: false, busy: false, error: null }])) as Sources; }
@@ -143,7 +143,9 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
             const observed=Date.parse(page.observedAt??'');
             headObservedAt=Number.isFinite(observed)?observed:Date.now();
             capture(new Date(headObservedAt).toISOString());
-            if(extending)update(source,{observedAt:headObservedAt,complete:false,status:'live'});
+            // A new head is visible immediately, but its date cannot move a
+            // historical window while the existing cursor closes the gap.
+            if(extending)update(source,{observedAt:headObservedAt,historyObservedAt:before.historyObservedAt??before.observedAt,complete:false,status:'live'});
           }
         }
         if(extending){cursor=page.nextCursor!;continue;}
@@ -152,6 +154,7 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
         const complete = page.complete || phase === 'head' && reachedHeld && (!!prefix||before.complete);
         update(source, { status: page.complete || source !== 'proofs' ? 'live' : 'stale', complete,
           observedAt: headObservedAt, cursor: complete ? null : phase === 'head' && existing.size && before.cursor ? before.cursor : page.nextCursor, busy: false,
+          ...((phase==='head'||complete)?{historyObservedAt:undefined}:{}),
           error: source === 'proofs' && !page.complete ? 'Public showcase collection is incomplete.' : null });
         if (complete) completeAnchors.current[source] = new Set(rows.current.filter(row => row.source === source).map(row => row.id));
         break;
@@ -224,7 +227,8 @@ export function usePublicNetwork(active = true, initialSnapshot?:PublicNetworkCa
           const current=sourceState.current[source],observedAt=Math.max(current.observedAt??0,cached?.observedAt??0,anchorCoverage?.observedAt??0);
           const newerCache=cached?.observedAt!==undefined&&cached.observedAt>(current.observedAt??0);
           const coverage=newerCache?cached.complete:current.complete||(!current.observedAt&&!current.busy&&Boolean(anchor));
-          update(source, { status: current.status==='live'?'live':'stale', complete:coverage, observedAt:observedAt||undefined });
+          const historyObservedAt=newerCache?(cached.complete?undefined:current.historyObservedAt??current.observedAt):current.historyObservedAt;
+          update(source, { status: current.status==='live'?'live':'stale', complete:coverage, observedAt:observedAt||undefined, historyObservedAt });
         }
     };
     const restored=(async()=>{

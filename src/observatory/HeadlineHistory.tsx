@@ -37,11 +37,14 @@ export function HeadlineHistory({metric, detail, points, through, inventoryTotal
   const [period,setPeriod] = useState<Period>('All');
   const [picked,setPicked] = useState<number|null>(null);
   useEffect(()=>{if (dialog.current && !dialog.current.open) dialog.current.showModal();},[]);
-  const history=points;
-  const end=Math.max(through??0,history.at(-1)?.at??0);
-  const first=history[0]?.at??end;
+  const inventory = useMemo(() => metric==='assets'&&through!==undefined&&inventoryTotal!==undefined
+    ? {at:through,value:inventoryTotal,inventoryObservation:true as const} : undefined,[metric,through,inventoryTotal]);
+  const end=Math.max(through??0,points.at(-1)?.at??0);
+  const first=points[0]?.at??end;
   const start=Math.max(first,periodBounds(first,period,end).start);
-  const rows = useMemo(()=>visibleHistory(history,start,end),[history,start,end]);
+  const datedRows = useMemo(()=>visibleHistory(points,start,end),[points,start,end]);
+  const rows: readonly (HistoryPoint & {inventoryObservation?:true})[] = useMemo(
+    () => inventory ? [...datedRows,inventory] : datedRows,[datedRows,inventory]);
   const plot = useMemo(()=>{
     if (!rows.length) return null;
     const values=rows.map(p=>p.value);
@@ -50,15 +53,17 @@ export function HeadlineHistory({metric, detail, points, through, inventoryTotal
     const x=(at:number)=>end===start?100:100*(at-start)/(end-start);
     const y=(v:number)=>high===low?50:92-84*(v-low)/(high-low);
     const step=metric!=='cap';
-    const indices=metric==='assets'||metric==='hours'?rows.keys():sampleChartIndices(values,240,rows.map(p=>p.at));
+    // The current count is a measured observation, separate from issuance dates.
+    // Do not draw the undated difference as issuance at the observation time.
+    const indices=metric==='assets'||metric==='hours'?datedRows.keys():sampleChartIndices(values,240,datedRows.map(p=>p.at));
     const parts:string[]=[];
     for(const i of indices){
-      const px=x(rows[i].at).toFixed(3), py=y(values[i]).toFixed(3);
+      const px=x(datedRows[i].at).toFixed(3), py=y(values[i]).toFixed(3);
       parts.push(i===0?'M'+px+','+py:step?'H'+px+'V'+py:'L'+px+','+py);
     }
-    const path=rows.length===1?'M0,'+y(values[0])+' H100':parts.join(' ');
+    const path=datedRows.length===1?'M0,'+y(values[0])+' H100':parts.join(' ');
     return {path,area:path+' V100 H0 Z',x,y,low,high};
-  },[rows,start,end,metric]);
+  },[rows,datedRows,start,end,metric]);
   const i=picked===null?rows.length-1:Math.min(picked,rows.length-1);
   const point=rows[i];
   const observedAt=point?.observedAt??point?.at;
@@ -68,7 +73,7 @@ export function HeadlineHistory({metric, detail, points, through, inventoryTotal
     onClick={event=>{if(event.target===dialog.current){const r=event.currentTarget.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.current?.close();}}}>
     <div className="obs-headline-heading"><h2 id="obs-headline-title">{headlineNames[metric]}</h2>
       <button type="button" aria-label="Close chart" autoFocus onClick={()=>dialog.current?.close()}><X size={19} aria-hidden="true"/></button></div>
-    {point&&plot&&observedAt!==undefined?<><output className="obs-headline-reading"><strong>{format(point.value)}</strong>{metric==='assets'&&<small>Dated issuance</small>}<time>{point.observedAt!==undefined?'Last recorded ':''}{dates.format(observedAt)} · {times.format(observedAt)} UTC</time></output>
+    {point&&plot&&observedAt!==undefined?<><output className="obs-headline-reading"><strong>{format(point.value)}</strong>{metric==='assets'&&<small>{point.inventoryObservation?'Published inventory':'Dated issuance'}</small>}<time>{point.observedAt!==undefined?'Last recorded ':''}{dates.format(observedAt)} · {times.format(observedAt)} UTC</time></output>
       <div className="obs-headline-ranges" role="group" aria-label="History range">{periods.map(p=><button key={p} type="button" aria-pressed={period===p} onClick={()=>{setPeriod(p);setPicked(null);}}>{p==='All'?'All time':p}</button>)}</div>
       <div className="obs-headline-scale"><span>Low {format(plot.low)}</span><span>High {format(plot.high)}</span></div>
       <div className="obs-headline-field" onPointerMove={event=>{

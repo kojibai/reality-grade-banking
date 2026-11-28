@@ -219,7 +219,8 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   },[headline,valuation.allTimePoints,audienceSeries,catalog,initialDirectory,inventoryThrough,index,network.sources,capture]);
   const asOf=state.observedAt??(Number.isFinite(capture)?capture:null);
   const future=useMemo(()=>asOf===null?[]:stream.filter(point=>point.time>asOf),[asOf,stream]);
-  const anchor=paused??asOf;
+  const historyAsOf=state.historyObservedAt??asOf;
+  const anchor=paused??historyAsOf;
   const plot=useMemo(()=>activityWindow(stream,period,anchor??0),[stream,period,anchor]);
   const newest=plot.buckets.reduce((latest,bucket,i)=>bucket.length ? i : latest,-1);
   const focus=picked===null ? (newest<0?plot.buckets.length-1:newest) : Math.min(plot.buckets.length-1,Math.max(0,Math.floor((picked-plot.start)/plot.width)));
@@ -228,9 +229,9 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
   const covered=PUBLIC_SOURCES.filter(s=>index.counts[s]>0 || network.sources[s].complete).length;
   const pick=(i:number)=>{setPaused(anchor);setPicked(plot.start+i*plot.width);setLimit(8);};
   const moveWindow=(direction:number)=>{
-    if(!asOf || anchor===null || period==='All')return;
+    if(!historyAsOf || anchor===null || period==='All')return;
     const next=anchor+direction*(plot.end-plot.start+1);
-    setPaused(next>=asOf?null:next);setPicked(null);setLimit(8);
+    setPaused(next>=historyAsOf?null:next);setPicked(null);setLimit(8);
   };
   const following=paused===null, showingRecords=index.counts[source]>0;
   const status=showingRecords?'Showing public records'
@@ -254,7 +255,7 @@ export function Observatory({network:heldNetwork,active,initialDirectory,initial
         <button className="obs-follow" aria-pressed={following} onClick={()=>{setPaused(following?anchor:null);setPicked(null);setLimit(8);}} disabled={!anchor}>{following?<Pause/>:<Play/>}{following?'Following latest':'Follow latest'}</button></div></div>
       <div className="obs-streams" role="group" aria-label="Chart source">{PUBLIC_SOURCES.map(s=><button key={s} aria-pressed={s===source} onClick={()=>{setSource(s);setFilter('');setPaused(null);setPicked(null);setLimit(8);}}>{sourceNames[s]}</button>)}</div>
       {anchor ? <ActivityPlot plot={plot} period={period} selection={focus} onSelect={pick}/> : <p className="obs-empty">This source has no dated observations to chart.</p>}
-      <div className="obs-timeline-nav"><button aria-label="Previous time window" disabled={period==='All'||!stream.length||plot.start<=stream[0].time} onClick={()=>moveWindow(-1)}><ChevronLeft/> Earlier</button><select aria-label="Filter by record type" value={filter} onChange={e=>{setFilter(e.target.value);setPicked(null);setLimit(8);}}><option value="">All record types</option>{kinds.map(([kind,count])=><option key={kind} value={kind}>{kind} ({num.format(count)})</option>)}</select><button aria-label="Next time window" disabled={period==='All'||following||anchor===asOf} onClick={()=>moveWindow(1)}>Later <ChevronRight/></button></div>
+      <div className="obs-timeline-nav"><button aria-label="Previous time window" disabled={period==='All'||!stream.length||plot.start<=stream[0].time} onClick={()=>moveWindow(-1)}><ChevronLeft/> Earlier</button><select aria-label="Filter by record type" value={filter} onChange={e=>{setFilter(e.target.value);setPicked(null);setLimit(8);}}><option value="">All record types</option>{kinds.map(([kind,count])=><option key={kind} value={kind}>{kind} ({num.format(count)})</option>)}</select><button aria-label="Next time window" disabled={period==='All'||following||anchor===historyAsOf} onClick={()=>moveWindow(1)}>Later <ChevronRight/></button></div>
       <div className="obs-coverage"><span>{state.complete?'Source history loaded':'Partial source coverage'}{index.counts[source]>sourceStream.length?' · '+num.format(index.counts[source]-sourceStream.length)+' undated records excluded':''}</span><span>{state.observedAt ? 'Source observed '+fullDate.format(state.observedAt)+' · '+clock.format(state.observedAt)+' UTC' : 'Source observation time unavailable'}</span></div>
     </div></section>
     <section className="obs-details obs-inner"><div><p className="obs-label">Selected interval</p><h3>{anchor?day.format(start)+' · '+clock.format(start)+'–'+(day.format(start)!==day.format(Math.min(plot.end,start+plot.width))?day.format(Math.min(plot.end,start+plot.width))+' · ':'')+clock.format(Math.min(plot.end,start+plot.width))+' UTC':'No interval selected'}</h3><p>{num.format(selected.length)} {source==='actions'?'public actions':source==='proofs'?'Showcase records':sourceNames[source].toLowerCase()+' records'} in this interval</p>
